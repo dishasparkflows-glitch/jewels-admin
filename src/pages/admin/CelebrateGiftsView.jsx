@@ -18,11 +18,24 @@ import { IoCubeOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function CelebrateGiftsView() {
+  const confirm = useConfirm();
   const [activeTab, setActiveTab] = useState('Celebrate'); // 'Celebrate' | 'Gifts'
   const [featuredItems, setFeaturedItems] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(featuredItems, 6);
 
   // Available products for modal selection
   const [allProducts, setAllProducts] = useState([]);
@@ -214,7 +227,14 @@ export default function CelebrateGiftsView() {
 
   // Delete Group
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this campaign group?')) {
+    const isConfirmed = await confirm({
+      title: 'Delete Campaign Group',
+      message: 'Are you sure you want to delete this campaign group? This action cannot be undone.',
+      confirmText: 'Delete Group',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) {
       return;
     }
     try {
@@ -353,80 +373,94 @@ export default function CelebrateGiftsView() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {featuredItems.map((item) => (
-            <div
-              key={item._id}
-              className="bg-white rounded-[20px] border border-stone-200/80 overflow-hidden shadow-xs hover:shadow-md transition-all group flex flex-col justify-between"
-            >
-              {/* Banner Image Container */}
-              <div className="relative aspect-[16/9] w-full overflow-hidden bg-stone-100">
-                <img
-                  src={item.image?.url || '/featured/necklace.jpg'}
-                  alt={item.name}
-                  className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-300"
-                />
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {paginatedItems.map((item) => (
+              <div
+                key={item._id}
+                className="bg-white rounded-[20px] border border-stone-200/80 overflow-hidden shadow-xs hover:shadow-md transition-all group flex flex-col justify-between"
+              >
+                {/* Banner Image Container */}
+                <div className="relative aspect-[16/9] w-full overflow-hidden bg-stone-100">
+                  <img
+                    src={item.image?.url || '/featured/necklace.jpg'}
+                    alt={item.name}
+                    className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-300"
+                  />
 
-                {/* Top-Left ACTIVE Badge (Matches Screenshot: white pill) */}
-                <div className="absolute top-3.5 left-3.5">
-                  <span className="bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider text-stone-700 shadow-2xs uppercase">
-                    {item.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
-                  </span>
+                  {/* Top-Left ACTIVE Badge (Matches Screenshot: white pill) */}
+                  <div className="absolute top-3.5 left-3.5">
+                    <span className="bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider text-stone-700 shadow-2xs uppercase">
+                      {item.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
+                    </span>
+                  </div>
+
+                  {/* Top-Right Action Buttons: Eye, Pencil, Trash in glassmorphic/white pills */}
+                  <div className="absolute top-3.5 right-3.5 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => openViewModal(item)}
+                      className="w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-stone-600 hover:text-stone-900 shadow-2xs flex items-center justify-center transition-colors cursor-pointer"
+                      title="View Details"
+                    >
+                      <HiOutlineEye className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => openEditModal(item)}
+                      className="w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-stone-600 hover:text-stone-900 shadow-2xs flex items-center justify-center transition-colors cursor-pointer"
+                      title="Edit Group"
+                    >
+                      <HiOutlinePencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item._id)}
+                      className="w-7 h-7 rounded-lg bg-white/90 hover:bg-red-50 text-stone-600 hover:text-red-600 shadow-2xs flex items-center justify-center transition-colors cursor-pointer"
+                      title="Delete Group"
+                    >
+                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Bottom-Left PRODUCTS Count Badge (Matches Screenshot: ⬡ 54 PRODUCTS) */}
+                  <div className="absolute bottom-3.5 left-3.5">
+                    <div className="bg-white/90 backdrop-blur-xs text-stone-700 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full shadow-2xs flex items-center gap-1.5 uppercase">
+                      <IoCubeOutline className="w-3 h-3 text-stone-500" />
+                      <span>{item.productCount || 0} PRODUCTS</span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Top-Right Action Buttons: Eye, Pencil, Trash in glassmorphic/white pills */}
-                <div className="absolute top-3.5 right-3.5 flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => openViewModal(item)}
-                    className="w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-stone-600 hover:text-stone-900 shadow-2xs flex items-center justify-center transition-colors cursor-pointer"
-                    title="View Details"
-                  >
-                    <HiOutlineEye className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => openEditModal(item)}
-                    className="w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-stone-600 hover:text-stone-900 shadow-2xs flex items-center justify-center transition-colors cursor-pointer"
-                    title="Edit Group"
-                  >
-                    <HiOutlinePencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDelete(item._id)}
-                    className="w-7 h-7 rounded-lg bg-white/90 hover:bg-red-50 text-stone-600 hover:text-red-600 shadow-2xs flex items-center justify-center transition-colors cursor-pointer"
-                    title="Delete Group"
-                  >
-                    <HiOutlineTrash className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Bottom-Left PRODUCTS Count Badge (Matches Screenshot: ⬡ 54 PRODUCTS) */}
-                <div className="absolute bottom-3.5 left-3.5">
-                  <div className="bg-white/90 backdrop-blur-xs text-stone-700 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full shadow-2xs flex items-center gap-1.5 uppercase">
-                    <IoCubeOutline className="w-3 h-3 text-stone-500" />
-                    <span>{item.productCount || 0} PRODUCTS</span>
+                {/* Info Section */}
+                <div className="p-4 sm:p-5">
+                  <h3 className="font-bold text-stone-900 text-sm tracking-tight mb-1">
+                    {item.name}
+                  </h3>
+                  <div className="flex items-center justify-between text-[10px] font-semibold text-stone-400 tracking-wider uppercase">
+                    <div className="flex items-center gap-1">
+                      <HiOutlineTag className="w-3 h-3 text-stone-400" />
+                      <span>{item.placement?.toUpperCase() || activeTab.toUpperCase()}</span>
+                    </div>
+                    <span>CREATED {formatDate(item.createdAt)}</span>
                   </div>
                 </div>
               </div>
+            ))}
+          </div>
 
-              {/* Info Section */}
-              <div className="p-4 sm:p-5">
-                <h3 className="font-bold text-stone-900 text-sm tracking-tight mb-1">
-                  {item.name}
-                </h3>
-                <div className="flex items-center justify-between text-[10px] font-semibold text-stone-400 tracking-wider uppercase">
-                  <div className="flex items-center gap-1">
-                    <HiOutlineTag className="w-3 h-3 text-stone-400" />
-                    <span>{item.placement?.toUpperCase() || activeTab.toUpperCase()}</span>
-                  </div>
-                  <span>CREATED {formatDate(item.createdAt)}</span>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+          {/* Luxury Common Pagination */}
+          <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
+            <Pagination
+              currentPage={currentPage}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              pageSizeOptions={[6, 9, 12, 24]}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={setPageSize}
+            />
+          </div>
+        </>
       )}
 
       {/* ─── Add / Edit Group Modal (Exact Match to Screenshot 2) ─── */}

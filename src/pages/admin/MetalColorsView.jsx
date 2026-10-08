@@ -9,6 +9,9 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 /**
  * Metal Swatch Badge matching User Screenshot 1
@@ -30,6 +33,7 @@ function MetalSwatch({ startColor = '#F9E498', endColor = '#B38B34', className =
 }
 
 export default function MetalColorsView() {
+  const confirm = useConfirm();
   const [colors, setColors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -76,6 +80,15 @@ export default function MetalColorsView() {
     );
   }, [colors, search]);
 
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(filteredColors, 10);
+
   // Open modal to add new color
   const handleOpenAdd = () => {
     setEditingColor(null);
@@ -112,7 +125,14 @@ export default function MetalColorsView() {
 
   // Delete Metal Color
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete metal color "${name}"?`)) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Metal Color',
+      message: `Are you sure you want to delete metal color "${name}"? This action cannot be undone.`,
+      confirmText: 'Delete Color',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/metal-colors/${id}`);
       toast.success(`Metal color "${name}" deleted`);
@@ -221,7 +241,7 @@ export default function MetalColorsView() {
                   </td>
                 </tr>
               ) : (
-                filteredColors.map((c) => {
+                paginatedItems.map((c) => {
                   const isActive = c.status === 'active';
                   const hexCodeDisplay = `${c.colorCode || '#FFFFFF'} / ${c.colorCodeEnd || c.colorCode || '#FFFFFF'}`;
 
@@ -300,6 +320,15 @@ export default function MetalColorsView() {
             </tbody>
           </table>
         </div>
+
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ─── Add / Edit Modal (Matches Screenshot 2 Exactly) ─── */}

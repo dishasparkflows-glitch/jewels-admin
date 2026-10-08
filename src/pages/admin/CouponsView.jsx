@@ -10,8 +10,12 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function CouponsView() {
+  const confirm = useConfirm();
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -61,6 +65,15 @@ export default function CouponsView() {
         (c.description && c.description.toLowerCase().includes(q))
     );
   }, [coupons, search]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(filteredCoupons, 10);
 
   // Format Date to YYYY-MM-DD for <input type="date">
   const toInputDate = (dateVal) => {
@@ -120,7 +133,14 @@ export default function CouponsView() {
 
   // Delete coupon
   const handleDelete = async (id, code) => {
-    if (!window.confirm(`Are you sure you want to delete coupon "${code}"?`)) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Coupon',
+      message: `Are you sure you want to delete coupon "${code}"? This action cannot be undone.`,
+      confirmText: 'Delete Coupon',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/coupons/${id}`);
       toast.success('Coupon deleted successfully');
@@ -250,7 +270,7 @@ export default function CouponsView() {
                   </td>
                 </tr>
               ) : (
-                filteredCoupons.map((c) => {
+                paginatedItems.map((c) => {
                   const isActive = c.status === 'active';
                   const formattedDiscount =
                     c.discounttype === 'Percentage'
@@ -369,6 +389,15 @@ export default function CouponsView() {
             </tbody>
           </table>
         </div>
+
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ─── Add / Edit Coupon Modal (Matches Screenshot Exactly) ─── */}

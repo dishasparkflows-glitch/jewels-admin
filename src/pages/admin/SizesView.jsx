@@ -9,8 +9,12 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function SizesView() {
+  const confirm = useConfirm();
   const [sizes, setSizes] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -65,6 +69,15 @@ export default function SizesView() {
     );
   }, [sizes, search]);
 
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(filteredSizes, 10);
+
   // Open modal to add new size
   const handleOpenAdd = () => {
     setEditingSize(null);
@@ -99,7 +112,14 @@ export default function SizesView() {
 
   // Delete Size
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete size "${name}"?`)) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Size',
+      message: `Are you sure you want to delete size "${name}"? This action cannot be undone.`,
+      confirmText: 'Delete Size',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/sizes/${id}`);
       toast.success(`Size "${name}" deleted`);
@@ -211,7 +231,7 @@ export default function SizesView() {
                   </td>
                 </tr>
               ) : (
-                filteredSizes.map((s) => {
+                paginatedItems.map((s) => {
                   const isActive = s.status === 'active';
                   // In Screenshot 1, row 4 "18 inch" is rendered in warm gold/brown
                   const isGoldSize = s.name === '18 inch';
@@ -309,6 +329,15 @@ export default function SizesView() {
             </tbody>
           </table>
         </div>
+
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ─── Add / Edit Modal (Matches Screenshot 2 Exactly) ─── */}

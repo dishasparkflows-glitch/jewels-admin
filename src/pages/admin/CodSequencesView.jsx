@@ -2,10 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { HiOutlinePencil, HiOutlineTrash, HiOutlinePlus } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function CodSequencesView() {
+  const confirm = useConfirm();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(items, 10);
   const [formData, setFormData] = useState({
     uptoAmount: '',
     chargeType: 'Percentage',
@@ -75,7 +88,14 @@ export default function CodSequencesView() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this COD sequence tier?')) return;
+    const isConfirmed = await confirm({
+      title: 'Delete COD Tier',
+      message: 'Are you sure you want to delete this COD sequence tier? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/cod-sequences/${id}`);
       toast.success('COD sequence deleted successfully');
@@ -199,7 +219,7 @@ export default function CodSequencesView() {
                   </td>
                 </tr>
               ) : (
-                items.map((row) => (
+                paginatedItems.map((row) => (
                   <tr key={row._id} className="hover:bg-stone-50/60 transition-colors">
                     <td className="py-4 px-6 font-semibold text-stone-800">
                       ₹ {Number(row.uptoAmount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -236,6 +256,15 @@ export default function CodSequencesView() {
             </tbody>
           </table>
         </div>
+
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

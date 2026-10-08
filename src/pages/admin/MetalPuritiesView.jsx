@@ -9,8 +9,12 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function MetalPuritiesView() {
+  const confirm = useConfirm();
   const [purities, setPurities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -56,6 +60,15 @@ export default function MetalPuritiesView() {
         (p.metalType && p.metalType.toLowerCase().includes(q))
     );
   }, [purities, search]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(filteredPurities, 10);
 
   // Open modal to add new purity
   const handleOpenAdd = () => {
@@ -103,7 +116,14 @@ export default function MetalPuritiesView() {
 
   // Delete Metal Purity
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete metal purity "${name}"?`)) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Metal Purity',
+      message: `Are you sure you want to delete metal purity "${name}"? This action cannot be undone.`,
+      confirmText: 'Delete Purity',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/metal-purities/${id}`);
       toast.success(`Metal purity "${name}" deleted`);
@@ -212,7 +232,7 @@ export default function MetalPuritiesView() {
                   </td>
                 </tr>
               ) : (
-                filteredPurities.map((p) => {
+                paginatedItems.map((p) => {
                   const isActive = p.status === 'active';
                   const karatDisplay = p.karat ? `${p.karat}K` : p.name;
 
@@ -282,6 +302,15 @@ export default function MetalPuritiesView() {
             </tbody>
           </table>
         </div>
+
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ─── Add / Edit Modal (Matches Screenshot 2 Exactly) ─── */}

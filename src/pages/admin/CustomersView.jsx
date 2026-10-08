@@ -11,8 +11,12 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function CustomersView() {
+  const confirm = useConfirm();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -38,7 +42,14 @@ export default function CustomersView() {
   }, []);
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to remove this client record?')) return;
+    const isConfirmed = await confirm({
+      title: 'Remove Client Record',
+      message: 'Are you sure you want to remove this client record? This action cannot be undone.',
+      confirmText: 'Remove',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/users/${id}`);
       toast.success('Customer deleted successfully');
@@ -53,12 +64,13 @@ export default function CustomersView() {
   const deactivatedCount = users.filter((u) => u.isActive === false).length;
 
   const totalClients = users.length;
-  const totalOrders = users.reduce((sum, u) => sum + (Number(u.ordersCount) || 0), 0);
+  const totalOrders = users.reduce((sum, u) => sum + (Number(u.statistics?.ordersCount ?? u.ordersCount) || 0), 0);
   const avgOrders = totalClients > 0 ? (totalOrders / totalClients).toFixed(1) : '0.0';
-  const highSpenders = users.filter((u) => (Number(u.lifetimeValue) || 0) >= 50000).length;
+  const highSpenders = users.filter((u) => (Number(u.statistics?.lifetimeValue ?? u.lifetimeValue) || 0) >= 50000).length;
   const recentSignups = users.filter((u) => {
-    if (!u.createdAt) return false;
-    const diffDays = (new Date() - new Date(u.createdAt)) / (1000 * 60 * 60 * 24);
+    const createdDate = u.meta?.createdAt || u.createdAt;
+    if (!createdDate) return false;
+    const diffDays = (new Date() - new Date(createdDate)) / (1000 * 60 * 60 * 24);
     return diffDays <= 30;
   }).length;
 
@@ -68,17 +80,30 @@ export default function CustomersView() {
     .filter((u) => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
-      const fullName = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
-      const email = (u.email || '').toLowerCase();
-      const phone = (u.phone || '').toLowerCase();
+      const firstName = u.profile?.firstName || u.firstName || '';
+      const lastName = u.profile?.lastName || u.lastName || '';
+      const fullName = `${firstName} ${lastName}`.toLowerCase();
+      const email = (u.auth?.email || u.email || '').toLowerCase();
+      const phone = (u.profile?.phone || u.phone || '').toLowerCase();
       return fullName.includes(q) || email.includes(q) || phone.includes(q);
     });
 
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(displayedUsers, 10);
+
   const getInitials = (user) => {
-    if (user.firstName && user.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    const firstName = user.profile?.firstName || user.firstName;
+    const lastName = user.profile?.lastName || user.lastName;
+    if (firstName && lastName) {
+      return `${firstName[0]}${lastName[0]}`.toUpperCase();
     }
-    return (user.firstName || user.email || 'C')[0].toUpperCase();
+    return (firstName || user.auth?.email || user.email || 'C')[0].toUpperCase();
   };
 
   const formatMemberSince = (dateString) => {
@@ -220,11 +245,16 @@ export default function CustomersView() {
                   </td>
                 </tr>
               ) : (
-                displayedUsers.map((client) => {
+                paginatedItems.map((client) => {
                   const initials = getInitials(client);
-                  const fullName = client.firstName ? `${client.firstName} ${client.lastName || ''}`.trim() : client.email;
-                  const orders = Number(client.ordersCount) || 0;
-                  const ltv = Number(client.lifetimeValue) || 0;
+                  const firstName = client.profile?.firstName || client.firstName;
+                  const lastName = client.profile?.lastName || client.lastName;
+                  const email = client.auth?.email || client.email;
+                  const phone = client.profile?.phone || client.phone;
+                  const fullName = firstName ? `${firstName} ${lastName || ''}`.trim() : email;
+                  const orders = Number(client.statistics?.ordersCount ?? client.ordersCount) || 0;
+                  const ltv = Number(client.statistics?.lifetimeValue ?? client.lifetimeValue) || 0;
+                  const memberSince = client.meta?.createdAt || client.createdAt;
 
                   return (
                     <tr key={client._id} className="hover:bg-stone-50/60 transition-colors">
@@ -245,10 +275,10 @@ export default function CustomersView() {
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-1.5 text-stone-600 text-xs">
                             <HiOutlineMail className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                            <span className="truncate max-w-[200px]">{client.email}</span>
+                            <span className="truncate max-w-[200px]">{email}</span>
                           </div>
-                          {client.phone && (
-                            <p className="text-[11px] text-stone-400 pl-5">{client.phone}</p>
+                          {phone && (
+                            <p className="text-[11px] text-stone-400 pl-5">{phone}</p>
                           )}
                         </div>
                       </td>
@@ -265,7 +295,7 @@ export default function CustomersView() {
 
                       {/* Member Since */}
                       <td className="py-4 px-6 text-xs text-stone-500 font-medium">
-                        {formatMemberSince(client.createdAt)}
+                        {formatMemberSince(memberSince)}
                       </td>
 
                       {/* Actions */}
@@ -284,6 +314,15 @@ export default function CustomersView() {
               )}
             </tbody>
           </table>
+
+          {/* Luxury Common Pagination */}
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
         </div>
       </div>
     </div>

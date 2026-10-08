@@ -15,11 +15,11 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const data = await login(form.email, form.password);
+      const data = await login(form.email.trim(), form.password);
       toast.success(`Welcome back, ${data.user.firstName}!`, { icon: '✨' });
       navigate('/dashboard');
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Authentication failed');
+      toast.error(err.response?.data?.message || err.message || 'Authentication failed');
     } finally {
       setLoading(false);
     }

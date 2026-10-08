@@ -13,6 +13,9 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const getMediaUrl = (url) => {
   if (!url) return '';
@@ -22,6 +25,7 @@ const getMediaUrl = (url) => {
 };
 
 export default function BannersView() {
+  const confirm = useConfirm();
   const [banners, setBanners] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +82,15 @@ export default function BannersView() {
     if (filterType === 'all') return true;
     return b.mediaType === filterType;
   });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(filteredBanners, 9);
 
   // Open Modal to Add New Asset
   const handleOpenAdd = () => {
@@ -164,7 +177,14 @@ export default function BannersView() {
 
   // Delete banner
   const handleDelete = async (id, title) => {
-    if (!window.confirm(`Are you sure you want to delete banner "${title || 'Untitled'}"?`)) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Banner',
+      message: `Are you sure you want to delete banner "${title || 'Untitled'}"? This action cannot be undone.`,
+      confirmText: 'Delete Banner',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/banners/${id}`);
       toast.success('Banner deleted successfully');
@@ -298,8 +318,9 @@ export default function BannersView() {
           <p className="text-xs text-stone-400">Click "+ ADD ASSET" to upload a new banner image or video reel.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredBanners.map((banner) => {
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {paginatedItems.map((banner) => {
             const isActive = banner.status === 'active';
             const categoryName =
               typeof banner.category === 'object'
@@ -401,6 +422,19 @@ export default function BannersView() {
             );
           })}
         </div>
+
+        {/* Luxury Common Pagination */}
+        <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            pageSizeOptions={[6, 9, 15, 30]}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={setPageSize}
+          />
+        </div>
+        </>
       )}
 
       {/* ─── Add New Asset Modal (Matches Screenshot Exactly) ─── */}

@@ -12,6 +12,9 @@ import {
   HiOutlineEye,
   HiOutlineX,
 } from 'react-icons/hi';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 const routeMap = {
   // ─── 1. Diamond Config ───────────────────────────
@@ -149,6 +152,7 @@ const routeMap = {
 };
 
 const DynamicModuleView = () => {
+  const confirm = useConfirm();
   const { pathname } = useLocation();
   const config = routeMap[pathname] || {
     endpoint: pathname,
@@ -200,7 +204,14 @@ const DynamicModuleView = () => {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this record?')) return;
+    const isConfirmed = await confirm({
+      title: `Delete ${config.title} Record`,
+      message: 'Are you sure you want to delete this record? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       const cleanEndpoint = config.endpoint.split('?')[0];
       await api.delete(`${cleanEndpoint}/${id}`);
@@ -235,6 +246,15 @@ const DynamicModuleView = () => {
       return label.includes(q) || id.includes(q);
     });
   }, [items, search]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(filteredItems, 10);
 
   return (
     <div className="space-y-6">
@@ -306,79 +326,90 @@ const DynamicModuleView = () => {
               </button>
             </div>
           ) : (
-            <table className="w-full text-left text-sm">
-              <thead>
-                <tr className="border-b border-stone-100 text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
-                  <th className="pb-3">Title / Value</th>
-                  <th className="pb-3">Details</th>
-                  <th className="pb-3">Status</th>
-                  <th className="pb-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-50">
-                {filteredItems.map((row) => (
-                  <tr key={row._id || row.id} className="hover:bg-[#fcfaf7] transition-colors">
-                    <td className="py-3.5 text-stone-900 text-xs font-semibold flex items-center gap-2.5">
-                      {row.image?.url && (
-                        <img
-                          src={row.image.url}
-                          alt=""
-                          className="w-7 h-7 rounded-lg object-cover border border-stone-200"
-                        />
-                      )}
-                      {row.lightImage?.url && (
-                        <img
-                          src={row.lightImage.url}
-                          alt=""
-                          className="w-7 h-7 rounded-lg object-cover border border-stone-200"
-                        />
-                      )}
-                      <span>{getRowLabel(row)}</span>
-                    </td>
-                    <td className="py-3.5 text-stone-600 text-xs">
-                      {row.karat ? `${row.karat}KT` : null}
-                      {row.colorCode && (
-                        <span className="flex items-center gap-1.5">
-                          <span
-                            className="w-3.5 h-3.5 rounded-full border border-stone-300 shadow-2xs"
-                            style={{
-                              background: row.colorCodeEnd
-                                ? `linear-gradient(135deg, ${row.colorCode}, ${row.colorCodeEnd})`
-                                : row.colorCode,
-                            }}
-                          />
-                          <span className="text-[11px] text-stone-500">{row.colorCode}</span>
-                        </span>
-                      )}
-                      {row.sizeFrom !== undefined && `${row.sizeFrom} - ${row.sizeTo}ct`}
-                      {row.price && `₹${Number(row.price).toLocaleString('en-IN')}`}
-                      {row.ratePerCarat && `₹${Number(row.ratePerCarat).toLocaleString('en-IN')}/ct`}
-                      {row.type && <span className="capitalize">{row.type}</span>}
-                    </td>
-                    <td className="py-3.5">
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                          row.status === 'inactive' || row.isActive === false
-                            ? 'bg-stone-100 text-stone-600 border-stone-200'
-                            : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
-                        }`}
-                      >
-                        {row.status || (row.isActive !== false ? 'active' : 'inactive')}
-                      </span>
-                    </td>
-                    <td className="py-3.5 text-right">
-                      <button
-                        onClick={() => handleDelete(row._id || row.id)}
-                        className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                        title="Delete Record"
-                      >
-                        <HiOutlineTrash className="w-4 h-4" />
-                      </button>
-                    </td>
+            <>
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-stone-100 text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
+                    <th className="pb-3">Title / Value</th>
+                    <th className="pb-3">Details</th>
+                    <th className="pb-3">Status</th>
+                    <th className="pb-3 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-stone-50">
+                  {paginatedItems.map((row) => (
+                    <tr key={row._id || row.id} className="hover:bg-[#fcfaf7] transition-colors">
+                      <td className="py-3.5 text-stone-900 text-xs font-semibold flex items-center gap-2.5">
+                        {row.image?.url && (
+                          <img
+                            src={row.image.url}
+                            alt=""
+                            className="w-7 h-7 rounded-lg object-cover border border-stone-200"
+                          />
+                        )}
+                        {row.lightImage?.url && (
+                          <img
+                            src={row.lightImage.url}
+                            alt=""
+                            className="w-7 h-7 rounded-lg object-cover border border-stone-200"
+                          />
+                        )}
+                        <span>{getRowLabel(row)}</span>
+                      </td>
+                      <td className="py-3.5 text-stone-600 text-xs">
+                        {row.karat ? `${row.karat}KT` : null}
+                        {row.colorCode && (
+                          <span className="flex items-center gap-1.5">
+                            <span
+                              className="w-3.5 h-3.5 rounded-full border border-stone-300 shadow-2xs"
+                              style={{
+                                background: row.colorCodeEnd
+                                  ? `linear-gradient(135deg, ${row.colorCode}, ${row.colorCodeEnd})`
+                                  : row.colorCode,
+                              }}
+                            />
+                            <span className="text-[11px] text-stone-500">{row.colorCode}</span>
+                          </span>
+                        )}
+                        {row.sizeFrom !== undefined && `${row.sizeFrom} - ${row.sizeTo}ct`}
+                        {row.price && `₹${Number(row.price).toLocaleString('en-IN')}`}
+                        {row.ratePerCarat && `₹${Number(row.ratePerCarat).toLocaleString('en-IN')}/ct`}
+                        {row.type && <span className="capitalize">{row.type}</span>}
+                      </td>
+                      <td className="py-3.5">
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            row.status === 'inactive' || row.isActive === false
+                              ? 'bg-stone-100 text-stone-600 border-stone-200'
+                              : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
+                          }`}
+                        >
+                          {row.status || (row.isActive !== false ? 'active' : 'inactive')}
+                        </span>
+                      </td>
+                      <td className="py-3.5 text-right">
+                        <button
+                          onClick={() => handleDelete(row._id || row.id)}
+                          className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete Record"
+                        >
+                          <HiOutlineTrash className="w-4 h-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Luxury Common Pagination */}
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={setPageSize}
+              />
+            </>
           )}
         </div>
       </div>

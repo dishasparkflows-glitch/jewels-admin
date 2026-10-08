@@ -14,8 +14,12 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function CustomInquiriesView() {
+  const confirm = useConfirm();
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'confirmed' | 'completed' | 'cancelled'
@@ -51,7 +55,14 @@ export default function CustomInquiriesView() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this custom inquiry?')) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Custom Inquiry',
+      message: 'Are you sure you want to delete this custom inquiry? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/custom-inquiries/${id}`);
       toast.success('Custom inquiry deleted successfully');
@@ -77,6 +88,15 @@ export default function CustomInquiriesView() {
       const phone = (i.phoneNumber || '').toLowerCase();
       return name.includes(q) || email.includes(q) || phone.includes(q);
     });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(displayedList, 10);
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
@@ -202,7 +222,7 @@ export default function CustomInquiriesView() {
                   </td>
                 </tr>
               ) : (
-                displayedList.map((inq) => {
+                paginatedItems.map((inq) => {
                   const initial = (inq.name || 'C')[0].toUpperCase();
                   const jewelryTypeList = Array.isArray(inq.jewelryType)
                     ? inq.jewelryType.join(', ')
@@ -308,19 +328,14 @@ export default function CustomInquiriesView() {
           </table>
         </div>
 
-        {/* ─── Bottom Pagination (Matches Screenshot 4) ─── */}
-        <div className="py-3 px-6 bg-stone-50/50 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-stone-600">LIMIT 10</span>
-            <span>·</span>
-            <span>{displayedList.length} RECORDS INDEXED</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button className="w-7 h-7 rounded-full bg-[#8f6d43] text-white font-semibold flex items-center justify-center shadow-xs">
-              1
-            </button>
-          </div>
-        </div>
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ─── Detail Modal ─── */}

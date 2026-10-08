@@ -12,8 +12,12 @@ import {
 import { IoStar } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function ReviewsView() {
+  const confirm = useConfirm();
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -91,7 +95,14 @@ export default function ReviewsView() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this customer review?')) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Customer Review',
+      message: 'Are you sure you want to delete this customer review? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/reviews/${id}`);
       toast.success('Review deleted successfully');
@@ -108,6 +119,15 @@ export default function ReviewsView() {
     const comment = (r.comment || '').toLowerCase();
     return name.includes(q) || comment.includes(q);
   });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(displayedReviews, 10);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return '24 SEPT 2026';
@@ -185,7 +205,7 @@ export default function ReviewsView() {
                   </td>
                 </tr>
               ) : (
-                displayedReviews.map((rev) => (
+                paginatedItems.map((rev) => (
                   <tr key={rev._id} className="hover:bg-stone-50/60 transition-colors">
                     {/* Client & Date */}
                     <td className="py-4 px-6">
@@ -278,19 +298,14 @@ export default function ReviewsView() {
           </table>
         </div>
 
-        {/* ─── Bottom Pagination (Matches Screenshot 5) ─── */}
-        <div className="py-3 px-6 bg-stone-50/50 border-t border-stone-100 flex items-center justify-between text-xs text-stone-500">
-          <div className="flex items-center gap-3">
-            <span className="font-semibold text-stone-600">SHOW 10</span>
-            <span>·</span>
-            <span>{displayedReviews.length} FEEDBACKS</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <button className="w-7 h-7 rounded-full bg-[#8f6d43] text-white font-semibold flex items-center justify-center shadow-xs">
-              1
-            </button>
-          </div>
-        </div>
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ─── Add/Edit Modal ─── */}

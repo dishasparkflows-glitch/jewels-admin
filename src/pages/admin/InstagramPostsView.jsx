@@ -11,10 +11,23 @@ import {
 import { FaInstagram } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function InstagramPostsView() {
+  const confirm = useConfirm();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(posts, 10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPost, setEditingPost] = useState(null);
   const [url, setUrl] = useState('');
@@ -106,7 +119,14 @@ export default function InstagramPostsView() {
 
   // Delete post
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this Instagram post?')) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Instagram Post',
+      message: 'Are you sure you want to delete this Instagram post? This action cannot be undone.',
+      confirmText: 'Delete Post',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/instagram-posts/${id}`);
       toast.success('Instagram post deleted successfully');
@@ -164,7 +184,7 @@ export default function InstagramPostsView() {
                   </td>
                 </tr>
               ) : (
-                posts.map((post) => (
+                paginatedItems.map((post) => (
                   <tr key={post._id} className="hover:bg-stone-50/60 transition-colors">
                     {/* URL & Link */}
                     <td className="py-4 px-6">
@@ -240,6 +260,15 @@ export default function InstagramPostsView() {
             </tbody>
           </table>
         </div>
+
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ─── Modal (Matches User Screenshot Exactly) ─── */}

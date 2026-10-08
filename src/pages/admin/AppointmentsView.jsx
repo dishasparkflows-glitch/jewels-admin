@@ -13,8 +13,12 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function AppointmentsView() {
+  const confirm = useConfirm();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'confirmed' | 'completed' | 'cancelled'
@@ -49,7 +53,14 @@ export default function AppointmentsView() {
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Are you sure you want to delete this appointment?')) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Appointment',
+      message: 'Are you sure you want to delete this appointment? This action cannot be undone.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/appointments/${id}`);
       toast.success('Appointment deleted successfully');
@@ -75,6 +86,15 @@ export default function AppointmentsView() {
       const phone = (a.phoneNumber || '').toLowerCase();
       return name.includes(q) || email.includes(q) || phone.includes(q);
     });
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(displayedList, 10);
 
   const formatDate = (dateStr) => {
     if (!dateStr) return 'Sep 28';
@@ -205,7 +225,7 @@ export default function AppointmentsView() {
                   </td>
                 </tr>
               ) : (
-                displayedList.map((apt) => {
+                paginatedItems.map((apt) => {
                   const initial = (apt.fullName || 'C')[0].toUpperCase();
 
                   return (
@@ -302,6 +322,15 @@ export default function AppointmentsView() {
             </tbody>
           </table>
         </div>
+
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
     </div>
   );

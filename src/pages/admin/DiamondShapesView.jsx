@@ -12,6 +12,9 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 /**
  * Visual Shape Badge matching User Screenshot 1
@@ -43,11 +46,10 @@ function VisualShapeBadge({ name = '', imageUrl, className = 'w-12 h-12' }) {
 }
 
 export default function DiamondShapesView() {
+  const confirm = useConfirm();
   const [shapes, setShapes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [limit, setLimit] = useState(10);
-  const [page, setPage] = useState(1);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,6 +89,15 @@ export default function DiamondShapesView() {
     const q = search.toLowerCase();
     return shapes.filter((s) => s.name && s.name.toLowerCase().includes(q));
   }, [shapes, search]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(filteredShapes, 10);
 
   // Open modal to add new shape
   const handleOpenAdd = () => {
@@ -143,7 +154,14 @@ export default function DiamondShapesView() {
 
   // Delete Diamond Shape
   const handleDelete = async (id, name) => {
-    if (!window.confirm(`Are you sure you want to delete diamond shape "${name}"?`)) return;
+    const isConfirmed = await confirm({
+      title: 'Delete Diamond Shape',
+      message: `Are you sure you want to delete diamond shape "${name}"? This action cannot be undone.`,
+      confirmText: 'Delete Shape',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
     try {
       await api.delete(`/diamond-shapes/${id}`);
       toast.success(`Diamond shape "${name}" deleted`);
@@ -253,7 +271,7 @@ export default function DiamondShapesView() {
                   </td>
                 </tr>
               ) : (
-                filteredShapes.map((s) => {
+                paginatedItems.map((s) => {
                   const isActive = s.status === 'active';
                   const isRound = s.name?.toUpperCase() === 'ROUND';
 
@@ -347,46 +365,14 @@ export default function DiamondShapesView() {
           </table>
         </div>
 
-        {/* ─── Footer Pagination (Matches Screenshot 1) ─── */}
-        <div className="pt-4 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-400 border-t border-stone-100">
-          <div className="flex items-center gap-3">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-              LIMIT
-            </span>
-            <select
-              value={limit}
-              onChange={(e) => setLimit(Number(e.target.value))}
-              className="px-2 py-1 border border-stone-200 rounded-lg text-xs font-semibold text-stone-700 bg-white focus:outline-none focus:border-[#8f6d43]"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-            </select>
-            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-              {filteredShapes.length} SHAPES INDEXED
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              className="p-1 text-stone-400 hover:text-stone-700 disabled:opacity-30 cursor-pointer"
-            >
-              <HiOutlineChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="w-7 h-7 rounded-full bg-[#8f6d43] text-white font-bold flex items-center justify-center text-xs shadow-xs">
-              {page}
-            </span>
-            <button
-              disabled={filteredShapes.length <= limit}
-              onClick={() => setPage((p) => p + 1)}
-              className="p-1 text-stone-400 hover:text-stone-700 disabled:opacity-30 cursor-pointer"
-            >
-              <HiOutlineChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
       </div>
 
       {/* ─── Add / Edit Modal (Matches Screenshot 2 Exactly) ─── */}

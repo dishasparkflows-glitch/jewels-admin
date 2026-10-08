@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminLayout from './components/layout/AdminLayout';
 import Login from './pages/auth/Login';
@@ -32,10 +33,16 @@ function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <Toaster
+        <ConfirmProvider>
+          <Toaster
           position="top-right"
+          containerStyle={{
+            top: 20,
+            right: 20,
+            zIndex: 999999,
+          }}
           toastOptions={{
-            duration: 3000,
+            duration: 4000,
             style: {
               background: '#1b1b1b',
               color: '#fff',
@@ -43,6 +50,7 @@ function App() {
               padding: '12px 18px',
               fontSize: '13px',
               border: '1px solid #333',
+              boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
             },
           }}
         />
@@ -108,8 +116,9 @@ function App() {
           {/* Root Redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      </AuthProvider>
-    </BrowserRouter>
+      </ConfirmProvider>
+    </AuthProvider>
+  </BrowserRouter>
   );
 }
 
