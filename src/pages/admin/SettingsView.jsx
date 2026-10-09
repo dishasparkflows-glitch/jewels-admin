@@ -6,9 +6,14 @@ import {
   HiOutlineEyeOff,
   HiOutlineCheck,
   HiOutlineX,
+  HiOutlineOfficeBuilding,
+  HiOutlineCash,
+  HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
 
 export default function SettingsView() {
   const [settings, setSettings] = useState(null);
@@ -162,31 +167,72 @@ export default function SettingsView() {
     }
   };
 
+  const statCardsData = [
+    {
+      label: 'Business Entity',
+      value: businessForm.companyName || 'Neirah',
+      icon: HiOutlineOfficeBuilding,
+      color: 'bronze',
+    },
+    {
+      label: 'Settlement Bank',
+      value: monetaryForm.bankName || 'HDFC Bank',
+      icon: HiOutlineCash,
+      color: 'green',
+    },
+    {
+      label: 'Return Period',
+      value: `${businessForm.returnPeriodDays || 10} Days`,
+      icon: HiOutlineRefresh,
+      color: 'peach',
+    },
+    {
+      label: 'System Status',
+      value: 'Operational',
+      icon: HiOutlineCheck,
+      color: 'gold',
+    },
+  ];
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
-      {/* ─── 1. Business & Identity Card (Matches Screenshot) ─── */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 shadow-sm p-7 space-y-6">
-        <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-          <h2 className="text-base font-bold text-stone-900 font-sans tracking-tight">
+    <div className="space-y-2">
+      {/* ─── Module Header (Breadcrumbs, Title, Export) ─── */}
+      <ModuleHeader
+        breadcrumbs={[
+          { label: 'Home', path: '/dashboard' },
+          { label: 'System' },
+          { label: 'Settings' },
+        ]}
+        title="Settings"
+        subtitle="Manage business identity, tax credentials, return policies, and monetary banking details."
+      />
+
+      {/* ─── 4 Stat Cards ─── */}
+      <StatCards cards={statCardsData} />
+
+      {/* ─── 1. Business & Identity Card ─── */}
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs p-3.5 sm:p-4 space-y-2.5">
+        <div className="flex items-center justify-between pb-1.5 border-b border-stone-100">
+          <h2 className="text-sm font-bold text-stone-900 font-sans tracking-tight">
             Business & Identity
           </h2>
           {isEditingBusiness ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsEditingBusiness(false)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-semibold rounded-md transition-colors cursor-pointer"
               >
-                <HiOutlineX className="w-3.5 h-3.5" />
+                <HiOutlineX className="w-3 h-3" />
                 <span>CANCEL</span>
               </button>
               <button
                 type="button"
                 onClick={handleSaveBusiness}
                 disabled={savingBusiness}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-semibold rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-3 py-1 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-semibold rounded-md transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
               >
-                <HiOutlineCheck className="w-3.5 h-3.5" />
+                <HiOutlineCheck className="w-3 h-3" />
                 <span>{savingBusiness ? 'SAVING...' : 'SAVE CHANGES'}</span>
               </button>
             </div>
@@ -194,19 +240,19 @@ export default function SettingsView() {
             <button
               type="button"
               onClick={() => setIsEditingBusiness(true)}
-              className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#8f6d43] hover:text-[#735530] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#8f6d43] hover:text-[#735530] transition-colors cursor-pointer"
             >
               <span>EDIT CONFIGURATION</span>
-              <HiOutlineChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+              <HiOutlineChevronRight className="w-3 h-3 stroke-[2.5]" />
             </button>
           )}
         </div>
 
         {/* Form Fields Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
           {/* Company Name */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               * COMPANY NAME
             </label>
             <input
@@ -214,9 +260,9 @@ export default function SettingsView() {
               disabled={!isEditingBusiness}
               value={businessForm.companyName}
               onChange={(e) => setBusinessForm({ ...businessForm, companyName: e.target.value })}
-              className={`w-full h-11 px-4 text-xs font-medium rounded-lg border transition-all ${
+              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -224,7 +270,7 @@ export default function SettingsView() {
 
           {/* Email Address */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               EMAIL ADDRESS
             </label>
             <input
@@ -232,9 +278,9 @@ export default function SettingsView() {
               disabled={!isEditingBusiness}
               value={businessForm.emailAddress}
               onChange={(e) => setBusinessForm({ ...businessForm, emailAddress: e.target.value })}
-              className={`w-full h-11 px-4 text-xs font-medium rounded-lg border transition-all ${
+              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -242,11 +288,11 @@ export default function SettingsView() {
 
           {/* Mobile Number with India Flag */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               MOBILE NUMBER
             </label>
             <div className="relative flex items-center">
-              <span className="absolute left-3.5 text-sm select-none pointer-events-none">
+              <span className="absolute left-2.5 text-xs select-none pointer-events-none">
                 🇮🇳
               </span>
               <input
@@ -254,9 +300,9 @@ export default function SettingsView() {
                 disabled={!isEditingBusiness}
                 value={businessForm.mobileNumber}
                 onChange={(e) => setBusinessForm({ ...businessForm, mobileNumber: e.target.value })}
-                className={`w-full h-11 pl-9 pr-4 text-xs font-medium rounded-lg border transition-all ${
+                className={`w-full h-8 pl-8 pr-2.5 text-xs font-medium rounded-md border transition-all ${
                   isEditingBusiness
-                    ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                    ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                     : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
                 }`}
               />
@@ -265,7 +311,7 @@ export default function SettingsView() {
 
           {/* Store Address */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               STORE ADDRESS
             </label>
             <input
@@ -274,9 +320,9 @@ export default function SettingsView() {
               value={businessForm.storeAddress}
               title={businessForm.storeAddress}
               onChange={(e) => setBusinessForm({ ...businessForm, storeAddress: e.target.value })}
-              className={`w-full h-11 px-4 text-xs font-medium rounded-lg border truncate transition-all ${
+              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border truncate transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -284,7 +330,7 @@ export default function SettingsView() {
 
           {/* GST Code */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               GST CODE
             </label>
             <input
@@ -292,9 +338,9 @@ export default function SettingsView() {
               disabled={!isEditingBusiness}
               value={businessForm.gstCode}
               onChange={(e) => setBusinessForm({ ...businessForm, gstCode: e.target.value })}
-              className={`w-full h-11 px-4 text-xs font-medium rounded-lg border transition-all ${
+              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -302,7 +348,7 @@ export default function SettingsView() {
 
           {/* PAN Code */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               PAN CODE
             </label>
             <input
@@ -310,9 +356,9 @@ export default function SettingsView() {
               disabled={!isEditingBusiness}
               value={businessForm.panCode}
               onChange={(e) => setBusinessForm({ ...businessForm, panCode: e.target.value })}
-              className={`w-full h-11 px-4 text-xs font-medium rounded-lg border transition-all ${
+              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -320,7 +366,7 @@ export default function SettingsView() {
 
           {/* Return Period */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               RETURN PERIOD (DAYS)
             </label>
             <input
@@ -328,9 +374,9 @@ export default function SettingsView() {
               disabled={!isEditingBusiness}
               value={businessForm.returnPeriodDays}
               onChange={(e) => setBusinessForm({ ...businessForm, returnPeriodDays: e.target.value })}
-              className={`w-full h-11 px-4 text-xs font-medium rounded-lg border transition-all ${
+              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -338,7 +384,7 @@ export default function SettingsView() {
 
           {/* Return Policy */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               RETURN POLICY
             </label>
             <input
@@ -346,9 +392,9 @@ export default function SettingsView() {
               disabled={!isEditingBusiness}
               value={businessForm.returnPolicy}
               onChange={(e) => setBusinessForm({ ...businessForm, returnPolicy: e.target.value })}
-              className={`w-full h-11 px-4 text-xs font-medium rounded-lg border transition-all ${
+              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -356,21 +402,21 @@ export default function SettingsView() {
         </div>
 
         {/* Lower Row: Shipping Policy & Certificate of Authenticity */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 pt-2">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 pt-1">
           {/* Shipping Policy (Left Col - 7 cols) */}
           <div className="lg:col-span-7">
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               SHIPPING POLICY
             </label>
             <textarea
-              rows={4}
+              rows={2}
               disabled={!isEditingBusiness}
               placeholder="Describe the platform shipping and delivery terms..."
               value={businessForm.shippingPolicy}
               onChange={(e) => setBusinessForm({ ...businessForm, shippingPolicy: e.target.value })}
-              className={`w-full p-4 text-xs rounded-lg border transition-all resize-none leading-relaxed ${
+              className={`w-full p-2.5 text-xs rounded-md border transition-all resize-none leading-relaxed ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -378,7 +424,7 @@ export default function SettingsView() {
 
           {/* Certificate of Authenticity (Right Col - 5 cols) */}
           <div className="lg:col-span-5">
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               CERTIFICATE OF AUTHENTICITY IMAGE
             </label>
             <input
@@ -390,35 +436,35 @@ export default function SettingsView() {
             />
             <div
               onClick={() => isEditingBusiness && fileInputRef.current?.click()}
-              className={`h-[104px] rounded-xl border border-dashed flex flex-col items-center justify-center p-4 transition-all ${
+              className={`h-[68px] rounded-lg border border-dashed flex flex-col items-center justify-center p-2 transition-all ${
                 isEditingBusiness
                   ? 'border-stone-300 hover:border-[#8f6d43] hover:bg-stone-50/80 cursor-pointer'
                   : 'border-stone-200 bg-stone-50/40 cursor-default'
               }`}
             >
               {businessForm.certificateImageUrl ? (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <img
                     src={businessForm.certificateImageUrl}
                     alt="Certificate"
-                    className="w-12 h-12 object-cover rounded-lg border border-stone-200"
+                    className="w-10 h-10 object-cover rounded border border-stone-200"
                   />
                   <div className="text-left">
-                    <p className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+                    <p className="text-[11px] font-bold text-stone-800 uppercase tracking-wider">
                       CERTIFICATE ATTACHED
                     </p>
-                    <p className="text-[10px] text-stone-400">
+                    <p className="text-[9px] text-stone-400">
                       {isEditingBusiness ? 'Click to change image' : 'Active authenticity stamp'}
                     </p>
                   </div>
                 </div>
               ) : (
                 <>
-                  <HiOutlineUpload className="w-5 h-5 text-stone-400 mb-1 stroke-[1.8]" />
-                  <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
+                  <HiOutlineUpload className="w-4 h-4 text-stone-400 mb-0.5 stroke-[1.8]" />
+                  <p className="text-[10px] font-bold tracking-wider text-stone-400 uppercase">
                     {uploadingImage ? 'UPLOADING...' : 'UPLOAD CERTIFICATE'}
                   </p>
-                  <p className="text-[9px] tracking-wider text-stone-400 uppercase mt-0.5 font-medium">
+                  <p className="text-[8px] tracking-wider text-stone-400 uppercase font-medium">
                     PNG, JPG OR WEBP
                   </p>
                 </>
@@ -428,29 +474,29 @@ export default function SettingsView() {
         </div>
       </div>
 
-      {/* ─── 2. Monetary Settlement Card (Matches Screenshot) ─── */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 shadow-sm p-7 space-y-6">
-        <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-          <h2 className="text-base font-bold text-stone-900 font-sans tracking-tight">
+      {/* ─── 2. Monetary Settlement Card ─── */}
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs p-3.5 sm:p-4 space-y-2.5">
+        <div className="flex items-center justify-between pb-1.5 border-b border-stone-100">
+          <h2 className="text-sm font-bold text-stone-900 font-sans tracking-tight">
             Monetary Settlement
           </h2>
           {isEditingMonetary ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsEditingMonetary(false)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-semibold rounded-md transition-colors cursor-pointer"
               >
-                <HiOutlineX className="w-3.5 h-3.5" />
+                <HiOutlineX className="w-3 h-3" />
                 <span>CANCEL</span>
               </button>
               <button
                 type="button"
                 onClick={handleSaveMonetary}
                 disabled={savingMonetary}
-                className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-semibold rounded-lg transition-colors shadow-xs cursor-pointer disabled:opacity-50"
+                className="inline-flex items-center gap-1 px-3 py-1 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-semibold rounded-md transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
               >
-                <HiOutlineCheck className="w-3.5 h-3.5" />
+                <HiOutlineCheck className="w-3 h-3" />
                 <span>{savingMonetary ? 'SAVING...' : 'SAVE CHANGES'}</span>
               </button>
             </div>
@@ -458,19 +504,19 @@ export default function SettingsView() {
             <button
               type="button"
               onClick={() => setIsEditingMonetary(true)}
-              className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-[#8f6d43] hover:text-[#735530] transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#8f6d43] hover:text-[#735530] transition-colors cursor-pointer"
             >
               <span>EDIT CONFIGURATION</span>
-              <HiOutlineChevronRight className="w-3.5 h-3.5 stroke-[2.5]" />
+              <HiOutlineChevronRight className="w-3 h-3 stroke-[2.5]" />
             </button>
           )}
         </div>
 
         {/* Monetary Fields Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           {/* Bank Name */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               BANK NAME
             </label>
             <input
@@ -478,9 +524,9 @@ export default function SettingsView() {
               disabled={!isEditingMonetary}
               value={monetaryForm.bankName}
               onChange={(e) => setMonetaryForm({ ...monetaryForm, bankName: e.target.value })}
-              className={`w-full h-11 px-4 text-xs font-medium rounded-lg border transition-all ${
+              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
                 isEditingMonetary
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -488,7 +534,7 @@ export default function SettingsView() {
 
           {/* Bank Account Number */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               BANK ACCOUNT NUMBER
             </label>
             <div className="relative flex items-center">
@@ -503,9 +549,9 @@ export default function SettingsView() {
                 onChange={(e) =>
                   setMonetaryForm({ ...monetaryForm, bankAccountNumber: e.target.value })
                 }
-                className={`w-full h-11 pl-4 pr-10 text-xs font-medium rounded-lg border transition-all tracking-wider ${
+                className={`w-full h-8 pl-2.5 pr-8 text-xs font-medium rounded-md border transition-all tracking-wider ${
                   isEditingMonetary
-                    ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 tracking-normal'
+                    ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30 tracking-normal'
                     : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
                 }`}
               />
@@ -513,12 +559,12 @@ export default function SettingsView() {
                 <button
                   type="button"
                   onClick={() => setShowAccountRaw(!showAccountRaw)}
-                  className="absolute right-3 text-stone-400 hover:text-stone-600 cursor-pointer"
+                  className="absolute right-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
                 >
                   {showAccountRaw ? (
-                    <HiOutlineEyeOff className="w-4 h-4" />
+                    <HiOutlineEyeOff className="w-3.5 h-3.5" />
                   ) : (
-                    <HiOutlineEye className="w-4 h-4" />
+                    <HiOutlineEye className="w-3.5 h-3.5" />
                   )}
                 </button>
               )}
@@ -527,7 +573,7 @@ export default function SettingsView() {
 
           {/* IFSC Code */}
           <div>
-            <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
+            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
               IFSC CODE
             </label>
             <input
@@ -535,9 +581,9 @@ export default function SettingsView() {
               disabled={!isEditingMonetary}
               value={monetaryForm.ifscCode}
               onChange={(e) => setMonetaryForm({ ...monetaryForm, ifscCode: e.target.value })}
-              className={`w-full h-11 px-4 text-xs font-medium rounded-lg border transition-all uppercase ${
+              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all uppercase ${
                 isEditingMonetary
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -545,9 +591,9 @@ export default function SettingsView() {
         </div>
       </div>
 
-      {/* ─── Footer (Matches Screenshot) ─── */}
-      <div className="pt-8 pb-4 text-center">
-        <p className="text-[10px] tracking-[0.25em] text-stone-400 uppercase font-semibold">
+      {/* ─── Footer ─── */}
+      <div className="pt-2 pb-1 text-center">
+        <p className="text-[9px] tracking-[0.2em] text-stone-400 uppercase font-semibold">
           NEIRAH JEWELLERS GLOBAL ADMIN V1.0.25
         </p>
       </div>

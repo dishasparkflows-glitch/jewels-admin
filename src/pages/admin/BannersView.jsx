@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
   HiOutlinePencil,
@@ -9,13 +9,19 @@ import {
   HiOutlineCloudUpload,
   HiOutlineExternalLink,
   HiOutlineTag,
+  HiOutlineEye,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
+import Dropdown from '../../components/common/Dropdown';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
+import SearchFilterBar from '../../components/common/SearchFilterBar';
+import RowActions from '../../components/common/RowActions';
 
 const getMediaUrl = (url) => {
   if (!url) return '';
@@ -29,11 +35,12 @@ export default function BannersView() {
   const [banners, setBanners] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filterType, setFilterType] = useState('all'); // 'all', 'image', 'video'
+  const [search, setSearch] = useState('');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
+  const [viewingBanner, setViewingBanner] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Form State matching screenshot
@@ -77,11 +84,22 @@ export default function BannersView() {
     fetchData();
   }, []);
 
-  // Filtered Banners list
-  const filteredBanners = banners.filter((b) => {
-    if (filterType === 'all') return true;
-    return b.mediaType === filterType;
-  });
+  // Filtered Banners list (Search query matching, no active/inactive filter)
+  const filteredBanners = useMemo(() => {
+    if (!search.trim()) return banners;
+    const q = search.toLowerCase();
+    return banners.filter((b) => {
+      const catName =
+        typeof b.category === 'object'
+          ? b.category?.name
+          : categories.find((c) => c._id === b.category)?.name || '';
+      return (
+        (b.title && b.title.toLowerCase().includes(q)) ||
+        (b.subtitle && b.subtitle.toLowerCase().includes(q)) ||
+        catName.toLowerCase().includes(q)
+      );
+    });
+  }, [banners, search, categories]);
 
   const {
     currentPage,
@@ -90,7 +108,39 @@ export default function BannersView() {
     setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredBanners, 9);
+  } = usePagination(filteredBanners, 10);
+
+  // Quick stat cards
+  const activeCount = useMemo(() => banners.filter(b => b.status === 'active').length, [banners]);
+  const imageCount = useMemo(() => banners.filter(b => b.mediaType !== 'video').length, [banners]);
+  const videoCount = useMemo(() => banners.filter(b => b.mediaType === 'video').length, [banners]);
+
+  const statCardsData = [
+    {
+      label: 'Total Banners',
+      value: banners.length,
+      icon: HiOutlinePhotograph,
+      color: 'bronze',
+    },
+    {
+      label: 'Active Campaigns',
+      value: activeCount,
+      icon: HiOutlineTag,
+      color: 'green',
+    },
+    {
+      label: 'Image Creatives',
+      value: imageCount,
+      icon: HiOutlinePhotograph,
+      color: 'peach',
+    },
+    {
+      label: 'Video Reels',
+      value: videoCount,
+      icon: HiOutlineFilm,
+      color: 'gold',
+    },
+  ];
 
   // Open Modal to Add New Asset
   const handleOpenAdd = () => {
@@ -246,195 +296,213 @@ export default function BannersView() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
-      {/* ─── Top Header (Matches Screenshot Background - Zero Sync Button) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 font-serif">
-            Banner Master
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Manage promotional banner assets, video reels and carousel portrayals.
-          </p>
-        </div>
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
+      <ModuleHeader
+        breadcrumbs={['Home', 'Marketing', 'Banners']}
+        title="Banner Master"
+        subtitle="Manage promotional hero banners, video reels and carousel portrayals for luxury collections."
+        onAdd={handleOpenAdd}
+        addLabel="Add Banner"
+        exportData={banners}
+        exportFileName="banners_export"
+      />
 
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-bold tracking-wider uppercase rounded-lg transition-colors shadow-sm self-start sm:self-auto cursor-pointer"
-        >
-          <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-          <span>ADD ASSET</span>
-        </button>
-      </div>
+      {/* ─── 4 Stat Cards Row ─── */}
+      <StatCards cards={statCardsData} />
 
-      {/* ─── Segmented Filter Tabs ─── */}
-      <div className="flex items-center gap-2 border-b border-stone-200/80 pb-4">
-        <button
-          type="button"
-          onClick={() => setFilterType('all')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all cursor-pointer ${
-            filterType === 'all'
-              ? 'bg-[#8f6d43] text-white shadow-xs'
-              : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/80'
-          }`}
-        >
-          ALL ASSETS ({banners.length})
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilterType('image')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
-            filterType === 'image'
-              ? 'bg-[#8f6d43] text-white shadow-xs'
-              : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/80'
-          }`}
-        >
-          <HiOutlinePhotograph className="w-4 h-4" />
-          <span>IMAGES ({banners.filter((b) => b.mediaType !== 'video').length})</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => setFilterType('video')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
-            filterType === 'video'
-              ? 'bg-[#8f6d43] text-white shadow-xs'
-              : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200/80'
-          }`}
-        >
-          <HiOutlineFilm className="w-4 h-4" />
-          <span>VIDEOS ({banners.filter((b) => b.mediaType === 'video').length})</span>
-        </button>
-      </div>
+      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search banners by title, subtitle, or category..."
+      />
 
-      {/* ─── Banner Cards Grid ─── */}
-      {loading ? (
-        <div className="py-20 text-center text-stone-400 text-sm">
-          Loading promotional banner assets...
-        </div>
-      ) : filteredBanners.length === 0 ? (
-        <div className="py-20 bg-white rounded-3xl border border-dashed border-stone-200 text-center space-y-3">
-          <HiOutlinePhotograph className="w-10 h-10 text-stone-300 mx-auto" />
-          <p className="text-sm font-semibold text-stone-600">No promotional banner assets found</p>
-          <p className="text-xs text-stone-400">Click "+ ADD ASSET" to upload a new banner image or video reel.</p>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {paginatedItems.map((banner) => {
-            const isActive = banner.status === 'active';
-            const categoryName =
-              typeof banner.category === 'object'
-                ? banner.category?.name
-                : categories.find((c) => c._id === banner.category)?.name || 'General';
+      {/* ─── Banners Table Card ─── */}
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                <th className="py-2 pl-4 pr-1 w-8">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                  />
+                </th>
+                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                <th className="py-2 px-3 whitespace-nowrap">PREVIEW</th>
+                <th className="py-2 px-3 whitespace-nowrap">BANNER TITLE / HEADLINE</th>
+                <th className="py-2 px-3 whitespace-nowrap">LINKED CATEGORY</th>
+                <th className="py-2 px-3 whitespace-nowrap">MEDIA TYPE</th>
+                <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
+                    Loading promotional banner assets...
+                  </td>
+                </tr>
+              ) : filteredBanners.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
+                    No promotional banner assets found.
+                  </td>
+                </tr>
+              ) : (
+                paginatedItems.map((banner, idx) => {
+                  const categoryName =
+                    typeof banner.category === 'object'
+                      ? banner.category?.name
+                      : categories.find((c) => c._id === banner.category)?.name || 'General';
 
-            const assetUrl =
-              banner.mediaType === 'video' ? banner.video?.url : banner.image?.url;
+                  const assetUrl =
+                    banner.mediaType === 'video' ? banner.video?.url : banner.image?.url;
 
-            return (
-              <div
-                key={banner._id}
-                className="bg-white rounded-3xl border border-stone-200/90 shadow-sm overflow-hidden flex flex-col group hover:shadow-md transition-shadow"
-              >
-                {/* Media Preview Box */}
-                <div className="relative aspect-[16/8] bg-stone-100 overflow-hidden">
-                  {banner.mediaType === 'video' ? (
-                    <video
-                      src={getMediaUrl(assetUrl)}
-                      className="w-full h-full object-cover"
-                      controls
-                      preload="metadata"
-                    />
-                  ) : (
-                    <img
-                      src={getMediaUrl(assetUrl)}
-                      alt={banner.title || 'Banner'}
-                      className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
-                    />
-                  )}
-
-                  {/* Top Badges */}
-                  <div className="absolute top-3 left-3 flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-black/60 backdrop-blur-xs text-white">
-                      {banner.mediaType === 'video' ? 'VIDEO' : 'IMAGE'}
-                    </span>
-                    <span className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#faf5ee]/90 backdrop-blur-xs text-[#8f6d43] border border-[#e8d9c2]">
-                      {categoryName}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Card Details */}
-                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                  <div>
-                    <h3 className="font-bold text-stone-900 text-sm tracking-tight truncate">
-                      {banner.title || `${categoryName} Banner Asset`}
-                    </h3>
-                    {banner.subtitle && (
-                      <p className="text-xs text-stone-500 mt-0.5 line-clamp-1">
-                        {banner.subtitle}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Bottom Row: Status Toggle & Actions */}
-                  <div className="pt-3 border-t border-stone-100 flex items-center justify-between">
-                    {/* Status Toggle Switch */}
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-bold tracking-wider uppercase text-stone-400">
-                        {isActive ? 'ACTIVE' : 'INACTIVE'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(banner)}
-                        className={`w-11 h-6 rounded-full transition-colors relative inline-block cursor-pointer focus:outline-none ${
-                          isActive ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                        }`}
-                        title={`Status: ${isActive ? 'Active' : 'Inactive'}`}
-                      >
-                        <span
-                          className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 absolute top-0.5 left-0.5 ${
-                            isActive ? 'translate-x-5' : 'translate-x-0'
-                          }`}
+                  return (
+                    <tr
+                      key={banner._id}
+                      className="hover:bg-stone-50/60 transition-colors"
+                    >
+                      <td className="py-2.5 pl-4 pr-1">
+                        <input
+                          type="checkbox"
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
-                      </button>
-                    </div>
+                      </td>
 
-                    {/* Edit & Delete */}
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => handleOpenEdit(banner)}
-                        title="Edit Banner"
-                        className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                      >
-                        <HiOutlinePencil className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(banner._id, banner.title)}
-                        title="Delete Banner"
-                        className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                      >
-                        <HiOutlineTrash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+                      {/* Sr No */}
+                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + idx + 1}
+                      </td>
+
+                      {/* Preview */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div
+                          onClick={() => setViewingBanner(banner)}
+                          className="w-14 h-8 rounded-md border border-stone-200/80 cursor-pointer hover:opacity-90 relative flex items-center justify-center shadow-2xs overflow-hidden bg-stone-100"
+                        >
+                          {banner.mediaType === 'video' ? (
+                            <div className="w-full h-full bg-stone-900 flex items-center justify-center text-white">
+                              <HiOutlineFilm className="w-4 h-4 text-stone-300" />
+                            </div>
+                          ) : (
+                            <img
+                              src={getMediaUrl(assetUrl)}
+                              alt={banner.title || 'Banner'}
+                              className="w-full h-full object-cover"
+                            />
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Title & Subtitle */}
+                      <td className="py-2.5 px-3 max-w-sm">
+                        <div className="font-bold text-stone-900 text-xs truncate leading-tight">
+                          {banner.title || `${categoryName} Hero Campaign`}
+                        </div>
+                        {banner.subtitle && (
+                          <div className="text-[10px] text-stone-500 truncate leading-tight mt-0.5">
+                            {banner.subtitle}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Linked Category */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
+                          {categoryName}
+                        </span>
+                      </td>
+
+                      {/* Media Type */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
+                            banner.mediaType === 'video'
+                              ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                              : 'bg-blue-50 text-blue-700 border border-blue-200'
+                          }`}
+                        >
+                          {banner.mediaType === 'video' ? (
+                            <HiOutlineFilm className="w-3 h-3" />
+                          ) : (
+                            <HiOutlinePhotograph className="w-3 h-3" />
+                          )}
+                          {banner.mediaType === 'video' ? 'VIDEO' : 'IMAGE'}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
+                        <RowActions
+                          onView={() => setViewingBanner(banner)}
+                          onEdit={() => handleOpenEdit(banner)}
+                          onDelete={() => handleDelete(banner._id, banner.title)}
+                          viewTitle="View Banner"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
 
         {/* Luxury Common Pagination */}
-        <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
-          <Pagination
-            currentPage={currentPage}
-            totalItems={totalItems}
-            pageSize={pageSize}
-            pageSizeOptions={[6, 9, 15, 30]}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={setPageSize}
-          />
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
+      </div>
+
+      {/* ─── Preview Modal ─── */}
+      {viewingBanner && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn"
+          onClick={() => setViewingBanner(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+              <h3 className="font-bold text-stone-900 text-base">
+                {viewingBanner.title || 'Banner Preview'}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setViewingBanner(null)}
+                className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+              >
+                <HiOutlineX className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="relative aspect-video rounded-xl overflow-hidden bg-stone-900 flex items-center justify-center">
+              {viewingBanner.mediaType === 'video' ? (
+                <video
+                  src={getMediaUrl(viewingBanner.video?.url)}
+                  className="w-full h-full object-contain"
+                  controls
+                  autoPlay
+                />
+              ) : (
+                <img
+                  src={getMediaUrl(viewingBanner.image?.url)}
+                  alt={viewingBanner.title}
+                  className="w-full h-full object-contain"
+                />
+              )}
+            </div>
+          </div>
         </div>
-        </>
       )}
 
       {/* ─── Add New Asset Modal (Matches Screenshot Exactly) ─── */}
@@ -505,19 +573,16 @@ export default function BannersView() {
                 <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
                   CATEGORY LINK
                 </label>
-                <select
-                  required
+                <Dropdown
                   value={selectedCategory}
-                  onChange={(e) => setSelectedCategory(e.target.value)}
-                  className="w-full h-11 px-3.5 text-xs font-semibold rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all cursor-pointer"
-                >
-                  <option value="">Select Category</option>
-                  {categories.map((cat) => (
-                    <option key={cat._id} value={cat._id}>
-                      {cat.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => setSelectedCategory(val)}
+                  options={categories.map((cat) => ({
+                    value: cat._id,
+                    label: cat.name,
+                  }))}
+                  placeholder="Select Category"
+                  buttonClassName="h-11 rounded-lg text-xs font-semibold"
+                />
               </div>
 
               {/* Asset Dropzone (Matches Screenshot with Cloudflare R2 Presigned Upload) */}

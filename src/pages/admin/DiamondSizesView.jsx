@@ -8,6 +8,8 @@ import {
   HiOutlineSearch,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
+  HiOutlineSparkles,
+  HiOutlineCube,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -15,6 +17,10 @@ import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
+import SearchFilterBar from '../../components/common/SearchFilterBar';
+import RowActions from '../../components/common/RowActions';
 
 export default function DiamondSizesView() {
   const confirm = useConfirm();
@@ -71,6 +77,46 @@ export default function DiamondSizesView() {
     totalItems,
     paginatedItems,
   } = usePagination(filteredSizes, 10);
+
+  // Quick stat cards
+  const activeCount = useMemo(() => sizes.filter(s => s.status === 'active').length, [sizes]);
+  const minSize = useMemo(() => {
+    if (!sizes.length) return '0.8 mm';
+    const minVal = Math.min(...sizes.map(s => Number(s.sizeFrom) || 999));
+    return `${minVal} mm`;
+  }, [sizes]);
+  const maxSize = useMemo(() => {
+    if (!sizes.length) return '3.5 mm';
+    const maxVal = Math.max(...sizes.map(s => Number(s.sizeTo) || 0));
+    return `${maxVal} mm`;
+  }, [sizes]);
+
+  const statCardsData = [
+    {
+      label: 'Size Ranges',
+      value: sizes.length,
+      icon: HiOutlineCube,
+      color: 'bronze',
+    },
+    {
+      label: 'Active Ranges',
+      value: activeCount,
+      icon: HiOutlineSparkles,
+      color: 'green',
+    },
+    {
+      label: 'Smallest Gauge',
+      value: minSize,
+      icon: IoDiamondOutline,
+      color: 'peach',
+    },
+    {
+      label: 'Largest Gauge',
+      value: maxSize,
+      icon: IoDiamondOutline,
+      color: 'gold',
+    },
+  ];
 
   // Open modal to add new size
   const handleOpenAdd = () => {
@@ -173,70 +219,63 @@ export default function DiamondSizesView() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
-      {/* ─── Top Header (Matches Screenshot 1 - Zero Sync Button) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 font-serif">
-            Diamond Size Configuration
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Manage and define physical side diamond size ranges (mm).
-          </p>
-        </div>
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
+      <ModuleHeader
+        breadcrumbs={['Home', 'Diamond Config', 'Diamond Sizes']}
+        title="Diamond Sizes"
+        subtitle="Manage and define physical side diamond size ranges, calibrations and millimeter tolerances."
+        onAdd={handleOpenAdd}
+        addLabel="Add Size Range"
+        exportData={sizes}
+        exportFileName="diamond_sizes_export"
+      />
 
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-bold tracking-wider uppercase rounded-lg transition-colors shadow-sm self-start sm:self-auto cursor-pointer"
-        >
-          <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-          <span>ADD NEW SIZE</span>
-        </button>
-      </div>
+      {/* ─── 4 Stat Cards Row ─── */}
+      <StatCards cards={statCardsData} />
+
+      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search size ranges..."
+      />
 
       {/* ─── Diamond Size Table Card ─── */}
-      <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-6 space-y-4">
-        {/* Table Search (Full width inside card matching Screenshot 1) */}
-        <div className="relative w-full">
-          <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400">
-            <HiOutlineSearch className="w-4 h-4" />
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search size ranges..."
-            className="w-full pl-11 pr-4 py-2.5 text-xs rounded-xl border border-stone-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
-          />
-        </div>
-
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         {/* Table */}
-        <div className="overflow-x-auto min-h-[300px]">
+        <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-100 text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                <th className="py-4 px-6 whitespace-nowrap">SIZE NAME</th>
-                <th className="py-4 px-6 whitespace-nowrap">SIZE FROM (MM)</th>
-                <th className="py-4 px-6 whitespace-nowrap">SIZE TO (MM)</th>
-                <th className="py-4 px-6 whitespace-nowrap text-center">VISIBILITY</th>
-                <th className="py-4 px-6 whitespace-nowrap">CREATED DATE</th>
-                <th className="py-4 px-6 whitespace-nowrap text-right">ACTIONS</th>
+              <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                <th className="py-2 pl-4 pr-1 w-8">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                  />
+                </th>
+                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                <th className="py-2 px-3 whitespace-nowrap">SIZE NAME</th>
+                <th className="py-2 px-3 whitespace-nowrap">SIZE FROM (MM)</th>
+                <th className="py-2 px-3 whitespace-nowrap">SIZE TO (MM)</th>
+                <th className="py-2 px-3 whitespace-nowrap">CREATED DATE</th>
+                <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="py-16 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     Loading diamond sizes...
                   </td>
                 </tr>
               ) : filteredSizes.length === 0 ? (
                 /* ─── Empty State (Matches Screenshot 1 Exactly) ─── */
                 <tr>
-                  <td colSpan="6" className="py-16">
-                    <div className="flex flex-col items-center justify-center text-center space-y-2">
-                      <div className="w-16 h-16 rounded-full bg-stone-50 border border-stone-100 flex items-center justify-center text-stone-300 shadow-2xs mb-1">
-                        <IoDiamondOutline className="w-7 h-7 text-stone-300 stroke-1" />
+                  <td colSpan="7" className="py-8">
+                    <div className="flex flex-col items-center justify-center text-center space-y-1.5">
+                      <div className="w-10 h-10 rounded-full bg-stone-50 border border-stone-100 flex items-center justify-center text-stone-300 shadow-2xs mb-0.5">
+                        <IoDiamondOutline className="w-5 h-5 text-stone-300 stroke-1" />
                       </div>
                       <h3 className="font-bold text-stone-700 text-xs tracking-wider uppercase">
                         NO SIZES FOUND
@@ -246,7 +285,7 @@ export default function DiamondSizesView() {
                       </p>
                       <button
                         onClick={handleOpenAdd}
-                        className="mt-3 px-5 py-2.5 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-[11px] font-bold tracking-wider uppercase rounded-lg shadow-sm transition-colors cursor-pointer"
+                        className="mt-2 px-3 py-1 bg-[#8b6f4e] hover:bg-[#7b5b33] text-white text-[10px] font-bold tracking-wider uppercase rounded shadow-xs transition-colors cursor-pointer"
                       >
                         ADD SIZE +
                       </button>
@@ -254,84 +293,60 @@ export default function DiamondSizesView() {
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((s) => {
-                  const isActive = s.status === 'active';
+                paginatedItems.map((s, idx) => {
                   const formattedDate = s.meta?.createdAt
                     ? new Date(s.meta.createdAt).toLocaleDateString('en-GB', {
                         day: '2-digit',
-                        month: '2-digit',
+                        month: 'short',
                         year: 'numeric',
                       })
-                    : '15/07/2026';
+                    : '15 Jul 2026';
 
                   return (
                     <tr
                       key={s._id}
                       className="hover:bg-stone-50/60 transition-colors"
                     >
+                      <td className="py-2.5 pl-4 pr-1">
+                        <input
+                          type="checkbox"
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* Sr No */}
+                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + idx + 1}
+                      </td>
+
                       {/* Size Name */}
-                      <td className="py-4 px-6 whitespace-nowrap font-bold text-stone-900 text-xs">
+                      <td className="py-2.5 px-3 whitespace-nowrap font-bold text-stone-900 text-xs">
                         {s.name}
                       </td>
 
                       {/* Size From (mm) */}
-                      <td className="py-4 px-6 whitespace-nowrap font-semibold text-stone-700 text-xs">
+                      <td className="py-2.5 px-3 whitespace-nowrap font-semibold text-stone-700 text-xs">
                         {s.sizeFrom} mm
                       </td>
 
                       {/* Size To (mm) */}
-                      <td className="py-4 px-6 whitespace-nowrap font-semibold text-stone-700 text-xs">
+                      <td className="py-2.5 px-3 whitespace-nowrap font-semibold text-stone-700 text-xs">
                         {s.sizeTo} mm
                       </td>
 
-                      {/* Visibility Toggle Switch (Matches Screenshot 1) */}
-                      <td className="py-4 px-6 whitespace-nowrap text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleVisibility(s)}
-                          className={`w-11 h-6 rounded-full transition-colors relative inline-block cursor-pointer focus:outline-none ${
-                            isActive ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                          }`}
-                          title={`Visibility: ${isActive ? 'Visible' : 'Hidden'}`}
-                        >
-                          <span
-                            className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 absolute top-0.5 left-0.5 ${
-                              isActive ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </td>
-
                       {/* Created Date */}
-                      <td className="py-4 px-6 whitespace-nowrap text-stone-500 font-medium">
+                      <td className="py-2.5 px-3 whitespace-nowrap text-stone-500 font-medium text-xs">
                         {formattedDate}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setViewingSize(s)}
-                            title="View Size Details"
-                            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlineEye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEdit(s)}
-                            title="Edit Size Range"
-                            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(s._id, s.name)}
-                            title="Delete Size Range"
-                            className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
+                        <RowActions
+                          onView={() => setViewingSize(s)}
+                          onEdit={() => handleOpenEdit(s)}
+                          onDelete={() => handleDelete(s._id, s.name)}
+                          viewTitle="View Details"
+                        />
                       </td>
                     </tr>
                   );

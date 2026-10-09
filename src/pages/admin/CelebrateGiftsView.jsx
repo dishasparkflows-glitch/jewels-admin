@@ -21,21 +21,17 @@ import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
+import SearchFilterBar from '../../components/common/SearchFilterBar';
+import RowActions from '../../components/common/RowActions';
 
 export default function CelebrateGiftsView() {
   const confirm = useConfirm();
-  const [activeTab, setActiveTab] = useState('Celebrate'); // 'Celebrate' | 'Gifts'
+  const [placementFilter, setPlacementFilter] = useState('all'); // 'all' | 'Celebrate' | 'Gifts'
+  const [search, setSearch] = useState('');
   const [featuredItems, setFeaturedItems] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
-    totalItems,
-    paginatedItems,
-  } = usePagination(featuredItems, 6);
 
   // Available products for modal selection
   const [allProducts, setAllProducts] = useState([]);
@@ -80,7 +76,7 @@ export default function CelebrateGiftsView() {
   const fetchFeatured = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/featured?placement=${activeTab}&limit=100`);
+      const res = await api.get('/featured?limit=100');
       const items = res.data?.data?.items || res.data?.data || [];
       setFeaturedItems(Array.isArray(items) ? items : []);
     } catch (err) {
@@ -107,11 +103,64 @@ export default function CelebrateGiftsView() {
 
   useEffect(() => {
     fetchFeatured();
-  }, [activeTab]);
-
-  useEffect(() => {
     fetchProducts();
   }, []);
+
+  // Filtered featured items (Search query + placement filter, NO active/inactive filter)
+  const filteredItems = useMemo(() => {
+    return featuredItems.filter((item) => {
+      if (placementFilter !== 'all' && item.placement !== placementFilter) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        return (
+          (item.name && item.name.toLowerCase().includes(q)) ||
+          (item.placement && item.placement.toLowerCase().includes(q))
+        );
+      }
+      return true;
+    });
+  }, [featuredItems, placementFilter, search]);
+
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(filteredItems, 10);
+
+  // Quick stat cards
+  const activeCount = useMemo(() => featuredItems.filter(i => i.status === 'active').length, [featuredItems]);
+  const celebrateCount = useMemo(() => featuredItems.filter(i => i.placement === 'Celebrate').length, [featuredItems]);
+  const giftsCount = useMemo(() => featuredItems.filter(i => i.placement === 'Gifts').length, [featuredItems]);
+
+  const statCardsData = [
+    {
+      label: 'Total Showcases',
+      value: featuredItems.length,
+      icon: IoCubeOutline,
+      color: 'bronze',
+    },
+    {
+      label: 'Active Displays',
+      value: activeCount,
+      icon: HiOutlineCheck,
+      color: 'green',
+    },
+    {
+      label: 'Celebrate Campaigns',
+      value: celebrateCount,
+      icon: HiOutlinePhotograph,
+      color: 'peach',
+    },
+    {
+      label: 'Curated Gifts',
+      value: giftsCount,
+      icon: HiOutlineTag,
+      color: 'gold',
+    },
+  ];
 
   // Filtered products inside modal
   const filteredProducts = useMemo(() => {
@@ -284,184 +333,174 @@ export default function CelebrateGiftsView() {
   };
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
-      {/* ─── Page Header (Exact Match to Screenshot 1) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl sm:text-[28px] font-bold text-stone-900 tracking-tight">
-            Celebrate and Gifts Section
-          </h1>
-          <p className="text-sm text-stone-500 mt-1">
-            Configure promotional product showcases for your storefront.
-          </p>
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
+      <ModuleHeader
+        breadcrumbs={['Home', 'Marketing', 'Celebrate & Gifts']}
+        title="Celebrate & Gifts"
+        subtitle="Configure promotional product showcases, seasonal gift curations and storefront groupings."
+        onAdd={openAddModal}
+        addLabel="Add Showcase"
+        exportData={featuredItems}
+        exportFileName="celebrate_gifts_export"
+      />
+
+      {/* ─── 4 Stat Cards Row ─── */}
+      <StatCards cards={statCardsData} />
+
+      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+        <div className="flex-1">
+          <SearchFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            placeholder="Search showcases by name or placement..."
+          />
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Placement Filter Pills (Celebrate vs Gifts, NOT active/deactive) */}
+        <div className="flex items-center gap-1 p-0.5 bg-stone-100 rounded-lg border border-stone-200/80 self-start sm:self-auto">
+          {['all', 'Celebrate', 'Gifts'].map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setPlacementFilter(tab)}
+              className={`px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-all cursor-pointer ${
+                placementFilter === tab
+                  ? 'bg-white text-stone-900 shadow-2xs'
+                  : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              {tab === 'all' ? 'All' : tab}
+            </button>
+          ))}
           <button
             type="button"
             onClick={openReorderModal}
-            className="px-4 py-2 bg-white border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-bold tracking-wider rounded-xl transition-colors uppercase shadow-2xs cursor-pointer"
+            className="px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider text-[#8f6d43] hover:bg-[#faf5ee] transition-all cursor-pointer ml-0.5"
           >
-            REORDER
-          </button>
-          <button
-            type="button"
-            onClick={openAddModal}
-            className="px-4 py-2 bg-[#8f6d43] hover:bg-[#7b5e39] text-white text-xs font-bold tracking-wider rounded-xl transition-colors shadow-2xs uppercase flex items-center gap-1.5 cursor-pointer"
-          >
-            <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-            <span>ADD FEATURED</span>
+            Reorder
           </button>
         </div>
       </div>
 
-      {/* ─── Tabs (Exact Match to Screenshot 1) ─── */}
-      <div className="flex items-center gap-8 border-b border-stone-200/80 mb-6">
-        <button
-          type="button"
-          onClick={() => setActiveTab('Celebrate')}
-          className={`pb-3 text-xs font-bold tracking-wider uppercase transition-colors relative cursor-pointer ${
-            activeTab === 'Celebrate'
-              ? 'text-[#8f6d43] border-b-2 border-[#8f6d43]'
-              : 'text-stone-400 hover:text-stone-600'
-          }`}
-        >
-          CELEBRATE SECTION
-        </button>
-        <button
-          type="button"
-          onClick={() => setActiveTab('Gifts')}
-          className={`pb-3 text-xs font-bold tracking-wider uppercase transition-colors relative cursor-pointer ${
-            activeTab === 'Gifts'
-              ? 'text-[#8f6d43] border-b-2 border-[#8f6d43]'
-              : 'text-stone-400 hover:text-stone-600'
-          }`}
-        >
-          GIFTS SECTION
-        </button>
-      </div>
-
-      {/* ─── Cards Grid (Exact Match to Screenshot 1) ─── */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((n) => (
-            <div
-              key={n}
-              className="bg-white rounded-[20px] border border-stone-200 p-4 animate-pulse h-72"
-            >
-              <div className="w-full h-44 bg-stone-100 rounded-xl mb-4" />
-              <div className="w-1/2 h-4 bg-stone-100 rounded mb-2" />
-              <div className="w-1/3 h-3 bg-stone-100 rounded" />
-            </div>
-          ))}
-        </div>
-      ) : featuredItems.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-stone-200 p-12 text-center max-w-lg mx-auto">
-          <IoCubeOutline className="w-12 h-12 text-stone-300 mx-auto mb-3" />
-          <h3 className="text-base font-bold text-stone-800">
-            No showcases in {activeTab} section yet
-          </h3>
-          <p className="text-xs text-stone-500 mt-1 mb-5">
-            Create promotional groupings like &quot;Wedding Bestsellers&quot; or curated gifts for your storefront.
-          </p>
-          <button
-            type="button"
-            onClick={openAddModal}
-            className="px-4 py-2 bg-[#8f6d43] hover:bg-[#7b5e39] text-white text-xs font-bold tracking-wider rounded-xl uppercase transition-colors"
-          >
-            + ADD FEATURED GROUP
-          </button>
-        </div>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {paginatedItems.map((item) => (
-              <div
-                key={item._id}
-                className="bg-white rounded-[20px] border border-stone-200/80 overflow-hidden shadow-xs hover:shadow-md transition-all group flex flex-col justify-between"
-              >
-                {/* Banner Image Container */}
-                <div className="relative aspect-[16/9] w-full overflow-hidden bg-stone-100">
-                  <img
-                    src={item.image?.url || '/featured/necklace.jpg'}
-                    alt={item.name}
-                    className="w-full h-full object-cover object-center group-hover:scale-[1.02] transition-transform duration-300"
+      {/* ─── Showcase Table Card ─── */}
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+        {/* Table */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                <th className="py-2 pl-4 pr-1 w-8">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
+                </th>
+                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                <th className="py-2 px-3 whitespace-nowrap">COVER</th>
+                <th className="py-2 px-3 whitespace-nowrap">SHOWCASE NAME</th>
+                <th className="py-2 px-3 whitespace-nowrap">PLACEMENT</th>
+                <th className="py-2 px-3 whitespace-nowrap">PRODUCTS</th>
+                <th className="py-2 px-3 whitespace-nowrap">CREATED DATE</th>
+                <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
+              {loading ? (
+                <tr>
+                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                    Loading showcase items...
+                  </td>
+                </tr>
+              ) : filteredItems.length === 0 ? (
+                <tr>
+                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                    No showcase items found.
+                  </td>
+                </tr>
+              ) : (
+                paginatedItems.map((item, idx) => (
+                  <tr
+                    key={item._id}
+                    className="hover:bg-stone-50/60 transition-colors"
+                  >
+                    <td className="py-2.5 pl-4 pr-1">
+                      <input
+                        type="checkbox"
+                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                      />
+                    </td>
 
-                  {/* Top-Left ACTIVE Badge (Matches Screenshot: white pill) */}
-                  <div className="absolute top-3.5 left-3.5">
-                    <span className="bg-white/90 backdrop-blur-xs px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider text-stone-700 shadow-2xs uppercase">
-                      {item.status === 'active' ? 'ACTIVE' : 'INACTIVE'}
-                    </span>
-                  </div>
+                    {/* Sr No */}
+                    <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                      {(currentPage - 1) * pageSize + idx + 1}
+                    </td>
 
-                  {/* Top-Right Action Buttons: Eye, Pencil, Trash in glassmorphic/white pills */}
-                  <div className="absolute top-3.5 right-3.5 flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => openViewModal(item)}
-                      className="w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-stone-600 hover:text-stone-900 shadow-2xs flex items-center justify-center transition-colors cursor-pointer"
-                      title="View Details"
-                    >
-                      <HiOutlineEye className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => openEditModal(item)}
-                      className="w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-stone-600 hover:text-stone-900 shadow-2xs flex items-center justify-center transition-colors cursor-pointer"
-                      title="Edit Group"
-                    >
-                      <HiOutlinePencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(item._id)}
-                      className="w-7 h-7 rounded-lg bg-white/90 hover:bg-red-50 text-stone-600 hover:text-red-600 shadow-2xs flex items-center justify-center transition-colors cursor-pointer"
-                      title="Delete Group"
-                    >
-                      <HiOutlineTrash className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                    {/* Cover Preview */}
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <div
+                        onClick={() => openViewModal(item)}
+                        className="w-11 h-8 rounded-md overflow-hidden bg-stone-100 border border-stone-200/80 cursor-pointer hover:opacity-90 flex items-center justify-center shadow-2xs"
+                      >
+                        <img
+                          src={item.image?.url || '/featured/necklace.jpg'}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </td>
 
-                  {/* Bottom-Left PRODUCTS Count Badge (Matches Screenshot: ⬡ 54 PRODUCTS) */}
-                  <div className="absolute bottom-3.5 left-3.5">
-                    <div className="bg-white/90 backdrop-blur-xs text-stone-700 text-[10px] font-bold tracking-wider px-2.5 py-1 rounded-full shadow-2xs flex items-center gap-1.5 uppercase">
-                      <IoCubeOutline className="w-3 h-3 text-stone-500" />
-                      <span>{item.productCount || 0} PRODUCTS</span>
-                    </div>
-                  </div>
-                </div>
+                    {/* Showcase Name */}
+                    <td className="py-2.5 px-3 font-bold text-stone-900 text-xs max-w-xs truncate">
+                      {item.name}
+                    </td>
 
-                {/* Info Section */}
-                <div className="p-4 sm:p-5">
-                  <h3 className="font-bold text-stone-900 text-sm tracking-tight mb-1">
-                    {item.name}
-                  </h3>
-                  <div className="flex items-center justify-between text-[10px] font-semibold text-stone-400 tracking-wider uppercase">
-                    <div className="flex items-center gap-1">
-                      <HiOutlineTag className="w-3 h-3 text-stone-400" />
-                      <span>{item.placement?.toUpperCase() || activeTab.toUpperCase()}</span>
-                    </div>
-                    <span>CREATED {formatDate(item.meta?.createdAt)}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                    {/* Placement */}
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
+                        {item.placement || 'Celebrate'}
+                      </span>
+                    </td>
 
-          {/* Luxury Common Pagination */}
-          <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
-            <Pagination
-              currentPage={currentPage}
-              totalItems={totalItems}
-              pageSize={pageSize}
-              pageSizeOptions={[6, 9, 12, 24]}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
-            />
-          </div>
-        </>
-      )}
+                    {/* Curated Products Count */}
+                    <td className="py-2.5 px-3 whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-100 text-stone-700">
+                        <IoCubeOutline className="w-3 h-3 text-stone-500" />
+                        <span>{item.productCount || 0} Products</span>
+                      </span>
+                    </td>
+
+                    {/* Created Date */}
+                    <td className="py-2.5 px-3 whitespace-nowrap text-stone-500 font-medium text-xs">
+                      {formatDate(item.meta?.createdAt)}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
+                      <RowActions
+                        onView={() => openViewModal(item)}
+                        onEdit={() => openEditModal(item)}
+                        onDelete={() => handleDelete(item._id)}
+                        viewTitle="View Showcase"
+                      />
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={setPageSize}
+        />
+      </div>
 
       {/* ─── Add / Edit Group Modal (Exact Match to Screenshot 2) ─── */}
       {isModalOpen && (

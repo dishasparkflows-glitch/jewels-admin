@@ -5,7 +5,6 @@ import toast from 'react-hot-toast';
 import {
   HiOutlineSearch,
   HiOutlinePlus,
-  HiOutlineDownload,
   HiOutlineFilter,
   HiOutlineTrash,
   HiOutlineRefresh,
@@ -15,6 +14,11 @@ import {
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
+import SearchFilterBar from '../../components/common/SearchFilterBar';
+import RowActions from '../../components/common/RowActions';
+import Dropdown from '../../components/common/Dropdown';
 
 const routeMap = {
   // ─── 1. Diamond Config ───────────────────────────
@@ -287,88 +291,98 @@ const DynamicModuleView = () => {
     paginatedItems,
   } = usePagination(filteredItems, 10);
 
+  const statCardsData = [
+    {
+      label: `Total ${config.title}`,
+      value: items.length || 0,
+      icon: HiOutlineEye,
+      color: 'bronze',
+    },
+    {
+      label: 'Verified Records',
+      value: items.length || 0,
+      icon: HiOutlineRefresh,
+      color: 'green',
+    },
+    {
+      label: 'Catalog Items',
+      value: filteredItems.length || 0,
+      icon: HiOutlinePlus,
+      color: 'peach',
+    },
+    {
+      label: 'Active Sync',
+      value: 'Live',
+      icon: HiOutlineEye,
+      color: 'gold',
+    },
+  ];
+
   return (
-    <div className="space-y-6">
-      {/* ─── Header ─────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
-              {config.title}
-            </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#faf6f0] text-[#8b6f4e] border border-[#e8d9c2]">
-              {items.length} Records
-            </span>
-          </div>
-          <p className="text-xs text-stone-400 mt-1">
-            Configure, manage and update real-time {config.title.toLowerCase()} data.
-          </p>
-        </div>
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
+      <ModuleHeader
+        breadcrumbs={['Home', config.title]}
+        title={config.title}
+        subtitle={`Configure, manage and update real-time ${config.title.toLowerCase()} catalog data.`}
+        onAdd={() => setIsModalOpen(true)}
+        addLabel={`Add ${config.title.replace(/s$/, '')}`}
+        exportData={items}
+        exportFileName={`${config.title.toLowerCase().replace(/\s+/g, '_')}_export`}
+      />
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold tracking-wider uppercase shadow-sm shadow-[#8b6f4e]/20 transition-all cursor-pointer"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            <span>Create New</span>
-          </button>
-        </div>
-      </div>
+      {/* ─── 4 Stat Cards Row ─── */}
+      <StatCards cards={statCardsData} />
 
-      {/* ─── Search Bar & Table ─────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-stone-200/70 p-6 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="relative w-full sm:w-80">
-            <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder={`Search in ${config.title.toLowerCase()}...`}
-              className="w-full pl-9 pr-3 py-2 text-xs rounded-xl bg-[#fdfcfb] border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e]"
-            />
-          </div>
+      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder={`Search ${config.title.toLowerCase()}...`}
+      />
 
-          <div className="flex items-center gap-2 text-xs text-stone-500">
-            <HiOutlineFilter className="w-4 h-4 text-stone-400" />
-            <span>Showing {filteredItems.length} of {items.length} records</span>
-          </div>
-        </div>
-
+      {/* ─── Table Card Container ─── */}
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         {/* Table view */}
         <div className="overflow-x-auto">
           {loading ? (
-            <div className="py-16 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-2">
-              <HiOutlineRefresh className="w-6 h-6 animate-spin text-[#8b6f4e]" />
+            <div className="py-8 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
+              <HiOutlineRefresh className="w-4 h-4 animate-spin text-[#8b6f4e]" />
               <span>Loading {config.title.toLowerCase()} from database...</span>
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="py-16 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-[#faf6f0] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e]">
-                <HiOutlineEye className="w-6 h-6" />
+            <div className="py-8 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
+              <div className="w-8 h-8 rounded-lg bg-[#faf6f0] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e]">
+                <HiOutlineEye className="w-4 h-4" />
               </div>
-              <p className="font-medium text-stone-600">No records found</p>
+              <p className="font-medium text-stone-600 text-xs">No records found</p>
               <button
                 onClick={() => setIsModalOpen(true)}
-                className="text-xs text-[#8b6f4e] hover:underline font-semibold"
+                className="text-xs text-[#8b6f4e] hover:underline font-semibold cursor-pointer"
               >
                 + Add the first {config.title} item
               </button>
             </div>
           ) : (
             <>
-              <table className="w-full text-left text-sm">
+              <table className="w-full text-left border-collapse">
                 <thead>
-                  <tr className="border-b border-stone-100 text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
-                    <th className="pb-3">Title / Value</th>
-                    <th className="pb-3">Details</th>
-                    <th className="pb-3">Status</th>
-                    <th className="pb-3 text-right">Actions</th>
+                  <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    <th className="py-2 pl-4 pr-1 w-8">
+                      <input
+                        type="checkbox"
+                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                      />
+                    </th>
+                    <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                    <th className="py-2 px-3 whitespace-nowrap">ITEM / RECORD</th>
+                    <th className="py-2 px-3 whitespace-nowrap">SPECIFICATIONS</th>
+                    <th className="py-2 px-3 whitespace-nowrap">STATUS</th>
+                    <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-stone-50">
-                  {paginatedItems.map((row) => {
+                <tbody className="divide-y divide-stone-100 text-xs">
+                  {paginatedItems.map((row, idx) => {
                     const rowLabel = getRowLabel(row);
                     const thumbUrl =
                       row.image?.url ||
@@ -405,20 +419,29 @@ const DynamicModuleView = () => {
 
                     return (
                       <tr key={row._id || row.id} className="hover:bg-[#fcfaf7] transition-colors">
-                        <td className="py-3.5 text-stone-900 text-xs font-semibold flex items-center gap-2.5">
+                        <td className="py-2.5 pl-4 pr-1">
+                          <input
+                            type="checkbox"
+                            className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                          />
+                        </td>
+                        <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                          {(currentPage - 1) * pageSize + idx + 1}
+                        </td>
+                        <td className="py-2.5 px-3 text-stone-900 text-xs font-semibold flex items-center gap-2.5">
                           {thumbUrl && (
                             <img
                               src={thumbUrl}
                               alt=""
-                              className="w-8 h-8 rounded-lg object-cover border border-stone-200 shrink-0"
+                              className="w-7 h-7 rounded-md object-cover border border-stone-200 shrink-0"
                             />
                           )}
                           <span className="truncate max-w-xs">{rowLabel}</span>
                         </td>
-                        <td className="py-3.5 text-stone-600 text-xs">
+                        <td className="py-2.5 px-3 text-stone-600 text-xs">
                           <div className="flex flex-wrap items-center gap-1.5">
                             {row.sku && typeof row.sku === 'string' && row.sku !== rowLabel && (
-                              <span className="font-mono text-[10px] bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded border border-stone-200/50">
+                              <span className="font-mono text-[10px] bg-stone-100 text-stone-700 px-1 py-0.5 rounded border border-stone-200/50">
                                 {row.sku}
                               </span>
                             )}
@@ -471,7 +494,7 @@ const DynamicModuleView = () => {
                             )}
                           </div>
                         </td>
-                        <td className="py-3.5">
+                        <td className="py-2.5 px-3">
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
                               isInactive
@@ -482,14 +505,11 @@ const DynamicModuleView = () => {
                             {statusStr}
                           </span>
                         </td>
-                        <td className="py-3.5 text-right">
-                          <button
-                            onClick={() => handleDelete(row._id || row.id)}
-                            className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            title="Delete Record"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
+                        <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
+                          <RowActions
+                            onView={() => toast.success(`Record: ${rowLabel}`)}
+                            onDelete={() => handleDelete(row._id || row.id)}
+                          />
                         </td>
                       </tr>
                     );
@@ -539,19 +559,16 @@ const DynamicModuleView = () => {
                     {field.label}
                   </label>
                   {field.type === 'select' ? (
-                    <select
+                    <Dropdown
                       value={formData[field.name] || field.default || ''}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, [field.name]: e.target.value }))
+                      onChange={(val) =>
+                        setFormData((prev) => ({ ...prev, [field.name]: val }))
                       }
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    >
-                      {field.options.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
+                      options={field.options}
+                      placeholder={`Select ${field.label}`}
+                      size="sm"
+                      buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
+                    />
                   ) : (
                     <input
                       type={field.type}

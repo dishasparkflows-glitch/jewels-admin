@@ -6,18 +6,24 @@ import {
   HiOutlineEye,
   HiOutlineX,
   HiOutlineSearch,
+  HiOutlineColorSwatch,
+  HiOutlineSparkles,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
+import SearchFilterBar from '../../components/common/SearchFilterBar';
+import RowActions from '../../components/common/RowActions';
 
 /**
  * Metal Swatch Badge matching User Screenshot 1
  * Renders a circular gradient or solid color swatch
  */
-function MetalSwatch({ startColor = '#F9E498', endColor = '#B38B34', className = 'w-9 h-9' }) {
+function MetalSwatch({ startColor = '#F9E498', endColor = '#B38B34', className = 'w-6 h-6' }) {
   const isGradient = startColor && endColor && startColor.toLowerCase() !== endColor.toLowerCase();
   const backgroundStyle = isGradient
     ? { background: `linear-gradient(135deg, ${startColor} 0%, ${endColor} 100%)` }
@@ -88,6 +94,40 @@ export default function MetalColorsView() {
     totalItems,
     paginatedItems,
   } = usePagination(filteredColors, 10);
+
+  // Quick stat cards
+  const activeCount = useMemo(() => colors.filter(c => c.status === 'active').length, [colors]);
+  const dualToneCount = useMemo(
+    () => colors.filter(c => c.colorCodeEnd && c.colorCodeEnd.toLowerCase() !== c.colorCode?.toLowerCase()).length,
+    [colors]
+  );
+
+  const statCardsData = [
+    {
+      label: 'Metal Colors',
+      value: colors.length,
+      icon: HiOutlineColorSwatch,
+      color: 'bronze',
+    },
+    {
+      label: 'Active Finishes',
+      value: activeCount,
+      icon: HiOutlineSparkles,
+      color: 'green',
+    },
+    {
+      label: 'Dual / Gradient Tones',
+      value: dualToneCount,
+      icon: HiOutlineColorSwatch,
+      color: 'peach',
+    },
+    {
+      label: 'Single Solid Alloys',
+      value: Math.max(0, colors.length - dualToneCount),
+      icon: HiOutlineColorSwatch,
+      color: 'gold',
+    },
+  ];
 
   // Open modal to add new color
   const handleOpenAdd = () => {
@@ -178,140 +218,109 @@ export default function MetalColorsView() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
-      {/* ─── Top Header (Matches Screenshot 1 - Zero Sync Button) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 font-serif">
-            Metal Color
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Manage gold colors like Yellow Gold, Rose Gold, and White Gold.
-          </p>
-        </div>
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
+      <ModuleHeader
+        breadcrumbs={['Home', 'Product Config', 'Metal Color']}
+        title="Metal Color"
+        subtitle="Manage precious metal alloys, rose/yellow/white gold tones and gradient finishes."
+        onAdd={handleOpenAdd}
+        addLabel="Add Color"
+        exportData={colors}
+        exportFileName="metal_colors_export"
+      />
 
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-bold tracking-wider uppercase rounded-lg transition-colors shadow-sm self-start sm:self-auto cursor-pointer"
-        >
-          <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-          <span>ADD COLOR</span>
-        </button>
-      </div>
+      {/* ─── 4 Stat Cards Row ─── */}
+      <StatCards cards={statCardsData} />
+
+      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search metal colors..."
+      />
 
       {/* ─── Metal Color Table Card ─── */}
-      <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-6 space-y-4">
-        {/* Table Search (Full width inside card matching Screenshot 1) */}
-        <div className="relative w-full">
-          <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400">
-            <HiOutlineSearch className="w-4 h-4" />
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search colors..."
-            className="w-full pl-11 pr-4 py-2.5 text-xs rounded-xl border border-stone-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
-          />
-        </div>
-
-        {/* Table (Columns match Screenshot 1: SWATCH, COLOR NAME, HEX CODE, STATUS, ACTIONS) */}
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-100 text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                <th className="py-4 px-6 whitespace-nowrap">SWATCH</th>
-                <th className="py-4 px-6 whitespace-nowrap">COLOR NAME</th>
-                <th className="py-4 px-6 whitespace-nowrap">HEX CODE</th>
-                <th className="py-4 px-6 whitespace-nowrap text-center">STATUS</th>
-                <th className="py-4 px-6 whitespace-nowrap text-right">ACTIONS</th>
+              <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                <th className="py-2 pl-4 pr-1 w-8">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                  />
+                </th>
+                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                <th className="py-2 px-3 whitespace-nowrap">SWATCH</th>
+                <th className="py-2 px-3 whitespace-nowrap">COLOR NAME</th>
+                <th className="py-2 px-3 whitespace-nowrap">HEX CODE</th>
+                <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="py-12 text-center text-stone-400">
+                  <td colSpan="6" className="py-8 text-center text-stone-400">
                     Loading colors...
                   </td>
                 </tr>
               ) : filteredColors.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="py-12 text-center text-stone-400">
+                  <td colSpan="6" className="py-8 text-center text-stone-400">
                     No metal colors found.
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((c) => {
-                  const isActive = c.status === 'active';
-                  const hexCodeDisplay = `${c.colorCode || '#FFFFFF'} / ${c.colorCodeEnd || c.colorCode || '#FFFFFF'}`;
+                paginatedItems.map((c, idx) => {
+                  const hexCodeDisplay = `${c.colorCode || '#FFFFFF'}${c.colorCodeEnd && c.colorCodeEnd !== c.colorCode ? ` / ${c.colorCodeEnd}` : ''}`;
 
                   return (
                     <tr
                       key={c._id}
                       className="hover:bg-stone-50/60 transition-colors"
                     >
+                      <td className="py-2.5 pl-4 pr-1">
+                        <input
+                          type="checkbox"
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* Sr No */}
+                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + idx + 1}
+                      </td>
+
                       {/* Swatch */}
-                      <td className="py-4 px-6 whitespace-nowrap">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
                         <MetalSwatch
                           startColor={c.colorCode}
                           endColor={c.colorCodeEnd}
-                          className="w-9 h-9"
+                          className="w-7 h-7"
                         />
                       </td>
 
                       {/* Color Name */}
-                      <td className="py-4 px-6 whitespace-nowrap font-bold text-stone-900 text-xs tracking-wide">
+                      <td className="py-2.5 px-3 whitespace-nowrap font-bold text-stone-900 text-xs tracking-wide">
                         {c.name}
                       </td>
 
                       {/* Hex Code */}
-                      <td className="py-4 px-6 whitespace-nowrap font-mono text-[11px] text-stone-400">
+                      <td className="py-2.5 px-3 whitespace-nowrap font-mono text-[11px] text-stone-500">
                         {hexCodeDisplay}
                       </td>
 
-                      {/* Status Toggle Switch (Matches Screenshot 1) */}
-                      <td className="py-4 px-6 whitespace-nowrap text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(c)}
-                          className={`w-11 h-6 rounded-full transition-colors relative inline-block cursor-pointer focus:outline-none ${
-                            isActive ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                          }`}
-                          title={`Status: ${isActive ? 'Active' : 'Inactive'}`}
-                        >
-                          <span
-                            className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 absolute top-0.5 left-0.5 ${
-                              isActive ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </td>
-
                       {/* Actions */}
-                      <td className="py-4 px-6 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setViewingColor(c)}
-                            title="View Color Details"
-                            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlineEye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEdit(c)}
-                            title="Edit Color"
-                            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(c._id, c.name)}
-                            title="Delete Color"
-                            className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
+                        <RowActions
+                          onView={() => setViewingColor(c)}
+                          onEdit={() => handleOpenEdit(c)}
+                          onDelete={() => handleDelete(c._id, c.name)}
+                          viewTitle="View Details"
+                        />
                       </td>
                     </tr>
                   );

@@ -8,6 +8,8 @@ import {
   HiOutlineSearch,
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
+  HiOutlineColorSwatch,
+  HiOutlineSparkles,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -16,15 +18,19 @@ import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
+import SearchFilterBar from '../../components/common/SearchFilterBar';
+import RowActions from '../../components/common/RowActions';
 
 /**
  * Visual Color Badge matching User Screenshot 1
  * Renders an uploaded color representation/swatch or a subtle diamond gem silhouette
  */
-function VisualColorBadge({ name = '', imageUrl, className = 'w-12 h-12' }) {
+function VisualColorBadge({ name = '', imageUrl, className = 'w-6 h-6' }) {
   if (imageUrl && !imageUrl.includes('example.com')) {
     return (
-      <div className={`${className} rounded-2xl bg-stone-50 border border-stone-200/80 p-1.5 flex items-center justify-center overflow-hidden shadow-2xs`}>
+      <div className={`${className} rounded-lg bg-stone-50 border border-stone-200/80 p-0.5 flex items-center justify-center overflow-hidden shadow-2xs`}>
         <img
           src={imageUrl}
           alt={name || 'Color representation'}
@@ -36,10 +42,10 @@ function VisualColorBadge({ name = '', imageUrl, className = 'w-12 h-12' }) {
 
   return (
     <div
-      className={`${className} rounded-2xl bg-[#fafafc] border border-stone-200/80 flex items-center justify-center select-none shadow-2xs text-stone-300`}
+      className={`${className} rounded-lg bg-[#fafafc] border border-stone-200/80 flex items-center justify-center select-none shadow-2xs text-stone-300`}
       title={name || 'Diamond Color Grade'}
     >
-      <IoDiamondOutline className="w-5 h-5 text-stone-300/80" />
+      <IoDiamondOutline className="w-3.5 h-3.5 text-stone-300/80" />
     </div>
   );
 }
@@ -97,6 +103,40 @@ export default function DiamondColorsView() {
     totalItems,
     paginatedItems,
   } = usePagination(filteredColors, 10);
+
+  // Quick stat cards
+  const activeCount = useMemo(() => colors.filter(c => c.status === 'active').length, [colors]);
+  const colorlessCount = useMemo(
+    () => colors.filter((c) => ['D', 'E', 'F', 'D-F', 'E-F'].some(grade => c.name?.toUpperCase().includes(grade))).length,
+    [colors]
+  );
+
+  const statCardsData = [
+    {
+      label: 'Color Grades',
+      value: colors.length,
+      icon: HiOutlineColorSwatch,
+      color: 'bronze',
+    },
+    {
+      label: 'Active Grades',
+      value: activeCount,
+      icon: HiOutlineSparkles,
+      color: 'green',
+    },
+    {
+      label: 'Colorless Tier',
+      value: colorlessCount,
+      icon: IoDiamondOutline,
+      color: 'peach',
+    },
+    {
+      label: 'Warm / Tinted',
+      value: Math.max(0, colors.length - colorlessCount),
+      icon: HiOutlineColorSwatch,
+      color: 'gold',
+    },
+  ];
 
   // Open modal to add new color
   const handleOpenAdd = () => {
@@ -207,155 +247,119 @@ export default function DiamondColorsView() {
   };
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
-      {/* ─── Top Header (Matches Screenshot 1 - Zero Sync Button) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 font-serif">
-            Diamond Color
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Configure diamond color grades for your inventory catalog.
-          </p>
-        </div>
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
+      <ModuleHeader
+        breadcrumbs={['Home', 'Diamond Config', 'Diamond Color']}
+        title="Diamond Color"
+        subtitle="Configure diamond color grades, tints and saturation standards for your inventory catalog."
+        onAdd={handleOpenAdd}
+        addLabel="Add Color Grade"
+        exportData={colors}
+        exportFileName="diamond_colors_export"
+      />
 
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-bold tracking-wider uppercase rounded-lg transition-colors shadow-sm self-start sm:self-auto cursor-pointer"
-        >
-          <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-          <span>ADD NEW COLOR</span>
-        </button>
-      </div>
+      {/* ─── 4 Stat Cards Row ─── */}
+      <StatCards cards={statCardsData} />
+
+      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search color grades..."
+      />
 
       {/* ─── Diamond Color Table Card ─── */}
-      <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-6 space-y-4">
-        {/* Table Search (Full width inside card matching Screenshot 1) */}
-        <div className="relative w-full">
-          <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400">
-            <HiOutlineSearch className="w-4 h-4" />
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search color grades..."
-            className="w-full pl-11 pr-4 py-2.5 text-xs rounded-xl border border-stone-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
-          />
-        </div>
-
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-100 text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                <th className="py-4 px-6 whitespace-nowrap">VISUAL</th>
-                <th className="py-4 px-6 whitespace-nowrap">COLOR GRADE</th>
-                <th className="py-4 px-6 whitespace-nowrap text-center">STATUS</th>
-                <th className="py-4 px-6 whitespace-nowrap">CREATED DATE</th>
-                <th className="py-4 px-6 whitespace-nowrap text-right">ACTIONS</th>
+              <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                <th className="py-2 pl-4 pr-1 w-8">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                  />
+                </th>
+                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                <th className="py-2 px-3 whitespace-nowrap">VISUAL</th>
+                <th className="py-2 px-3 whitespace-nowrap">COLOR GRADE</th>
+                <th className="py-2 px-3 whitespace-nowrap">CREATED DATE</th>
+                <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="py-12 text-center text-stone-400">
+                  <td colSpan="6" className="py-8 text-center text-stone-400">
                     Loading color grades...
                   </td>
                 </tr>
               ) : filteredColors.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="py-12 text-center text-stone-400">
+                  <td colSpan="6" className="py-8 text-center text-stone-400">
                     No color grades found.
                   </td>
                 </tr>
               ) : (
                 paginatedItems.map((c, index) => {
-                  const isActive = c.status === 'active';
-                  // In Screenshot 1, row 1 "E-F" is rendered in warm gold/brown
                   const isGoldColor = c.name === 'E-F' || index === 0;
 
                   const formattedDate = c.meta?.createdAt
                     ? new Date(c.meta.createdAt).toLocaleDateString('en-GB', {
                         day: '2-digit',
-                        month: '2-digit',
+                        month: 'short',
                         year: 'numeric',
                       })
-                    : '15/07/2026';
+                    : '15 Jul 2026';
 
                   return (
                     <tr
                       key={c._id}
                       className="hover:bg-stone-50/60 transition-colors"
                     >
+                      <td className="py-2.5 pl-4 pr-1">
+                        <input
+                          type="checkbox"
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* Sr No */}
+                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + index + 1}
+                      </td>
+
                       {/* Visual */}
-                      <td className="py-4 px-6 whitespace-nowrap">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
                         <VisualColorBadge
                           name={c.name}
                           imageUrl={c.image?.url}
-                          className="w-12 h-12"
+                          className="w-7 h-7"
                         />
                       </td>
 
                       {/* Color Grade Name */}
-                      <td className="py-4 px-6 whitespace-nowrap text-xs">
-                        <span
-                          className={`font-bold tracking-wide uppercase ${
-                            isGoldColor ? 'text-[#8f6d43]' : 'text-stone-900'
-                          }`}
-                        >
+                      <td className="py-2.5 px-3 whitespace-nowrap text-xs font-bold uppercase text-stone-900">
+                        <span className={isGoldColor ? 'text-[#8b6f4e]' : ''}>
                           {c.name}
                         </span>
                       </td>
 
-                      {/* Status Toggle Switch */}
-                      <td className="py-4 px-6 whitespace-nowrap text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(c)}
-                          className={`w-11 h-6 rounded-full transition-colors relative inline-block cursor-pointer focus:outline-none ${
-                            isActive ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                          }`}
-                          title={`Status: ${isActive ? 'Active' : 'Inactive'}`}
-                        >
-                          <span
-                            className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 absolute top-0.5 left-0.5 ${
-                              isActive ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </td>
-
                       {/* Created Date */}
-                      <td className="py-4 px-6 whitespace-nowrap text-stone-500 font-medium">
+                      <td className="py-2.5 px-3 whitespace-nowrap text-stone-500 font-medium text-xs">
                         {formattedDate}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setViewingColor(c)}
-                            title="View Color Details"
-                            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlineEye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEdit(c)}
-                            title="Edit Color"
-                            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(c._id, c.name)}
-                            title="Delete Color"
-                            className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
+                        <RowActions
+                          onView={() => setViewingColor(c)}
+                          onEdit={() => handleOpenEdit(c)}
+                          onDelete={() => handleDelete(c._id, c.name)}
+                          viewTitle="View Details"
+                        />
                       </td>
                     </tr>
                   );

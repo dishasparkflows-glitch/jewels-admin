@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineInformationCircle,
   HiOutlinePhotograph,
@@ -10,6 +10,8 @@ import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
 
 const ORDERED_PARTS = ['hand', 'neck', 'ear', 'wrist'];
 
@@ -166,20 +168,52 @@ export default function VtoMastersView() {
     }
   };
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
-      {/* ─── Page Header (Exact Match to Screenshot 1) ─── */}
-      <div className="mb-6">
-        <h1 className="text-2xl sm:text-[28px] font-bold text-stone-900 tracking-tight">
-          VTO Master Assets
-        </h1>
-        <p className="text-sm text-stone-500 mt-1">
-          Configure global hand, wrist, and neck environments for Virtual Try-On.
-        </p>
-      </div>
+  // Quick stat cards
+  const configuredCount = useMemo(() => masters.filter(m => m.lightImage?.url || m.darkImage?.url).length, [masters]);
 
-      {/* ─── Master Assets Cards Grid (Exact Match to Screenshot 1 & 2) ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  const statCardsData = [
+    {
+      label: 'VTO Environments',
+      value: ORDERED_PARTS.length,
+      icon: IoSparklesOutline,
+      color: 'bronze',
+    },
+    {
+      label: 'Configured Masters',
+      value: configuredCount,
+      icon: HiOutlinePhotograph,
+      color: 'green',
+    },
+    {
+      label: 'Tone Variants',
+      value: 'Light & Dark',
+      icon: IoSparklesOutline,
+      color: 'peach',
+    },
+    {
+      label: 'Engine Readiness',
+      value: configuredCount >= 3 ? '100% Ready' : 'In Progress',
+      icon: HiOutlineCheck,
+      color: 'gold',
+    },
+  ];
+
+  return (
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
+      <ModuleHeader
+        breadcrumbs={['Home', 'Product Config', 'VTO Masters']}
+        title="VTO Master Assets"
+        subtitle="Configure global virtual try-on environments, light and dark tone models for rings, earrings and necklaces."
+        exportData={masters}
+        exportFileName="vto_masters_export"
+      />
+
+      {/* ─── 4 Stat Cards Row ─── */}
+      <StatCards cards={statCardsData} />
+
+      {/* ─── Master Assets Cards Grid ─── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
         {ORDERED_PARTS.map((key) => {
           const meta = BODY_PART_META[key];
           const master = masters.find((m) => m.bodyPart === key);
@@ -190,21 +224,21 @@ export default function VtoMastersView() {
           return (
             <div
               key={key}
-              className="bg-white rounded-2xl border border-stone-200/80 p-5 sm:p-6 shadow-xs flex flex-col justify-between hover:border-stone-300 transition-all"
+              className="bg-white rounded-xl border border-stone-200/80 p-3 sm:p-3.5 shadow-xs flex flex-col justify-between hover:border-stone-300 transition-all"
             >
               {/* Top Details */}
               <div>
                 {/* Header Row: Icon + Title/Env + Active Badge */}
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-[#faf5ee] border border-[#ebdccb] flex items-center justify-center text-[#8f6d43] flex-shrink-0 shadow-2xs">
-                      <IoSparklesOutline className="w-4 h-4 text-[#8f6d43]" />
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#faf5ee] border border-[#ebdccb] flex items-center justify-center text-[#8f6d43] flex-shrink-0 shadow-2xs">
+                      <IoSparklesOutline className="w-3.5 h-3.5 text-[#8f6d43]" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-stone-900 text-[15px] tracking-tight leading-tight">
+                      <h3 className="font-bold text-stone-900 text-xs sm:text-[13px] tracking-tight leading-tight">
                         {meta.name}
                       </h3>
-                      <span className="text-[10px] font-bold tracking-wider text-stone-400 uppercase">
+                      <span className="text-[9px] font-bold tracking-wider text-stone-400 uppercase">
                         {meta.env}
                       </span>
                     </div>
@@ -212,7 +246,7 @@ export default function VtoMastersView() {
 
                   {/* ACTIVE Badge (Exact Match: tiny dot + ACTIVE) */}
                   {isActive && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-emerald-600 bg-emerald-50/90 border border-emerald-200/80 shadow-2xs">
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide text-emerald-600 bg-emerald-50/90 border border-emerald-200/80 shadow-2xs">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       ACTIVE
                     </span>
@@ -220,18 +254,18 @@ export default function VtoMastersView() {
                 </div>
 
                 {/* Description */}
-                <p className="text-[12px] text-stone-500 mt-4 leading-relaxed min-h-[36px]">
+                <p className="text-[11px] text-stone-500 mt-2 leading-tight line-clamp-2 min-h-0">
                   {meta.description}
                 </p>
 
                 {/* Dual Image Containers: LIGHT SKIN TONE vs DARK SKIN TONE */}
-                <div className="grid grid-cols-2 gap-3 mt-4">
+                <div className="grid grid-cols-2 gap-2 mt-2.5">
                   {/* Light Tone */}
                   <div>
-                    <div className="text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1.5">
+                    <div className="text-[9px] font-bold tracking-wider text-stone-400 uppercase mb-1">
                       LIGHT SKIN TONE
                     </div>
-                    <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs">
+                    <div className="relative aspect-[4/5] max-h-36 rounded-xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs">
                       {lightImg ? (
                         <img
                           src={lightImg}
@@ -240,7 +274,7 @@ export default function VtoMastersView() {
                         />
                       ) : (
                         <div className="w-full h-full bg-[#f9fafb] flex flex-col items-center justify-center text-stone-300">
-                          <span className="text-[11px] font-medium text-stone-400">Light</span>
+                          <span className="text-[10px] font-medium text-stone-400">Light</span>
                         </div>
                       )}
                     </div>
@@ -248,10 +282,10 @@ export default function VtoMastersView() {
 
                   {/* Dark Tone */}
                   <div>
-                    <div className="text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1.5">
+                    <div className="text-[9px] font-bold tracking-wider text-stone-400 uppercase mb-1">
                       DARK SKIN TONE
                     </div>
-                    <div className="relative aspect-[4/5] rounded-2xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs">
+                    <div className="relative aspect-[4/5] max-h-36 rounded-xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs">
                       {darkImg ? (
                         <img
                           src={darkImg}
@@ -260,7 +294,7 @@ export default function VtoMastersView() {
                         />
                       ) : (
                         <div className="w-full h-full bg-[#f9fafb] flex flex-col items-center justify-center text-stone-300">
-                          <span className="text-[11px] font-medium text-stone-400">Dark</span>
+                          <span className="text-[10px] font-medium text-stone-400">Dark</span>
                         </div>
                       )}
                     </div>
@@ -269,16 +303,16 @@ export default function VtoMastersView() {
               </div>
 
               {/* Bottom Card Footer: High-res required + UPDATE MASTER */}
-              <div className="flex items-center justify-between gap-2 mt-5 pt-3 border-t border-stone-100">
-                <div className="flex items-center gap-1.5 text-[11px] text-stone-400">
-                  <HiOutlineInformationCircle className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
-                  <span>High-res required</span>
+              <div className="flex items-center justify-between gap-1.5 mt-2.5 pt-2 border-t border-stone-100">
+                <div className="flex items-center gap-1 text-[10px] text-stone-400">
+                  <HiOutlineInformationCircle className="w-3 h-3 text-stone-400 flex-shrink-0" />
+                  <span>High-res req</span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => openEditModal(key, master)}
-                  className="bg-[#d1d5db] hover:bg-stone-400 active:bg-stone-500 text-white font-bold text-[10px] tracking-wider px-3.5 py-1.5 rounded-lg transition-colors shadow-2xs uppercase cursor-pointer"
+                  className="bg-[#d1d5db] hover:bg-stone-400 active:bg-stone-500 text-white font-bold text-[9px] tracking-wider px-2.5 py-1 rounded transition-colors shadow-2xs uppercase cursor-pointer"
                 >
                   UPDATE MASTER
                 </button>
@@ -289,15 +323,15 @@ export default function VtoMastersView() {
       </div>
 
       {/* ─── Bottom Architecture Tip (Exact Match to Screenshot 2) ─── */}
-      <div className="mt-8 bg-[#fffdfa] border border-[#f5ece1] rounded-2xl p-4 sm:p-5 flex items-start gap-4 shadow-2xs">
-        <div className="w-8 h-8 rounded-full bg-[#f6eee3] text-[#8f6d43] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs">
-          <HiOutlineInformationCircle className="w-5 h-5 text-[#8f6d43]" />
+      <div className="mt-2.5 bg-[#fffdfa] border border-[#f5ece1] rounded-xl p-2.5 sm:p-3 flex items-start gap-2.5 shadow-2xs">
+        <div className="w-6 h-6 rounded-full bg-[#f6eee3] text-[#8f6d43] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs">
+          <HiOutlineInformationCircle className="w-3.5 h-3.5 text-[#8f6d43]" />
         </div>
         <div className="flex-1">
-          <h4 className="text-[13px] font-bold text-stone-900 mb-0.5">
+          <h4 className="text-xs font-bold text-stone-900 mb-0.5">
             Architecture Tip
           </h4>
-          <p className="text-[12px] sm:text-[12.5px] text-stone-500 leading-relaxed">
+          <p className="text-[11px] text-stone-500 leading-relaxed">
             These master assets are global. When a customer uses the VTO, the system will overlay the product-specific transparent PNG onto these images. The{' '}
             <strong className="font-semibold text-stone-800">Dark Skin Tone</strong> asset should be an exact pose-match of the{' '}
             <strong className="font-semibold text-stone-800">Light</strong> one to ensure seamless skin-tone slider transitions.

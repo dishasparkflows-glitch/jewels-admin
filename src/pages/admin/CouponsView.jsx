@@ -13,6 +13,10 @@ import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
+import SearchFilterBar from '../../components/common/SearchFilterBar';
+import RowActions from '../../components/common/RowActions';
 
 export default function CouponsView() {
   const confirm = useConfirm();
@@ -221,81 +225,98 @@ export default function CouponsView() {
     }
   };
 
-  return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
-      {/* ─── Page Title Header (Matches Screenshot - NO SYNC BUTTON) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 font-serif">
-            Coupons
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Manage promotional discount codes and order promotions.
-          </p>
-        </div>
+  const percentageCount = coupons.filter((c) => c.discount?.type === 'Percentage').length;
+  const fixedCount = coupons.filter((c) => c.discount?.type === 'Fixed').length;
+  const activeCount = coupons.filter((c) => c.status === 'active').length || coupons.length;
 
-        {/* Add Coupon Button (No Sync Button) */}
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-bold tracking-wider uppercase rounded-lg transition-colors shadow-sm self-start sm:self-auto cursor-pointer"
-        >
-          <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-          <span>Add Coupon</span>
-        </button>
-      </div>
+  const statCardsData = [
+    {
+      label: 'Total Coupons',
+      value: coupons.length,
+      icon: HiOutlineTicket,
+      color: 'bronze',
+    },
+    {
+      label: 'Percentage Promos',
+      value: percentageCount,
+      icon: HiOutlinePlus,
+      color: 'green',
+    },
+    {
+      label: 'Flat Discount Promos',
+      value: fixedCount,
+      icon: HiOutlineTicket,
+      color: 'peach',
+    },
+    {
+      label: 'Active Campaigns',
+      value: activeCount,
+      icon: HiOutlineTicket,
+      color: 'gold',
+    },
+  ];
+
+  return (
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
+      <ModuleHeader
+        breadcrumbs={['Home', 'Coupons']}
+        title="Coupons"
+        subtitle="Manage promotional discount codes, validity rules and order promotions."
+        onAdd={handleOpenAdd}
+        addLabel="Add Coupon"
+        exportData={coupons}
+        exportFileName="coupons_export"
+      />
+
+      {/* ─── 4 Stat Cards Row ─── */}
+      <StatCards cards={statCardsData} />
+
+      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search coupons by code or description..."
+      />
 
       {/* ─── Coupons Table Card ─── */}
-      <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm overflow-hidden">
-        {/* Table Search Bar */}
-        <div className="p-6 border-b border-stone-100 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="relative w-full sm:w-80">
-            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
-              <HiOutlineSearch className="w-4 h-4" />
-            </span>
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search coupons..."
-              className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-stone-200 bg-stone-50/50 text-stone-800 placeholder-stone-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
-            />
-          </div>
-
-          <div className="text-xs font-semibold text-stone-400">
-            {filteredCoupons.length} {filteredCoupons.length === 1 ? 'Coupon' : 'Coupons'}
-          </div>
-        </div>
-
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-100 bg-[#faf8f5]/60 text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                <th className="py-4 px-4 whitespace-nowrap">Coupon Code</th>
-                <th className="py-4 px-4 whitespace-nowrap">Headline / Desc</th>
-                <th className="py-4 px-4 whitespace-nowrap">Discount</th>
-                <th className="py-4 px-4 whitespace-nowrap">Min Order</th>
-                <th className="py-4 px-4 whitespace-nowrap">Validity</th>
-                <th className="py-4 px-4 whitespace-nowrap">Usage</th>
-                <th className="py-4 px-4 text-center whitespace-nowrap">Status</th>
-                <th className="py-4 px-4 text-right whitespace-nowrap">Actions</th>
+              <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                <th className="py-2 pl-4 pr-1 w-8">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                  />
+                </th>
+                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                <th className="py-2 px-3 whitespace-nowrap">COUPON CODE</th>
+                <th className="py-2 px-3 whitespace-nowrap">HEADLINE / DESC</th>
+                <th className="py-2 px-3 whitespace-nowrap">DISCOUNT</th>
+                <th className="py-2 px-3 whitespace-nowrap">MIN ORDER</th>
+                <th className="py-2 px-3 whitespace-nowrap">VALIDITY</th>
+                <th className="py-2 px-3 whitespace-nowrap">USAGE</th>
+                <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-stone-400">
+                  <td colSpan="9" className="py-8 text-center text-stone-400">
                     Loading promotional coupons...
                   </td>
                 </tr>
               ) : filteredCoupons.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-stone-400">
+                  <td colSpan="9" className="py-8 text-center text-stone-400">
                     No promotional coupons found.
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((c) => {
+                paginatedItems.map((c, idx) => {
                   const isActive = c.status === 'active';
                   const isPercentage = c.discount?.type === 'Percentage';
                   const discountVal = c.discount?.value ?? 0;
@@ -324,38 +345,49 @@ export default function CouponsView() {
                       key={c._id}
                       className="hover:bg-stone-50/60 transition-colors"
                     >
+                      <td className="py-2.5 pl-4 pr-1">
+                        <input
+                          type="checkbox"
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* Sr No */}
+                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + idx + 1}
+                      </td>
                       {/* Coupon Code */}
-                      <td className="py-4 px-4 whitespace-nowrap font-bold tracking-wider text-stone-900">
-                        <div className="flex items-center gap-2">
-                          <span className="p-1 rounded-md bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
-                            <HiOutlineTicket className="w-3.5 h-3.5" />
+                      <td className="py-2.5 px-3 whitespace-nowrap font-bold tracking-wider text-stone-900">
+                        <div className="flex items-center gap-1.5">
+                          <span className="p-1 rounded bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
+                            <HiOutlineTicket className="w-3 h-3" />
                           </span>
-                          <span className="font-mono">{c.coupon?.code}</span>
+                          <span className="font-mono text-xs">{c.coupon?.code}</span>
                         </div>
                       </td>
 
                       {/* Headline / Desc */}
-                      <td className="py-4 px-4 text-stone-600 max-w-xs truncate">
+                      <td className="py-2.5 px-3 text-stone-600 max-w-xs truncate text-xs">
                         {c.coupon?.description || '—'}
                       </td>
 
                       {/* Discount - Sleek Luxury Pill with zero wrapping */}
-                      <td className="py-4 px-4 whitespace-nowrap">
-                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2] shadow-2xs">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold whitespace-nowrap bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2] shadow-2xs">
                           {formattedDiscount}
                         </span>
                       </td>
 
                       {/* Min Order */}
-                      <td className="py-4 px-4 whitespace-nowrap font-medium text-stone-800">
+                      <td className="py-2.5 px-3 whitespace-nowrap font-medium text-stone-800 text-xs">
                         {c.discount?.minimumOrderAmount > 0
                           ? `₹${Number(c.discount.minimumOrderAmount).toLocaleString('en-IN')}`
                           : '₹0'}
                       </td>
 
                       {/* Validity */}
-                      <td className="py-4 px-4 text-stone-500 whitespace-nowrap">
-                        <div className="text-[11px] whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-stone-500 whitespace-nowrap">
+                        <div className="text-[10px] whitespace-nowrap">
                           <span>{formattedStartDate}</span>
                           <span className="text-stone-300 mx-1">→</span>
                           <span className="font-medium text-stone-700">{formattedExpiryDate}</span>
@@ -363,7 +395,7 @@ export default function CouponsView() {
                       </td>
 
                       {/* Usage */}
-                      <td className="py-4 px-4 whitespace-nowrap text-stone-600">
+                      <td className="py-2.5 px-3 whitespace-nowrap text-stone-600 text-xs">
                         <span className="font-medium">{c.usage?.usedCount || 0}</span>
                         <span className="text-stone-400">
                           {' / '}
@@ -371,42 +403,14 @@ export default function CouponsView() {
                         </span>
                       </td>
 
-                      {/* Status Toggle Switch - Crisp White Knob with smooth translation */}
-                      <td className="py-4 px-4 text-center whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(c)}
-                          className={`w-11 h-6 rounded-full transition-colors relative inline-block cursor-pointer focus:outline-none ${
-                            isActive ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                          }`}
-                          title={`Toggle Status (Currently ${isActive ? 'Active' : 'Inactive'})`}
-                        >
-                          <span
-                            className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 absolute top-0.5 left-0.5 ${
-                              isActive ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </td>
-
                       {/* Actions */}
-                      <td className="py-4 px-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            onClick={() => handleOpenEdit(c)}
-                            title="Edit Coupon"
-                            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(c._id, c.coupon?.code)}
-                            title="Delete Coupon"
-                            className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="py-2.5 pr-4 pl-2 text-right whitespace-nowrap">
+                        <RowActions
+                          onView={() => handleOpenEdit(c)}
+                          onEdit={() => handleOpenEdit(c)}
+                          onDelete={() => handleDelete(c._id, c.coupon?.code)}
+                          viewTitle="View/Edit Coupon"
+                        />
                       </td>
                     </tr>
                   );
@@ -488,14 +492,15 @@ export default function CouponsView() {
                   <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
                     DISCOUNT TYPE
                   </label>
-                  <select
+                  <Dropdown
                     value={discountType}
-                    onChange={(e) => setDiscountType(e.target.value)}
-                    className="w-full h-11 px-3 text-xs font-semibold rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all cursor-pointer"
-                  >
-                    <option value="Percentage">Percentage %</option>
-                    <option value="Fixed">Fixed Amount (₹)</option>
-                  </select>
+                    onChange={(val) => setDiscountType(val)}
+                    options={[
+                      { value: 'Percentage', label: 'Percentage %' },
+                      { value: 'Fixed', label: 'Fixed Amount (₹)' },
+                    ]}
+                    buttonClassName="h-11 rounded-lg text-xs font-semibold"
+                  />
                 </div>
 
                 <div>

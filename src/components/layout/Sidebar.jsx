@@ -14,13 +14,8 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
   
-  // Keep accordion groups open by default or based on active route
-  const [openSubmenus, setOpenSubmenus] = useState({
-    'diamond-config': true,
-    'product-config': true,
-    'pricing-hub': true,
-    'catalog': true,
-  });
+  // Default submenus to collapsed so sidebar stays compact and small, auto-opening only active route
+  const [openSubmenus, setOpenSubmenus] = useState({});
 
   useEffect(() => {
     // Automatically ensure the section of the current path is opened
@@ -51,14 +46,14 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
       `}
     >
       {/* ─── Top Brand Header ───────────────────────────────── */}
-      <div className="h-20 flex items-center px-5 border-b border-stone-100 flex-shrink-0 bg-white">
+      <div className="h-14 flex items-center px-5 border-b border-stone-100 flex-shrink-0 bg-white">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shadow-sm flex-shrink-0">
-            <HiOutlineSparkles className="w-4 h-4 text-[#8b6f4e]" />
+          <div className="w-9 h-9 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shadow-xs flex-shrink-0 font-serif font-bold text-xl">
+            N
           </div>
           {isOpen && (
             <div className="flex flex-col">
-              <span className="text-[12px] font-bold tracking-[0.16em] text-stone-900 uppercase font-sans">
+              <span className="text-[13px] font-bold tracking-[0.18em] text-stone-900 uppercase font-sans">
                 NEIRAH JEWELLERS
               </span>
               <span className="text-[9px] tracking-[0.25em] text-[#8b6f4e] uppercase font-semibold -mt-0.5">
@@ -189,23 +184,23 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                   key={item.id}
                   to={item.path}
                   onClick={onMobileClose}
-                  className={`flex items-center justify-between px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all duration-200 group ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group ${
                     isActive
-                      ? 'bg-[#8b6f4e] text-white shadow-sm font-semibold'
+                      ? 'bg-[#f8f2eb] text-[#8b6f4e] border-l-4 border-[#8b6f4e] font-semibold shadow-2xs'
                       : 'text-stone-700 hover:text-stone-900 hover:bg-stone-50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
                     <Icon
                       className={`w-4 h-4 flex-shrink-0 transition-colors ${
-                        isActive ? 'text-white' : 'text-stone-400 group-hover:text-stone-600'
+                        isActive ? 'text-[#8b6f4e]' : 'text-stone-400 group-hover:text-stone-600'
                       }`}
                     />
                     {isOpen && <span>{item.title}</span>}
                   </div>
 
                   {isActive && isOpen && (
-                    <HiOutlineChevronRight className="w-3.5 h-3.5 text-white/90" />
+                    <HiOutlineChevronRight className="w-3.5 h-3.5 text-[#8b6f4e]" />
                   )}
                 </NavLink>
               );
@@ -215,8 +210,8 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
       </nav>
 
       {/* ─── Bottom User Profile Footer ─────────────────────── */}
-      <div className="p-3 border-t border-stone-100 flex-shrink-0 bg-[#fdfcfb]">
-        <div className="flex items-center justify-between p-2 rounded-xl hover:bg-stone-50 transition-colors">
+      <div className="p-3 border-t border-stone-100 flex-shrink-0 bg-white">
+        <div className="flex items-center justify-between p-2.5 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 transition-colors">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-8 h-8 rounded-full bg-[#f4ece0] border border-[#e8d9c2] flex items-center justify-center font-bold text-xs text-[#8b6f4e] flex-shrink-0">
               {user?.firstName?.[0] || 'S'}
@@ -227,7 +222,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                   {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
                 </span>
                 <span className="text-[10px] text-stone-400 truncate">
-                  {user?.email || 'admin@neirah.com'}
+                  {user?.email || 'superadmin@jewels.com'}
                 </span>
               </div>
             )}
@@ -237,7 +232,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
             <button
               onClick={logout}
               title="Sign Out"
-              className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg transition-colors"
+              className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
             >
               <HiOutlineLogout className="w-4 h-4" />
             </button>

@@ -16,6 +16,10 @@ import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import ModuleHeader from '../../components/common/ModuleHeader';
+import StatCards from '../../components/common/StatCards';
+import SearchFilterBar from '../../components/common/SearchFilterBar';
+import RowActions from '../../components/common/RowActions';
 
 /**
  * Geometric Faceted Diamond Icon matching User Screenshot 2
@@ -242,71 +246,94 @@ export default function DiamondTypesView() {
     }
   };
 
-  return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
-      {/* ─── Top Header (Matches Screenshot 2 - Zero Sync Button) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 font-serif">
-            Diamond Types
-          </h1>
-          <p className="mt-1 text-sm text-stone-500">
-            Configure different sources and types of diamonds for your catalog.
-          </p>
-        </div>
+  const labGrownCount = types.filter((t) => (t.name || '').toLowerCase().includes('lab')).length;
+  const naturalCount = types.filter((t) => !(t.name || '').toLowerCase().includes('lab')).length;
 
-        <button
-          onClick={handleOpenAdd}
-          className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-bold tracking-wider uppercase rounded-lg transition-colors shadow-sm self-start sm:self-auto cursor-pointer"
-        >
-          <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-          <span>ADD DIAMOND TYPE</span>
-        </button>
-      </div>
+  const statCardsData = [
+    {
+      label: 'Total Diamond Types',
+      value: types.length,
+      icon: HiOutlineEye,
+      color: 'bronze',
+    },
+    {
+      label: 'Lab Grown Types',
+      value: labGrownCount,
+      icon: HiOutlinePlus,
+      color: 'green',
+    },
+    {
+      label: 'Natural Types',
+      value: naturalCount,
+      icon: HiOutlineEye,
+      color: 'peach',
+    },
+    {
+      label: 'Catalog Active',
+      value: types.length,
+      icon: HiOutlineEye,
+      color: 'gold',
+    },
+  ];
+
+  return (
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
+      <ModuleHeader
+        breadcrumbs={['Home', 'Diamond Config', 'Diamond Types']}
+        title="Diamond Types"
+        subtitle="Configure different sources, grading categories and types of diamonds for your luxury catalog."
+        onAdd={handleOpenAdd}
+        addLabel="Add Diamond Type"
+        exportData={types}
+        exportFileName="diamond_types_export"
+      />
+
+      {/* ─── 4 Stat Cards Row ─── */}
+      <StatCards cards={statCardsData} />
+
+      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      <SearchFilterBar
+        search={search}
+        onSearchChange={setSearch}
+        placeholder="Search diamond types..."
+      />
 
       {/* ─── Diamond Types Table Card ─── */}
-      <div className="bg-white rounded-3xl border border-stone-200/90 shadow-sm p-6 space-y-4">
-        {/* Table Search (Full width inside card matching Screenshot 2) */}
-        <div className="relative w-full">
-          <span className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-stone-400">
-            <HiOutlineSearch className="w-4 h-4" />
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search diamond types..."
-            className="w-full pl-11 pr-4 py-2.5 text-xs rounded-xl border border-stone-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
-          />
-        </div>
-
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-100 text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                <th className="py-4 px-6 whitespace-nowrap">ICON</th>
-                <th className="py-4 px-6 whitespace-nowrap">DIAMOND TYPE</th>
-                <th className="py-4 px-6 whitespace-nowrap text-center">STATUS</th>
-                <th className="py-4 px-6 whitespace-nowrap">CREATED DATE</th>
-                <th className="py-4 px-6 whitespace-nowrap text-right">ACTIONS</th>
+              <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                <th className="py-2 pl-4 pr-1 w-8">
+                  <input
+                    type="checkbox"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                  />
+                </th>
+                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                <th className="py-2 px-3 whitespace-nowrap">ICON</th>
+                <th className="py-2 px-3 whitespace-nowrap">DIAMOND TYPE</th>
+                <th className="py-2 px-3 whitespace-nowrap">CREATED DATE</th>
+                <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="py-12 text-center text-stone-400">
+                  <td colSpan="6" className="py-8 text-center text-stone-400">
                     Loading diamond types...
                   </td>
                 </tr>
               ) : filteredTypes.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="py-12 text-center text-stone-400">
+                  <td colSpan="6" className="py-8 text-center text-stone-400">
                     No diamond types found.
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((t) => {
+                paginatedItems.map((t, idx) => {
                   const isActive = t.status === 'active';
                   const letter = t.name?.startsWith('Lab') ? 'L' : 'N';
 
@@ -323,68 +350,45 @@ export default function DiamondTypesView() {
                       key={t._id}
                       className="hover:bg-stone-50/60 transition-colors"
                     >
+                      <td className="py-2.5 pl-4 pr-1">
+                        <input
+                          type="checkbox"
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* Sr No */}
+                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + idx + 1}
+                      </td>
+
                       {/* Icon */}
-                      <td className="py-4 px-6 whitespace-nowrap">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
                         <DiamondFacetIcon
                           letter={letter}
                           imageUrl={t.image?.url}
-                          className="w-10 h-10"
+                          className="w-7 h-7"
                         />
                       </td>
 
                       {/* Diamond Type Name */}
-                      <td className="py-4 px-6 whitespace-nowrap font-bold text-stone-900 text-xs">
+                      <td className="py-2.5 px-3 whitespace-nowrap font-bold text-stone-900 text-xs">
                         {t.name}
                       </td>
 
-                      {/* Status Toggle Switch */}
-                      <td className="py-4 px-6 whitespace-nowrap text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(t)}
-                          className={`w-11 h-6 rounded-full transition-colors relative inline-block cursor-pointer focus:outline-none ${
-                            isActive ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                          }`}
-                          title={`Status: ${isActive ? 'Active' : 'Inactive'}`}
-                        >
-                          <span
-                            className={`block w-5 h-5 rounded-full bg-white shadow-sm transition-transform duration-200 absolute top-0.5 left-0.5 ${
-                              isActive ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </td>
-
                       {/* Created Date */}
-                      <td className="py-4 px-6 whitespace-nowrap text-stone-500 font-medium">
+                      <td className="py-2.5 px-3 whitespace-nowrap text-stone-500 font-medium text-xs">
                         {formattedDate}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-4 px-6 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            onClick={() => setViewingType(t)}
-                            title="View Type Details"
-                            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlineEye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleOpenEdit(t)}
-                            title="Edit Type"
-                            className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(t._id, t.name)}
-                            title="Delete Type"
-                            className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
-                        </div>
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
+                        <RowActions
+                          onView={() => setViewingType(t)}
+                          onEdit={() => handleOpenEdit(t)}
+                          onDelete={() => handleDelete(t._id, t.name)}
+                          viewTitle="View Details"
+                        />
                       </td>
                     </tr>
                   );
