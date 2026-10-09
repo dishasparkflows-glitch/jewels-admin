@@ -242,8 +242,8 @@ export default function SizesView() {
                       ? 'BANGLES & BRACELETS (BANGLES)'
                       : 'PENDANT');
 
-                  const formattedDate = s.createdAt
-                    ? new Date(s.createdAt).toLocaleDateString('en-GB', {
+                  const formattedDate = s.meta?.createdAt
+                    ? new Date(s.meta.createdAt).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',
@@ -464,8 +464,8 @@ export default function SizesView() {
               <div className="flex justify-between py-1.5 border-b border-stone-100">
                 <span className="text-stone-400">Created Date:</span>
                 <span className="font-medium text-stone-600">
-                  {viewingSize.createdAt
-                    ? new Date(viewingSize.createdAt).toLocaleDateString('en-GB', {
+                  {viewingSize.meta?.createdAt
+                    ? new Date(viewingSize.meta.createdAt).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',

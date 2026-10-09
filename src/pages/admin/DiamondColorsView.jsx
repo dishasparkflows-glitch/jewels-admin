@@ -275,8 +275,8 @@ export default function DiamondColorsView() {
                   // In Screenshot 1, row 1 "E-F" is rendered in warm gold/brown
                   const isGoldColor = c.name === 'E-F' || index === 0;
 
-                  const formattedDate = c.createdAt
-                    ? new Date(c.createdAt).toLocaleDateString('en-GB', {
+                  const formattedDate = c.meta?.createdAt
+                    ? new Date(c.meta.createdAt).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',

@@ -81,9 +81,9 @@ export default function AppointmentsView() {
     .filter((a) => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
-      const name = (a.fullName || '').toLowerCase();
-      const email = (a.email || '').toLowerCase();
-      const phone = (a.phoneNumber || '').toLowerCase();
+      const name = (a.customer?.name || '').toLowerCase();
+      const email = (a.customer?.email || '').toLowerCase();
+      const phone = (a.customer?.phone?.number || '').toLowerCase();
       return name.includes(q) || email.includes(q) || phone.includes(q);
     });
 
@@ -128,7 +128,7 @@ export default function AppointmentsView() {
         <div className="bg-white rounded-xl border border-stone-200/90 p-5 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">TOTAL APPOINTMENT</p>
-            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{totalCount || 14}</p>
+            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{totalCount}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
             <HiOutlineCalendar className="w-5 h-5 text-stone-500" />
@@ -138,7 +138,7 @@ export default function AppointmentsView() {
         <div className="bg-white rounded-xl border border-stone-200/90 p-5 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">TOTAL PENDING</p>
-            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{pendingCount || 12}</p>
+            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{pendingCount}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
             <HiOutlineClock className="w-5 h-5 text-stone-500" />
@@ -148,7 +148,7 @@ export default function AppointmentsView() {
         <div className="bg-white rounded-xl border border-stone-200/90 p-5 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">TOTAL COMPLETED</p>
-            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{completedCount || 0}</p>
+            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{completedCount}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
             <HiOutlineCheckCircle className="w-5 h-5 text-stone-500" />
@@ -158,7 +158,7 @@ export default function AppointmentsView() {
         <div className="bg-white rounded-xl border border-stone-200/90 p-5 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">TOTAL CANCELLED</p>
-            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{cancelledCount || 2}</p>
+            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{cancelledCount}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
             <HiOutlineExclamation className="w-5 h-5 text-stone-500" />
@@ -189,7 +189,7 @@ export default function AppointmentsView() {
           <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             type="text"
-            placeholder="Search client name or contact..."
+            placeholder="Search client name, email, or contact number..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-11 pr-4 py-2.5 bg-stone-50/60 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
@@ -226,7 +226,13 @@ export default function AppointmentsView() {
                 </tr>
               ) : (
                 paginatedItems.map((apt) => {
-                  const initial = (apt.fullName || 'C')[0].toUpperCase();
+                  const clientName = apt.customer?.name || 'Anonymous';
+                  const clientEmail = apt.customer?.email || '—';
+                  const countryCode = apt.customer?.phone?.countryCode || '91';
+                  const rawPhone = apt.customer?.phone?.number || '';
+                  const initial = (clientName || 'C')[0].toUpperCase();
+                  const aptDate = apt.appointment?.date;
+                  const prefTime = apt.appointment?.preferredTime || '';
 
                   return (
                     <tr key={apt._id} className="hover:bg-stone-50/60 transition-colors">
@@ -237,8 +243,8 @@ export default function AppointmentsView() {
                             {initial}
                           </div>
                           <div>
-                            <p className="font-semibold text-stone-900">{apt.fullName}</p>
-                            <p className="text-xs text-stone-400 truncate max-w-[180px]">{apt.email}</p>
+                            <p className="font-semibold text-stone-900">{clientName}</p>
+                            <p className="text-xs text-stone-400 truncate max-w-[180px]">{clientEmail}</p>
                           </div>
                         </div>
                       </td>
@@ -247,7 +253,7 @@ export default function AppointmentsView() {
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2 text-stone-700 text-xs font-medium">
                           <HiOutlinePhone className="w-3.5 h-3.5 text-stone-400" />
-                          <span>{apt.phoneNumber}</span>
+                          <span>{rawPhone ? `+${countryCode} ${rawPhone}` : '—'}</span>
                         </div>
                       </td>
 
@@ -255,9 +261,9 @@ export default function AppointmentsView() {
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2 text-stone-800 text-xs">
                           <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8f6d43]" />
-                          <span className="font-semibold">{formatDate(apt.appointmentDate)}</span>
+                          <span className="font-semibold">{formatDate(aptDate)}</span>
                           <span className="text-stone-400">/</span>
-                          <span className="text-stone-500 font-medium">{apt.preferredTime}</span>
+                          <span className="text-stone-500 font-medium">{prefTime}</span>
                         </div>
                       </td>
 

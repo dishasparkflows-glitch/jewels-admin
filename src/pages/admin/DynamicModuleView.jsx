@@ -122,6 +122,15 @@ const routeMap = {
       { name: 'price', label: 'Retail Price (₹)', type: 'number', required: true },
     ],
   },
+  '/catalog/ornate-products': {
+    endpoint: '/products?isOrnate=true',
+    title: 'Ornate Products',
+    fields: [
+      { name: 'title', label: 'Product Title', type: 'text', required: true },
+      { name: 'sku', label: 'Tag No / SKU', type: 'text', required: true },
+      { name: 'price', label: 'Retail Price (₹)', type: 'number', required: true },
+    ],
+  },
   '/catalog/categories': {
     endpoint: '/categories',
     title: 'Categories',
@@ -138,10 +147,26 @@ const routeMap = {
     ],
   },
 
+  // ─── 5. Diamonds ──────────────────────────────────
+  '/diamonds': {
+    endpoint: '/diamonds',
+    title: 'Diamonds',
+    fields: [
+      { name: 'sku', label: 'SKU / Certificate ID', type: 'text', required: true },
+      { name: 'title', label: 'Diamond Title', type: 'text', required: true },
+      { name: 'carat', label: 'Carat Weight', type: 'number', required: true },
+      { name: 'price', label: 'Price (₹)', type: 'number', required: true },
+      { name: 'rate', label: 'Rate Per Carat (₹)', type: 'number' },
+    ],
+  },
+
   // ─── Operations & Marketing ──────────────────────
+  '/orders': { endpoint: '/orders', title: 'Orders' },
+  '/returns': { endpoint: '/returns', title: 'Returns' },
   '/appointments': { endpoint: '/appointments', title: 'Appointments' },
   '/custom-inquiries': { endpoint: '/custom-inquiries', title: 'Custom Inquiries' },
   '/cod-sequence': { endpoint: '/cod-sequences', title: 'COD Sequence' },
+  '/cod-sequences': { endpoint: '/cod-sequences', title: 'COD Sequence' },
   '/marketing/coupons': { endpoint: '/coupons', title: 'Coupons' },
   '/marketing/banners': { endpoint: '/banners', title: 'Banners' },
   '/marketing/birthstones': { endpoint: '/birthstones', title: 'Birthstones' },
@@ -224,26 +249,32 @@ const DynamicModuleView = () => {
 
   // Helper to get row label/name
   const getRowLabel = (row) => {
-    return (
-      row.name ||
+    const val =
       row.title ||
+      row.name ||
+      row.coupon?.code ||
       row.couponcode ||
       row.fullName ||
       row.sku ||
       row.bodyPart ||
       row.url ||
       row.copyright ||
-      'Record'
-    );
+      'Record';
+
+    if (typeof val === 'object' && val !== null) {
+      return val.name || val.title || val.label || JSON.stringify(val);
+    }
+    return String(val ?? '');
   };
 
   const filteredItems = useMemo(() => {
     if (!search.trim()) return items;
     const q = search.toLowerCase();
     return items.filter((row) => {
-      const label = getRowLabel(row).toLowerCase();
-      const id = (row._id || row.id || '').toLowerCase();
-      return label.includes(q) || id.includes(q);
+      const label = String(getRowLabel(row)).toLowerCase();
+      const id = String(row._id || row.id || '').toLowerCase();
+      const sku = typeof row.sku === 'string' ? row.sku.toLowerCase() : '';
+      return label.includes(q) || id.includes(q) || sku.includes(q);
     });
   }, [items, search]);
 
@@ -337,67 +368,132 @@ const DynamicModuleView = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-50">
-                  {paginatedItems.map((row) => (
-                    <tr key={row._id || row.id} className="hover:bg-[#fcfaf7] transition-colors">
-                      <td className="py-3.5 text-stone-900 text-xs font-semibold flex items-center gap-2.5">
-                        {row.image?.url && (
-                          <img
-                            src={row.image.url}
-                            alt=""
-                            className="w-7 h-7 rounded-lg object-cover border border-stone-200"
-                          />
-                        )}
-                        {row.lightImage?.url && (
-                          <img
-                            src={row.lightImage.url}
-                            alt=""
-                            className="w-7 h-7 rounded-lg object-cover border border-stone-200"
-                          />
-                        )}
-                        <span>{getRowLabel(row)}</span>
-                      </td>
-                      <td className="py-3.5 text-stone-600 text-xs">
-                        {row.karat ? `${row.karat}KT` : null}
-                        {row.colorCode && (
-                          <span className="flex items-center gap-1.5">
-                            <span
-                              className="w-3.5 h-3.5 rounded-full border border-stone-300 shadow-2xs"
-                              style={{
-                                background: row.colorCodeEnd
-                                  ? `linear-gradient(135deg, ${row.colorCode}, ${row.colorCodeEnd})`
-                                  : row.colorCode,
-                              }}
+                  {paginatedItems.map((row) => {
+                    const rowLabel = getRowLabel(row);
+                    const thumbUrl =
+                      row.image?.url ||
+                      row.lightImage?.url ||
+                      (Array.isArray(row.images) && row.images[0]?.url) ||
+                      (Array.isArray(row.ornateImages) && row.ornateImages[0]?.url);
+
+                    const typeName =
+                      typeof row.type === 'object' && row.type !== null
+                        ? (row.type.name || row.type.title || '')
+                        : (typeof row.type === 'string' ? row.type : '');
+
+                    const shapeName =
+                      typeof row.shape === 'object' && row.shape !== null
+                        ? (row.shape.name || row.shape.title || '')
+                        : (typeof row.shape === 'string' ? row.shape : '');
+
+                    const colorName =
+                      typeof row.color === 'object' && row.color !== null
+                        ? (row.color.name || row.color.title || '')
+                        : (typeof row.color === 'string' ? row.color : '');
+
+                    const clarityName =
+                      typeof row.clarity === 'object' && row.clarity !== null
+                        ? (row.clarity.name || row.clarity.title || '')
+                        : (typeof row.clarity === 'string' ? row.clarity : '');
+
+                    const statusStr =
+                      typeof row.status === 'object' && row.status !== null
+                        ? (row.status.name || 'active')
+                        : String(row.status || (row.isActive !== false ? 'active' : 'inactive'));
+
+                    const isInactive = statusStr === 'inactive' || row.isActive === false;
+
+                    return (
+                      <tr key={row._id || row.id} className="hover:bg-[#fcfaf7] transition-colors">
+                        <td className="py-3.5 text-stone-900 text-xs font-semibold flex items-center gap-2.5">
+                          {thumbUrl && (
+                            <img
+                              src={thumbUrl}
+                              alt=""
+                              className="w-8 h-8 rounded-lg object-cover border border-stone-200 shrink-0"
                             />
-                            <span className="text-[11px] text-stone-500">{row.colorCode}</span>
+                          )}
+                          <span className="truncate max-w-xs">{rowLabel}</span>
+                        </td>
+                        <td className="py-3.5 text-stone-600 text-xs">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {row.sku && typeof row.sku === 'string' && row.sku !== rowLabel && (
+                              <span className="font-mono text-[10px] bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded border border-stone-200/50">
+                                {row.sku}
+                              </span>
+                            )}
+                            {row.carat !== undefined && row.carat !== null && (
+                              <span className="font-semibold text-stone-900">
+                                {row.carat} ct
+                              </span>
+                            )}
+                            {shapeName && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
+                                {shapeName}
+                              </span>
+                            )}
+                            {colorName && (
+                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px]">
+                                Color: {colorName}
+                              </span>
+                            )}
+                            {clarityName && (
+                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px]">
+                                {clarityName}
+                              </span>
+                            )}
+                            {row.karat ? <span>{row.karat}KT</span> : null}
+                            {row.colorCode && (
+                              <span className="flex items-center gap-1.5">
+                                <span
+                                  className="w-3.5 h-3.5 rounded-full border border-stone-300 shadow-2xs"
+                                  style={{
+                                    background: row.colorCodeEnd
+                                      ? `linear-gradient(135deg, ${row.colorCode}, ${row.colorCodeEnd})`
+                                      : row.colorCode,
+                                  }}
+                                />
+                                <span className="text-[11px] text-stone-500">{row.colorCode}</span>
+                              </span>
+                            )}
+                            {row.sizeFrom !== undefined && `${row.sizeFrom} - ${row.sizeTo}ct`}
+                            {row.price !== undefined && row.price !== null && (
+                              <span className="font-semibold text-stone-900">
+                                ₹{Number(row.price).toLocaleString('en-IN')}
+                              </span>
+                            )}
+                            {row.ratePerCarat && `₹${Number(row.ratePerCarat).toLocaleString('en-IN')}/ct`}
+                            {row.rate && !row.ratePerCarat && `₹${Number(row.rate).toLocaleString('en-IN')}/ct`}
+                            {typeName && (
+                              <span className="capitalize px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 text-[10px]">
+                                {typeName}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-3.5">
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                              isInactive
+                                ? 'bg-stone-100 text-stone-600 border-stone-200'
+                                : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
+                            }`}
+                          >
+                            {statusStr}
                           </span>
-                        )}
-                        {row.sizeFrom !== undefined && `${row.sizeFrom} - ${row.sizeTo}ct`}
-                        {row.price && `₹${Number(row.price).toLocaleString('en-IN')}`}
-                        {row.ratePerCarat && `₹${Number(row.ratePerCarat).toLocaleString('en-IN')}/ct`}
-                        {row.type && <span className="capitalize">{row.type}</span>}
-                      </td>
-                      <td className="py-3.5">
-                        <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                            row.status === 'inactive' || row.isActive === false
-                              ? 'bg-stone-100 text-stone-600 border-stone-200'
-                              : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
-                          }`}
-                        >
-                          {row.status || (row.isActive !== false ? 'active' : 'inactive')}
-                        </span>
-                      </td>
-                      <td className="py-3.5 text-right">
-                        <button
-                          onClick={() => handleDelete(row._id || row.id)}
-                          className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete Record"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="py-3.5 text-right">
+                          <button
+                            onClick={() => handleDelete(row._id || row.id)}
+                            className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                            title="Delete Record"
+                          >
+                            <HiOutlineTrash className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
 

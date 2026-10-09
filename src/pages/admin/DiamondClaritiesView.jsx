@@ -276,8 +276,8 @@ export default function DiamondClaritiesView() {
                   // In Screenshot 1, row 3 "VS" is rendered in warm gold/brown
                   const isGoldClarity = c.name?.toUpperCase() === 'VS';
 
-                  const formattedDate = c.createdAt
-                    ? new Date(c.createdAt).toLocaleDateString('en-GB', {
+                  const formattedDate = c.meta?.createdAt
+                    ? new Date(c.meta.createdAt).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',

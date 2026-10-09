@@ -45,8 +45,8 @@ export const navSections = [
       { id: 'customers', title: 'Customers', path: '/customers', icon: HiOutlineUserGroup },
       { id: 'appointments', title: 'Appointments', path: '/appointments', icon: HiOutlineCalendar },
       { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles },
-      { id: 'ornate-products', title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoDiamondOutline },
-      { id: 'diamonds', title: 'Diamonds', path: '/diamonds', icon: IoDiamondOutline },
+      { id: 'ornate-products', title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoDiamondOutline, apiEndpoint: '/products?isOrnate=true' },
+      { id: 'diamonds', title: 'Diamonds', path: '/diamonds', icon: IoDiamondOutline, apiEndpoint: '/diamonds' },
       { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
 
       // ─── 1. Catalog (Matches User Screenshot 1-4) ───

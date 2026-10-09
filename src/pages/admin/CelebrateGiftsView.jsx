@@ -442,7 +442,7 @@ export default function CelebrateGiftsView() {
                       <HiOutlineTag className="w-3 h-3 text-stone-400" />
                       <span>{item.placement?.toUpperCase() || activeTab.toUpperCase()}</span>
                     </div>
-                    <span>CREATED {formatDate(item.createdAt)}</span>
+                    <span>CREATED {formatDate(item.meta?.createdAt)}</span>
                   </div>
                 </div>
               </div>
@@ -820,7 +820,7 @@ export default function CelebrateGiftsView() {
               <div className="flex items-center gap-4 text-xs text-stone-500 mb-4">
                 <span>Placement: <strong>{viewingItem.placement}</strong></span>
                 <span>Products: <strong>{viewingItem.productCount || 0}</strong></span>
-                <span>Created: <strong>{formatDate(viewingItem.createdAt)}</strong></span>
+                <span>Created: <strong>{formatDate(viewingItem.meta?.createdAt)}</strong></span>
               </div>
               <div className="flex justify-end pt-3 border-t border-stone-100">
                 <button

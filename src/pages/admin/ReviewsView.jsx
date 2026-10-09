@@ -27,13 +27,15 @@ export default function ReviewsView() {
   const [submitting, setSubmitting] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
 
-  // Form State matching "WRITE A REVIEW" modal
+  // Form State matching customer and review schema
   const [formData, setFormData] = useState({
-    clientName: '',
+    name: '',
+    email: '',
     title: '',
     rating: 5,
     status: 'approved',
     comment: '',
+    reviewDate: '',
     image: { url: '', key: '' },
   });
   const [imageFile, setImageFile] = useState(null);
@@ -60,11 +62,13 @@ export default function ReviewsView() {
   const handleOpenAddModal = () => {
     setEditingReview(null);
     setFormData({
-      clientName: '',
+      name: '',
+      email: '',
       title: '',
       rating: 5,
       status: 'approved',
       comment: '',
+      reviewDate: new Date().toISOString().split('T')[0],
       image: { url: '', key: '' },
     });
     setImageFile(null);
@@ -75,12 +79,15 @@ export default function ReviewsView() {
 
   const handleEdit = (rev) => {
     setEditingReview(rev);
+    const dateVal = rev.review?.reviewDate || rev.meta?.createdAt;
     setFormData({
-      clientName: rev.clientName || '',
-      title: rev.title || '',
-      rating: rev.rating || 5,
+      name: rev.customer?.name || '',
+      email: rev.customer?.email || '',
+      title: rev.review?.title || '',
+      rating: rev.review?.rating || 5,
       status: rev.status || 'approved',
-      comment: rev.comment || '',
+      comment: rev.review?.comment || '',
+      reviewDate: dateVal ? new Date(dateVal).toISOString().split('T')[0] : '',
       image: rev.image || { url: '', key: '' },
     });
     setImageFile(null);
@@ -91,8 +98,8 @@ export default function ReviewsView() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.clientName.trim()) {
-      toast.error('Please enter reviewer name');
+    if (!formData.name.trim()) {
+      toast.error('Please enter customer name');
       return;
     }
     if (!formData.title.trim()) {
@@ -127,11 +134,18 @@ export default function ReviewsView() {
       }
 
       const payload = {
-        ...formData,
-        clientName: formData.clientName.trim(),
-        title: formData.title.trim(),
-        comment: formData.comment.trim(),
+        customer: {
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+        },
+        review: {
+          title: formData.title.trim(),
+          rating: Number(formData.rating),
+          comment: formData.comment.trim(),
+          reviewDate: formData.reviewDate ? new Date(formData.reviewDate) : new Date(),
+        },
         image: imageData,
+        status: formData.status,
       };
 
       if (editingReview) {
@@ -187,10 +201,16 @@ export default function ReviewsView() {
   const displayedReviews = reviews.filter((r) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    const name = (r.clientName || '').toLowerCase();
-    const title = (r.title || '').toLowerCase();
-    const comment = (r.comment || '').toLowerCase();
-    return name.includes(q) || title.includes(q) || comment.includes(q);
+    const name = (r.customer?.name || '').toLowerCase();
+    const email = (r.customer?.email || '').toLowerCase();
+    const title = (r.review?.title || '').toLowerCase();
+    const comment = (r.review?.comment || '').toLowerCase();
+    return (
+      name.includes(q) ||
+      email.includes(q) ||
+      title.includes(q) ||
+      comment.includes(q)
+    );
   });
 
   const {
@@ -238,7 +258,7 @@ export default function ReviewsView() {
           <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             type="text"
-            placeholder="Search feedback by reviewer name, title, or comment..."
+            placeholder="Search feedback by reviewer name, email, title, or comment..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-11 pr-4 py-2.5 bg-stone-50/60 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
@@ -274,115 +294,129 @@ export default function ReviewsView() {
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((rev) => (
-                  <tr key={rev._id} className="hover:bg-stone-50/60 transition-colors">
-                    {/* Client & Date */}
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        {rev.image?.url ? (
-                          <img
-                            src={rev.image.url}
-                            alt={rev.clientName}
-                            className="w-10 h-10 rounded-xl object-cover border border-stone-200 shrink-0 shadow-2xs"
-                          />
-                        ) : (
-                          <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-500 flex items-center justify-center border border-stone-200 shrink-0">
-                            <HiOutlineUser className="w-4 h-4" />
-                          </div>
-                        )}
-                        <div>
-                          <p className="font-semibold text-stone-900 text-xs">{rev.clientName}</p>
-                          <p className="text-[10px] text-stone-400 font-medium tracking-wide">
-                            {formatDate(rev.reviewDate || rev.createdAt)}
-                          </p>
-                        </div>
-                      </div>
-                    </td>
+                paginatedItems.map((rev) => {
+                  const reviewerName = rev.customer?.name || 'Anonymous';
+                  const reviewerEmail = rev.customer?.email || '';
+                  const reviewTitle = rev.review?.title || '';
+                  const reviewRating = rev.review?.rating || 5;
+                  const reviewComment = rev.review?.comment || '';
+                  const reviewDate = rev.review?.reviewDate || rev.meta?.createdAt;
 
-                    {/* Score / Rating */}
-                    <td className="py-4 px-6">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-0.5 text-[#96724a]">
-                          {[...Array(5)].map((_, i) => (
-                            <IoStar
-                              key={i}
-                              className={`w-3.5 h-3.5 ${
-                                i < (rev.rating || 5) ? 'text-[#96724a]' : 'text-stone-200'
-                              }`}
+                  return (
+                    <tr key={rev._id} className="hover:bg-stone-50/60 transition-colors">
+                      {/* Client & Date */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3">
+                          {rev.image?.url ? (
+                            <img
+                              src={rev.image.url}
+                              alt={reviewerName}
+                              className="w-10 h-10 rounded-xl object-cover border border-stone-200 shrink-0 shadow-2xs"
                             />
-                          ))}
+                          ) : (
+                            <div className="w-10 h-10 rounded-xl bg-stone-100 text-stone-500 flex items-center justify-center border border-stone-200 shrink-0">
+                              <HiOutlineUser className="w-4 h-4" />
+                            </div>
+                          )}
+                          <div>
+                            <p className="font-semibold text-stone-900 text-xs">{reviewerName}</p>
+                            {reviewerEmail && (
+                              <p className="text-[10px] text-stone-400 font-medium">
+                                {reviewerEmail}
+                              </p>
+                            )}
+                            <p className="text-[10px] text-stone-400 font-medium tracking-wide">
+                              {formatDate(reviewDate)}
+                            </p>
+                          </div>
                         </div>
-                        <p className="text-[10px] font-bold text-stone-400">{rev.rating || 5}/5 STARS</p>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Review Title & Comment */}
-                    <td className="py-4 px-6">
-                      <div className="max-w-md space-y-0.5">
-                        {rev.title && (
-                          <p className="font-semibold text-stone-900 text-xs">
-                            {rev.title}
+                      {/* Score / Rating */}
+                      <td className="py-4 px-6">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-0.5 text-[#96724a]">
+                            {[...Array(5)].map((_, i) => (
+                              <IoStar
+                                key={i}
+                                className={`w-3.5 h-3.5 ${
+                                  i < reviewRating ? 'text-[#96724a]' : 'text-stone-200'
+                                }`}
+                              />
+                            ))}
+                          </div>
+                          <p className="text-[10px] font-bold text-stone-400">{reviewRating}/5 STARS</p>
+                        </div>
+                      </td>
+
+                      {/* Review Title & Comment */}
+                      <td className="py-4 px-6">
+                        <div className="max-w-md space-y-0.5">
+                          {reviewTitle && (
+                            <p className="font-semibold text-stone-900 text-xs">
+                              {reviewTitle}
+                            </p>
+                          )}
+                          <p className="text-stone-600 text-xs italic line-clamp-2 leading-relaxed">
+                            "{reviewComment}"
                           </p>
+                        </div>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-4 px-6">
+                        {rev.status === 'approved' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            <HiOutlineCheckCircle className="w-3 h-3" />
+                            <span>APPROVED</span>
+                          </span>
+                        ) : rev.status === 'rejected' ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                            <HiOutlineBan className="w-3 h-3" />
+                            <span>REJECTED</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-amber-50 text-amber-700 border border-amber-200">
+                            <span>PENDING</span>
+                          </span>
                         )}
-                        <p className="text-stone-600 text-xs italic line-clamp-2 leading-relaxed">
-                          "{rev.comment}"
-                        </p>
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Status */}
-                    <td className="py-4 px-6">
-                      {rev.status === 'approved' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          <HiOutlineCheckCircle className="w-3 h-3" />
-                          <span>APPROVED</span>
-                        </span>
-                      ) : rev.status === 'rejected' ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
-                          <HiOutlineBan className="w-3 h-3" />
-                          <span>REJECTED</span>
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-amber-50 text-amber-700 border border-amber-200">
-                          <span>PENDING</span>
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Actions */}
-                    <td className="py-4 px-6 text-right">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          onClick={() => handleToggleStatus(rev._id, rev.status)}
-                          title={rev.status === 'approved' ? 'Mark as Rejected' : 'Mark as Approved'}
-                          className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-md transition-colors cursor-pointer"
-                        >
-                          <HiOutlineBan className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleEdit(rev)}
-                          title="Edit Review"
-                          className="p-1.5 text-sky-500 hover:text-sky-700 hover:bg-sky-50 rounded-md transition-colors cursor-pointer"
-                        >
-                          <HiOutlinePencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(rev._id)}
-                          title="Delete Review"
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                      {/* Actions */}
+                      <td className="py-4 px-6 text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <button
+                            onClick={() => handleToggleStatus(rev._id, rev.status)}
+                            title={rev.status === 'approved' ? 'Mark as Rejected' : 'Mark as Approved'}
+                            className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-md transition-colors cursor-pointer"
+                          >
+                            <HiOutlineBan className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(rev)}
+                            title="Edit Review"
+                            className="p-1.5 text-sky-500 hover:text-sky-700 hover:bg-sky-50 rounded-md transition-colors cursor-pointer"
+                          >
+                            <HiOutlinePencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(rev._id)}
+                            title="Delete Review"
+                            className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
+                          >
+                            <HiOutlineTrash className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
         </div>
 
-        {/* Luxury Common Pagination */}
+        {/* Common Pagination */}
         <Pagination
           currentPage={currentPage}
           totalItems={totalItems}
@@ -392,7 +426,7 @@ export default function ReviewsView() {
         />
       </div>
 
-      {/* ─── WRITE A REVIEW Modal (Pixel-Perfect Match to Screenshot) ─── */}
+      {/* ─── WRITE / EDIT A REVIEW Modal ─── */}
       {showAddModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 overflow-y-auto animate-fadeIn"
@@ -405,7 +439,7 @@ export default function ReviewsView() {
             {/* Header: WRITE A REVIEW + Circle Close Button */}
             <div className="flex items-center justify-between border-b border-stone-100 pb-4">
               <h2 className="font-bold text-stone-900 text-base sm:text-lg tracking-wider uppercase font-sans">
-                WRITE A REVIEW
+                {editingReview ? 'EDIT REVIEW' : 'WRITE A REVIEW'}
               </h2>
               <button
                 type="button"
@@ -450,19 +484,34 @@ export default function ReviewsView() {
                 </div>
               </div>
 
-              {/* * NAME: */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-stone-800 tracking-wider uppercase">
-                  <span className="text-red-500">*</span> NAME:
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Reviewer Name"
-                  value={formData.clientName}
-                  onChange={(e) => setFormData({ ...formData, clientName: e.target.value })}
-                  className="w-full h-12 px-4 bg-white border border-stone-200 rounded-xl text-xs font-medium text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
-                />
+              {/* 1. Customer Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-stone-800 tracking-wider uppercase">
+                    <span className="text-red-500">*</span> CUSTOMER NAME:
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Krushnakant Jayswal"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full h-12 px-4 bg-white border border-stone-200 rounded-xl text-xs font-medium text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-bold text-stone-800 tracking-wider uppercase">
+                    CUSTOMER EMAIL:
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="e.g. krushnakant@example.com"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full h-12 px-4 bg-white border border-stone-200 rounded-xl text-xs font-medium text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
+                  />
+                </div>
               </div>
 
               {/* * TITLE: */}
@@ -473,20 +522,20 @@ export default function ReviewsView() {
                 <input
                   type="text"
                   required
-                  placeholder="Review Title"
+                  placeholder="e.g. Exquisite Diamond Solitaire"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                   className="w-full h-12 px-4 bg-white border border-stone-200 rounded-xl text-xs font-medium text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
                 />
               </div>
 
-              {/* * REVIEW: */}
+              {/* * REVIEW COMMENT: */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-stone-800 tracking-wider uppercase">
                   <span className="text-red-500">*</span> REVIEW:
                 </label>
                 <textarea
-                  rows={5}
+                  rows={4}
                   required
                   placeholder="Write your review here..."
                   value={formData.comment}
@@ -502,7 +551,7 @@ export default function ReviewsView() {
                 </label>
                 <div className="flex items-center gap-4">
                   {imagePreview ? (
-                    <div className="relative w-24 h-24 rounded-2xl overflow-hidden border border-stone-200 group shrink-0">
+                    <div className="relative w-20 h-20 rounded-2xl overflow-hidden border border-stone-200 group shrink-0">
                       <img
                         src={imagePreview}
                         alt="Preview"
@@ -522,7 +571,7 @@ export default function ReviewsView() {
                       </button>
                     </div>
                   ) : (
-                    <label className="w-24 h-24 rounded-2xl border-2 border-dashed border-stone-300 hover:border-stone-400 flex flex-col items-center justify-center cursor-pointer transition-colors bg-white shrink-0">
+                    <label className="w-20 h-20 rounded-2xl border-2 border-dashed border-stone-300 hover:border-stone-400 flex flex-col items-center justify-center cursor-pointer transition-colors bg-white shrink-0">
                       <HiOutlinePlus className="w-5 h-5 text-stone-400 stroke-2 mb-1" />
                       <span className="text-[10px] font-bold tracking-widest text-stone-500 uppercase">
                         UPLOAD
@@ -547,7 +596,7 @@ export default function ReviewsView() {
                 </div>
               </div>
 
-              {/* Admin Moderation Status (Discreet control) */}
+              {/* Admin Moderation Status */}
               <div className="flex items-center justify-between pt-1 border-t border-stone-100">
                 <div className="flex items-center gap-2">
                   <span className="text-[11px] font-bold text-stone-400 uppercase tracking-wider">

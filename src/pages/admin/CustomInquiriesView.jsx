@@ -25,6 +25,7 @@ export default function CustomInquiriesView() {
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'confirmed' | 'completed' | 'cancelled'
   const [search, setSearch] = useState('');
   const [selectedInquiry, setSelectedInquiry] = useState(null);
+  const [previewImage, setPreviewImage] = useState(null);
 
   const fetchInquiries = async () => {
     try {
@@ -49,6 +50,9 @@ export default function CustomInquiriesView() {
       await api.put(`/custom-inquiries/${id}`, { status: newStatus });
       toast.success(`Inquiry marked as ${newStatus}`);
       fetchInquiries();
+      if (selectedInquiry?._id === id) {
+        setSelectedInquiry((prev) => (prev ? { ...prev, status: newStatus } : null));
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Status update failed');
     }
@@ -67,15 +71,18 @@ export default function CustomInquiriesView() {
       await api.delete(`/custom-inquiries/${id}`);
       toast.success('Custom inquiry deleted successfully');
       fetchInquiries();
+      if (selectedInquiry?._id === id) {
+        setSelectedInquiry(null);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Delete failed');
     }
   };
 
-  // Metrics matching Screenshot 4
+  // Metrics
   const totalCount = inquiries.length;
   const pendingCount = inquiries.filter((i) => i.status === 'pending').length;
-  const completedCount = inquiries.filter((i) => i.status === 'completed').length;
+  const completedCount = inquiries.filter((i) => i.status === 'completed' || i.status === 'confirmed').length;
   const cancelledCount = inquiries.filter((i) => i.status === 'cancelled').length;
 
   const displayedList = inquiries
@@ -83,10 +90,20 @@ export default function CustomInquiriesView() {
     .filter((i) => {
       if (!search.trim()) return true;
       const q = search.toLowerCase();
-      const name = (i.name || '').toLowerCase();
-      const email = (i.email || '').toLowerCase();
-      const phone = (i.phoneNumber || '').toLowerCase();
-      return name.includes(q) || email.includes(q) || phone.includes(q);
+      const name = (i.customer?.name || '').toLowerCase();
+      const email = (i.customer?.email || '').toLowerCase();
+      const phone = (i.customer?.phone?.number || '').toLowerCase();
+      const comments = (i.requirements?.comments || '').toLowerCase();
+      const stone = (i.requirements?.stoneType || '').toLowerCase();
+      const metal = (i.requirements?.metalType || '').toLowerCase();
+      return (
+        name.includes(q) ||
+        email.includes(q) ||
+        phone.includes(q) ||
+        comments.includes(q) ||
+        stone.includes(q) ||
+        metal.includes(q)
+      );
     });
 
   const {
@@ -100,7 +117,7 @@ export default function CustomInquiriesView() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 animate-fadeIn">
-      {/* ─── Page Title Header (Matches Screenshot 4) ─── */}
+      {/* ─── Page Title Header ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-stone-900 font-serif">
@@ -119,12 +136,12 @@ export default function CustomInquiriesView() {
         </button>
       </div>
 
-      {/* ─── 4 Stat Cards (Matches Screenshot 4) ─── */}
+      {/* ─── 4 Stat Cards ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <div className="bg-white rounded-xl border border-stone-200/90 p-5 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">TOTAL INQUIRIES</p>
-            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{totalCount || 5}</p>
+            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{totalCount}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
             <HiOutlineSparkles className="w-5 h-5 text-stone-500" />
@@ -134,7 +151,7 @@ export default function CustomInquiriesView() {
         <div className="bg-white rounded-xl border border-stone-200/90 p-5 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">TOTAL PENDING</p>
-            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{pendingCount || 3}</p>
+            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{pendingCount}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
             <HiOutlineClock className="w-5 h-5 text-stone-500" />
@@ -143,8 +160,8 @@ export default function CustomInquiriesView() {
 
         <div className="bg-white rounded-xl border border-stone-200/90 p-5 shadow-xs flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">TOTAL COMPLETED</p>
-            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{completedCount || 0}</p>
+            <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">CONFIRMED / COMPLETED</p>
+            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{completedCount}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
             <HiOutlineCheckCircle className="w-5 h-5 text-stone-500" />
@@ -154,7 +171,7 @@ export default function CustomInquiriesView() {
         <div className="bg-white rounded-xl border border-stone-200/90 p-5 shadow-xs flex items-center justify-between">
           <div>
             <p className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">TOTAL CANCELLED</p>
-            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{cancelledCount || 0}</p>
+            <p className="text-2xl font-bold text-stone-900 mt-1 font-serif">{cancelledCount}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-stone-100 flex items-center justify-center text-stone-600">
             <HiOutlineExclamation className="w-5 h-5 text-stone-500" />
@@ -162,7 +179,7 @@ export default function CustomInquiriesView() {
         </div>
       </div>
 
-      {/* ─── Status Filter Tabs (Matches Screenshot 4) ─── */}
+      {/* ─── Status Filter Tabs ─── */}
       <div className="flex flex-wrap items-center gap-3">
         {['pending', 'confirmed', 'completed', 'cancelled'].map((statusKey) => (
           <button
@@ -185,7 +202,7 @@ export default function CustomInquiriesView() {
           <HiOutlineSearch className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             type="text"
-            placeholder="Search client name or contact..."
+            placeholder="Search client name, email, phone, requirements..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-11 pr-4 py-2.5 bg-stone-50/60 border border-stone-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
@@ -193,7 +210,7 @@ export default function CustomInquiriesView() {
         </div>
       </div>
 
-      {/* ─── Table (Matches Screenshot 4) ─── */}
+      {/* ─── Table ─── */}
       <div className="bg-white rounded-xl border border-stone-200/90 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
@@ -201,8 +218,8 @@ export default function CustomInquiriesView() {
               <tr className="border-b border-stone-100 bg-stone-50/50 text-[11px] font-bold tracking-wider text-stone-500 uppercase">
                 <th className="py-4 px-6">CLIENT INFO</th>
                 <th className="py-4 px-6">CONTACT</th>
-                <th className="py-4 px-6">DESIGN DETAILS</th>
-                <th className="py-4 px-6">BUDGET</th>
+                <th className="py-4 px-6">JEWELLERY REQUIREMENTS</th>
+                <th className="py-4 px-6">COMMENTS / NOTES</th>
                 <th className="py-4 px-6">STATUS</th>
                 <th className="py-4 px-6 text-right">ACTIONS</th>
               </tr>
@@ -223,22 +240,31 @@ export default function CustomInquiriesView() {
                 </tr>
               ) : (
                 paginatedItems.map((inq) => {
-                  const initial = (inq.name || 'C')[0].toUpperCase();
-                  const jewelryTypeList = Array.isArray(inq.jewelryType)
-                    ? inq.jewelryType.join(', ')
-                    : inq.jewelryType || 'RING/BAND';
+                  const clientName = inq.customer?.name || 'Anonymous';
+                  const clientEmail = inq.customer?.email || '—';
+                  const countryCode = inq.customer?.phone?.countryCode || '91';
+                  const rawPhone = inq.customer?.phone?.number || '';
+                  const initial = (clientName || 'C')[0].toUpperCase();
+
+                  const stoneType = inq.requirements?.stoneType || '—';
+                  const metalType = inq.requirements?.metalType || '—';
+                  const rawJewelryTypes = inq.requirements?.jewelryTypes;
+                  const jewelryTypeList = Array.isArray(rawJewelryTypes)
+                    ? rawJewelryTypes.join(', ')
+                    : rawJewelryTypes || '—';
+                  const comments = inq.requirements?.comments || inq.comments || '—';
 
                   return (
                     <tr key={inq._id} className="hover:bg-stone-50/60 transition-colors">
                       {/* Client Info */}
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-[#f4ece3] text-[#8f6d43] font-semibold text-xs flex items-center justify-center border border-[#8f6d43]/20 shadow-2xs">
+                          <div className="w-9 h-9 rounded-full bg-[#f4ece3] text-[#8f6d43] font-semibold text-xs flex items-center justify-center border border-[#8f6d43]/20 shadow-2xs shrink-0">
                             {initial}
                           </div>
                           <div>
-                            <p className="font-semibold text-stone-900">{inq.name}</p>
-                            <p className="text-xs text-stone-400 truncate max-w-[180px]">{inq.email}</p>
+                            <p className="font-semibold text-stone-900">{clientName}</p>
+                            <p className="text-xs text-stone-400 truncate max-w-[180px]">{clientEmail}</p>
                           </div>
                         </div>
                       </td>
@@ -246,16 +272,18 @@ export default function CustomInquiriesView() {
                       {/* Contact */}
                       <td className="py-4 px-6">
                         <div className="flex items-center gap-2 text-stone-700 text-xs font-medium">
-                          <HiOutlinePhone className="w-3.5 h-3.5 text-stone-400" />
-                          <span>{inq.phoneNumber}</span>
+                          <HiOutlinePhone className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span>
+                            {rawPhone ? `+${countryCode} ${rawPhone}` : '—'}
+                          </span>
                         </div>
                       </td>
 
-                      {/* Design Details */}
+                      {/* Jewellery Requirements */}
                       <td className="py-4 px-6">
                         <div>
                           <p className="font-semibold text-stone-900 text-xs">
-                            {inq.stoneType} · {inq.metalType}
+                            {stoneType} · {metalType}
                           </p>
                           <p className="text-[11px] text-stone-400 font-semibold tracking-wider uppercase mt-0.5">
                             {jewelryTypeList}
@@ -263,27 +291,31 @@ export default function CustomInquiriesView() {
                         </div>
                       </td>
 
-                      {/* Budget */}
-                      <td className="py-4 px-6 text-stone-800 text-xs font-medium">
-                        {inq.budget}
+                      {/* Comments / Notes */}
+                      <td className="py-4 px-6 text-stone-600 text-xs">
+                        <p className="max-w-[200px] truncate" title={comments}>
+                          {comments}
+                        </p>
                       </td>
 
                       {/* Status */}
                       <td className="py-4 px-6">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${
-                          inq.status === 'confirmed'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : inq.status === 'completed'
-                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                            : inq.status === 'cancelled'
-                            ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                            : 'bg-amber-50 text-amber-700 border border-amber-200'
-                        }`}>
+                        <span
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase ${
+                            inq.status === 'confirmed'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : inq.status === 'completed'
+                              ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                              : inq.status === 'cancelled'
+                              ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                              : 'bg-amber-50 text-amber-700 border border-amber-200'
+                          }`}
+                        >
                           {inq.status}
                         </span>
                       </td>
 
-                      {/* Actions (View, Accept, Cancel, Delete) */}
+                      {/* Actions */}
                       <td className="py-4 px-6 text-right">
                         <div className="inline-flex items-center gap-2">
                           <button
@@ -328,7 +360,7 @@ export default function CustomInquiriesView() {
           </table>
         </div>
 
-        {/* Luxury Common Pagination */}
+        {/* Common Pagination */}
         <Pagination
           currentPage={currentPage}
           totalItems={totalItems}
@@ -341,62 +373,244 @@ export default function CustomInquiriesView() {
       {/* ─── Detail Modal ─── */}
       {selectedInquiry && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 overflow-y-auto animate-fadeIn"
           onClick={() => setSelectedInquiry(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-scaleUp"
+            className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-stone-200/80 space-y-5 my-8 animate-scaleUp text-left"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-              <h3 className="font-serif font-bold text-lg text-stone-900">
-                Custom Inquiry Details
-              </h3>
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3.5 border-b border-stone-200/80">
+              <div className="flex items-center gap-2.5">
+                <HiOutlineSparkles className="w-5 h-5 text-[#8f6d43]" />
+                <h3 className="font-bold text-base sm:text-lg text-stone-900 tracking-tight">
+                  Custom Design Request Details
+                </h3>
+              </div>
               <button
                 onClick={() => setSelectedInquiry(null)}
-                className="p-1 text-stone-400 hover:text-stone-700 rounded-lg"
+                className="w-7 h-7 rounded-full bg-stone-100 hover:bg-stone-200 text-stone-400 hover:text-stone-700 flex items-center justify-center transition-colors cursor-pointer"
+                title="Close"
               >
-                <HiOutlineX className="w-5 h-5" />
+                <HiOutlineX className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-sm">
-              <div>
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block">Client</span>
-                <p className="font-semibold text-stone-900">{selectedInquiry.name} ({selectedInquiry.email})</p>
-                <p className="text-stone-500 text-xs">Phone: {selectedInquiry.phoneNumber}</p>
-              </div>
-
-              <div>
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block">Design Request</span>
-                <p className="text-stone-800">
-                  {selectedInquiry.stoneType} · {selectedInquiry.metalType} · {Array.isArray(selectedInquiry.jewelryType) ? selectedInquiry.jewelryType.join(', ') : selectedInquiry.jewelryType}
-                </p>
-              </div>
-
-              <div>
-                <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block">Budget Range</span>
-                <p className="text-stone-800 font-semibold">{selectedInquiry.budget}</p>
-              </div>
-
-              {selectedInquiry.comments && (
+            {/* Section 1: Customer Details (2x2 Grid) */}
+            <div className="pb-4 border-b border-stone-200/80">
+              <span className="text-[11px] font-bold text-[#8f6d43] uppercase tracking-wider block mb-3">
+                1. Customer Details
+              </span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3.5 gap-x-6">
                 <div>
-                  <span className="text-xs font-bold text-stone-400 uppercase tracking-wider block">Client Comments</span>
-                  <p className="text-stone-600 bg-stone-50 p-3 rounded-lg text-xs leading-relaxed italic border border-stone-100">
-                    "{selectedInquiry.comments}"
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                    NAME
+                  </span>
+                  <p className="text-sm font-bold text-stone-900 mt-1">
+                    {selectedInquiry.customer?.name || selectedInquiry.name || '—'}
                   </p>
                 </div>
-              )}
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                    EMAIL ADDRESS
+                  </span>
+                  <p className="text-sm font-bold text-stone-900 mt-1 break-all">
+                    {selectedInquiry.customer?.email || '—'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                    PHONE
+                  </span>
+                  <p className="text-sm font-bold text-stone-900 mt-1">
+                    +{selectedInquiry.customer?.phone?.countryCode || '91'}{' '}
+                    {selectedInquiry.customer?.phone?.number || '—'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                    STATUS
+                  </span>
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase mt-1 ${
+                      selectedInquiry.status === 'confirmed'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                        : selectedInquiry.status === 'completed'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : selectedInquiry.status === 'cancelled'
+                        ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                        : 'bg-amber-50 text-amber-700 border border-amber-200'
+                    }`}
+                  >
+                    {selectedInquiry.status}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
-              <button
-                onClick={() => setSelectedInquiry(null)}
-                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold rounded-lg transition-colors"
-              >
-                Close
-              </button>
+            {/* Section 2: Jewellery Requirements */}
+            <div className="pb-4 border-b border-stone-200/80">
+              <span className="text-[11px] font-bold text-[#8f6d43] uppercase tracking-wider block mb-3">
+                2. Jewellery Requirements
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                    STONE TYPE
+                  </span>
+                  <p className="text-xs sm:text-sm font-bold text-stone-900 mt-1">
+                    {selectedInquiry.requirements?.stoneType || '—'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                    METAL TYPE
+                  </span>
+                  <p className="text-xs sm:text-sm font-bold text-stone-900 mt-1">
+                    {selectedInquiry.requirements?.metalType || '—'}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                    JEWELRY TYPES
+                  </span>
+                  <p className="text-xs sm:text-sm font-bold text-stone-900 mt-1 capitalize">
+                    {Array.isArray(selectedInquiry.requirements?.jewelryTypes)
+                      ? selectedInquiry.requirements.jewelryTypes.join(', ')
+                      : selectedInquiry.requirements?.jewelryTypes || '—'}
+                  </p>
+                </div>
+              </div>
+
+              {/* Comments inside Requirements */}
+              <div className="mt-3.5">
+                <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                  COMMENTS / SPECIAL REQUESTS
+                </span>
+                <div className="mt-1.5 p-3 rounded-xl bg-stone-50 border border-stone-100 text-xs sm:text-sm text-stone-700 leading-relaxed min-h-[44px]">
+                  {selectedInquiry.requirements?.comments ? (
+                    selectedInquiry.requirements.comments
+                  ) : (
+                    <span className="text-stone-400 italic">No comments provided.</span>
+                  )}
+                </div>
+              </div>
             </div>
+
+            {/* Section 3: Reference Images */}
+            <div>
+              {(() => {
+                const rawImages = selectedInquiry.referenceImages || [];
+                const images = Array.isArray(rawImages)
+                  ? rawImages
+                  : [rawImages].filter(Boolean);
+
+                return (
+                  <div>
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider block">
+                      REFERENCE IMAGES ({images.length})
+                    </span>
+                    {images.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-3">
+                        {images.map((img, idx) => {
+                          const url = typeof img === 'string' ? img : img?.url;
+                          if (!url) return null;
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => setPreviewImage(url)}
+                              className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden border border-stone-200/80 bg-stone-100 group relative cursor-pointer shadow-xs hover:border-[#8f6d43] transition-all shrink-0"
+                            >
+                              <img
+                                src={url}
+                                alt={`Reference ${idx + 1}`}
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                              />
+                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                <HiOutlineEye className="w-5 h-5" />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-stone-400 italic mt-1.5">
+                        No reference images attached
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-stone-200/80 flex items-center justify-between gap-3">
+              <button
+                onClick={() => handleDelete(selectedInquiry._id)}
+                className="px-3.5 py-2 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Delete Inquiry
+              </button>
+
+              <div className="flex items-center gap-2">
+                {selectedInquiry.status === 'pending' && (
+                  <>
+                    <button
+                      onClick={() => handleUpdateStatus(selectedInquiry._id, 'confirmed')}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    >
+                      Accept Inquiry
+                    </button>
+                    <button
+                      onClick={() => handleUpdateStatus(selectedInquiry._id, 'cancelled')}
+                      className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                    >
+                      Cancel Inquiry
+                    </button>
+                  </>
+                )}
+                {selectedInquiry.status === 'confirmed' && (
+                  <button
+                    onClick={() => handleUpdateStatus(selectedInquiry._id, 'completed')}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                  >
+                    Mark as Completed
+                  </button>
+                )}
+                <button
+                  onClick={() => setSelectedInquiry(null)}
+                  className="px-4 py-2 border border-stone-200 text-stone-700 hover:bg-stone-50 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Lightbox Modal for Full Image Preview ─── */}
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-60 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 animate-fadeIn"
+          onClick={() => setPreviewImage(null)}
+        >
+          <div
+            className="relative max-w-3xl max-h-[90vh] bg-stone-900 rounded-2xl overflow-hidden shadow-2xl p-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setPreviewImage(null)}
+              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 hover:bg-black/90 text-white flex items-center justify-center transition-colors cursor-pointer"
+            >
+              <HiOutlineX className="w-5 h-5" />
+            </button>
+            <img
+              src={previewImage}
+              alt="Enlarged Reference"
+              className="max-h-[85vh] max-w-full rounded-xl object-contain mx-auto"
+            />
           </div>
         </div>
       )}

@@ -310,8 +310,8 @@ export default function DiamondTypesView() {
                   const isActive = t.status === 'active';
                   const letter = t.name?.startsWith('Lab') ? 'L' : 'N';
 
-                  const formattedDate = t.createdAt
-                    ? new Date(t.createdAt).toLocaleDateString('en-GB', {
+                  const formattedDate = t.meta?.createdAt
+                    ? new Date(t.meta.createdAt).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',

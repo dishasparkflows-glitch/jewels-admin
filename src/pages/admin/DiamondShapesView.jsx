@@ -275,8 +275,8 @@ export default function DiamondShapesView() {
                   const isActive = s.status === 'active';
                   const isRound = s.name?.toUpperCase() === 'ROUND';
 
-                  const formattedDate = s.createdAt
-                    ? new Date(s.createdAt).toLocaleDateString('en-GB', {
+                  const formattedDate = s.meta?.createdAt
+                    ? new Date(s.meta.createdAt).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: '2-digit',
                         year: 'numeric',

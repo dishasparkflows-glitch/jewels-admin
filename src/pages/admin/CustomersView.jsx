@@ -68,7 +68,7 @@ export default function CustomersView() {
   const avgOrders = totalClients > 0 ? (totalOrders / totalClients).toFixed(1) : '0.0';
   const highSpenders = users.filter((u) => (Number(u.statistics?.lifetimeValue ?? u.lifetimeValue) || 0) >= 50000).length;
   const recentSignups = users.filter((u) => {
-    const createdDate = u.meta?.createdAt || u.createdAt;
+    const createdDate = u.meta?.createdAt;
     if (!createdDate) return false;
     const diffDays = (new Date() - new Date(createdDate)) / (1000 * 60 * 60 * 24);
     return diffDays <= 30;
@@ -254,7 +254,7 @@ export default function CustomersView() {
                   const fullName = firstName ? `${firstName} ${lastName || ''}`.trim() : email;
                   const orders = Number(client.statistics?.ordersCount ?? client.ordersCount) || 0;
                   const ltv = Number(client.statistics?.lifetimeValue ?? client.lifetimeValue) || 0;
-                  const memberSince = client.meta?.createdAt || client.createdAt;
+                  const memberSince = client.meta?.createdAt;
 
                   return (
                     <tr key={client._id} className="hover:bg-stone-50/60 transition-colors">

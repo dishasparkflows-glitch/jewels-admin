@@ -61,8 +61,8 @@ export default function CouponsView() {
     const q = search.toLowerCase();
     return coupons.filter(
       (c) =>
-        (c.couponcode && c.couponcode.toLowerCase().includes(q)) ||
-        (c.description && c.description.toLowerCase().includes(q))
+        (c.coupon?.code && c.coupon.code.toLowerCase().includes(q)) ||
+        (c.coupon?.description && c.coupon.description.toLowerCase().includes(q))
     );
   }, [coupons, search]);
 
@@ -105,15 +105,31 @@ export default function CouponsView() {
   // Open modal to edit coupon
   const handleOpenEdit = (c) => {
     setEditingCoupon(c);
-    setCouponCode(c.couponcode || '');
-    setHeadline(c.description || '');
-    setDiscountType(c.discounttype || 'Percentage');
-    setDiscountValue(c.discountvalue !== undefined && c.discountvalue !== null ? String(c.discountvalue) : '');
-    setMinOrderAmount(c.minimumorderamount !== undefined && c.minimumorderamount !== null ? String(c.minimumorderamount) : '');
-    setStartDate(toInputDate(c.startdate));
-    setExpiryDate(toInputDate(c.enddate));
-    setTotalUsageLimit(c.usagelimit !== undefined && c.usagelimit !== null ? String(c.usagelimit) : '');
-    setLimitPerUser(c.peruserlimit !== undefined && c.peruserlimit !== null ? String(c.peruserlimit) : '1');
+    setCouponCode(c.coupon?.code || '');
+    setHeadline(c.coupon?.description || '');
+    setDiscountType(c.discount?.type || 'Percentage');
+    setDiscountValue(
+      c.discount?.value !== undefined && c.discount?.value !== null
+        ? String(c.discount.value)
+        : ''
+    );
+    setMinOrderAmount(
+      c.discount?.minimumOrderAmount !== undefined && c.discount?.minimumOrderAmount !== null
+        ? String(c.discount.minimumOrderAmount)
+        : ''
+    );
+    setStartDate(toInputDate(c.validity?.startDate));
+    setExpiryDate(toInputDate(c.validity?.endDate));
+    setTotalUsageLimit(
+      c.usage?.usageLimit !== undefined && c.usage?.usageLimit !== null
+        ? String(c.usage.usageLimit)
+        : ''
+    );
+    setLimitPerUser(
+      c.usage?.perUserLimit !== undefined && c.usage?.perUserLimit !== null
+        ? String(c.usage.perUserLimit)
+        : '1'
+    );
     setIsModalOpen(true);
   };
 
@@ -122,7 +138,7 @@ export default function CouponsView() {
     try {
       const nextStatus = c.status === 'active' ? 'inactive' : 'active';
       await api.put(`/coupons/${c._id}`, { status: nextStatus });
-      toast.success(`Coupon ${c.couponcode} set to ${nextStatus}`);
+      toast.success(`Coupon ${c.coupon?.code || 'coupon'} set to ${nextStatus}`);
       setCoupons((prev) =>
         prev.map((item) => (item._id === c._id ? { ...item, status: nextStatus } : item))
       );
@@ -167,23 +183,32 @@ export default function CouponsView() {
       setSubmitting(true);
 
       const payload = {
-        couponcode: couponCode.trim().toUpperCase(),
-        description: headline.trim(),
-        discounttype: discountType,
-        discountvalue: Number(discountValue),
-        minimumorderamount: minOrderAmount ? Number(minOrderAmount) : 0,
-        startdate: startDate ? new Date(startDate).toISOString() : null,
-        enddate: expiryDate ? new Date(expiryDate).toISOString() : null,
-        usagelimit: totalUsageLimit ? Number(totalUsageLimit) : null,
-        peruserlimit: limitPerUser ? Number(limitPerUser) : 1,
+        coupon: {
+          code: couponCode.trim().toUpperCase(),
+          description: headline.trim(),
+        },
+        discount: {
+          type: discountType,
+          value: Number(discountValue),
+          minimumOrderAmount: minOrderAmount ? Number(minOrderAmount) : 0,
+        },
+        validity: {
+          startDate: startDate ? new Date(startDate).toISOString() : null,
+          endDate: expiryDate ? new Date(expiryDate).toISOString() : null,
+        },
+        usage: {
+          usageLimit: totalUsageLimit ? Number(totalUsageLimit) : null,
+          usedCount: editingCoupon?.usage?.usedCount || 0,
+          perUserLimit: limitPerUser ? Number(limitPerUser) : 1,
+        },
       };
 
       if (editingCoupon?._id) {
         await api.put(`/coupons/${editingCoupon._id}`, payload);
-        toast.success(`Coupon ${payload.couponcode} updated successfully`);
+        toast.success(`Coupon ${payload.coupon.code} updated successfully`);
       } else {
         await api.post('/coupons', payload);
-        toast.success(`Coupon ${payload.couponcode} created successfully`);
+        toast.success(`Coupon ${payload.coupon.code} created successfully`);
       }
 
       setIsModalOpen(false);
@@ -272,21 +297,22 @@ export default function CouponsView() {
               ) : (
                 paginatedItems.map((c) => {
                   const isActive = c.status === 'active';
-                  const formattedDiscount =
-                    c.discounttype === 'Percentage'
-                      ? `${c.discountvalue}% OFF`
-                      : `₹${Number(c.discountvalue).toLocaleString('en-IN')} OFF`;
+                  const isPercentage = c.discount?.type === 'Percentage';
+                  const discountVal = c.discount?.value ?? 0;
+                  const formattedDiscount = isPercentage
+                    ? `${discountVal}% OFF`
+                    : `₹${Number(discountVal).toLocaleString('en-IN')} OFF`;
 
-                  const formattedStartDate = c.startdate
-                    ? new Date(c.startdate).toLocaleDateString('en-GB', {
+                  const formattedStartDate = c.validity?.startDate
+                    ? new Date(c.validity.startDate).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric',
                       })
                     : 'Anytime';
 
-                  const formattedExpiryDate = c.enddate
-                    ? new Date(c.enddate).toLocaleDateString('en-GB', {
+                  const formattedExpiryDate = c.validity?.endDate
+                    ? new Date(c.validity.endDate).toLocaleDateString('en-GB', {
                         day: '2-digit',
                         month: 'short',
                         year: 'numeric',
@@ -304,13 +330,13 @@ export default function CouponsView() {
                           <span className="p-1 rounded-md bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
                             <HiOutlineTicket className="w-3.5 h-3.5" />
                           </span>
-                          <span className="font-mono">{c.couponcode}</span>
+                          <span className="font-mono">{c.coupon?.code}</span>
                         </div>
                       </td>
 
                       {/* Headline / Desc */}
                       <td className="py-4 px-4 text-stone-600 max-w-xs truncate">
-                        {c.description || '—'}
+                        {c.coupon?.description || '—'}
                       </td>
 
                       {/* Discount - Sleek Luxury Pill with zero wrapping */}
@@ -322,8 +348,8 @@ export default function CouponsView() {
 
                       {/* Min Order */}
                       <td className="py-4 px-4 whitespace-nowrap font-medium text-stone-800">
-                        {c.minimumorderamount > 0
-                          ? `₹${Number(c.minimumorderamount).toLocaleString('en-IN')}`
+                        {c.discount?.minimumOrderAmount > 0
+                          ? `₹${Number(c.discount.minimumOrderAmount).toLocaleString('en-IN')}`
                           : '₹0'}
                       </td>
 
@@ -338,10 +364,10 @@ export default function CouponsView() {
 
                       {/* Usage */}
                       <td className="py-4 px-4 whitespace-nowrap text-stone-600">
-                        <span className="font-medium">{c.usedCount || 0}</span>
+                        <span className="font-medium">{c.usage?.usedCount || 0}</span>
                         <span className="text-stone-400">
                           {' / '}
-                          {c.usagelimit ? c.usagelimit : '∞'}
+                          {c.usage?.usageLimit ? c.usage.usageLimit : '∞'}
                         </span>
                       </td>
 
@@ -374,7 +400,7 @@ export default function CouponsView() {
                             <HiOutlinePencil className="w-4 h-4" />
                           </button>
                           <button
-                            onClick={() => handleDelete(c._id, c.couponcode)}
+                            onClick={() => handleDelete(c._id, c.coupon?.code)}
                             title="Delete Coupon"
                             className="p-1.5 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors cursor-pointer"
                           >
