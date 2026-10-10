@@ -412,12 +412,13 @@ export default function BirthstonePortfolioView() {
                   return (
                     <tr
                       key={item._id}
-                      className={`hover:bg-[#fcfaf7] transition-colors ${
+                      onClick={() => setViewingMonth(item)}
+                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]' : ''
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-2.5 pl-4 pr-1 text-center">
+                      <td className="py-2.5 pl-4 pr-1 text-center" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           className="rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"

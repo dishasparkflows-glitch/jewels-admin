@@ -321,12 +321,13 @@ export default function InstagramPostsView() {
                   return (
                     <tr
                       key={post._id}
-                      className={`hover:bg-[#fcfaf7] transition-colors ${
+                      onClick={() => setViewingPost(post)}
+                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]' : ''
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-2.5 pl-4 pr-1 text-center">
+                      <td className="py-2.5 pl-4 pr-1 text-center" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           className="rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
@@ -351,6 +352,7 @@ export default function InstagramPostsView() {
                               href={post.url}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               className="font-semibold text-stone-900 hover:text-[#8b6f4e] text-xs flex items-center gap-1 truncate transition-colors leading-none"
                             >
                               <span className="truncate">{post.url}</span>

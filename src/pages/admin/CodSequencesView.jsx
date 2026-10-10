@@ -300,12 +300,13 @@ export default function CodSequencesView() {
                   return (
                     <tr
                       key={id}
-                      className={`hover:bg-stone-50/70 transition-colors ${
+                      onClick={() => setViewingItem({ ...row, displayId, formattedDeposit })}
+                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]/40' : ''
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-2.5 pl-4 pr-1">
+                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -524,13 +525,26 @@ export default function CodSequencesView() {
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setViewingItem(null)}
-              className="w-full py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-            >
-              Close
-            </button>
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const item = viewingItem;
+                  setViewingItem(null);
+                  handleOpenEdit(item);
+                }}
+                className="flex-1 py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer text-center"
+              >
+                Edit Tier
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewingItem(null)}
+                className="px-4 py-2 border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

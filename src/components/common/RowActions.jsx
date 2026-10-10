@@ -33,7 +33,7 @@ export default function RowActions({
   }, []);
 
   return (
-    <div className="inline-flex items-center gap-1.5 justify-end">
+    <div className="inline-flex items-center gap-1.5 justify-end" onClick={(e) => e.stopPropagation()}>
       {/* View / Preview Action (Eye button) */}
       {handleView && (
         <button

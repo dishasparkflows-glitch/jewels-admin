@@ -315,12 +315,13 @@ export default function AppointmentsView() {
                   return (
                     <tr
                       key={id}
-                      className={`hover:bg-stone-50/70 transition-colors ${
+                      onClick={() => setViewingApt({ ...apt, clientName, clientEmail, rawPhone, countryCode, service, displayId, prefTime, aptDate })}
+                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]/40' : ''
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-2.5 pl-4 pr-1">
+                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}

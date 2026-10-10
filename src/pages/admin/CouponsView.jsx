@@ -343,9 +343,10 @@ export default function CouponsView() {
                   return (
                     <tr
                       key={c._id}
-                      className="hover:bg-stone-50/60 transition-colors"
+                      onClick={() => handleOpenEdit(c)}
+                      className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
                     >
-                      <td className="py-2.5 pl-4 pr-1">
+                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"

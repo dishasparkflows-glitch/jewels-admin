@@ -1,7 +1,8 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { recentOrders } from '../../data/dashboardData';
 
 const OrdersTable = () => {
+  const navigate = useNavigate();
   return (
     <div className="bg-white rounded-lg border border-stone-200/70 p-3.5 shadow-2xs">
       {/* Header */}
@@ -38,7 +39,8 @@ const OrdersTable = () => {
             {recentOrders.map((order, idx) => (
               <tr
                 key={order.id}
-                className="hover:bg-[#fcfaf7] transition-colors duration-150 group"
+                onClick={() => navigate('/orders')}
+                className="hover:bg-[#faf7f2] transition-colors duration-150 group cursor-pointer"
               >
                 <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
                   {idx + 1}

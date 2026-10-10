@@ -1,15 +1,11 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  HiOutlinePlus,
-  HiOutlinePencil,
-  HiOutlineTrash,
-  HiOutlineX,
   HiOutlinePhotograph,
   HiOutlineFilm,
   HiOutlineCloudUpload,
-  HiOutlineExternalLink,
   HiOutlineTag,
-  HiOutlineEye,
+  HiOutlineX,
+  HiOutlineExternalLink,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -30,6 +26,19 @@ const getMediaUrl = (url) => {
   return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
+const POSITION_OPTIONS = [
+  { value: 'none', label: 'None (Default / Hero Slider)' },
+  { value: 'top-left', label: 'Top Left' },
+  { value: 'top-center', label: 'Top Center' },
+  { value: 'bottom-left', label: 'Bottom Left' },
+  { value: 'right-tall', label: 'Right Tall' },
+];
+
+const BANNER_TYPE_OPTIONS = [
+  { value: 'herobanner', label: 'Hero Banner' },
+  { value: 'collectionbanner', label: 'Collection Banner' },
+];
+
 export default function BannersView() {
   const confirm = useConfirm();
   const [banners, setBanners] = useState([]);
@@ -43,11 +52,15 @@ export default function BannersView() {
   const [viewingBanner, setViewingBanner] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Form State matching screenshot
+  // Form State matching nested schema { content, display }
   const [mediaType, setMediaType] = useState('image'); // 'image' | 'video'
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [bannerType, setBannerType] = useState('herobanner');
+  const [position, setPosition] = useState('none');
+  const [order, setOrder] = useState(1);
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
+  const [link, setLink] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -84,18 +97,27 @@ export default function BannersView() {
     fetchData();
   }, []);
 
-  // Filtered Banners list (Search query matching, no active/inactive filter)
+  // Filtered Banners list (Search query matching title, subtitle, category, position, type)
   const filteredBanners = useMemo(() => {
     if (!search.trim()) return banners;
     const q = search.toLowerCase();
     return banners.filter((b) => {
+      const catObj = b.display?.category || b.category;
       const catName =
-        typeof b.category === 'object'
-          ? b.category?.name
-          : categories.find((c) => c._id === b.category)?.name || '';
+        typeof catObj === 'object'
+          ? catObj?.name || ''
+          : categories.find((c) => c._id === catObj)?.name || '';
+
+      const bTitle = b.content?.title || b.title || '';
+      const bSubtitle = b.content?.subtitle || b.subtitle || '';
+      const bType = b.display?.type || b.type || '';
+      const bPos = b.display?.position || b.position || '';
+
       return (
-        (b.title && b.title.toLowerCase().includes(q)) ||
-        (b.subtitle && b.subtitle.toLowerCase().includes(q)) ||
+        bTitle.toLowerCase().includes(q) ||
+        bSubtitle.toLowerCase().includes(q) ||
+        bType.toLowerCase().includes(q) ||
+        bPos.toLowerCase().includes(q) ||
         catName.toLowerCase().includes(q)
       );
     });
@@ -111,9 +133,16 @@ export default function BannersView() {
   } = usePagination(filteredBanners, 10);
 
   // Quick stat cards
-  const activeCount = useMemo(() => banners.filter(b => b.status === 'active').length, [banners]);
-  const imageCount = useMemo(() => banners.filter(b => b.mediaType !== 'video').length, [banners]);
-  const videoCount = useMemo(() => banners.filter(b => b.mediaType === 'video').length, [banners]);
+  const activeCount = useMemo(() => banners.filter((b) => b.status === 'active').length, [banners]);
+  const heroCount = useMemo(
+    () => banners.filter((b) => (b.display?.type || b.type) === 'herobanner').length,
+    [banners]
+  );
+  const collectionCount = useMemo(
+    () => banners.filter((b) => (b.display?.type || b.type) === 'collectionbanner').length,
+    [banners]
+  );
+  const videoCount = useMemo(() => banners.filter((b) => b.mediaType === 'video').length, [banners]);
 
   const statCardsData = [
     {
@@ -129,15 +158,15 @@ export default function BannersView() {
       color: 'green',
     },
     {
-      label: 'Image Creatives',
-      value: imageCount,
+      label: 'Hero Banners',
+      value: heroCount,
       icon: HiOutlinePhotograph,
       color: 'peach',
     },
     {
-      label: 'Video Reels',
-      value: videoCount,
-      icon: HiOutlineFilm,
+      label: 'Collection Banners',
+      value: collectionCount,
+      icon: HiOutlineTag,
       color: 'gold',
     },
   ];
@@ -146,9 +175,13 @@ export default function BannersView() {
   const handleOpenAdd = () => {
     setEditingBanner(null);
     setMediaType('image');
+    setBannerType('herobanner');
     setSelectedCategory(categories[0]?._id || '');
     setTitle('');
     setSubtitle('');
+    setPosition('none');
+    setOrder(banners.length + 1);
+    setLink('');
     setMediaUrl('');
     setUploadProgress(0);
     setIsUploading(false);
@@ -159,11 +192,17 @@ export default function BannersView() {
   const handleOpenEdit = (banner) => {
     setEditingBanner(banner);
     setMediaType(banner.mediaType || 'image');
-    setSelectedCategory(
-      typeof banner.category === 'object' ? banner.category?._id : banner.category || ''
-    );
-    setTitle(banner.title || '');
-    setSubtitle(banner.subtitle || '');
+    setBannerType(banner.display?.type || banner.type || 'herobanner');
+
+    const catObj = banner.display?.category || banner.category;
+    const catId = typeof catObj === 'object' ? catObj?._id : catObj || '';
+    setSelectedCategory(catId);
+
+    setTitle(banner.content?.title || banner.title || '');
+    setSubtitle(banner.content?.subtitle || banner.subtitle || '');
+    setPosition(banner.display?.position || banner.position || 'none');
+    setOrder(banner.display?.order ?? banner.order ?? 1);
+    setLink(banner.link || '');
     setMediaUrl(banner.mediaType === 'video' ? banner.video?.url : banner.image?.url || '');
     setUploadProgress(0);
     setIsUploading(false);
@@ -175,7 +214,6 @@ export default function BannersView() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate mime type
     if (mediaType === 'image' && !file.type.startsWith('image/')) {
       toast.error('Please select an image file (.jpg, .png, .webp)');
       return;
@@ -189,7 +227,6 @@ export default function BannersView() {
       setIsUploading(true);
       setUploadProgress(10);
 
-      // Upload directly via Cloudflare R2 presigned URL
       const { fileUrl } = await uploadWithPresignedUrl(
         file,
         'banners',
@@ -209,27 +246,11 @@ export default function BannersView() {
     }
   };
 
-  // Toggle active/inactive status
-  const handleToggleStatus = async (banner) => {
-    try {
-      const nextStatus = banner.status === 'active' ? 'inactive' : 'active';
-      await api.put(`/banners/${banner._id}`, { status: nextStatus });
-      toast.success(`Banner status updated to ${nextStatus}`);
-      setBanners((prev) =>
-        prev.map((item) =>
-          item._id === banner._id ? { ...item, status: nextStatus } : item
-        )
-      );
-    } catch (err) {
-      toast.error('Failed to update status');
-    }
-  };
-
   // Delete banner
-  const handleDelete = async (id, title) => {
+  const handleDelete = async (id, bannerTitle) => {
     const isConfirmed = await confirm({
       title: 'Delete Banner',
-      message: `Are you sure you want to delete banner "${title || 'Untitled'}"? This action cannot be undone.`,
+      message: `Are you sure you want to delete banner "${bannerTitle || 'Untitled'}"? This action cannot be undone.`,
       confirmText: 'Delete Banner',
       cancelText: 'Cancel',
       type: 'danger',
@@ -244,7 +265,7 @@ export default function BannersView() {
     }
   };
 
-  // Submit Modal Form
+  // Submit Modal Form matching { content, display } schema
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -261,12 +282,19 @@ export default function BannersView() {
       setSubmitting(true);
 
       const payload = {
-        category: selectedCategory,
-        title: title.trim() || undefined,
-        subtitle: subtitle.trim() || undefined,
+        content: {
+          title: title.trim(),
+          subtitle: subtitle.trim(),
+        },
+        display: {
+          category: selectedCategory,
+          type: bannerType,
+          position: position.trim() || 'none',
+          order: Number(order) || 1,
+        },
+        link: link.trim() || undefined,
         mediaType,
-        type: 'herobanner',
-        status: 'active',
+        status: editingBanner ? editingBanner.status : 'active',
       };
 
       if (mediaType === 'image') {
@@ -311,16 +339,15 @@ export default function BannersView() {
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />
 
-      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      {/* ─── Search & Filter Bar ─── */}
       <SearchFilterBar
         search={search}
         onSearchChange={setSearch}
-        placeholder="Search banners by title, subtitle, or category..."
+        placeholder="Search banners by headline, subtitle, category, type, or position..."
       />
 
       {/* ─── Banners Table Card ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
-        {/* Table */}
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -331,10 +358,13 @@ export default function BannersView() {
                     className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
                 </th>
-                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                  SR NO
+                </th>
                 <th className="py-2 px-3 whitespace-nowrap">PREVIEW</th>
-                <th className="py-2 px-3 whitespace-nowrap">BANNER TITLE / HEADLINE</th>
+                <th className="py-2 px-3 whitespace-nowrap">CONTENT (HEADLINE & SUBTITLE)</th>
                 <th className="py-2 px-3 whitespace-nowrap">LINKED CATEGORY</th>
+                <th className="py-2 px-3 whitespace-nowrap">DISPLAY CONFIG</th>
                 <th className="py-2 px-3 whitespace-nowrap">MEDIA TYPE</th>
                 <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
@@ -342,32 +372,40 @@ export default function BannersView() {
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-stone-400">
+                  <td colSpan="8" className="py-8 text-center text-stone-400">
                     Loading promotional banner assets...
                   </td>
                 </tr>
               ) : filteredBanners.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-stone-400">
+                  <td colSpan="8" className="py-8 text-center text-stone-400">
                     No promotional banner assets found.
                   </td>
                 </tr>
               ) : (
                 paginatedItems.map((banner, idx) => {
+                  const catObj = banner.display?.category || banner.category;
                   const categoryName =
-                    typeof banner.category === 'object'
-                      ? banner.category?.name
-                      : categories.find((c) => c._id === banner.category)?.name || 'General';
+                    typeof catObj === 'object'
+                      ? catObj?.name
+                      : categories.find((c) => c._id === catObj)?.name || 'General';
 
                   const assetUrl =
                     banner.mediaType === 'video' ? banner.video?.url : banner.image?.url;
 
+                  const bannerHeading = banner.content?.title || banner.title || '';
+                  const bannerSub = banner.content?.subtitle || banner.subtitle || '';
+                  const typeVal = banner.display?.type || banner.type || 'herobanner';
+                  const positionVal = banner.display?.position || banner.position || 'none';
+                  const orderVal = banner.display?.order ?? banner.order ?? 0;
+
                   return (
                     <tr
                       key={banner._id}
-                      className="hover:bg-stone-50/60 transition-colors"
+                      onClick={() => setViewingBanner(banner)}
+                      className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
                     >
-                      <td className="py-2.5 pl-4 pr-1">
+                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
@@ -392,21 +430,21 @@ export default function BannersView() {
                           ) : (
                             <img
                               src={getMediaUrl(assetUrl)}
-                              alt={banner.title || 'Banner'}
+                              alt={bannerHeading || 'Banner'}
                               className="w-full h-full object-cover"
                             />
                           )}
                         </div>
                       </td>
 
-                      {/* Title & Subtitle */}
-                      <td className="py-2.5 px-3 max-w-sm">
+                      {/* Content: Title & Subtitle */}
+                      <td className="py-2.5 px-3 max-w-xs">
                         <div className="font-bold text-stone-900 text-xs truncate leading-tight">
-                          {banner.title || `${categoryName} Hero Campaign`}
+                          {bannerHeading || `${categoryName} Campaign`}
                         </div>
-                        {banner.subtitle && (
+                        {bannerSub && (
                           <div className="text-[10px] text-stone-500 truncate leading-tight mt-0.5">
-                            {banner.subtitle}
+                            {bannerSub}
                           </div>
                         )}
                       </td>
@@ -416,6 +454,29 @@ export default function BannersView() {
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
                           {categoryName}
                         </span>
+                      </td>
+
+                      {/* Display Config (Type, Position, Order) */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                              typeVal === 'herobanner'
+                                ? 'bg-amber-50 text-amber-800 border border-amber-200/80'
+                                : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
+                            }`}
+                          >
+                            {typeVal === 'herobanner' ? 'Hero' : 'Collection'}
+                          </span>
+                          {positionVal !== 'none' && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-stone-100 text-stone-600 border border-stone-200">
+                              {positionVal}
+                            </span>
+                          )}
+                          <span className="text-[10px] text-stone-400 font-semibold">
+                            #{orderVal}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Media Type */}
@@ -441,7 +502,7 @@ export default function BannersView() {
                         <RowActions
                           onView={() => setViewingBanner(banner)}
                           onEdit={() => handleOpenEdit(banner)}
-                          onDelete={() => handleDelete(banner._id, banner.title)}
+                          onDelete={() => handleDelete(banner._id, bannerHeading)}
                           viewTitle="View Banner"
                         />
                       </td>
@@ -470,13 +531,20 @@ export default function BannersView() {
           onClick={() => setViewingBanner(null)}
         >
           <div
-            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp"
+            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <h3 className="font-bold text-stone-900 text-base">
-                {viewingBanner.title || 'Banner Preview'}
-              </h3>
+              <div>
+                <h3 className="font-bold text-stone-900 text-base">
+                  {viewingBanner.content?.title || viewingBanner.title || 'Banner Preview'}
+                </h3>
+                {viewingBanner.content?.subtitle || viewingBanner.subtitle ? (
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    {viewingBanner.content?.subtitle || viewingBanner.subtitle}
+                  </p>
+                ) : null}
+              </div>
               <button
                 type="button"
                 onClick={() => setViewingBanner(null)}
@@ -485,6 +553,7 @@ export default function BannersView() {
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
+
             <div className="relative aspect-video rounded-xl overflow-hidden bg-stone-900 flex items-center justify-center">
               {viewingBanner.mediaType === 'video' ? (
                 <video
@@ -496,33 +565,90 @@ export default function BannersView() {
               ) : (
                 <img
                   src={getMediaUrl(viewingBanner.image?.url)}
-                  alt={viewingBanner.title}
+                  alt={viewingBanner.content?.title || viewingBanner.title}
                   className="w-full h-full object-contain"
                 />
               )}
+            </div>
+
+            {/* Config metadata summary */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-stone-100 text-xs">
+              <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/60">
+                <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                  Type
+                </span>
+                <span className="font-semibold text-stone-800 capitalize mt-0.5 block">
+                  {viewingBanner.display?.type || viewingBanner.type || 'Hero'}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/60">
+                <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                  Position
+                </span>
+                <span className="font-semibold text-stone-800 mt-0.5 block">
+                  {viewingBanner.display?.position || viewingBanner.position || 'none'}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/60">
+                <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                  Display Order
+                </span>
+                <span className="font-semibold text-stone-800 mt-0.5 block">
+                  #{viewingBanner.display?.order ?? viewingBanner.order ?? 0}
+                </span>
+              </div>
+              <div className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/60">
+                <span className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                  Target Link
+                </span>
+                <span className="font-semibold text-stone-800 truncate mt-0.5 block">
+                  {viewingBanner.link || '/shop'}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const b = viewingBanner;
+                  setViewingBanner(null);
+                  handleOpenEdit(b);
+                }}
+                className="flex-1 py-2.5 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer text-center"
+              >
+                Edit Banner
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewingBanner(null)}
+                className="px-5 py-2.5 border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── Add New Asset Modal (Matches Screenshot Exactly) ─── */}
+      {/* ─── Add / Edit Modal (Configured for content & display schema) ─── */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl max-w-lg w-full p-8 shadow-2xl border border-stone-200/90 space-y-6 animate-scaleUp"
+            className="bg-white rounded-3xl max-w-2xl w-full p-8 shadow-2xl border border-stone-200/90 space-y-6 animate-scaleUp max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="flex items-start justify-between">
               <div>
                 <h3 className="font-bold text-stone-900 text-lg tracking-tight">
-                  {editingBanner ? 'Edit Asset' : 'Add New Asset'}
+                  {editingBanner ? 'Edit Banner Asset' : 'Add New Banner Asset'}
                 </h3>
                 <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400 block mt-0.5">
-                  MEDIA CONFIGURATION
+                  CONTENT & DISPLAY CONFIGURATION
                 </span>
               </div>
               <button
@@ -535,118 +661,238 @@ export default function BannersView() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Media Type Segmented Tabs (Matches Screenshot) */}
-              <div className="grid grid-cols-2 p-1 rounded-2xl bg-stone-100 border border-stone-200/70">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMediaType('image');
-                    setMediaUrl('');
-                  }}
-                  className={`py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                    mediaType === 'image'
-                      ? 'bg-white text-stone-900 shadow-xs'
-                      : 'text-stone-500 hover:text-stone-800'
-                  }`}
-                >
-                  IMAGE
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMediaType('video');
-                    setMediaUrl('');
-                  }}
-                  className={`py-2 text-xs font-bold uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
-                    mediaType === 'video'
-                      ? 'bg-white text-stone-900 shadow-xs'
-                      : 'text-stone-500 hover:text-stone-800'
-                  }`}
-                >
-                  VIDEO
-                </button>
-              </div>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* ─── 1. MEDIA CONFIGURATION ─── */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
+                    1. MEDIA ASSET
+                  </span>
+                  {/* Segmented Media Type Tabs */}
+                  <div className="inline-flex p-0.5 rounded-xl bg-stone-100 border border-stone-200/70">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMediaType('image');
+                        setMediaUrl('');
+                      }}
+                      className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                        mediaType === 'image'
+                          ? 'bg-white text-stone-900 shadow-xs'
+                          : 'text-stone-500 hover:text-stone-800'
+                      }`}
+                    >
+                      IMAGE
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMediaType('video');
+                        setMediaUrl('');
+                      }}
+                      className={`px-3 py-1 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all cursor-pointer ${
+                        mediaType === 'video'
+                          ? 'bg-white text-stone-900 shadow-xs'
+                          : 'text-stone-500 hover:text-stone-800'
+                      }`}
+                    >
+                      VIDEO
+                    </button>
+                  </div>
+                </div>
 
-              {/* Category Link (Matches Screenshot) */}
-              <div>
-                <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                  CATEGORY LINK
-                </label>
-                <Dropdown
-                  value={selectedCategory}
-                  onChange={(val) => setSelectedCategory(val)}
-                  options={categories.map((cat) => ({
-                    value: cat._id,
-                    label: cat.name,
-                  }))}
-                  placeholder="Select Category"
-                  buttonClassName="h-11 rounded-lg text-xs font-semibold"
-                />
-              </div>
+                {/* Asset Dropzone */}
+                <div>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    accept={
+                      mediaType === 'image'
+                        ? 'image/png, image/jpeg, image/webp'
+                        : 'video/mp4, video/webm, video/quicktime'
+                    }
+                    className="hidden"
+                  />
 
-              {/* Asset Dropzone (Matches Screenshot with Cloudflare R2 Presigned Upload) */}
-              <div>
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  onChange={handleFileSelect}
-                  accept={
-                    mediaType === 'image'
-                      ? 'image/png, image/jpeg, image/webp'
-                      : 'video/mp4, video/webm, video/quicktime'
-                  }
-                  className="hidden"
-                />
-
-                <div
-                  onClick={() => !isUploading && fileInputRef.current?.click()}
-                  className={`rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/50 p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[170px] relative group overflow-hidden ${
-                    isUploading ? 'opacity-70 pointer-events-none' : 'hover:border-[#8f6d43] hover:bg-[#fcfaf7]'
-                  }`}
-                >
-                  {isUploading ? (
-                    <div className="space-y-3 w-full max-w-xs">
-                      <div className="w-10 h-10 rounded-full border-3 border-stone-200 border-t-[#8f6d43] animate-spin mx-auto" />
-                      <p className="text-xs font-bold text-stone-700 tracking-wide">
-                        Uploading to Cloudflare ({uploadProgress}%)...
-                      </p>
-                      <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#8f6d43] transition-all duration-200 rounded-full"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
+                  <div
+                    onClick={() => !isUploading && fileInputRef.current?.click()}
+                    className={`rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/50 p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] relative group overflow-hidden ${
+                      isUploading
+                        ? 'opacity-70 pointer-events-none'
+                        : 'hover:border-[#8f6d43] hover:bg-[#fcfaf7]'
+                    }`}
+                  >
+                    {isUploading ? (
+                      <div className="space-y-3 w-full max-w-xs">
+                        <div className="w-10 h-10 rounded-full border-3 border-stone-200 border-t-[#8f6d43] animate-spin mx-auto" />
+                        <p className="text-xs font-bold text-stone-700 tracking-wide">
+                          Uploading to Cloudflare ({uploadProgress}%)...
+                        </p>
+                        <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[#8f6d43] transition-all duration-200 rounded-full"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  ) : mediaUrl ? (
-                    /* Media Preview */
-                    <div className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center">
-                      {mediaType === 'video' ? (
-                        <video src={getMediaUrl(mediaUrl)} className="w-full h-full object-cover rounded-xl" controls />
-                      ) : (
-                        <img src={getMediaUrl(mediaUrl)} alt="Preview" className="w-full h-full object-cover rounded-xl" />
-                      )}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold tracking-wider uppercase">
-                        CLICK TO CHANGE
+                    ) : mediaUrl ? (
+                      <div className="relative w-full h-36 rounded-xl overflow-hidden flex items-center justify-center">
+                        {mediaType === 'video' ? (
+                          <video
+                            src={getMediaUrl(mediaUrl)}
+                            className="w-full h-full object-cover rounded-xl"
+                            controls
+                          />
+                        ) : (
+                          <img
+                            src={getMediaUrl(mediaUrl)}
+                            alt="Preview"
+                            className="w-full h-full object-cover rounded-xl"
+                          />
+                        )}
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold tracking-wider uppercase">
+                          CLICK TO CHANGE
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    /* Default Dropzone Prompt */
-                    <div className="space-y-2">
-                      <HiOutlineCloudUpload className="w-8 h-8 text-stone-400 group-hover:text-[#8f6d43] transition-colors mx-auto" />
-                      <span className="block text-xs font-bold uppercase tracking-wider text-stone-400 group-hover:text-stone-700 transition-colors">
-                        SELECT {mediaType === 'image' ? 'IMAGE' : 'VIDEO'}
-                      </span>
-                      <span className="block text-[10px] text-stone-300">
-                        {mediaType === 'image' ? 'PNG, JPG, WEBP up to 25MB' : 'MP4, WEBM, MOV up to 100MB'}
-                      </span>
-                    </div>
-                  )}
+                    ) : (
+                      <div className="space-y-2">
+                        <HiOutlineCloudUpload className="w-8 h-8 text-stone-400 group-hover:text-[#8f6d43] transition-colors mx-auto" />
+                        <span className="block text-xs font-bold uppercase tracking-wider text-stone-400 group-hover:text-stone-700 transition-colors">
+                          SELECT {mediaType === 'image' ? 'IMAGE' : 'VIDEO'}
+                        </span>
+                        <span className="block text-[10px] text-stone-300">
+                          {mediaType === 'image'
+                            ? 'PNG, JPG, WEBP up to 25MB'
+                            : 'MP4, WEBM, MOV up to 100MB'}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Modal Footer Actions (Matches Screenshot) */}
-              <div className="pt-2 flex items-center justify-end gap-4">
+              {/* ─── 2. CONTENT DETAILS (content: { title, subtitle }) ─── */}
+              <div className="space-y-3 pt-2 border-t border-stone-100">
+                <span className="text-[11px] font-bold tracking-wider text-stone-400 uppercase block">
+                  2. CONTENT (HEADLINE & SUBTITLE)
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1.5">
+                      TITLE / HEADLINE
+                    </label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="e.g. TIMELESS BEAUTY,"
+                      className="w-full h-11 px-3.5 rounded-lg border border-stone-200/90 text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8f6d43] focus:ring-1 focus:ring-[#8f6d43]/20 transition-all bg-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1.5">
+                      SUBTITLE
+                    </label>
+                    <input
+                      type="text"
+                      value={subtitle}
+                      onChange={(e) => setSubtitle(e.target.value)}
+                      placeholder="e.g. Forever You"
+                      className="w-full h-11 px-3.5 rounded-lg border border-stone-200/90 text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8f6d43] focus:ring-1 focus:ring-[#8f6d43]/20 transition-all bg-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── 3. DISPLAY CONFIGURATION (display: { category, type, position, order }) ─── */}
+              <div className="space-y-3 pt-2 border-t border-stone-100">
+                <span className="text-[11px] font-bold tracking-wider text-stone-400 uppercase block">
+                  3. DISPLAY CONFIGURATION
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Category Link */}
+                  <div>
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1.5">
+                      LINKED CATEGORY <span className="text-red-500">*</span>
+                    </label>
+                    <Dropdown
+                      value={selectedCategory}
+                      onChange={(val) => setSelectedCategory(val)}
+                      options={categories.map((cat) => ({
+                        value: cat._id,
+                        label: cat.name,
+                      }))}
+                      placeholder="Select Category"
+                      buttonClassName="h-11 rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+
+                  {/* Banner Type */}
+                  <div>
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1.5">
+                      BANNER TYPE <span className="text-red-500">*</span>
+                    </label>
+                    <Dropdown
+                      value={bannerType}
+                      onChange={(val) => setBannerType(val)}
+                      options={BANNER_TYPE_OPTIONS}
+                      placeholder="Select Type"
+                      buttonClassName="h-11 rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+
+                  {/* Position */}
+                  <div>
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1.5">
+                      POSITION
+                    </label>
+                    <Dropdown
+                      value={position}
+                      onChange={(val) => setPosition(val)}
+                      options={POSITION_OPTIONS}
+                      placeholder="Select Position"
+                      buttonClassName="h-11 rounded-lg text-xs font-semibold"
+                    />
+                  </div>
+
+                  {/* Order */}
+                  <div>
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1.5">
+                      DISPLAY ORDER
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      value={order}
+                      onChange={(e) => setOrder(Number(e.target.value) || 0)}
+                      placeholder="1"
+                      className="w-full h-11 px-3.5 rounded-lg border border-stone-200/90 text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8f6d43] focus:ring-1 focus:ring-[#8f6d43]/20 transition-all bg-white"
+                    />
+                  </div>
+                </div>
+
+                {/* Target Link */}
+                <div className="pt-1">
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1.5">
+                    DESTINATION LINK URL (OPTIONAL)
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={link}
+                      onChange={(e) => setLink(e.target.value)}
+                      placeholder="e.g. /shop?category=pendant"
+                      className="w-full h-11 pl-3.5 pr-8 rounded-lg border border-stone-200/90 text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8f6d43] focus:ring-1 focus:ring-[#8f6d43]/20 transition-all bg-white"
+                    />
+                    <HiOutlineExternalLink className="absolute right-3 top-3.5 w-4 h-4 text-stone-400 pointer-events-none" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="pt-3 border-t border-stone-100 flex items-center justify-end gap-4">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}

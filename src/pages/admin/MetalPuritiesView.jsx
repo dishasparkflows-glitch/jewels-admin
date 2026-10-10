@@ -272,9 +272,10 @@ export default function MetalPuritiesView() {
                   return (
                     <tr
                       key={p._id}
-                      className="hover:bg-stone-50/60 transition-colors"
+                      onClick={() => setViewingPurity(p)}
+                      className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
                     >
-                      <td className="py-2.5 pl-4 pr-1">
+                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
@@ -460,10 +461,20 @@ export default function MetalPuritiesView() {
               </div>
             </div>
 
-            <div className="pt-2">
+            <div className="pt-2 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  const current = viewingPurity;
+                  setViewingPurity(null);
+                  handleOpenEdit(current);
+                }}
+                className="flex-1 h-10 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer text-center"
+              >
+                Edit Purity
+              </button>
               <button
                 onClick={() => setViewingPurity(null)}
-                className="w-full h-10 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                className="px-4 h-10 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
               >
                 Close
               </button>
