@@ -6,6 +6,7 @@ import {
   HiOutlineTag,
   HiOutlineX,
   HiOutlineExternalLink,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -45,6 +46,7 @@ export default function BannersView() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -260,8 +262,53 @@ export default function BannersView() {
       await api.delete(`/banners/${id}`);
       toast.success('Banner deleted successfully');
       setBanners((prev) => prev.filter((b) => b._id !== id));
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Delete failed');
+    }
+  };
+
+  // Selection handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(paginatedItems.map((b) => b._id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectItem = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.length;
+    if (count === 0) {
+      toast.error('Please select banners to delete');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected Banners',
+      message: `Are you sure you want to delete ${count} selected banner${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      await Promise.allSettled(
+        selectedIds.map((id) => api.delete(`/banners/${id}`))
+      );
+      setBanners((prev) => prev.filter((b) => !selectedIds.includes(b._id)));
+      setSelectedIds([]);
+      toast.success(`${count} banner${count > 1 ? 's' : ''} deleted successfully`);
+    } catch (err) {
+      toast.error('Failed to delete some banners');
     }
   };
 
@@ -344,6 +391,25 @@ export default function BannersView() {
         search={search}
         onSearchChange={setSearch}
         placeholder="Search banners by headline, subtitle, category, type, or position..."
+        extraActions={
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+              selectedIds.length > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
+                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+            }`}
+            title={
+              selectedIds.length > 0
+                ? `Delete ${selectedIds.length} selected banner${selectedIds.length > 1 ? 's' : ''}`
+                : 'Select banners to delete'
+            }
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
+          </button>
+        }
       />
 
       {/* ─── Banners Table Card ─── */}
@@ -355,6 +421,11 @@ export default function BannersView() {
                 <th className="py-2 pl-4 pr-1 w-8">
                   <input
                     type="checkbox"
+                    checked={
+                      paginatedItems.length > 0 &&
+                      paginatedItems.every((b) => selectedIds.includes(b._id))
+                    }
+                    onChange={handleSelectAll}
                     className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
                 </th>
@@ -408,6 +479,8 @@ export default function BannersView() {
                       <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
+                          checked={selectedIds.includes(banner._id)}
+                          onChange={() => handleSelectItem(banner._id)}
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
                       </td>

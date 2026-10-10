@@ -5,6 +5,7 @@ import {
   HiOutlineShieldCheck,
   HiOutlineCheckCircle,
   HiOutlineX,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -144,10 +145,51 @@ export default function CodSequencesView() {
     try {
       await api.delete(`/cod-sequences/${id}`);
       toast.success('COD sequence tier deleted');
-      setItems((prev) => prev.filter((i) => i._id !== id));
+      setItems((prev) => prev.filter((i) => (i._id || i.id) !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch (err) {
-      setItems((prev) => prev.filter((i) => i._id !== id));
+      setItems((prev) => prev.filter((i) => (i._id || i.id) !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       toast.success('COD sequence tier deleted');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (count === 0) {
+      toast.error('Please select COD tiers to delete');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected COD Tiers',
+      message: `Are you sure you want to delete ${count} selected COD tier${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    const idsToDelete = Array.from(selectedIds);
+    try {
+      await Promise.allSettled(
+        idsToDelete.map((id) => api.delete(`/cod-sequences/${id}`))
+      );
+      setItems((prev) => prev.filter((i) => !selectedIds.has(i._id || i.id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} COD tier${count > 1 ? 's' : ''} deleted successfully`);
+    } catch (err) {
+      setItems((prev) => prev.filter((i) => !selectedIds.has(i._id || i.id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} COD tier${count > 1 ? 's' : ''} deleted`);
     }
   };
 
@@ -248,6 +290,25 @@ export default function CodSequencesView() {
         placeholder="Search tiers by amount or charge type..."
         onFilterClick={() => setFilterActive(!filterActive)}
         filterActive={filterActive}
+        extraActions={
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+              selectedIds.size > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
+                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+            }`}
+            title={
+              selectedIds.size > 0
+                ? `Delete ${selectedIds.size} selected tier${selectedIds.size > 1 ? 's' : ''}`
+                : 'Select tiers to delete'
+            }
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <span>{selectedIds.size > 0 ? `Delete (${selectedIds.size})` : 'Delete'}</span>
+          </button>
+        }
       />
 
       {/* ─── Luxury COD Tiers Table ─── */}

@@ -7,6 +7,7 @@ export default function ModuleHeader({
   subtitle = 'Manage customer profiles and purchase activity.',
   onAdd,
   addLabel,
+  extraActions,
 }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -18,6 +19,8 @@ export default function ModuleHeader({
 
       {/* Right Actions */}
       <div className="flex items-center gap-2 self-start sm:self-auto">
+        {extraActions}
+
         {/* Add / Create Button - Properly sized luxury action button */}
         {onAdd && (
           <button

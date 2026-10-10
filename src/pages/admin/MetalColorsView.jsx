@@ -43,6 +43,7 @@ export default function MetalColorsView() {
   const [colors, setColors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -177,8 +178,53 @@ export default function MetalColorsView() {
       await api.delete(`/metal-colors/${id}`);
       toast.success(`Metal color "${name}" deleted`);
       setColors((prev) => prev.filter((item) => item._id !== id));
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Delete failed');
+    }
+  };
+
+  // Selection handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(paginatedItems.map((c) => c._id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectItem = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.length;
+    if (count === 0) {
+      toast.error('Please select metal colors to delete');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected Metal Colors',
+      message: `Are you sure you want to delete ${count} selected color${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      await Promise.allSettled(
+        selectedIds.map((id) => api.delete(`/metal-colors/${id}`))
+      );
+      setColors((prev) => prev.filter((c) => !selectedIds.includes(c._id)));
+      setSelectedIds([]);
+      toast.success(`${count} color${count > 1 ? 's' : ''} deleted successfully`);
+    } catch (err) {
+      toast.error('Failed to delete some metal colors');
     }
   };
 
@@ -238,6 +284,25 @@ export default function MetalColorsView() {
         search={search}
         onSearchChange={setSearch}
         placeholder="Search metal colors..."
+        extraActions={
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+              selectedIds.length > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
+                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+            }`}
+            title={
+              selectedIds.length > 0
+                ? `Delete ${selectedIds.length} selected color${selectedIds.length > 1 ? 's' : ''}`
+                : 'Select metal colors to delete'
+            }
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
+          </button>
+        }
       />
 
       {/* ─── Metal Color Table Card ─── */}
@@ -250,6 +315,11 @@ export default function MetalColorsView() {
                 <th className="py-2 pl-4 pr-1 w-8">
                   <input
                     type="checkbox"
+                    checked={
+                      paginatedItems.length > 0 &&
+                      paginatedItems.every((c) => selectedIds.includes(c._id))
+                    }
+                    onChange={handleSelectAll}
                     className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
                 </th>
@@ -286,6 +356,8 @@ export default function MetalColorsView() {
                       <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
+                          checked={selectedIds.includes(c._id)}
+                          onChange={() => handleSelectItem(c._id)}
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
                       </td>

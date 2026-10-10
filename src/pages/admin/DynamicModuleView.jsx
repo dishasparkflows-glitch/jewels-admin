@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import {
@@ -183,18 +183,65 @@ const routeMap = {
 const DynamicModuleView = () => {
   const confirm = useConfirm();
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   const config = routeMap[pathname] || {
     endpoint: pathname,
     title: pathname.split('/').filter(Boolean).map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
   };
 
+  const handleOpenAdd = () => {
+    if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
+      navigate('/catalog/jewelry-products/add');
+    } else {
+      setIsModalOpen(true);
+    }
+  };
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingRecord, setViewingRecord] = useState(null);
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  const isOrnatePage = pathname.includes('ornate-products');
+
+  // Trigger Ornate ERP Sync & store data in DB
+  const handleSyncOrnateProducts = async () => {
+    if (isSyncing) return;
+    try {
+      setIsSyncing(true);
+      toast.loading('Connecting to Ornate ERP and syncing products into database...', {
+        id: 'ornate-sync',
+      });
+
+      let res;
+      try {
+        res = await api.post('/ornate/sync', {}, { timeout: 120000 });
+      } catch (fullSyncErr) {
+        console.warn('Full sync attempt failed, trying sync-labels fallback:', fullSyncErr);
+        res = await api.post('/ornate/sync-labels', {}, { timeout: 120000 });
+      }
+
+      const syncMsg = res.data?.message || 'Ornate products synced successfully!';
+      toast.success(syncMsg, { id: 'ornate-sync' });
+
+      // Refresh items from database
+      await fetchItems();
+    } catch (err) {
+      console.error('Failed to sync Ornate products:', err);
+      const errMsg =
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to sync products from Ornate ERP';
+      toast.error(errMsg, { id: 'ornate-sync' });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const fetchItems = useCallback(async () => {
     try {
@@ -214,6 +261,7 @@ const DynamicModuleView = () => {
   useEffect(() => {
     fetchItems();
     setSearch('');
+    setSelectedIds([]);
   }, [fetchItems]);
 
   const handleCreate = async (e) => {
@@ -221,7 +269,76 @@ const DynamicModuleView = () => {
     try {
       setSaving(true);
       const cleanEndpoint = config.endpoint.split('?')[0];
-      await api.post(cleanEndpoint, formData);
+      let payload = { ...formData };
+      if (cleanEndpoint === '/products') {
+        const title = formData.title || 'Diamond Ring';
+        const sku = formData.sku || 'RNG-001';
+        const slug = (formData.slug || title)
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+        const isOrnate = config.endpoint.includes('isOrnate=true') || Boolean(formData.isOrnate);
+        const productType = config.endpoint.includes('productType=Silver')
+          ? 'jewelry'
+          : (isOrnate ? 'ornate' : (formData.productType || 'jewelry'));
+        const mrp = Number(formData.mrp || formData.price) || 75000;
+        const salePrice = Number(formData.salePrice || formData.price) || 65000;
+        const costPrice = Number(formData.costPrice) || 50000;
+        const displayPrice = Number(formData.displayPrice || salePrice) || 65000;
+        const gstPercentage = Number(formData.gstPercentage) || 3;
+        const markupPercentage = Number(formData.markupPercentage) || 30;
+
+        payload = {
+          ...formData,
+          basicInfo: {
+            title,
+            sku,
+            slug,
+            description: formData.description || 'Elegant diamond ring',
+            productType,
+            isOrnate,
+            ...(formData.basicInfo || {}),
+          },
+          pricing: {
+            mrp,
+            salePrice,
+            costPrice,
+            displayPrice,
+            gstPercentage,
+            markupPercentage,
+            ...(formData.pricing || {}),
+          },
+          specifications: {
+            metalName: formData.metalName || 'Gold',
+            metalWeight: Number(formData.metalWeight || formData.netWeight) || 2.5,
+            metalPurity: Number(formData.metalPurity || formData.purity) || 18,
+            grossWeight: Number(formData.grossWeight || formData.grossWt) || 2.75,
+            netWeight: Number(formData.netWeight || formData.netWt) || 2.5,
+            stoneWeight: Number(formData.stoneWeight || formData.stoneWt) || 0.25,
+            ...(formData.specifications || {}),
+          },
+          ornate: {
+            tagNo: formData.tagNo || '',
+            barcode: formData.barcode || '',
+            itemCode: formData.itemCode || '',
+            goldAmt: Number(formData.goldAmt) || 0,
+            labourAmt: Number(formData.labourAmt) || 0,
+            diamondAmt: Number(formData.diamondAmt) || 0,
+            stockQty: Number(formData.stockQty) || 0,
+            isSold: Boolean(formData.isSold),
+            ...(formData.ornate || {}),
+          },
+          title,
+          sku,
+          slug,
+          price: mrp,
+          salePrice,
+          displayPrice,
+          productType,
+          isOrnate,
+        };
+      }
+      await api.post(cleanEndpoint, payload);
       toast.success(`${config.title} record created!`);
       setIsModalOpen(false);
       setFormData({});
@@ -247,8 +364,54 @@ const DynamicModuleView = () => {
       await api.delete(`${cleanEndpoint}/${id}`);
       toast.success('Record deleted successfully');
       setItems((prev) => prev.filter((i) => i._id !== id && i.id !== id));
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete record');
+    }
+  };
+
+  // Selection handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(paginatedItems.map((i) => i._id || i.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectItem = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.length;
+    if (count === 0) {
+      toast.error('Please select records to delete');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: `Delete Selected ${config.title} Records`,
+      message: `Are you sure you want to delete ${count} selected record${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      const cleanEndpoint = config.endpoint.split('?')[0];
+      await Promise.allSettled(
+        selectedIds.map((id) => api.delete(`${cleanEndpoint}/${id}`))
+      );
+      setItems((prev) => prev.filter((i) => !selectedIds.includes(i._id) && !selectedIds.includes(i.id)));
+      setSelectedIds([]);
+      toast.success(`${count} record${count > 1 ? 's' : ''} deleted successfully`);
+    } catch (err) {
+      toast.error('Failed to delete some records');
     }
   };
 
@@ -292,32 +455,68 @@ const DynamicModuleView = () => {
     paginatedItems,
   } = usePagination(filteredItems, 10);
 
-  const statCardsData = [
-    {
-      label: `Total ${config.title}`,
-      value: items.length || 0,
-      icon: HiOutlineEye,
-      color: 'bronze',
-    },
-    {
-      label: 'Verified Records',
-      value: items.length || 0,
-      icon: HiOutlineRefresh,
-      color: 'green',
-    },
-    {
-      label: 'Catalog Items',
-      value: filteredItems.length || 0,
-      icon: HiOutlinePlus,
-      color: 'peach',
-    },
-    {
-      label: 'Active Sync',
-      value: 'Live',
-      icon: HiOutlineEye,
-      color: 'gold',
-    },
-  ];
+  const inStockCount = useMemo(
+    () => items.filter((p) => !p.isSold && (p.inStock ?? 1) > 0).length,
+    [items]
+  );
+  const outOfStockCount = useMemo(
+    () => items.filter((p) => p.isSold || p.inStock === 0).length,
+    [items]
+  );
+
+  const statCardsData = isOrnatePage
+    ? [
+        {
+          label: 'Total Ornate Products',
+          value: items.length || 0,
+          icon: HiOutlineEye,
+          color: 'bronze',
+        },
+        {
+          label: 'In Stock Products',
+          value: inStockCount,
+          icon: HiOutlineRefresh,
+          color: 'green',
+        },
+        {
+          label: 'Sold / Out of Stock',
+          value: outOfStockCount,
+          icon: HiOutlineTrash,
+          color: 'peach',
+        },
+        {
+          label: 'ERP Live Sync',
+          value: isSyncing ? 'Syncing...' : 'Connected',
+          icon: HiOutlineRefresh,
+          color: 'gold',
+        },
+      ]
+    : [
+        {
+          label: `Total ${config.title}`,
+          value: items.length || 0,
+          icon: HiOutlineEye,
+          color: 'bronze',
+        },
+        {
+          label: 'Verified Records',
+          value: items.length || 0,
+          icon: HiOutlineRefresh,
+          color: 'green',
+        },
+        {
+          label: 'Catalog Items',
+          value: filteredItems.length || 0,
+          icon: HiOutlinePlus,
+          color: 'peach',
+        },
+        {
+          label: 'Active Sync',
+          value: 'Live',
+          icon: HiOutlineEye,
+          color: 'gold',
+        },
+      ];
 
   return (
     <div className="space-y-2">
@@ -325,9 +524,26 @@ const DynamicModuleView = () => {
       <ModuleHeader
         breadcrumbs={['Home', config.title]}
         title={config.title}
-        subtitle={`Configure, manage and update real-time ${config.title.toLowerCase()} catalog data.`}
-        onAdd={() => setIsModalOpen(true)}
-        addLabel={`Add ${config.title.replace(/s$/, '')}`}
+        subtitle={
+          isOrnatePage
+            ? 'Real-time synchronization and catalog management of Ornate ERP jewellery products.'
+            : `Configure, manage and update real-time ${config.title.toLowerCase()} catalog data.`
+        }
+        onAdd={isOrnatePage ? undefined : handleOpenAdd}
+        addLabel={pathname.includes('jewelry-products') ? 'Add Jewelry Product' : `Add ${config.title.replace(/s$/, '')}`}
+        extraActions={
+          isOrnatePage && (
+            <button
+              type="button"
+              onClick={handleSyncOrnateProducts}
+              disabled={isSyncing}
+              className="flex items-center gap-2 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] disabled:opacity-75 disabled:pointer-events-none text-white rounded-lg text-xs sm:text-[13px] font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
+            >
+              <HiOutlineRefresh className={`w-4 h-4 stroke-[2.5] ${isSyncing ? 'animate-spin' : ''}`} />
+              <span>{isSyncing ? 'Syncing Products...' : 'Sync Products'}</span>
+            </button>
+          )
+        }
         exportData={items}
         exportFileName={`${config.title.toLowerCase().replace(/\s+/g, '_')}_export`}
       />
@@ -340,6 +556,25 @@ const DynamicModuleView = () => {
         search={search}
         onSearchChange={setSearch}
         placeholder={`Search ${config.title.toLowerCase()}...`}
+        extraActions={
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+              selectedIds.length > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
+                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+            }`}
+            title={
+              selectedIds.length > 0
+                ? `Delete ${selectedIds.length} selected record${selectedIds.length > 1 ? 's' : ''}`
+                : 'Select records to delete'
+            }
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
+          </button>
+        }
       />
 
       {/* ─── Table Card Container ─── */}
@@ -358,7 +593,7 @@ const DynamicModuleView = () => {
               </div>
               <p className="font-medium text-stone-600 text-xs">No records found</p>
               <button
-                onClick={() => setIsModalOpen(true)}
+                onClick={handleOpenAdd}
                 className="text-xs text-[#8b6f4e] hover:underline font-semibold cursor-pointer"
               >
                 + Add the first {config.title} item
@@ -372,6 +607,11 @@ const DynamicModuleView = () => {
                     <th className="py-2 pl-4 pr-1 w-8">
                       <input
                         type="checkbox"
+                        checked={
+                          paginatedItems.length > 0 &&
+                          paginatedItems.every((row) => selectedIds.includes(row._id || row.id))
+                        }
+                        onChange={handleSelectAll}
                         className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                       />
                     </th>
@@ -427,6 +667,8 @@ const DynamicModuleView = () => {
                         <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
+                            checked={selectedIds.includes(row._id || row.id)}
+                            onChange={() => handleSelectItem(row._id || row.id)}
                             className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                           />
                         </td>
@@ -608,6 +850,8 @@ const DynamicModuleView = () => {
             </form>
           </div>
         </div>
+      )}
+
       {/* ─── View Record Details Modal ──────────────────────── */}
       {viewingRecord && (
         <div

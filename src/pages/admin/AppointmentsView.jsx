@@ -8,6 +8,7 @@ import {
   HiOutlineMail,
   HiOutlineX,
   HiOutlineCheck,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -95,9 +96,55 @@ export default function AppointmentsView() {
       await api.delete(`/appointments/${id}`);
       toast.success('Appointment deleted');
       setAppointments((prev) => prev.filter((a) => (a._id || a.id) !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch (err) {
       setAppointments((prev) => prev.filter((a) => (a._id || a.id) !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       toast.success('Appointment deleted');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (count === 0) {
+      toast.error('Please select appointments to delete');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected Appointments',
+      message: `Are you sure you want to delete ${count} selected appointment${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    const idsToDelete = Array.from(selectedIds);
+    try {
+      try {
+        await api.post('/appointments/bulk-delete', { ids: idsToDelete });
+      } catch (bulkErr) {
+        // Fallback to individual deletes if bulk-delete endpoint fails
+        await Promise.allSettled(
+          idsToDelete.map((id) => api.delete(`/appointments/${id}`))
+        );
+      }
+      setAppointments((prev) => prev.filter((a) => !selectedIds.has(a._id || a.id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} appointment${count > 1 ? 's' : ''} deleted successfully`);
+    } catch (err) {
+      setAppointments((prev) => prev.filter((a) => !selectedIds.has(a._id || a.id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} appointment${count > 1 ? 's' : ''} deleted`);
     }
   };
 
@@ -258,6 +305,25 @@ export default function AppointmentsView() {
         placeholder="Search client name, email or phone..."
         onFilterClick={() => setFilterActive(!filterActive)}
         filterActive={filterActive}
+        extraActions={
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+              selectedIds.size > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
+                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+            }`}
+            title={
+              selectedIds.size > 0
+                ? `Delete ${selectedIds.size} selected appointment${selectedIds.size > 1 ? 's' : ''}`
+                : 'Select appointments to delete'
+            }
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <span>{selectedIds.size > 0 ? `Delete (${selectedIds.size})` : 'Delete'}</span>
+          </button>
+        }
       />
 
       {/* ─── Luxury Appointments Table ─── */}

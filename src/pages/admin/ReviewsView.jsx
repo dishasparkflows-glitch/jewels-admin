@@ -6,6 +6,7 @@ import {
   HiOutlineBan,
   HiOutlineX,
   HiOutlineStar,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import { IoStar } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -217,10 +218,51 @@ export default function ReviewsView() {
     try {
       await api.delete(`/reviews/${id}`);
       toast.success('Review deleted');
-      setReviews((prev) => prev.filter((r) => r._id !== id));
+      setReviews((prev) => prev.filter((r) => (r._id || r.id) !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
     } catch {
-      setReviews((prev) => prev.filter((r) => r._id !== id));
+      setReviews((prev) => prev.filter((r) => (r._id || r.id) !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       toast.success('Review deleted');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (count === 0) {
+      toast.error('Please select reviews to delete');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected Reviews',
+      message: `Are you sure you want to delete ${count} selected review${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    const idsToDelete = Array.from(selectedIds);
+    try {
+      await Promise.allSettled(
+        idsToDelete.map((id) => api.delete(`/reviews/${id}`))
+      );
+      setReviews((prev) => prev.filter((r) => !selectedIds.has(r._id || r.id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} review${count > 1 ? 's' : ''} deleted successfully`);
+    } catch {
+      setReviews((prev) => prev.filter((r) => !selectedIds.has(r._id || r.id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} review${count > 1 ? 's' : ''} deleted`);
     }
   };
 
@@ -329,6 +371,25 @@ export default function ReviewsView() {
         placeholder="Search feedback by reviewer name, email, title, or comment..."
         onFilterClick={() => setFilterActive(!filterActive)}
         filterActive={filterActive}
+        extraActions={
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+              selectedIds.size > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
+                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+            }`}
+            title={
+              selectedIds.size > 0
+                ? `Delete ${selectedIds.size} selected review${selectedIds.size > 1 ? 's' : ''}`
+                : 'Select reviews to delete'
+            }
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <span>{selectedIds.size > 0 ? `Delete (${selectedIds.size})` : 'Delete'}</span>
+          </button>
+        }
       />
 
       {/* ─── Luxury Reviews Table ─── */}
@@ -411,12 +472,9 @@ export default function ReviewsView() {
                           <div className="w-7 h-7 rounded-full bg-[#f4ece3] text-[#8b6f4e] font-semibold text-[11px] flex items-center justify-center border border-[#8b6f4e]/20 shadow-2xs shrink-0">
                             {initial}
                           </div>
-                          <div className="leading-tight">
-                            <p className="font-semibold text-stone-900 text-xs leading-none">
+                          <div>
+                            <p className="font-semibold text-stone-900 text-xs">
                               {reviewerName}
-                            </p>
-                            <p className="text-[10px] text-stone-400 font-mono leading-none mt-1">
-                              {displayId}
                             </p>
                           </div>
                         </div>
@@ -640,10 +698,6 @@ export default function ReviewsView() {
             </div>
 
             <div className="space-y-3 text-xs bg-stone-50/70 p-4 rounded-xl border border-stone-200/60">
-              <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
-                <span className="text-stone-400">Review ID</span>
-                <span className="font-mono font-bold text-stone-900">{viewingReview.displayId}</span>
-              </div>
               <div className="flex justify-between items-center">
                 <span className="text-stone-400">Reviewer</span>
                 <span className="font-semibold text-stone-900">{viewingReview.reviewerName}</span>

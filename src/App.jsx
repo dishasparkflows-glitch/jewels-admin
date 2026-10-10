@@ -27,6 +27,8 @@ import MetalPuritiesView from './pages/admin/MetalPuritiesView';
 import MetalColorsView from './pages/admin/MetalColorsView';
 import SizesView from './pages/admin/SizesView';
 import VtoMastersView from './pages/admin/VtoMastersView';
+import AddJewelryProduct from './pages/admin/AddJewelryProduct';
+import NavigationMenusView from './pages/admin/NavigationMenusView';
 import DynamicModuleView from './pages/admin/DynamicModuleView';
 
 function App() {
@@ -108,6 +110,13 @@ function App() {
             <Route path="/product-config/sizes" element={<SizesView />} />
             <Route path="/vto-masters" element={<VtoMastersView />} />
             <Route path="/product-config/vto-masters" element={<VtoMastersView />} />
+
+            {/* Luxury Add Jewelry Product (Matches Exact User Screenshot) */}
+            <Route path="/catalog/jewelry-products/add" element={<AddJewelryProduct />} />
+            <Route path="/catalog/jewelry-products/new" element={<AddJewelryProduct />} />
+            {/* Luxury Navigation Menus Module (Matches Exact 4-Screen Design) */}
+            <Route path="/catalog/navigation-menus" element={<NavigationMenusView />} />
+            <Route path="/navigation-menus" element={<NavigationMenusView />} />
 
             {/* Senior Dynamic View for all Config & Catalog modules */}
             <Route path="*" element={<DynamicModuleView />} />

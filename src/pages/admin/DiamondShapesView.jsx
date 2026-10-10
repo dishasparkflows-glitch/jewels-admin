@@ -57,6 +57,7 @@ export default function DiamondShapesView() {
   const [shapes, setShapes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -204,8 +205,69 @@ export default function DiamondShapesView() {
       await api.delete(`/diamond-shapes/${id}`);
       toast.success(`Diamond shape "${name}" deleted`);
       setShapes((prev) => prev.filter((item) => item._id !== id));
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
     } catch (err) {
       toast.error(err.response?.data?.message || 'Delete failed');
+    }
+  };
+
+  // Selection handlers
+  const isAllSelected =
+    paginatedItems.length > 0 &&
+    paginatedItems.every((s) => selectedIds.includes(s._id));
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds((prev) =>
+        prev.filter((id) => !paginatedItems.some((s) => s._id === id))
+      );
+    } else {
+      const pageIds = paginatedItems.map((s) => s._id);
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const handleSelectItem = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.length;
+    if (count === 0) {
+      toast.error('Please select diamond shapes to delete');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected Diamond Shapes',
+      message: `Are you sure you want to delete ${count} selected shape${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      const results = await Promise.allSettled(
+        selectedIds.map((id) => api.delete(`/diamond-shapes/${id}`))
+      );
+      const successfulIds = selectedIds.filter((_, idx) => results[idx].status === 'fulfilled');
+      const failedCount = results.filter((r) => r.status === 'rejected').length;
+
+      if (successfulIds.length > 0) {
+        setShapes((prev) => prev.filter((item) => !successfulIds.includes(item._id)));
+        setSelectedIds((prev) => prev.filter((id) => !successfulIds.includes(id)));
+        toast.success(`${successfulIds.length} shape${successfulIds.length > 1 ? 's' : ''} deleted successfully`);
+      }
+      if (failedCount > 0) {
+        toast.error(`Failed to delete ${failedCount} shape${failedCount > 1 ? 's' : ''}`);
+      }
+    } catch (err) {
+      console.error('Bulk delete failed:', err);
+      toast.error('Failed to delete selected diamond shapes');
     }
   };
 
@@ -266,6 +328,25 @@ export default function DiamondShapesView() {
         search={search}
         onSearchChange={setSearch}
         placeholder="Search diamond shapes..."
+        extraActions={
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+              selectedIds.length > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
+                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+            }`}
+            title={
+              selectedIds.length > 0
+                ? `Delete ${selectedIds.length} selected shape${selectedIds.length > 1 ? 's' : ''}`
+                : 'Select diamond shapes to delete'
+            }
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
+          </button>
+        }
       />
 
       {/* ─── Diamond Shapes Table Card ─── */}
@@ -278,6 +359,8 @@ export default function DiamondShapesView() {
                 <th className="py-2 pl-4 pr-1 w-8">
                   <input
                     type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
                     className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
                 </th>
@@ -316,11 +399,15 @@ export default function DiamondShapesView() {
                     <tr
                       key={s._id}
                       onClick={() => setViewingShape(s)}
-                      className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
+                      className={`transition-colors cursor-pointer group ${
+                        selectedIds.includes(s._id) ? 'bg-[#fcfaf7]' : 'hover:bg-[#faf7f2]'
+                      }`}
                     >
                       <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
+                          checked={selectedIds.includes(s._id)}
+                          onChange={() => handleSelectItem(s._id)}
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
                       </td>

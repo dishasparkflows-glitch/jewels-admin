@@ -32,6 +32,7 @@ export default function CelebrateGiftsView() {
   const [search, setSearch] = useState('');
   const [featuredItems, setFeaturedItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   // Available products for modal selection
   const [allProducts, setAllProducts] = useState([]);
@@ -289,10 +290,55 @@ export default function CelebrateGiftsView() {
     try {
       await api.delete(`/featured/${id}`);
       toast.success('Campaign group deleted');
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
       await fetchFeatured();
     } catch (err) {
       console.error('Delete error:', err);
       toast.error('Failed to delete campaign group');
+    }
+  };
+
+  // Selection handlers
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(paginatedItems.map((i) => i._id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectItem = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  // Bulk delete
+  const handleBulkDelete = async () => {
+    const count = selectedIds.length;
+    if (count === 0) {
+      toast.error('Please select showcase items to delete');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected Showcase Items',
+      message: `Are you sure you want to delete ${count} selected item${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      await Promise.allSettled(
+        selectedIds.map((id) => api.delete(`/featured/${id}`))
+      );
+      setSelectedIds([]);
+      await fetchFeatured();
+      toast.success(`${count} item${count > 1 ? 's' : ''} deleted successfully`);
+    } catch (err) {
+      toast.error('Failed to delete some items');
     }
   };
 
@@ -355,6 +401,25 @@ export default function CelebrateGiftsView() {
             search={search}
             onSearchChange={setSearch}
             placeholder="Search showcases by name or placement..."
+            extraActions={
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+                  selectedIds.length > 0
+                    ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
+                    : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+                }`}
+                title={
+                  selectedIds.length > 0
+                    ? `Delete ${selectedIds.length} selected item${selectedIds.length > 1 ? 's' : ''}`
+                    : 'Select items to delete'
+                }
+              >
+                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+                <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
+              </button>
+            }
           />
         </div>
 
@@ -394,6 +459,11 @@ export default function CelebrateGiftsView() {
                 <th className="py-2 pl-4 pr-1 w-8">
                   <input
                     type="checkbox"
+                    checked={
+                      paginatedItems.length > 0 &&
+                      paginatedItems.every((i) => selectedIds.includes(i._id))
+                    }
+                    onChange={handleSelectAll}
                     className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
                 </th>
@@ -429,6 +499,8 @@ export default function CelebrateGiftsView() {
                     <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                       <input
                         type="checkbox"
+                        checked={selectedIds.includes(item._id)}
+                        onChange={() => handleSelectItem(item._id)}
                         className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                       />
                     </td>
