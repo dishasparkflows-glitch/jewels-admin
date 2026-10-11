@@ -18,6 +18,7 @@ import BirthstonePortfolioView from './pages/admin/BirthstonePortfolioView';
 import CouponsView from './pages/admin/CouponsView';
 import CelebrateGiftsView from './pages/admin/CelebrateGiftsView';
 import BannersView from './pages/admin/BannersView';
+import HomeSectionsView from './pages/admin/HomeSectionsView';
 import DiamondTypesView from './pages/admin/DiamondTypesView';
 import DiamondShapesView from './pages/admin/DiamondShapesView';
 import DiamondColorsView from './pages/admin/DiamondColorsView';
@@ -28,7 +29,11 @@ import MetalColorsView from './pages/admin/MetalColorsView';
 import SizesView from './pages/admin/SizesView';
 import VtoMastersView from './pages/admin/VtoMastersView';
 import AddJewelryProduct from './pages/admin/AddJewelryProduct';
+import OrnateProductEdit from './pages/admin/OrnateProductEdit';
 import NavigationMenusView from './pages/admin/NavigationMenusView';
+import WhatsAppView from './pages/admin/WhatsAppView';
+import MetalRatesView from './pages/admin/MetalRatesView';
+import CurrenciesView from './pages/admin/CurrenciesView';
 import DynamicModuleView from './pages/admin/DynamicModuleView';
 
 function App() {
@@ -92,6 +97,9 @@ function App() {
             <Route path="/marketing/celebrate-gifts" element={<CelebrateGiftsView />} />
             <Route path="/banners" element={<BannersView />} />
             <Route path="/marketing/banners" element={<BannersView />} />
+            <Route path="/home-sections" element={<HomeSectionsView />} />
+            <Route path="/marketing/home-sections" element={<HomeSectionsView />} />
+            <Route path="/marketing/sections" element={<HomeSectionsView />} />
             <Route path="/diamond-types" element={<DiamondTypesView />} />
             <Route path="/diamond-config/types" element={<DiamondTypesView />} />
             <Route path="/diamond-shapes" element={<DiamondShapesView />} />
@@ -114,9 +122,32 @@ function App() {
             {/* Luxury Add Jewelry Product (Matches Exact User Screenshot) */}
             <Route path="/catalog/jewelry-products/add" element={<AddJewelryProduct />} />
             <Route path="/catalog/jewelry-products/new" element={<AddJewelryProduct />} />
+
+            {/* Luxury Tab-Wise Ornate Product Edit (Matches Exact User Screenshot) */}
+            <Route path="/catalog/ornate-products/edit/:id" element={<OrnateProductEdit />} />
+            <Route path="/ornate-products/edit/:id" element={<OrnateProductEdit />} />
+            <Route path="/catalog/ornate-products/add" element={<OrnateProductEdit />} />
+            <Route path="/catalog/ornate-products/new" element={<OrnateProductEdit />} />
+            <Route path="/ornate-products/add" element={<OrnateProductEdit />} />
+            <Route path="/ornate-products/new" element={<OrnateProductEdit />} />
             {/* Luxury Navigation Menus Module (Matches Exact 4-Screen Design) */}
             <Route path="/catalog/navigation-menus" element={<NavigationMenusView />} />
             <Route path="/navigation-menus" element={<NavigationMenusView />} />
+
+            {/* Luxury WhatsApp Management (Matches Exact User Screenshot) */}
+            <Route path="/system/whatsapp" element={<WhatsAppView />} />
+            <Route path="/whatsapp" element={<WhatsAppView />} />
+            <Route path="/whatsapp-management" element={<WhatsAppView />} />
+
+            {/* Real-Time Price Master (Metal Rates & Gold Price - Matches Exact User Screenshot) */}
+            <Route path="/pricing-hub/metal-rates" element={<MetalRatesView />} />
+            <Route path="/metal-rates" element={<MetalRatesView />} />
+            <Route path="/goldprice" element={<MetalRatesView />} />
+
+            {/* Currency Management (Matches Exact User Screenshot) */}
+            <Route path="/pricing-hub/currencies" element={<CurrenciesView />} />
+            <Route path="/currencies" element={<CurrenciesView />} />
+            <Route path="/currency" element={<CurrenciesView />} />
 
             {/* Senior Dynamic View for all Config & Catalog modules */}
             <Route path="*" element={<DynamicModuleView />} />

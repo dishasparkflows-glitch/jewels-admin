@@ -82,27 +82,17 @@ export default function Pagination({
         {showPageSize && onPageSizeChange && (
           <div className="flex items-center gap-2 text-xs text-stone-600 font-medium">
             <span>Rows per page</span>
-            <div className="relative">
-              <select
-                value={pageSize}
-                onChange={(e) => {
-                  onPageSizeChange(Number(e.target.value));
-                  onPageChange?.(1);
-                }}
-                className="appearance-none bg-white border border-stone-200 hover:border-stone-300 rounded-md pl-2.5 pr-6 py-1 text-xs font-semibold text-stone-700 focus:outline-none focus:border-[#8b6f4e] cursor-pointer shadow-2xs transition-colors"
-              >
-                {pageSizeOptions.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-1.5 text-stone-400">
-                <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20">
-                  <path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" />
-                </svg>
-              </div>
-            </div>
+            <Dropdown
+              value={pageSize}
+              onChange={(val) => {
+                onPageSizeChange(Number(val));
+                onPageChange?.(1);
+              }}
+              options={pageSizeOptions.map((opt) => ({ value: opt, label: String(opt) }))}
+              size="sm"
+              openUpward
+              buttonClassName="h-7 px-2 text-xs font-semibold rounded-md bg-white border-stone-200 shadow-2xs"
+            />
           </div>
         )}
 

@@ -13,6 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { getMediaUrl } from '../../utils/imageUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -26,12 +27,16 @@ import RowActions from '../../components/common/RowActions';
  * Renders an octagonal faceted diamond medallion with the centered letter (e.g. N or L)
  */
 function DiamondFacetIcon({ letter = 'D', imageUrl, className = 'w-10 h-10' }) {
-  if (imageUrl && !imageUrl.includes('example.com')) {
+  const [imgError, setImgError] = useState(false);
+  const resolvedSrc = getMediaUrl(imageUrl);
+
+  if (resolvedSrc && !imgError) {
     return (
       <img
-        src={imageUrl}
+        src={resolvedSrc}
         alt="diamond type icon"
         className={`${className} object-contain rounded-xl`}
+        onError={() => setImgError(true)}
       />
     );
   }
@@ -164,7 +169,7 @@ export default function DiamondTypesView() {
 
     try {
       setIsUploading(true);
-      const { fileUrl } = await uploadWithPresignedUrl(file, 'diamond-types');
+      const { fileUrl } = await uploadWithPresignedUrl(file, 'diamond/types');
       setIconUrl(fileUrl);
       toast.success('Icon uploaded successfully');
     } catch (err) {
@@ -545,7 +550,7 @@ export default function DiamondTypesView() {
                     <div className="w-6 h-6 rounded-full border-2 border-stone-200 border-t-[#8f6d43] animate-spin" />
                   ) : iconUrl ? (
                     <img
-                      src={iconUrl}
+                      src={getMediaUrl(iconUrl)}
                       alt="Uploaded icon"
                       className="w-16 h-16 object-contain"
                     />

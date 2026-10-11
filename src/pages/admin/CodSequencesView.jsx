@@ -16,12 +16,13 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import Dropdown from '../../components/common/Dropdown';
 
 const DEMO_TIERS = [
-  { _id: 'tier_01', customId: '#TIER-0001', uptoAmount: 15000, chargeType: 'Percentage', chargeValue: 10 },
-  { _id: 'tier_02', customId: '#TIER-0002', uptoAmount: 35000, chargeType: 'Percentage', chargeValue: 15 },
-  { _id: 'tier_03', customId: '#TIER-0003', uptoAmount: 75000, chargeType: 'Fixed', chargeValue: 5000 },
-  { _id: 'tier_04', customId: '#TIER-0004', uptoAmount: 150000, chargeType: 'Percentage', chargeValue: 20 },
+  { _id: 'tier_01', uptoAmount: 15000, chargeType: 'Percentage', chargeValue: 10 },
+  { _id: 'tier_02', uptoAmount: 35000, chargeType: 'Percentage', chargeValue: 15 },
+  { _id: 'tier_03', uptoAmount: 75000, chargeType: 'Fixed', chargeValue: 5000 },
+  { _id: 'tier_04', uptoAmount: 150000, chargeType: 'Percentage', chargeValue: 20 },
 ];
 
 export default function CodSequencesView() {
@@ -119,7 +120,6 @@ export default function CodSequencesView() {
       } else {
         const newMock = {
           _id: `tier_${Date.now()}`,
-          customId: `#TIER-${String(items.length + 1).padStart(4, '0')}`,
           uptoAmount: Number(formData.uptoAmount),
           chargeType: formData.chargeType,
           chargeValue: Number(formData.chargeValue),
@@ -206,8 +206,7 @@ export default function CodSequencesView() {
     return items.filter((i) => {
       const amt = String(i.uptoAmount || '');
       const type = (i.chargeType || '').toLowerCase();
-      const id = String(i.customId || i._id || '').toLowerCase();
-      return amt.includes(q) || type.includes(q) || id.includes(q);
+      return amt.includes(q) || type.includes(q);
     });
   }, [items, search]);
 
@@ -352,7 +351,6 @@ export default function CodSequencesView() {
                 paginatedItems.map((row, idx) => {
                   const id = row._id || row.id || `tier_${idx}`;
                   const isSelected = selectedIds.has(id);
-                  const displayId = row.customId || `#TIER-${String((currentPage - 1) * pageSize + idx + 1).padStart(4, '0')}`;
                   const isPercent = row.chargeType === 'Percentage';
                   const formattedDeposit = isPercent
                     ? `${Number(row.chargeValue).toFixed(2)} %`
@@ -361,7 +359,7 @@ export default function CodSequencesView() {
                   return (
                     <tr
                       key={id}
-                      onClick={() => setViewingItem({ ...row, displayId, formattedDeposit })}
+                      onClick={() => setViewingItem({ ...row, formattedDeposit })}
                       className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]/40' : ''
                       }`}
@@ -390,9 +388,6 @@ export default function CodSequencesView() {
                           <div className="leading-tight">
                             <p className="font-semibold text-stone-900 text-xs leading-none">
                               Upto ₹ {Number(row.uptoAmount).toLocaleString('en-IN')}
-                            </p>
-                            <p className="text-[10px] text-stone-400 font-mono leading-none mt-1">
-                              {displayId}
                             </p>
                           </div>
                         </div>
@@ -426,7 +421,7 @@ export default function CodSequencesView() {
                       {/* Actions: Eye & Three Dots */}
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                         <RowActions
-                          onView={() => setViewingItem({ ...row, displayId, formattedDeposit })}
+                          onView={() => setViewingItem({ ...row, formattedDeposit })}
                           onEdit={() => handleOpenEdit(row)}
                           onDelete={() => handleDelete(id)}
                           viewTitle="View tier details"
@@ -498,14 +493,16 @@ export default function CodSequencesView() {
                 <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
                   Advance Payment Type
                 </label>
-                <select
+                <Dropdown
                   value={formData.chargeType}
-                  onChange={(e) => setFormData({ ...formData, chargeType: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
-                >
-                  <option value="Percentage">Percentage (%)</option>
-                  <option value="Fixed">Fixed Amount (₹)</option>
-                </select>
+                  onChange={(val) => setFormData({ ...formData, chargeType: val })}
+                  options={[
+                    { value: 'Percentage', label: 'Percentage (%)' },
+                    { value: 'Fixed', label: 'Fixed Amount (₹)' },
+                  ]}
+                  size="sm"
+                  buttonClassName="w-full h-9 rounded-lg text-xs bg-white border-stone-200"
+                />
               </div>
 
               <div>
@@ -568,10 +565,6 @@ export default function CodSequencesView() {
             </div>
 
             <div className="space-y-3 text-xs bg-stone-50/70 p-4 rounded-xl border border-stone-200/60">
-              <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
-                <span className="text-stone-400">Tier ID</span>
-                <span className="font-mono font-bold text-stone-900">{viewingItem.displayId}</span>
-              </div>
               <div className="flex justify-between items-center">
                 <span className="text-stone-400">Order Cap</span>
                 <span className="font-semibold text-stone-900">Upto ₹ {Number(viewingItem.uptoAmount).toLocaleString('en-IN')}</span>
@@ -580,7 +573,7 @@ export default function CodSequencesView() {
                 <span className="text-stone-400">Advance Mode</span>
                 <span className="font-medium text-stone-800">{viewingItem.chargeType}</span>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
                 <span className="text-stone-400">Required Deposit</span>
                 <span className="font-bold text-[#8b6f4e] text-sm">{viewingItem.formattedDeposit}</span>
               </div>

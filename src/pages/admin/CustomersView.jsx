@@ -424,9 +424,6 @@ export default function CustomersView() {
                             <p className="font-semibold text-stone-900 text-xs leading-none">
                               {fullName}
                             </p>
-                            <p className="text-[9px] text-stone-400 font-mono leading-none mt-1">
-                              {displayId}
-                            </p>
                           </div>
                         </div>
                       </td>
@@ -627,9 +624,6 @@ export default function CustomersView() {
                 <h4 className="text-base font-bold text-stone-900">
                   {viewingCustomer.fullName}
                 </h4>
-                <p className="text-xs text-stone-400 font-mono">
-                  {viewingCustomer.displayId}
-                </p>
               </div>
             </div>
 

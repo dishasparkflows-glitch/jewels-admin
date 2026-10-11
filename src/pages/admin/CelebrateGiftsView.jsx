@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   HiOutlinePlus,
   HiOutlinePencil,
@@ -18,6 +18,7 @@ import { IoCubeOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { getMediaUrl } from '../../utils/imageUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -34,9 +35,18 @@ export default function CelebrateGiftsView() {
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
 
-  // Available products for modal selection
+  // Available products for modal selection (lookup API)
   const [allProducts, setAllProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [productPage, setProductPage] = useState(1);
+  const [productPagination, setProductPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalDocs: 0,
+    limit: 10,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -47,6 +57,7 @@ export default function CelebrateGiftsView() {
 
   // Form State
   const [title, setTitle] = useState('');
+  const [placement, setPlacement] = useState('Celebrate');
   const [imageUrl, setImageUrl] = useState('');
   const [imagePublicId, setImagePublicId] = useState('');
   const [status, setStatus] = useState('active');
@@ -88,24 +99,53 @@ export default function CelebrateGiftsView() {
     }
   };
 
-  // Fetch all products for modal picker
-  const fetchProducts = async () => {
+  // Fetch products using lightweight lookup API with pagination & filtering
+  const fetchProducts = useCallback(async (page = 1, searchQuery = '', filterType = 'all') => {
     try {
       setLoadingProducts(true);
-      const res = await api.get('/products?limit=200');
-      const items = res.data?.data?.items || res.data?.data || [];
+      const params = new URLSearchParams();
+      params.append('page', String(page));
+      params.append('limit', '10');
+      if (searchQuery.trim()) {
+        params.append('search', searchQuery.trim());
+      }
+      if (filterType && filterType !== 'all') {
+        params.append('productType', filterType);
+      }
+
+      const res = await api.get(`/products/lookup?${params.toString()}`);
+      const items = res.data?.data || res.data?.data?.items || [];
+      const pagination = res.data?.pagination || {
+        currentPage: page,
+        totalPages: 1,
+        totalDocs: Array.isArray(items) ? items.length : 0,
+        limit: 10,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+
       setAllProducts(Array.isArray(items) ? items : []);
+      setProductPagination(pagination);
+      setProductPage(page);
     } catch (err) {
       console.error('Failed to load products for picker:', err);
     } finally {
       setLoadingProducts(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchFeatured();
-    fetchProducts();
   }, []);
+
+  // Debounced search / filter for product lookup inside modal
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const timer = setTimeout(() => {
+      fetchProducts(1, productSearch, productFilterType);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [isModalOpen, productSearch, productFilterType, fetchProducts]);
 
   // Filtered featured items (Search query + placement filter, NO active/inactive filter)
   const filteredItems = useMemo(() => {
@@ -163,24 +203,14 @@ export default function CelebrateGiftsView() {
     },
   ];
 
-  // Filtered products inside modal
-  const filteredProducts = useMemo(() => {
-    return allProducts.filter((p) => {
-      const matchesSearch =
-        !productSearch.trim() ||
-        p.title?.toLowerCase().includes(productSearch.toLowerCase()) ||
-        p.sku?.toLowerCase().includes(productSearch.toLowerCase());
-      const matchesType =
-        productFilterType === 'all' ||
-        p.productType?.toLowerCase() === productFilterType.toLowerCase();
-      return matchesSearch && matchesType;
-    });
-  }, [allProducts, productSearch, productFilterType]);
+  // Products inside modal (filtered by backend lookup)
+  const filteredProducts = allProducts;
 
   // Open Add Modal
   const openAddModal = () => {
     setEditingItem(null);
     setTitle('');
+    setPlacement(placementFilter === 'Gifts' ? 'Gifts' : 'Celebrate');
     setImageUrl('');
     setImagePublicId('');
     setStatus('active');
@@ -193,6 +223,7 @@ export default function CelebrateGiftsView() {
   const openEditModal = (item) => {
     setEditingItem(item);
     setTitle(item.name || '');
+    setPlacement(item.placement || 'Celebrate');
     setImageUrl(item.image?.url || '');
     setImagePublicId(item.image?.public_id || '');
     setStatus(item.status || 'active');
@@ -220,6 +251,11 @@ export default function CelebrateGiftsView() {
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Instant local preview while uploading
+    const localPreview = URL.createObjectURL(file);
+    setImageUrl(localPreview);
+
     try {
       setUploading(true);
       setUploadProgress(0);
@@ -232,6 +268,7 @@ export default function CelebrateGiftsView() {
       toast.error('Failed to upload image');
     } finally {
       setUploading(false);
+      e.target.value = '';
     }
   };
 
@@ -247,7 +284,7 @@ export default function CelebrateGiftsView() {
       setSubmitting(true);
       const payload = {
         name: title.trim(),
-        placement: activeTab,
+        placement: placement || (placementFilter !== 'all' ? placementFilter : 'Celebrate'),
         image: {
           url: imageUrl || '/featured/necklace.jpg',
           public_id: imagePublicId || `feat_${Date.now()}`,
@@ -517,7 +554,7 @@ export default function CelebrateGiftsView() {
                         className="w-11 h-8 rounded-md overflow-hidden bg-stone-100 border border-stone-200/80 cursor-pointer hover:opacity-90 flex items-center justify-center shadow-2xs"
                       >
                         <img
-                          src={item.image?.url || '/featured/necklace.jpg'}
+                          src={getMediaUrl(item.image?.url || '/featured/necklace.jpg')}
                           alt={item.name}
                           className="w-full h-full object-cover"
                         />
@@ -621,6 +658,29 @@ export default function CelebrateGiftsView() {
                 />
               </div>
 
+              {/* PLACEMENT */}
+              <div>
+                <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
+                  PLACEMENT
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Celebrate', 'Gifts'].map((opt) => (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => setPlacement(opt)}
+                      className={`py-2 px-3 rounded-xl border text-xs font-semibold tracking-wide transition-all cursor-pointer ${
+                        placement === opt
+                          ? 'bg-[#8f6d43] border-[#8f6d43] text-white shadow-xs'
+                          : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                      }`}
+                    >
+                      {opt}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* COVER IMAGE */}
               <div>
                 <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
@@ -630,7 +690,7 @@ export default function CelebrateGiftsView() {
                   {imageUrl ? (
                     <div className="relative w-full h-32 rounded-xl overflow-hidden group">
                       <img
-                        src={imageUrl}
+                        src={getMediaUrl(imageUrl)}
                         alt="Cover Preview"
                         className="w-full h-full object-cover"
                       />
@@ -722,8 +782,9 @@ export default function CelebrateGiftsView() {
                     filteredProducts.map((p) => {
                       const isSelected = selectedProductIds.includes(p._id);
                       const thumb =
+                        p.thumbnail ||
                         p.images?.[0]?.url ||
-                        p.images?.[0] ||
+                        (typeof p.images?.[0] === 'string' ? p.images[0] : null) ||
                         p.colorImages?.[0]?.images?.[0]?.url ||
                         null;
 
@@ -741,10 +802,10 @@ export default function CelebrateGiftsView() {
                             onChange={() => {}}
                             className="w-4 h-4 rounded text-[#8f6d43] border-stone-300 focus:ring-0 cursor-pointer"
                           />
-                          <div className="w-8 h-8 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                          <div className="w-8 h-8 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center">
                             {thumb ? (
                               <img
-                                src={thumb}
+                                src={getMediaUrl(thumb)}
                                 alt={p.title}
                                 className="w-full h-full object-cover"
                               />
@@ -756,7 +817,10 @@ export default function CelebrateGiftsView() {
                             <p className="text-xs font-semibold text-stone-800 truncate">
                               {p.title}
                             </p>
-                            <p className="text-[10px] text-stone-400 font-mono">
+                            <p className="text-[10px] text-stone-400 font-mono truncate">
+                              {Array.isArray(p.category) && p.category[0]?.name ? (
+                                <span className="text-stone-500 font-sans mr-1">{p.category[0].name} •</span>
+                              ) : null}
                               SKU: {p.sku || 'N/A'} • ₹{p.price?.toLocaleString?.('en-IN') || p.price}
                             </p>
                           </div>
@@ -765,6 +829,36 @@ export default function CelebrateGiftsView() {
                     })
                   )}
                 </div>
+
+                {/* Product Pagination Bar */}
+                {productPagination.totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-2 px-1 text-xs text-stone-500">
+                    <span className="text-[11px] font-medium text-stone-500">
+                      Showing {((productPage - 1) * 10) + 1}-{Math.min(productPage * 10, productPagination.totalDocs)} of {productPagination.totalDocs}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={!productPagination.hasPrevPage || loadingProducts}
+                        onClick={() => fetchProducts(productPage - 1, productSearch, productFilterType)}
+                        className="px-2.5 py-1 rounded-md border border-stone-200 text-[11px] font-semibold text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-50 transition-colors"
+                      >
+                        Prev
+                      </button>
+                      <span className="px-2 py-0.5 text-[11px] font-mono text-stone-600 bg-stone-100 rounded-md">
+                        {productPage} / {productPagination.totalPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={!productPagination.hasNextPage || loadingProducts}
+                        onClick={() => fetchProducts(productPage + 1, productSearch, productFilterType)}
+                        className="px-2.5 py-1 rounded-md border border-stone-200 text-[11px] font-semibold text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-50 transition-colors"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Status Select */}
@@ -830,7 +924,7 @@ export default function CelebrateGiftsView() {
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
               <h3 className="text-base font-bold text-stone-900">
-                Reorder {activeTab} Showcases
+                Reorder {placementFilter === 'all' ? '' : `${placementFilter} `}Showcases
               </h3>
               <button
                 type="button"
@@ -908,7 +1002,7 @@ export default function CelebrateGiftsView() {
           >
             <div className="relative aspect-[16/9] w-full bg-stone-100 overflow-hidden">
               <img
-                src={viewingItem.image?.url || '/featured/necklace.jpg'}
+                src={getMediaUrl(viewingItem.image?.url || '/featured/necklace.jpg')}
                 alt={viewingItem.name}
                 className="w-full h-full object-cover"
               />

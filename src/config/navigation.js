@@ -31,6 +31,7 @@ import {
   TbCoins,
   TbRuler2,
   TbCircleOff,
+  TbCurrencyDollar,
 } from 'react-icons/tb';
 
 export const navSections = [
@@ -70,8 +71,9 @@ export const navSections = [
         path: '/pricing-hub',
         icon: TbCoins,
         children: [
-          { title: 'Metal Rates', path: '/pricing-hub/metal-rates', icon: TbCoins, apiEndpoint: '/metal-types' },
+          { title: 'Metal Rates', path: '/pricing-hub/metal-rates', icon: TbCoins, apiEndpoint: '/goldprice' },
           { title: 'Diamond rates', path: '/pricing-hub/diamond-rates', icon: IoDiamondOutline, apiEndpoint: '/diamond-prices' },
+          { title: 'Currencies', path: '/currencies', icon: TbCurrencyDollar, apiEndpoint: '/currencies' },
         ],
       },
 
@@ -109,6 +111,7 @@ export const navSections = [
     id: 'marketing',
     title: 'MARKETING',
     items: [
+      { id: 'home-sections', title: 'Home Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
       { id: 'celebrate-gifts', title: 'Celebrate & Gifts', path: '/celebrate-gifts', icon: IoDiamondOutline, apiEndpoint: '/featured' },
       { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
       { id: 'lookare', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineEye, apiEndpoint: '/cust-jewellery-before-after' },

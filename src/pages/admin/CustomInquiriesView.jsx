@@ -23,7 +23,6 @@ import RowActions from '../../components/common/RowActions';
 const DEMO_INQUIRIES = [
   {
     _id: 'inq_01',
-    customId: '#INQ-0001',
     customer: { name: 'Ananya Singhania', email: 'ananya.s@gmail.com', phone: { countryCode: '91', number: '9820123456' } },
     requirements: { metalType: '18KT Rose Gold', stoneType: 'Oval Solitaire 2.0ct', estimatedBudget: 250000, comments: 'Need custom halo setting with hidden accent diamonds.' },
     status: 'pending',
@@ -31,7 +30,6 @@ const DEMO_INQUIRIES = [
   },
   {
     _id: 'inq_02',
-    customId: '#INQ-0002',
     customer: { name: 'Rishi Kapoor', email: 'rishi.k@gmail.com', phone: { countryCode: '91', number: '9811445566' } },
     requirements: { metalType: 'Platinum 950', stoneType: 'Emerald Cut Diamond', estimatedBudget: 420000, comments: 'Family heirloom redesign for wedding anniversary.' },
     status: 'confirmed',
@@ -39,7 +37,6 @@ const DEMO_INQUIRIES = [
   },
   {
     _id: 'inq_03',
-    customId: '#INQ-0003',
     customer: { name: 'Tara Sutaria', email: 'tara.s@gmail.com', phone: { countryCode: '91', number: '9765112233' } },
     requirements: { metalType: '18KT Yellow Gold', stoneType: 'Round Brilliant', estimatedBudget: 180000, comments: 'Traditional temple style bridal necklace pendant.' },
     status: 'completed',
@@ -173,15 +170,13 @@ export default function CustomInquiriesView() {
       const comments = (i.requirements?.comments || '').toLowerCase();
       const stone = (i.requirements?.stoneType || '').toLowerCase();
       const metal = (i.requirements?.metalType || '').toLowerCase();
-      const idStr = String(i.customId || i._id || '').toLowerCase();
       return (
         name.includes(q) ||
         email.includes(q) ||
         phone.includes(q) ||
         comments.includes(q) ||
         stone.includes(q) ||
-        metal.includes(q) ||
-        idStr.includes(q)
+        metal.includes(q)
       );
     });
   }, [inquiries, search]);
@@ -340,7 +335,6 @@ export default function CustomInquiriesView() {
                   const countryCode = inq.customer?.phone?.countryCode || '91';
                   const rawPhone = inq.customer?.phone?.number || '';
                   const initial = (clientName || 'C')[0].toUpperCase();
-                  const displayId = inq.customId || `#INQ-${String((currentPage - 1) * pageSize + idx + 1).padStart(4, '0')}`;
                   const metal = inq.requirements?.metalType || '18KT Gold';
                   const stone = inq.requirements?.stoneType || 'Natural Diamond';
                   const budget = Number(inq.requirements?.estimatedBudget || 0);
@@ -348,7 +342,7 @@ export default function CustomInquiriesView() {
                   return (
                     <tr
                       key={id}
-                      onClick={() => setSelectedInquiry({ ...inq, clientName, clientEmail, rawPhone, countryCode, displayId, metal, stone, budget })}
+                      onClick={() => setSelectedInquiry({ ...inq, clientName, clientEmail, rawPhone, countryCode, metal, stone, budget })}
                       className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]/40' : ''
                       }`}
@@ -377,9 +371,6 @@ export default function CustomInquiriesView() {
                           <div className="leading-tight">
                             <p className="font-semibold text-stone-900 text-xs leading-none">
                               {clientName}
-                            </p>
-                            <p className="text-[10px] text-stone-400 font-mono leading-none mt-1">
-                              {displayId}
                             </p>
                           </div>
                         </div>
@@ -441,7 +432,7 @@ export default function CustomInquiriesView() {
                       {/* Actions: Eye & Three Dots */}
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                         <RowActions
-                          onView={() => setSelectedInquiry({ ...inq, clientName, clientEmail, rawPhone, countryCode, displayId, metal, stone, budget })}
+                          onView={() => setSelectedInquiry({ ...inq, clientName, clientEmail, rawPhone, countryCode, metal, stone, budget })}
                           onDelete={() => handleDelete(id, clientName)}
                           extraActions={[
                             ...(inq.status === 'pending'
@@ -501,10 +492,6 @@ export default function CustomInquiriesView() {
 
             <div className="space-y-4 text-xs">
               <div className="bg-stone-50/70 p-4 rounded-xl border border-stone-200/60 space-y-2">
-                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
-                  <span className="text-stone-400">Inquiry ID</span>
-                  <span className="font-mono font-bold text-stone-900">{selectedInquiry.displayId}</span>
-                </div>
                 <div className="flex justify-between items-center">
                   <span className="text-stone-400">Client Name</span>
                   <span className="font-semibold text-stone-900">{selectedInquiry.clientName}</span>

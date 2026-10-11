@@ -9,6 +9,7 @@ import {
   HiOutlineTrash,
   HiOutlineRefresh,
   HiOutlineEye,
+  HiOutlinePencil,
   HiOutlineX,
 } from 'react-icons/hi';
 import Pagination from '../../components/common/Pagination';
@@ -192,6 +193,8 @@ const DynamicModuleView = () => {
   const handleOpenAdd = () => {
     if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
       navigate('/catalog/jewelry-products/add');
+    } else if (pathname === '/catalog/ornate-products' || pathname.includes('ornate-products')) {
+      navigate('/catalog/ornate-products/add');
     } else {
       setIsModalOpen(true);
     }
@@ -529,8 +532,14 @@ const DynamicModuleView = () => {
             ? 'Real-time synchronization and catalog management of Ornate ERP jewellery products.'
             : `Configure, manage and update real-time ${config.title.toLowerCase()} catalog data.`
         }
-        onAdd={isOrnatePage ? undefined : handleOpenAdd}
-        addLabel={pathname.includes('jewelry-products') ? 'Add Jewelry Product' : `Add ${config.title.replace(/s$/, '')}`}
+        onAdd={handleOpenAdd}
+        addLabel={
+          pathname.includes('jewelry-products')
+            ? 'Add Jewelry Product'
+            : isOrnatePage
+            ? 'Add Ornate Product'
+            : `Add ${config.title.replace(/s$/, '')}`
+        }
         extraActions={
           isOrnatePage && (
             <button
@@ -661,7 +670,13 @@ const DynamicModuleView = () => {
                     return (
                       <tr
                         key={row._id || row.id}
-                        onClick={() => setViewingRecord(row)}
+                        onClick={() => {
+                          if (isOrnatePage) {
+                            navigate(`/catalog/ornate-products/edit/${row._id || row.id}`);
+                          } else {
+                            setViewingRecord(row);
+                          }
+                        }}
                         className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
                       >
                         <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
@@ -755,6 +770,15 @@ const DynamicModuleView = () => {
                         <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                           <RowActions
                             onView={() => setViewingRecord(row)}
+                            onEdit={() => {
+                              if (isOrnatePage) {
+                                navigate(`/catalog/ornate-products/edit/${row._id || row.id}`);
+                              } else if (pathname.includes('jewelry-products')) {
+                                navigate(`/catalog/jewelry-products/edit/${row._id || row.id}`);
+                              } else {
+                                setViewingRecord(row);
+                              }
+                            }}
                             onDelete={() => handleDelete(row._id || row.id)}
                           />
                         </td>
@@ -972,10 +996,23 @@ const DynamicModuleView = () => {
               )}
             </div>
 
+            {isOrnatePage && (
+              <button
+                type="button"
+                onClick={() => {
+                  navigate(`/catalog/ornate-products/edit/${viewingRecord._id || viewingRecord.id}`);
+                }}
+                className="w-full py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2 mb-2"
+              >
+                <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Edit Product (Tab-Wise Designer)</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setViewingRecord(null)}
-              className="w-full py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
             >
               Close
             </button>

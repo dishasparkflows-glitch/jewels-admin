@@ -5,11 +5,14 @@ import {
   HiOutlineUpload,
   HiOutlineX,
   HiOutlineCheck,
+  HiOutlineRefresh,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { getMediaUrl } from '../../utils/imageUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 
@@ -42,6 +45,13 @@ const BODY_PART_META = {
   },
 };
 
+const DEFAULT_ASSET_MAP = {
+  hand: { light: '/vto/hand_light.jpg', dark: '/vto/hand_dark.jpg' },
+  neck: { light: '/vto/neck_light.jpg', dark: '/vto/neck_dark.jpg' },
+  ear: { light: '/vto/ear_light.jpg', dark: '/vto/ear_dark.jpg' },
+  wrist: { light: '/vto/hand_light.jpg', dark: '/vto/hand_dark.jpg' },
+};
+
 export default function VtoMastersView() {
   const [masters, setMasters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -58,12 +68,15 @@ export default function VtoMastersView() {
   const [darkPublicId, setDarkPublicId] = useState('');
   const [status, setStatus] = useState('active');
 
-  // Uploading state
+  // Modal uploading state
   const [uploadingLight, setUploadingLight] = useState(false);
   const [lightProgress, setLightProgress] = useState(0);
   const [uploadingDark, setUploadingDark] = useState(false);
   const [darkProgress, setDarkProgress] = useState(0);
   const [saving, setSaving] = useState(false);
+
+  // Inline Card uploading state (e.g. 'ear_light')
+  const [uploadingCardTone, setUploadingCardTone] = useState(null);
 
   // Fetch all VTO Masters from backend
   const fetchMasters = async () => {
@@ -96,7 +109,77 @@ export default function VtoMastersView() {
     setIsModalOpen(true);
   };
 
-  // Upload handlers
+  // Direct Inline Upload on Card (Hover & Click REPLACE LIGHT / REPLACE DARK)
+  const handleCardUpload = async (e, partKey, tone, currentMaster) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const toneKey = `${partKey}_${tone}`;
+    try {
+      setUploadingCardTone(toneKey);
+      const res = await uploadWithPresignedUrl(file, 'vto');
+
+      const isLight = tone === 'light';
+      const payload = {
+        bodyPart: partKey,
+        lightImage: isLight
+          ? { url: res.fileUrl, public_id: res.key || `${partKey}_light` }
+          : (currentMaster?.lightImage || { url: '', public_id: '' }),
+        darkImage: !isLight
+          ? { url: res.fileUrl, public_id: res.key || `${partKey}_dark` }
+          : (currentMaster?.darkImage || { url: '', public_id: '' }),
+        status: currentMaster?.status || 'active',
+      };
+
+      if (currentMaster?._id) {
+        await api.put(`/vto-masters/${currentMaster._id}`, payload);
+      } else {
+        await api.post('/vto-masters', payload);
+      }
+
+      toast.success(`${BODY_PART_META[partKey]?.name} ${isLight ? 'Light' : 'Dark'} Tone updated`);
+      await fetchMasters();
+    } catch (err) {
+      console.error(`Failed to upload ${partKey} ${tone} image:`, err);
+      toast.error(err.response?.data?.message || `Failed to upload image`);
+    } finally {
+      setUploadingCardTone(null);
+      e.target.value = '';
+    }
+  };
+
+  // Restore Default Models
+  const handleRestoreDefaults = async () => {
+    try {
+      setLoading(true);
+      for (const part of ORDERED_PARTS) {
+        const master = masters.find((m) => m.bodyPart === part);
+        const def = DEFAULT_ASSET_MAP[part];
+        const payload = {
+          bodyPart: part,
+          lightImage: { url: def.light, public_id: `${part}_light` },
+          darkImage: { url: def.dark, public_id: `${part}_dark` },
+          status: 'active',
+        };
+
+        if (master?._id) {
+          await api.put(`/vto-masters/${master._id}`, payload);
+        } else {
+          await api.post('/vto-masters', payload);
+        }
+      }
+
+      toast.success('Default VTO model assets restored');
+      await fetchMasters();
+    } catch (err) {
+      console.error('Failed to restore defaults:', err);
+      toast.error('Failed to restore default assets');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Upload handlers inside Modal
   const handleUploadLight = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -112,6 +195,7 @@ export default function VtoMastersView() {
       toast.error('Failed to upload Light Tone image');
     } finally {
       setUploadingLight(false);
+      e.target.value = '';
     }
   };
 
@@ -130,10 +214,11 @@ export default function VtoMastersView() {
       toast.error('Failed to upload Dark Tone image');
     } finally {
       setUploadingDark(false);
+      e.target.value = '';
     }
   };
 
-  // Save changes
+  // Save changes inside Modal
   const handleSave = async (e) => {
     e.preventDefault();
     try {
@@ -169,7 +254,10 @@ export default function VtoMastersView() {
   };
 
   // Quick stat cards
-  const configuredCount = useMemo(() => masters.filter(m => m.lightImage?.url || m.darkImage?.url).length, [masters]);
+  const configuredCount = useMemo(
+    () => masters.filter((m) => m.lightImage?.url || m.darkImage?.url).length,
+    [masters]
+  );
 
   const statCardsData = [
     {
@@ -205,8 +293,18 @@ export default function VtoMastersView() {
         breadcrumbs={['Home', 'Product Config', 'VTO Masters']}
         title="VTO Master Assets"
         subtitle="Configure global virtual try-on environments, light and dark tone models for rings, earrings and necklaces."
-        exportData={masters}
-        exportFileName="vto_masters_export"
+        extraActions={
+          <button
+            type="button"
+            onClick={handleRestoreDefaults}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-700 rounded-lg text-xs font-semibold tracking-wide transition-all border border-stone-200/90 shadow-2xs cursor-pointer disabled:opacity-50"
+            title="Restore default model body part photos"
+          >
+            <HiOutlineRefresh className={`w-3.5 h-3.5 text-[#8f6d43] ${loading ? 'animate-spin' : ''}`} />
+            <span>Restore Default Models</span>
+          </button>
+        }
       />
 
       {/* ─── 4 Stat Cards Row ─── */}
@@ -220,6 +318,8 @@ export default function VtoMastersView() {
           const isActive = master?.status === 'active';
           const lightImg = master?.lightImage?.url;
           const darkImg = master?.darkImage?.url;
+          const isLightUploading = uploadingCardTone === `${key}_light`;
+          const isDarkUploading = uploadingCardTone === `${key}_dark`;
 
           return (
             <div
@@ -244,7 +344,7 @@ export default function VtoMastersView() {
                     </div>
                   </div>
 
-                  {/* ACTIVE Badge (Exact Match: tiny dot + ACTIVE) */}
+                  {/* ACTIVE Badge */}
                   {isActive && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide text-emerald-600 bg-emerald-50/90 border border-emerald-200/80 shadow-2xs">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
@@ -262,42 +362,102 @@ export default function VtoMastersView() {
                 <div className="grid grid-cols-2 gap-2 mt-2.5">
                   {/* Light Tone */}
                   <div>
-                    <div className="text-[9px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-                      LIGHT SKIN TONE
+                    <div className="text-[9px] font-bold tracking-wider text-stone-400 uppercase mb-1 flex items-center justify-between">
+                      <span>LIGHT SKIN TONE</span>
                     </div>
-                    <div className="relative aspect-[4/5] max-h-36 rounded-xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs">
+
+                    <label
+                      htmlFor={`card-upload-${key}-light`}
+                      className="group relative aspect-[4/5] max-h-36 rounded-xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
+                      title="Click to replace Light Tone image"
+                    >
+                      <input
+                        type="file"
+                        id={`card-upload-${key}-light`}
+                        accept="image/*"
+                        className="hidden"
+                        disabled={isLightUploading}
+                        onChange={(e) => handleCardUpload(e, key, 'light', master)}
+                      />
+
                       {lightImg ? (
                         <img
-                          src={lightImg}
+                          src={getMediaUrl(lightImg)}
                           alt={`${meta.name} Light`}
-                          className="w-full h-full object-cover object-center"
+                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
                         <div className="w-full h-full bg-[#f9fafb] flex flex-col items-center justify-center text-stone-300">
                           <span className="text-[10px] font-medium text-stone-400">Light</span>
                         </div>
                       )}
-                    </div>
+
+                      {/* Loading Spinner during upload */}
+                      {isLightUploading ? (
+                        <div className="absolute inset-0 bg-stone-900/75 backdrop-blur-xs flex flex-col items-center justify-center gap-1 z-20 text-white">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span className="text-[9px] font-bold tracking-wider uppercase">Uploading...</span>
+                        </div>
+                      ) : (
+                        /* Hover Overlay - exact match to Screenshot 1: REPLACE LIGHT */
+                        <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-2xs flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 text-white">
+                          <HiOutlineUpload className="w-4 h-4 text-white" />
+                          <span className="text-[9px] font-bold tracking-wider uppercase text-center px-1">
+                            {lightImg ? 'REPLACE LIGHT' : 'UPLOAD LIGHT'}
+                          </span>
+                        </div>
+                      )}
+                    </label>
                   </div>
 
                   {/* Dark Tone */}
                   <div>
-                    <div className="text-[9px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-                      DARK SKIN TONE
+                    <div className="text-[9px] font-bold tracking-wider text-stone-400 uppercase mb-1 flex items-center justify-between">
+                      <span>DARK SKIN TONE</span>
                     </div>
-                    <div className="relative aspect-[4/5] max-h-36 rounded-xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs">
+
+                    <label
+                      htmlFor={`card-upload-${key}-dark`}
+                      className="group relative aspect-[4/5] max-h-36 rounded-xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
+                      title="Click to replace Dark Tone image"
+                    >
+                      <input
+                        type="file"
+                        id={`card-upload-${key}-dark`}
+                        accept="image/*"
+                        className="hidden"
+                        disabled={isDarkUploading}
+                        onChange={(e) => handleCardUpload(e, key, 'dark', master)}
+                      />
+
                       {darkImg ? (
                         <img
-                          src={darkImg}
+                          src={getMediaUrl(darkImg)}
                           alt={`${meta.name} Dark`}
-                          className="w-full h-full object-cover object-center"
+                          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
                         />
                       ) : (
                         <div className="w-full h-full bg-[#f9fafb] flex flex-col items-center justify-center text-stone-300">
                           <span className="text-[10px] font-medium text-stone-400">Dark</span>
                         </div>
                       )}
-                    </div>
+
+                      {/* Loading Spinner during upload */}
+                      {isDarkUploading ? (
+                        <div className="absolute inset-0 bg-stone-900/75 backdrop-blur-xs flex flex-col items-center justify-center gap-1 z-20 text-white">
+                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span className="text-[9px] font-bold tracking-wider uppercase">Uploading...</span>
+                        </div>
+                      ) : (
+                        /* Hover Overlay - exact match to Screenshot 1: REPLACE DARK */
+                        <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-2xs flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 text-white">
+                          <HiOutlineUpload className="w-4 h-4 text-white" />
+                          <span className="text-[9px] font-bold tracking-wider uppercase text-center px-1">
+                            {darkImg ? 'REPLACE DARK' : 'UPLOAD DARK'}
+                          </span>
+                        </div>
+                      )}
+                    </label>
                   </div>
                 </div>
               </div>
@@ -322,7 +482,7 @@ export default function VtoMastersView() {
         })}
       </div>
 
-      {/* ─── Bottom Architecture Tip (Exact Match to Screenshot 2) ─── */}
+      {/* ─── Bottom Architecture Tip ─── */}
       <div className="mt-2.5 bg-[#fffdfa] border border-[#f5ece1] rounded-xl p-2.5 sm:p-3 flex items-start gap-2.5 shadow-2xs">
         <div className="w-6 h-6 rounded-full bg-[#f6eee3] text-[#8f6d43] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs">
           <HiOutlineInformationCircle className="w-3.5 h-3.5 text-[#8f6d43]" />
@@ -367,7 +527,7 @@ export default function VtoMastersView() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors"
+                className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
               >
                 <HiOutlineX className="w-5 h-5" />
               </button>
@@ -375,6 +535,30 @@ export default function VtoMastersView() {
 
             {/* Modal Body */}
             <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+              {/* Quick Template Preset */}
+              <div className="flex items-center justify-between p-3 bg-amber-50/70 rounded-xl border border-amber-200/60">
+                <div>
+                  <div className="text-xs font-bold text-amber-900">Default Model Template</div>
+                  <div className="text-[11px] text-amber-700">
+                    Quickly apply the recommended realistic studio models
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const def = DEFAULT_ASSET_MAP[selectedPart] || DEFAULT_ASSET_MAP.hand;
+                    setLightUrl(def.light);
+                    setLightPublicId(`${selectedPart}_light`);
+                    setDarkUrl(def.dark);
+                    setDarkPublicId(`${selectedPart}_dark`);
+                    toast.success(`Applied default assets for ${BODY_PART_META[selectedPart]?.name}`);
+                  }}
+                  className="px-2.5 py-1 text-xs font-bold text-[#8f6d43] bg-white hover:bg-stone-50 border border-[#ebdccb] rounded-lg shadow-2xs transition-colors cursor-pointer"
+                >
+                  Apply Defaults
+                </button>
+              </div>
+
               {/* Status Select */}
               <div className="flex items-center justify-between p-3.5 bg-stone-50 rounded-xl border border-stone-200/80">
                 <div>
@@ -387,7 +571,7 @@ export default function VtoMastersView() {
                   <button
                     type="button"
                     onClick={() => setStatus(status === 'active' ? 'inactive' : 'active')}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden ${
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${
                       status === 'active' ? 'bg-[#8f6d43]' : 'bg-stone-300'
                     }`}
                   >
@@ -417,10 +601,10 @@ export default function VtoMastersView() {
                 </div>
 
                 <div className="flex gap-4 items-start">
-                  <div className="w-24 h-28 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                  <div className="w-24 h-28 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
                     {lightUrl ? (
                       <img
-                        src={lightUrl}
+                        src={getMediaUrl(lightUrl)}
                         alt="Light Preview"
                         className="w-full h-full object-cover"
                       />
@@ -449,6 +633,21 @@ export default function VtoMastersView() {
                           disabled={uploadingLight}
                         />
                       </label>
+
+                      {lightUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setLightUrl('');
+                            setLightPublicId('');
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 cursor-pointer"
+                        >
+                          <HiOutlineTrash className="w-3.5 h-3.5" />
+                          <span>Clear</span>
+                        </button>
+                      )}
+
                       {uploadingLight && (
                         <span className="text-[11px] text-stone-500">
                           Uploading... {lightProgress}%
@@ -473,10 +672,10 @@ export default function VtoMastersView() {
                 </div>
 
                 <div className="flex gap-4 items-start">
-                  <div className="w-24 h-28 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex-shrink-0 flex items-center justify-center">
+                  <div className="w-24 h-28 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
                     {darkUrl ? (
                       <img
-                        src={darkUrl}
+                        src={getMediaUrl(darkUrl)}
                         alt="Dark Preview"
                         className="w-full h-full object-cover"
                       />
@@ -505,6 +704,21 @@ export default function VtoMastersView() {
                           disabled={uploadingDark}
                         />
                       </label>
+
+                      {darkUrl && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDarkUrl('');
+                            setDarkPublicId('');
+                          }}
+                          className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs text-rose-600 hover:bg-rose-50 rounded-lg transition-colors border border-rose-200 cursor-pointer"
+                        >
+                          <HiOutlineTrash className="w-3.5 h-3.5" />
+                          <span>Clear</span>
+                        </button>
+                      )}
+
                       {uploadingDark && (
                         <span className="text-[11px] text-stone-500">
                           Uploading... {darkProgress}%

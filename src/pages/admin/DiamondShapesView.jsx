@@ -15,6 +15,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { getMediaUrl } from '../../utils/imageUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -28,13 +29,17 @@ import RowActions from '../../components/common/RowActions';
  * Renders an uploaded shape icon or an elegant luxury placeholder badge with "DS"
  */
 function VisualShapeBadge({ name = '', imageUrl, className = 'w-6 h-6' }) {
-  if (imageUrl && !imageUrl.includes('example.com')) {
+  const [imgError, setImgError] = useState(false);
+  const resolvedSrc = getMediaUrl(imageUrl);
+
+  if (resolvedSrc && !imgError) {
     return (
       <div className={`${className} rounded-lg bg-stone-50/90 border border-stone-200/80 p-0.5 flex items-center justify-center overflow-hidden shadow-2xs`}>
         <img
-          src={imageUrl}
+          src={resolvedSrc}
           alt={name || 'Diamond Shape'}
           className="w-full h-full object-contain"
+          onError={() => setImgError(true)}
         />
       </div>
     );
@@ -163,7 +168,7 @@ export default function DiamondShapesView() {
 
     try {
       setIsUploading(true);
-      const { fileUrl } = await uploadWithPresignedUrl(file, 'diamond-shapes');
+      const { fileUrl } = await uploadWithPresignedUrl(file, 'diamond/shapes');
       setIconUrl(fileUrl);
       toast.success('Icon uploaded successfully');
     } catch (err) {

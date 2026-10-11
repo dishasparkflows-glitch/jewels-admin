@@ -344,7 +344,6 @@ export default function AppointmentsView() {
                 <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
                 <th className="py-2 px-3 whitespace-nowrap">CLIENT</th>
                 <th className="py-2 px-3 whitespace-nowrap">CONTACT</th>
-                <th className="py-2 px-3 whitespace-nowrap">CONSULTATION</th>
                 <th className="py-2 px-3 whitespace-nowrap">SCHEDULE</th>
                 <th className="py-2 px-3 whitespace-nowrap">STATUS</th>
                 <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
@@ -353,14 +352,14 @@ export default function AppointmentsView() {
             <tbody className="divide-y divide-stone-100 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     <div className="animate-spin w-4 h-4 border-2 border-[#8b6f4e] border-t-transparent rounded-full mx-auto mb-1.5" />
                     Loading appointments...
                   </td>
                 </tr>
               ) : displayedList.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     No appointments found matching &quot;{search}&quot;.
                   </td>
                 </tr>
@@ -411,9 +410,6 @@ export default function AppointmentsView() {
                             <p className="font-semibold text-stone-900 text-xs leading-none">
                               {clientName}
                             </p>
-                            <p className="text-[9px] text-stone-400 font-mono leading-none mt-1">
-                              {displayId}
-                            </p>
                           </div>
                         </div>
                       </td>
@@ -432,13 +428,6 @@ export default function AppointmentsView() {
                             </div>
                           )}
                         </div>
-                      </td>
-
-                      {/* Service / Consultation Type */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="font-medium text-stone-800 text-xs">
-                          {service}
-                        </span>
                       </td>
 
                       {/* Schedule */}
@@ -584,22 +573,6 @@ export default function AppointmentsView() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                  Consultation Service
-                </label>
-                <select
-                  value={formData.service}
-                  onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
-                >
-                  <option value="Bridal Consultation">Bridal Consultation</option>
-                  <option value="Custom Solitaire Viewing">Custom Solitaire Viewing</option>
-                  <option value="Diamond Engagement Ring">Diamond Engagement Ring</option>
-                  <option value="Heritage Gold Collection">Heritage Gold Collection</option>
-                </select>
-              </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
@@ -671,10 +644,6 @@ export default function AppointmentsView() {
             </div>
 
             <div className="space-y-3 text-xs bg-stone-50/70 p-4 rounded-xl border border-stone-200/60">
-              <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
-                <span className="text-stone-400">Appointment ID</span>
-                <span className="font-mono font-bold text-stone-900">{viewingApt.displayId}</span>
-              </div>
               <div className="flex justify-between items-center">
                 <span className="text-stone-400">Client Name</span>
                 <span className="font-semibold text-stone-900">{viewingApt.clientName}</span>
@@ -688,10 +657,6 @@ export default function AppointmentsView() {
                 <span className="font-medium text-stone-800">+{viewingApt.countryCode} {viewingApt.rawPhone}</span>
               </div>
               <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
-                <span className="text-stone-400">Service</span>
-                <span className="font-semibold text-stone-900">{viewingApt.service}</span>
-              </div>
-              <div className="flex justify-between items-center">
                 <span className="text-stone-400">Date & Time</span>
                 <span className="font-semibold text-[#8b6f4e]">{formatDate(viewingApt.aptDate)} at {viewingApt.prefTime}</span>
               </div>

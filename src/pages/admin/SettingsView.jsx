@@ -12,6 +12,7 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 
@@ -147,23 +148,18 @@ export default function SettingsView() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
       setUploadingImage(true);
-      const res = await api.post('/upload/single?folder=certificates', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      const uploadedUrl = res.data?.data?.url;
-      if (uploadedUrl) {
-        setBusinessForm((prev) => ({ ...prev, certificateImageUrl: uploadedUrl }));
+      const { fileUrl } = await uploadWithPresignedUrl(file, 'certificates');
+      if (fileUrl) {
+        setBusinessForm((prev) => ({ ...prev, certificateImageUrl: fileUrl }));
         toast.success('Certificate uploaded successfully');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Image upload failed');
+      toast.error(err.response?.data?.message || err.message || 'Image upload failed');
     } finally {
       setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 

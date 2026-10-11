@@ -18,6 +18,7 @@ import {
   HiOutlineChevronRight,
   HiOutlineEye,
   HiOutlineStar,
+  HiOutlineUpload,
 } from 'react-icons/hi';
 import {
   IoDiamondOutline,
@@ -32,6 +33,7 @@ import {
 } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
 
@@ -81,7 +83,6 @@ export default function NavigationMenusView() {
   const [menuFormData, setMenuFormData] = useState({
     title: '',
     navType: 'main',
-    type: 'Category',
     categoryId: '',
     customUrl: '',
     iconName: 'diamond',
@@ -109,7 +110,6 @@ export default function NavigationMenusView() {
     title: '',
     subtitle: '',
     imageUrl: '/products/ring_catalog.jpg',
-    linkType: 'Category',
     categoryId: '',
     categoryName: '',
     status: 'active',
@@ -241,7 +241,6 @@ export default function NavigationMenusView() {
     setMenuFormData({
       title: '',
       navType: activeTab === 'settings' ? 'main' : activeTab,
-      type: 'Category',
       categoryId: categories[0]?._id || '',
       customUrl: '',
       iconName: 'diamond',
@@ -268,9 +267,8 @@ export default function NavigationMenusView() {
       const payload = {
         title: menuFormData.title.trim(),
         navType: menuFormData.navType,
-        type: menuFormData.type,
-        categoryId: menuFormData.type === 'Category' ? menuFormData.categoryId || null : null,
-        customUrl: menuFormData.type === 'Custom Link' ? menuFormData.customUrl : '',
+        categoryId: menuFormData.categoryId || null,
+        customUrl: menuFormData.customUrl || '',
         openInNewTab: Boolean(menuFormData.openInNewTab),
         isMegaMenu: Boolean(menuFormData.isMegaMenu),
         status: menuFormData.status,
@@ -388,7 +386,6 @@ export default function NavigationMenusView() {
       title: '',
       subtitle: '',
       imageUrl: '/products/ring_catalog.jpg',
-      linkType: 'Category',
       categoryId: categories[0]?._id || '',
       categoryName: categories[0]?.name || '',
       status: 'active',
@@ -410,7 +407,6 @@ export default function NavigationMenusView() {
         title: bannerFormData.title.trim(),
         subtitle: bannerFormData.subtitle.trim(),
         image: { url: bannerFormData.imageUrl },
-        linkType: bannerFormData.linkType,
         categoryId: bannerFormData.categoryId || null,
         categoryName: bannerFormData.categoryName,
         status: bannerFormData.status,
@@ -563,7 +559,7 @@ export default function NavigationMenusView() {
                     <th className="py-3 px-3 w-8 text-center">#</th>
                     <th className="py-3 px-3 w-10 text-center">#</th>
                     <th className="py-3 px-4">MENU ITEM</th>
-                    <th className="py-3 px-4">TYPE</th>
+                    <th className="py-3 px-4">CATEGORY</th>
                     <th className="py-3 px-4 text-center">STATUS</th>
                     <th className="py-3 px-4 text-right">ACTIONS</th>
                   </tr>
@@ -627,24 +623,16 @@ export default function NavigationMenusView() {
                                 <p className="text-[11px] text-stone-400 leading-tight">
                                   {menu.isMegaMenu && sectionsCount > 0
                                     ? `Mega Menu (${sectionsCount} sections)`
-                                    : menu.type === 'Custom Link'
-                                    ? 'Custom Link'
                                     : 'Standard Menu Link'}
                                 </p>
                               </div>
                             </div>
                           </td>
 
-                          {/* Type Badge */}
+                          {/* Category Badge */}
                           <td className="py-3 px-4">
-                            <span
-                              className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                                menu.type === 'Custom Link'
-                                  ? 'bg-[#eff6ff] text-[#2563eb] border border-[#bfdbfe]'
-                                  : 'bg-[#faf5ee] text-[#8b6f4e] border border-[#e8dac7]'
-                              }`}
-                            >
-                              {menu.type}
+                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#e8dac7]">
+                              {menu.categoryId?.name || menu.title}
                             </span>
                           </td>
 
@@ -711,7 +699,6 @@ export default function NavigationMenusView() {
                                       setMenuFormData({
                                         title: menu.title,
                                         navType: menu.navType || 'main',
-                                        type: menu.type || 'Category',
                                         categoryId: menu.categoryId?._id || menu.categoryId || '',
                                         customUrl: menu.customUrl || '',
                                         iconName: menu.icon?.name || 'diamond',
@@ -811,7 +798,8 @@ export default function NavigationMenusView() {
                   </span>
                 </div>
                 <p className="text-xs text-stone-400">
-                  {selectedMenu.type} • {selectedMenu.isMegaMenu ? 'Mega Menu' : 'Standard Link'}
+                  {selectedMenu.categoryId?.name ? `${selectedMenu.categoryId.name} • ` : ''}
+                  {selectedMenu.isMegaMenu ? 'Mega Menu' : 'Standard Menu Link'}
                 </p>
               </div>
             </div>
@@ -998,8 +986,8 @@ export default function NavigationMenusView() {
                       </div>
                     </div>
 
-                    {/* Banner Editable Form Grid (Matches Screenshot 4) */}
-                    <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                    {/* Banner Editable Form Grid */}
+                    <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
                       {/* Title */}
                       <div className="space-y-1">
                         <label className="text-[11px] font-bold text-stone-700">Title</label>
@@ -1019,18 +1007,6 @@ export default function NavigationMenusView() {
                           defaultValue={banner.subtitle}
                           onBlur={(e) => handleUpdateBannerField(banner._id, 'subtitle', e.target.value)}
                           className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                      </div>
-
-                      {/* Link Type */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-stone-700">Link Type</label>
-                        <Dropdown
-                          size="sm"
-                          value={banner.linkType || 'Category'}
-                          onChange={(val) => handleUpdateBannerField(banner._id, 'linkType', val)}
-                          options={['Category', 'Custom Link', 'Collection']}
-                          buttonClassName="h-8.5 px-3 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
                         />
                       </div>
 
@@ -1125,43 +1101,16 @@ export default function NavigationMenusView() {
                 </div>
 
                 <div>
-                  <label className="font-bold text-stone-700 block mb-1">Link Type</label>
+                  <label className="font-bold text-stone-700 block mb-1">Target Category</label>
                   <Dropdown
                     size="sm"
-                    value={selectedMenu.type}
+                    value={selectedMenu.categoryId?._id || selectedMenu.categoryId}
                     onChange={(val) =>
-                      setSelectedMenu((prev) => ({ ...prev, type: val }))
+                      setSelectedMenu((prev) => ({ ...prev, categoryId: val }))
                     }
-                    options={['Category', 'Custom Link', 'Collection', 'Page']}
+                    options={categoryOptions}
                   />
                 </div>
-
-                {selectedMenu.type === 'Category' ? (
-                  <div>
-                    <label className="font-bold text-stone-700 block mb-1">Target Category</label>
-                    <Dropdown
-                      size="sm"
-                      value={selectedMenu.categoryId?._id || selectedMenu.categoryId}
-                      onChange={(val) =>
-                        setSelectedMenu((prev) => ({ ...prev, categoryId: val }))
-                      }
-                      options={categoryOptions}
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="font-bold text-stone-700 block mb-1">Custom URL</label>
-                    <input
-                      type="text"
-                      value={selectedMenu.customUrl || ''}
-                      onChange={(e) =>
-                        setSelectedMenu((prev) => ({ ...prev, customUrl: e.target.value }))
-                      }
-                      placeholder="/collections/bridal"
-                      className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </div>
-                )}
 
                 <div className="flex items-center justify-between pt-2">
                   <div>
@@ -1373,51 +1322,22 @@ export default function NavigationMenusView() {
 
                 {/* ─── RIGHT COLUMN ─── */}
                 <div className="space-y-4">
-                  {/* Link Type * */}
+                  {/* Select Category * */}
                   <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Link Type *</label>
+                    <label className="text-xs font-bold text-stone-700">Select Category *</label>
                     <Dropdown
                       size="sm"
-                      value={menuFormData.type}
+                      value={menuFormData.categoryId || categories[0]?._id}
                       onChange={(val) =>
-                        setMenuFormData((prev) => ({ ...prev, type: val }))
+                        setMenuFormData((prev) => ({ ...prev, categoryId: val }))
                       }
-                      options={['Category', 'Custom Link', 'Collection', 'Page']}
+                      options={categoryOptions}
                       buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
                     />
+                    <p className="text-[10px] text-stone-400">
+                      Select which category to open when clicked.
+                    </p>
                   </div>
-
-                  {/* Select Category * / Custom URL */}
-                  {menuFormData.type === 'Category' ? (
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-stone-700">Select Category *</label>
-                      <Dropdown
-                        size="sm"
-                        value={menuFormData.categoryId || categories[0]?._id}
-                        onChange={(val) =>
-                          setMenuFormData((prev) => ({ ...prev, categoryId: val }))
-                        }
-                        options={categoryOptions}
-                        buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
-                      />
-                      <p className="text-[10px] text-stone-400">
-                        Select which category to open when clicked.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      <label className="text-xs font-bold text-stone-700">Target URL / Route *</label>
-                      <input
-                        type="text"
-                        placeholder="e.g. /collections/bridal"
-                        value={menuFormData.customUrl}
-                        onChange={(e) =>
-                          setMenuFormData((prev) => ({ ...prev, customUrl: e.target.value }))
-                        }
-                        className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                      />
-                    </div>
-                  )}
 
                   {/* Parent Section * */}
                   <div className="space-y-1">
@@ -1610,14 +1530,40 @@ export default function NavigationMenusView() {
 
               <div>
                 <label className="font-bold text-stone-700 block mb-1">Image URL</label>
-                <input
-                  type="text"
-                  value={bannerFormData.imageUrl}
-                  onChange={(e) =>
-                    setBannerFormData((prev) => ({ ...prev, imageUrl: e.target.value }))
-                  }
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                />
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={bannerFormData.imageUrl}
+                    placeholder="https://... or upload image"
+                    onChange={(e) =>
+                      setBannerFormData((prev) => ({ ...prev, imageUrl: e.target.value }))
+                    }
+                    className="flex-1 px-3.5 py-2 rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] text-xs"
+                  />
+                  <label className="px-3 py-2 bg-stone-100 hover:bg-[#8b6f4e] hover:text-white rounded-xl text-stone-600 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold shrink-0">
+                    <HiOutlineUpload className="w-4 h-4" />
+                    <span>Upload</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        try {
+                          toast.loading('Uploading banner...', { id: 'nav-banner' });
+                          const { fileUrl } = await uploadWithPresignedUrl(file, 'navigation-menus');
+                          setBannerFormData((prev) => ({ ...prev, imageUrl: fileUrl }));
+                          toast.success('Banner uploaded!', { id: 'nav-banner' });
+                        } catch (err) {
+                          toast.error('Upload failed: ' + err.message, { id: 'nav-banner' });
+                        } finally {
+                          if (e.target) e.target.value = '';
+                        }
+                      }}
+                    />
+                  </label>
+                </div>
               </div>
 
               <div>

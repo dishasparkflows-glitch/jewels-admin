@@ -138,6 +138,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                             (child.path === '/metal-purity' && location.pathname === '/product-config/metal-purity') ||
                             (child.path === '/metal-color' && location.pathname === '/product-config/metal-color') ||
                             (child.path === '/sizes' && location.pathname === '/product-config/sizes') ||
+                            (child.path === '/pricing-hub/metal-rates' && (location.pathname === '/pricing-hub/metal-rates' || location.pathname === '/metal-rates' || location.pathname === '/goldprice')) ||
                             (child.path === '/vto-masters' && (location.pathname === '/product-config/vto-masters' || location.pathname === '/vto-masters'));
 
                           return (

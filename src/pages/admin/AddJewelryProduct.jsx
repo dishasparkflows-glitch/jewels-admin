@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
+import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import {
   HiOutlineArrowRight,
@@ -23,20 +24,20 @@ import {
   IoCheckmarkCircle,
 } from 'react-icons/io5';
 
-// Preset Purities & Colors matching luxury fine jewelry portal
-const PURITY_OPTIONS = ['9KT', '10KT', '14KT', '18KT'];
-const COLOR_OPTIONS = [
+// Preset Purities & Colors fallback defaults matching luxury fine jewelry portal
+const DEFAULT_PURITY_OPTIONS = ['9KT', '10KT', '14KT', '18KT'];
+const DEFAULT_COLOR_OPTIONS = [
   { name: 'Silver', code: '#a3a8a6', border: '#787d7b' },
   { name: 'Rose Gold', code: '#e39d8e', border: '#cf8170' },
   { name: 'Yellow Gold', code: '#d9a74a', border: '#b5852f' },
   { name: 'White Gold', code: '#e8ecf1', border: '#b4bac3' },
 ];
 
-const DIAMOND_TYPES = ['Natural', 'Lab Grown'];
-const DIAMOND_SHAPES = ['Round', 'Princess', 'Cushion', 'Oval', 'Emerald', 'Pear', 'Marquise', 'Heart'];
-const DIAMOND_COLORS = ['D-E', 'F-G', 'G-H', 'I-J'];
-const DIAMOND_CLARITIES = ['FL', 'IF', 'VVS1', 'VVS2', 'VS', 'SI', 'I1'];
-const SIDE_SHAPES = ['Round', 'Baguette', 'Princess', 'Marquise'];
+const DEFAULT_DIAMOND_TYPES = ['Natural', 'Lab Grown'];
+const DEFAULT_DIAMOND_SHAPES = ['Round', 'Princess', 'Cushion', 'Oval', 'Emerald', 'Pear', 'Marquise', 'Heart'];
+const DEFAULT_DIAMOND_COLORS = ['D-E', 'F-G', 'G-H', 'I-J'];
+const DEFAULT_DIAMOND_CLARITIES = ['FL', 'IF', 'VVS1', 'VVS2', 'VS', 'SI', 'I1'];
+const DEFAULT_SIDE_SHAPES = ['Round', 'Baguette', 'Princess', 'Marquise'];
 
 export default function AddJewelryProduct() {
   const navigate = useNavigate();
@@ -44,6 +45,87 @@ export default function AddJewelryProduct() {
   // Active Wizard Step: 1 = Basic, 2 = Variants (Screenshot view), 3 = Media, 4 = Specs, 5 = SEO
   const [activeStep, setActiveStep] = useState(2);
   const [saving, setSaving] = useState(false);
+
+  // ─── Live Master Lookup Lists from Backend API ──────────
+  const [puritiesList, setPuritiesList] = useState(DEFAULT_PURITY_OPTIONS);
+  const [colorsList, setColorsList] = useState(DEFAULT_COLOR_OPTIONS);
+  const [diamondTypesList, setDiamondTypesList] = useState(DEFAULT_DIAMOND_TYPES);
+  const [diamondShapesList, setDiamondShapesList] = useState(DEFAULT_DIAMOND_SHAPES);
+  const [diamondColorsList, setDiamondColorsList] = useState(DEFAULT_DIAMOND_COLORS);
+  const [diamondClaritiesList, setDiamondClaritiesList] = useState(DEFAULT_DIAMOND_CLARITIES);
+
+  // Fetch Metal Purities, Metal Colors, and Diamond masters from backend
+  useEffect(() => {
+    const fetchMasters = async () => {
+      try {
+        const [resPurities, resColors, resTypes, resShapes, resDColors, resClarities] =
+          await Promise.allSettled([
+            api.get('/metal-purities/lookup').catch(() => api.get('/metal-purities?limit=100')),
+            api.get('/metal-colors/lookup').catch(() => api.get('/metal-colors?limit=100')),
+            api.get('/diamond-types/lookup').catch(() => api.get('/diamond-types?limit=100')),
+            api.get('/diamond-shapes/lookup').catch(() => api.get('/diamond-shapes?limit=100')),
+            api.get('/diamond-colors/lookup').catch(() => api.get('/diamond-colors?limit=100')),
+            api.get('/diamond-clarities/lookup').catch(() => api.get('/diamond-clarities?limit=100')),
+          ]);
+
+        if (resPurities.status === 'fulfilled' && resPurities.value.data?.data) {
+          const items = resPurities.value.data.data;
+          if (Array.isArray(items) && items.length > 0) {
+            // Keep clean purity names like "9KT", "10KT", "14KT", "18KT", "22KT Gold"
+            const names = items.map((i) => {
+              const raw = typeof i === 'string' ? i : i.name;
+              return raw;
+            });
+            setPuritiesList(names);
+          }
+        }
+
+        if (resColors.status === 'fulfilled' && resColors.value.data?.data) {
+          const items = resColors.value.data.data;
+          if (Array.isArray(items) && items.length > 0) {
+            const mappedColors = items.map((c) => ({
+              name: c.name,
+              code: c.colorCode || '#d9a74a',
+              border: c.colorCodeEnd || c.colorCode || '#b5852f',
+            }));
+            setColorsList(mappedColors);
+          }
+        }
+
+        if (resTypes.status === 'fulfilled' && resTypes.value.data?.data) {
+          const items = resTypes.value.data.data;
+          if (Array.isArray(items) && items.length > 0) {
+            setDiamondTypesList(items.map((i) => (typeof i === 'string' ? i : i.name)));
+          }
+        }
+
+        if (resShapes.status === 'fulfilled' && resShapes.value.data?.data) {
+          const items = resShapes.value.data.data;
+          if (Array.isArray(items) && items.length > 0) {
+            setDiamondShapesList(items.map((i) => (typeof i === 'string' ? i : i.name)));
+          }
+        }
+
+        if (resDColors.status === 'fulfilled' && resDColors.value.data?.data) {
+          const items = resDColors.value.data.data;
+          if (Array.isArray(items) && items.length > 0) {
+            setDiamondColorsList(items.map((i) => (typeof i === 'string' ? i : i.name)));
+          }
+        }
+
+        if (resClarities.status === 'fulfilled' && resClarities.value.data?.data) {
+          const items = resClarities.value.data.data;
+          if (Array.isArray(items) && items.length > 0) {
+            setDiamondClaritiesList(items.map((i) => (typeof i === 'string' ? i : i.name)));
+          }
+        }
+      } catch (err) {
+        console.warn('Master lookup fetch notice:', err);
+      }
+    };
+
+    fetchMasters();
+  }, []);
 
   // ─── Step 1: Basic Details ──────────────────────────────
   const [basicDetails, setBasicDetails] = useState({
@@ -153,6 +235,29 @@ export default function AddJewelryProduct() {
     ],
   });
 
+  const handleMediaUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    for (const file of files) {
+      try {
+        toast.loading(`Uploading ${file.name}...`, { id: 'prod-media' });
+        const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+        setMediaImages((prev) => ({
+          ...prev,
+          [activeMediaColor]: [
+            ...(prev[activeMediaColor] || []),
+            { id: `m-${Date.now()}-${Math.random()}`, url: fileUrl, isPrimary: !(prev[activeMediaColor]?.length) },
+          ],
+        }));
+        toast.success(`${file.name} uploaded!`, { id: 'prod-media' });
+      } catch (err) {
+        toast.error(`Upload failed: ${err.message}`, { id: 'prod-media' });
+      }
+    }
+    if (e.target) e.target.value = '';
+  };
+
   // ─── Step 4: Specifications ─────────────────────────────
   const [specs, setSpecs] = useState({
     metalName: 'Gold',
@@ -230,12 +335,18 @@ export default function AddJewelryProduct() {
 
   // Regenerate variants dynamically
   const handleRegenerateVariants = () => {
-    const colorCodeMap = {
-      Silver: '#9ca3af',
-      'Rose Gold': '#e89f8f',
-      'Yellow Gold': '#d4af37',
-      'White Gold': '#cbd5e1',
-    };
+    const colorCodeMap = colorsList.reduce(
+      (acc, c) => {
+        acc[c.name] = c.code;
+        return acc;
+      },
+      {
+        Silver: '#9ca3af',
+        'Rose Gold': '#e89f8f',
+        'Yellow Gold': '#d4af37',
+        'White Gold': '#cbd5e1',
+      }
+    );
 
     const colorSuffixMap = {
       Silver: 'S',
@@ -778,7 +889,7 @@ export default function AddJewelryProduct() {
                       Metal Purity <span className="text-rose-500">*</span>
                     </label>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {PURITY_OPTIONS.map((purity) => {
+                      {puritiesList.map((purity) => {
                         const isSelected = selectedPurities.includes(purity);
                         return (
                           <button
@@ -804,7 +915,7 @@ export default function AddJewelryProduct() {
                       Metal Color <span className="text-rose-500">*</span>
                     </label>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {COLOR_OPTIONS.map((color) => {
+                      {colorsList.map((color) => {
                         const isSelected = activeColorPill === color.name || selectedColors.includes(color.name);
                         const isPrimary = activeColorPill === color.name;
                         return (
@@ -864,7 +975,7 @@ export default function AddJewelryProduct() {
                           onChange={(val) =>
                             setCenterDiamond((prev) => ({ ...prev, type: val }))
                           }
-                          options={DIAMOND_TYPES}
+                          options={diamondTypesList}
                           buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
                         />
                       </div>
@@ -877,7 +988,7 @@ export default function AddJewelryProduct() {
                           onChange={(val) =>
                             setCenterDiamond((prev) => ({ ...prev, shape: val }))
                           }
-                          options={DIAMOND_SHAPES}
+                          options={diamondShapesList}
                           buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
                         />
                       </div>
@@ -890,7 +1001,7 @@ export default function AddJewelryProduct() {
                           onChange={(val) =>
                             setCenterDiamond((prev) => ({ ...prev, color: val }))
                           }
-                          options={DIAMOND_COLORS}
+                          options={diamondColorsList}
                           buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
                         />
                       </div>
@@ -903,7 +1014,7 @@ export default function AddJewelryProduct() {
                           onChange={(val) =>
                             setCenterDiamond((prev) => ({ ...prev, clarity: val }))
                           }
-                          options={DIAMOND_CLARITIES}
+                          options={diamondClaritiesList}
                           buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
                         />
                       </div>
@@ -939,7 +1050,7 @@ export default function AddJewelryProduct() {
                           onChange={(val) =>
                             setSideDiamonds((prev) => ({ ...prev, type: val }))
                           }
-                          options={DIAMOND_TYPES}
+                          options={diamondTypesList}
                           buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
                         />
                       </div>
@@ -952,7 +1063,7 @@ export default function AddJewelryProduct() {
                           onChange={(val) =>
                             setSideDiamonds((prev) => ({ ...prev, shape: val }))
                           }
-                          options={SIDE_SHAPES}
+                          options={diamondShapesList}
                           buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
                         />
                       </div>
@@ -965,7 +1076,7 @@ export default function AddJewelryProduct() {
                           onChange={(val) =>
                             setSideDiamonds((prev) => ({ ...prev, color: val }))
                           }
-                          options={DIAMOND_COLORS}
+                          options={diamondColorsList}
                           buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
                         />
                       </div>
@@ -978,7 +1089,7 @@ export default function AddJewelryProduct() {
                           onChange={(val) =>
                             setSideDiamonds((prev) => ({ ...prev, clarity: val }))
                           }
-                          options={DIAMOND_CLARITIES}
+                          options={diamondClaritiesList}
                           buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
                         />
                       </div>
@@ -1172,7 +1283,14 @@ export default function AddJewelryProduct() {
               </div>
 
               {/* Upload Dropzone */}
-              <div className="border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-2xl p-8 text-center bg-[#fdfcfb] transition-colors cursor-pointer group">
+              <label className="border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-2xl p-8 text-center bg-[#fdfcfb] transition-colors cursor-pointer group block">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/png,image/jpeg,image/webp,video/mp4"
+                  onChange={handleMediaUpload}
+                  className="hidden"
+                />
                 <div className="w-12 h-12 rounded-full bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center mx-auto mb-3 group-hover:scale-105 transition-transform">
                   <HiOutlineUpload className="w-6 h-6" />
                 </div>
@@ -1182,7 +1300,7 @@ export default function AddJewelryProduct() {
                 <p className="text-[11px] text-stone-400 mt-1">
                   Supports WEBP, PNG, JPG up to 10MB each (minimum 1200x1200px recommended)
                 </p>
-              </div>
+              </label>
 
               {/* Gallery Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
@@ -1771,7 +1889,7 @@ export default function AddJewelryProduct() {
                       </span>
                     </label>
                     <div className="flex flex-wrap gap-2">
-                      {PURITY_OPTIONS.map((p) => {
+                      {puritiesList.map((p) => {
                         const isSelected = selectedPurities.includes(p);
                         return (
                           <div
@@ -1798,7 +1916,7 @@ export default function AddJewelryProduct() {
                       </span>
                     </label>
                     <div className="flex items-center gap-2.5">
-                      {COLOR_OPTIONS.map((c) => {
+                      {colorsList.map((c) => {
                         const isActive = activeColorPill === c.name;
                         const isAvailable = selectedColors.includes(c.name);
 

@@ -11,6 +11,7 @@ import {
 import { IoDiamondOutline, IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -191,24 +192,19 @@ export default function BirthstonePortfolioView() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('file', file);
-
     try {
       setUploadingImage(true);
-      const res = await api.post('/upload/single?folder=birthstones', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      const uploadedUrl = res.data?.data?.url;
-      if (uploadedUrl) {
-        setFormImageUrl(uploadedUrl);
+      const { fileUrl } = await uploadWithPresignedUrl(file, 'birthstones');
+      if (fileUrl) {
+        setFormImageUrl(fileUrl);
         toast.success('Gemstone portrait uploaded successfully');
       }
     } catch (err) {
       console.error(err);
-      toast.error('Image upload failed');
+      toast.error(err.response?.data?.message || err.message || 'Image upload failed');
     } finally {
       setUploadingImage(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -361,7 +357,7 @@ export default function BirthstonePortfolioView() {
 
       {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
       <SearchFilterBar
-        searchPlaceholder="Search by month, gemstone name or quarter..."
+        searchPlaceholder="Search by month or gemstone name..."
         searchValue={search}
         onSearchChange={setSearch}
       />
@@ -433,9 +429,9 @@ export default function BirthstonePortfolioView() {
                         {(currentPage - 1) * pageSize + idx + 1}
                       </td>
 
-                      {/* Month & Code */}
+                      {/* Month */}
                       <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2.5">
                           <span
                             className="w-7 h-7 rounded-md flex items-center justify-center font-serif font-bold text-[10px] shadow-2xs border shrink-0"
                             style={{
@@ -446,18 +442,9 @@ export default function BirthstonePortfolioView() {
                           >
                             {item.short}
                           </span>
-                          <div className="leading-tight">
-                            <div className="font-semibold text-stone-900 text-xs leading-none">
-                              {item.month}
-                            </div>
-                            <div className="text-[10px] text-stone-400 font-mono flex items-center gap-1 mt-1 leading-none">
-                              <span>{item.code}</span>
-                              <span>•</span>
-                              <span className="text-[9px] font-semibold tracking-wider uppercase text-stone-500">
-                                {item.quarter}
-                              </span>
-                            </div>
-                          </div>
+                          <span className="font-semibold text-stone-900 text-xs">
+                            {item.month}
+                          </span>
                         </div>
                       </td>
 
@@ -757,9 +744,6 @@ export default function BirthstonePortfolioView() {
                 <span className="font-serif font-bold text-stone-900 text-base">
                   {viewingMonth.month} Portfolio
                 </span>
-                <span className="text-xs text-stone-400 font-mono">
-                  {viewingMonth.code}
-                </span>
               </div>
               <button
                 type="button"
@@ -799,7 +783,7 @@ export default function BirthstonePortfolioView() {
                   {viewingMonth.stoneName}
                 </h4>
                 <p className="text-xs text-stone-500 mt-1">
-                  Traditional Birthstone for {viewingMonth.month} ({viewingMonth.quarter})
+                  Traditional Birthstone for {viewingMonth.month}
                 </p>
               </div>
 

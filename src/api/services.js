@@ -30,11 +30,20 @@ export const notificationsAPI = {
 
 // ─── Upload ───────────────────────────────────────
 export const uploadAPI = {
-  single: (formData, folder) => api.post(`/upload/single?folder=${folder}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
-  multiple: (formData, folder) => api.post(`/upload/multiple?folder=${folder}`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  getPresignedUrl: (data) => api.post('/upload/presigned-url', data),
   delete: (filepath) => api.delete('/upload', { data: { filepath } }),
+};
+
+// ─── Home Sections ────────────────────────────────
+export const homeSectionsAPI = {
+  getAll: (params) => api.get('/home-sections', { params }),
+  getById: (id) => api.get(`/home-sections/${id}`),
+  create: (data) => api.post('/home-sections', data),
+  update: (id, data) => api.put(`/home-sections/${id}`, data),
+  delete: (id) => api.delete(`/home-sections/${id}`),
+  toggleStatus: (id) => api.patch(`/home-sections/${id}/toggle-status`),
+  reorder: (items) => api.put('/home-sections/reorder', { items }),
+  bulkDelete: (ids) => api.post('/home-sections/bulk-delete', { ids }),
+  seedDefaults: () => api.post('/home-sections/seed'),
+  getPublic: (params) => api.get('/home-sections/public', { params }),
 };
