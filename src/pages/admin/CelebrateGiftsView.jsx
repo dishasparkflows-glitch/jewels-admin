@@ -39,6 +39,7 @@ export default function CelebrateGiftsView() {
   const [allProducts, setAllProducts] = useState([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [productPage, setProductPage] = useState(1);
+  const [productPageSize, setProductPageSize] = useState(10);
   const [productPagination, setProductPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -88,7 +89,7 @@ export default function CelebrateGiftsView() {
   const fetchFeatured = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/featured?limit=100');
+      const res = await api.get('/featured?page=1&limit=10');
       const items = res.data?.data?.items || res.data?.data || [];
       setFeaturedItems(Array.isArray(items) ? items : []);
     } catch (err) {
@@ -142,10 +143,10 @@ export default function CelebrateGiftsView() {
   useEffect(() => {
     if (!isModalOpen) return;
     const timer = setTimeout(() => {
-      fetchProducts(1, productSearch, productFilterType);
+      fetchProducts(1, productSearch, productFilterType, productPageSize);
     }, 250);
     return () => clearTimeout(timer);
-  }, [isModalOpen, productSearch, productFilterType, fetchProducts]);
+  }, [isModalOpen, productSearch, productFilterType, productPageSize, fetchProducts]);
 
   // Filtered featured items (Search query + placement filter, NO active/inactive filter)
   const filteredItems = useMemo(() => {
@@ -619,7 +620,7 @@ export default function CelebrateGiftsView() {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-xl overflow-hidden border border-stone-200 animate-in fade-in zoom-in duration-200"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl lg:max-w-4xl overflow-hidden border border-stone-200 animate-in fade-in zoom-in duration-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -642,7 +643,7 @@ export default function CelebrateGiftsView() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSaveGroup} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleSaveGroup} className="p-6 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto">
               {/* GROUP TITLE */}
               <div>
                 <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
@@ -766,7 +767,7 @@ export default function CelebrateGiftsView() {
                 </div>
 
                 {/* Product List */}
-                <div className="border border-stone-200 rounded-xl max-h-52 overflow-y-auto divide-y divide-stone-100 bg-white">
+                <div className="border border-stone-200 rounded-xl max-h-72 sm:max-h-80 overflow-y-auto divide-y divide-stone-100 bg-white">
                   {loadingProducts ? (
                     <div className="py-8 flex flex-col items-center justify-center text-stone-400 gap-2">
                       <div className="w-5 h-5 border-2 border-stone-300 border-t-[#8f6d43] rounded-full animate-spin" />
@@ -830,35 +831,22 @@ export default function CelebrateGiftsView() {
                   )}
                 </div>
 
-                {/* Product Pagination Bar */}
-                {productPagination.totalPages > 1 && (
-                  <div className="flex items-center justify-between pt-2 px-1 text-xs text-stone-500">
-                    <span className="text-[11px] font-medium text-stone-500">
-                      Showing {((productPage - 1) * 10) + 1}-{Math.min(productPage * 10, productPagination.totalDocs)} of {productPagination.totalDocs}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        disabled={!productPagination.hasPrevPage || loadingProducts}
-                        onClick={() => fetchProducts(productPage - 1, productSearch, productFilterType)}
-                        className="px-2.5 py-1 rounded-md border border-stone-200 text-[11px] font-semibold text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-50 transition-colors"
-                      >
-                        Prev
-                      </button>
-                      <span className="px-2 py-0.5 text-[11px] font-mono text-stone-600 bg-stone-100 rounded-md">
-                        {productPage} / {productPagination.totalPages}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={!productPagination.hasNextPage || loadingProducts}
-                        onClick={() => fetchProducts(productPage + 1, productSearch, productFilterType)}
-                        className="px-2.5 py-1 rounded-md border border-stone-200 text-[11px] font-semibold text-stone-700 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-stone-50 transition-colors"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  </div>
-                )}
+                {/* Common Luxury Pagination */}
+                <Pagination
+                  currentPage={productPage}
+                  totalItems={productPagination.totalDocs || allProducts.length}
+                  pageSize={productPageSize}
+                  pageSizeOptions={[10, 25, 50, 100]}
+                  onPageChange={(newPage) => {
+                    fetchProducts(newPage, productSearch, productFilterType, productPageSize);
+                  }}
+                  onPageSizeChange={(newSize) => {
+                    setProductPageSize(newSize);
+                    fetchProducts(1, productSearch, productFilterType, newSize);
+                  }}
+                  itemLabel="products"
+                  className="rounded-xl border border-stone-200/80 mt-2 bg-stone-50/50"
+                />
               </div>
 
               {/* Status Select */}

@@ -43,12 +43,19 @@ export default function CouponsView() {
   const [limitPerUser, setLimitPerUser] = useState('1');
 
   // Fetch all coupons
-  const fetchCoupons = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  const fetchCoupons = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/coupons?limit=100');
+      const res = await api.get(`/coupons?page=${page}&limit=${limit}`);
       const items = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
       setCoupons(items);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load coupons:', err);
       toast.error('Failed to load coupons');
@@ -58,8 +65,8 @@ export default function CouponsView() {
   };
 
   useEffect(() => {
-    fetchCoupons();
-  }, []);
+    fetchCoupons(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Filter coupons by search query
   const filteredCoupons = useMemo(() => {
@@ -73,13 +80,9 @@ export default function CouponsView() {
   }, [coupons, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredCoupons, 10);
+  } = usePagination(filteredCoupons, pageSize, serverTotal);
 
   // Format Date to YYYY-MM-DD for <input type="date">
   const toInputDate = (dateVal) => {
@@ -497,10 +500,14 @@ export default function CouponsView() {
         {/* Luxury Common Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="coupons"
         />
       </div>
 

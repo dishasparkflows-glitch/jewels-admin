@@ -37,7 +37,11 @@ export default function SizesView() {
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch all Sizes and Categories from API
-  const fetchData = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  const fetchData = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
       const [sizesRes, catsRes] = await Promise.all([
@@ -63,8 +67,8 @@ export default function SizesView() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Search filtering
   const filteredSizes = useMemo(() => {
@@ -78,13 +82,9 @@ export default function SizesView() {
   }, [sizes, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredSizes, 10);
+  } = usePagination(filteredSizes, pageSize, serverTotal);
 
   // Quick stat cards
   const activeCount = useMemo(() => sizes.filter(s => s.status === 'active').length, [sizes]);
@@ -414,10 +414,14 @@ export default function SizesView() {
         {/* Luxury Common Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="sizes"
         />
       </div>
 

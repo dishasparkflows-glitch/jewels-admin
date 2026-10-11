@@ -107,15 +107,22 @@ export default function DiamondTypesView() {
 
   const fileInputRef = useRef(null);
 
-  // Fetch all Diamond Types from API
-  const fetchTypes = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  // Fetch Diamond Types from API with default page 1 and limit 10
+  const fetchTypes = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/diamond-types?limit=100');
+      const res = await api.get(`/diamond-types?page=${page}&limit=${limit}`);
       const items =
         res.data?.data?.items ||
         (Array.isArray(res.data?.data) ? res.data.data : []);
       setTypes(items);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load diamond types:', err);
       toast.error('Failed to load diamond types');
@@ -125,8 +132,8 @@ export default function DiamondTypesView() {
   };
 
   useEffect(() => {
-    fetchTypes();
-  }, []);
+    fetchTypes(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Search filtering
   const filteredTypes = useMemo(() => {
@@ -136,13 +143,9 @@ export default function DiamondTypesView() {
   }, [types, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredTypes, 10);
+  } = usePagination(filteredTypes, pageSize, serverTotal);
 
   // Open modal to add new type
   const handleOpenAdd = () => {
@@ -494,10 +497,14 @@ export default function DiamondTypesView() {
         {/* Luxury Common Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="diamond types"
         />
       </div>
 

@@ -75,14 +75,21 @@ export default function DiamondClaritiesView() {
   const fileInputRef = useRef(null);
 
   // Fetch all Diamond Clarities from API
-  const fetchClarities = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  const fetchClarities = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/diamond-clarities?limit=100');
+      const res = await api.get(`/diamond-clarities?page=${page}&limit=${limit}`);
       const items =
         res.data?.data?.items ||
         (Array.isArray(res.data?.data) ? res.data.data : []);
       setClarities(items);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load diamond clarities:', err);
       toast.error('Failed to load diamond clarities');
@@ -92,8 +99,8 @@ export default function DiamondClaritiesView() {
   };
 
   useEffect(() => {
-    fetchClarities();
-  }, []);
+    fetchClarities(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Search filtering
   const filteredClarities = useMemo(() => {
@@ -103,13 +110,9 @@ export default function DiamondClaritiesView() {
   }, [clarities, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredClarities, 10);
+  } = usePagination(filteredClarities, pageSize, serverTotal);
 
   // Quick stat cards
   const activeCount = useMemo(() => clarities.filter(c => c.status === 'active').length, [clarities]);
@@ -466,10 +469,14 @@ export default function DiamondClaritiesView() {
         {/* Luxury Common Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="diamond clarities"
         />
       </div>
 

@@ -75,15 +75,22 @@ export default function DiamondShapesView() {
 
   const fileInputRef = useRef(null);
 
-  // Fetch all Diamond Shapes from API
-  const fetchShapes = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  // Fetch Diamond Shapes from API with default page 1 and limit 10
+  const fetchShapes = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/diamond-shapes?limit=100');
+      const res = await api.get(`/diamond-shapes?page=${page}&limit=${limit}`);
       const items =
         res.data?.data?.items ||
         (Array.isArray(res.data?.data) ? res.data.data : []);
       setShapes(items);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load diamond shapes:', err);
       toast.error('Failed to load diamond shapes');
@@ -93,8 +100,8 @@ export default function DiamondShapesView() {
   };
 
   useEffect(() => {
-    fetchShapes();
-  }, []);
+    fetchShapes(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Search filtering
   const filteredShapes = useMemo(() => {
@@ -104,13 +111,9 @@ export default function DiamondShapesView() {
   }, [shapes, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredShapes, 10);
+  } = usePagination(filteredShapes, pageSize, serverTotal);
 
   // Quick stat cards
   const activeCount = useMemo(() => shapes.filter(s => s.status === 'active').length, [shapes]);
@@ -463,10 +466,14 @@ export default function DiamondShapesView() {
         {/* Luxury Common Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="diamond shapes"
         />
       </div>
 

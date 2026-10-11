@@ -52,17 +52,8 @@ export async function uploadWithPresignedUrl(file, folder = 'banners', onProgres
       },
     });
 
-    // Resolve URL to the active backend baseURL so images load cleanly
-    let resolvedUrl = fileUrl;
-    const base = (api.defaults?.baseURL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
-    if (resolvedUrl && resolvedUrl.includes('/api/upload/file/')) {
-      const keyPart = resolvedUrl.split('/api/upload/file/')[1];
-      resolvedUrl = `${base}/api/upload/file/${keyPart}`;
-    } else if (resolvedUrl && resolvedUrl.startsWith('/')) {
-      resolvedUrl = `${base}${resolvedUrl}`;
-    }
-
-    return { fileUrl: resolvedUrl, key };
+    // Return clean storage fileUrl without prepending localhost so payload and DB remain clean
+    return { fileUrl, key };
   } catch (directErr) {
     console.warn(
       '[Upload] Direct PUT to storage provider failed (CORS or network error). Relaying via backend server proxy...',
@@ -94,15 +85,7 @@ export async function uploadWithPresignedUrl(file, folder = 'banners', onProgres
     });
 
     const relayedUrl = proxyRes.data?.data?.fileUrl || proxyRes.data?.data?.url || fileUrl;
-    let resolvedUrl = relayedUrl;
-    if (resolvedUrl && resolvedUrl.includes('/api/upload/file/')) {
-      const keyPart = resolvedUrl.split('/api/upload/file/')[1];
-      resolvedUrl = `${base}/api/upload/file/${keyPart}`;
-    } else if (resolvedUrl && resolvedUrl.startsWith('/')) {
-      resolvedUrl = `${base}${resolvedUrl}`;
-    }
-
-    return { fileUrl: resolvedUrl, key };
+    return { fileUrl: relayedUrl, key };
   }
 }
 

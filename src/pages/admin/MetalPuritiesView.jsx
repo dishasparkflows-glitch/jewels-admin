@@ -36,14 +36,21 @@ export default function MetalPuritiesView() {
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch all Metal Purities from API
-  const fetchPurities = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  const fetchPurities = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/metal-purities?limit=100');
+      const res = await api.get(`/metal-purities?page=${page}&limit=${limit}`);
       const items =
         res.data?.data?.items ||
         (Array.isArray(res.data?.data) ? res.data.data : []);
       setPurities(items);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load metal purities:', err);
       toast.error('Failed to load metal purities');
@@ -53,8 +60,8 @@ export default function MetalPuritiesView() {
   };
 
   useEffect(() => {
-    fetchPurities();
-  }, []);
+    fetchPurities(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Search filtering
   const filteredPurities = useMemo(() => {
@@ -69,13 +76,9 @@ export default function MetalPuritiesView() {
   }, [purities, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredPurities, 10);
+  } = usePagination(filteredPurities, pageSize, serverTotal);
 
   // Quick stat cards
   const activeCount = useMemo(() => purities.filter(p => p.status === 'active').length, [purities]);
@@ -396,10 +399,14 @@ export default function MetalPuritiesView() {
         {/* Luxury Common Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="metal purities"
         />
       </div>
 

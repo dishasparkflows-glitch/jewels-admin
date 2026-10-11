@@ -37,15 +37,22 @@ export default function DiamondSizesView() {
   const [sizeTo, setSizeTo] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // Fetch all Diamond Sizes from API
-  const fetchSizes = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  // Fetch Diamond Sizes from API with default page 1 and limit 10
+  const fetchSizes = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/diamond-sizes?limit=100');
+      const res = await api.get(`/diamond-sizes?page=${page}&limit=${limit}`);
       const items =
         res.data?.data?.items ||
         (Array.isArray(res.data?.data) ? res.data.data : []);
       setSizes(items);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load diamond sizes:', err);
       toast.error('Failed to load diamond sizes');
@@ -55,8 +62,8 @@ export default function DiamondSizesView() {
   };
 
   useEffect(() => {
-    fetchSizes();
-  }, []);
+    fetchSizes(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Search filtering
   const filteredSizes = useMemo(() => {
@@ -71,13 +78,9 @@ export default function DiamondSizesView() {
   }, [sizes, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredSizes, 10);
+  } = usePagination(filteredSizes, pageSize, serverTotal);
 
   // Quick stat cards
   const activeCount = useMemo(() => sizes.filter(s => s.status === 'active').length, [sizes]);
@@ -447,10 +450,14 @@ export default function DiamondSizesView() {
         {/* Luxury Common Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="diamond sizes"
         />
       </div>
 

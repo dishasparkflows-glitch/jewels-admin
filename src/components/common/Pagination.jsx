@@ -13,9 +13,9 @@ export default function Pagination({
   pageSize = 10,
   onPageChange,
   onPageSizeChange,
-  pageSizeOptions = [5, 10, 20, 50],
+  pageSizeOptions = [10, 25, 50, 100],
   showPageSize = true,
-  itemLabel = 'customers',
+  itemLabel = '',
   className = '',
 }) {
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));

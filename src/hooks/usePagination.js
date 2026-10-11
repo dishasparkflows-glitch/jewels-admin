@@ -1,21 +1,23 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect } from "react";
 
 /**
- * Custom hook for client-side pagination with search/filter auto-reset
+ * Custom hook for client-side and server-side pagination
  *
- * @param {Array} items - Full list of items (filtered or unfiltered)
+ * @param {Array} items - List of items
  * @param {number} initialPageSize - Default rows per page (default: 10)
- * @returns {object} Pagination states, handlers and slice of items for current page
+ * @param {number|null} serverTotal - Optional total count from server pagination
+ * @returns {object} Pagination states, handlers and items for current page
  */
-export function usePagination(items = [], initialPageSize = 10) {
+export function usePagination(items = [], initialPageSize = 10, serverTotal = null) {
   const safeItems = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(initialPageSize);
+  const [pageSize, setPageSize] = useState(initialPageSize || 10);
 
-  const totalItems = safeItems.length;
+  const isServerSide = serverTotal != null && serverTotal !== undefined;
+  const totalItems = isServerSide ? serverTotal : safeItems.length;
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
 
-  // If current page is beyond totalPages (e.g. after search filter narrows down results), adjust
+  // If current page is beyond totalPages, adjust
   useEffect(() => {
     if (currentPage > totalPages) {
       setCurrentPage(totalPages);
@@ -23,9 +25,10 @@ export function usePagination(items = [], initialPageSize = 10) {
   }, [totalPages, currentPage]);
 
   const paginatedItems = useMemo(() => {
+    if (isServerSide) return safeItems;
     const start = (currentPage - 1) * pageSize;
     return safeItems.slice(start, start + pageSize);
-  }, [safeItems, currentPage, pageSize]);
+  }, [safeItems, currentPage, pageSize, isServerSide]);
 
   return {
     currentPage,

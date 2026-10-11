@@ -293,18 +293,6 @@ export default function VtoMastersView() {
         breadcrumbs={['Home', 'Product Config', 'VTO Masters']}
         title="VTO Master Assets"
         subtitle="Configure global virtual try-on environments, light and dark tone models for rings, earrings and necklaces."
-        extraActions={
-          <button
-            type="button"
-            onClick={handleRestoreDefaults}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-700 rounded-lg text-xs font-semibold tracking-wide transition-all border border-stone-200/90 shadow-2xs cursor-pointer disabled:opacity-50"
-            title="Restore default model body part photos"
-          >
-            <HiOutlineRefresh className={`w-3.5 h-3.5 text-[#8f6d43] ${loading ? 'animate-spin' : ''}`} />
-            <span>Restore Default Models</span>
-          </button>
-        }
       />
 
       {/* ─── 4 Stat Cards Row ─── */}

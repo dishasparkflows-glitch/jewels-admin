@@ -54,10 +54,14 @@ export default function CustomInquiriesView() {
   const [previewImage, setPreviewImage] = useState(null);
   const [filterActive, setFilterActive] = useState(false);
 
-  const fetchInquiries = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  const fetchInquiries = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/custom-inquiries?limit=100');
+      const res = await api.get(`/custom-inquiries?page=${page}&limit=${limit}`);
       const data = res.data?.data?.items || res.data?.data || [];
       if (Array.isArray(data) && data.length > 0) {
         setInquiries(data);
@@ -73,8 +77,8 @@ export default function CustomInquiriesView() {
   };
 
   useEffect(() => {
-    fetchInquiries();
-  }, []);
+    fetchInquiries(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
@@ -182,13 +186,9 @@ export default function CustomInquiriesView() {
   }, [inquiries, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(displayedList, 10);
+  } = usePagination(displayedList, pageSize, serverTotal);
 
   // Checkbox selection
   const handleSelectAll = (e) => {

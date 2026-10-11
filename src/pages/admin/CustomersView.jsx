@@ -50,14 +50,21 @@ export default function CustomersView() {
     password: 'Password@123',
   });
 
-  const fetchUsers = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  const fetchUsers = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/users?limit=100');
+      const res = await api.get(`/users?page=${page}&limit=${limit}`);
       const allUsers = res.data?.data?.users || res.data?.data || [];
       const userList = allUsers.filter((u) => u.role === 'user' || !u.role);
       if (userList.length > 0) {
         setUsers(userList);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
       } else {
         setUsers(DEFAULT_DEMO_CUSTOMERS);
       }
@@ -70,8 +77,8 @@ export default function CustomersView() {
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    fetchUsers(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   const handleDelete = async (id, name) => {
     const isConfirmed = await confirm({
@@ -204,13 +211,9 @@ export default function CustomersView() {
   }, [users, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredUsers, 10);
+  } = usePagination(filteredUsers, pageSize, serverTotal);
 
   // Checkbox Selection
   const handleSelectAll = (e) => {

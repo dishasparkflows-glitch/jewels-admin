@@ -74,14 +74,21 @@ export default function DiamondColorsView() {
   const fileInputRef = useRef(null);
 
   // Fetch all Diamond Colors from API
-  const fetchColors = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  const fetchColors = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/diamond-colors?limit=100');
+      const res = await api.get(`/diamond-colors?page=${page}&limit=${limit}`);
       const items =
         res.data?.data?.items ||
         (Array.isArray(res.data?.data) ? res.data.data : []);
       setColors(items);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load diamond colors:', err);
       toast.error('Failed to load diamond colors');
@@ -91,8 +98,8 @@ export default function DiamondColorsView() {
   };
 
   useEffect(() => {
-    fetchColors();
-  }, []);
+    fetchColors(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Search filtering
   const filteredColors = useMemo(() => {
@@ -102,13 +109,9 @@ export default function DiamondColorsView() {
   }, [colors, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredColors, 10);
+  } = usePagination(filteredColors, pageSize, serverTotal);
 
   // Quick stat cards
   const activeCount = useMemo(() => colors.filter(c => c.status === 'active').length, [colors]);
@@ -465,10 +468,14 @@ export default function DiamondColorsView() {
         {/* Luxury Common Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="diamond colors"
         />
       </div>
 

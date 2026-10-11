@@ -48,10 +48,14 @@ export default function AppointmentsView() {
     service: 'Bridal Consultation',
   });
 
-  const fetchAppointments = async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(null);
+
+  const fetchAppointments = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/appointments?limit=100');
+      const res = await api.get(`/appointments?page=${page}&limit=${limit}`);
       const data = res.data?.data?.items || res.data?.data || [];
       if (Array.isArray(data) && data.length > 0) {
         setAppointments(data);
@@ -67,8 +71,8 @@ export default function AppointmentsView() {
   };
 
   useEffect(() => {
-    fetchAppointments();
-  }, []);
+    fetchAppointments(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
@@ -220,13 +224,9 @@ export default function AppointmentsView() {
   }, [appointments, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(displayedList, 10);
+  } = usePagination(displayedList, pageSize, serverTotal);
 
   // Checkbox selection
   const handleSelectAll = (e) => {
