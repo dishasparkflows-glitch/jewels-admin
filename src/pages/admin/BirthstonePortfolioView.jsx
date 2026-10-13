@@ -383,7 +383,6 @@ export default function BirthstonePortfolioView() {
                 <th className="py-2 px-3">MONTH</th>
                 <th className="py-2 px-3">GEM PORTRAIT</th>
                 <th className="py-2 px-3">ASSIGNED GEMSTONE</th>
-                <th className="py-2 px-3">PORTFOLIO ASSET</th>
                 <th className="py-2 px-3">STATUS</th>
                 <th className="py-2 pr-4 pl-2 text-right">ACTIONS</th>
               </tr>
@@ -391,14 +390,14 @@ export default function BirthstonePortfolioView() {
             <tbody className="divide-y divide-stone-100 font-sans">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     <div className="animate-spin w-4 h-4 border-2 border-[#8b6f4e] border-t-transparent rounded-full mx-auto mb-1.5" />
                     Loading birthstone collection...
                   </td>
                 </tr>
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     No birthstones found matching &ldquo;{search}&rdquo;.
                   </td>
                 </tr>
@@ -491,23 +490,7 @@ export default function BirthstonePortfolioView() {
                         </div>
                       </td>
 
-                      {/* Portfolio Asset Type */}
-                      <td className="py-2.5 px-3">
-                        {item.isCustomImage ? (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
-                            <HiOutlinePhotograph className="w-3 h-3" />
-                            <span>Custom Image</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wider uppercase bg-stone-100 text-stone-600 border border-stone-200">
-                            <span
-                              className="w-1.5 h-1.5 rounded-full"
-                              style={{ backgroundColor: item.color }}
-                            />
-                            <span>3D Sphere</span>
-                          </span>
-                        )}
-                      </td>
+
 
                       {/* Status Toggle Pill */}
                       <td className="py-2.5 px-3">
@@ -559,8 +542,14 @@ export default function BirthstonePortfolioView() {
 
       {/* ─── Modal: Configure / Edit Birthstone ─── */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="px-6 py-5 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5]/80">
               <div className="flex items-center gap-3">
@@ -737,8 +726,14 @@ export default function BirthstonePortfolioView() {
 
       {/* ─── Modal: View Birthstone Portrait Preview ─── */}
       {viewingMonth && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
+          onClick={() => setViewingMonth(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5]">
               <div className="flex items-center gap-2">
                 <span className="font-serif font-bold text-stone-900 text-base">

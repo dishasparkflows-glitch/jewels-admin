@@ -36,6 +36,7 @@ import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
+import useCategoryLookup from '../../hooks/useCategoryLookup';
 
 // Available Icons for Jewelry Navigation
 const AVAILABLE_ICONS = [
@@ -63,9 +64,8 @@ export default function NavigationMenusView() {
   // Top Tabs: main, footer, utility, settings
   const [activeTab, setActiveTab] = useState('main');
 
-  // Navigation Data
+  const { categories, categoryOptions } = useCategoryLookup();
   const [menus, setMenus] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -123,16 +123,7 @@ export default function NavigationMenusView() {
   const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
   const [iconPickerTarget, setIconPickerTarget] = useState('menu'); // 'menu' | 'section'
 
-  // ─── Fetch Categories for Dropdowns ────────────────────────
-  const fetchCategories = useCallback(async () => {
-    try {
-      const res = await api.get('/categories?limit=100');
-      const data = res.data?.data?.items || res.data?.data || [];
-      setCategories(Array.isArray(data) ? data : []);
-    } catch {
-      setCategories([]);
-    }
-  }, []);
+
 
   // ─── Fetch Menus ───────────────────────────────────────────
   const fetchMenus = useCallback(async () => {
@@ -155,9 +146,7 @@ export default function NavigationMenusView() {
     }
   }, [activeTab, selectedMenu?._id]);
 
-  useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
+
 
   useEffect(() => {
     fetchMenus();
@@ -177,14 +166,7 @@ export default function NavigationMenusView() {
     return menus.filter((m) => m.title?.toLowerCase().includes(q));
   }, [menus, search]);
 
-  // Category Dropdown options
-  const categoryOptions = useMemo(() => {
-    return categories.map((c) => ({
-      value: c._id,
-      label: c.name,
-      sublabel: c.type === 'collection' ? 'Collection' : 'Category',
-    }));
-  }, [categories]);
+
 
   // ─── Menu Toggle Status ────────────────────────────────────
   const handleToggleMenuStatus = async (menu, e) => {

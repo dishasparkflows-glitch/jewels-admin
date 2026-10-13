@@ -960,8 +960,14 @@ export default function WhatsAppView() {
 
       {/* ─── MODAL 1: NEW TEMPLATE MODAL ─────────────────────── */}
       {isNewModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl overflow-hidden">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in cursor-pointer"
+          onClick={() => setIsNewModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl overflow-hidden cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 bg-[#faf8f5]">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#f0e6d8] text-[#8b6f4e] flex items-center justify-center">
@@ -1074,8 +1080,14 @@ export default function WhatsAppView() {
 
       {/* ─── MODAL 2: SEND TEST MESSAGE MODAL ────────────────── */}
       {isTestModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-md w-full border border-stone-200 shadow-2xl overflow-hidden">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in cursor-pointer"
+          onClick={() => setIsTestModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-md w-full border border-stone-200 shadow-2xl overflow-hidden cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 bg-[#faf8f5]">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#e8f5e9] text-[#16a34a] flex items-center justify-center">
@@ -1154,8 +1166,14 @@ export default function WhatsAppView() {
 
       {/* ─── MODAL 3: PREVIEW TEMPLATE IN LUXURY WHATSAPP PHONE FRAME ── */}
       {previewTemplate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-[#eef2f5] rounded-3xl max-w-sm w-full border-4 border-stone-800 shadow-2xl overflow-hidden relative">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in cursor-pointer"
+          onClick={() => setPreviewTemplate(null)}
+        >
+          <div
+            className="bg-[#eef2f5] rounded-3xl max-w-sm w-full border-4 border-stone-800 shadow-2xl overflow-hidden relative cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Phone Top Speaker & Notch Bar */}
             <div className="bg-[#128c7e] text-white px-4 py-3 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2.5">

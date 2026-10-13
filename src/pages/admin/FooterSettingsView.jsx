@@ -17,6 +17,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import RowActions from '../../components/common/RowActions';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import useCategoryLookup from '../../hooks/useCategoryLookup';
 
 export default function FooterSettingsView() {
   const confirm = useConfirm();
@@ -33,25 +34,19 @@ export default function FooterSettingsView() {
 
   // Shop Hub Matrix
   const [shopItems, setShopItems] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const { categories } = useCategoryLookup();
   const [selectedCategoryId, setSelectedCategoryId] = useState('');
 
   // Fetch initial data
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [footerRes, catRes] = await Promise.all([
-        api.get('/footer-settings/settings'),
-        api.get('/categories/lookup'),
-      ]);
+      const footerRes = await api.get('/footer-settings/settings');
 
       const footerData = footerRes.data?.data || {};
       if (footerData.copyright) setCopyright(footerData.copyright);
       if (Array.isArray(footerData.socialLinks)) setSocialLinks(footerData.socialLinks);
       if (Array.isArray(footerData.shopItems)) setShopItems(footerData.shopItems);
-
-      const catList = catRes.data?.data || [];
-      setCategories(catList);
     } catch (err) {
       console.error('Failed to load footer settings:', err);
       toast.error('Failed to load footer configuration');

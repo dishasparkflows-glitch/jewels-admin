@@ -17,6 +17,9 @@ import InstagramPostsView from './pages/admin/InstagramPostsView';
 import BirthstonePortfolioView from './pages/admin/BirthstonePortfolioView';
 import CouponsView from './pages/admin/CouponsView';
 import CelebrateGiftsView from './pages/admin/CelebrateGiftsView';
+import TopAnnouncementView from './pages/admin/TopAnnouncementView';
+import DiamondsView from './pages/admin/DiamondsView';
+import AddDiamonds from './pages/admin/AddDiamonds';
 import BannersView from './pages/admin/BannersView';
 import HomeSectionsView from './pages/admin/HomeSectionsView';
 import DiamondTypesView from './pages/admin/DiamondTypesView';
@@ -34,6 +37,7 @@ import NavigationMenusView from './pages/admin/NavigationMenusView';
 import WhatsAppView from './pages/admin/WhatsAppView';
 import MetalRatesView from './pages/admin/MetalRatesView';
 import CurrenciesView from './pages/admin/CurrenciesView';
+import BeforeAfterView from './pages/admin/BeforeAfterView';
 import DynamicModuleView from './pages/admin/DynamicModuleView';
 
 function App() {
@@ -83,6 +87,10 @@ function App() {
             <Route path="/appointments" element={<AppointmentsView />} />
             <Route path="/custom-inquiries" element={<CustomInquiriesView />} />
             <Route path="/reviews" element={<ReviewsView />} />
+            {/* Luxury Diamond Module (Matches Exact User Screenshot at /diamonds/add) */}
+            <Route path="/diamonds/add" element={<AddDiamonds />} />
+            <Route path="/diamonds/new" element={<AddDiamonds />} />
+            <Route path="/diamonds" element={<DiamondsView />} />
             <Route path="/settings" element={<SettingsView />} />
             <Route path="/footer-settings" element={<FooterSettingsView />} />
             <Route path="/marketing/footer" element={<FooterSettingsView />} />
@@ -95,11 +103,24 @@ function App() {
             <Route path="/celebrate-gifts" element={<CelebrateGiftsView />} />
             <Route path="/marketing/gifts" element={<CelebrateGiftsView />} />
             <Route path="/marketing/celebrate-gifts" element={<CelebrateGiftsView />} />
+            <Route path="/top-announcement" element={<TopAnnouncementView />} />
+            <Route path="/top-announcements" element={<TopAnnouncementView />} />
+            <Route path="/marketing/top-announcement" element={<TopAnnouncementView />} />
+            <Route path="/marketing/announcements" element={<TopAnnouncementView />} />
             <Route path="/banners" element={<BannersView />} />
             <Route path="/marketing/banners" element={<BannersView />} />
+            <Route path="/marketing/before-after" element={<BeforeAfterView />} />
+            <Route path="/before-after" element={<BeforeAfterView />} />
+            <Route path="/custjewellerybeforeafter" element={<BeforeAfterView />} />
+            <Route path="/cust-jewellery-before-after" element={<BeforeAfterView />} />
             <Route path="/home-sections" element={<HomeSectionsView />} />
             <Route path="/marketing/home-sections" element={<HomeSectionsView />} />
             <Route path="/marketing/sections" element={<HomeSectionsView />} />
+            {/* Dedicated Diamonds Module */}
+            <Route path="/diamonds" element={<DiamondsView />} />
+            <Route path="/diamonds/add" element={<AddDiamonds />} />
+            <Route path="/diamonds/edit/:id" element={<AddDiamonds />} />
+
             <Route path="/diamond-types" element={<DiamondTypesView />} />
             <Route path="/diamond-config/types" element={<DiamondTypesView />} />
             <Route path="/diamond-shapes" element={<DiamondShapesView />} />

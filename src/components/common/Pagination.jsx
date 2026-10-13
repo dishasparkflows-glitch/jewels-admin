@@ -64,6 +64,16 @@ export default function Pagination({
     }
   };
 
+  // Generate safe page size options ensuring the active pageSize is always present
+  const effectivePageSizeOptions = React.useMemo(() => {
+    const numericPageSize = Number(pageSize);
+    const set = new Set((pageSizeOptions || [10, 25, 50, 100]).map(Number));
+    if (numericPageSize && !set.has(numericPageSize)) {
+      set.add(numericPageSize);
+    }
+    return Array.from(set).sort((a, b) => a - b);
+  }, [pageSize, pageSizeOptions]);
+
   const itemText = itemLabel || (totalItems === 1 ? 'item' : 'items');
 
   return (
@@ -83,15 +93,17 @@ export default function Pagination({
           <div className="flex items-center gap-2 text-xs text-stone-600 font-medium">
             <span>Rows per page</span>
             <Dropdown
-              value={pageSize}
+              value={Number(pageSize)}
               onChange={(val) => {
                 onPageSizeChange(Number(val));
                 onPageChange?.(1);
               }}
-              options={pageSizeOptions.map((opt) => ({ value: opt, label: String(opt) }))}
+              options={effectivePageSizeOptions.map((opt) => ({ value: opt, label: String(opt) }))}
+              placeholder={String(pageSize)}
               size="sm"
               openUpward
-              buttonClassName="h-7 px-2 text-xs font-semibold rounded-md bg-white border-stone-200 shadow-2xs"
+              className="w-18"
+              buttonClassName="h-7 px-2 text-xs font-semibold rounded-md bg-white border-stone-200 shadow-2xs min-w-[54px]"
             />
           </div>
         )}

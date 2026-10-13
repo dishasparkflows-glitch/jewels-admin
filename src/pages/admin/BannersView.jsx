@@ -19,6 +19,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import useCategoryLookup from '../../hooks/useCategoryLookup';
 
 const getMediaUrl = (url) => {
   if (!url) return '';
@@ -38,12 +39,13 @@ const POSITION_OPTIONS = [
 const BANNER_TYPE_OPTIONS = [
   { value: 'herobanner', label: 'Hero Banner' },
   { value: 'collectionbanner', label: 'Collection Banner' },
+  { value: 'websitebanner', label: 'Website Banner' },
 ];
 
 export default function BannersView() {
   const confirm = useConfirm();
+  const { categories } = useCategoryLookup();
   const [banners, setBanners] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -69,26 +71,18 @@ export default function BannersView() {
 
   const fileInputRef = useRef(null);
 
-  // Fetch Banners and Categories from API
+  // Fetch Banners from API
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [bannersRes, catsRes] = await Promise.all([
-        api.get('/banners?limit=100'),
-        api.get('/categories?limit=100'),
-      ]);
+      const bannersRes = await api.get('/banners?limit=100');
 
       const bannerItems =
         bannersRes.data?.data?.items ||
         (Array.isArray(bannersRes.data?.data) ? bannersRes.data.data : []);
       setBanners(bannerItems);
-
-      const catItems =
-        catsRes.data?.data?.items ||
-        (Array.isArray(catsRes.data?.data) ? catsRes.data.data : []);
-      setCategories(catItems);
     } catch (err) {
-      console.error('Failed to load banners/categories:', err);
+      console.error('Failed to load banners:', err);
       toast.error('Failed to load banner data');
     } finally {
       setLoading(false);
@@ -142,6 +136,10 @@ export default function BannersView() {
   );
   const collectionCount = useMemo(
     () => banners.filter((b) => (b.display?.type || b.type) === 'collectionbanner').length,
+    [banners]
+  );
+  const websiteCount = useMemo(
+    () => banners.filter((b) => (b.display?.type || b.type) === 'websitebanner').length,
     [banners]
   );
   const videoCount = useMemo(() => banners.filter((b) => b.mediaType === 'video').length, [banners]);
@@ -316,7 +314,7 @@ export default function BannersView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!selectedCategory) {
+    if (!selectedCategory && bannerType !== 'websitebanner') {
       toast.error('Please select a linked category');
       return;
     }
@@ -334,7 +332,7 @@ export default function BannersView() {
           subtitle: subtitle.trim(),
         },
         display: {
-          category: selectedCategory,
+          category: selectedCategory || null,
           type: bannerType,
           position: position.trim() || 'none',
           order: Number(order) || 1,
@@ -888,7 +886,7 @@ export default function BannersView() {
                   {/* Category Link */}
                   <div>
                     <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1.5">
-                      LINKED CATEGORY <span className="text-red-500">*</span>
+                      LINKED CATEGORY {bannerType !== 'websitebanner' && <span className="text-red-500">*</span>}
                     </label>
                     <Dropdown
                       value={selectedCategory}

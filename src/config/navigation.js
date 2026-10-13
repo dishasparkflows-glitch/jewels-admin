@@ -15,6 +15,7 @@ import {
   HiOutlineTemplate,
   HiOutlineChatAlt2,
   HiOutlineCog,
+  HiOutlineSpeakerphone,
 } from 'react-icons/hi';
 
 import {
@@ -113,8 +114,9 @@ export const navSections = [
     items: [
       { id: 'home-sections', title: 'Home Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
       { id: 'celebrate-gifts', title: 'Celebrate & Gifts', path: '/celebrate-gifts', icon: IoDiamondOutline, apiEndpoint: '/featured' },
+      { id: 'top-announcement', title: 'Top Announcement', path: '/top-announcement', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
       { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
-      { id: 'lookare', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineEye, apiEndpoint: '/cust-jewellery-before-after' },
+      { id: 'before-after', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineEye, apiEndpoint: '/cust-jewellery-before-after' },
       { id: 'coupons', title: 'Coupons', path: '/coupons', icon: HiOutlineTicket, apiEndpoint: '/coupons' },
       { id: 'birthstones', title: 'Birthstones', path: '/birthstones', icon: IoDiamondOutline, apiEndpoint: '/birthstones' },
       { id: 'instagram', title: 'Instagram Posts', path: '/instagram-posts', icon: HiOutlineCamera, apiEndpoint: '/instagram-posts' },

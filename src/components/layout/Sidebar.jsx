@@ -90,6 +90,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                 (location.pathname === item.path ||
                   (item.id === 'cod-sequence' && (location.pathname === '/cod-sequence' || location.pathname === '/cod-sequences')) ||
                   (item.id === 'celebrate-gifts' && (location.pathname === '/celebrate-gifts' || location.pathname === '/marketing/gifts')) ||
+                  (item.id === 'before-after' && (location.pathname === '/before-after' || location.pathname === '/marketing/before-after' || location.pathname === '/custjewellerybeforeafter' || location.pathname === '/cust-jewellery-before-after')) ||
                   (item.path !== '/dashboard' && location.pathname.startsWith(item.path)));
 
               if (hasChildren) {

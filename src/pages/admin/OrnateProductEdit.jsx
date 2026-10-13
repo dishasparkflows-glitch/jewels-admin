@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
+import useCategoryLookup from '../../hooks/useCategoryLookup';
 import {
   HiOutlineArrowLeft,
   HiOutlineArrowRight,
@@ -79,7 +80,7 @@ export default function OrnateProductEdit() {
   const [imageUrlInput, setImageUrlInput] = useState('');
 
   // Dropdown options loaded from backend
-  const [categories, setCategories] = useState([]);
+  const { categoryOptions: categories } = useCategoryLookup();
   const [menuItems, setMenuItems] = useState([]);
 
   // ─── 1. Base Information ───────────────────────────────────
@@ -146,34 +147,18 @@ export default function OrnateProductEdit() {
     metaDescription: '',
   });
 
-  // Load Categories & Menu Items on mount
+  // Load Menu Items on mount
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        const [catRes, menuRes] = await Promise.allSettled([
-          api.get('/categories?limit=100'),
-          api.get('/menu-items?limit=100'),
-        ]);
-
-        if (catRes.status === 'fulfilled') {
-          const rawCats = catRes.value.data?.data?.items || catRes.value.data?.data || [];
-          setCategories(
-            rawCats.map((c) => ({
-              value: c._id || c.id,
-              label: c.name || c.title,
-            }))
-          );
-        }
-
-        if (menuRes.status === 'fulfilled') {
-          const rawMenus = menuRes.value.data?.data?.items || menuRes.value.data?.data || [];
-          setMenuItems(
-            rawMenus.map((m) => ({
-              value: m._id || m.id,
-              label: m.title || m.name,
-            }))
-          );
-        }
+        const menuRes = await api.get('/menu-items?limit=100').catch(() => ({ data: { data: [] } }));
+        const rawMenus = menuRes.data?.data?.items || menuRes.data?.data || [];
+        setMenuItems(
+          rawMenus.map((m) => ({
+            value: m._id || m.id,
+            label: m.title || m.name,
+          }))
+        );
       } catch (err) {
         console.warn('Could not fetch auxiliary dropdown options:', err);
       }

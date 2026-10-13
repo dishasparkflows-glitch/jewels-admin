@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
+import useCategoryLookup from '../../hooks/useCategoryLookup';
 import {
   HiOutlineArrowRight,
   HiOutlineArrowLeft,
@@ -42,6 +43,8 @@ const DEFAULT_SIDE_SHAPES = ['Round', 'Baguette', 'Princess', 'Marquise'];
 export default function AddJewelryProduct() {
   const navigate = useNavigate();
 
+  const { categories: categoryList } = useCategoryLookup();
+
   // Active Wizard Step: 1 = Basic, 2 = Variants (Screenshot view), 3 = Media, 4 = Specs, 5 = SEO
   const [activeStep, setActiveStep] = useState(2);
   const [saving, setSaving] = useState(false);
@@ -54,10 +57,54 @@ export default function AddJewelryProduct() {
   const [diamondColorsList, setDiamondColorsList] = useState(DEFAULT_DIAMOND_COLORS);
   const [diamondClaritiesList, setDiamondClaritiesList] = useState(DEFAULT_DIAMOND_CLARITIES);
 
-  // Fetch Metal Purities, Metal Colors, and Diamond masters from backend
+  // Fetch Metal Purities, Metal Colors, and Diamond masters from backend using single combined API
   useEffect(() => {
     const fetchMasters = async () => {
       try {
+        // Try single combined API endpoint first
+        let combinedData = null;
+        try {
+          const res = await api.get('/diamonds/attributes');
+          if (res.data?.data) {
+            combinedData = res.data.data;
+          }
+        } catch {
+          combinedData = null;
+        }
+
+        if (combinedData) {
+          if (Array.isArray(combinedData.metalPurities) && combinedData.metalPurities.length > 0) {
+            setPuritiesList(combinedData.metalPurities.map((i) => (typeof i === 'string' ? i : i.name)));
+          }
+          if (Array.isArray(combinedData.metalColors) && combinedData.metalColors.length > 0) {
+            setColorsList(
+              combinedData.metalColors.map((c) => ({
+                name: c.name,
+                code: c.colorCode || '#d9a74a',
+                border: c.colorCodeEnd || c.colorCode || '#b5852f',
+              }))
+            );
+          }
+          const types = combinedData.types || combinedData.diamondTypes;
+          if (Array.isArray(types) && types.length > 0) {
+            setDiamondTypesList(types.map((i) => (typeof i === 'string' ? i : i.name)));
+          }
+          const shapes = combinedData.shapes || combinedData.diamondShapes;
+          if (Array.isArray(shapes) && shapes.length > 0) {
+            setDiamondShapesList(shapes.map((i) => (typeof i === 'string' ? i : i.name)));
+          }
+          const colors = combinedData.colors || combinedData.diamondColors;
+          if (Array.isArray(colors) && colors.length > 0) {
+            setDiamondColorsList(colors.map((i) => (typeof i === 'string' ? i : i.name)));
+          }
+          const clarities = combinedData.clarities || combinedData.diamondClarities;
+          if (Array.isArray(clarities) && clarities.length > 0) {
+            setDiamondClaritiesList(clarities.map((i) => (typeof i === 'string' ? i : i.name)));
+          }
+          return;
+        }
+
+        // Fallback to individual lookups if combined endpoint is not available
         const [resPurities, resColors, resTypes, resShapes, resDColors, resClarities] =
           await Promise.allSettled([
             api.get('/metal-purities/lookup').catch(() => api.get('/metal-purities?limit=100')),
@@ -71,24 +118,20 @@ export default function AddJewelryProduct() {
         if (resPurities.status === 'fulfilled' && resPurities.value.data?.data) {
           const items = resPurities.value.data.data;
           if (Array.isArray(items) && items.length > 0) {
-            // Keep clean purity names like "9KT", "10KT", "14KT", "18KT", "22KT Gold"
-            const names = items.map((i) => {
-              const raw = typeof i === 'string' ? i : i.name;
-              return raw;
-            });
-            setPuritiesList(names);
+            setPuritiesList(items.map((i) => (typeof i === 'string' ? i : i.name)));
           }
         }
 
         if (resColors.status === 'fulfilled' && resColors.value.data?.data) {
           const items = resColors.value.data.data;
           if (Array.isArray(items) && items.length > 0) {
-            const mappedColors = items.map((c) => ({
-              name: c.name,
-              code: c.colorCode || '#d9a74a',
-              border: c.colorCodeEnd || c.colorCode || '#b5852f',
-            }));
-            setColorsList(mappedColors);
+            setColorsList(
+              items.map((c) => ({
+                name: c.name,
+                code: c.colorCode || '#d9a74a',
+                border: c.colorCodeEnd || c.colorCode || '#b5852f',
+              }))
+            );
           }
         }
 
@@ -734,7 +777,7 @@ export default function AddJewelryProduct() {
                     onChange={(val) =>
                       setBasicDetails((prev) => ({ ...prev, category: val }))
                     }
-                    options={['Rings', 'Solitaires', 'Earrings', 'Necklaces', 'Bracelets', 'Bangles']}
+                    options={categoryList.map((c) => c.name)}
                     buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
                   />
                 </div>

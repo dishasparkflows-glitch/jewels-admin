@@ -19,11 +19,12 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import useCategoryLookup from '../../hooks/useCategoryLookup';
 
 export default function SizesView() {
   const confirm = useConfirm();
+  const { categories } = useCategoryLookup();
   const [sizes, setSizes] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
@@ -44,20 +45,12 @@ export default function SizesView() {
   const fetchData = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const [sizesRes, catsRes] = await Promise.all([
-        api.get('/sizes?limit=100'),
-        api.get('/categories?limit=100'),
-      ]);
+      const sizesRes = await api.get('/sizes?limit=100');
 
       const sizeItems =
         sizesRes.data?.data?.items ||
         (Array.isArray(sizesRes.data?.data) ? sizesRes.data.data : []);
       setSizes(sizeItems);
-
-      const catItems =
-        catsRes.data?.data?.items ||
-        (Array.isArray(catsRes.data?.data) ? catsRes.data.data : []);
-      setCategories(catItems);
     } catch (err) {
       console.error('Failed to load sizes:', err);
       toast.error('Failed to load sizes');
@@ -70,16 +63,105 @@ export default function SizesView() {
     fetchData(currentPage, pageSize);
   }, [currentPage, pageSize]);
 
-  // Search filtering
+  // Category theme styling helper
+  const getCategoryBadgeStyle = (categoryName = '') => {
+    const lower = (categoryName || '').toLowerCase();
+
+    // Rings: Warm Amber / Champagne Gold
+    if (lower.includes('ring')) {
+      return {
+        bg: 'bg-amber-50',
+        text: 'text-amber-800',
+        border: 'border-amber-200/90',
+        dot: 'bg-amber-500',
+      };
+    }
+
+    // Bangles & Bracelets: Sophisticated Emerald / Jade
+    if (lower.includes('bangle') || lower.includes('bracelet')) {
+      return {
+        bg: 'bg-emerald-50',
+        text: 'text-emerald-800',
+        border: 'border-emerald-200/90',
+        dot: 'bg-emerald-500',
+      };
+    }
+
+    // Pendants, Necklaces, Chains: Royal Sapphire / Indigo
+    if (lower.includes('pendant') || lower.includes('neck') || lower.includes('chain')) {
+      return {
+        bg: 'bg-indigo-50',
+        text: 'text-indigo-800',
+        border: 'border-indigo-200/90',
+        dot: 'bg-indigo-500',
+      };
+    }
+
+    // Earrings: Elegant Coral / Rose
+    if (lower.includes('earring') || lower.includes('stud')) {
+      return {
+        bg: 'bg-rose-50',
+        text: 'text-rose-800',
+        border: 'border-rose-200/90',
+        dot: 'bg-rose-500',
+      };
+    }
+
+    // Default Luxury Warm Bronze
+    return {
+      bg: 'bg-[#faf5ee]',
+      text: 'text-[#8f6d43]',
+      border: 'border-[#ecdccb]',
+      dot: 'bg-[#8f6d43]',
+    };
+  };
+
+  // Helper to reliably resolve human category name
+  const resolveCategoryName = (s) => {
+    if (s?.category?.name) return s.category.name;
+    if (typeof s?.category === 'string') {
+      const match = categories.find((c) => c._id === s.category || c.id === s.category);
+      if (match?.name) return match.name;
+    }
+    const nameLower = (s?.name || '').toLowerCase();
+    if (nameLower.includes('bangle') || nameLower.includes('bracelet') || nameLower.includes('mm')) {
+      return 'Bangles & Bracelets';
+    }
+    if (nameLower.includes('chain') || nameLower.includes('pendant') || nameLower.includes('inch')) {
+      return 'Pendant & Necklaces';
+    }
+    return 'Rings';
+  };
+
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
+
+  // Group unique categories with item counts
+  const uniqueCategories = useMemo(() => {
+    const map = new Map();
+    sizes.forEach((s) => {
+      const catName = resolveCategoryName(s);
+      map.set(catName, (map.get(catName) || 0) + 1);
+    });
+    return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
+  }, [sizes, categories]);
+
+  // Search & Category filtering
   const filteredSizes = useMemo(() => {
-    if (!search.trim()) return sizes;
+    let list = sizes;
+
+    if (selectedCategory !== 'all') {
+      list = list.filter((s) => resolveCategoryName(s) === selectedCategory);
+    }
+
+    if (!search.trim()) return list;
     const q = search.toLowerCase();
-    return sizes.filter(
+    return list.filter(
       (s) =>
         (s.name && s.name.toLowerCase().includes(q)) ||
-        (s.category?.name && s.category.name.toLowerCase().includes(q))
+        (resolveCategoryName(s).toLowerCase().includes(q))
     );
-  }, [sizes, search]);
+  }, [sizes, search, selectedCategory, categories]);
 
   const {
     totalItems,
@@ -89,8 +171,12 @@ export default function SizesView() {
   // Quick stat cards
   const activeCount = useMemo(() => sizes.filter(s => s.status === 'active').length, [sizes]);
   const ringSizesCount = useMemo(
-    () => sizes.filter(s => s.category?.name?.toLowerCase().includes('ring') || !isNaN(Number(s.name))).length,
-    [sizes]
+    () => sizes.filter(s => resolveCategoryName(s).toLowerCase().includes('ring') || !isNaN(Number(s.name))).length,
+    [sizes, categories]
+  );
+  const bangleChainSizesCount = useMemo(
+    () => Math.max(0, sizes.length - ringSizesCount),
+    [sizes, ringSizesCount]
   );
 
   const statCardsData = [
@@ -99,6 +185,7 @@ export default function SizesView() {
       value: sizes.length,
       icon: HiOutlineCube,
       color: 'bronze',
+      onClick: () => setSelectedCategory('all'),
     },
     {
       label: 'Active Sizes',
@@ -111,12 +198,14 @@ export default function SizesView() {
       value: ringSizesCount,
       icon: HiOutlineCube,
       color: 'peach',
+      onClick: () => setSelectedCategory((prev) => (prev === 'Rings' ? 'all' : 'Rings')),
     },
     {
       label: 'Bangle / Chain Sizes',
-      value: Math.max(0, sizes.length - ringSizesCount),
+      value: bangleChainSizesCount,
       icon: HiOutlineCube,
       color: 'gold',
+      onClick: () => setSelectedCategory((prev) => (prev === 'Bangles & Bracelets' ? 'all' : 'Bangles & Bracelets')),
     },
   ];
 
@@ -270,11 +359,13 @@ export default function SizesView() {
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />
 
-      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      {/* ─── Search & Filter Bar ─── */}
       <SearchFilterBar
         search={search}
         onSearchChange={setSearch}
         placeholder="Search sizes..."
+        onFilterClick={() => setShowCategoryFilter((prev) => !prev)}
+        filterActive={selectedCategory !== 'all' || showCategoryFilter}
         extraActions={
           <button
             type="button"
@@ -295,6 +386,51 @@ export default function SizesView() {
           </button>
         }
       />
+
+      {/* ─── Category Highlight & Quick Filter Chips ─── */}
+      {uniqueCategories.length > 0 && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mr-1 shrink-0">
+            Category:
+          </span>
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('all')}
+            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
+              selectedCategory === 'all'
+                ? 'bg-[#8b6f4e] text-white border-[#8b6f4e] shadow-2xs'
+                : 'bg-white text-stone-600 border-stone-200/80 hover:bg-stone-50 hover:text-stone-900'
+            }`}
+          >
+            All Categories ({sizes.length})
+          </button>
+          {uniqueCategories.map((cat) => {
+            const badge = getCategoryBadgeStyle(cat.name);
+            const isSelected = selectedCategory === cat.name;
+            return (
+              <button
+                key={cat.name}
+                type="button"
+                onClick={() => setSelectedCategory(isSelected ? 'all' : cat.name)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
+                  isSelected
+                    ? 'bg-stone-900 text-white border-stone-900 shadow-2xs ring-1 ring-stone-900/30'
+                    : `${badge.bg} ${badge.text} ${badge.border} hover:shadow-2xs hover:brightness-95`
+                }`}
+                title={`Filter by ${cat.name}`}
+              >
+                <span
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                    isSelected ? 'bg-white' : badge.dot
+                  }`}
+                />
+                <span>{cat.name}</span>
+                <span className="text-[10px] opacity-75">({cat.count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* ─── Sizes Table Card ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
@@ -337,11 +473,7 @@ export default function SizesView() {
               ) : (
                 paginatedItems.map((s, idx) => {
                   const isGoldSize = s.name === '18 inch';
-                  const categoryName =
-                    s.category?.name ||
-                    (s.name.includes('bangles') || s.name.includes('mm')
-                      ? 'Bangles & Bracelets'
-                      : 'Pendant & Rings');
+                  const categoryName = resolveCategoryName(s);
 
                   const formattedDate = s.meta?.createdAt
                     ? new Date(s.meta.createdAt).toLocaleDateString('en-GB', {
@@ -384,9 +516,17 @@ export default function SizesView() {
 
                       {/* Category Badge */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="px-2 py-0.5 rounded bg-stone-100/80 text-stone-600 text-[10px] font-semibold tracking-wide inline-block">
-                          {categoryName}
-                        </span>
+                        {(() => {
+                          const badge = getCategoryBadgeStyle(categoryName);
+                          return (
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border shadow-2xs tracking-wide ${badge.bg} ${badge.text} ${badge.border}`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${badge.dot} shrink-0`} />
+                              <span>{categoryName}</span>
+                            </span>
+                          );
+                        })()}
                       </td>
 
                       {/* Created Date */}
@@ -535,11 +675,20 @@ export default function SizesView() {
                 <span className="text-stone-400">Size Name:</span>
                 <span className="font-bold text-stone-800">{viewingSize.name}</span>
               </div>
-              <div className="flex justify-between py-1.5 border-b border-stone-100">
+              <div className="flex items-center justify-between py-2 border-b border-stone-100">
                 <span className="text-stone-400">Category:</span>
-                <span className="font-bold text-stone-800">
-                  {viewingSize.category?.name || 'Pendant'}
-                </span>
+                {(() => {
+                  const catName = resolveCategoryName(viewingSize);
+                  const badge = getCategoryBadgeStyle(catName);
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border shadow-2xs ${badge.bg} ${badge.text} ${badge.border}`}
+                    >
+                      <span className={`w-1.5 h-1.5 rounded-full ${badge.dot} shrink-0`} />
+                      <span>{catName}</span>
+                    </span>
+                  );
+                })()}
               </div>
               <div className="flex justify-between py-1.5 border-b border-stone-100">
                 <span className="text-stone-400">Created Date:</span>

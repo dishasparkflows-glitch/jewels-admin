@@ -159,6 +159,10 @@ const routeMap = {
     fields: [
       { name: 'sku', label: 'SKU / Certificate ID', type: 'text', required: true },
       { name: 'title', label: 'Diamond Title', type: 'text', required: true },
+      { name: 'shapeId', label: 'Shape', type: 'lookup', lookupEndpoint: '/diamond-shapes/lookup', lookupFallback: '/diamond-shapes?limit=100', required: true },
+      { name: 'colorId', label: 'Color', type: 'lookup', lookupEndpoint: '/diamond-colors/lookup', lookupFallback: '/diamond-colors?limit=100', required: true },
+      { name: 'clarityId', label: 'Clarity', type: 'lookup', lookupEndpoint: '/diamond-clarities/lookup', lookupFallback: '/diamond-clarities?limit=100', required: true },
+      { name: 'typeId', label: 'Type (Lab / Natural)', type: 'lookup', lookupEndpoint: '/diamond-types/lookup', lookupFallback: '/diamond-types?limit=100', required: true },
       { name: 'carat', label: 'Carat Weight', type: 'number', required: true },
       { name: 'price', label: 'Price (₹)', type: 'number', required: true },
       { name: 'rate', label: 'Rate Per Carat (₹)', type: 'number' },
@@ -209,6 +213,7 @@ const DynamicModuleView = () => {
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [lookupData, setLookupData] = useState({}); // { fieldName: [{ value, label }] }
 
   const isOrnatePage = pathname.includes('ornate-products');
 
@@ -266,6 +271,63 @@ const DynamicModuleView = () => {
     setSearch('');
     setSelectedIds([]);
   }, [fetchItems]);
+
+  // Fetch lookup options when modal opens for fields with type: 'lookup'
+  useEffect(() => {
+    if (!isModalOpen) return;
+    const lookupFields = (config.fields || []).filter((f) => f.type === 'lookup');
+    if (lookupFields.length === 0) return;
+
+    const fetchLookups = async () => {
+      // If we are configuring diamonds, fetch all diamond attributes in ONE single API call
+      if (config.endpoint === '/diamonds') {
+        try {
+          const res = await api.get('/diamonds/attributes');
+          const data = res.data?.data || {};
+          const shapeList = data.shapes || data.diamondShapes || [];
+          const colorList = data.colors || data.diamondColors || [];
+          const clarityList = data.clarities || data.diamondClarities || [];
+          const typeList = data.types || data.diamondTypes || [];
+
+          setLookupData((prev) => ({
+            ...prev,
+            shapeId: shapeList.map((i) => ({ value: i._id || i.id, label: i.name })),
+            colorId: colorList.map((i) => ({ value: i._id || i.id, label: i.name })),
+            clarityId: clarityList.map((i) => ({ value: i._id || i.id, label: i.name })),
+            typeId: typeList.map((i) => ({ value: i._id || i.id, label: i.name })),
+          }));
+          return;
+        } catch (err) {
+          console.warn('Single diamond options fetch fallback:', err);
+        }
+      }
+
+      const results = {};
+      await Promise.all(
+        lookupFields.map(async (field) => {
+          try {
+            let res;
+            try {
+              res = await api.get(field.lookupEndpoint);
+            } catch {
+              res = await api.get(field.lookupFallback);
+            }
+            const data = res.data?.data?.items || res.data?.data || [];
+            const arr = Array.isArray(data) ? data : [];
+            results[field.name] = arr.map((item) => ({
+              value: item._id || item.id,
+              label: item.name || item.title || item.label || item._id,
+            }));
+          } catch {
+            results[field.name] = [];
+          }
+        })
+      );
+      setLookupData((prev) => ({ ...prev, ...results }));
+    };
+
+    fetchLookups();
+  }, [isModalOpen, config.fields]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -641,24 +703,32 @@ const DynamicModuleView = () => {
                       (Array.isArray(row.ornateImages) && row.ornateImages[0]?.url);
 
                     const typeName =
-                      typeof row.type === 'object' && row.type !== null
-                        ? (row.type.name || row.type.title || '')
-                        : (typeof row.type === 'string' ? row.type : '');
+                      typeof row.typeId === 'object' && row.typeId !== null
+                        ? (row.typeId.name || row.typeId.title || '')
+                        : (typeof row.type === 'object' && row.type !== null
+                          ? (row.type.name || row.type.title || '')
+                          : (typeof row.typeId === 'string' ? row.typeId : (typeof row.type === 'string' ? row.type : '')));
 
                     const shapeName =
-                      typeof row.shape === 'object' && row.shape !== null
-                        ? (row.shape.name || row.shape.title || '')
-                        : (typeof row.shape === 'string' ? row.shape : '');
+                      typeof row.shapeId === 'object' && row.shapeId !== null
+                        ? (row.shapeId.name || row.shapeId.title || '')
+                        : (typeof row.shape === 'object' && row.shape !== null
+                          ? (row.shape.name || row.shape.title || '')
+                          : (typeof row.shapeId === 'string' ? row.shapeId : (typeof row.shape === 'string' ? row.shape : '')));
 
                     const colorName =
-                      typeof row.color === 'object' && row.color !== null
-                        ? (row.color.name || row.color.title || '')
-                        : (typeof row.color === 'string' ? row.color : '');
+                      typeof row.colorId === 'object' && row.colorId !== null
+                        ? (row.colorId.name || row.colorId.title || '')
+                        : (typeof row.color === 'object' && row.color !== null
+                          ? (row.color.name || row.color.title || '')
+                          : (typeof row.colorId === 'string' ? row.colorId : (typeof row.color === 'string' ? row.color : '')));
 
                     const clarityName =
-                      typeof row.clarity === 'object' && row.clarity !== null
-                        ? (row.clarity.name || row.clarity.title || '')
-                        : (typeof row.clarity === 'string' ? row.clarity : '');
+                      typeof row.clarityId === 'object' && row.clarityId !== null
+                        ? (row.clarityId.name || row.clarityId.title || '')
+                        : (typeof row.clarity === 'object' && row.clarity !== null
+                          ? (row.clarity.name || row.clarity.title || '')
+                          : (typeof row.clarityId === 'string' ? row.clarityId : (typeof row.clarity === 'string' ? row.clarity : '')));
 
                     const statusStr =
                       typeof row.status === 'object' && row.status !== null
@@ -836,6 +906,17 @@ const DynamicModuleView = () => {
                         setFormData((prev) => ({ ...prev, [field.name]: val }))
                       }
                       options={field.options}
+                      placeholder={`Select ${field.label}`}
+                      size="sm"
+                      buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
+                    />
+                  ) : field.type === 'lookup' ? (
+                    <Dropdown
+                      value={formData[field.name] || ''}
+                      onChange={(val) =>
+                        setFormData((prev) => ({ ...prev, [field.name]: val }))
+                      }
+                      options={lookupData[field.name] || []}
                       placeholder={`Select ${field.label}`}
                       size="sm"
                       buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"

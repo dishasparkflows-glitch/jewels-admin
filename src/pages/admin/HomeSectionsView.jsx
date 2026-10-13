@@ -19,7 +19,6 @@ import {
   HiOutlineChatAlt2,
   HiOutlineShieldCheck,
   HiOutlineStar,
-  HiOutlineRefresh,
   HiOutlineSwitchHorizontal,
   HiOutlineExternalLink,
 } from 'react-icons/hi';
@@ -72,6 +71,7 @@ export default function HomeSectionsView() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [placementFilter, setPlacementFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [showTypeDrawer, setShowTypeDrawer] = useState(false);
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -322,25 +322,6 @@ export default function HomeSectionsView() {
     }
   };
 
-  // Reset / Seed Defaults
-  const handleSeedDefaults = async () => {
-    const ok = await confirm({
-      title: 'Seed Default Home Sections',
-      message: 'This will seed recommended luxury jewelry homepage sections (Hero Slider, Categories, Most Loved, Custom Atelier, Testimonials). Continue?',
-      confirmText: 'Seed Defaults',
-      confirmColor: 'bronze',
-    });
-    if (!ok) return;
-
-    try {
-      await api.post('/home-sections/seed');
-      toast.success('Default home sections seeded successfully!');
-      fetchSections();
-    } catch (err) {
-      console.error('Failed to seed defaults:', err);
-      toast.error('Failed to seed default sections');
-    }
-  };
 
   // Main Image Upload
   const handleMainImageUpload = async (e) => {
@@ -494,150 +475,168 @@ export default function HomeSectionsView() {
   };
 
   return (
-    <div className="space-y-4 max-w-7xl mx-auto px-2 sm:px-4 py-4 text-stone-800">
-      {/* ─── Header ────────────────────────────────────────── */}
+    <div className="space-y-2">
+      {/* ─── Breadcrumb & Header Row ─── */}
       <ModuleHeader
         breadcrumbs={['Home', 'Marketing', 'Home Sections']}
         title="Home Sections"
         subtitle="Organize, curate, and reorder dynamic homepage sections and marketing banners."
         onAdd={handleOpenAdd}
         addLabel="Add Section"
+        exportData={sections}
+        exportFileName="home_sections_export"
         extraActions={
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleOpenReorderModal}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
-            >
-              <HiOutlineSwitchHorizontal className="w-3.5 h-3.5 text-[#8b6f4e]" />
-              <span>Reorder</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSeedDefaults}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
-              title="Seed or restore default curated sections"
-            >
-              <HiOutlineRefresh className="w-3.5 h-3.5 text-stone-500" />
-              <span>Reset Defaults</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleOpenReorderModal}
+            className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-stone-50 border border-stone-200/90 text-stone-700 rounded-md text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+          >
+            <HiOutlineSwitchHorizontal className="w-3.5 h-3.5 text-[#8b6f4e]" />
+            <span>Reorder</span>
+          </button>
         }
       />
 
-      {/* ─── Luxury Stat Cards ─────────────────────────────── */}
+      {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />
 
-      {/* ─── Search & Filter Bar ────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-stone-200 p-3 shadow-2xs space-y-2.5">
-        <SearchFilterBar
-          search={search}
-          onSearchChange={setSearch}
-          placeholder="Search sections by title, slug, or subtitle..."
-          extraActions={
-            selectedIds.length > 0 && (
+      {/* ─── Search & Filters Bar (Single Slim Row, Space-Saving) ─── */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+        <div className="flex-1">
+          <SearchFilterBar
+            search={search}
+            onSearchChange={setSearch}
+            placeholder="Search sections by title, slug, or subtitle..."
+            onFilterClick={() => setShowTypeDrawer((prev) => !prev)}
+            filterActive={typeFilter !== 'all' || placementFilter !== 'all' || statusFilter !== 'all' || showTypeDrawer}
+            extraActions={
               <button
                 type="button"
                 onClick={handleBulkDelete}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors cursor-pointer"
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+                  selectedIds.length > 0
+                    ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
+                    : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+                }`}
+                title={
+                  selectedIds.length > 0
+                    ? `Delete ${selectedIds.length} selected section${selectedIds.length > 1 ? 's' : ''}`
+                    : 'Select sections to delete'
+                }
               >
-                <HiOutlineTrash className="w-3.5 h-3.5" />
-                <span>Delete Selected ({selectedIds.length})</span>
+                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+                <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
               </button>
-            )
-          }
-        />
+            }
+          />
+        </div>
 
-        {/* Filter Pills row */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-stone-100 text-xs">
-          <span className="text-stone-400 font-medium text-[11px] uppercase tracking-wider">Type:</span>
-          <button
-            type="button"
-            onClick={() => setTypeFilter('all')}
-            className={`px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer ${
-              typeFilter === 'all'
-                ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            All Types
-          </button>
-          {SECTION_TYPES.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              onClick={() => setTypeFilter(t.value)}
-              className={`px-2.5 py-1 rounded-full font-medium transition-colors cursor-pointer ${
-                typeFilter === t.value
-                  ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
+        {/* Compact Dropdown Filters Row */}
+        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
+          <Dropdown
+            value={typeFilter}
+            onChange={(val) => setTypeFilter(val)}
+            options={[
+              { value: 'all', label: 'All Types' },
+              ...SECTION_TYPES.map((t) => ({ value: t.value, label: t.label })),
+            ]}
+            size="sm"
+            placeholder="All Types"
+            buttonClassName="h-7.5 px-2.5 rounded-md text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 shadow-2xs"
+          />
 
-          {/* Placement selector */}
-          <div className="ml-auto flex items-center gap-2">
-            <Dropdown
-              value={placementFilter}
-              onChange={(val) => setPlacementFilter(val)}
-              options={[
-                { value: 'all', label: 'All Placements' },
-                { value: 'home_top', label: 'Home Top' },
-                { value: 'home_middle', label: 'Home Middle' },
-                { value: 'home_bottom', label: 'Home Bottom' },
-              ]}
-              size="sm"
-              buttonClassName="h-8 px-2.5 rounded-lg text-xs font-medium text-stone-700 bg-white border-stone-200"
-            />
+          <Dropdown
+            value={placementFilter}
+            onChange={(val) => setPlacementFilter(val)}
+            options={[
+              { value: 'all', label: 'All Placements' },
+              { value: 'home_top', label: 'Home Top' },
+              { value: 'home_middle', label: 'Home Middle' },
+              { value: 'home_bottom', label: 'Home Bottom' },
+            ]}
+            size="sm"
+            placeholder="All Placements"
+            buttonClassName="h-7.5 px-2.5 rounded-md text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 shadow-2xs"
+          />
 
-            <Dropdown
-              value={statusFilter}
-              onChange={(val) => setStatusFilter(val)}
-              options={[
-                { value: 'all', label: 'All Status' },
-                { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
-                { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
-              ]}
-              showStatusDot
-              size="sm"
-              buttonClassName="h-8 px-2.5 rounded-lg text-xs font-medium text-stone-700 bg-white border-stone-200"
-            />
-          </div>
+          <Dropdown
+            value={statusFilter}
+            onChange={(val) => setStatusFilter(val)}
+            options={[
+              { value: 'all', label: 'All Status' },
+              { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
+              { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
+            ]}
+            showStatusDot
+            size="sm"
+            placeholder="All Status"
+            buttonClassName="h-7.5 px-2.5 rounded-md text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 shadow-2xs"
+          />
         </div>
       </div>
 
-      {/* ─── Main Sections Luxury Table ────────────────────── */}
-      <div className="bg-white rounded-xl border border-stone-200 shadow-2xs overflow-hidden">
+      {/* Optional Quick Type Chips Drawer (Toggled by Filters button) */}
+      {showTypeDrawer && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs animate-fadeIn">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mr-1 shrink-0">
+            Type:
+          </span>
+          <button
+            type="button"
+            onClick={() => setTypeFilter('all')}
+            className={`px-2.5 py-0.5 rounded-md text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
+              typeFilter === 'all'
+                ? 'bg-[#8b6f4e] text-white border-[#8b6f4e] shadow-2xs'
+                : 'bg-white text-stone-600 border-stone-200/80 hover:bg-stone-50'
+            }`}
+          >
+            All ({sections.length})
+          </button>
+          {SECTION_TYPES.map((t) => {
+            const count = sections.filter((s) => s.sectionType === t.value).length;
+            const isSelected = typeFilter === t.value;
+            return (
+              <button
+                key={t.value}
+                type="button"
+                onClick={() => setTypeFilter(isSelected ? 'all' : t.value)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
+                  isSelected
+                    ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
+                    : 'bg-white text-stone-600 border-stone-200/80 hover:bg-stone-50'
+                }`}
+              >
+                <span>{t.label}</span>
+                {count > 0 && <span className="text-[10px] opacity-75">({count})</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ─── Main Sections Table Card ─── */}
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         {loading ? (
-          <div className="py-20 text-center">
-            <div className="w-8 h-8 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-xs text-stone-500 font-medium">Loading home sections...</p>
+          <div className="py-16 text-center text-stone-400">
+            <div className="w-6 h-6 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
+            <p className="text-xs font-medium">Loading home sections...</p>
           </div>
         ) : filteredSections.length === 0 ? (
-          <div className="py-16 text-center">
-            <HiOutlineTemplate className="w-12 h-12 text-stone-300 mx-auto mb-3" />
-            <h3 className="text-sm font-semibold text-stone-800">No home sections found</h3>
-            <p className="text-xs text-stone-500 max-w-sm mx-auto mt-1">
-              {search || typeFilter !== 'all' || statusFilter !== 'all'
+          <div className="py-14 text-center">
+            <HiOutlineTemplate className="w-10 h-10 text-stone-300 mx-auto mb-2" />
+            <h3 className="text-xs font-semibold text-stone-800">No home sections found</h3>
+            <p className="text-[11px] text-stone-500 max-w-sm mx-auto mt-0.5">
+              {search || typeFilter !== 'all' || statusFilter !== 'all' || placementFilter !== 'all'
                 ? 'Try adjusting your filters or search keywords.'
-                : 'Click "Add Section" or "Reset Defaults" to populate your storefront.'}
+                : 'Click "Add Section" to populate your storefront.'}
             </p>
-            <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="mt-3 flex items-center justify-center">
               <button
                 type="button"
                 onClick={handleOpenAdd}
-                className="px-3.5 py-1.5 bg-[#8b6f4e] text-white rounded-lg text-xs font-semibold hover:bg-[#785e40] transition-colors cursor-pointer"
+                className="px-3 py-1.5 bg-[#8b6f4e] text-white rounded-md text-xs font-semibold hover:bg-[#785e40] transition-colors cursor-pointer shadow-2xs"
               >
                 Add New Section
-              </button>
-              <button
-                type="button"
-                onClick={handleSeedDefaults}
-                className="px-3.5 py-1.5 bg-stone-100 text-stone-700 rounded-lg text-xs font-semibold hover:bg-stone-200 transition-colors cursor-pointer"
-              >
-                Reset Default Sections
               </button>
             </div>
           </div>
@@ -645,8 +644,8 @@ export default function HomeSectionsView() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
-                  <th className="py-3 px-3 w-8 text-center">
+                <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                  <th className="py-2 pl-4 pr-1 w-8 text-center">
                     <input
                       type="checkbox"
                       checked={
@@ -662,20 +661,22 @@ export default function HomeSectionsView() {
                           setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
                         }
                       }}
-                      className="rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                     />
                   </th>
-                  <th className="py-3 px-3 w-16 text-center">Order</th>
-                  <th className="py-3 px-4 min-w-[220px]">Section Details</th>
-                  <th className="py-3 px-4 min-w-[150px]">Section Type</th>
-                  <th className="py-3 px-3">Placement</th>
-                  <th className="py-3 px-3 text-center">Items</th>
-                  <th className="py-3 px-4 text-center">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  <th className="py-2 px-2 text-center w-14 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    ORDER
+                  </th>
+                  <th className="py-2 px-3 whitespace-nowrap">SECTION DETAILS</th>
+                  <th className="py-2 px-3 whitespace-nowrap">SECTION TYPE</th>
+                  <th className="py-2 px-3 whitespace-nowrap">PLACEMENT</th>
+                  <th className="py-2 px-3 text-center whitespace-nowrap">ITEMS</th>
+                  <th className="py-2 px-3 text-center whitespace-nowrap">STATUS</th>
+                  <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-xs">
-                {(paginatedSections || []).map((sec, idx) => {
+                {(paginatedSections || []).map((sec) => {
                   const globalIdx = sections.findIndex((s) => s._id === sec._id);
                   const typeObj = SECTION_TYPES.find((t) => t.value === sec.sectionType) || {
                     label: sec.sectionType,
@@ -687,12 +688,13 @@ export default function HomeSectionsView() {
                   return (
                     <tr
                       key={sec._id}
-                      className={`hover:bg-stone-50/80 transition-colors ${
-                        isSelected ? 'bg-amber-50/30' : ''
+                      onClick={() => handleOpenView(sec)}
+                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
+                        isSelected ? 'bg-[#faf6f0]/40' : ''
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-2.5 pl-4 pr-1 text-center" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -703,12 +705,12 @@ export default function HomeSectionsView() {
                               setSelectedIds((prev) => prev.filter((id) => id !== sec._id));
                             }
                           }}
-                          className="rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
                       </td>
 
                       {/* Order Controls */}
-                      <td className="py-3 px-3 text-center">
+                      <td className="py-2.5 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <span className="w-5 text-center font-bold text-stone-700 font-mono text-[11px]">
                             {sec.order || globalIdx + 1}
@@ -737,10 +739,10 @@ export default function HomeSectionsView() {
                       </td>
 
                       {/* Section Details */}
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-3">
-                          {/* Thumbnail */}
-                          <div className="w-12 h-10 rounded-lg bg-stone-100 border border-stone-200/80 overflow-hidden shrink-0 flex items-center justify-center relative">
+                      <td className="py-2.5 px-3">
+                        <div className="flex items-center gap-2.5">
+                          {/* Compact Thumbnail */}
+                          <div className="w-8 h-8 rounded-md bg-stone-100 border border-stone-200/80 overflow-hidden shrink-0 flex items-center justify-center relative shadow-2xs">
                             {sec.image?.url ? (
                               <img
                                 src={sec.image.url}
@@ -760,26 +762,26 @@ export default function HomeSectionsView() {
                                 }}
                               />
                             ) : (
-                              <TypeIcon className="w-5 h-5 text-[#8b6f4e]/60" />
+                              <TypeIcon className="w-4 h-4 text-[#8b6f4e]/60" />
                             )}
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-stone-900 truncate">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-stone-900 text-xs truncate">
                                 {sec.title}
                               </span>
                               {sec.badgeText && (
-                                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
                                   {sec.badgeText}
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 mt-0.5">
-                              <code className="text-[10px] text-[#8b6f4e] bg-[#faf3e8] px-1.5 py-0.5 rounded font-mono">
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <code className="text-[10px] text-[#8b6f4e] bg-[#faf3e8] px-1 py-0.2 rounded font-mono font-medium">
                                 #{sec.sectionKey}
                               </code>
                               {sec.subtitle && (
-                                <span className="text-[11px] text-stone-400 truncate max-w-[180px]">
+                                <span className="text-[11px] text-stone-400 truncate max-w-xs">
                                   {sec.subtitle}
                                 </span>
                               )}
@@ -788,51 +790,53 @@ export default function HomeSectionsView() {
                         </div>
                       </td>
 
-                      {/* Type Badge */}
-                      <td className="py-3 px-4">
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-stone-100 border border-stone-200/80 text-stone-700 font-medium text-[11px]">
+                      {/* Section Type Badge */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100/90 text-stone-700 border border-stone-200/80 shadow-2xs">
                           <TypeIcon className="w-3.5 h-3.5 text-[#8b6f4e] shrink-0" />
-                          <span className="truncate max-w-[130px]">{typeObj.label}</span>
-                        </div>
+                          <span>{typeObj.label}</span>
+                        </span>
                       </td>
 
                       {/* Placement */}
-                      <td className="py-3 px-3">
-                        <span className="capitalize text-[11px] px-2 py-0.5 rounded bg-stone-100 text-stone-600 font-medium">
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="capitalize text-xs font-medium px-2 py-0.5 rounded-md bg-stone-100/80 text-stone-600 border border-stone-200/50">
                           {sec.placement?.replace('home_', '') || 'Middle'}
                         </span>
                       </td>
 
                       {/* Items Count */}
-                      <td className="py-3 px-3 text-center">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf3e8] text-[#8b6f4e] border border-[#8b6f4e]/20">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf3e8] text-[#8b6f4e] border border-[#8b6f4e]/20 shadow-2xs">
                           {sec.items?.length || 0} items
                         </span>
                       </td>
 
-                      {/* Interactive Status Toggle */}
-                      <td className="py-3 px-4 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(sec)}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            sec.status === 'active' ? 'bg-[#16a34a]' : 'bg-stone-300'
-                          }`}
-                          title={`Click to mark ${sec.status === 'active' ? 'Inactive' : 'Active'}`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                              sec.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                      {/* Status Toggle */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleStatus(sec)}
+                            className={`relative inline-flex h-4 w-7.5 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                              sec.status === 'active' ? 'bg-[#16a34a]' : 'bg-stone-300'
                             }`}
-                          />
-                        </button>
-                        <div className="text-[9px] font-semibold uppercase tracking-wider text-stone-400 mt-0.5">
-                          {sec.status}
+                            title={`Click to mark ${sec.status === 'active' ? 'Inactive' : 'Active'}`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                sec.status === 'active' ? 'translate-x-3.5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider ${sec.status === 'active' ? 'text-emerald-600' : 'text-stone-400'}`}>
+                            {sec.status}
+                          </span>
                         </div>
                       </td>
 
-                      {/* Row Actions */}
-                      <td className="py-3 px-4 text-right">
+                      {/* Actions */}
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           onView={() => handleOpenView(sec)}
                           onEdit={() => handleOpenEdit(sec)}
@@ -850,26 +854,30 @@ export default function HomeSectionsView() {
           </div>
         )}
 
-        {/* ─── Pagination ───────────────────────────────────── */}
-        {filteredSections.length > 0 && (
-          <div className="p-3 border-t border-stone-200 bg-stone-50/50">
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              pageSize={pageSize}
-              totalItems={totalItems}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
-              itemLabel="sections"
-            />
-          </div>
-        )}
+        {/* ─── Luxury Common Pagination ─── */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="sections"
+        />
       </div>
 
       {/* ─── Add / Edit Modal ───────────────────────────────── */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-3xl overflow-hidden my-auto max-h-[90vh] flex flex-col">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn overflow-y-auto cursor-pointer"
+          onClick={() => setIsModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-3xl overflow-hidden my-auto max-h-[90vh] flex flex-col cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-50">
               <div>
@@ -1357,8 +1365,14 @@ export default function HomeSectionsView() {
 
       {/* ─── Preview / View Modal ────────────────────────────── */}
       {isViewModalOpen && viewingSection && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
+          onClick={() => setIsViewModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-50">
               <div>
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#8b6f4e] bg-[#faf3e8] px-2 py-0.5 rounded">
@@ -1475,8 +1489,14 @@ export default function HomeSectionsView() {
 
       {/* ─── Visual Reorder Modal ────────────────────────────── */}
       {isReorderModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
+          onClick={() => setIsReorderModalOpen(false)}
+        >
+          <div
+            className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] cursor-default"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-200 bg-stone-50">
               <h3 className="text-sm font-bold text-stone-900 font-serif">
                 Reorder Storefront Sections
