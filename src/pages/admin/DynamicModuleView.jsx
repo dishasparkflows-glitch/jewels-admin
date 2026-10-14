@@ -658,17 +658,11 @@ const DynamicModuleView = () => {
               <span>Loading {config.title.toLowerCase()} from database...</span>
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="py-8 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
+            <div className="py-12 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
               <div className="w-8 h-8 rounded-lg bg-[#faf6f0] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e]">
                 <HiOutlineEye className="w-4 h-4" />
               </div>
               <p className="font-medium text-stone-600 text-xs">No records found</p>
-              <button
-                onClick={handleOpenAdd}
-                className="text-xs text-[#8b6f4e] hover:underline font-semibold cursor-pointer"
-              >
-                + Add the first {config.title} item
-              </button>
             </div>
           ) : (
             <>

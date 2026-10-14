@@ -18,6 +18,11 @@ import {
   HiOutlineRefresh,
   HiOutlineUpload,
   HiOutlineX,
+  HiOutlineLink,
+  HiOutlineChevronRight,
+  HiOutlineChevronUp,
+  HiOutlineChevronDown,
+  HiOutlineQuestionMarkCircle,
 } from 'react-icons/hi';
 import {
   IoDiamondOutline,
@@ -27,15 +32,80 @@ import {
 } from 'react-icons/io5';
 import { TbCoins, TbScale, TbDatabase, TbListDetails } from 'react-icons/tb';
 
-// Color master list matching Neirah luxury ERP palette
-const COLOR_OPTIONS = [
-  { name: 'Black', hex: '#111827', border: '#374151', text: 'text-stone-900' },
-  { name: 'Brown', hex: '#795548', border: '#5d4037', text: 'text-stone-900' },
-  { name: 'SILVER', hex: '#c0c0c0', border: '#9ca3af', text: 'text-stone-900' },
-  { name: 'White Gold', hex: '#e8ecf1', border: '#cbd5e1', text: 'text-stone-900' },
-  { name: 'Rose Gold', hex: '#e39d8e', border: '#cf8170', text: 'text-stone-900' },
-  { name: 'Yellow Gold', hex: '#d9a74a', border: '#b5852f', text: 'text-stone-900' },
+// Color master defaults and 3D spherical gradient generator matching Neirah luxury ERP palette
+const DEFAULT_COLOR_OPTIONS = [
+  {
+    name: 'Rose Gold',
+    colorCode: '#e39d8e',
+    colorCodeEnd: '#cf8170',
+  },
+  {
+    name: 'White Gold',
+    colorCode: '#e8ecf1',
+    colorCodeEnd: '#cbd5e1',
+  },
+  {
+    name: 'Yellow Gold',
+    colorCode: '#d9a74a',
+    colorCodeEnd: '#b5852f',
+  },
+  {
+    name: 'Silver',
+    colorCode: '#c0c0c0',
+    colorCodeEnd: '#9ca3af',
+  },
 ];
+
+const buildColorOption = (item = {}) => {
+  const name = item.name || '';
+  const hex = item.colorCode || item.hex || '#d9a74a';
+  const border = item.colorCodeEnd || item.border || item.colorCode || '#b5852f';
+
+  const sphereStyles = {
+    'White Gold': {
+      gradient: 'radial-gradient(circle at 35% 35%, #ffffff, #f1f5f9 40%, #cbd5e1 75%, #94a3b8 100%)',
+      shadow: 'inset -2px -2px 4px rgba(100,116,139,0.3), inset 1px 1px 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    'Rose Gold': {
+      gradient: 'radial-gradient(circle at 35% 35%, #fde2d6, #e7a192 45%, #cb7768 75%, #9a3412 100%)',
+      shadow: 'inset -2px -2px 4px rgba(154,52,18,0.35), inset 1px 1px 2px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    'Yellow Gold': {
+      gradient: 'radial-gradient(circle at 35% 35%, #fffbeb, #fed7aa 25%, #eab308 60%, #a16207 100%)',
+      shadow: 'inset -2px -2px 4px rgba(161,98,7,0.4), inset 1px 1px 2px rgba(255,255,255,0.7), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    Silver: {
+      gradient: 'radial-gradient(circle at 35% 35%, #ffffff, #f8fafc 30%, #cbd5e1 65%, #64748b 100%)',
+      shadow: 'inset -2px -2px 4px rgba(71,85,105,0.35), inset 1px 1px 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    Platinum: {
+      gradient: 'radial-gradient(circle at 35% 35%, #f1f5f9, #e2e8f0 40%, #94a3b8 80%, #475569 100%)',
+      shadow: 'inset -2px -2px 4px rgba(51,65,85,0.4), inset 1px 1px 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    Black: {
+      gradient: 'radial-gradient(circle at 35% 35%, #4b5563, #1f2937 60%, #000000 100%)',
+      shadow: 'inset -2px -2px 5px rgba(0,0,0,0.6), inset 1px 1px 2px rgba(255,255,255,0.35), 0 2px 4px rgba(0,0,0,0.2)',
+    },
+    Brown: {
+      gradient: 'radial-gradient(circle at 35% 35%, #a1887f, #6d4c41 55%, #3e2723 95%)',
+      shadow: 'inset -2px -2px 5px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.15)',
+    },
+  };
+
+  const matched = sphereStyles[name] || {
+    gradient: `radial-gradient(circle at 35% 35%, #ffffff 0%, ${hex} 55%, ${border} 100%)`,
+    shadow: 'inset -2px -2px 4px rgba(0,0,0,0.25), inset 1px 1px 2px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.12)',
+  };
+
+  return {
+    id: item._id || item.id,
+    name,
+    hex,
+    border,
+    sphereGradient: matched.gradient,
+    sphereShadow: matched.shadow,
+  };
+};
 
 const CATEGORY_TAG_OPTIONS = [
   { value: 'No Banner Tag', label: 'No Banner Tag' },
@@ -63,7 +133,6 @@ const STATUS_OPTIONS = [
 const STOCK_STATUS_OPTIONS = [
   { value: 'In Stock', label: 'In Stock' },
   { value: 'Out of Stock', label: 'Out of Stock' },
-  { value: 'Made to Order', label: 'Made to Order' },
 ];
 
 export default function OrnateProductEdit() {
@@ -78,6 +147,8 @@ export default function OrnateProductEdit() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewModalImage, setPreviewModalImage] = useState(null);
   const [imageUrlInput, setImageUrlInput] = useState('');
+  const [draggedCareIndex, setDraggedCareIndex] = useState(null);
+  const [dragOverCareIndex, setDragOverCareIndex] = useState(null);
 
   // Dropdown options loaded from backend
   const { categoryOptions: categories } = useCategoryLookup();
@@ -109,7 +180,12 @@ export default function OrnateProductEdit() {
   });
 
   // ─── 3. Variant Configuration (Colors) ─────────────────────
-  const [selectedColors, setSelectedColors] = useState(['SILVER']);
+  const [colorOptions, setColorOptions] = useState(DEFAULT_COLOR_OPTIONS.map(buildColorOption));
+  const [selectedColors, setSelectedColors] = useState([]);
+  const [expandedColors, setExpandedColors] = useState([]);
+  const [variantMedia, setVariantMedia] = useState({});
+  const [uploadingVariantColor, setUploadingVariantColor] = useState(null);
+  const [uploadingSwatchColor, setUploadingSwatchColor] = useState(null);
 
   // ─── 4. Weights & Purities ─────────────────────────────────
   const [weights, setWeights] = useState({
@@ -147,18 +223,40 @@ export default function OrnateProductEdit() {
     metaDescription: '',
   });
 
-  // Load Menu Items on mount
+  // Load Menu Items and Live Metal Colors on mount
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        const menuRes = await api.get('/menu-items?limit=100').catch(() => ({ data: { data: [] } }));
-        const rawMenus = menuRes.data?.data?.items || menuRes.data?.data || [];
-        setMenuItems(
-          rawMenus.map((m) => ({
-            value: m._id || m.id,
-            label: m.title || m.name,
-          }))
-        );
+        const [menuRes, colorRes] = await Promise.allSettled([
+          api.get('/menu-items?limit=100').catch(() => ({ data: { data: [] } })),
+          api.get('/metal-colors?limit=100').catch(() =>
+            api.get('/diamonds/attributes').then((r) => ({
+              data: { data: r.data?.data?.metalColors || [] },
+            }))
+          ),
+        ]);
+
+        if (menuRes.status === 'fulfilled') {
+          const rawMenus = menuRes.value.data?.data?.items || menuRes.value.data?.data || [];
+          setMenuItems(
+            rawMenus.map((m) => ({
+              value: m._id || m.id,
+              label: m.title || m.name,
+            }))
+          );
+        }
+
+        if (colorRes.status === 'fulfilled') {
+          const rawColors = colorRes.value.data?.data?.items || colorRes.value.data?.data || [];
+          if (Array.isArray(rawColors) && rawColors.length > 0) {
+            const built = rawColors.map(buildColorOption);
+            setColorOptions(built);
+            setSelectedColors((prev) => {
+              if (prev && prev.length > 0) return prev;
+              return built.map((c) => c.name);
+            });
+          }
+        }
       } catch (err) {
         console.warn('Could not fetch auxiliary dropdown options:', err);
       }
@@ -215,12 +313,41 @@ export default function OrnateProductEdit() {
 
           // Populate Colors
           if (Array.isArray(product.metalColors) && product.metalColors.length > 0) {
-            const colorNames = product.metalColors.map((mc) =>
-              typeof mc === 'object' && mc !== null ? mc.name : mc
-            );
+            const colorNames = product.metalColors.map((mc) => {
+              if (typeof mc === 'object' && mc !== null) return mc.name;
+              const found = colorOptions.find((co) => co.id === mc || co.name?.toLowerCase() === String(mc).toLowerCase());
+              return found?.name || mc;
+            });
             setSelectedColors(colorNames.filter(Boolean));
           } else if (product.color) {
-            setSelectedColors([product.color]);
+            const found = colorOptions.find((co) => co.id === product.color || co.name?.toLowerCase() === String(product.color).toLowerCase());
+            setSelectedColors([found?.name || product.color]);
+          }
+
+          // Populate Variant Media from colorImages if available
+          if (Array.isArray(product.colorImages) && product.colorImages.length > 0) {
+            const mediaMap = {};
+            product.colorImages.forEach((ci) => {
+              let colorName =
+                ci.metalColor?.name ||
+                ci.metalColorName ||
+                ci.colorName ||
+                (typeof ci.metalColor === 'string' ? ci.metalColor : '');
+              if (colorName?.toUpperCase() === 'SILVER') colorName = 'Silver';
+              if (colorName) {
+                mediaMap[colorName] = {
+                  swatchIcon: ci.variantIcon?.url || ci.variantIcon || '',
+                  media: Array.isArray(ci.images)
+                    ? ci.images.map((img, idx) => ({
+                        id: img._id || `img-${idx}`,
+                        url: typeof img === 'string' ? img : img.url,
+                        mediaType: img.mediaType || (img.url?.endsWith('.mp4') ? 'video' : 'image'),
+                      }))
+                    : [],
+                };
+              }
+            });
+            setVariantMedia((prev) => ({ ...prev, ...mediaMap }));
           }
 
           // Populate Weights & Purities
@@ -263,6 +390,7 @@ export default function OrnateProductEdit() {
                 id: sec._id || `sec-${i}`,
                 header: sec.header || '',
                 description: sec.description || '',
+                showOnProductPage: sec.showOnProductPage !== false && sec.isVisible !== false,
               }))
             );
           }
@@ -325,15 +453,131 @@ export default function OrnateProductEdit() {
     });
   };
 
-  // Toggle Color
+  // Helper to check if color is selected (case-insensitive)
+  const isColorSelected = (colorName) => {
+    return selectedColors.some(
+      (c) => c?.toLowerCase() === colorName?.toLowerCase()
+    );
+  };
+
+  // Toggle Color Variant Selection
   const handleToggleColor = (colorName) => {
     setSelectedColors((prev) => {
-      if (prev.includes(colorName)) {
-        if (prev.length === 1) return prev; // Keep at least one
-        return prev.filter((c) => c !== colorName);
+      const exists = prev.some((c) => c?.toLowerCase() === colorName?.toLowerCase());
+      if (exists) {
+        if (prev.length === 1) {
+          toast.info('At least one color variant must remain selected.');
+          return prev;
+        }
+        return prev.filter((c) => c?.toLowerCase() !== colorName?.toLowerCase());
       }
       return [...prev, colorName];
     });
+  };
+
+  // Toggle Variant Accordion Expansion (allows multiple open simultaneously)
+  const handleToggleExpand = (colorName) => {
+    setExpandedColors((prev) =>
+      prev.includes(colorName)
+        ? prev.filter((c) => c !== colorName)
+        : [...prev, colorName]
+    );
+  };
+
+  // Toggle All Variants Accordion
+  const handleToggleAllExpand = () => {
+    setExpandedColors((prev) =>
+      prev.length === colorOptions.length
+        ? []
+        : colorOptions.map((c) => c.name)
+    );
+  };
+
+  // Upload variant swatch icon (No size limit)
+  const handleSwatchUpload = async (colorName, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingSwatchColor(colorName);
+      const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+      if (fileUrl) {
+        setVariantMedia((prev) => ({
+          ...prev,
+          [colorName]: {
+            ...prev[colorName],
+            swatchIcon: fileUrl,
+          },
+        }));
+        toast.success(`${colorName} swatch icon uploaded!`);
+      }
+    } catch (err) {
+      console.error('Swatch icon upload failed:', err);
+      toast.error(err.message || 'Failed to upload swatch icon');
+    } finally {
+      setUploadingSwatchColor(null);
+      e.target.value = '';
+    }
+  };
+
+  // Upload variant images & videos (No size limit)
+  const handleVariantMediaUpload = async (colorName, e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    try {
+      setUploadingVariantColor(colorName);
+      const uploadedList = [];
+
+      for (const file of files) {
+        const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+        if (fileUrl) {
+          uploadedList.push({
+            id: `vmed-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+            url: fileUrl,
+            mediaType: file.type.startsWith('video') || file.name.endsWith('.mp4') ? 'video' : 'image',
+          });
+        }
+      }
+
+      if (uploadedList.length > 0) {
+        setVariantMedia((prev) => ({
+          ...prev,
+          [colorName]: {
+            ...prev[colorName],
+            media: [...(prev[colorName]?.media || []), ...uploadedList],
+          },
+        }));
+        toast.success(`Uploaded ${uploadedList.length} media file(s) for ${colorName}!`);
+      }
+    } catch (err) {
+      console.error('Variant media upload failed:', err);
+      toast.error(err.message || 'Failed to upload variant media');
+    } finally {
+      setUploadingVariantColor(null);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveSwatchIcon = (colorName) => {
+    setVariantMedia((prev) => ({
+      ...prev,
+      [colorName]: {
+        ...prev[colorName],
+        swatchIcon: '',
+      },
+    }));
+    toast.success(`Removed swatch icon for ${colorName}`);
+  };
+
+  const handleRemoveVariantMedia = (colorName, mediaId) => {
+    setVariantMedia((prev) => ({
+      ...prev,
+      [colorName]: {
+        ...prev[colorName],
+        media: (prev[colorName]?.media || []).filter((m) => m.id !== mediaId),
+      },
+    }));
   };
 
   // Add Image via direct URL
@@ -405,8 +649,9 @@ export default function OrnateProductEdit() {
       ...prev,
       {
         id: `sec-${Date.now()}`,
-        header: '',
+        header: 'Care Instructions',
         description: '',
+        showOnProductPage: true,
       },
     ]);
   };
@@ -421,6 +666,159 @@ export default function OrnateProductEdit() {
   // Remove Care Section
   const handleRemoveCareSection = (secId) => {
     setCareSections((prev) => prev.filter((sec) => sec.id !== secId));
+  };
+
+  // Move Care Section Up or Down
+  const handleMoveCareSection = (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= careSections.length) return;
+
+    setCareSections((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(index, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
+  };
+
+  // Drag and Drop for Care Sections
+  const handleCareDragStart = (e, index) => {
+    setDraggedCareIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(index));
+    } catch {}
+  };
+
+  const handleCareDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverCareIndex !== index) {
+      setDragOverCareIndex(index);
+    }
+  };
+
+  const handleCareDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedCareIndex === null || draggedCareIndex === targetIndex) {
+      setDraggedCareIndex(null);
+      setDragOverCareIndex(null);
+      return;
+    }
+
+    setCareSections((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(draggedCareIndex, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
+
+    setDraggedCareIndex(null);
+    setDragOverCareIndex(null);
+  };
+
+  const handleCareDragEnd = () => {
+    setDraggedCareIndex(null);
+    setDragOverCareIndex(null);
+  };
+
+  // Format Care Description text helper
+  const handleFormatText = (sectionId, type) => {
+    const textarea = document.getElementById(`care-desc-${sectionId}`);
+    const section = careSections.find((s) => s.id === sectionId);
+    if (!section) return;
+
+    const text = section.description || '';
+    const start = textarea?.selectionStart ?? text.length;
+    const end = textarea?.selectionEnd ?? text.length;
+    const selected = text.substring(start, end);
+
+    let replacement = '';
+    let newCursorPos = start;
+
+    switch (type) {
+      case 'bold':
+        replacement = selected ? `**${selected}**` : '**bold text**';
+        newCursorPos = selected ? end + 4 : start + 2;
+        break;
+      case 'italic':
+        replacement = selected ? `*${selected}*` : '*italic text*';
+        newCursorPos = selected ? end + 2 : start + 1;
+        break;
+      case 'underline':
+        replacement = selected ? `<u>${selected}</u>` : '<u>underlined text</u>';
+        newCursorPos = selected ? end + 7 : start + 3;
+        break;
+      case 'h3':
+        replacement = `\n### ${selected || 'Heading'}\n`;
+        newCursorPos = start + replacement.length;
+        break;
+      case 'h4':
+        replacement = `\n#### ${selected || 'Subheading'}\n`;
+        newCursorPos = start + replacement.length;
+        break;
+      case 'bullet': {
+        const prefix = start === 0 || text[start - 1] === '\n' ? '• ' : '\n• ';
+        replacement = prefix + (selected || '');
+        newCursorPos = start + prefix.length + (selected ? selected.length : 0);
+        break;
+      }
+      case 'number': {
+        const prefix = start === 0 || text[start - 1] === '\n' ? '1. ' : '\n1. ';
+        replacement = prefix + (selected || '');
+        newCursorPos = start + prefix.length + (selected ? selected.length : 0);
+        break;
+      }
+      case 'link': {
+        const url = prompt('Enter link URL (e.g. https://...):', 'https://');
+        if (!url) return;
+        replacement = selected ? `[${selected}](${url})` : `[Link](${url})`;
+        newCursorPos = start + replacement.length;
+        break;
+      }
+      default:
+        break;
+    }
+
+    const newText = text.substring(0, start) + replacement + text.substring(end);
+    handleUpdateCareSection(sectionId, 'description', newText);
+
+    setTimeout(() => {
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
+  // Auto-bullet on Enter in Care Description textarea
+  const handleKeyDownDescription = (e, sectionId) => {
+    if (e.key === 'Enter') {
+      const textarea = e.target;
+      const val = textarea.value;
+      const pos = textarea.selectionStart;
+      const lastLineStart = val.lastIndexOf('\n', pos - 1) + 1;
+      const currentLine = val.substring(lastLineStart, pos);
+
+      if (currentLine.startsWith('• ')) {
+        e.preventDefault();
+        if (currentLine.trim() === '•') {
+          // Clear empty bullet
+          const nextVal = val.substring(0, lastLineStart) + val.substring(pos);
+          handleUpdateCareSection(sectionId, 'description', nextVal);
+          setTimeout(() => {
+            textarea.setSelectionRange(lastLineStart, lastLineStart);
+          }, 0);
+        } else {
+          // Continue bullet on next line
+          const nextVal = val.substring(0, pos) + '\n• ' + val.substring(pos);
+          handleUpdateCareSection(sectionId, 'description', nextVal);
+          setTimeout(() => {
+            textarea.setSelectionRange(pos + 3, pos + 3);
+          }, 0);
+        }
+      }
+    }
   };
 
   // Add Specification
@@ -445,6 +843,19 @@ export default function OrnateProductEdit() {
   // Remove Specification
   const handleRemoveSpecification = (specId) => {
     setSpecifications((prev) => prev.filter((spec) => spec.id !== specId));
+  };
+
+  // Move Specification Up or Down
+  const handleMoveSpecification = (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= specifications.length) return;
+
+    setSpecifications((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(index, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
   };
 
   // Save / Update Handler
@@ -520,6 +931,8 @@ export default function OrnateProductEdit() {
           .map((s) => ({
             header: s.header.trim(),
             description: s.description.trim(),
+            showOnProductPage: s.showOnProductPage !== false,
+            isVisible: s.showOnProductPage !== false,
           })),
 
         productSpecifications: specifications
@@ -537,7 +950,25 @@ export default function OrnateProductEdit() {
         },
 
         // Color variants
-        color: selectedColors[0] || 'SILVER',
+        color: selectedColors[0] || (colorOptions[0]?.name || 'Rose Gold'),
+        metalColors: selectedColors.map((cName) => {
+          const matched = colorOptions.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
+          return matched?.id || cName;
+        }),
+        colorImages: selectedColors.map((cName) => {
+          const vData = variantMedia[cName] || {};
+          const matched = colorOptions.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
+          return {
+            metalColorId: matched?.id || undefined,
+            metalColor: matched?.id || undefined,
+            metalColorName: cName,
+            variantIcon: vData.swatchIcon ? { url: vData.swatchIcon } : undefined,
+            images: (vData.media || []).map((m) => ({
+              url: typeof m === 'string' ? m : m.url,
+              mediaType: m.mediaType || (m.url?.endsWith('.mp4') ? 'video' : 'image'),
+            })),
+          };
+        }),
 
         // Structured blocks sync
         basicInfo: {
@@ -593,7 +1024,7 @@ export default function OrnateProductEdit() {
     { num: 4, title: 'Weights & ERP Details', subtitle: 'Purity, weight, ERP codes' },
     { num: 5, title: 'Ornate Images', subtitle: 'Gallery & media' },
     { num: 6, title: 'Care & Specs', subtitle: 'Care info & specifications' },
-    { num: 7, title: 'SEO Configuration', subtitle: 'Meta tags & Google snippet' },
+    { num: 7, title: 'SEO Configuration', subtitle: 'Meta tags & keywords' },
   ];
 
   const handleNextStep = () => {
@@ -664,7 +1095,7 @@ export default function OrnateProductEdit() {
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 rounded-xl hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer disabled:opacity-50"
           >
             <HiOutlineDocumentText className="w-3.5 h-3.5 text-stone-500" />
-            <span>Save Draft</span>
+            <span>Save as Draft</span>
           </button>
 
           <button
@@ -674,7 +1105,7 @@ export default function OrnateProductEdit() {
             className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
           >
             <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" />
-            <span>{saving ? 'Saving...' : isEditMode ? 'Update Product' : 'Save Product'}</span>
+            <span>{saving ? 'Saving...' : 'Save Product'}</span>
           </button>
         </div>
       </div>
@@ -764,9 +1195,6 @@ export default function OrnateProductEdit() {
                   placeholder="e.g. 92.5 BRACELET"
                   className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 transition-all font-semibold"
                 />
-                <p className="text-[10.5px] text-stone-400 italic">
-                  This title appears as the customer-facing product name across the website.
-                </p>
               </div>
 
               {/* Category & Category Tag Grid */}
@@ -944,8 +1372,8 @@ export default function OrnateProductEdit() {
             <div className="space-y-4">
               {/* Row 1: Cost Price, Markup %, Calculated Price, Sale Price */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
                     <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                       Cost Price (₹)
                     </label>
@@ -959,10 +1387,12 @@ export default function OrnateProductEdit() {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                    Markup %
-                  </label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                      Markup %
+                    </label>
+                  </div>
                   <input
                     type="number"
                     value={pricing.markupPercentage}
@@ -971,10 +1401,12 @@ export default function OrnateProductEdit() {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                    Calculated Price (₹)
-                  </label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                      Calculated Price (₹)
+                    </label>
+                  </div>
                   <input
                     type="number"
                     value={pricing.calculatedPrice}
@@ -988,10 +1420,12 @@ export default function OrnateProductEdit() {
                   </p>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                    Sale Price (₹) *
-                  </label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                      Sale Price (₹) *
+                    </label>
+                  </div>
                   <input
                     type="number"
                     value={pricing.salePrice}
@@ -1041,38 +1475,6 @@ export default function OrnateProductEdit() {
                 </div>
               </div>
 
-              {/* Real-time Margin & Profit Summary Pill */}
-              <div className="p-3.5 rounded-xl bg-[#faf8f5] border border-[#e8ded1] flex items-center justify-between flex-wrap gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  <span className="text-xs font-semibold text-stone-700">Financial Summary</span>
-                </div>
-                <div className="flex items-center gap-4 text-xs font-mono">
-                  <span>
-                    Gross Profit:{' '}
-                    <strong className="text-emerald-700">
-                      ₹{Math.max(0, pricing.salePrice - pricing.costPrice).toLocaleString('en-IN')}
-                    </strong>
-                  </span>
-                  <span>
-                    Margin:{' '}
-                    <strong className="text-[#8b6f4e]">
-                      {pricing.salePrice > 0
-                        ? (((pricing.salePrice - pricing.costPrice) / pricing.salePrice) * 100).toFixed(1)
-                        : 0}
-                      %
-                    </strong>
-                  </span>
-                  {pricing.mrp > pricing.salePrice && (
-                    <span>
-                      Customer Discount:{' '}
-                      <strong className="text-stone-700">
-                        {Math.round(((pricing.mrp - pricing.salePrice) / pricing.mrp) * 100)}% OFF
-                      </strong>
-                    </span>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -1082,56 +1484,307 @@ export default function OrnateProductEdit() {
         ═══════════════════════════════════════════════════════════════ */}
         {activeStep === 3 && (
           <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-2xs space-y-5 animate-fadeIn">
-            <div className="flex items-center gap-2.5 pb-3 border-b border-stone-100">
-              <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
-                <IoColorPaletteOutline className="w-4 h-4" />
+            {/* Header: Title, Description, and Badges */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-base shadow-2xs">
+                  <IoColorPaletteOutline className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm sm:text-base font-bold text-stone-900 font-serif tracking-tight">
+                    Configure color variants
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-stone-500">
+                    Select the colors available for this product, then add a swatch icon and images only where needed.
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-stone-900 font-serif">
-                  Variant Configuration (Colors)
-                </h3>
-                <p className="text-[11px] text-stone-400">
-                  Select available metal finish variations matching the storefront luxury swatches.
-                </p>
+
+              <div className="flex items-center gap-2 self-start sm:self-auto flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleToggleAllExpand}
+                  className="px-2.5 py-1 text-xs font-semibold text-[#8b6f4e] hover:text-[#785e40] bg-[#faf5ee] hover:bg-[#f6eee2] border border-[#d9c4a8]/50 rounded-full transition-colors cursor-pointer shadow-2xs"
+                >
+                  {expandedColors.length === colorOptions.length ? 'Collapse all media' : 'Expand all media'}
+                </button>
+                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/50 shadow-2xs">
+                  {colorOptions.length} colors available
+                </span>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {COLOR_OPTIONS.map((col) => {
-                const isSelected = selectedColors.includes(col.name);
+            {/* 2-Column Grid of Variant Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              {colorOptions.map((col) => {
+                const isSelected = isColorSelected(col.name);
+                const isExpanded = expandedColors.includes(col.name);
+                const vData = variantMedia[col.name] || { swatchIcon: '', media: [] };
+                const mediaCount = vData.media?.length || 0;
+                const isUploadingSwatch = uploadingSwatchColor === col.name;
+                const isUploadingMedia = uploadingVariantColor === col.name;
 
                 return (
                   <div
                     key={col.name}
-                    onClick={() => handleToggleColor(col.name)}
-                    className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer select-none ${
-                      isSelected
-                        ? 'border-[#8b6f4e] bg-[#faf6f0] shadow-2xs'
-                        : 'border-stone-200 bg-white hover:bg-stone-50'
+                    className={`rounded-2xl border transition-all duration-200 ${
+                      isExpanded
+                        ? 'border-[#cbb393] bg-[#fcf9f4] shadow-xs'
+                        : isSelected
+                        ? 'border-[#e4d7c8] bg-[#fdfbf7] hover:border-[#cbb393]'
+                        : 'border-stone-200 bg-white hover:border-stone-300'
                     }`}
                   >
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => {}} // handled by parent onClick
-                      className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer pointer-events-none"
-                    />
+                    {/* Card Top Row */}
+                    <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                      {/* Left side: Checkbox + 3D Swatch Sphere + Color Name + Selected Badge */}
+                      <div
+                        onClick={() => handleToggleColor(col.name)}
+                        className="flex items-center gap-3 cursor-pointer select-none min-w-0"
+                      >
+                        {/* Checkbox */}
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0 ${
+                            isSelected
+                              ? 'bg-[#78532f] text-white shadow-2xs'
+                              : 'border-2 border-stone-300 bg-white hover:border-[#8b6f4e]'
+                          }`}
+                        >
+                          {isSelected && <HiOutlineCheck className="w-3.5 h-3.5 stroke-[3]" />}
+                        </div>
 
-                    {/* Color Swatch Circle */}
-                    <div
-                      className="w-4 h-4 rounded-full border shadow-2xs shrink-0"
-                      style={{
-                        backgroundColor: col.hex,
-                        borderColor: col.border,
-                      }}
-                    />
+                        {/* 3D Realistic Sphere Swatch */}
+                        <div
+                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shrink-0 transition-transform hover:scale-105"
+                          style={{
+                            background: col.sphereGradient,
+                            boxShadow: col.sphereShadow,
+                          }}
+                        />
 
-                    <span className="text-xs font-bold text-stone-800">{col.name}</span>
+                        {/* Color Name */}
+                        <span className="text-sm font-bold text-stone-900 truncate">
+                          {col.name}
+                        </span>
 
-                    {isSelected && (
-                      <span className="ml-auto text-[10px] font-bold text-[#8b6f4e] uppercase tracking-wider">
-                        Active
-                      </span>
+                        {/* Selected Pill Badge */}
+                        {isSelected && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#e8f7ee] text-[#1b7a43] border border-[#c4ebd1]/60 shrink-0">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Right side: Manage media button with chevron */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleExpand(col.name);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
+                      >
+                        <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                        <span>Manage media ({mediaCount})</span>
+                        {isExpanded ? (
+                          <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
+                        ) : (
+                          <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Accordion Expand Area */}
+                    {isExpanded && (
+                      <div className="px-3.5 pb-4 pt-3.5 border-t border-[#ebdccf]/80 animate-fadeIn">
+                        <div className="flex flex-col sm:flex-row gap-3.5 items-stretch">
+                          {/* ── Sub-card 1: Variant swatch icon ── */}
+                          <div className="w-full sm:w-[38%] shrink-0 flex flex-col space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-stone-800">
+                                Variant swatch icon
+                              </span>
+                              <span
+                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
+                                title="Upload a custom icon or texture for this variant swatch"
+                              >
+                                ?
+                              </span>
+                            </div>
+
+                            <input
+                              id={`swatch-upload-${col.name}`}
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                              className="hidden"
+                              onChange={(e) => handleSwatchUpload(col.name, e)}
+                            />
+
+                            {vData.swatchIcon ? (
+                              <div className="border border-stone-200 bg-white rounded-xl p-2.5 flex items-center justify-between gap-2 min-h-[110px] h-full shadow-2xs">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <img
+                                    src={vData.swatchIcon}
+                                    alt={`${col.name} Swatch`}
+                                    className="w-12 h-12 object-cover rounded-lg border border-stone-100 shadow-2xs shrink-0"
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-semibold text-stone-800 truncate">
+                                      Custom Swatch
+                                    </p>
+                                    <span className="text-[10px] text-stone-400">
+                                      Active icon
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      document.getElementById(`swatch-upload-${col.name}`)?.click()
+                                    }
+                                    className="p-1.5 text-stone-500 hover:text-[#8b6f4e] rounded-lg hover:bg-stone-50 cursor-pointer"
+                                    title="Change icon"
+                                  >
+                                    <HiOutlineRefresh className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSwatchIcon(col.name)}
+                                    className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-red-50 cursor-pointer"
+                                    title="Remove icon"
+                                  >
+                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() =>
+                                  document.getElementById(`swatch-upload-${col.name}`)?.click()
+                                }
+                                className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                                  isUploadingSwatch ? 'opacity-60 pointer-events-none' : ''
+                                }`}
+                              >
+                                {isUploadingSwatch ? (
+                                  <div className="w-5 h-5 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mb-1.5" />
+                                ) : (
+                                  <HiOutlineUpload className="w-5 h-5 text-[#8b6f4e] mb-1.5 group-hover:scale-110 transition-transform" />
+                                )}
+                                <span className="text-xs font-semibold text-stone-800">
+                                  {isUploadingSwatch ? 'Uploading...' : 'Upload icon'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* ── Sub-card 2: Product images & videos ── */}
+                          <div className="w-full sm:flex-1 flex flex-col space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-stone-800">
+                                Product images &amp; videos
+                              </span>
+                              <span
+                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
+                                title="Upload product photos and MP4 videos specifically for this color finish"
+                              >
+                                ?
+                              </span>
+                            </div>
+
+                            <input
+                              id={`media-upload-${col.name}`}
+                              type="file"
+                              accept="image/*,video/mp4"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => handleVariantMediaUpload(col.name, e)}
+                            />
+
+                            {vData.media && vData.media.length > 0 ? (
+                              <div className="border border-stone-200 bg-white rounded-xl p-2.5 min-h-[110px] h-full flex flex-col justify-between shadow-2xs space-y-2">
+                                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
+                                  {vData.media.map((m, idx) => (
+                                    <div
+                                      key={m.id || idx}
+                                      className="relative group rounded-lg overflow-hidden border border-stone-200 aspect-square bg-stone-100"
+                                    >
+                                      {m.mediaType === 'video' || m.url?.endsWith('.mp4') ? (
+                                        <video
+                                          src={m.url}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <img
+                                          src={m.url}
+                                          alt={`${col.name} ${idx + 1}`}
+                                          className="w-full h-full object-cover cursor-pointer"
+                                          onClick={() => setPreviewModalImage(m.url)}
+                                        />
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRemoveVariantMedia(col.name, m.id);
+                                        }}
+                                        className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                        title="Delete media"
+                                      >
+                                        <HiOutlineTrash className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+
+                                  <div
+                                    onClick={() =>
+                                      document.getElementById(`media-upload-${col.name}`)?.click()
+                                    }
+                                    className="border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors rounded-lg flex flex-col items-center justify-center text-center cursor-pointer aspect-square"
+                                  >
+                                    <HiOutlinePlus className="w-4 h-4 text-[#8b6f4e]" />
+                                    <span className="text-[10px] font-semibold text-stone-700 mt-0.5">
+                                      Add
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
+                                  <span>{vData.media.length} media item(s)</span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      document.getElementById(`media-upload-${col.name}`)?.click()
+                                    }
+                                    className="text-[#8b6f4e] hover:underline font-semibold cursor-pointer"
+                                  >
+                                    + Upload more
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() =>
+                                  document.getElementById(`media-upload-${col.name}`)?.click()
+                                }
+                                className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                                  isUploadingMedia ? 'opacity-60 pointer-events-none' : ''
+                                }`}
+                              >
+                                {isUploadingMedia ? (
+                                  <div className="w-5 h-5 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mb-1.5" />
+                                ) : (
+                                  <HiOutlineUpload className="w-5 h-5 text-[#8b6f4e] mb-1.5 group-hover:scale-110 transition-transform" />
+                                )}
+                                <span className="text-xs font-semibold text-stone-800">
+                                  {isUploadingMedia ? 'Uploading media...' : 'Upload images / videos'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
                 );
@@ -1382,96 +2035,65 @@ export default function OrnateProductEdit() {
               </span>
             </div>
 
-            {/* Images Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
-              {ornateImages.map((img, idx) => (
-                <div
-                  key={img.id}
-                  className="group relative rounded-xl overflow-hidden border border-stone-200/90 bg-stone-50 aspect-square shadow-2xs"
-                >
-                  <img
-                    src={img.url}
-                    alt={`Ornate product ${idx + 1}`}
-                    className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                  />
+            {/* Images Grid (Display-Only Synchronized Gallery) */}
+            {ornateImages.length === 0 ? (
+              <div className="p-8 text-center rounded-xl border border-dashed border-stone-200 bg-stone-50/60">
+                <HiOutlinePhotograph className="w-8 h-8 text-stone-300 mx-auto mb-2" />
+                <p className="text-xs font-semibold text-stone-600">No synchronized ERP gallery images found</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">Images are automatically synchronized from the ERP FTP system.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                {ornateImages.map((img, idx) => (
+                  <div
+                    key={img.id}
+                    className="group relative rounded-xl overflow-hidden border border-stone-200/90 bg-stone-50 aspect-square shadow-2xs cursor-pointer"
+                    onClick={() => setPreviewModalImage(img.url)}
+                  >
+                    <img
+                      src={img.url}
+                      alt={`Ornate product ${idx + 1}`}
+                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                    />
 
-                  {/* Primary Badge */}
-                  {img.isPrimary && (
-                    <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#8b6f4e] text-white shadow-xs">
-                      Primary
-                    </span>
-                  )}
+                    {/* Primary Badge */}
+                    {img.isPrimary && (
+                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#8b6f4e] text-white shadow-xs">
+                        Primary
+                      </span>
+                    )}
 
-                  {/* Hover Overlay Actions */}
-                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-2">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewModalImage(img.url)}
-                      title="Preview Image"
-                      className="w-7 h-7 rounded-lg bg-white/90 text-stone-800 hover:bg-white flex items-center justify-center transition-transform active:scale-90"
-                    >
-                      <HiOutlineEye className="w-3.5 h-3.5" />
-                    </button>
-                    {!img.isPrimary && (
+                    {/* Hover Overlay Actions */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-2">
                       <button
                         type="button"
-                        onClick={() => handleSetPrimaryImage(img.id)}
-                        title="Set as Primary"
-                        className="w-7 h-7 rounded-lg bg-[#8b6f4e] text-white hover:bg-[#785e40] flex items-center justify-center transition-transform active:scale-90"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewModalImage(img.url);
+                        }}
+                        title="Preview Image"
+                        className="w-7 h-7 rounded-lg bg-white/90 text-stone-800 hover:bg-white flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
                       >
-                        <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+                        <HiOutlineEye className="w-3.5 h-3.5" />
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveImage(img.id)}
-                      title="Delete Image"
-                      className="w-7 h-7 rounded-lg bg-rose-600 text-white hover:bg-rose-700 flex items-center justify-center transition-transform active:scale-90"
-                    >
-                      <HiOutlineTrash className="w-3.5 h-3.5" />
-                    </button>
+                      {!img.isPrimary && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetPrimaryImage(img.id);
+                          }}
+                          title="Set as Primary"
+                          className="w-7 h-7 rounded-lg bg-[#8b6f4e] text-white hover:bg-[#785e40] flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
+                        >
+                          <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
-
-              {/* Upload Zone Button Card */}
-              <label className="flex flex-col items-center justify-center aspect-square rounded-xl border-2 border-dashed border-stone-300 hover:border-[#8b6f4e] hover:bg-[#faf8f5] transition-all cursor-pointer p-3 text-center group">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageFileUpload}
-                  className="hidden"
-                  disabled={uploadingImage}
-                />
-                <HiOutlineUpload
-                  className={`w-6 h-6 text-stone-400 group-hover:text-[#8b6f4e] mb-1 transition-colors ${
-                    uploadingImage ? 'animate-bounce' : ''
-                  }`}
-                />
-                <span className="text-[11px] font-bold text-stone-700 group-hover:text-[#8b6f4e]">
-                  {uploadingImage ? 'Uploading...' : 'Upload Image'}
-                </span>
-                <span className="text-[9.5px] text-stone-400">JPG, PNG, WEBP</span>
-              </label>
-            </div>
-
-            {/* Direct URL Input fallback */}
-            <div className="pt-2 flex items-center gap-2">
-              <input
-                type="text"
-                value={imageUrlInput}
-                onChange={(e) => setImageUrlInput(e.target.value)}
-                placeholder="Or paste direct image URL (e.g. https://...)"
-                className="flex-1 h-9 px-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-              />
-              <button
-                type="button"
-                onClick={handleAddImageUrl}
-                className="px-3.5 h-9 rounded-xl text-xs font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 transition-colors cursor-pointer"
-              >
-                Add from URL
-              </button>
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -1505,7 +2127,7 @@ export default function OrnateProductEdit() {
                 <button
                   type="button"
                   onClick={handleAddCareSection}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-[#8b6f4e] hover:text-white text-stone-700 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
                 >
                   <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
                   <span>Add Section</span>
@@ -1513,52 +2135,248 @@ export default function OrnateProductEdit() {
               </div>
 
               {careSections.length === 0 ? (
-                <div className="py-8 text-center rounded-xl border border-dashed border-stone-200 bg-[#faf8f5] space-y-2">
+                <div className="py-8 text-center rounded-xl border border-dashed border-stone-200 bg-[#faf8f5]">
                   <p className="text-xs text-stone-500 font-medium">
                     No custom header & description sections added yet.
                   </p>
-                  <button
-                    type="button"
-                    onClick={handleAddCareSection}
-                    className="text-xs font-bold text-[#8b6f4e] hover:underline cursor-pointer"
-                  >
-                    + Add Section
-                  </button>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {careSections.map((sec, idx) => (
                     <div
                       key={sec.id}
-                      className="p-4 rounded-xl border border-stone-200 bg-[#faf8f5] space-y-2 relative"
+                      draggable
+                      onDragStart={(e) => handleCareDragStart(e, idx)}
+                      onDragOver={(e) => handleCareDragOver(e, idx)}
+                      onDrop={(e) => handleCareDrop(e, idx)}
+                      onDragEnd={handleCareDragEnd}
+                      className={`p-4 sm:p-5 rounded-2xl border transition-all duration-150 space-y-3 relative shadow-2xs ${
+                        draggedCareIndex === idx
+                          ? 'opacity-40 border-dashed border-[#8b6f4e] bg-stone-100 scale-[0.99]'
+                          : dragOverCareIndex === idx
+                          ? 'border-2 border-[#8b6f4e] bg-[#faf5ee] shadow-md'
+                          : 'border-stone-200/90 bg-[#faf8f5]'
+                      }`}
                     >
-                      <div className="flex items-center justify-between gap-2">
+                      {/* Top Header Row: Grip Handle & Up/Down, Title Input, Show on Product Page Toggle, Delete Button */}
+                      <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                        {/* Grip Handle & Up/Down Buttons */}
+                        <div className="flex items-center gap-1 shrink-0 bg-white border border-stone-200/90 px-1.5 py-1 rounded-xl shadow-2xs">
+                          {/* 6-dots Grip Handle */}
+                          <div
+                            title="Drag to reorder section"
+                            className="text-stone-400 hover:text-[#8b6f4e] cursor-grab active:cursor-grabbing p-1 rounded-lg hover:bg-stone-100 transition-colors"
+                          >
+                            <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                              <circle cx="7" cy="5" r="1.5" />
+                              <circle cx="13" cy="5" r="1.5" />
+                              <circle cx="7" cy="10" r="1.5" />
+                              <circle cx="13" cy="10" r="1.5" />
+                              <circle cx="7" cy="15" r="1.5" />
+                              <circle cx="13" cy="15" r="1.5" />
+                            </svg>
+                          </div>
+
+                          {/* Quick Up/Down Buttons */}
+                          <div className="flex flex-col -space-y-0.5 pl-1 border-l border-stone-200">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMoveCareSection(idx, -1);
+                              }}
+                              title="Move section up"
+                              className="w-5 h-4 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] hover:bg-stone-100 rounded transition-colors disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                            >
+                              <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                              </svg>
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === careSections.length - 1}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleMoveCareSection(idx, 1);
+                              }}
+                              title="Move section down"
+                              className="w-5 h-4 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] hover:bg-stone-100 rounded transition-colors disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                            >
+                              <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Title Input */}
                         <input
                           type="text"
                           value={sec.header}
                           onChange={(e) =>
                             handleUpdateCareSection(sec.id, 'header', e.target.value)
                           }
-                          placeholder={`Section Title (e.g. "Care Instructions", "Packaging")`}
-                          className="flex-1 h-9 px-3 text-xs font-bold rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                          placeholder='Section Title (e.g. "Care Instructions", "Packaging")'
+                          className="flex-1 min-w-[200px] h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 text-stone-800 placeholder-stone-400 shadow-2xs"
                         />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCareSection(sec.id)}
-                          className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors cursor-pointer"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
+
+                        {/* Right Controls: Show on Product Page Switch & Delete Button */}
+                        <div className="flex items-center gap-3 shrink-0 ml-auto">
+                          {/* Show on Product Page Switch */}
+                          <div className="flex items-center gap-2 select-none">
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={sec.showOnProductPage !== false}
+                              onClick={() =>
+                                handleUpdateCareSection(
+                                  sec.id,
+                                  'showOnProductPage',
+                                  sec.showOnProductPage === false ? true : false
+                                )
+                              }
+                              className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                                sec.showOnProductPage !== false ? 'bg-[#8b6f4e]' : 'bg-stone-300'
+                              }`}
+                            >
+                              <div
+                                className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                  sec.showOnProductPage !== false ? 'translate-x-4' : 'translate-x-0'
+                                }`}
+                              />
+                            </button>
+                            <span className="text-xs font-semibold text-stone-600">
+                              Show on Product Page
+                            </span>
+                          </div>
+
+                          {/* Delete Trash Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCareSection(sec.id)}
+                            title="Delete section"
+                            className="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                          >
+                            <HiOutlineTrash className="w-4 h-4 stroke-[1.8]" />
+                          </button>
+                        </div>
                       </div>
-                      <textarea
-                        rows={2}
-                        value={sec.description}
-                        onChange={(e) =>
-                          handleUpdateCareSection(sec.id, 'description', e.target.value)
-                        }
-                        placeholder="Detailed description content..."
-                        className="w-full p-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
-                      />
+
+                      {/* Full-Width Formatted Content Editor */}
+                      <div className="w-full rounded-xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+                        {/* Editor Toolbar */}
+                        <div className="border-b border-stone-200/80 bg-[#fbf9f6] px-3 py-1.5 flex items-center gap-1.5 flex-wrap">
+                          {/* Style selector */}
+                          <div className="relative inline-flex items-center">
+                            <select
+                              aria-label="Text Style"
+                              defaultValue="normal"
+                              onChange={(e) => {
+                                handleFormatText(sec.id, e.target.value);
+                                e.target.value = 'normal';
+                              }}
+                              className="h-7 pl-2.5 pr-6 text-xs font-semibold text-stone-700 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e] cursor-pointer appearance-none"
+                            >
+                              <option value="normal">Normal</option>
+                              <option value="h3">Heading</option>
+                              <option value="h4">Subheading</option>
+                            </select>
+                            <span className="pointer-events-none absolute right-2 text-stone-400 text-[10px]">▼</span>
+                          </div>
+
+                          <div className="w-[1px] h-4 bg-stone-200 mx-1" />
+
+                          {/* Bold */}
+                          <button
+                            type="button"
+                            title="Bold"
+                            onClick={() => handleFormatText(sec.id, 'bold')}
+                            className="w-7 h-7 rounded-lg text-xs font-serif font-bold text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            B
+                          </button>
+
+                          {/* Italic */}
+                          <button
+                            type="button"
+                            title="Italic"
+                            onClick={() => handleFormatText(sec.id, 'italic')}
+                            className="w-7 h-7 rounded-lg text-xs font-serif italic text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            I
+                          </button>
+
+                          {/* Underline */}
+                          <button
+                            type="button"
+                            title="Underline"
+                            onClick={() => handleFormatText(sec.id, 'underline')}
+                            className="w-7 h-7 rounded-lg text-xs font-serif underline text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            U
+                          </button>
+
+                          <div className="w-[1px] h-4 bg-stone-200 mx-1" />
+
+                          {/* Bullet List */}
+                          <button
+                            type="button"
+                            title="Bullet List"
+                            onClick={() => handleFormatText(sec.id, 'bullet')}
+                            className="w-7 h-7 rounded-lg text-stone-600 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="9" y1="6" x2="20" y2="6" />
+                              <line x1="9" y1="12" x2="20" y2="12" />
+                              <line x1="9" y1="18" x2="20" y2="18" />
+                              <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" />
+                              <circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" />
+                              <circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none" />
+                            </svg>
+                          </button>
+
+                          {/* Numbered List */}
+                          <button
+                            type="button"
+                            title="Numbered List"
+                            onClick={() => handleFormatText(sec.id, 'number')}
+                            className="w-7 h-7 rounded-lg text-stone-600 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="10" y1="6" x2="21" y2="6" />
+                              <line x1="10" y1="12" x2="21" y2="12" />
+                              <line x1="10" y1="18" x2="21" y2="18" />
+                              <text x="2" y="7" fontSize="7" fontWeight="bold" fill="currentColor" stroke="none">1</text>
+                              <text x="2" y="13" fontSize="7" fontWeight="bold" fill="currentColor" stroke="none">2</text>
+                              <text x="2" y="19" fontSize="7" fontWeight="bold" fill="currentColor" stroke="none">3</text>
+                            </svg>
+                          </button>
+
+                          {/* Insert Link */}
+                          <button
+                            type="button"
+                            title="Insert Link"
+                            onClick={() => handleFormatText(sec.id, 'link')}
+                            className="w-7 h-7 rounded-lg text-stone-600 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                          >
+                            <HiOutlineLink className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Editor Textarea */}
+                        <textarea
+                          id={`care-desc-${sec.id}`}
+                          rows={5}
+                          value={sec.description}
+                          onChange={(e) =>
+                            handleUpdateCareSection(sec.id, 'description', e.target.value)
+                          }
+                          onKeyDown={(e) => handleKeyDownDescription(e, sec.id)}
+                          placeholder="To keep your jewellery looking beautiful for years:&#10;• Avoid contact with water, perfumes, and harsh chemicals.&#10;• Store in a soft pouch or jewellery box.&#10;• Clean gently with a soft, dry cloth after every use.&#10;• Keep away from direct sunlight and moisture."
+                          className="w-full p-3.5 text-xs text-stone-800 leading-relaxed bg-white focus:outline-none resize-y min-h-[120px] font-sans"
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1590,53 +2408,70 @@ export default function OrnateProductEdit() {
                 <button
                   type="button"
                   onClick={handleAddSpecification}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-[#8b6f4e] hover:text-white text-stone-700 text-xs font-semibold transition-all shadow-2xs cursor-pointer"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
                 >
                   <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
-                  <span>Add Spec</span>
+                  <span>Add Specification</span>
                 </button>
               </div>
 
               {specifications.length === 0 ? (
-                <div className="py-8 text-center rounded-xl border border-dashed border-stone-200 bg-[#faf8f5] space-y-2">
+                <div className="py-8 text-center rounded-xl border border-dashed border-stone-200 bg-[#faf8f5]">
                   <p className="text-xs text-stone-500 font-medium">
                     No product specifications added yet.
                   </p>
-                  <button
-                    type="button"
-                    onClick={handleAddSpecification}
-                    className="text-xs font-bold text-[#8b6f4e] hover:underline cursor-pointer"
-                  >
-                    + Add First Specification
-                  </button>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {specifications.map((spec) => (
-                    <div
-                      key={spec.id}
-                      className="flex items-center gap-2 p-2.5 rounded-xl border border-stone-200 bg-[#faf8f5]"
-                    >
+                <div className="space-y-3">
+                  {specifications.map((spec, sIdx) => (
+                    <div key={spec.id} className="flex items-center gap-2.5">
+                      {/* Move Up/Down Controls for Specifications */}
+                      <div className="flex flex-col -space-y-0.5 bg-white border border-stone-200/90 px-1 py-0.5 rounded-lg shrink-0 shadow-2xs">
+                        <button
+                          type="button"
+                          disabled={sIdx === 0}
+                          onClick={() => handleMoveSpecification(sIdx, -1)}
+                          title="Move specification up"
+                          className="w-4 h-3.5 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] rounded disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                        >
+                          <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                          </svg>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={sIdx === specifications.length - 1}
+                          onClick={() => handleMoveSpecification(sIdx, 1)}
+                          title="Move specification down"
+                          className="w-4 h-3.5 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] rounded disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                        >
+                          <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+                      </div>
+
                       <input
                         type="text"
                         value={spec.key}
                         onChange={(e) => handleUpdateSpecification(spec.id, 'key', e.target.value)}
                         placeholder="Specification Name (e.g. Clasp Type, Dimensions)"
-                        className="flex-1 h-9 px-3 text-xs font-bold rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                        className="flex-1 h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 text-stone-800 placeholder-stone-400 shadow-2xs"
                       />
                       <input
                         type="text"
                         value={spec.value}
                         onChange={(e) => handleUpdateSpecification(spec.id, 'value', e.target.value)}
                         placeholder="Value (e.g. Lobster Clasp, 7.5 Inches)"
-                        className="flex-1 h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                        className="flex-1 h-10 px-3.5 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 text-stone-800 placeholder-stone-400 shadow-2xs"
                       />
                       <button
                         type="button"
                         onClick={() => handleRemoveSpecification(spec.id)}
-                        className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                        title="Remove specification"
+                        className="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
                       >
-                        <HiOutlineTrash className="w-4 h-4" />
+                        <HiOutlineTrash className="w-4 h-4 stroke-[1.8]" />
                       </button>
                     </div>
                   ))}
@@ -1660,15 +2495,15 @@ export default function OrnateProductEdit() {
                   SEO Configuration
                 </h3>
                 <p className="text-[11px] text-stone-400">
-                  Optimize organic discovery, Google search snippets, and metadata tags for this jewellery item.
+                  Optimize organic discovery, keywords, and metadata tags for this jewellery item.
                 </p>
               </div>
             </div>
 
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-start">
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
                     <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                       Meta Title
                     </label>
@@ -1685,10 +2520,15 @@ export default function OrnateProductEdit() {
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                    Keywords
-                  </label>
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between h-5">
+                    <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                      Keywords
+                    </label>
+                    <span className="text-[10px] text-stone-400">
+                      Comma separated
+                    </span>
+                  </div>
                   <input
                     type="text"
                     value={seo.keywords}
@@ -1699,8 +2539,8 @@ export default function OrnateProductEdit() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <div className="flex items-center justify-between">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between h-5">
                   <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                     Meta Description
                   </label>
@@ -1715,24 +2555,6 @@ export default function OrnateProductEdit() {
                   placeholder="Brief summary for Google search results..."
                   className="w-full p-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
                 />
-              </div>
-
-              {/* Google SERP Snippet Preview */}
-              <div className="p-4 rounded-xl bg-[#faf8f5] border border-stone-200/90 space-y-1.5">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
-                  Search Engine Snippet Preview
-                </p>
-                <div className="space-y-0.5">
-                  <p className="text-[11px] text-[#202124] font-mono truncate">
-                    https://neirah.in › products › {erpDetails.barcodeNumber || 'ornate-jewellery'}
-                  </p>
-                  <h4 className="text-sm font-semibold text-[#1a0dab] hover:underline cursor-pointer truncate">
-                    {seo.metaTitle || baseInfo.title || 'Neirah Luxury Jewellery'}
-                  </h4>
-                  <p className="text-xs text-[#4d5156] line-clamp-2 leading-relaxed">
-                    {seo.metaDescription || baseInfo.description || 'Discover exquisite fine jewelry handcrafted with precision by Neirah. Certified authenticity and lifetime warranty.'}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
@@ -1751,9 +2573,9 @@ export default function OrnateProductEdit() {
           <span>{activeStep === 1 ? 'Back to List' : 'Previous Tab'}</span>
         </button>
 
-        <div className="hidden sm:flex items-center gap-2 text-xs font-bold text-stone-500">
-          <span>Tab {activeStep} of {steps.length}:</span>
-          <span className="text-[#8b6f4e]">{steps[activeStep - 1]?.title}</span>
+        <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-stone-500">
+          <span>Step {activeStep} of {steps.length} &bull;</span>
+          <span className="text-[#8b6f4e] font-bold">{steps[activeStep - 1]?.title}</span>
         </div>
 
         <div className="flex items-center gap-2">

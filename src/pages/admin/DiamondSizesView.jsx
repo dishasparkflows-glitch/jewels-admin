@@ -366,15 +366,6 @@ export default function DiamondSizesView() {
                       <h3 className="font-bold text-stone-700 text-xs tracking-wider uppercase">
                         NO SIZES FOUND
                       </h3>
-                      <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider max-w-sm">
-                        START BY ADDING DIAMOND SIZE RANGES FOR THE CATALOGUE.
-                      </p>
-                      <button
-                        onClick={handleOpenAdd}
-                        className="mt-2 px-3 py-1 bg-[#8b6f4e] hover:bg-[#7b5b33] text-white text-[10px] font-bold tracking-wider uppercase rounded shadow-xs transition-colors cursor-pointer"
-                      >
-                        ADD SIZE +
-                      </button>
                     </div>
                   </td>
                 </tr>

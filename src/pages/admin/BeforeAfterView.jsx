@@ -451,20 +451,6 @@ export default function BeforeAfterView() {
         <div className="bg-white rounded-lg border border-stone-200/90 p-16 text-center shadow-2xs">
           <HiOutlinePhotograph className="w-10 h-10 text-stone-300 mx-auto mb-2" />
           <h3 className="text-xs font-semibold text-stone-800">No before/after showcases found</h3>
-          <p className="text-[11px] text-stone-500 max-w-sm mx-auto mt-0.5">
-            {search || statusFilter !== 'all'
-              ? 'Try adjusting your search query or status filter.'
-              : 'Add your first Before/After jewelry transformation pair.'}
-          </p>
-          <div className="mt-3 flex items-center justify-center">
-            <button
-              type="button"
-              onClick={handleOpenAdd}
-              className="px-3.5 py-1.5 bg-[#8b6f4e] text-white rounded-md text-xs font-semibold hover:bg-[#785e40] transition-colors cursor-pointer shadow-2xs"
-            >
-              Add New Pair
-            </button>
-          </div>
         </div>
       ) : viewMode === 'grid' ? (
         /* ─── Grid Mode: Dual Image Luxury Cards (Matches Screenshot Background) ─── */

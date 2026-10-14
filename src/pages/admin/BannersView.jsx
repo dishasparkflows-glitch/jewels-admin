@@ -787,8 +787,17 @@ export default function BannersView() {
                   />
 
                   <div
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Select ${mediaType === 'image' ? 'Image' : 'Video'}`}
                     onClick={() => !isUploading && fileInputRef.current?.click()}
-                    className={`rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/50 p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] relative group overflow-hidden ${
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (!isUploading) fileInputRef.current?.click();
+                      }
+                    }}
+                    className={`rounded-2xl border-2 border-dashed border-stone-200 bg-stone-50/50 p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all min-h-[160px] relative group overflow-hidden focus:outline-none focus:border-[#8f6d43] focus:ring-2 focus:ring-[#8f6d43]/20 ${
                       isUploading
                         ? 'opacity-70 pointer-events-none'
                         : 'hover:border-[#8f6d43] hover:bg-[#fcfaf7]'

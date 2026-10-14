@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useId } from 'react';
+import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
 import { HiOutlineChevronDown, HiOutlineCheck } from 'react-icons/hi';
 
 /**
@@ -46,6 +46,10 @@ const STATUS_COLORS = {
 /**
  * Common Luxury Dropdown Component
  *
+ * Fully keyboard-accessible dropdown with auto-open on Tab focus, smooth
+ * ArrowUp/ArrowDown navigation, typeahead search, Enter/Space selection,
+ * clean blur/auto-close on Tab away, and smart positioning.
+ *
  * @param {any} value - Currently selected value
  * @param {Function} onChange - Handler called on selection: (value, option) => void
  * @param {Array<string|number|object>} options - List of options. Can be primitives or { value, label, sublabel, icon, dotColor, badge, disabled }
@@ -60,7 +64,7 @@ const STATUS_COLORS = {
  * @param {string} [className=''] - Container class name
  * @param {string} [buttonClassName=''] - Button trigger custom styling
  * @param {string} [menuClassName=''] - Menu popover custom styling
- * @param {Function} [renderOption] - Custom renderer (option, isSelected) => ReactNode
+ * @param {Function} [renderOption] - Custom renderer (option, isSelected, isHighlighted) => ReactNode
  * @param {React.ReactNode} [prefixIcon] - Icon to show at the start of the button
  */
 export default function Dropdown({
@@ -85,9 +89,16 @@ export default function Dropdown({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [dropUp, setDropUp] = useState(openUpward);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+
   const containerRef = useRef(null);
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
+  const isPointerDownRef = useRef(false);
+  const hasKeyboardNavigatedRef = useRef(false);
+  const searchStringRef = useRef('');
+  const searchTimeoutRef = useRef(null);
+
   const generatedId = useId();
   const dropdownId = id || generatedId;
 
@@ -114,35 +125,20 @@ export default function Dropdown({
   });
 
   // Find currently selected option
-  const selectedOption = normalizedOptions.find(
+  const selectedIndex = normalizedOptions.findIndex(
     (opt) => String(opt.value) === String(value)
   );
+  const selectedOption = selectedIndex >= 0 ? normalizedOptions[selectedIndex] : null;
 
-  // Close on outside click
+  // Sync highlightedIndex when dropdown opens
   useEffect(() => {
-    if (!isOpen) return;
-
-    const handlePointerDown = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
-    };
-
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        setIsOpen(false);
-        buttonRef.current?.focus();
-      }
-    };
-
-    document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
-
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isOpen]);
+    if (isOpen) {
+      setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+    } else {
+      setHighlightedIndex(-1);
+      hasKeyboardNavigatedRef.current = false;
+    }
+  }, [isOpen, selectedIndex]);
 
   // Handle smart auto-flip (open upward if near screen bottom)
   useEffect(() => {
@@ -162,49 +158,199 @@ export default function Dropdown({
     }
   }, [isOpen, openUpward, normalizedOptions.length]);
 
-  const handleSelect = (option) => {
-    if (option.disabled) return;
-    setIsOpen(false);
-    if (onChange) {
-      onChange(option.value, option.raw);
-      // Support native event listener signature if expected
-      if (name) {
-        onChange({ target: { name, value: option.value } }, option.raw);
+  // Auto-scroll highlighted option into view
+  useEffect(() => {
+    if (isOpen && menuRef.current && highlightedIndex >= 0) {
+      const optionEl = menuRef.current.children[highlightedIndex];
+      if (optionEl && typeof optionEl.scrollIntoView === 'function') {
+        optionEl.scrollIntoView({ block: 'nearest' });
       }
+    }
+  }, [highlightedIndex, isOpen]);
+
+  // Close on outside pointer click
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handlePointerDown = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) {
+        setIsOpen(false);
+        setHighlightedIndex(-1);
+        hasKeyboardNavigatedRef.current = false;
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [isOpen]);
+
+  // Handle selection of an option
+  const handleSelect = useCallback(
+    (option) => {
+      if (!option || option.disabled) return;
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+      hasKeyboardNavigatedRef.current = false;
+      if (onChange) {
+        onChange(option.value, option.raw);
+        if (name) {
+          onChange({ target: { name, value: option.value } }, option.raw);
+        }
+      }
+    },
+    [onChange, name]
+  );
+
+  // Type-ahead quick search
+  const handleTypeahead = (char) => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchStringRef.current += char.toLowerCase();
+    searchTimeoutRef.current = setTimeout(() => {
+      searchStringRef.current = '';
+    }, 600);
+
+    const query = searchStringRef.current;
+    let matchIdx = normalizedOptions.findIndex(
+      (opt) => !opt.disabled && opt.label.toLowerCase().startsWith(query)
+    );
+    if (matchIdx < 0) {
+      matchIdx = normalizedOptions.findIndex(
+        (opt) => !opt.disabled && opt.label.toLowerCase().includes(query)
+      );
+    }
+    if (matchIdx >= 0) {
+      setHighlightedIndex(matchIdx);
+      hasKeyboardNavigatedRef.current = true;
+      if (!isOpen) setIsOpen(true);
     }
   };
 
-  // Keyboard navigation within open menu
+  // Keyboard navigation within dropdown
   const handleKeyDown = (e) => {
     if (disabled) return;
 
+    // When dropdown is CLOSED:
     if (!isOpen) {
       if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
         e.preventDefault();
         setIsOpen(true);
+        setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+        return;
+      }
+      if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        handleTypeahead(e.key);
+        return;
       }
       return;
     }
 
+    // When dropdown is OPEN:
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      const currentIndex = normalizedOptions.findIndex(
-        (opt) => String(opt.value) === String(value)
-      );
-      const nextIndex = (currentIndex + 1) % normalizedOptions.length;
-      handleSelect(normalizedOptions[nextIndex]);
+      hasKeyboardNavigatedRef.current = true;
+      setHighlightedIndex((prev) => {
+        if (normalizedOptions.length === 0) return -1;
+        let next = prev < 0 ? 0 : (prev + 1) % normalizedOptions.length;
+        let count = 0;
+        while (normalizedOptions[next]?.disabled && count < normalizedOptions.length) {
+          next = (next + 1) % normalizedOptions.length;
+          count++;
+        }
+        return next;
+      });
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      const currentIndex = normalizedOptions.findIndex(
-        (opt) => String(opt.value) === String(value)
-      );
-      const prevIndex =
-        currentIndex <= 0 ? normalizedOptions.length - 1 : currentIndex - 1;
-      handleSelect(normalizedOptions[prevIndex]);
+      hasKeyboardNavigatedRef.current = true;
+      setHighlightedIndex((prev) => {
+        if (normalizedOptions.length === 0) return -1;
+        let next = prev <= 0 ? normalizedOptions.length - 1 : prev - 1;
+        let count = 0;
+        while (normalizedOptions[next]?.disabled && count < normalizedOptions.length) {
+          next = next <= 0 ? normalizedOptions.length - 1 : next - 1;
+          count++;
+        }
+        return next;
+      });
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      hasKeyboardNavigatedRef.current = true;
+      const firstIdx = normalizedOptions.findIndex((opt) => !opt.disabled);
+      if (firstIdx >= 0) setHighlightedIndex(firstIdx);
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      hasKeyboardNavigatedRef.current = true;
+      for (let i = normalizedOptions.length - 1; i >= 0; i--) {
+        if (!normalizedOptions[i].disabled) {
+          setHighlightedIndex(i);
+          break;
+        }
+      }
     } else if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
+      if (highlightedIndex >= 0 && highlightedIndex < normalizedOptions.length) {
+        handleSelect(normalizedOptions[highlightedIndex]);
+      } else {
+        setIsOpen(false);
+      }
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
       setIsOpen(false);
+      setHighlightedIndex(-1);
+      hasKeyboardNavigatedRef.current = false;
+      buttonRef.current?.focus();
+    } else if (e.key === 'Tab') {
+      // User is tabbing to next or previous form control
+      // If user actively navigated to an option with arrow keys or typing, select it
+      if (
+        hasKeyboardNavigatedRef.current &&
+        highlightedIndex >= 0 &&
+        highlightedIndex < normalizedOptions.length &&
+        !normalizedOptions[highlightedIndex]?.disabled
+      ) {
+        handleSelect(normalizedOptions[highlightedIndex]);
+      }
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+      hasKeyboardNavigatedRef.current = false;
+      // Do not preventDefault: browser naturally advances focus to next element!
+    } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      handleTypeahead(e.key);
     }
+  };
+
+  // Focus handler: Opens dropdown when focused via keyboard Tab
+  const handleFocus = () => {
+    if (disabled) return;
+    // If focus was triggered by a mouse click, do not auto-open here; onClick handles it
+    if (isPointerDownRef.current) return;
+
+    // Focused via keyboard (Tab / Shift+Tab) -> automatically open dropdown list!
+    setIsOpen(true);
+    setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+  };
+
+  // Blur handler: When focus leaves the dropdown container, cleanly close it
+  const handleBlur = (e) => {
+    if (!containerRef.current?.contains(e.relatedTarget)) {
+      setIsOpen(false);
+      setHighlightedIndex(-1);
+      hasKeyboardNavigatedRef.current = false;
+    }
+  };
+
+  // Button click toggle
+  const handleClick = () => {
+    if (disabled) return;
+    isPointerDownRef.current = false;
+    setIsOpen((prev) => {
+      const willOpen = !prev;
+      if (willOpen) {
+        setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+      }
+      return willOpen;
+    });
   };
 
   // Size styling tokens
@@ -255,7 +401,11 @@ export default function Dropdown({
   };
 
   return (
-    <div className={`relative inline-block w-full text-left font-sans ${className}`} ref={containerRef}>
+    <div
+      className={`relative inline-block w-full text-left font-sans ${className}`}
+      ref={containerRef}
+      onBlur={handleBlur}
+    >
       {/* Optional Top Label */}
       {label && (
         <label
@@ -273,10 +423,19 @@ export default function Dropdown({
         id={dropdownId}
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setIsOpen(!isOpen)}
+        onPointerDown={() => {
+          isPointerDownRef.current = true;
+        }}
+        onClick={handleClick}
+        onFocus={handleFocus}
         onKeyDown={handleKeyDown}
+        role="combobox"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
+        aria-controls={`${dropdownId}-menu`}
+        aria-activedescendant={
+          isOpen && highlightedIndex >= 0 ? `${dropdownId}-opt-${highlightedIndex}` : undefined
+        }
         className={`w-full flex items-center justify-between text-left font-medium transition-all duration-150 outline-none cursor-pointer ${
           sizeStyles.button
         } ${variantStyles} ${
@@ -307,6 +466,7 @@ export default function Dropdown({
       {isOpen && (
         <div
           ref={menuRef}
+          id={`${dropdownId}-menu`}
           role="listbox"
           tabIndex={-1}
           className={`absolute left-0 w-full z-50 bg-white border border-stone-200/90 shadow-xl shadow-stone-900/10 backdrop-blur-md overflow-y-auto max-h-60 transition-all animate-fadeIn ${
@@ -322,17 +482,22 @@ export default function Dropdown({
               No options available
             </div>
           ) : (
-            normalizedOptions.map((opt) => {
+            normalizedOptions.map((opt, idx) => {
               const isSelected = String(opt.value) === String(value);
+              const isHighlighted = highlightedIndex === idx;
 
               if (renderOption) {
                 return (
                   <div
                     key={String(opt.value)}
+                    id={`${dropdownId}-opt-${idx}`}
+                    role="option"
+                    aria-selected={isSelected}
                     onClick={() => handleSelect(opt)}
+                    onMouseEnter={() => setHighlightedIndex(idx)}
                     className="cursor-pointer"
                   >
-                    {renderOption(opt, isSelected)}
+                    {renderOption(opt, isSelected, isHighlighted)}
                   </div>
                 );
               }
@@ -340,15 +505,20 @@ export default function Dropdown({
               return (
                 <button
                   key={String(opt.value)}
+                  id={`${dropdownId}-opt-${idx}`}
                   type="button"
+                  tabIndex={-1}
                   disabled={opt.disabled}
                   role="option"
                   aria-selected={isSelected}
                   onClick={() => handleSelect(opt)}
+                  onMouseEnter={() => setHighlightedIndex(idx)}
                   className={`w-full flex items-center justify-between text-left transition-colors duration-100 cursor-pointer ${
                     sizeStyles.option
                   } ${
-                    isSelected
+                    isHighlighted
+                      ? 'bg-[#f4eee4] text-[#8f6d43] font-semibold ring-1 ring-inset ring-[#8f6d43]/30'
+                      : isSelected
                       ? 'bg-[#faf6f0] text-[#8f6d43] font-semibold'
                       : 'text-stone-700 hover:bg-[#fbf9f6] hover:text-[#8f6d43]'
                   } ${opt.disabled ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''}`}

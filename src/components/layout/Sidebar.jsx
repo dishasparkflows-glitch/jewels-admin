@@ -100,7 +100,11 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                     <button
                       type="button"
                       onClick={() => toggleSubmenu(item.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all ${
+                      onKeyDown={(e) => {
+                        if (e.key === 'ArrowRight' && !isSubOpen) toggleSubmenu(item.id);
+                        if (e.key === 'ArrowLeft' && isSubOpen) toggleSubmenu(item.id);
+                      }}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 ${
                         isSubOpen || isGroupActive
                           ? 'bg-[#faf8f5] text-[#8f6d43] font-semibold'
                           : 'text-stone-700 hover:text-stone-900 hover:bg-stone-50'
@@ -149,7 +153,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                               onClick={onMobileClose}
                               className={({ isActive: childActive }) => {
                                 const active = childActive || matchesAlternateRoute;
-                                return `flex items-center gap-3 py-2 px-2.5 rounded-xl text-[13px] font-medium transition-colors ${
+                                return `flex items-center gap-3 py-2 px-2.5 rounded-xl text-[13px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 ${
                                   active
                                     ? 'bg-[#8f6d43] text-white font-semibold shadow-xs'
                                     : 'text-[#556170] hover:text-stone-900 hover:bg-stone-50/80'
@@ -186,7 +190,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                   key={item.id}
                   to={item.path}
                   onClick={onMobileClose}
-                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 ${
                     isActive
                       ? 'bg-[#f8f2eb] text-[#8b6f4e] border-l-4 border-[#8b6f4e] font-semibold shadow-2xs'
                       : 'text-stone-700 hover:text-stone-900 hover:bg-stone-50'

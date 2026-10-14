@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
-import Dropdown from '../../components/common/Dropdown';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
+import Dropdown from '../../components/common/Dropdown';
+import { getMediaUrl } from '../../utils/imageUrl';
 import {
   HiOutlineArrowRight,
   HiOutlineArrowLeft,
@@ -18,20 +19,83 @@ import {
   HiOutlineEye,
   HiOutlineShoppingBag,
   HiOutlineShieldCheck,
+  HiOutlinePhotograph,
+  HiOutlineStar,
+  HiOutlineVideoCamera,
+  HiOutlineCube,
+  HiOutlineQuestionMarkCircle,
+  HiOutlineX,
+  HiOutlineAdjustments,
+  HiOutlineChevronRight,
+  HiOutlineChevronLeft,
+  HiOutlineCheckCircle,
+  HiOutlineLink,
 } from 'react-icons/hi';
 import {
   IoDiamondOutline,
   IoSparklesOutline,
   IoCheckmarkCircle,
 } from 'react-icons/io5';
+import { TbListDetails } from 'react-icons/tb';
+
+// Realistic 3D Sphere Swatch generator for metal colors
+const getSphereStyle = (colorName = '', fallbackCode = '') => {
+  const map = {
+    'White Gold': {
+      gradient: 'radial-gradient(circle at 35% 35%, #ffffff, #f1f5f9 40%, #cbd5e1 75%, #94a3b8 100%)',
+      shadow: 'inset -2px -2px 4px rgba(100,116,139,0.3), inset 1px 1px 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    'Rose Gold': {
+      gradient: 'radial-gradient(circle at 35% 35%, #fde2d6, #e7a192 45%, #cb7768 75%, #9a3412 100%)',
+      shadow: 'inset -2px -2px 4px rgba(154,52,18,0.35), inset 1px 1px 2px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    'Yellow Gold': {
+      gradient: 'radial-gradient(circle at 35% 35%, #fffbeb, #fed7aa 25%, #eab308 60%, #a16207 100%)',
+      shadow: 'inset -2px -2px 4px rgba(161,98,7,0.4), inset 1px 1px 2px rgba(255,255,255,0.7), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    Silver: {
+      gradient: 'radial-gradient(circle at 35% 35%, #ffffff, #f8fafc 30%, #cbd5e1 65%, #64748b 100%)',
+      shadow: 'inset -2px -2px 4px rgba(71,85,105,0.35), inset 1px 1px 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    Platinum: {
+      gradient: 'radial-gradient(circle at 35% 35%, #f1f5f9, #e2e8f0 40%, #94a3b8 80%, #475569 100%)',
+      shadow: 'inset -2px -2px 4px rgba(51,65,85,0.4), inset 1px 1px 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.12)',
+    },
+    Black: {
+      gradient: 'radial-gradient(circle at 35% 35%, #4b5563, #1f2937 60%, #000000 100%)',
+      shadow: 'inset -2px -2px 5px rgba(0,0,0,0.6), inset 1px 1px 2px rgba(255,255,255,0.35), 0 2px 4px rgba(0,0,0,0.2)',
+    },
+    Brown: {
+      gradient: 'radial-gradient(circle at 35% 35%, #a1887f, #6d4c41 55%, #3e2723 95%)',
+      shadow: 'inset -2px -2px 5px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.15)',
+    },
+  };
+  return map[colorName] || {
+    gradient: `radial-gradient(circle at 35% 35%, #ffffff 0%, ${fallbackCode || '#d9a74a'} 60%, #555555 100%)`,
+    shadow: 'inset -2px -2px 4px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.12)',
+  };
+};
 
 // Preset Purities & Colors fallback defaults matching luxury fine jewelry portal
 const DEFAULT_PURITY_OPTIONS = ['9KT', '10KT', '14KT', '18KT'];
 const DEFAULT_COLOR_OPTIONS = [
-  { name: 'Silver', code: '#a3a8a6', border: '#787d7b' },
-  { name: 'Rose Gold', code: '#e39d8e', border: '#cf8170' },
-  { name: 'Yellow Gold', code: '#d9a74a', border: '#b5852f' },
-  { name: 'White Gold', code: '#e8ecf1', border: '#b4bac3' },
+  { name: 'Rose Gold', code: '#E8B4B8', border: '#B76E79' },
+  { name: 'White Gold', code: '#F3F4F6', border: '#E5E7EB' },
+  { name: 'Yellow Gold', code: '#E5C07B', border: '#D4AF37' },
+];
+
+const DEFAULT_VTO_ASSET_MAP = {
+  neck: { light: '/vto/neck_light.jpg', dark: '/vto/neck_dark.jpg' },
+  hand: { light: '/vto/hand_light.jpg', dark: '/vto/hand_dark.jpg' },
+  ear: { light: '/vto/ear_light.jpg', dark: '/vto/ear_dark.jpg' },
+  wrist: { light: '/vto/hand_light.jpg', dark: '/vto/hand_dark.jpg' },
+};
+
+const VTO_ENV_OPTIONS = [
+  { id: 'neck', value: 'neck', label: 'Neck View (Necklaces & Pendants)' },
+  { id: 'hand', value: 'hand', label: 'Hand View (Rings)' },
+  { id: 'ear', value: 'ear', label: 'Ear View (Earrings)' },
+  { id: 'wrist', value: 'wrist', label: 'Wrist View (Bracelets & Bangles)' },
 ];
 
 const DEFAULT_DIAMOND_TYPES = ['Natural', 'Lab Grown'];
@@ -77,13 +141,15 @@ export default function AddJewelryProduct() {
             setPuritiesList(combinedData.metalPurities.map((i) => (typeof i === 'string' ? i : i.name)));
           }
           if (Array.isArray(combinedData.metalColors) && combinedData.metalColors.length > 0) {
-            setColorsList(
-              combinedData.metalColors.map((c) => ({
-                name: c.name,
-                code: c.colorCode || '#d9a74a',
-                border: c.colorCodeEnd || c.colorCode || '#b5852f',
-              }))
-            );
+            const mapped = combinedData.metalColors.map((c) => ({
+              id: c._id || c.id,
+              name: c.name,
+              code: c.colorCode || '#d9a74a',
+              border: c.colorCodeEnd || c.colorCode || '#b5852f',
+            }));
+            setColorsList(mapped);
+            setProductColors(mapped.map((c) => c.name));
+            setActiveMediaColor((prev) => (mapped.some((c) => c.name === prev) ? prev : mapped[0].name));
           }
           const types = combinedData.types || combinedData.diamondTypes;
           if (Array.isArray(types) && types.length > 0) {
@@ -125,13 +191,15 @@ export default function AddJewelryProduct() {
         if (resColors.status === 'fulfilled' && resColors.value.data?.data) {
           const items = resColors.value.data.data;
           if (Array.isArray(items) && items.length > 0) {
-            setColorsList(
-              items.map((c) => ({
-                name: c.name,
-                code: c.colorCode || '#d9a74a',
-                border: c.colorCodeEnd || c.colorCode || '#b5852f',
-              }))
-            );
+            const mapped = items.map((c) => ({
+              id: c._id || c.id,
+              name: c.name,
+              code: c.colorCode || '#d9a74a',
+              border: c.colorCodeEnd || c.colorCode || '#b5852f',
+            }));
+            setColorsList(mapped);
+            setProductColors(mapped.map((c) => c.name));
+            setActiveMediaColor((prev) => (mapped.some((c) => c.name === prev) ? prev : mapped[0].name));
           }
         }
 
@@ -184,9 +252,9 @@ export default function AddJewelryProduct() {
 
   // ─── Step 2: Metal Options ──────────────────────────────
   const [selectedPurities, setSelectedPurities] = useState(['18KT']);
-  const [selectedColors, setSelectedColors] = useState(['Silver', 'Rose Gold', 'Yellow Gold']);
+  const [selectedColors, setSelectedColors] = useState(['Yellow Gold', 'Rose Gold', 'White Gold']);
   // Primary active preview color pill
-  const [activeColorPill, setActiveColorPill] = useState('Silver');
+  const [activeColorPill, setActiveColorPill] = useState('Yellow Gold');
 
   // ─── Step 2: Diamond Configurations ─────────────────────
   const [centerDiamond, setCenterDiamond] = useState({
@@ -259,26 +327,137 @@ export default function AddJewelryProduct() {
 
   const [variants, setVariants] = useState(initialVariants);
 
-  // ─── Step 3: Product Media ──────────────────────────────
-  const [activeMediaColor, setActiveMediaColor] = useState('Silver');
+  // ─── Step 3: Product Media & VTO State ────────────────
+  const [productColors, setProductColors] = useState(['Rose Gold', 'White Gold', 'Yellow Gold']);
+  const [activeMediaColor, setActiveMediaColor] = useState('Rose Gold');
+  const [activeMediaSubTab, setActiveMediaSubTab] = useState('images'); // 'images' | 'videos' | 'vto'
+
+  // High-Res Photography Per Metal Color
   const [mediaImages, setMediaImages] = useState({
-    Silver: [
-      { id: 'm1', url: '/products/ring_catalog.jpg', isPrimary: true },
-      { id: 'm2', url: '/products/ring_side.jpg', isPrimary: false },
-      { id: 'm3', url: '/products/ring_front.jpg', isPrimary: false },
-    ],
-    'Rose Gold': [
-      { id: 'm4', url: '/products/ring_catalog.jpg', isPrimary: true },
-    ],
-    'Yellow Gold': [
-      { id: 'm5', url: '/products/ring_catalog.jpg', isPrimary: true },
-    ],
-    'White Gold': [
-      { id: 'm6', url: '/products/ring_catalog.jpg', isPrimary: true },
-    ],
+    'Rose Gold': [],
+    'White Gold': [],
+    'Yellow Gold': [],
   });
 
-  const handleMediaUpload = async (e) => {
+  // 360 Spin & Product Videos Per Metal Color
+  const [mediaVideos, setMediaVideos] = useState({});
+
+  // Virtual Try-On (VTO) Configuration Per Metal Color
+  const [vtoConfigs, setVtoConfigs] = useState({
+    'Rose Gold': {
+      isConfigured: false,
+      overlayUrl: '',
+      overlayName: '',
+      overlaySize: '',
+      uploadedAt: '',
+      vtoCategory: 'neck',
+      top: 50.0,
+      left: 50.0,
+      scale: 100.0,
+      clipBottom: 0.0,
+      rotation: 0.0,
+    },
+    'White Gold': {
+      isConfigured: false,
+      overlayUrl: '',
+      overlayName: '',
+      overlaySize: '',
+      uploadedAt: '',
+      vtoCategory: 'hand',
+      top: 50.0,
+      left: 50.0,
+      scale: 100.0,
+      clipBottom: 0.0,
+      rotation: 0.0,
+    },
+    'Yellow Gold': {
+      isConfigured: false,
+      overlayUrl: '',
+      overlayName: '',
+      overlaySize: '',
+      uploadedAt: '',
+      vtoCategory: 'hand',
+      top: 50.0,
+      left: 50.0,
+      scale: 100.0,
+      clipBottom: 0.0,
+      rotation: 0.0,
+    },
+  });
+
+  // Modals state
+  const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
+  const [isAddColorModalOpen, setIsAddColorModalOpen] = useState(false);
+  const [customColorInput, setCustomColorInput] = useState({ name: '', code: '#1f2937' });
+
+  // Virtual Try-On Studio Modal State
+  const [isVtoStudioOpen, setIsVtoStudioOpen] = useState(false);
+  const [vtoEditingColor, setVtoEditingColor] = useState('Rose Gold');
+  const [vtoForm, setVtoForm] = useState({
+    vtoCategory: 'neck',
+    top: 50.0,
+    left: 50.0,
+    scale: 100.0,
+    clipBottom: 0.0,
+    rotation: 0.0,
+    overlayUrl: '',
+    overlayName: '',
+    overlaySize: '',
+    uploadedAt: '',
+    skinTone: 'light',
+  });
+
+  // VTO Master Global Environments fetched from backend API (lazily loaded ONLY when in Product Media step)
+  const [vtoMasters, setVtoMasters] = useState({});
+  const vtoMastersFetchedRef = useRef(false);
+
+  useEffect(() => {
+    // Call /vto-masters API when user enters Step 3 (Product Media) or opens VTO Studio
+    if ((activeStep !== 3 && !isVtoStudioOpen) || vtoMastersFetchedRef.current) return;
+
+    const fetchVtoMasters = async () => {
+      try {
+        vtoMastersFetchedRef.current = true;
+        const res = await api.get('/vto-masters');
+        const items = res.data?.data?.items || res.data?.data || [];
+        if (Array.isArray(items) && items.length > 0) {
+          const map = {};
+          items.forEach((m) => {
+            const key = m.bodyPart || m.partKey;
+            if (key) {
+              map[key] = {
+                light: getMediaUrl(m.lightImage?.url),
+                dark: getMediaUrl(m.darkImage?.url),
+              };
+            }
+          });
+          setVtoMasters(map);
+        }
+      } catch (err) {
+        vtoMastersFetchedRef.current = false;
+        console.warn('VTO Masters fetch notice:', err);
+      }
+    };
+    fetchVtoMasters();
+  }, [activeStep, isVtoStudioOpen]);
+
+  // Close modals on Escape key press
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        if (isVtoStudioOpen) setIsVtoStudioOpen(false);
+        if (isHowItWorksOpen) setIsHowItWorksOpen(false);
+        if (isAddColorModalOpen) setIsAddColorModalOpen(false);
+      }
+    };
+    if (isVtoStudioOpen || isHowItWorksOpen || isAddColorModalOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isVtoStudioOpen, isHowItWorksOpen, isAddColorModalOpen]);
+
+  // Handle Image Upload for Metal Color
+  const handleImageUpload = async (e, colorName = activeMediaColor) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
 
@@ -286,19 +465,248 @@ export default function AddJewelryProduct() {
       try {
         toast.loading(`Uploading ${file.name}...`, { id: 'prod-media' });
         const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
-        setMediaImages((prev) => ({
-          ...prev,
-          [activeMediaColor]: [
-            ...(prev[activeMediaColor] || []),
-            { id: `m-${Date.now()}-${Math.random()}`, url: fileUrl, isPrimary: !(prev[activeMediaColor]?.length) },
-          ],
-        }));
+        setMediaImages((prev) => {
+          const current = prev[colorName] || [];
+          return {
+            ...prev,
+            [colorName]: [
+              ...current,
+              {
+                id: `img-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                url: fileUrl,
+                isPrimary: current.length === 0,
+                name: file.name,
+                size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+                uploadedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+              },
+            ],
+          };
+        });
         toast.success(`${file.name} uploaded!`, { id: 'prod-media' });
       } catch (err) {
         toast.error(`Upload failed: ${err.message}`, { id: 'prod-media' });
       }
     }
     if (e.target) e.target.value = '';
+  };
+
+  // Handle Video Upload for Metal Color
+  const handleVideoUpload = async (e, colorName = activeMediaColor) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+
+    for (const file of files) {
+      try {
+        toast.loading(`Uploading video ${file.name}...`, { id: 'prod-video' });
+        const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+        setMediaVideos((prev) => {
+          const current = prev[colorName] || [];
+          return {
+            ...prev,
+            [colorName]: [
+              ...current,
+              {
+                id: `vid-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                url: fileUrl,
+                title: file.name,
+                size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+                uploadedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+              },
+            ],
+          };
+        });
+        toast.success(`Video uploaded!`, { id: 'prod-video' });
+      } catch (err) {
+        toast.error(`Video upload failed: ${err.message}`, { id: 'prod-video' });
+      }
+    }
+    if (e.target) e.target.value = '';
+  };
+
+  // Handle VTO Overlay PNG Upload inside Studio Modal
+  const handleVtoAssetUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      toast.loading(`Uploading VTO overlay ${file.name}...`, { id: 'vto-upload' });
+      const { fileUrl, public_id } = await uploadWithPresignedUrl(file, 'vto');
+      setVtoForm((prev) => ({
+        ...prev,
+        overlayUrl: fileUrl,
+        overlayPublicId: public_id,
+        overlayName: file.name,
+        overlaySize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+        uploadedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+      }));
+      toast.success('VTO overlay uploaded successfully!', { id: 'vto-upload' });
+    } catch (err) {
+      toast.error(`VTO upload failed: ${err.message}`, { id: 'vto-upload' });
+    }
+    if (e.target) e.target.value = '';
+  };
+
+  const handleRemoveMedia = (colorName, imageId) => {
+    setMediaImages((prev) => {
+      const currentList = prev[colorName] || [];
+      const updatedList = currentList.filter((img) => img.id !== imageId);
+      if (updatedList.length > 0 && !updatedList.some((img) => img.isPrimary)) {
+        updatedList[0].isPrimary = true;
+      }
+      return {
+        ...prev,
+        [colorName]: updatedList,
+      };
+    });
+    toast.success(`Removed image from ${colorName}`);
+  };
+
+  const handleRemoveVideo = (colorName, videoId) => {
+    setMediaVideos((prev) => ({
+      ...prev,
+      [colorName]: (prev[colorName] || []).filter((v) => v.id !== videoId),
+    }));
+    toast.success(`Removed video from ${colorName}`);
+  };
+
+  const handleSetPrimaryMedia = (colorName, imageId) => {
+    setMediaImages((prev) => ({
+      ...prev,
+      [colorName]: (prev[colorName] || []).map((img) => ({
+        ...img,
+        isPrimary: img.id === imageId,
+      })),
+    }));
+    toast.success(`Set primary image for ${colorName}`);
+  };
+
+  // Open VTO Studio for a specific metal color
+  const handleOpenVtoStudio = (colorName) => {
+    setVtoEditingColor(colorName);
+    const cfg = vtoConfigs[colorName] || {};
+    setVtoForm({
+      vtoCategory: cfg.vtoCategory || 'neck',
+      top: cfg.top ?? 50.0,
+      left: cfg.left ?? 58.5,
+      scale: cfg.scale ?? 100.0,
+      clipBottom: cfg.clipBottom ?? 0.0,
+      rotation: cfg.rotation ?? 0.0,
+      overlayUrl: cfg.overlayUrl || (mediaImages[colorName]?.[0]?.url || ''),
+      overlayName: cfg.overlayName || '',
+      overlaySize: cfg.overlaySize || '',
+      uploadedAt: cfg.uploadedAt || '',
+      skinTone: 'light',
+    });
+    setIsVtoStudioOpen(true);
+  };
+
+  // Save VTO Studio Configuration
+  const handleSaveVtoConfig = () => {
+    setVtoConfigs((prev) => ({
+      ...prev,
+      [vtoEditingColor]: {
+        isConfigured: true,
+        overlayUrl: vtoForm.overlayUrl,
+        overlayName: vtoForm.overlayName,
+        overlaySize: vtoForm.overlaySize,
+        uploadedAt: vtoForm.uploadedAt,
+        vtoCategory: vtoForm.vtoCategory,
+        top: Number(vtoForm.top),
+        left: Number(vtoForm.left),
+        scale: Number(vtoForm.scale),
+        clipBottom: Number(vtoForm.clipBottom),
+        rotation: Number(vtoForm.rotation),
+      },
+    }));
+    setIsVtoStudioOpen(false);
+    toast.success(`Virtual Try-On configured for ${vtoEditingColor}!`);
+  };
+
+  // Reset Precision Alignment
+  const handleResetVtoAlignment = () => {
+    setVtoForm((prev) => ({
+      ...prev,
+      top: 50.0,
+      left: 50.0,
+      scale: 100.0,
+      clipBottom: 0.0,
+      rotation: 0.0,
+    }));
+    toast.success('Alignment reset to defaults');
+  };
+
+  // Remove a color from product media list
+  const handleRemoveColor = (colorName) => {
+    if (productColors.length <= 1) {
+      toast.error('You must keep at least one metal color for the product.');
+      return;
+    }
+    const filtered = productColors.filter((c) => c !== colorName);
+    setProductColors(filtered);
+    if (activeMediaColor === colorName) {
+      setActiveMediaColor(filtered[0]);
+    }
+    toast.success(`Removed ${colorName} from product showcase`);
+  };
+
+  // Add a metal color to product media list
+  const handleAddColor = (colorName) => {
+    if (productColors.includes(colorName)) {
+      toast.error(`${colorName} is already added.`);
+      return;
+    }
+    setProductColors((prev) => [...prev, colorName]);
+    setActiveMediaColor(colorName);
+    if (!mediaImages[colorName]) {
+      setMediaImages((prev) => ({ ...prev, [colorName]: [] }));
+    }
+    if (!mediaVideos[colorName]) {
+      setMediaVideos((prev) => ({ ...prev, [colorName]: [] }));
+    }
+    if (!vtoConfigs[colorName]) {
+      setVtoConfigs((prev) => ({
+        ...prev,
+        [colorName]: {
+          isConfigured: false,
+          overlayUrl: '',
+          overlayName: '',
+          overlaySize: '',
+          uploadedAt: '',
+          vtoCategory: 'hand',
+          top: 50.0,
+          left: 50.0,
+          scale: 100.0,
+          clipBottom: 0.0,
+          rotation: 0.0,
+        },
+      }));
+    }
+    setIsAddColorModalOpen(false);
+    toast.success(`Added ${colorName} to product media`);
+  };
+
+  // Create custom metal color via backend API
+  const handleCreateCustomColor = async () => {
+    const name = customColorInput.name.trim();
+    if (!name) {
+      toast.error('Please enter a color name.');
+      return;
+    }
+    try {
+      const res = await api.post('/metal-colors', {
+        name,
+        colorCode: customColorInput.code,
+      });
+      const created = res.data?.data || { name, code: customColorInput.code };
+      setColorsList((prev) => [...prev, { name: created.name, code: created.colorCode || customColorInput.code }]);
+      handleAddColor(created.name);
+      setCustomColorInput({ name: '', code: '#1f2937' });
+    } catch {
+      // Local fallback
+      setColorsList((prev) => [...prev, { name, code: customColorInput.code }]);
+      handleAddColor(name);
+      setCustomColorInput({ name: '', code: '#1f2937' });
+    }
   };
 
   // ─── Step 4: Specifications ─────────────────────────────
@@ -326,8 +734,8 @@ export default function AddJewelryProduct() {
     markupPercentage: 30,
   });
 
-  // ─── Structured Ornate Block ────────────────────────────
-  const [ornate, setOrnate] = useState({
+  // ─── Default Ornate Values (Not exposed in Jewelry Products UI) ────────
+  const [ornate] = useState({
     tagNo: '',
     barcode: '',
     itemCode: '',
@@ -355,7 +763,7 @@ export default function AddJewelryProduct() {
   });
 
   // Right column active preview thumbnail selection
-  const [previewImage, setPreviewImage] = useState('/products/ring_catalog.jpg');
+  const [previewImage, setPreviewImage] = useState('');
 
   // Toggle Purity selection
   const handleTogglePurity = (purity) => {
@@ -446,6 +854,227 @@ export default function AddJewelryProduct() {
     );
   };
 
+  // ─── Step 5: Care & Specifications State & Handlers ─────────
+  const [careSections, setCareSections] = useState([]);
+  const [draggedCareIndex, setDraggedCareIndex] = useState(null);
+  const [dragOverCareIndex, setDragOverCareIndex] = useState(null);
+  const [specifications, setSpecifications] = useState([]);
+
+  // Add Care Section
+  const handleAddCareSection = () => {
+    setCareSections((prev) => [
+      ...prev,
+      {
+        id: `sec-${Date.now()}`,
+        header: 'Care Instructions',
+        description: '',
+        showOnProductPage: true,
+      },
+    ]);
+  };
+
+  // Update Care Section
+  const handleUpdateCareSection = (secId, field, val) => {
+    setCareSections((prev) =>
+      prev.map((sec) => (sec.id === secId ? { ...sec, [field]: val } : sec))
+    );
+  };
+
+  // Remove Care Section
+  const handleRemoveCareSection = (secId) => {
+    setCareSections((prev) => prev.filter((sec) => sec.id !== secId));
+  };
+
+  // Move Care Section Up or Down
+  const handleMoveCareSection = (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= careSections.length) return;
+
+    setCareSections((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(index, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
+  };
+
+  // Drag and Drop for Care Sections
+  const handleCareDragStart = (e, index) => {
+    setDraggedCareIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(index));
+    } catch {}
+  };
+
+  const handleCareDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverCareIndex !== index) {
+      setDragOverCareIndex(index);
+    }
+  };
+
+  const handleCareDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedCareIndex === null || draggedCareIndex === targetIndex) {
+      setDraggedCareIndex(null);
+      setDragOverCareIndex(null);
+      return;
+    }
+
+    setCareSections((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(draggedCareIndex, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
+
+    setDraggedCareIndex(null);
+    setDragOverCareIndex(null);
+  };
+
+  const handleCareDragEnd = () => {
+    setDraggedCareIndex(null);
+    setDragOverCareIndex(null);
+  };
+
+  // Format Care Description text helper
+  const handleFormatText = (sectionId, type) => {
+    const textarea = document.getElementById(`care-desc-${sectionId}`);
+    const section = careSections.find((s) => s.id === sectionId);
+    if (!section) return;
+
+    const text = section.description || '';
+    const start = textarea?.selectionStart ?? text.length;
+    const end = textarea?.selectionEnd ?? text.length;
+    const selected = text.substring(start, end);
+
+    let replacement = '';
+    let newCursorPos = start;
+
+    switch (type) {
+      case 'bold':
+        replacement = selected ? `**${selected}**` : '**bold text**';
+        newCursorPos = selected ? end + 4 : start + 2;
+        break;
+      case 'italic':
+        replacement = selected ? `*${selected}*` : '*italic text*';
+        newCursorPos = selected ? end + 2 : start + 1;
+        break;
+      case 'underline':
+        replacement = selected ? `<u>${selected}</u>` : '<u>underlined text</u>';
+        newCursorPos = selected ? end + 7 : start + 3;
+        break;
+      case 'h3':
+        replacement = `\n### ${selected || 'Heading'}\n`;
+        newCursorPos = start + replacement.length;
+        break;
+      case 'h4':
+        replacement = `\n#### ${selected || 'Subheading'}\n`;
+        newCursorPos = start + replacement.length;
+        break;
+      case 'bullet': {
+        const prefix = start === 0 || text[start - 1] === '\n' ? '• ' : '\n• ';
+        replacement = prefix + (selected || '');
+        newCursorPos = start + prefix.length + (selected ? selected.length : 0);
+        break;
+      }
+      case 'number': {
+        const prefix = start === 0 || text[start - 1] === '\n' ? '1. ' : '\n1. ';
+        replacement = prefix + (selected || '');
+        newCursorPos = start + prefix.length + (selected ? selected.length : 0);
+        break;
+      }
+      case 'link': {
+        const url = prompt('Enter link URL (e.g. https://...):', 'https://');
+        if (!url) return;
+        replacement = selected ? `[${selected}](${url})` : `[Link](${url})`;
+        newCursorPos = start + replacement.length;
+        break;
+      }
+      default:
+        break;
+    }
+
+    const newText = text.substring(0, start) + replacement + text.substring(end);
+    handleUpdateCareSection(sectionId, 'description', newText);
+
+    setTimeout(() => {
+      if (textarea) {
+        textarea.focus();
+        textarea.setSelectionRange(newCursorPos, newCursorPos);
+      }
+    }, 0);
+  };
+
+  // Auto-bullet on Enter in Care Description textarea
+  const handleKeyDownDescription = (e, sectionId) => {
+    if (e.key === 'Enter') {
+      const textarea = e.target;
+      const val = textarea.value;
+      const pos = textarea.selectionStart;
+      const lastLineStart = val.lastIndexOf('\n', pos - 1) + 1;
+      const currentLine = val.substring(lastLineStart, pos);
+
+      if (currentLine.startsWith('• ')) {
+        e.preventDefault();
+        if (currentLine.trim() === '•') {
+          // Clear empty bullet
+          const nextVal = val.substring(0, lastLineStart) + val.substring(pos);
+          handleUpdateCareSection(sectionId, 'description', nextVal);
+          setTimeout(() => {
+            textarea.setSelectionRange(lastLineStart, lastLineStart);
+          }, 0);
+        } else {
+          // Continue bullet on next line
+          const nextVal = val.substring(0, pos) + '\n• ' + val.substring(pos);
+          handleUpdateCareSection(sectionId, 'description', nextVal);
+          setTimeout(() => {
+            textarea.setSelectionRange(pos + 3, pos + 3);
+          }, 0);
+        }
+      }
+    }
+  };
+
+  // Add Specification
+  const handleAddSpecification = () => {
+    setSpecifications((prev) => [
+      ...prev,
+      {
+        id: `spec-${Date.now()}`,
+        key: '',
+        value: '',
+      },
+    ]);
+  };
+
+  // Update Specification
+  const handleUpdateSpecification = (specId, field, val) => {
+    setSpecifications((prev) =>
+      prev.map((spec) => (spec.id === specId ? { ...spec, [field]: val } : spec))
+    );
+  };
+
+  // Remove Specification
+  const handleRemoveSpecification = (specId) => {
+    setSpecifications((prev) => prev.filter((spec) => spec.id !== specId));
+  };
+
+  // Move Specification Up or Down
+  const handleMoveSpecification = (index, direction) => {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= specifications.length) return;
+
+    setSpecifications((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(index, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
+  };
+
   // Draft Save Handler
   const handleSaveDraft = async () => {
     setSaving(true);
@@ -455,11 +1084,18 @@ export default function AddJewelryProduct() {
         platformVisibility,
         selectedPurities,
         selectedColors,
+        productColors,
+        activeMediaColor,
+        mediaImages,
+        mediaVideos,
+        vtoConfigs,
         centerDiamond,
         sideDiamonds,
         variants,
         specs,
         pricing,
+        careSections,
+        specifications,
         ornate,
         seo,
         updatedAt: new Date().toISOString(),
@@ -564,11 +1200,50 @@ export default function AddJewelryProduct() {
         certificateCharge: Number(specs.certificateCharge) || 1200,
         status: seo.status || 'active',
         stockStatus: seo.stockStatus || 'In Stock',
-        images: [
-          { url: '/products/ring_catalog.jpg' },
-          { url: '/products/ring_side.jpg' },
-          { url: '/products/ring_front.jpg' },
-        ],
+        colorImages: productColors.map((cName) => {
+          const matched = colorsList.find((c) => c.name.toLowerCase() === cName.toLowerCase());
+          const imgItems = (mediaImages[cName] || []).map((item) => ({
+            url: item.url,
+            mediaType: 'image',
+            public_id: item.id || '',
+          }));
+          const vidItems = (mediaVideos[cName] || []).map((item) => ({
+            url: item.url,
+            mediaType: 'video',
+            public_id: item.id || '',
+          }));
+          const vto = vtoConfigs[cName] || {};
+          return {
+            metalColorId: matched?.id || matched?._id || null,
+            metalColor: matched?.id || matched?._id || null,
+            images: [...imgItems, ...vidItems],
+            vtoImage: vto.isConfigured && vto.overlayUrl ? {
+              url: vto.overlayUrl,
+              public_id: vto.overlayPublicId || '',
+            } : undefined,
+            vtoCategory: vto.vtoCategory || 'none',
+            vtoConfig: {
+              top: Number(vto.top ?? 50),
+              left: Number(vto.left ?? 50),
+              scale: Number(vto.scale ?? 100),
+              clipBottom: Number(vto.clipBottom ?? 0),
+              rotation: Number(vto.rotation ?? 0),
+            },
+          };
+        }),
+        images: (() => {
+          const allFlat = [
+            ...Object.values(mediaImages).flat().map((img) => ({
+              url: img.url,
+              mediaType: 'image',
+            })),
+            ...Object.values(mediaVideos).flat().map((vid) => ({
+              url: vid.url,
+              mediaType: 'video',
+            })),
+          ];
+          return allFlat;
+        })(),
         variants: variants.map((v) => ({
           combination: `${v.purity} / ${v.color}`,
           sku: v.sku,
@@ -576,6 +1251,23 @@ export default function AddJewelryProduct() {
           stock: Number(v.stock) || 5,
           metalWeight: Number(v.weight) || netWeightNum,
         })),
+
+        // Care & Specifications
+        descriptionSections: careSections
+          .filter((s) => s.header?.trim() || s.description?.trim())
+          .map((s) => ({
+            header: s.header?.trim() || '',
+            description: s.description?.trim() || '',
+            showOnProductPage: s.showOnProductPage !== false,
+            isVisible: s.showOnProductPage !== false,
+          })),
+
+        productSpecifications: specifications
+          .filter((s) => s.key?.trim() || s.value?.trim())
+          .map((s) => ({
+            key: s.key?.trim() || '',
+            value: s.value?.trim() || '',
+          })),
       };
 
       await api.post('/products', payload);
@@ -596,23 +1288,22 @@ export default function AddJewelryProduct() {
     { num: 1, title: 'Basic Details', subtitle: 'Name, category, description' },
     { num: 2, title: 'Variant Configuration', subtitle: 'Metal, color, diamonds' },
     { num: 3, title: 'Product Media', subtitle: 'Images & VTO' },
-    { num: 4, title: 'Specifications', subtitle: 'Weight, size, additional info' },
-    { num: 5, title: 'Product Preview', subtitle: 'Live storefront preview' },
-    { num: 6, title: 'SEO & Publish', subtitle: 'Meta & catalog status' },
+    { num: 4, title: 'Specifications & Pricing', subtitle: 'Weights, pricing, sizes' },
+    { num: 5, title: 'Care & Specs', subtitle: 'Care info & specifications' },
+    { num: 6, title: 'Product Preview', subtitle: 'Live storefront preview' },
+    { num: 7, title: 'SEO & Publish', subtitle: 'Meta & catalog status' },
   ];
 
   // Dynamic next button text
   const getNextButtonText = () => {
-    if (activeStep === 1) return 'Next: Variants';
-    if (activeStep === 2) return 'Next: Media';
-    if (activeStep === 3) return 'Next: Specs';
-    if (activeStep === 4) return 'Next: Preview';
-    if (activeStep === 5) return 'Next: SEO & Publish';
+    if (activeStep < steps.length) {
+      return `Next: ${steps[activeStep]?.title}`;
+    }
     return 'Publish Product';
   };
 
   const handleNextStep = () => {
-    if (activeStep < 6) {
+    if (activeStep < steps.length) {
       setActiveStep((prev) => prev + 1);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
@@ -631,12 +1322,30 @@ export default function AddJewelryProduct() {
 
   return (
     <div className="space-y-4 pb-8 font-sans text-stone-800 animate-fadeIn">
-      {/* ─── Top Bar (Title & Actions) ───────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h1 className="text-lg sm:text-xl font-bold text-stone-900 font-serif tracking-tight leading-tight">
-            Add New Product
-          </h1>
+      {/* ─── Top Bar (Title & Actions Matching Screenshot) ───────── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200/90 shadow-2xs">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/catalog/jewelry-products')}
+            className="w-9 h-9 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 flex items-center justify-center text-stone-600 transition-colors shadow-2xs cursor-pointer"
+            title="Back to Jewelry Products"
+          >
+            <HiOutlineArrowLeft className="w-4 h-4 stroke-[2.5]" />
+          </button>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-base sm:text-lg font-bold text-stone-900 font-serif tracking-tight leading-tight">
+                Add New Product
+              </h1>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70">
+                Barcode: {ornate.barcode || '10000008202124'}
+              </span>
+            </div>
+            <p className="text-[11px] text-stone-500 font-medium">
+              ERP SKU: <span className="font-mono text-stone-700">{ornate.tagNo || '925SL-011'}</span> &bull; Variety: <span className="text-stone-700">HEAVY WT 92.5</span> &bull; Metal: <span className="text-stone-700">{specs.metalName || 'MIXED'}</span>
+            </p>
+          </div>
         </div>
 
         {/* Top Action Buttons */}
@@ -665,7 +1374,7 @@ export default function AddJewelryProduct() {
 
       {/* ─── Stepper Wizard Bar (Matches Screenshot) ─────────── */}
       <div className="bg-white rounded-xl border border-stone-200/90 p-2 sm:p-2.5 shadow-2xs">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 items-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 items-center">
           {steps.map((s, idx) => {
             const isActive = activeStep === s.num;
             const isCompleted = activeStep > s.num;
@@ -1292,84 +2001,872 @@ export default function AddJewelryProduct() {
               STEP 3: PRODUCT MEDIA (Images & VTO)
           ════════════════════════════════════════════════════ */}
           {activeStep === 3 && (
-            <div className="bg-white rounded-2xl border border-stone-200/90 p-6 shadow-2xs space-y-6 animate-fadeIn">
-              <div className="flex items-center gap-2 pb-3 border-b border-stone-100">
-                <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
-                  3
+            <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-2xs space-y-6 animate-fadeIn">
+              {/* Header Matching Screenshot */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center shadow-2xs shrink-0">
+                    <HiOutlinePhotograph className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-stone-900 font-serif tracking-tight">
+                      Product Media & Virtual Try-On (VTO)
+                    </h3>
+                    <p className="text-[11px] text-stone-500">
+                      Upload images, videos, and configure VTO for each metal color. You can use the existing VTO master for try-on configuration.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-stone-900 font-serif">
-                    Product Media & Color Showcase
-                  </h3>
-                  <p className="text-[11px] text-stone-400">
-                    Upload high-resolution photography, 360 views, and VTO overlays for each metal color.
-                  </p>
-                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsHowItWorksOpen(true)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 rounded-xl hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer self-start sm:self-auto shrink-0"
+                >
+                  <HiOutlineQuestionMarkCircle className="w-4 h-4 text-stone-400" />
+                  <span>How it works?</span>
+                </button>
               </div>
 
-              {/* Metal Color Tabs */}
-              <div className="flex items-center gap-2 border-b border-stone-100 pb-2">
-                {selectedColors.map((color) => (
+              {/* Two-Column Layout (Matching Screenshot) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                {/* ─── Left Column: Select Metal Color ─────────── */}
+                <div className="lg:col-span-4 xl:col-span-4 space-y-3">
+                  <h4 className="text-xs font-bold text-stone-800 tracking-wide">
+                    Select Metal Color
+                  </h4>
+
+                  <div className="space-y-2">
+                    {productColors.map((colorName) => {
+                      const colorObj = colorsList.find((c) => c.name.toLowerCase() === colorName.toLowerCase()) || { name: colorName };
+                      const sphere = getSphereStyle(colorName, colorObj.code);
+                      const isActive = activeMediaColor === colorName;
+                      const imgCount = (mediaImages[colorName] || []).length;
+                      const vidCount = (mediaVideos[colorName] || []).length;
+                      const totalMedia = imgCount + vidCount;
+                      const isVtoConfigured = Boolean(vtoConfigs[colorName]?.isConfigured);
+
+                      return (
+                        <div
+                          key={colorName}
+                          onClick={() => setActiveMediaColor(colorName)}
+                          className={`w-full p-3 rounded-2xl flex items-center justify-between text-left transition-all cursor-pointer ${
+                            isActive
+                              ? 'bg-[#faf6f0] border-2 border-[#8b6f4e] shadow-xs'
+                              : 'bg-white border border-stone-200/80 hover:border-stone-300 hover:bg-stone-50/50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className="w-8 h-8 rounded-full shrink-0 shadow-sm"
+                              style={{
+                                background: sphere.gradient,
+                                boxShadow: sphere.shadow,
+                              }}
+                            />
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-stone-900 truncate">
+                                {colorName}
+                              </p>
+                              <p className="text-[11px] text-stone-500 font-medium truncate">
+                                {totalMedia} media &bull; {isVtoConfigured ? 'VTO Configured' : 'Configure VTO'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {isActive && (
+                            <div className="w-5 h-5 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center shrink-0 shadow-2xs">
+                              <HiOutlineCheck className="w-3.5 h-3.5 stroke-[3]" />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Add Metal Color Button */}
                   <button
-                    key={color}
                     type="button"
-                    onClick={() => setActiveMediaColor(color)}
-                    className={`px-3.5 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer ${
-                      activeMediaColor === color
-                        ? 'bg-[#8b6f4e] text-white shadow-xs'
-                        : 'bg-stone-50 text-stone-600 hover:bg-stone-100'
-                    }`}
+                    onClick={() => setIsAddColorModalOpen(true)}
+                    className="w-full py-2.5 px-3 rounded-xl border border-dashed border-stone-300 hover:border-[#8b6f4e] bg-stone-50/50 hover:bg-[#faf7f2]/40 text-stone-700 hover:text-[#8b6f4e] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
                   >
-                    {color} Gallery
+                    <HiOutlinePlus className="w-4 h-4" />
+                    <span>Add Metal Color</span>
                   </button>
-                ))}
-              </div>
-
-              {/* Upload Dropzone */}
-              <label className="border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-2xl p-8 text-center bg-[#fdfcfb] transition-colors cursor-pointer group block">
-                <input
-                  type="file"
-                  multiple
-                  accept="image/png,image/jpeg,image/webp,video/mp4"
-                  onChange={handleMediaUpload}
-                  className="hidden"
-                />
-                <div className="w-12 h-12 rounded-full bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center mx-auto mb-3 group-hover:scale-105 transition-transform">
-                  <HiOutlineUpload className="w-6 h-6" />
                 </div>
-                <h4 className="text-xs font-bold text-stone-800">
-                  Click or drag images to upload for {activeMediaColor}
-                </h4>
-                <p className="text-[11px] text-stone-400 mt-1">
-                  Supports WEBP, PNG, JPG up to 10MB each (minimum 1200x1200px recommended)
-                </p>
-              </label>
 
-              {/* Gallery Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
-                {(mediaImages[activeMediaColor] || []).map((img, i) => (
-                  <div
-                    key={img.id || i}
-                    className="relative group rounded-xl overflow-hidden border border-stone-200 aspect-square bg-stone-50"
-                  >
-                    <img
-                      src={img.url}
-                      alt="Product shot"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                {/* ─── Right Column: Active Metal Color Media Showcase ── */}
+                <div className="lg:col-span-8 xl:col-span-8 bg-white rounded-2xl border border-stone-200/90 p-5 shadow-2xs space-y-5">
+                  {/* Active Color Header */}
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-9 h-9 rounded-full shrink-0 shadow-sm"
+                        style={{
+                          background: getSphereStyle(activeMediaColor).gradient,
+                          boxShadow: getSphereStyle(activeMediaColor).shadow,
+                        }}
+                      />
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-stone-900">{activeMediaColor}</h4>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#e8f7ee] text-[#1b7a43] border border-[#c4ebd1]/80">
+                            Active
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-stone-500">
+                          Upload product images, videos and configure VTO for {activeMediaColor} variant.
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveColor(activeMediaColor)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-white hover:bg-rose-50/70 border border-rose-200/80 rounded-xl transition-all shadow-2xs cursor-pointer self-start sm:self-auto"
+                    >
+                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                      <span>Remove Color</span>
+                    </button>
+                  </div>
+
+                  {/* Sub-Tabs: Product Images, Videos, VTO Configuration */}
+                  <div className="flex items-center gap-2 border-b border-stone-100 pb-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setActiveMediaSubTab('images')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        activeMediaSubTab === 'images'
+                          ? 'bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70 shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                      }`}
+                    >
+                      <HiOutlinePhotograph className="w-4 h-4" />
+                      <span>Product Images ({(mediaImages[activeMediaColor] || []).length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveMediaSubTab('videos')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        activeMediaSubTab === 'videos'
+                          ? 'bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70 shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                      }`}
+                    >
+                      <HiOutlineVideoCamera className="w-4 h-4" />
+                      <span>Videos ({(mediaVideos[activeMediaColor] || []).length})</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveMediaSubTab('vto')}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                        activeMediaSubTab === 'vto'
+                          ? 'bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70 shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                      }`}
+                    >
+                      <HiOutlineCube className="w-4 h-4" />
+                      <span>VTO Configuration ({vtoConfigs[activeMediaColor]?.isConfigured ? 1 : 0})</span>
+                    </button>
+                  </div>
+
+                  {/* Product Images Tab Content (Horizontal Scroll Row) */}
+                  {activeMediaSubTab === 'images' && (
+                    <div className="relative">
+                      <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                        {/* Upload Images Button Card */}
+                        <label
+                          htmlFor="metal-color-upload-input"
+                          className="w-32 h-32 sm:w-36 sm:h-36 shrink-0 rounded-2xl border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] bg-[#fdfcfb] hover:bg-[#faf7f2]/30 flex flex-col items-center justify-center p-3 text-center transition-all cursor-pointer group shadow-2xs"
+                        >
+                          <input
+                            id="metal-color-upload-input"
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={(e) => handleImageUpload(e, activeMediaColor)}
+                            className="hidden"
+                          />
+                          <div className="w-8 h-8 rounded-full border border-stone-300 group-hover:border-[#8b6f4e] group-hover:bg-[#faf5ee] text-stone-400 group-hover:text-[#8b6f4e] flex items-center justify-center transition-all mb-1.5">
+                            <HiOutlinePlus className="w-4 h-4" />
+                          </div>
+                          <span className="text-xs font-bold text-stone-800 group-hover:text-[#8b6f4e]">
+                            Upload Images
+                          </span>
+                          <span className="text-[9.5px] text-stone-400 mt-0.5">
+                            PNG, JPG (Max 5MB each)
+                          </span>
+                        </label>
+
+                        {/* Uploaded Image Cards */}
+                        {(mediaImages[activeMediaColor] || []).map((img, i) => (
+                          <div
+                            key={img.id || i}
+                            className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-50 shadow-2xs group"
+                          >
+                            <img
+                              src={img.url}
+                              alt={`${activeMediaColor} ${i + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+
+                            {/* Top Left Badge or Set Primary */}
+                            {img.isPrimary ? (
+                              <span className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#8b6f4e] text-white shadow-xs">
+                                Primary
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleSetPrimaryMedia(activeMediaColor, img.id)}
+                                className="absolute top-2 left-2 z-10 p-1 rounded-md bg-black/50 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                                title="Set as Primary"
+                              >
+                                <HiOutlineStar className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+
+                            {/* Top Right Close / Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveMedia(activeMediaColor, img.id)}
+                              className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/50 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                              title="Remove image"
+                            >
+                              <HiOutlineX className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {/* Next arrow hint if multiple images */}
+                        {(mediaImages[activeMediaColor] || []).length > 2 && (
+                          <div className="w-8 h-8 rounded-full bg-white border border-stone-200/90 shadow-2xs flex items-center justify-center text-stone-500 shrink-0">
+                            <HiOutlineChevronRight className="w-4 h-4" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Videos Tab Content */}
+                  {activeMediaSubTab === 'videos' && (
+                    <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                      <label
+                        htmlFor="metal-color-video-input"
+                        className="w-32 h-32 sm:w-36 sm:h-36 shrink-0 rounded-2xl border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] bg-[#fdfcfb] hover:bg-[#faf7f2]/30 flex flex-col items-center justify-center p-3 text-center transition-all cursor-pointer group shadow-2xs"
+                      >
+                        <input
+                          id="metal-color-video-input"
+                          type="file"
+                          multiple
+                          accept="video/*"
+                          onChange={(e) => handleVideoUpload(e, activeMediaColor)}
+                          className="hidden"
+                        />
+                        <div className="w-8 h-8 rounded-full border border-stone-300 group-hover:border-[#8b6f4e] group-hover:bg-[#faf5ee] text-stone-400 group-hover:text-[#8b6f4e] flex items-center justify-center transition-all mb-1.5">
+                          <HiOutlineVideoCamera className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-bold text-stone-800 group-hover:text-[#8b6f4e]">
+                          Upload Video
+                        </span>
+                        <span className="text-[9.5px] text-stone-400 mt-0.5">
+                          MP4, WEBM (Max 50MB)
+                        </span>
+                      </label>
+
+                      {(mediaVideos[activeMediaColor] || []).map((vid, i) => (
+                        <div
+                          key={vid.id || i}
+                          className="relative w-48 h-32 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-900 shadow-2xs group flex flex-col justify-end p-2.5 text-white"
+                        >
+                          <video src={vid.url} className="absolute inset-0 w-full h-full object-cover opacity-70" />
+                          <div className="relative z-10">
+                            <p className="text-xs font-bold truncate">{vid.title || 'Product Video'}</p>
+                            <p className="text-[10px] text-stone-300">{vid.size || 'Video asset'}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVideo(activeMediaColor, vid.id)}
+                            className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/60 hover:bg-black text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                          >
+                            <HiOutlineX className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ─── Virtual Try-On (VTO) Dedicated Card (Matching Screenshot) ─── */}
+                  <div className="space-y-2 pt-2 border-t border-stone-100">
+                    <div>
+                      <h4 className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                        <span>Virtual Try-On (VTO)</span>
+                        <HiOutlineInformationCircle className="w-3.5 h-3.5 text-stone-400" />
+                      </h4>
+                      <p className="text-[11px] text-stone-500">
+                        Configure virtual try-on using the existing VTO master. This will use the 3D asset and try-on settings for this metal color.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-[#faf8f5] border border-stone-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
+                      <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-xl bg-white border border-stone-200/90 flex items-center justify-center overflow-hidden shadow-2xs shrink-0">
+                          {vtoConfigs[activeMediaColor]?.overlayUrl ? (
+                            <img
+                              src={vtoConfigs[activeMediaColor].overlayUrl}
+                              alt="VTO Asset"
+                              className="w-full h-full object-contain p-1"
+                            />
+                          ) : (
+                            <HiOutlineCube className="w-6 h-6 text-[#8b6f4e]" />
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-stone-900 font-mono">
+                            {vtoConfigs[activeMediaColor]?.overlayName || `${activeMediaColor} Virtual Try-On Asset`}
+                          </p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-[11px] text-stone-500">
+                              {vtoConfigs[activeMediaColor]?.isConfigured
+                                ? `${vtoConfigs[activeMediaColor]?.overlaySize || 'Calibrated'} • ${vtoConfigs[activeMediaColor]?.uploadedAt || 'Ready'}`
+                                : 'No calibration saved'}
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                vtoConfigs[activeMediaColor]?.isConfigured
+                                  ? 'bg-[#e8f7ee] text-[#1b7a43] border border-[#c4ebd1]/80'
+                                  : 'bg-stone-100 text-stone-500 border border-stone-200'
+                              }`}
+                            >
+                              {vtoConfigs[activeMediaColor]?.isConfigured ? 'Configured' : 'Not Configured'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
                       <button
                         type="button"
-                        onClick={() => setPreviewImage(img.url)}
-                        title="Set as Main Preview"
-                        className="p-1.5 bg-white text-stone-800 rounded-lg text-xs font-bold hover:bg-stone-100"
+                        onClick={() => handleOpenVtoStudio(activeMediaColor)}
+                        className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-stone-800 bg-white border border-stone-200/90 rounded-xl hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer self-start sm:self-auto"
                       >
-                        <HiOutlineEye className="w-4 h-4" />
+                        <HiOutlineAdjustments className="w-4 h-4 text-[#8b6f4e]" />
+                        <span>Configure VTO</span>
                       </button>
                     </div>
                   </div>
-                ))}
+                </div>
               </div>
+
+              {/* ─── Virtual Try-On (VTO) Studio Modal (Matches Screenshot) ─── */}
+              {isVtoStudioOpen && (
+                <div
+                  onClick={() => setIsVtoStudioOpen(false)}
+                  className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fadeIn cursor-pointer"
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col max-h-[92vh] font-sans cursor-default"
+                  >
+                    {/* Modal Header */}
+                    <div className="p-4 sm:p-5 border-b border-stone-100 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center">
+                          <HiOutlineUpload className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold text-stone-900 font-serif">
+                            Virtual Try-On (VTO) Studio
+                          </h3>
+                          <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
+                            {vtoEditingColor}
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setIsVtoStudioOpen(false)}
+                        className="w-8 h-8 rounded-xl border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer"
+                      >
+                        <HiOutlineX className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Modal Body */}
+                    <div className="p-5 overflow-y-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+                      {/* Left Column: Asset & Precision Sliders */}
+                      <div className="md:col-span-6 space-y-5">
+                        {/* 1. Try-On Overlay Asset */}
+                        <div className="space-y-1.5">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                            1. TRY-ON OVERLAY ASSET
+                          </label>
+                          <label
+                            htmlFor="vto-overlay-upload"
+                            className="block border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-xl p-4 text-center bg-[#fdfcfb] cursor-pointer transition-colors group"
+                          >
+                            <HiOutlineUpload className="w-5 h-5 mx-auto text-stone-400 group-hover:text-[#8b6f4e] mb-1.5" />
+                            <span className="block text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                              UPLOAD TRANSPARENT PNG (NO BACKGROUND)
+                            </span>
+                            <input
+                              id="vto-overlay-upload"
+                              type="file"
+                              accept="image/png"
+                              onChange={handleVtoAssetUpload}
+                              className="hidden"
+                            />
+                          </label>
+                          <p className="text-[10px] text-stone-400 italic">
+                            <strong className="text-amber-700 font-semibold not-italic">Pro Tip:</strong> Use a transparent PNG so the jewelry sits naturally on the skin.
+                          </p>
+                        </div>
+
+                        {/* 2. Precision Alignment */}
+                        <div className="space-y-3 pt-2 border-t border-stone-100">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                              2. PRECISION ALIGNMENT
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleResetVtoAlignment}
+                              className="text-[10px] font-bold text-[#8b6f4e] hover:underline uppercase tracking-wider cursor-pointer"
+                            >
+                              RESET
+                            </button>
+                          </div>
+
+                          {/* Vertical Position */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-stone-700">
+                              <span className="uppercase tracking-wider">VERTICAL POSITION</span>
+                              <span className="font-mono text-stone-900 bg-stone-100 px-2 py-0.5 rounded text-[10px]">
+                                {Number(vtoForm.top).toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, top: Math.max(0, Number((prev.top - 0.5).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                value={vtoForm.top}
+                                onChange={(e) => setVtoForm((prev) => ({ ...prev, top: Number(e.target.value) }))}
+                                className="flex-1 h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-[#8b6f4e]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, top: Math.min(100, Number((prev.top + 0.5).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Horizontal Position */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-stone-700">
+                              <span className="uppercase tracking-wider">HORIZONTAL POSITION</span>
+                              <span className="font-mono text-stone-900 bg-stone-100 px-2 py-0.5 rounded text-[10px]">
+                                {Number(vtoForm.left).toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, left: Math.max(0, Number((prev.left - 0.5).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="0.5"
+                                value={vtoForm.left}
+                                onChange={(e) => setVtoForm((prev) => ({ ...prev, left: Number(e.target.value) }))}
+                                className="flex-1 h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-[#8b6f4e]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, left: Math.min(100, Number((prev.left + 0.5).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Scale Size */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-stone-700">
+                              <span className="uppercase tracking-wider">SCALE SIZE</span>
+                              <span className="font-mono text-stone-900 bg-stone-100 px-2 py-0.5 rounded text-[10px]">
+                                {Number(vtoForm.scale).toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, scale: Math.max(20, Number((prev.scale - 1).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="range"
+                                min="20"
+                                max="250"
+                                step="1"
+                                value={vtoForm.scale}
+                                onChange={(e) => setVtoForm((prev) => ({ ...prev, scale: Number(e.target.value) }))}
+                                className="flex-1 h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-[#8b6f4e]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, scale: Math.min(250, Number((prev.scale + 1).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Crop Band */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-stone-700">
+                              <span className="uppercase tracking-wider">CROP BAND (HIDE BOTTOM)</span>
+                              <span className="font-mono text-stone-900 bg-stone-100 px-2 py-0.5 rounded text-[10px]">
+                                {Number(vtoForm.clipBottom).toFixed(1)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, clipBottom: Math.max(0, Number((prev.clipBottom - 1).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="range"
+                                min="0"
+                                max="100"
+                                step="1"
+                                value={vtoForm.clipBottom}
+                                onChange={(e) => setVtoForm((prev) => ({ ...prev, clipBottom: Number(e.target.value) }))}
+                                className="flex-1 h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-[#8b6f4e]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, clipBottom: Math.min(100, Number((prev.clipBottom + 1).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Rotation */}
+                          <div className="space-y-1">
+                            <div className="flex items-center justify-between text-[11px] font-bold text-stone-700">
+                              <span className="uppercase tracking-wider">ROTATION</span>
+                              <span className="font-mono text-stone-900 bg-stone-100 px-2 py-0.5 rounded text-[10px]">
+                                {Number(vtoForm.rotation).toFixed(1)}°
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, rotation: Math.max(-180, Number((prev.rotation - 1).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                -
+                              </button>
+                              <input
+                                type="range"
+                                min="-180"
+                                max="180"
+                                step="1"
+                                value={vtoForm.rotation}
+                                onChange={(e) => setVtoForm((prev) => ({ ...prev, rotation: Number(e.target.value) }))}
+                                className="flex-1 h-1.5 bg-stone-200 rounded-lg appearance-none cursor-pointer accent-[#8b6f4e]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setVtoForm((prev) => ({ ...prev, rotation: Math.min(180, Number((prev.rotation + 1).toFixed(1))) }))}
+                                className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 flex items-center justify-center text-xs font-bold text-stone-600 transition-colors shadow-2xs select-none"
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Right Column: Environment Dropdown & Live Studio View */}
+                      <div className="md:col-span-6 space-y-3">
+                        <div className="space-y-1.5">
+                          <label className="block text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                            3. SELECT TARGET ENVIRONMENT
+                          </label>
+                          <Dropdown
+                            size="sm"
+                            value={vtoForm.vtoCategory}
+                            onChange={(val) => setVtoForm((prev) => ({ ...prev, vtoCategory: val }))}
+                            options={VTO_ENV_OPTIONS.map((opt) => ({
+                              value: opt.id,
+                              label: opt.label,
+                            }))}
+                            buttonClassName="h-10 px-3 text-xs rounded-xl bg-white border-stone-200 font-semibold text-stone-800"
+                          />
+                        </div>
+
+                        {/* Studio Live View Box */}
+                        <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden bg-stone-900 border border-stone-200 shadow-md flex items-center justify-center select-none group">
+                          {/* Environment Model Background Image */}
+                          <img
+                            src={
+                              getMediaUrl(
+                                vtoMasters[vtoForm.vtoCategory]?.[vtoForm.skinTone] ||
+                                DEFAULT_VTO_ASSET_MAP[vtoForm.vtoCategory]?.[vtoForm.skinTone] ||
+                                '/vto/neck_light.jpg'
+                              )
+                            }
+                            alt={`${vtoForm.vtoCategory || 'Model'} Environment`}
+                            className="absolute inset-0 w-full h-full object-cover select-none transition-all duration-300"
+                          />
+
+                          {/* Overlay Jewelry Image */}
+                          {vtoForm.overlayUrl ? (
+                            <img
+                              src={vtoForm.overlayUrl}
+                              alt="Jewelry Overlay"
+                              className="absolute pointer-events-none select-none transition-all drop-shadow-lg"
+                              style={{
+                                top: `${vtoForm.top}%`,
+                                left: `${vtoForm.left}%`,
+                                transform: `translate(-50%, -50%) scale(${vtoForm.scale / 100}) rotate(${vtoForm.rotation}deg)`,
+                                clipPath: `inset(0 0 ${vtoForm.clipBottom}% 0)`,
+                                maxWidth: '55%',
+                                maxHeight: '55%',
+                                objectFit: 'contain',
+                              }}
+                            />
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none bg-black/40 text-white/80 p-4 text-center">
+                              <HiOutlinePhotograph className="w-10 h-10 mb-1 opacity-70" />
+                              <span className="text-xs font-semibold">No variant photo available for calibration</span>
+                              <span className="text-[10px] text-white/60">Upload photos in Step 3 to calibrate VTO overlay</span>
+                            </div>
+                          )}
+
+                          {/* Skin Tone Vertical Slider / Toggle on Right */}
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 z-10 bg-black/60 backdrop-blur-xs rounded-full p-1.5 flex flex-col gap-1.5 shadow-md">
+                            <button
+                              type="button"
+                              onClick={() => setVtoForm((prev) => ({ ...prev, skinTone: 'light' }))}
+                              title="Light Skin Tone"
+                              className={`w-6 h-6 rounded-full transition-all flex items-center justify-center text-[10px] font-bold cursor-pointer ${
+                                vtoForm.skinTone === 'light'
+                                  ? 'bg-[#f5e6d3] text-stone-900 ring-2 ring-white scale-110'
+                                  : 'bg-[#f5e6d3]/60 text-transparent hover:bg-[#f5e6d3]'
+                              }`}
+                            >
+                              L
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setVtoForm((prev) => ({ ...prev, skinTone: 'dark' }))}
+                              title="Dark Skin Tone"
+                              className={`w-6 h-6 rounded-full transition-all flex items-center justify-center text-[10px] font-bold cursor-pointer ${
+                                vtoForm.skinTone === 'dark'
+                                  ? 'bg-[#8d5b4c] text-white ring-2 ring-white scale-110'
+                                  : 'bg-[#8d5b4c]/60 text-transparent hover:bg-[#8d5b4c]'
+                              }`}
+                            >
+                              D
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="p-4 border-t border-stone-100 bg-stone-50/50 flex items-center justify-end gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setIsVtoStudioOpen(false)}
+                        className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveVtoConfig}
+                        className="px-5 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs uppercase tracking-wider cursor-pointer"
+                      >
+                        SAVE VTO CONFIGURATION
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── "How it works?" Modal ─── */}
+              {isHowItWorksOpen && (
+                <div
+                  onClick={() => setIsHowItWorksOpen(false)}
+                  className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fadeIn cursor-pointer"
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-lg w-full p-6 space-y-5 cursor-default"
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-xl bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-sm">
+                          ?
+                        </div>
+                        <h3 className="text-base font-bold text-stone-900 font-serif">
+                          How Media & VTO Works
+                        </h3>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsHowItWorksOpen(false)}
+                        className="w-8 h-8 rounded-xl border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-50"
+                      >
+                        <HiOutlineX className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="space-y-3.5 text-xs text-stone-600 leading-relaxed">
+                      <div className="p-3 rounded-xl bg-[#faf8f5] border border-stone-200/80">
+                        <strong className="block text-stone-900 mb-1">1. Color-Wise Photography:</strong>
+                        Upload dedicated photography for each metal color (Rose Gold, White Gold, etc.). When customers switch color pills in the storefront, photos change dynamically.
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#faf8f5] border border-stone-200/80">
+                        <strong className="block text-stone-900 mb-1">2. 360 Spin & Videos:</strong>
+                        Attach high-frame video clips for 360-degree rotation view on mobile & web.
+                      </div>
+                      <div className="p-3 rounded-xl bg-[#faf8f5] border border-stone-200/80">
+                        <strong className="block text-stone-900 mb-1">3. Virtual Try-On (VTO):</strong>
+                        Provide a transparent cutout PNG. Adjust vertical/horizontal positioning and scale against the target model environment (neck, hand, ear, wrist) so customers can preview it live on their skin tone!
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsHowItWorksOpen(false)}
+                      className="w-full py-2.5 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-xs cursor-pointer"
+                    >
+                      Got it, thanks!
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ─── Add Metal Color Modal ─── */}
+              {isAddColorModalOpen && (
+                <div
+                  onClick={() => setIsAddColorModalOpen(false)}
+                  className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fadeIn cursor-pointer"
+                >
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-md w-full p-6 space-y-5 cursor-default"
+                  >
+                    <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                      <h3 className="text-sm font-bold text-stone-900 font-serif">
+                        Add Metal Color to Product
+                      </h3>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddColorModalOpen(false)}
+                        className="w-8 h-8 rounded-xl border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-50"
+                      >
+                        <HiOutlineX className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Available Master Colors */}
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider block">
+                        Choose from Metal Color Master
+                      </label>
+                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1">
+                        {(colorsList.length > 0 ? colorsList : DEFAULT_COLOR_OPTIONS).map((col) => {
+                          const isAlreadyAdded = productColors.includes(col.name);
+                          const sphere = getSphereStyle(col.name, col.code);
+                          return (
+                            <button
+                              key={col.name}
+                              type="button"
+                              disabled={isAlreadyAdded}
+                              onClick={() => handleAddColor(col.name)}
+                              className={`flex items-center gap-2 p-2 rounded-xl border text-xs font-semibold text-left transition-all ${
+                                isAlreadyAdded
+                                  ? 'bg-stone-100 border-stone-200 text-stone-400 cursor-not-allowed opacity-60'
+                                  : 'bg-white border-stone-200/90 hover:border-[#8b6f4e] hover:bg-[#faf6f0] text-stone-800 cursor-pointer shadow-2xs'
+                              }`}
+                            >
+                              <div
+                                className="w-4 h-4 rounded-full shrink-0"
+                                style={{ background: sphere.gradient, boxShadow: sphere.shadow }}
+                              />
+                              <span className="truncate">{col.name}</span>
+                              {isAlreadyAdded && <span className="ml-auto text-[10px] text-stone-400">Added</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Or Create Custom Color */}
+                    <div className="space-y-2.5 pt-3 border-t border-stone-100">
+                      <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider block">
+                        Or Create Custom Color
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={customColorInput.name}
+                          onChange={(e) => setCustomColorInput((prev) => ({ ...prev, name: e.target.value }))}
+                          placeholder="e.g. Antique Silver, Rose Vermeil"
+                          className="flex-1 px-3 py-2 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                        />
+                        <input
+                          type="color"
+                          value={customColorInput.code}
+                          onChange={(e) => setCustomColorInput((prev) => ({ ...prev, code: e.target.value }))}
+                          className="w-9 h-9 rounded-xl border border-stone-200 cursor-pointer p-0.5 bg-white"
+                          title="Choose Color Swatch"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleCreateCustomColor}
+                          className="px-3.5 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-xs cursor-pointer"
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1586,104 +3083,6 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
-              {/* ─── Structured Ornate ERP Block ────────────── */}
-              <div className="space-y-2.5 pt-2">
-                <div className="flex items-center justify-between pb-1 border-b border-stone-100">
-                  <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                    Ornate ERP & Tag Specifications
-                  </h4>
-                  <span className="text-[10px] text-stone-400 font-mono">
-                    ornate.* schema block
-                  </span>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Tag No</label>
-                    <input
-                      type="text"
-                      value={ornate.tagNo}
-                      onChange={(e) => setOrnate((prev) => ({ ...prev, tagNo: e.target.value }))}
-                      placeholder="e.g. TAG-001"
-                      className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Barcode</label>
-                    <input
-                      type="text"
-                      value={ornate.barcode}
-                      onChange={(e) => setOrnate((prev) => ({ ...prev, barcode: e.target.value }))}
-                      placeholder="e.g. BAR-001"
-                      className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Item Code</label>
-                    <input
-                      type="text"
-                      value={ornate.itemCode}
-                      onChange={(e) => setOrnate((prev) => ({ ...prev, itemCode: e.target.value }))}
-                      placeholder="e.g. RNG-ITEM"
-                      className="w-full px-3.5 py-2 text-xs font-mono rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Stock Qty</label>
-                    <input
-                      type="number"
-                      value={ornate.stockQty}
-                      onChange={(e) => setOrnate((prev) => ({ ...prev, stockQty: Number(e.target.value) || 0 }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Gold Amount (₹)</label>
-                    <input
-                      type="number"
-                      value={ornate.goldAmt}
-                      onChange={(e) => setOrnate((prev) => ({ ...prev, goldAmt: Number(e.target.value) || 0 }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Labour Amount (₹)</label>
-                    <input
-                      type="number"
-                      value={ornate.labourAmt}
-                      onChange={(e) => setOrnate((prev) => ({ ...prev, labourAmt: Number(e.target.value) || 0 }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Diamond Amount (₹)</label>
-                    <input
-                      type="number"
-                      value={ornate.diamondAmt}
-                      onChange={(e) => setOrnate((prev) => ({ ...prev, diamondAmt: Number(e.target.value) || 0 }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </div>
-
-                  <div className="flex items-center pt-5">
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={ornate.isSold}
-                        onChange={(e) => setOrnate((prev) => ({ ...prev, isSold: e.target.checked }))}
-                        className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 transition cursor-pointer accent-[#8b6f4e]"
-                      />
-                      <span className="text-xs font-bold text-stone-700">Item is Sold</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
               <div className="space-y-2 pt-3">
                 <label className="text-xs font-bold text-stone-700">Available Ring Sizes</label>
                 <div className="flex flex-wrap gap-2">
@@ -1717,15 +3116,399 @@ export default function AddJewelryProduct() {
           )}
 
           {/* ═══════════════════════════════════════════════════
-              STEP 5: PRODUCT PREVIEW (DEDICATED FULL-WIDTH TAB)
+              STEP 5: CARE & SPECIFICATIONS
           ════════════════════════════════════════════════════ */}
           {activeStep === 5 && (
+            <div className="space-y-4 animate-fadeIn">
+              {/* Sub-block A: Product Information & Care Sections */}
+              <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100 flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
+                      <HiOutlineDocumentText className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-stone-900 font-serif">
+                          Product Information & Care Sections
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/60">
+                          {careSections.length} Added
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-400">
+                        Add custom expandable sections displayed on the storefront (e.g. &ldquo;How to Care&rdquo;, &ldquo;How to Maintain&rdquo;).
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddCareSection}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                  >
+                    <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Add Section</span>
+                  </button>
+                </div>
+
+                {careSections.length === 0 ? (
+                  <div className="py-8 text-center rounded-xl border border-dashed border-stone-200 bg-[#faf8f5]">
+                    <p className="text-xs text-stone-500 font-medium">
+                      No custom header & description sections added yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {careSections.map((sec, idx) => (
+                      <div
+                        key={sec.id}
+                        draggable
+                        onDragStart={(e) => handleCareDragStart(e, idx)}
+                        onDragOver={(e) => handleCareDragOver(e, idx)}
+                        onDrop={(e) => handleCareDrop(e, idx)}
+                        onDragEnd={handleCareDragEnd}
+                        className={`p-4 sm:p-5 rounded-2xl border transition-all duration-150 space-y-3 relative shadow-2xs ${
+                          draggedCareIndex === idx
+                            ? 'opacity-40 border-dashed border-[#8b6f4e] bg-stone-100 scale-[0.99]'
+                            : dragOverCareIndex === idx
+                            ? 'border-2 border-[#8b6f4e] bg-[#faf5ee] shadow-md'
+                            : 'border-stone-200/90 bg-[#faf8f5]'
+                        }`}
+                      >
+                        {/* Top Header Row: Grip Handle & Up/Down, Title Input, Show on Product Page Toggle, Delete Button */}
+                        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+                          {/* Grip Handle & Up/Down Buttons */}
+                          <div className="flex items-center gap-1 shrink-0 bg-white border border-stone-200/90 px-1.5 py-1 rounded-xl shadow-2xs">
+                            {/* 6-dots Grip Handle */}
+                            <div
+                              title="Drag to reorder section"
+                              className="text-stone-400 hover:text-[#8b6f4e] cursor-grab active:cursor-grabbing p-1 rounded-lg hover:bg-stone-100 transition-colors"
+                            >
+                              <svg className="w-4 h-4 fill-current" viewBox="0 0 20 20">
+                                <circle cx="7" cy="5" r="1.5" />
+                                <circle cx="13" cy="5" r="1.5" />
+                                <circle cx="7" cy="10" r="1.5" />
+                                <circle cx="13" cy="10" r="1.5" />
+                                <circle cx="7" cy="15" r="1.5" />
+                                <circle cx="13" cy="15" r="1.5" />
+                              </svg>
+                            </div>
+
+                            {/* Quick Up/Down Buttons */}
+                            <div className="flex flex-col -space-y-0.5 pl-1 border-l border-stone-200">
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveCareSection(idx, -1);
+                                }}
+                                title="Move section up"
+                                className="w-5 h-4 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] hover:bg-stone-100 rounded transition-colors disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                              >
+                                <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                                </svg>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === careSections.length - 1}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMoveCareSection(idx, 1);
+                                }}
+                                title="Move section down"
+                                className="w-5 h-4 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] hover:bg-stone-100 rounded transition-colors disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                              >
+                                <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Title Input */}
+                          <input
+                            type="text"
+                            value={sec.header}
+                            onChange={(e) =>
+                              handleUpdateCareSection(sec.id, 'header', e.target.value)
+                            }
+                            placeholder='Section Title (e.g. "Care Instructions", "Packaging")'
+                            className="flex-1 min-w-[200px] h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 text-stone-800 placeholder-stone-400 shadow-2xs"
+                          />
+
+                          {/* Right Controls: Show on Product Page Switch & Delete Button */}
+                          <div className="flex items-center gap-3 shrink-0 ml-auto">
+                            {/* Show on Product Page Switch */}
+                            <div className="flex items-center gap-2 select-none">
+                              <button
+                                type="button"
+                                role="switch"
+                                aria-checked={sec.showOnProductPage !== false}
+                                onClick={() =>
+                                  handleUpdateCareSection(
+                                    sec.id,
+                                    'showOnProductPage',
+                                    sec.showOnProductPage === false ? true : false
+                                  )
+                                }
+                                className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors cursor-pointer ${
+                                  sec.showOnProductPage !== false ? 'bg-[#8b6f4e]' : 'bg-stone-300'
+                                }`}
+                              >
+                                <div
+                                  className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                                    sec.showOnProductPage !== false ? 'translate-x-4' : 'translate-x-0'
+                                  }`}
+                                />
+                              </button>
+                              <span className="text-xs font-semibold text-stone-600">
+                                Show on Product Page
+                              </span>
+                            </div>
+
+                            {/* Delete Trash Button */}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCareSection(sec.id)}
+                              title="Delete section"
+                              className="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                            >
+                              <HiOutlineTrash className="w-4 h-4 stroke-[1.8]" />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Full-Width Formatted Content Editor */}
+                        <div className="w-full rounded-xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+                          {/* Editor Toolbar */}
+                          <div className="border-b border-stone-200/80 bg-[#fbf9f6] px-3 py-1.5 flex items-center gap-1.5 flex-wrap">
+                            {/* Style selector */}
+                            <div className="relative inline-flex items-center">
+                              <select
+                                aria-label="Text Style"
+                                defaultValue="normal"
+                                onChange={(e) => {
+                                  handleFormatText(sec.id, e.target.value);
+                                  e.target.value = 'normal';
+                                }}
+                                className="h-7 pl-2.5 pr-6 text-xs font-semibold text-stone-700 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e] cursor-pointer appearance-none"
+                              >
+                                <option value="normal">Normal</option>
+                                <option value="h3">Heading</option>
+                                <option value="h4">Subheading</option>
+                              </select>
+                              <span className="pointer-events-none absolute right-2 text-stone-400 text-[10px]">▼</span>
+                            </div>
+
+                            <div className="w-[1px] h-4 bg-stone-200 mx-1" />
+
+                            {/* Bold */}
+                            <button
+                              type="button"
+                              title="Bold"
+                              onClick={() => handleFormatText(sec.id, 'bold')}
+                              className="w-7 h-7 rounded-lg text-xs font-serif font-bold text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                              B
+                            </button>
+
+                            {/* Italic */}
+                            <button
+                              type="button"
+                              title="Italic"
+                              onClick={() => handleFormatText(sec.id, 'italic')}
+                              className="w-7 h-7 rounded-lg text-xs font-serif italic text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                              I
+                            </button>
+
+                            {/* Underline */}
+                            <button
+                              type="button"
+                              title="Underline"
+                              onClick={() => handleFormatText(sec.id, 'underline')}
+                              className="w-7 h-7 rounded-lg text-xs font-serif underline text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                              U
+                            </button>
+
+                            <div className="w-[1px] h-4 bg-stone-200 mx-1" />
+
+                            {/* Bullet List */}
+                            <button
+                              type="button"
+                              title="Bullet List"
+                              onClick={() => handleFormatText(sec.id, 'bullet')}
+                              className="w-7 h-7 rounded-lg text-stone-600 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="9" y1="6" x2="20" y2="6" />
+                                <line x1="9" y1="12" x2="20" y2="12" />
+                                <line x1="9" y1="18" x2="20" y2="18" />
+                                <circle cx="4" cy="6" r="1.5" fill="currentColor" stroke="none" />
+                                <circle cx="4" cy="12" r="1.5" fill="currentColor" stroke="none" />
+                                <circle cx="4" cy="18" r="1.5" fill="currentColor" stroke="none" />
+                              </svg>
+                            </button>
+
+                            {/* Numbered List */}
+                            <button
+                              type="button"
+                              title="Numbered List"
+                              onClick={() => handleFormatText(sec.id, 'number')}
+                              className="w-7 h-7 rounded-lg text-stone-600 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                              <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="10" y1="6" x2="21" y2="6" />
+                                <line x1="10" y1="12" x2="21" y2="12" />
+                                <line x1="10" y1="18" x2="21" y2="18" />
+                                <text x="2" y="7" fontSize="7" fontWeight="bold" fill="currentColor" stroke="none">1</text>
+                                <text x="2" y="13" fontSize="7" fontWeight="bold" fill="currentColor" stroke="none">2</text>
+                                <text x="2" y="19" fontSize="7" fontWeight="bold" fill="currentColor" stroke="none">3</text>
+                              </svg>
+                            </button>
+
+                            {/* Insert Link */}
+                            <button
+                              type="button"
+                              title="Insert Link"
+                              onClick={() => handleFormatText(sec.id, 'link')}
+                              className="w-7 h-7 rounded-lg text-stone-600 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                            >
+                              <HiOutlineLink className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+
+                          {/* Editor Textarea */}
+                          <textarea
+                            id={`care-desc-${sec.id}`}
+                            rows={5}
+                            value={sec.description}
+                            onChange={(e) =>
+                              handleUpdateCareSection(sec.id, 'description', e.target.value)
+                            }
+                            onKeyDown={(e) => handleKeyDownDescription(e, sec.id)}
+                            placeholder="To keep your jewellery looking beautiful for years:&#10;• Avoid contact with water, perfumes, and harsh chemicals.&#10;• Store in a soft pouch or jewellery box.&#10;• Clean gently with a soft, dry cloth after every use.&#10;• Keep away from direct sunlight and moisture."
+                            className="w-full p-3.5 text-xs text-stone-800 leading-relaxed bg-white focus:outline-none resize-y min-h-[120px] font-sans"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Sub-block B: Product Specifications */}
+              <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-2xs space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100 flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
+                      <TbListDetails className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-stone-900 font-serif">
+                          Product Specifications
+                        </h3>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/60">
+                          {specifications.length} Added
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-stone-400">
+                        Technical key-value specification attributes displayed on product specification table.
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleAddSpecification}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold transition-all shadow-xs cursor-pointer"
+                  >
+                    <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Add Specification</span>
+                  </button>
+                </div>
+
+                {specifications.length === 0 ? (
+                  <div className="py-8 text-center rounded-xl border border-dashed border-stone-200 bg-[#faf8f5]">
+                    <p className="text-xs text-stone-500 font-medium">
+                      No product specifications added yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {specifications.map((spec, sIdx) => (
+                      <div key={spec.id} className="flex items-center gap-2.5">
+                        {/* Move Up/Down Controls for Specifications */}
+                        <div className="flex flex-col -space-y-0.5 bg-white border border-stone-200/90 px-1 py-0.5 rounded-lg shrink-0 shadow-2xs">
+                          <button
+                            type="button"
+                            disabled={sIdx === 0}
+                            onClick={() => handleMoveSpecification(sIdx, -1)}
+                            title="Move specification up"
+                            className="w-4 h-3.5 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] rounded disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                          >
+                            <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                            </svg>
+                          </button>
+                          <button
+                            type="button"
+                            disabled={sIdx === specifications.length - 1}
+                            onClick={() => handleMoveSpecification(sIdx, 1)}
+                            title="Move specification down"
+                            className="w-4 h-3.5 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] rounded disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                          >
+                            <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </button>
+                        </div>
+
+                        <input
+                          type="text"
+                          value={spec.key}
+                          onChange={(e) => handleUpdateSpecification(spec.id, 'key', e.target.value)}
+                          placeholder="Specification Name (e.g. Clasp Type, Dimensions)"
+                          className="flex-1 h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 text-stone-800 placeholder-stone-400 shadow-2xs"
+                        />
+                        <input
+                          type="text"
+                          value={spec.value}
+                          onChange={(e) => handleUpdateSpecification(spec.id, 'value', e.target.value)}
+                          placeholder="Value (e.g. Lobster Clasp, 7.5 Inches)"
+                          className="flex-1 h-10 px-3.5 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 text-stone-800 placeholder-stone-400 shadow-2xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveSpecification(spec.id)}
+                          title="Remove specification"
+                          className="w-8 h-8 rounded-lg text-rose-500 hover:bg-rose-50 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                        >
+                          <HiOutlineTrash className="w-4 h-4 stroke-[1.8]" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ═══════════════════════════════════════════════════
+              STEP 6: PRODUCT PREVIEW (DEDICATED FULL-WIDTH TAB)
+          ════════════════════════════════════════════════════ */}
+          {activeStep === 6 && (
             <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-7 shadow-2xs space-y-6 animate-fadeIn">
               {/* Tab Header & Quick Navigation */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-stone-100">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs shadow-2xs">
-                    5
+                    6
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
@@ -1773,6 +3556,20 @@ export default function AddJewelryProduct() {
                   >
                     4. Specs
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveStep(5)}
+                    className="px-2 py-1 rounded-md bg-stone-50 hover:bg-stone-100 text-stone-600 font-medium border border-stone-200 transition-colors cursor-pointer"
+                  >
+                    5. Care & Specs
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveStep(7)}
+                    className="px-2 py-1 rounded-md bg-stone-50 hover:bg-stone-100 text-stone-600 font-medium border border-stone-200 transition-colors cursor-pointer"
+                  >
+                    7. SEO
+                  </button>
                 </div>
               </div>
 
@@ -1800,53 +3597,69 @@ export default function AddJewelryProduct() {
                     </div>
 
                     {/* Main High-Res Image */}
-                    <img
-                      src={previewImage}
-                      alt={basicDetails.title}
-                      className="w-full h-full object-contain filter drop-shadow-md group-hover:scale-105 transition-transform duration-500 ease-out"
-                    />
+                    {(() => {
+                      const activeColorImgs = mediaImages[activeColorPill] || [];
+                      const allImgs = Object.values(mediaImages).flat();
+                      const availableImgs = activeColorImgs.length > 0 ? activeColorImgs : allImgs;
+                      const activeSrc = (previewImage && availableImgs.some((m) => m.url === previewImage))
+                        ? previewImage
+                        : availableImgs[0]?.url || '';
 
-                    {/* Hover Hint */}
-                    <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                      Hover to zoom • Click thumbnail to switch angle
-                    </div>
+                      return activeSrc ? (
+                        <>
+                          <img
+                            src={activeSrc}
+                            alt={basicDetails.title || 'Product Preview'}
+                            className="w-full h-full object-contain filter drop-shadow-md group-hover:scale-105 transition-transform duration-500 ease-out"
+                          />
+                          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-xs text-white text-[10px] font-medium opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            Hover to zoom • Click thumbnail to switch angle
+                          </div>
+                        </>
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-stone-300 p-6 text-center">
+                          <HiOutlinePhotograph className="w-16 h-16 stroke-1 mb-2 text-stone-300" />
+                          <p className="text-xs font-semibold text-stone-500">No media uploaded yet</p>
+                          <p className="text-[11px] text-stone-400 mt-1 max-w-xs">
+                            Upload photos or videos for <span className="text-[#8b6f4e] font-semibold">{activeColorPill}</span> in Step 3 to see the live product showcase.
+                          </p>
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Thumbnail Selector Strip */}
-                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-                    {[
-                      { url: '/products/ring_catalog.jpg', label: 'Catalog Shot' },
-                      { url: '/products/ring_side.jpg', label: 'Side Profile' },
-                      { url: '/products/ring_front.jpg', label: 'Crown Front' },
-                    ].map((item, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setPreviewImage(item.url)}
-                        className={`aspect-square rounded-xl overflow-hidden border p-1 bg-white transition-all cursor-pointer group/thumb ${
-                          previewImage === item.url
-                            ? 'border-2 border-[#8b6f4e] shadow-xs ring-2 ring-[#8b6f4e]/10'
-                            : 'border-stone-200 hover:border-stone-300'
-                        }`}
-                      >
-                        <img
-                          src={item.url}
-                          alt={item.label}
-                          className="w-full h-full object-contain group-hover/thumb:scale-105 transition-transform"
-                        />
-                      </button>
-                    ))}
+                  {(() => {
+                    const activeColorImgs = mediaImages[activeColorPill] || [];
+                    const allImgs = Object.values(mediaImages).flat();
+                    const availableImgs = activeColorImgs.length > 0 ? activeColorImgs : allImgs;
+                    const activeSrc = (previewImage && availableImgs.some((m) => m.url === previewImage))
+                      ? previewImage
+                      : availableImgs[0]?.url || '';
 
-                    <div className="aspect-square rounded-xl border border-dashed border-stone-300 bg-stone-50/70 flex flex-col items-center justify-center text-center p-1 text-stone-400 hover:bg-stone-100 transition-colors cursor-pointer">
-                      <span className="font-bold text-xs text-stone-600">+2</span>
-                      <span className="text-[9px] text-stone-400">Angles</span>
-                    </div>
-
-                    <div className="aspect-square rounded-xl border border-dashed border-[#8b6f4e]/30 bg-[#faf5ee]/50 flex flex-col items-center justify-center text-center p-1 text-[#8b6f4e] hover:bg-[#faf5ee] transition-colors cursor-pointer">
-                      <IoSparklesOutline className="w-4 h-4 mb-0.5" />
-                      <span className="text-[9px] font-semibold">360° Spin</span>
-                    </div>
-                  </div>
+                    return availableImgs.length > 0 ? (
+                      <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                        {availableImgs.map((item, i) => (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => setPreviewImage(item.url)}
+                            className={`aspect-square rounded-xl overflow-hidden border p-1 bg-white transition-all cursor-pointer group/thumb ${
+                              activeSrc === item.url
+                                ? 'border-2 border-[#8b6f4e] shadow-xs ring-2 ring-[#8b6f4e]/10'
+                                : 'border-stone-200 hover:border-stone-300'
+                            }`}
+                          >
+                            <img
+                              src={item.url}
+                              alt={item.name || `View ${i + 1}`}
+                              className="w-full h-full object-contain group-hover/thumb:scale-105 transition-transform"
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
 
                   {/* Trust & Craftsmanship Badges */}
                   <div className="grid grid-cols-2 gap-2 pt-2">
@@ -2200,24 +4013,89 @@ export default function AddJewelryProduct() {
                   </div>
                 </div>
               </div>
+
+              {/* Product Information, Care & Custom Specs Preview (If Configured) */}
+              {(careSections.length > 0 || specifications.length > 0) && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {careSections.length > 0 && (
+                    <div className="bg-white rounded-xl border border-stone-200/90 p-4 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                        <div className="flex items-center gap-1.5">
+                          <HiOutlineDocumentText className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                          <h4 className="text-xs font-bold text-stone-900 tracking-wide uppercase">
+                            Care & Information Sections
+                          </h4>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveStep(5)}
+                          className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                        >
+                          Edit Care
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {careSections.map((sec) => (
+                          <div key={sec.id} className="p-2.5 rounded-lg bg-[#faf8f5] border border-stone-100 space-y-1">
+                            <span className="text-xs font-bold text-stone-800 block">
+                              {sec.header || 'Care Instructions'}
+                            </span>
+                            <p className="text-[11px] text-stone-600 whitespace-pre-line leading-relaxed">
+                              {sec.description || 'No instructions provided.'}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {specifications.length > 0 && (
+                    <div className="bg-white rounded-xl border border-stone-200/90 p-4 shadow-2xs space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                        <div className="flex items-center gap-1.5">
+                          <TbListDetails className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                          <h4 className="text-xs font-bold text-stone-900 tracking-wide uppercase">
+                            Technical Specifications
+                          </h4>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setActiveStep(5)}
+                          className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                        >
+                          Edit Specs
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                        {specifications.map((s) => (
+                          <div key={s.id} className="bg-[#fcfbf9] p-2 rounded-lg border border-stone-100">
+                            <span className="text-stone-400 block text-[9.5px] uppercase font-medium">{s.key || 'Specification'}</span>
+                            <span className="font-bold text-stone-900 text-xs">{s.value || '—'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
           {/* ═══════════════════════════════════════════════════
-              STEP 6: SEO & PUBLISH
+              STEP 7: SEO & PUBLISH
           ════════════════════════════════════════════════════ */}
-          {activeStep === 6 && (
+          {activeStep === 7 && (
             <div className="bg-white rounded-2xl border border-stone-200/90 p-6 shadow-2xs space-y-5 animate-fadeIn">
               <div className="flex items-center gap-2 pb-3 border-b border-stone-100">
                 <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
-                  6
+                  7
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-stone-900 font-serif">
-                    SEO Metadata & Final Status
+                    SEO Configuration
                   </h3>
                   <p className="text-[11px] text-stone-400">
-                    Optimize search rankings and configure inventory publish status.
+                    Optimize search engine rankings, meta titles, and URL slug.
                   </p>
                 </div>
               </div>
@@ -2252,83 +4130,6 @@ export default function AddJewelryProduct() {
                     className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
                   />
                 </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Stock Availability</label>
-                    <Dropdown
-                      size="sm"
-                      value={seo.stockStatus}
-                      onChange={(val) => setSeo((prev) => ({ ...prev, stockStatus: val }))}
-                      options={['In Stock', 'Made to Order', 'Out of Stock']}
-                      buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Catalog Visibility</label>
-                    <Dropdown
-                      size="sm"
-                      value={seo.status}
-                      onChange={(val) => setSeo((prev) => ({ ...prev, status: val }))}
-                      options={[
-                        { value: 'active', label: 'Active (Published Immediately)' },
-                        { value: 'draft', label: 'Draft (Hidden in Storefront)' },
-                      ]}
-                      buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
-                    />
-                  </div>
-                </div>
-
-                {/* ─── Platform Visibility (Step 6 Publishing) ── */}
-                <div className="pt-2">
-                  <div className="p-3.5 rounded-xl border border-stone-200/80 bg-[#fdfcfb] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase select-none mb-0.5">
-                        PLATFORM VISIBILITY
-                      </label>
-                      <p className="text-[11px] text-stone-500">
-                        Choose whether to make this product visible on the Mobile App, Web, or both.
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-6">
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
-                        <input
-                          type="checkbox"
-                          checked={platformVisibility.showInApp}
-                          onChange={(e) =>
-                            setPlatformVisibility((prev) => ({
-                              ...prev,
-                              showInApp: e.target.checked,
-                            }))
-                          }
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-stone-300 transition cursor-pointer accent-blue-600"
-                        />
-                        <span className="text-xs sm:text-sm font-semibold text-stone-800 group-hover:text-stone-900 transition-colors">
-                          Show in App
-                        </span>
-                      </label>
-
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
-                        <input
-                          type="checkbox"
-                          checked={platformVisibility.showOnWeb}
-                          onChange={(e) =>
-                            setPlatformVisibility((prev) => ({
-                              ...prev,
-                              showOnWeb: e.target.checked,
-                            }))
-                          }
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-stone-300 transition cursor-pointer accent-blue-600"
-                        />
-                        <span className="text-xs sm:text-sm font-semibold text-stone-800 group-hover:text-stone-900 transition-colors">
-                          Show on Web
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                </div>
               </div>
             </div>
           )}
@@ -2341,8 +4142,14 @@ export default function AddJewelryProduct() {
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer"
             >
               <HiOutlineArrowLeft className="w-3 h-3 stroke-[2.5]" />
-              <span>Back</span>
+              <span>{activeStep === 1 ? 'Back to List' : 'Previous Tab'}</span>
             </button>
+
+            {/* In the middle: Step X of Y • Step Title */}
+            <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-stone-500">
+              <span>Step {activeStep} of {steps.length} &bull;</span>
+              <span className="text-[#8b6f4e] font-bold">{steps[activeStep - 1]?.title}</span>
+            </div>
 
             <div className="flex items-center gap-2.5">
               <button

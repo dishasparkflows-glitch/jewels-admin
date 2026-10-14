@@ -109,7 +109,7 @@ export default function NavigationMenusView() {
   const [bannerFormData, setBannerFormData] = useState({
     title: '',
     subtitle: '',
-    imageUrl: '/products/ring_catalog.jpg',
+    imageUrl: '',
     categoryId: '',
     categoryName: '',
     status: 'active',
@@ -256,14 +256,7 @@ export default function NavigationMenusView() {
         status: menuFormData.status,
         icon: { name: menuFormData.iconName },
         image: {
-          url:
-            menuFormData.title.toLowerCase().includes('ring')
-              ? '/products/ring_catalog.jpg'
-              : menuFormData.title.toLowerCase().includes('earring')
-              ? '/featured/earring.jpg'
-              : menuFormData.title.toLowerCase().includes('necklace') || menuFormData.title.toLowerCase().includes('pendant')
-              ? '/featured/necklace.jpg'
-              : '/featured/bangles.jpg',
+          url: menuFormData.imageUrl || '',
         },
       };
 
@@ -367,7 +360,7 @@ export default function NavigationMenusView() {
     setBannerFormData({
       title: '',
       subtitle: '',
-      imageUrl: '/products/ring_catalog.jpg',
+      imageUrl: '',
       categoryId: categories[0]?._id || '',
       categoryName: categories[0]?.name || '',
       status: 'active',
@@ -958,11 +951,17 @@ export default function NavigationMenusView() {
 
                     {/* Banner Image Preview */}
                     <div className="w-full lg:w-48 h-28 rounded-xl bg-stone-100 border border-stone-200/80 overflow-hidden flex-shrink-0 relative group">
-                      <img
-                        src={banner.image?.url || '/products/ring_catalog.jpg'}
-                        alt={banner.title}
-                        className="w-full h-full object-cover"
-                      />
+                      {banner.image?.url ? (
+                        <img
+                          src={banner.image.url}
+                          alt={banner.title}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-stone-400 text-[11px] font-medium">
+                          No banner image
+                        </div>
+                      )}
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
                         Banner Preview
                       </div>

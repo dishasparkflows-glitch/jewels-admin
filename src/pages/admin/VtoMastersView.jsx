@@ -341,10 +341,6 @@ export default function VtoMastersView() {
                   )}
                 </div>
 
-                {/* Description */}
-                <p className="text-[11px] text-stone-500 mt-2 leading-tight line-clamp-2 min-h-0">
-                  {meta.description}
-                </p>
 
                 {/* Dual Image Containers: LIGHT SKIN TONE vs DARK SKIN TONE */}
                 <div className="grid grid-cols-2 gap-2 mt-2.5">
@@ -523,30 +519,6 @@ export default function VtoMastersView() {
 
             {/* Modal Body */}
             <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-              {/* Quick Template Preset */}
-              <div className="flex items-center justify-between p-3 bg-amber-50/70 rounded-xl border border-amber-200/60">
-                <div>
-                  <div className="text-xs font-bold text-amber-900">Default Model Template</div>
-                  <div className="text-[11px] text-amber-700">
-                    Quickly apply the recommended realistic studio models
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const def = DEFAULT_ASSET_MAP[selectedPart] || DEFAULT_ASSET_MAP.hand;
-                    setLightUrl(def.light);
-                    setLightPublicId(`${selectedPart}_light`);
-                    setDarkUrl(def.dark);
-                    setDarkPublicId(`${selectedPart}_dark`);
-                    toast.success(`Applied default assets for ${BODY_PART_META[selectedPart]?.name}`);
-                  }}
-                  className="px-2.5 py-1 text-xs font-bold text-[#8f6d43] bg-white hover:bg-stone-50 border border-[#ebdccb] rounded-lg shadow-2xs transition-colors cursor-pointer"
-                >
-                  Apply Defaults
-                </button>
-              </div>
-
               {/* Status Select */}
               <div className="flex items-center justify-between p-3.5 bg-stone-50 rounded-xl border border-stone-200/80">
                 <div>
@@ -717,13 +689,6 @@ export default function VtoMastersView() {
                 </div>
               </div>
 
-              {/* Pose Match Notice */}
-              <div className="text-[11px] text-stone-500 bg-amber-50/60 border border-amber-200/60 rounded-xl p-3 flex items-start gap-2">
-                <HiOutlineInformationCircle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                <span>
-                  For seamless virtual try-on transitions, ensure both assets have identical dimensions, centering, and pose alignment.
-                </span>
-              </div>
 
               {/* Modal Footer */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">

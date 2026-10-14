@@ -286,10 +286,10 @@ export default function CelebrateGiftsView() {
       const payload = {
         name: title.trim(),
         placement: placement || (placementFilter !== 'all' ? placementFilter : 'Celebrate'),
-        image: {
-          url: imageUrl || '/featured/necklace.jpg',
+        image: imageUrl ? {
+          url: imageUrl,
           public_id: imagePublicId || `feat_${Date.now()}`,
-        },
+        } : null,
         status,
         products: selectedProductIds,
         productCount: selectedProductIds.length,
@@ -554,11 +554,15 @@ export default function CelebrateGiftsView() {
                         onClick={() => openViewModal(item)}
                         className="w-11 h-8 rounded-md overflow-hidden bg-stone-100 border border-stone-200/80 cursor-pointer hover:opacity-90 flex items-center justify-center shadow-2xs"
                       >
-                        <img
-                          src={getMediaUrl(item.image?.url || '/featured/necklace.jpg')}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
+                        {item.image?.url ? (
+                          <img
+                            src={getMediaUrl(item.image.url)}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <HiOutlinePhotograph className="w-4 h-4 text-stone-400" />
+                        )}
                       </div>
                     </td>
 
@@ -988,12 +992,19 @@ export default function CelebrateGiftsView() {
             className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-stone-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="relative aspect-[16/9] w-full bg-stone-100 overflow-hidden">
-              <img
-                src={getMediaUrl(viewingItem.image?.url || '/featured/necklace.jpg')}
-                alt={viewingItem.name}
-                className="w-full h-full object-cover"
-              />
+            <div className="relative aspect-[16/9] w-full bg-stone-100 overflow-hidden flex items-center justify-center">
+              {viewingItem.image?.url ? (
+                <img
+                  src={getMediaUrl(viewingItem.image.url)}
+                  alt={viewingItem.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-stone-400">
+                  <HiOutlinePhotograph className="w-12 h-12 stroke-1 mb-1" />
+                  <span className="text-xs">No cover image uploaded</span>
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => setIsViewModalOpen(false)}

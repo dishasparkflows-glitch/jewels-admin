@@ -213,16 +213,6 @@ export default function DiamondsView() {
                 <IoDiamondOutline className="w-6 h-6" />
               </div>
               <p className="text-stone-800 font-semibold mb-1">No diamonds found</p>
-              <p className="text-xs text-stone-400 max-w-sm mx-auto mb-4">
-                Use the "Add Diamonds" button to configure variants and generate your stock.
-              </p>
-              <button
-                type="button"
-                onClick={() => navigate('/diamonds/add')}
-                className="px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e42] rounded-xl transition-colors shadow-2xs"
-              >
-                + Add Diamonds Now
-              </button>
             </div>
           ) : (
             <table className="w-full text-left border-separate border-spacing-y-2">

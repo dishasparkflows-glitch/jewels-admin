@@ -625,20 +625,6 @@ export default function HomeSectionsView() {
           <div className="py-14 text-center">
             <HiOutlineTemplate className="w-10 h-10 text-stone-300 mx-auto mb-2" />
             <h3 className="text-xs font-semibold text-stone-800">No home sections found</h3>
-            <p className="text-[11px] text-stone-500 max-w-sm mx-auto mt-0.5">
-              {search || typeFilter !== 'all' || statusFilter !== 'all' || placementFilter !== 'all'
-                ? 'Try adjusting your filters or search keywords.'
-                : 'Click "Add Section" to populate your storefront.'}
-            </p>
-            <div className="mt-3 flex items-center justify-center">
-              <button
-                type="button"
-                onClick={handleOpenAdd}
-                className="px-3 py-1.5 bg-[#8b6f4e] text-white rounded-md text-xs font-semibold hover:bg-[#785e40] transition-colors cursor-pointer shadow-2xs"
-              >
-                Add New Section
-              </button>
-            </div>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -1124,7 +1110,7 @@ export default function HomeSectionsView() {
                         type="text"
                         value={formData.imageUrl}
                         onChange={(e) => setFormData((p) => ({ ...p, imageUrl: e.target.value }))}
-                        placeholder="https://... or /banners/hero_timeless.jpg"
+                        placeholder="https://... (CDN image URL)"
                         className="w-full text-xs font-mono bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
                       />
                     </div>
@@ -1280,7 +1266,7 @@ export default function HomeSectionsView() {
                                   type="text"
                                   value={item.imageUrl || ''}
                                   onChange={(e) => handleUpdateItem(index, 'imageUrl', e.target.value)}
-                                  placeholder="/featured/necklace.jpg or https://..."
+                                  placeholder="https://... (CDN image URL)"
                                   className="flex-1 text-xs bg-white border border-stone-200 rounded-md px-2.5 py-1.5 font-mono"
                                 />
                                 <label className="px-2 py-1.5 bg-stone-200 hover:bg-stone-300 rounded text-[11px] font-semibold text-stone-700 cursor-pointer shrink-0">
