@@ -115,7 +115,7 @@ export const navSections = [
       { id: 'home-sections', title: 'Home Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
       { id: 'celebrate-gifts', title: 'Celebrate & Gifts', path: '/celebrate-gifts', icon: IoDiamondOutline, apiEndpoint: '/featured' },
       { id: 'top-announcement', title: 'Top Announcement', path: '/top-announcement', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
-      { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
+      { id: 'banners', title: 'Website Sections', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
       { id: 'before-after', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineEye, apiEndpoint: '/cust-jewellery-before-after' },
       { id: 'coupons', title: 'Coupons', path: '/coupons', icon: HiOutlineTicket, apiEndpoint: '/coupons' },
       { id: 'birthstones', title: 'Birthstones', path: '/birthstones', icon: IoDiamondOutline, apiEndpoint: '/birthstones' },

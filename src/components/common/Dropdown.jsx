@@ -61,6 +61,8 @@ const STATUS_COLORS = {
  * @param {'default'|'minimal'|'inline'} [variant='default'] - Visual style variant
  * @param {boolean} [showStatusDot=false] - Show status dot indicator next to label
  * @param {boolean} [openUpward=false] - Force dropdown to open upwards
+ * @param {boolean} [openDownward=false] - Force dropdown to open downwards
+ * @param {'auto'|'down'|'up'} [direction='auto'] - Direction to open the dropdown menu
  * @param {string} [className=''] - Container class name
  * @param {string} [buttonClassName=''] - Button trigger custom styling
  * @param {string} [menuClassName=''] - Menu popover custom styling
@@ -79,6 +81,8 @@ export default function Dropdown({
   variant = 'default',
   showStatusDot = false,
   openUpward = false,
+  openDownward = false,
+  direction = 'auto',
   className = '',
   buttonClassName = '',
   menuClassName = '',
@@ -87,8 +91,10 @@ export default function Dropdown({
   name,
   id,
 }) {
+  const isForcedDown = openDownward || direction === 'down';
+  const isForcedUp = openUpward || direction === 'up';
   const [isOpen, setIsOpen] = useState(false);
-  const [dropUp, setDropUp] = useState(openUpward);
+  const [dropUp, setDropUp] = useState(isForcedUp && !isForcedDown);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
   const containerRef = useRef(null);
@@ -142,7 +148,15 @@ export default function Dropdown({
 
   // Handle smart auto-flip (open upward if near screen bottom)
   useEffect(() => {
-    if (isOpen && !openUpward && buttonRef.current) {
+    if (isForcedDown) {
+      setDropUp(false);
+      return;
+    }
+    if (isForcedUp) {
+      setDropUp(true);
+      return;
+    }
+    if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       const estimatedMenuHeight = Math.min(normalizedOptions.length * 44 + 16, 260);
       const spaceBelow = window.innerHeight - rect.bottom;
@@ -153,10 +167,8 @@ export default function Dropdown({
       } else {
         setDropUp(false);
       }
-    } else if (openUpward) {
-      setDropUp(true);
     }
-  }, [isOpen, openUpward, normalizedOptions.length]);
+  }, [isOpen, isForcedDown, isForcedUp, normalizedOptions.length]);
 
   // Auto-scroll highlighted option into view
   useEffect(() => {

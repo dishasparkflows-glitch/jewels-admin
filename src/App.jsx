@@ -109,6 +109,8 @@ function App() {
             <Route path="/marketing/announcements" element={<TopAnnouncementView />} />
             <Route path="/banners" element={<BannersView />} />
             <Route path="/marketing/banners" element={<BannersView />} />
+            <Route path="/website-sections" element={<BannersView />} />
+            <Route path="/marketing/website-sections" element={<BannersView />} />
             <Route path="/marketing/before-after" element={<BeforeAfterView />} />
             <Route path="/before-after" element={<BeforeAfterView />} />
             <Route path="/custjewellerybeforeafter" element={<BeforeAfterView />} />

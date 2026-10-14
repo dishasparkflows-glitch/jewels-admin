@@ -110,7 +110,7 @@ export default function AddJewelryProduct() {
   const { categories: categoryList } = useCategoryLookup();
 
   // Active Wizard Step: 1 = Basic, 2 = Variants (Screenshot view), 3 = Media, 4 = Specs, 5 = SEO
-  const [activeStep, setActiveStep] = useState(2);
+  const [activeStep, setActiveStep] = useState(1);
   const [saving, setSaving] = useState(false);
 
   // ─── Live Master Lookup Lists from Backend API ──────────
@@ -240,92 +240,44 @@ export default function AddJewelryProduct() {
 
   // ─── Step 1: Basic Details ──────────────────────────────
   const [basicDetails, setBasicDetails] = useState({
-    title: 'Diamond Ring',
-    sku: 'RNG-001',
-    category: 'Rings',
-    subType: 'Solitaire Rings',
+    title: '',
+    sku: '',
+    category: '',
+    subType: '',
     productType: 'jewelry',
-    gender: 'Female',
-    description: 'Elegant diamond ring',
+    gender: '',
+    description: '',
     isOrnate: false,
   });
 
   // ─── Step 2: Metal Options ──────────────────────────────
-  const [selectedPurities, setSelectedPurities] = useState(['18KT']);
-  const [selectedColors, setSelectedColors] = useState(['Yellow Gold', 'Rose Gold', 'White Gold']);
+  const [selectedPurities, setSelectedPurities] = useState([]);
+  const [selectedColors, setSelectedColors] = useState([]);
   // Primary active preview color pill
-  const [activeColorPill, setActiveColorPill] = useState('Yellow Gold');
+  const [activeColorPill, setActiveColorPill] = useState('');
 
   // ─── Step 2: Diamond Configurations ─────────────────────
   const [centerDiamond, setCenterDiamond] = useState({
-    type: 'Natural',
-    shape: 'Round',
-    color: 'D-E',
-    clarity: 'SI',
-    caratWeight: '1.00',
+    type: '',
+    shape: '',
+    color: '',
+    clarity: '',
+    caratWeight: '',
   });
 
   const [sideDiamonds, setSideDiamonds] = useState({
-    enabled: true,
-    type: 'Natural',
-    shape: 'Round',
-    color: 'F-G',
-    clarity: 'VS',
-    sizeFrom: '0.01',
-    sizeTo: '0.05',
-    pieces: '20',
+    enabled: false,
+    type: '',
+    shape: '',
+    color: '',
+    clarity: '',
+    sizeFrom: '',
+    sizeTo: '',
+    pieces: '',
   });
 
   // ─── Step 2: Preview Variants ───────────────────────────
-  const initialVariants = useMemo(() => [
-    {
-      id: 1,
-      purity: '10KT',
-      color: 'Silver',
-      colorCode: '#9ca3af',
-      diamondDetails: {
-        center: 'Center: 1.00Ct (D-E, SI)',
-        side: 'Side: 20 pcs (0.01-0.05Ct, F-G, VS)',
-      },
-      weight: '3.50',
-      sku: 'NR-RING-001-S',
-      price: '1,85,000',
-      priceRaw: 185000,
-      stock: '5',
-    },
-    {
-      id: 2,
-      purity: '10KT',
-      color: 'Rose Gold',
-      colorCode: '#e89f8f',
-      diamondDetails: {
-        center: 'Center: 1.00Ct (D-E, SI)',
-        side: 'Side: 20 pcs (0.01-0.05Ct, F-G, VS)',
-      },
-      weight: '3.50',
-      sku: 'NR-RING-001-RG',
-      price: '1,92,000',
-      priceRaw: 192000,
-      stock: '3',
-    },
-    {
-      id: 3,
-      purity: '10KT',
-      color: 'Yellow Gold',
-      colorCode: '#d4af37',
-      diamondDetails: {
-        center: 'Center: 1.00Ct (D-E, SI)',
-        side: 'Side: 20 pcs (0.01-0.05Ct, F-G, VS)',
-      },
-      weight: '3.50',
-      sku: 'NR-RING-001-YG',
-      price: '2,05,000',
-      priceRaw: 205000,
-      stock: '2',
-    },
-  ], []);
-
-  const [variants, setVariants] = useState(initialVariants);
+  const [variants, setVariants] = useState([]);
 
   // ─── Step 3: Product Media & VTO State ────────────────
   const [productColors, setProductColors] = useState(['Rose Gold', 'White Gold', 'Yellow Gold']);
@@ -711,27 +663,27 @@ export default function AddJewelryProduct() {
 
   // ─── Step 4: Specifications ─────────────────────────────
   const [specs, setSpecs] = useState({
-    metalName: 'Gold',
-    metalWeight: 2.5,
-    metalPurity: 18,
-    baseMetalWeight: 2.5,
-    grossWeight: 2.75,
-    netWeight: 2.5,
-    stoneWeight: 0.25,
-    baseLabourCharge: 4500,
-    certificateCharge: 1200,
+    metalName: '',
+    metalWeight: '',
+    metalPurity: '',
+    baseMetalWeight: '',
+    grossWeight: '',
+    netWeight: '',
+    stoneWeight: '',
+    baseLabourCharge: '',
+    certificateCharge: '',
     gstPercentage: 3,
-    sizesAvailable: ['Size 6', 'Size 7', 'Size 8', 'Size 9'],
+    sizesAvailable: [],
   });
 
   // ─── Structured Pricing Block ───────────────────────────
   const [pricing, setPricing] = useState({
-    mrp: 75000,
-    salePrice: 65000,
-    costPrice: 50000,
-    displayPrice: 65000,
+    mrp: '',
+    salePrice: '',
+    costPrice: '',
+    displayPrice: '',
     gstPercentage: 3,
-    markupPercentage: 30,
+    markupPercentage: '',
   });
 
   // ─── Default Ornate Values (Not exposed in Jewelry Products UI) ────────
@@ -748,10 +700,9 @@ export default function AddJewelryProduct() {
 
   // ─── Step 5: SEO & Publish ──────────────────────────────
   const [seo, setSeo] = useState({
-    slug: 'diamond-ring',
-    metaTitle: 'Diamond Ring | Neirah Luxury Portal',
-    metaDescription:
-      'Buy handcrafted Diamond Ring online. High purity gold and certified natural diamonds by Neirah.',
+    slug: '',
+    metaTitle: '',
+    metaDescription: '',
     stockStatus: 'In Stock',
     status: 'active',
   });
@@ -786,6 +737,15 @@ export default function AddJewelryProduct() {
 
   // Regenerate variants dynamically
   const handleRegenerateVariants = () => {
+    if (!selectedPurities || selectedPurities.length === 0) {
+      toast.error('Please select at least one metal purity above.');
+      return;
+    }
+    if (!selectedColors || selectedColors.length === 0) {
+      toast.error('Please select at least one metal color above.');
+      return;
+    }
+
     const colorCodeMap = colorsList.reduce(
       (acc, c) => {
         acc[c.name] = c.code;
@@ -823,22 +783,30 @@ export default function AddJewelryProduct() {
         const calculatedPrice = base + colorOffset;
         const suffix = colorSuffixMap[color] || color.substring(0, 2).toUpperCase();
 
+        const centerDetail = centerDiamond.caratWeight
+          ? `Center: ${centerDiamond.caratWeight}Ct (${centerDiamond.color || 'D-E'}, ${centerDiamond.clarity || 'VS'})`
+          : centerDiamond.type
+          ? `Center: ${centerDiamond.type} Diamond`
+          : 'Center: Diamond';
+
+        const sideDetail = sideDiamonds.enabled && sideDiamonds.pieces
+          ? `Side: ${sideDiamonds.pieces} pcs (${sideDiamonds.sizeFrom || ''}-${sideDiamonds.sizeTo || ''}Ct, ${sideDiamonds.color || 'F-G'}, ${sideDiamonds.clarity || 'VS'})`
+          : 'Side: None';
+
         newVariants.push({
           id: counter++,
           purity,
           color,
           colorCode: colorCodeMap[color] || '#9ca3af',
           diamondDetails: {
-            center: `Center: ${centerDiamond.caratWeight || '1.00'}Ct (${centerDiamond.color}, ${centerDiamond.clarity})`,
-            side: sideDiamonds.enabled
-              ? `Side: ${sideDiamonds.pieces || '20'} pcs (${sideDiamonds.sizeFrom}-${sideDiamonds.sizeTo}Ct, ${sideDiamonds.color}, ${sideDiamonds.clarity})`
-              : 'Side: None',
+            center: centerDetail,
+            side: sideDetail,
           },
-          weight: specs.baseMetalWeight || '3.50',
-          sku: `${basicDetails.sku}-${suffix}`,
-          price: Number(calculatedPrice).toLocaleString('en-IN'),
-          priceRaw: calculatedPrice,
-          stock: String(5 - (colorIdx % 3)),
+          weight: specs.baseMetalWeight || specs.metalWeight || '0.00',
+          sku: basicDetails.sku ? `${basicDetails.sku}-${suffix}` : `JEW-${suffix}`,
+          price: calculatedPrice ? Number(calculatedPrice).toLocaleString('en-IN') : '0',
+          priceRaw: calculatedPrice || 0,
+          stock: '0',
         });
       });
     });
@@ -1930,7 +1898,20 @@ export default function AddJewelryProduct() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100 text-[11px]">
-                        {variants.map((v) => (
+                        {variants.length === 0 ? (
+                          <tr>
+                            <td colSpan={8} className="py-12 text-center">
+                              <div className="flex flex-col items-center justify-center space-y-1.5 text-stone-400">
+                                <span className="text-2xl">✨</span>
+                                <p className="font-semibold text-xs text-stone-700">No variants generated yet</p>
+                                <p className="text-[11px] text-stone-400 max-w-sm">
+                                  Select your metal options and diamond configuration above, then click &quot;Regenerate&quot; to build preview variants.
+                                </p>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : (
+                          variants.map((v) => (
                           <tr key={v.id} className="hover:bg-stone-50/70 transition-colors">
                             <td className="py-2 pl-3 pr-1 text-center font-medium text-stone-400 text-[11px]">
                               {v.id}
@@ -1988,7 +1969,7 @@ export default function AddJewelryProduct() {
                               />
                             </td>
                           </tr>
-                        ))}
+                        )))}
                       </tbody>
                     </table>
                   </div>

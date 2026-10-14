@@ -88,6 +88,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
               const isActive =
                 !hasChildren &&
                 (location.pathname === item.path ||
+                  (item.id === 'banners' && (location.pathname === '/banners' || location.pathname === '/marketing/banners' || location.pathname === '/website-sections' || location.pathname === '/marketing/website-sections')) ||
                   (item.id === 'cod-sequence' && (location.pathname === '/cod-sequence' || location.pathname === '/cod-sequences')) ||
                   (item.id === 'celebrate-gifts' && (location.pathname === '/celebrate-gifts' || location.pathname === '/marketing/gifts')) ||
                   (item.id === 'before-after' && (location.pathname === '/before-after' || location.pathname === '/marketing/before-after' || location.pathname === '/custjewellerybeforeafter' || location.pathname === '/cust-jewellery-before-after')) ||

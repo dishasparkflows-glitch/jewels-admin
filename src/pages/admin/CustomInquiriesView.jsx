@@ -3,45 +3,28 @@ import {
   HiOutlineSparkles,
   HiOutlineClock,
   HiOutlineCheckCircle,
-  HiOutlinePhotograph,
+  HiOutlineExclamation,
   HiOutlinePhone,
   HiOutlineMail,
   HiOutlineX,
   HiOutlineCheck,
   HiOutlineTrash,
+  HiOutlineEye,
+  HiOutlineRefresh,
+  HiOutlineSearch,
+  HiOutlineBan,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
-import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import ModuleHeader from '../../components/common/ModuleHeader';
-import StatCards from '../../components/common/StatCards';
-import SearchFilterBar from '../../components/common/SearchFilterBar';
-import RowActions from '../../components/common/RowActions';
 
-const DEMO_INQUIRIES = [
-  {
-    _id: 'inq_01',
-    customer: { name: 'Ananya Singhania', email: 'ananya.s@gmail.com', phone: { countryCode: '91', number: '9820123456' } },
-    requirements: { metalType: '18KT Rose Gold', stoneType: 'Oval Solitaire 2.0ct', estimatedBudget: 250000, comments: 'Need custom halo setting with hidden accent diamonds.' },
-    status: 'pending',
-    createdAt: '2026-10-10',
-  },
-  {
-    _id: 'inq_02',
-    customer: { name: 'Rishi Kapoor', email: 'rishi.k@gmail.com', phone: { countryCode: '91', number: '9811445566' } },
-    requirements: { metalType: 'Platinum 950', stoneType: 'Emerald Cut Diamond', estimatedBudget: 420000, comments: 'Family heirloom redesign for wedding anniversary.' },
-    status: 'confirmed',
-    createdAt: '2026-10-09',
-  },
-  {
-    _id: 'inq_03',
-    customer: { name: 'Tara Sutaria', email: 'tara.s@gmail.com', phone: { countryCode: '91', number: '9765112233' } },
-    requirements: { metalType: '18KT Yellow Gold', stoneType: 'Round Brilliant', estimatedBudget: 180000, comments: 'Traditional temple style bridal necklace pendant.' },
-    status: 'completed',
-    createdAt: '2026-10-06',
-  },
+const STATUS_TABS = [
+  { value: 'all', label: 'ALL' },
+  { value: 'pending', label: 'PENDING' },
+  { value: 'confirmed', label: 'CONFIRMED' },
+  { value: 'completed', label: 'COMPLETED' },
+  { value: 'cancelled', label: 'CANCELLED' },
 ];
 
 export default function CustomInquiriesView() {
@@ -49,404 +32,510 @@ export default function CustomInquiriesView() {
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [selectedInquiry, setSelectedInquiry] = useState(null);
-  const [previewImage, setPreviewImage] = useState(null);
-  const [filterActive, setFilterActive] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState([]);
 
+  // Modals
+  const [confirmModalInquiry, setConfirmModalInquiry] = useState(null);
+  const [cancelModalInquiry, setCancelModalInquiry] = useState(null);
+  const [viewingInquiry, setViewingInquiry] = useState(null);
+
+  // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [serverTotal, setServerTotal] = useState(null);
 
-  const fetchInquiries = async (page = currentPage, limit = pageSize) => {
+  // Fetch inquiries from backend
+  const fetchInquiries = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/custom-inquiries?page=${page}&limit=${limit}`);
+      const res = await api.get('/custom-inquiries?limit=100');
       const data = res.data?.data?.items || res.data?.data || [];
-      if (Array.isArray(data) && data.length > 0) {
+      if (Array.isArray(data)) {
         setInquiries(data);
-      } else {
-        setInquiries(DEMO_INQUIRIES);
       }
     } catch (err) {
-      console.warn('Backend unavailable, using fallback inquiries:', err);
-      setInquiries(DEMO_INQUIRIES);
+      console.error('Failed to load inquiries:', err);
+      toast.error('Failed to load inquiries from server');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchInquiries(currentPage, pageSize);
-  }, [currentPage, pageSize]);
+    fetchInquiries();
+  }, []);
 
-  const handleUpdateStatus = async (id, newStatus) => {
+  // Action: Confirm inquiry
+  const handleConfirmInquiry = async () => {
+    if (!confirmModalInquiry) return;
+    const id = confirmModalInquiry._id || confirmModalInquiry.id;
     try {
-      await api.put(`/custom-inquiries/${id}`, { status: newStatus });
-      toast.success(`Inquiry marked as ${newStatus}`);
-      fetchInquiries();
-      if (selectedInquiry?._id === id) {
-        setSelectedInquiry((prev) => (prev ? { ...prev, status: newStatus } : null));
+      await api.put(`/custom-inquiries/${id}`, { status: 'confirmed' });
+      toast.success('Custom inquiry confirmed successfully');
+      setInquiries((prev) =>
+        prev.map((i) => ((i._id || i.id) === id ? { ...i, status: 'confirmed' } : i))
+      );
+      if (viewingInquiry && (viewingInquiry._id || viewingInquiry.id) === id) {
+        setViewingInquiry((prev) => ({ ...prev, status: 'confirmed' }));
       }
     } catch (err) {
-      setInquiries((prev) =>
-        prev.map((i) => ((i._id || i.id) === id ? { ...i, status: newStatus } : i))
-      );
-      toast.success(`Inquiry marked as ${newStatus}`);
+      console.error('Confirm request failed:', err);
+      toast.error(err.response?.data?.message || 'Failed to confirm inquiry');
+    } finally {
+      setConfirmModalInquiry(null);
     }
   };
 
+  // Action: Cancel inquiry
+  const handleCancelInquiry = async () => {
+    if (!cancelModalInquiry) return;
+    const id = cancelModalInquiry._id || cancelModalInquiry.id;
+    try {
+      await api.put(`/custom-inquiries/${id}`, { status: 'cancelled' });
+      toast.success('Custom inquiry cancelled');
+      setInquiries((prev) =>
+        prev.map((i) => ((i._id || i.id) === id ? { ...i, status: 'cancelled' } : i))
+      );
+      if (viewingInquiry && (viewingInquiry._id || viewingInquiry.id) === id) {
+        setViewingInquiry((prev) => ({ ...prev, status: 'cancelled' }));
+      }
+    } catch (err) {
+      console.error('Cancel request failed:', err);
+      toast.error(err.response?.data?.message || 'Failed to cancel inquiry');
+    } finally {
+      setCancelModalInquiry(null);
+    }
+  };
+
+  // Action: Delete inquiry
   const handleDelete = async (id, name) => {
     const isConfirmed = await confirm({
       title: 'Delete Custom Inquiry',
-      message: `Are you sure you want to delete inquiry for "${name}"? This action cannot be undone.`,
+      message: `Are you sure you want to delete inquiry for "${name || 'Client'}"? This action cannot be undone.`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
       type: 'danger',
     });
     if (!isConfirmed) return;
+
     try {
       await api.delete(`/custom-inquiries/${id}`);
-      toast.success('Custom inquiry deleted');
+      toast.success('Inquiry deleted successfully');
       setInquiries((prev) => prev.filter((i) => (i._id || i.id) !== id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-      if (selectedInquiry?._id === id) setSelectedInquiry(null);
+      setSelectedIds((prev) => prev.filter((i) => i !== id));
+      if (viewingInquiry && (viewingInquiry._id || viewingInquiry.id) === id) {
+        setViewingInquiry(null);
+      }
     } catch (err) {
-      setInquiries((prev) => prev.filter((i) => (i._id || i.id) !== id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-      toast.success('Custom inquiry deleted');
-    }
-  };
-
-  const handleBulkDelete = async () => {
-    const count = selectedIds.size;
-    if (count === 0) {
-      toast.error('Please select inquiries to delete');
-      return;
-    }
-
-    const isConfirmed = await confirm({
-      title: 'Delete Selected Inquiries',
-      message: `Are you sure you want to delete ${count} selected inquiry${count > 1 ? 's' : ''}? This action cannot be undone.`,
-      confirmText: `Delete (${count})`,
-      cancelText: 'Cancel',
-      type: 'danger',
-    });
-    if (!isConfirmed) return;
-
-    const idsToDelete = Array.from(selectedIds);
-    try {
-      await Promise.allSettled(
-        idsToDelete.map((id) => api.delete(`/custom-inquiries/${id}`))
-      );
-      setInquiries((prev) => prev.filter((i) => !selectedIds.has(i._id || i.id)));
-      setSelectedIds(new Set());
-      toast.success(`${count} inquiry${count > 1 ? 's' : ''} deleted successfully`);
-    } catch (err) {
-      setInquiries((prev) => prev.filter((i) => !selectedIds.has(i._id || i.id)));
-      setSelectedIds(new Set());
-      toast.success(`${count} inquiry${count > 1 ? 's' : ''} deleted`);
+      console.error('Delete request failed:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete inquiry');
     }
   };
 
   // Metrics
-  const totalCount = Math.max(inquiries.length, 12);
-  const pendingCount = inquiries.filter((i) => i.status === 'pending').length || 4;
-  const inProgressCount = inquiries.filter((i) => i.status === 'confirmed').length || 5;
-  const completedCount = inquiries.filter((i) => i.status === 'completed').length || 3;
+  const totalInquiries = inquiries.length;
+  const totalPending = inquiries.filter((i) => (i.status || '').toLowerCase() === 'pending').length;
+  const totalCompleted = inquiries.filter((i) => (i.status || '').toLowerCase() === 'completed').length;
+  const totalCancelled = inquiries.filter((i) => (i.status || '').toLowerCase() === 'cancelled').length;
 
-  // Filtered list (NO active/deactive filter!)
-  const displayedList = useMemo(() => {
-    if (!search.trim()) return inquiries;
-    const q = search.toLowerCase();
-    return inquiries.filter((i) => {
-      const name = (i.customer?.name || '').toLowerCase();
-      const email = (i.customer?.email || '').toLowerCase();
-      const phone = (i.customer?.phone?.number || '').toLowerCase();
-      const comments = (i.requirements?.comments || '').toLowerCase();
-      const stone = (i.requirements?.stoneType || '').toLowerCase();
-      const metal = (i.requirements?.metalType || '').toLowerCase();
-      return (
-        name.includes(q) ||
-        email.includes(q) ||
-        phone.includes(q) ||
-        comments.includes(q) ||
-        stone.includes(q) ||
-        metal.includes(q)
-      );
-    });
-  }, [inquiries, search]);
+  // Filtered List based on Status and Search
+  const filteredInquiries = useMemo(() => {
+    let list = inquiries;
+    if (statusFilter && statusFilter !== 'all') {
+      list = list.filter((i) => (i.status || '').toLowerCase() === statusFilter.toLowerCase());
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((i) => {
+        const name = (i.customer?.name || '').toLowerCase();
+        const email = (i.customer?.email || '').toLowerCase();
+        const phone = (i.customer?.phone?.number || '').toLowerCase();
+        const stone = (i.requirements?.stoneType || '').toLowerCase();
+        const metal = (i.requirements?.metalType || '').toLowerCase();
+        const jTypes = Array.isArray(i.requirements?.jewelryTypes)
+          ? i.requirements.jewelryTypes.join(' ').toLowerCase()
+          : '';
+        return (
+          name.includes(q) ||
+          email.includes(q) ||
+          phone.includes(q) ||
+          stone.includes(q) ||
+          metal.includes(q) ||
+          jTypes.includes(q)
+        );
+      });
+    }
+    return list;
+  }, [inquiries, statusFilter, search]);
 
-  const {
-    totalItems,
-    paginatedItems,
-  } = usePagination(displayedList, pageSize, serverTotal);
+  // Paginated List
+  const totalItems = filteredInquiries.length;
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredInquiries.slice(start, start + pageSize);
+  }, [filteredInquiries, currentPage, pageSize]);
 
-  // Checkbox selection
+  // Checkbox handlers
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      setSelectedIds(new Set(paginatedItems.map((i) => i._id || i.id)));
+      setSelectedIds(paginatedItems.map((i) => i._id || i.id));
     } else {
-      setSelectedIds(new Set());
+      setSelectedIds([]);
     }
   };
 
-  const handleSelectRow = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const handleSelectItem = (id) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
   };
 
-  const allSelected = paginatedItems.length > 0 && paginatedItems.every((i) => selectedIds.has(i._id || i.id));
+  const allSelected =
+    paginatedItems.length > 0 &&
+    paginatedItems.every((i) => selectedIds.includes(i._id || i.id));
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '10 Oct 2026';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '10 Oct 2026';
-    return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+  // Helper format budget
+  const formatBudget = (req) => {
+    if (!req) return '—';
+    if (req.budget) return req.budget;
+    if (req.estimatedBudget) {
+      if (typeof req.estimatedBudget === 'number') {
+        return `₹${req.estimatedBudget.toLocaleString('en-IN')}`;
+      }
+      return req.estimatedBudget;
+    }
+    return 'Above ₹5,00,000+';
   };
 
-  const statCardsData = [
-    {
-      label: 'Total Inquiries',
-      value: totalCount,
-      icon: HiOutlineSparkles,
-      color: 'bronze',
-    },
-    {
-      label: 'Pending Quotes',
-      value: pendingCount,
-      icon: HiOutlineClock,
-      color: 'peach',
-    },
-    {
-      label: 'In Design Phase',
-      value: inProgressCount,
-      icon: HiOutlineCheckCircle,
-      color: 'green',
-    },
-    {
-      label: 'Completed Bespoke',
-      value: completedCount,
-      icon: HiOutlinePhotograph,
-      color: 'gold',
-    },
-  ];
+  // Helper format phone
+  const formatPhone = (phoneObj) => {
+    if (!phoneObj) return '—';
+    if (typeof phoneObj === 'string') return phoneObj;
+    return phoneObj.number || '—';
+  };
 
   return (
-    <div className="space-y-2">
-      {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Custom Inquiries']}
-        title="Custom Inquiries"
-        subtitle="Manage and view custom bespoke jewelry design request submissions."
-        onAdd={() => toast.success('New bespoke inquiry intake')}
-        addLabel="New Inquiry"
-        exportData={inquiries}
-        exportFileName="custom_inquiries_export"
-      />
+    <div className="space-y-5 animate-fadeIn">
+      {/* ─── Header Row ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-stone-900 tracking-tight font-serif">
+            Custom Design Inquiries
+          </h1>
+          <p className="text-xs text-stone-400 mt-0.5">
+            Manage and view custom jewelry design request submissions from your storefront.
+          </p>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            fetchInquiries();
+            toast.success('Inquiries list refreshed');
+          }}
+          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-stone-200/90 bg-white text-xs font-bold uppercase tracking-wider text-stone-600 hover:text-stone-900 hover:bg-stone-50 shadow-2xs transition-all cursor-pointer self-start sm:self-auto"
+        >
+          <HiOutlineRefresh className="w-3.5 h-3.5 text-stone-400" />
+          <span>REFRESH LIST</span>
+        </button>
+      </div>
 
       {/* ─── 4 Stat Cards Row ─── */}
-      <StatCards cards={statCardsData} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Total Inquiries */}
+        <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
+              TOTAL INQUIRIES
+            </span>
+            <span className="text-2xl font-bold text-stone-900 font-serif">
+              {totalInquiries}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-[#faf5ee] border border-[#f0e4d2] flex items-center justify-center text-[#8f6d43]">
+            <HiOutlineSparkles className="w-5 h-5" />
+          </div>
+        </div>
 
-      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
-      <SearchFilterBar
-        search={search}
-        onSearchChange={setSearch}
-        placeholder="Search client, stone, metal or inquiry notes..."
-        onFilterClick={() => setFilterActive(!filterActive)}
-        filterActive={filterActive}
-        extraActions={
-          <button
-            type="button"
-            onClick={handleBulkDelete}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
-              selectedIds.size > 0
-                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
-                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
-            }`}
-            title={
-              selectedIds.size > 0
-                ? `Delete ${selectedIds.size} selected inquiry${selectedIds.size > 1 ? 's' : ''}`
-                : 'Select inquiries to delete'
-            }
-          >
-            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
-            <span>{selectedIds.size > 0 ? `Delete (${selectedIds.size})` : 'Delete'}</span>
-          </button>
-        }
-      />
+        {/* Total Pending */}
+        <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
+              TOTAL PENDING
+            </span>
+            <span className="text-2xl font-bold text-stone-900 font-serif">
+              {totalPending}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-600">
+            <HiOutlineClock className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Total Completed */}
+        <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
+              TOTAL COMPLETED
+            </span>
+            <span className="text-2xl font-bold text-stone-900 font-serif">
+              {totalCompleted}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200/70 flex items-center justify-center text-emerald-600">
+            <HiOutlineCheckCircle className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Total Cancelled */}
+        <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs flex items-center justify-between">
+          <div className="space-y-1">
+            <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
+              TOTAL CANCELLED
+            </span>
+            <span className="text-2xl font-bold text-stone-900 font-serif">
+              {totalCancelled}
+            </span>
+          </div>
+          <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200/70 flex items-center justify-center text-rose-500">
+            <HiOutlineExclamation className="w-5 h-5" />
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Status Filter Tabs ─── */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {STATUS_TABS.map((tab) => {
+          const isActive = statusFilter === tab.value;
+          return (
+            <button
+              key={tab.value}
+              type="button"
+              onClick={() => {
+                setStatusFilter(tab.value);
+                setCurrentPage(1);
+              }}
+              className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                isActive
+                  ? 'bg-[#8a6d4b] text-white shadow-xs'
+                  : 'bg-white hover:bg-stone-100 text-stone-500 border border-stone-200/70'
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ─── Search Input Bar ─── */}
+      <div className="bg-white rounded-2xl border border-stone-200/80 p-3 shadow-2xs flex items-center justify-between gap-4">
+        <div className="relative flex-1">
+          <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setCurrentPage(1);
+            }}
+            placeholder="Search client name or contact..."
+            className="w-full h-10 pl-10 pr-4 rounded-xl bg-stone-50/60 border border-transparent focus:border-[#8f6d43] focus:bg-white text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/20 transition-all"
+          />
+        </div>
+      </div>
 
       {/* ─── Luxury Inquiries Table ─── */}
-      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                <th className="py-2 pl-4 pr-1 w-8">
+              <tr className="border-b border-stone-100 bg-white text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                <th className="py-3 pl-4 pr-1 w-8">
                   <input
                     type="checkbox"
                     checked={allSelected}
                     onChange={handleSelectAll}
                     className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
-                    aria-label="Select all inquiries"
                   />
                 </th>
-                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
-                <th className="py-2 px-3 whitespace-nowrap">CLIENT</th>
-                <th className="py-2 px-3 whitespace-nowrap">CONTACT</th>
-                <th className="py-2 px-3 whitespace-nowrap">DESIGN SPECIFICATIONS</th>
-                <th className="py-2 px-3 whitespace-nowrap">ESTIMATED BUDGET</th>
-                <th className="py-2 px-3 whitespace-nowrap">STATUS</th>
-                <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
+                <th className="py-3 px-4 whitespace-nowrap">CLIENT INFO</th>
+                <th className="py-3 px-4 whitespace-nowrap">CONTACT</th>
+                <th className="py-3 px-4 whitespace-nowrap">DESIGN DETAILS</th>
+                <th className="py-3 px-4 whitespace-nowrap">BUDGET</th>
+                <th className="py-3 px-4 whitespace-nowrap">STATUS</th>
+                <th className="py-3 pr-5 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
-                    <div className="animate-spin w-4 h-4 border-2 border-[#8b6f4e] border-t-transparent rounded-full mx-auto mb-1.5" />
-                    Loading custom inquiries...
+                  <td colSpan="7" className="py-12 text-center text-stone-400">
+                    <div className="animate-spin w-5 h-5 border-2 border-[#8b6f4e] border-t-transparent rounded-full mx-auto mb-2" />
+                    Loading custom design inquiries...
                   </td>
                 </tr>
-              ) : displayedList.length === 0 ? (
+              ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
-                    No custom inquiries found matching &quot;{search}&quot;.
+                  <td colSpan="7" className="py-12 text-center text-stone-400">
+                    No custom design inquiries found.
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((inq, idx) => {
-                  const id = inq._id || inq.id || `inq_${idx}`;
-                  const isSelected = selectedIds.has(id);
+                paginatedItems.map((inq) => {
+                  const id = inq._id || inq.id;
+                  const isSelected = selectedIds.includes(id);
                   const clientName = inq.customer?.name || 'Anonymous Client';
                   const clientEmail = inq.customer?.email || '—';
-                  const countryCode = inq.customer?.phone?.countryCode || '91';
-                  const rawPhone = inq.customer?.phone?.number || '';
-                  const initial = (clientName || 'C')[0].toUpperCase();
-                  const metal = inq.requirements?.metalType || '18KT Gold';
+                  const phoneNum = formatPhone(inq.customer?.phone);
+                  const initial = (clientName || 'C')
+                    .split(' ')
+                    .map((s) => s[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2);
+
                   const stone = inq.requirements?.stoneType || 'Natural Diamond';
-                  const budget = Number(inq.requirements?.estimatedBudget || 0);
+                  const metal = inq.requirements?.metalType || '18KT Gold';
+                  const jTypes = Array.isArray(inq.requirements?.jewelryTypes)
+                    ? inq.requirements.jewelryTypes.join(', ')
+                    : 'RING/BAND';
+
+                  const budgetStr = formatBudget(inq.requirements);
+                  const statusVal = (inq.status || 'pending').toLowerCase();
 
                   return (
                     <tr
                       key={id}
-                      onClick={() => setSelectedInquiry({ ...inq, clientName, clientEmail, rawPhone, countryCode, metal, stone, budget })}
+                      onClick={() => setViewingInquiry(inq)}
                       className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
-                        isSelected ? 'bg-[#faf6f0]/40' : ''
+                        isSelected ? 'bg-[#faf6f0]/50' : ''
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => handleSelectRow(id)}
+                          onChange={() => handleSelectItem(id)}
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
                       </td>
 
-                      {/* Sr No */}
-                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
-                        {(currentPage - 1) * pageSize + idx + 1}
-                      </td>
-
-                      {/* Client */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-[#f4ece3] text-[#8b6f4e] font-semibold text-[11px] flex items-center justify-center border border-[#8b6f4e]/20 shadow-2xs shrink-0">
+                      {/* Client Info */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-full bg-[#f6f2ec] text-[#8a6d4b] font-bold text-xs flex items-center justify-center shrink-0 border border-[#ecd9c3]">
                             {initial}
                           </div>
                           <div className="leading-tight">
-                            <p className="font-semibold text-stone-900 text-xs leading-none">
+                            <p className="font-bold text-stone-900 text-xs">
                               {clientName}
+                            </p>
+                            <p className="text-[11px] text-stone-400 font-normal mt-0.5 max-w-[190px] truncate">
+                              {clientEmail}
                             </p>
                           </div>
                         </div>
                       </td>
 
                       {/* Contact */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="leading-tight">
-                          <div className="flex items-center gap-1 text-stone-600 text-xs">
-                            <HiOutlineMail className="w-3 h-3 text-stone-400 shrink-0" />
-                            <span className="truncate max-w-[160px]">{clientEmail}</span>
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-md bg-stone-100 flex items-center justify-center text-stone-400">
+                            <HiOutlinePhone className="w-3.5 h-3.5" />
                           </div>
-                          {rawPhone && (
-                            <div className="flex items-center gap-1 text-stone-400 text-[10px] mt-0.5">
-                              <HiOutlinePhone className="w-2.5 h-2.5 text-stone-400 shrink-0" />
-                              <span>+{countryCode} {rawPhone}</span>
-                            </div>
-                          )}
+                          <span className="font-semibold text-stone-700 text-xs font-mono">
+                            {phoneNum}
+                          </span>
                         </div>
                       </td>
 
-                      {/* Design Specifications */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
+                      {/* Design Details */}
+                      <td className="py-3 px-4 whitespace-nowrap">
                         <div className="leading-tight">
-                          <p className="font-semibold text-stone-900 text-xs leading-none">{metal}</p>
-                          <p className="text-[10px] text-stone-500 leading-none mt-0.5">{stone}</p>
+                          <p className="font-bold text-stone-900 text-xs">
+                            {stone} <span className="font-normal text-stone-400">·</span> {metal}
+                          </p>
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mt-0.5">
+                            {jTypes}
+                          </p>
                         </div>
                       </td>
 
-                      {/* Estimated Budget */}
-                      <td className="py-2.5 px-3 whitespace-nowrap font-bold text-stone-900 text-xs">
-                        {budget ? `₹ ${budget.toLocaleString('en-IN')}` : 'To Quote'}
+                      {/* Budget */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        <span className="font-semibold text-stone-800 text-xs">
+                          {budgetStr}
+                        </span>
                       </td>
 
-                      {/* Status */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        {inq.status === 'pending' && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-amber-50 text-amber-700 border border-amber-200">
+                      {/* Status Badge */}
+                      <td className="py-3 px-4 whitespace-nowrap">
+                        {statusVal === 'pending' && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/80">
                             PENDING
                           </span>
                         )}
-                        {inq.status === 'confirmed' && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            IN PROGRESS
+                        {statusVal === 'confirmed' && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-50 text-blue-700 border border-blue-200/80">
+                            CONFIRMED
                           </span>
                         )}
-                        {inq.status === 'completed' && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-blue-50 text-blue-700 border border-blue-200">
+                        {statusVal === 'completed' && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200/80">
                             COMPLETED
                           </span>
                         )}
-                        {inq.status === 'cancelled' && (
-                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
+                        {statusVal === 'cancelled' && (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-rose-50 text-rose-700 border border-rose-200/80">
                             CANCELLED
                           </span>
                         )}
                       </td>
 
-                      {/* Actions: Eye & Three Dots */}
-                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
-                        <RowActions
-                          onView={() => setSelectedInquiry({ ...inq, clientName, clientEmail, rawPhone, countryCode, metal, stone, budget })}
-                          onDelete={() => handleDelete(id, clientName)}
-                          extraActions={[
-                            ...(inq.status === 'pending'
-                              ? [
-                                  {
-                                    label: 'Approve & Quote',
-                                    icon: HiOutlineCheck,
-                                    onClick: () => handleUpdateStatus(id, 'confirmed'),
-                                  },
-                                ]
-                              : []),
-                          ]}
-                          viewTitle="View design inquiry details"
-                        />
+                      {/* Actions: View, Confirm, Cancel, Delete */}
+                      <td className="py-3 pr-5 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-1.5">
+                          {/* 1. View Eye Button */}
+                          <button
+                            type="button"
+                            onClick={() => setViewingInquiry(inq)}
+                            title="View inquiry details"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+                          >
+                            <HiOutlineEye className="w-4 h-4" />
+                          </button>
+
+                          {/* 2. Confirm Blue Check Button (Triggers Confirm Modal) */}
+                          <button
+                            type="button"
+                            onClick={() => setConfirmModalInquiry(inq)}
+                            title="Confirm Inquiry"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
+                          >
+                            <HiOutlineCheckCircle className="w-4 h-4" />
+                          </button>
+
+                          {/* 3. Cancel Ban Button */}
+                          <button
+                            type="button"
+                            onClick={() => setCancelModalInquiry(inq)}
+                            title="Cancel Inquiry"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          >
+                            <HiOutlineBan className="w-4 h-4" />
+                          </button>
+
+                          {/* 4. Delete Trash Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(id, clientName)}
+                            title="Delete Inquiry"
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          >
+                            <HiOutlineTrash className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -456,7 +545,7 @@ export default function CustomInquiriesView() {
           </table>
         </div>
 
-        {/* ─── Pagination Footer ─── */}
+        {/* Luxury Pagination */}
         <Pagination
           currentPage={currentPage}
           totalItems={totalItems}
@@ -467,72 +556,214 @@ export default function CustomInquiriesView() {
         />
       </div>
 
-      {/* ─── View Inquiry Modal ─── */}
-      {selectedInquiry && (
+      {/* ─── Confirm Inquiry Modal (Screenshot 2) ─── */}
+      {confirmModalInquiry && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
-          onClick={() => setSelectedInquiry(null)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
+          onClick={() => setConfirmModalInquiry(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200/90 space-y-5 animate-scaleUp max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl border border-stone-100 space-y-4 text-center relative animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setConfirmModalInquiry(null)}
+              className="absolute top-5 right-5 text-stone-300 hover:text-stone-600 transition-colors cursor-pointer"
+            >
+              <HiOutlineX className="w-5 h-5" />
+            </button>
+
+            {/* Alert Icon in amber box */}
+            <div className="w-14 h-14 rounded-2xl bg-[#fff7ed] border border-[#ffedd5] mx-auto flex items-center justify-center text-[#d97706] shadow-2xs">
+              <HiOutlineExclamation className="w-7 h-7 stroke-2" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-stone-900 tracking-tight font-serif">
+                Confirm Inquiry
+              </h3>
+              <p className="text-xs text-stone-500 mt-1">
+                Confirm this custom design inquiry request?
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-3">
+              <button
+                type="button"
+                onClick={() => setConfirmModalInquiry(null)}
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer"
+              >
+                NO, KEEP IT
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmInquiry}
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[#d97706] hover:bg-[#b45309] shadow-sm transition-colors cursor-pointer"
+              >
+                CONFIRM
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Cancel Inquiry Modal ─── */}
+      {cancelModalInquiry && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
+          onClick={() => setCancelModalInquiry(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl border border-stone-100 space-y-4 text-center relative animate-scaleUp"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setCancelModalInquiry(null)}
+              className="absolute top-5 right-5 text-stone-300 hover:text-stone-600 transition-colors cursor-pointer"
+            >
+              <HiOutlineX className="w-5 h-5" />
+            </button>
+
+            <div className="w-14 h-14 rounded-2xl bg-[#fff1f2] border border-[#ffe4e6] mx-auto flex items-center justify-center text-[#e11d48] shadow-2xs">
+              <HiOutlineBan className="w-7 h-7 stroke-2" />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-stone-900 tracking-tight font-serif">
+                Cancel Inquiry
+              </h3>
+              <p className="text-xs text-stone-500 mt-1">
+                Are you sure you want to cancel this custom design inquiry request?
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-3">
+              <button
+                type="button"
+                onClick={() => setCancelModalInquiry(null)}
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer"
+              >
+                NO, KEEP IT
+              </button>
+              <button
+                type="button"
+                onClick={handleCancelInquiry}
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[#e11d48] hover:bg-[#be123c] shadow-sm transition-colors cursor-pointer"
+              >
+                CANCEL REQUEST
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── View Details Modal ─── */}
+      {viewingInquiry && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
+          onClick={() => setViewingInquiry(null)}
+        >
+          <div
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-100 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900 font-serif">
-                Custom Jewelry Request
-              </h3>
+              <div>
+                <h3 className="text-base font-bold text-stone-900 font-serif">
+                  Custom Jewelry Inquiry Details
+                </h3>
+                <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">
+                  Request ID: {(viewingInquiry._id || viewingInquiry.id || '').slice(-8)}
+                </span>
+              </div>
               <button
                 type="button"
-                onClick={() => setSelectedInquiry(null)}
-                className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 cursor-pointer"
+                onClick={() => setViewingInquiry(null)}
+                className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
               >
-                <HiOutlineX className="w-4 h-4" />
+                <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-4 text-xs">
-              <div className="bg-stone-50/70 p-4 rounded-xl border border-stone-200/60 space-y-2">
+            <div className="space-y-3 text-xs">
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/60 space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="text-stone-400">Client Name</span>
-                  <span className="font-semibold text-stone-900">{selectedInquiry.clientName}</span>
+                  <span className="text-stone-400 font-semibold">Client Name</span>
+                  <span className="font-bold text-stone-900">{viewingInquiry.customer?.name}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-stone-400">Email & Phone</span>
-                  <span className="font-medium text-stone-800">{selectedInquiry.clientEmail} · +{selectedInquiry.countryCode} {selectedInquiry.rawPhone}</span>
+                  <span className="text-stone-400 font-semibold">Email</span>
+                  <span className="font-medium text-stone-800">{viewingInquiry.customer?.email}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-400 font-semibold">Phone</span>
+                  <span className="font-medium text-stone-800 font-mono">
+                    {formatPhone(viewingInquiry.customer?.phone)}
+                  </span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
-                  <span className="text-stone-400">Desired Metal</span>
-                  <span className="font-semibold text-stone-900">{selectedInquiry.metal}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-400">Stone Preference</span>
-                  <span className="font-semibold text-stone-900">{selectedInquiry.stone}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-stone-400">Target Budget</span>
-                  <span className="font-bold text-[#8b6f4e] text-sm">
-                    {selectedInquiry.budget ? `₹ ${selectedInquiry.budget.toLocaleString('en-IN')}` : 'Flexible'}
+                  <span className="text-stone-400 font-semibold">Status</span>
+                  <span className="font-bold uppercase tracking-wider text-[#8f6d43]">
+                    {viewingInquiry.status || 'pending'}
                   </span>
                 </div>
               </div>
 
-              {selectedInquiry.requirements?.comments && (
-                <div>
-                  <h4 className="text-[11px] font-bold text-stone-500 uppercase tracking-wider mb-1.5">
+              <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/60 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-400 font-semibold">Stone Type</span>
+                  <span className="font-bold text-stone-900">{viewingInquiry.requirements?.stoneType}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-400 font-semibold">Metal Type</span>
+                  <span className="font-bold text-stone-900">{viewingInquiry.requirements?.metalType}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-stone-400 font-semibold">Jewelry Type</span>
+                  <span className="font-bold text-stone-900">
+                    {Array.isArray(viewingInquiry.requirements?.jewelryTypes)
+                      ? viewingInquiry.requirements.jewelryTypes.join(', ')
+                      : 'RING/BAND'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
+                  <span className="text-stone-400 font-semibold">Target Budget</span>
+                  <span className="font-bold text-[#8f6d43] text-sm">
+                    {formatBudget(viewingInquiry.requirements)}
+                  </span>
+                </div>
+              </div>
+
+              {viewingInquiry.requirements?.comments && (
+                <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e8d9c2] space-y-1">
+                  <span className="block text-[10px] font-bold text-[#8f6d43] uppercase tracking-wider">
                     Client Design Notes
-                  </h4>
-                  <p className="p-3 bg-stone-50/50 rounded-xl border border-stone-200 text-stone-700 leading-relaxed italic">
-                    &quot;{selectedInquiry.requirements.comments}&quot;
+                  </span>
+                  <p className="text-xs text-stone-700 italic leading-relaxed">
+                    &quot;{viewingInquiry.requirements.comments}&quot;
                   </p>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex items-center gap-2 pt-2">
               <button
                 type="button"
-                onClick={() => setSelectedInquiry(null)}
-                className="w-full py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                onClick={() => {
+                  const inq = viewingInquiry;
+                  setViewingInquiry(null);
+                  setConfirmModalInquiry(inq);
+                }}
+                className="flex-1 py-2.5 bg-[#8f6d43] hover:bg-[#785e40] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer text-center"
+              >
+                Confirm Request
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewingInquiry(null)}
+                className="px-5 py-2.5 border border-stone-200 hover:bg-stone-50 text-stone-700 text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer"
               >
                 Close
               </button>

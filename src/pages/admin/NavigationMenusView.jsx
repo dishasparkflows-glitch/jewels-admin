@@ -29,11 +29,9 @@ import {
   IoRibbonOutline,
   IoColorPaletteOutline,
   IoLayersOutline,
-  IoImagesOutline,
 } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
@@ -73,7 +71,7 @@ export default function NavigationMenusView() {
   const [currentView, setCurrentView] = useState('list');
   const [selectedMenu, setSelectedMenu] = useState(null);
 
-  // Detail Sub-Tabs: 'sections' (Screen 2) | 'banners' (Screen 4) | 'basic'
+  // Detail Sub-Tabs: 'sections' (Screen 2) | 'basic'
   const [detailTab, setDetailTab] = useState('sections');
 
   // Modal States
@@ -99,19 +97,6 @@ export default function NavigationMenusView() {
   const [sectionFormData, setSectionFormData] = useState({
     title: '',
     icon: 'star',
-    status: 'active',
-    order: 1,
-  });
-
-  // Banner Modal (Screen 4)
-  const [isBannerModalOpen, setIsBannerModalOpen] = useState(false);
-  const [editingBannerId, setEditingBannerId] = useState(null);
-  const [bannerFormData, setBannerFormData] = useState({
-    title: '',
-    subtitle: '',
-    imageUrl: '',
-    categoryId: '',
-    categoryName: '',
     status: 'active',
     order: 1,
   });
@@ -351,101 +336,6 @@ export default function NavigationMenusView() {
       fetchMenus();
     } catch {
       toast.error('Could not delete section');
-    }
-  };
-
-  // ─── Banner CRUD (Screen 4) ────────────────────────────────
-  const handleOpenAddBanner = () => {
-    setEditingBannerId(null);
-    setBannerFormData({
-      title: '',
-      subtitle: '',
-      imageUrl: '',
-      categoryId: selectedMenu?.categoryId?._id || selectedMenu?.categoryId || '',
-      categoryName: selectedMenu?.categoryId?.name || selectedMenu?.title || '',
-      status: 'active',
-      order: (selectedMenu?.banners?.length || 0) + 1,
-    });
-    setIsBannerModalOpen(true);
-  };
-
-  const handleSaveBanner = async (e) => {
-    e.preventDefault();
-    if (!bannerFormData.title.trim()) {
-      toast.error('Please enter banner title');
-      return;
-    }
-    if (!selectedMenu?._id) return;
-
-    try {
-      const payload = {
-        title: bannerFormData.title.trim(),
-        subtitle: bannerFormData.subtitle.trim(),
-        image: { url: bannerFormData.imageUrl },
-        categoryId: bannerFormData.categoryId || null,
-        categoryName: bannerFormData.categoryName,
-        status: bannerFormData.status,
-        order: Number(bannerFormData.order) || 1,
-      };
-
-      if (editingBannerId) {
-        const res = await api.put(
-          `/navigation-menus/${selectedMenu._id}/banners/${editingBannerId}`,
-          payload
-        );
-        toast.success('Banner updated!');
-        setSelectedMenu(res.data?.data);
-      } else {
-        const res = await api.post(
-          `/navigation-menus/${selectedMenu._id}/banners`,
-          payload
-        );
-        toast.success('Banner added!');
-        setSelectedMenu(res.data?.data);
-      }
-      setIsBannerModalOpen(false);
-      fetchMenus();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save banner');
-    }
-  };
-
-  const handleUpdateBannerField = async (bannerId, field, value) => {
-    if (!selectedMenu?._id) return;
-    try {
-      const target = selectedMenu.banners?.find((b) => b._id === bannerId);
-      if (!target) return;
-      const updated = { ...target, [field]: value };
-      const res = await api.put(
-        `/navigation-menus/${selectedMenu._id}/banners/${bannerId}`,
-        updated
-      );
-      setSelectedMenu(res.data?.data);
-      toast.success('Banner updated');
-    } catch {
-      toast.error('Failed to update banner');
-    }
-  };
-
-  const handleDeleteBanner = async (bannerId) => {
-    if (!selectedMenu?._id) return;
-    const ok = await confirm({
-      title: 'Delete Banner',
-      message: 'Are you sure you want to remove this promotional banner card?',
-      confirmText: 'Delete Banner',
-      cancelText: 'Cancel',
-    });
-    if (!ok) return;
-
-    try {
-      const res = await api.delete(
-        `/navigation-menus/${selectedMenu._id}/banners/${bannerId}`
-      );
-      toast.success('Banner deleted');
-      setSelectedMenu(res.data?.data);
-      fetchMenus();
-    } catch {
-      toast.error('Could not delete banner');
     }
   };
 
@@ -721,7 +611,7 @@ export default function NavigationMenusView() {
       )}
 
       {/* ════════════════════════════════════════════════════════════
-          SCREEN 2 & SCREEN 4: DETAILED MENU VIEW (Sections & Banners)
+          SCREEN 2: DETAILED MENU VIEW (Sections)
       ════════════════════════════════════════════════════════════ */}
       {currentView === 'detail' && selectedMenu && (
         <div className="space-y-4 animate-fadeIn">
@@ -788,31 +678,16 @@ export default function NavigationMenusView() {
                   <span>Add Section</span>
                 </button>
               )}
-
-              {detailTab === 'banners' && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddBanner}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer"
-                >
-                  <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-                  <span>Add Banner</span>
-                </button>
-              )}
             </div>
           </div>
 
-          {/* ─── Detail Sub-Tabs (Basic Info, Menu Sections (N), Banners (M)) ── */}
+          {/* ─── Detail Sub-Tabs (Basic Info, Menu Sections (N)) ── */}
           <div className="flex items-center gap-2 border-b border-stone-200/90 pb-2">
             {[
               { id: 'basic', label: 'Basic Info' },
               {
                 id: 'sections',
                 label: `Menu Sections (${selectedMenu.sections?.length || 0})`,
-              },
-              {
-                id: 'banners',
-                label: `Banners (${selectedMenu.banners?.length || 0})`,
               },
             ].map((tab) => {
               const isActive = detailTab === tab.id;
@@ -917,132 +792,6 @@ export default function NavigationMenusView() {
             </div>
           )}
 
-          {/* ─── SCREEN 4: BANNERS TAB ──────────────────────────── */}
-          {detailTab === 'banners' && (
-            <div className="space-y-3 animate-fadeIn">
-              {(selectedMenu.banners?.length || 0) === 0 ? (
-                <div className="bg-white rounded-2xl border border-stone-200/90 p-12 text-center text-stone-400">
-                  <IoImagesOutline className="w-8 h-8 text-stone-300 mx-auto mb-2" />
-                  <p className="text-sm font-semibold text-stone-600">No promotional banners configured</p>
-                  <p className="text-xs text-stone-400 mt-1">
-                    Add banners to feature prominent collections inside this mega menu.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={handleOpenAddBanner}
-                    className="mt-4 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl shadow-xs cursor-pointer"
-                  >
-                    Add First Banner
-                  </button>
-                </div>
-              ) : (
-                selectedMenu.banners.map((banner, idx) => (
-                  <div
-                    key={banner._id || idx}
-                    className="bg-white rounded-2xl border border-stone-200/90 p-4 shadow-2xs flex flex-col lg:flex-row items-center gap-4 transition-all hover:border-[#8b6f4e]/40"
-                  >
-                    {/* Drag Handle */}
-                    <div className="text-stone-300 hover:text-stone-500 cursor-grab hidden lg:block">
-                      <HiOutlineMenuAlt2 className="w-5 h-5" />
-                    </div>
-
-                    {/* Banner Image Preview */}
-                    <div className="w-full lg:w-48 h-28 rounded-xl bg-stone-100 border border-stone-200/80 overflow-hidden flex-shrink-0 relative group">
-                      {banner.image?.url ? (
-                        <img
-                          src={banner.image.url}
-                          alt={banner.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-stone-400 text-[11px] font-medium">
-                          No banner image
-                        </div>
-                      )}
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-[10px] font-bold">
-                        Banner Preview
-                      </div>
-                    </div>
-
-                    {/* Banner Editable Form Grid */}
-                    <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      {/* Title */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-stone-700">Title</label>
-                        <input
-                          type="text"
-                          defaultValue={banner.title}
-                          onBlur={(e) => handleUpdateBannerField(banner._id, 'title', e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                      </div>
-
-                      {/* Subtitle */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-stone-700">Subtitle</label>
-                        <input
-                          type="text"
-                          defaultValue={banner.subtitle}
-                          onBlur={(e) => handleUpdateBannerField(banner._id, 'subtitle', e.target.value)}
-                          className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Actions: Status Toggle + Order + Delete */}
-                    <div className="flex items-center gap-3 pt-2 lg:pt-0 border-t lg:border-t-0 border-stone-100 w-full lg:w-auto justify-between lg:justify-end">
-                      {/* Status */}
-                      <div className="flex flex-col items-center">
-                        <span className="text-[10px] font-bold text-stone-400 mb-1">Status</span>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            handleUpdateBannerField(
-                              banner._id,
-                              'status',
-                              banner.status === 'active' ? 'inactive' : 'active'
-                            )
-                          }
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
-                            banner.status === 'active' ? 'bg-[#8b6f4e]' : 'bg-stone-300'
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow-2xs ${
-                              banner.status === 'active' ? 'translate-x-4.5' : 'translate-x-1'
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      {/* Order Input */}
-                      <div className="flex flex-col items-center">
-                        <span className="text-[10px] font-bold text-stone-400 mb-1">Order</span>
-                        <input
-                          type="number"
-                          defaultValue={banner.order || idx + 1}
-                          onBlur={(e) =>
-                            handleUpdateBannerField(banner._id, 'order', Number(e.target.value) || 1)
-                          }
-                          className="w-12 px-2 py-1 text-center text-xs font-mono font-bold rounded-lg border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                      </div>
-
-                      {/* Delete Button */}
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteBanner(banner._id)}
-                        className="w-8 h-8 rounded-xl border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors cursor-pointer mt-3"
-                        title="Delete Banner"
-                      >
-                        <HiOutlineTrash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
 
           {/* ─── BASIC INFO TAB ─────────────────────────────────── */}
           {detailTab === 'basic' && (
@@ -1079,7 +828,7 @@ export default function NavigationMenusView() {
                   <div>
                     <span className="font-bold text-stone-700 block">Mega Menu Behavior</span>
                     <span className="text-[11px] text-stone-400">
-                      Show full width dropdown with sections and banners
+                      Show full width dropdown with sections
                     </span>
                   </div>
                   <input
@@ -1433,116 +1182,6 @@ export default function NavigationMenusView() {
                   className="px-5 py-2 text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl font-semibold shadow-xs"
                 >
                   Save Section
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─── ADD / EDIT BANNER MODAL ────────────────────────── */}
-      {isBannerModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
-          onClick={() => setIsBannerModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900 font-serif">
-                {editingBannerId ? 'Edit Banner' : 'Add Mega Menu Banner'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsBannerModalOpen(false)}
-                className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700"
-              >
-                <HiOutlineX className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveBanner} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">Banner Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Diamond Rings, Wedding Bands"
-                  value={bannerFormData.title}
-                  onChange={(e) =>
-                    setBannerFormData((prev) => ({ ...prev, title: e.target.value }))
-                  }
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">Subtitle</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Timeless Brilliance, For Every Story"
-                  value={bannerFormData.subtitle}
-                  onChange={(e) =>
-                    setBannerFormData((prev) => ({ ...prev, subtitle: e.target.value }))
-                  }
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">Image URL</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={bannerFormData.imageUrl}
-                    placeholder="https://... or upload image"
-                    onChange={(e) =>
-                      setBannerFormData((prev) => ({ ...prev, imageUrl: e.target.value }))
-                    }
-                    className="flex-1 px-3.5 py-2 rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] text-xs"
-                  />
-                  <label className="px-3 py-2 bg-stone-100 hover:bg-[#8b6f4e] hover:text-white rounded-xl text-stone-600 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold shrink-0">
-                    <HiOutlineUpload className="w-4 h-4" />
-                    <span>Upload</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={async (e) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        try {
-                          toast.loading('Uploading banner...', { id: 'nav-banner' });
-                          const { fileUrl } = await uploadWithPresignedUrl(file, 'navigation-menus');
-                          setBannerFormData((prev) => ({ ...prev, imageUrl: fileUrl }));
-                          toast.success('Banner uploaded!', { id: 'nav-banner' });
-                        } catch (err) {
-                          toast.error('Upload failed: ' + err.message, { id: 'nav-banner' });
-                        } finally {
-                          if (e.target) e.target.value = '';
-                        }
-                      }}
-                    />
-                  </label>
-                </div>
-              </div>
-
-
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-stone-100">
-                <button
-                  type="button"
-                  onClick={() => setIsBannerModalOpen(false)}
-                  className="px-4 py-2 text-stone-600 hover:bg-stone-50 rounded-xl font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl font-semibold shadow-xs"
-                >
-                  Save Banner
                 </button>
               </div>
             </form>
