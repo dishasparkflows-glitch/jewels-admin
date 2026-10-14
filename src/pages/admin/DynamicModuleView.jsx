@@ -11,6 +11,10 @@ import {
   HiOutlineEye,
   HiOutlinePencil,
   HiOutlineX,
+  HiOutlineUpload,
+  HiOutlinePhotograph,
+  HiOutlineSparkles,
+  HiOutlineCheck,
 } from 'react-icons/hi';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -20,6 +24,8 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { getMediaUrl } from '../../utils/imageUrl';
 
 const routeMap = {
   // ─── 1. Diamond Config ───────────────────────────
@@ -139,9 +145,12 @@ const routeMap = {
   '/catalog/categories': {
     endpoint: '/categories',
     title: 'Categories',
+    singularTitle: 'Category',
     fields: [
-      { name: 'name', label: 'Category Name', type: 'text', required: true },
+      { name: 'name', label: 'Category Name', type: 'text', required: true, placeholder: 'e.g. Rings, Necklaces' },
       { name: 'type', label: 'Type', type: 'select', options: ['category', 'collection'], default: 'category' },
+      { name: 'icon', label: 'Icon', type: 'icon', placeholder: 'Upload Icon' },
+      { name: 'banner', label: 'Banner', type: 'banner', placeholder: 'Upload Banner' },
     ],
   },
   '/catalog/navigation-menus': {
@@ -194,26 +203,81 @@ const DynamicModuleView = () => {
     title: pathname.split('/').filter(Boolean).map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(' '),
   };
 
-  const handleOpenAdd = () => {
-    if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
-      navigate('/catalog/jewelry-products/add');
-    } else if (pathname === '/catalog/ornate-products' || pathname.includes('ornate-products')) {
-      navigate('/catalog/ornate-products/add');
-    } else {
-      setIsModalOpen(true);
-    }
-  };
+  const singleName =
+    config.singularTitle ||
+    (config.title.endsWith('ies')
+      ? config.title.slice(0, -3) + 'y'
+      : config.title.replace(/s$/, ''));
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [lookupData, setLookupData] = useState({}); // { fieldName: [{ value, label }] }
+  const [uploadingField, setUploadingField] = useState(null);
+
+  const handleOpenAdd = () => {
+    if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
+      navigate('/catalog/jewelry-products/add');
+    } else if (pathname === '/catalog/ornate-products' || pathname.includes('ornate-products')) {
+      navigate('/catalog/ornate-products/add');
+    } else {
+      setEditingRecord(null);
+      const defaults = {};
+      (config.fields || []).forEach((f) => {
+        if (f.default !== undefined) defaults[f.name] = f.default;
+      });
+      setFormData(defaults);
+      setIsModalOpen(true);
+    }
+  };
+
+  const handleOpenEdit = (row) => {
+    setEditingRecord(row);
+    const initial = {};
+    if (config.fields) {
+      config.fields.forEach((f) => {
+        let val = row[f.name];
+        if (val && typeof val === 'object' && val.url) {
+          val = val.url;
+        }
+        initial[f.name] = val !== undefined ? val : (f.default || '');
+      });
+    }
+    if (row.name && initial.name === undefined) initial.name = row.name;
+    if (row.type && initial.type === undefined) initial.type = row.type;
+    if (row.icon !== undefined && initial.icon === undefined) {
+      initial.icon = typeof row.icon === 'object' ? row.icon.url : row.icon;
+    }
+    if (row.banner !== undefined && initial.banner === undefined) {
+      initial.banner = typeof row.banner === 'object' ? row.banner.url : row.banner;
+    }
+    setFormData(initial);
+    setIsModalOpen(true);
+  };
+
+  const handleFileUpload = async (fieldName, file, folder = 'categories') => {
+    if (!file) return;
+    try {
+      setUploadingField(fieldName);
+      toast.loading(`Uploading ${fieldName}...`, { id: `upload-${fieldName}` });
+      const { fileUrl } = await uploadWithPresignedUrl(file, folder);
+      setFormData((prev) => ({ ...prev, [fieldName]: fileUrl }));
+      toast.success(`${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} uploaded!`, {
+        id: `upload-${fieldName}`,
+      });
+    } catch (err) {
+      toast.error(`Upload failed: ${err.message}`, { id: `upload-${fieldName}` });
+    } finally {
+      setUploadingField(null);
+    }
+  };
 
   const isOrnatePage = pathname.includes('ornate-products');
 
@@ -329,12 +393,23 @@ const DynamicModuleView = () => {
     fetchLookups();
   }, [isModalOpen, config.fields]);
 
-  const handleCreate = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       setSaving(true);
       const cleanEndpoint = config.endpoint.split('?')[0];
       let payload = { ...formData };
+
+      // Ensure proper structure for categories
+      if (cleanEndpoint === '/categories') {
+        if (typeof payload.icon === 'string') {
+          payload.icon = { url: payload.icon.trim(), public_id: '' };
+        }
+        if (typeof payload.banner === 'string') {
+          payload.banner = { url: payload.banner.trim(), public_id: '' };
+        }
+      }
+
       if (cleanEndpoint === '/products') {
         const title = formData.title || 'Diamond Ring';
         const sku = formData.sku || 'RNG-001';
@@ -403,13 +478,21 @@ const DynamicModuleView = () => {
           isOrnate,
         };
       }
-      await api.post(cleanEndpoint, payload);
-      toast.success(`${config.title} record created!`);
+
+      if (editingRecord) {
+        await api.put(`${cleanEndpoint}/${editingRecord._id || editingRecord.id}`, payload);
+        toast.success(`${singleName} updated successfully!`);
+      } else {
+        await api.post(cleanEndpoint, payload);
+        toast.success(`${singleName} created successfully!`);
+      }
+
       setIsModalOpen(false);
+      setEditingRecord(null);
       setFormData({});
       fetchItems();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create record');
+      toast.error(err.response?.data?.message || 'Failed to save record');
     } finally {
       setSaving(false);
     }
@@ -690,11 +773,29 @@ const DynamicModuleView = () => {
                 <tbody className="divide-y divide-stone-100 text-xs">
                   {paginatedItems.map((row, idx) => {
                     const rowLabel = getRowLabel(row);
-                    const thumbUrl =
+                    const isEmoji =
+                      typeof row.icon === 'string' &&
+                      row.icon.length <= 4 &&
+                      !row.icon.startsWith('http') &&
+                      !row.icon.startsWith('/');
+
+                    const rawThumb =
+                      row.icon?.url ||
+                      (typeof row.icon === 'string' &&
+                      (row.icon.startsWith('http') || row.icon.startsWith('/'))
+                        ? row.icon
+                        : null) ||
+                      row.banner?.url ||
+                      (typeof row.banner === 'string' &&
+                      (row.banner.startsWith('http') || row.banner.startsWith('/'))
+                        ? row.banner
+                        : null) ||
                       row.image?.url ||
                       row.lightImage?.url ||
                       (Array.isArray(row.images) && row.images[0]?.url) ||
                       (Array.isArray(row.ornateImages) && row.ornateImages[0]?.url);
+
+                    const thumbUrl = getMediaUrl(rawThumb);
 
                     const typeName =
                       typeof row.typeId === 'object' && row.typeId !== null
@@ -755,13 +856,17 @@ const DynamicModuleView = () => {
                           {(currentPage - 1) * pageSize + idx + 1}
                         </td>
                         <td className="py-2.5 px-3 text-stone-900 text-xs font-semibold flex items-center gap-2.5">
-                          {thumbUrl && (
+                          {isEmoji ? (
+                            <span className="w-7 h-7 rounded-md bg-[#faf5ed] border border-[#e8d8c0] flex items-center justify-center text-sm shrink-0 shadow-2xs">
+                              {row.icon}
+                            </span>
+                          ) : thumbUrl ? (
                             <img
                               src={thumbUrl}
                               alt=""
                               className="w-7 h-7 rounded-md object-cover border border-stone-200 shrink-0"
                             />
-                          )}
+                          ) : null}
                           <span className="truncate max-w-xs">{rowLabel}</span>
                         </td>
                         <td className="py-2.5 px-3 text-stone-600 text-xs">
@@ -818,6 +923,16 @@ const DynamicModuleView = () => {
                                 {typeName}
                               </span>
                             )}
+                            {row.banner && (row.banner.url || (typeof row.banner === 'string' && row.banner)) && (
+                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[10px] font-medium">
+                                Banner ✓
+                              </span>
+                            )}
+                            {row.icon && (row.icon.url || (typeof row.icon === 'string' && row.icon)) && !isEmoji && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
+                                Icon ✓
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="py-2.5 px-3">
@@ -840,7 +955,7 @@ const DynamicModuleView = () => {
                               } else if (pathname.includes('jewelry-products')) {
                                 navigate(`/catalog/jewelry-products/edit/${row._id || row.id}`);
                               } else {
-                                setViewingRecord(row);
+                                handleOpenEdit(row);
                               }
                             }}
                             onDelete={() => handleDelete(row._id || row.id)}
@@ -865,67 +980,235 @@ const DynamicModuleView = () => {
         </div>
       </div>
 
-      {/* ─── Create Record Modal ────────────────────────────── */}
+      {/* ─── Create / Edit Record Modal ────────────────────────────── */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs"
-          onClick={() => setIsModalOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-200"
+          onClick={() => {
+            setIsModalOpen(false);
+            setEditingRecord(null);
+          }}
         >
           <div
-            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-5 animate-in fade-in zoom-in duration-200"
+            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900">
-                Create New {config.title.replace(/s$/, '')}
-              </h3>
+              <div>
+                <h3 className="text-base font-bold text-stone-900">
+                  {editingRecord ? 'Edit' : 'Create New'} {singleName}
+                </h3>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-[#8b6f4e] block mt-0.5">
+                  LUXURY CATALOG MANAGEMENT
+                </span>
+              </div>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg"
+                type="button"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setEditingRecord(null);
+                }}
+                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
               >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreate} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {config.fields?.map((field) => (
                 <div key={field.name} className="space-y-1">
-                  <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                    {field.label}
-                  </label>
-                  {field.type === 'select' ? (
-                    <Dropdown
-                      value={formData[field.name] || field.default || ''}
-                      onChange={(val) =>
-                        setFormData((prev) => ({ ...prev, [field.name]: val }))
-                      }
-                      options={field.options}
-                      placeholder={`Select ${field.label}`}
-                      size="sm"
-                      buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
-                    />
-                  ) : field.type === 'lookup' ? (
-                    <Dropdown
-                      value={formData[field.name] || ''}
-                      onChange={(val) =>
-                        setFormData((prev) => ({ ...prev, [field.name]: val }))
-                      }
-                      options={lookupData[field.name] || []}
-                      placeholder={`Select ${field.label}`}
-                      size="sm"
-                      buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
-                    />
+                  {/* Category Banner Option */}
+                  {field.type === 'banner' ? (
+                    <div className="space-y-2 p-3.5 bg-stone-50/80 rounded-2xl border border-stone-200/80">
+                      <div className="flex items-center gap-1.5">
+                        <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                        <span className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                          {field.label}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2 pt-1">
+                        {formData[field.name] ? (
+                          <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
+                            <img
+                              src={getMediaUrl(
+                                typeof formData[field.name] === 'object'
+                                  ? formData[field.name].url
+                                  : formData[field.name]
+                              )}
+                              alt="Banner preview"
+                              className="w-full h-28 object-cover"
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
+                                <HiOutlineUpload className="w-3.5 h-3.5" />
+                                <span>Change</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleFileUpload(field.name, file, 'categories');
+                                  }}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setFormData((prev) => ({ ...prev, [field.name]: '' }))
+                                }
+                                className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
+                              >
+                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label
+                            className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                              uploadingField === field.name
+                                ? 'border-[#8b6f4e] bg-[#faf5ed]'
+                                : 'border-stone-200 bg-white hover:border-[#8b6f4e] hover:bg-[#fcfaf7]'
+                            }`}
+                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={uploadingField === field.name}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFileUpload(field.name, file, 'categories');
+                              }}
+                            />
+                            {uploadingField === field.name ? (
+                              <>
+                                <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                <span className="text-[11px] font-semibold text-[#8b6f4e]">
+                                  Uploading banner...
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <HiOutlineUpload className="w-5 h-5 text-stone-400 group-hover:text-[#8b6f4e]" />
+                                <span className="text-xs font-semibold text-stone-700">
+                                  Click to upload category banner
+                                </span>
+                              </>
+                            )}
+                          </label>
+                        )}
+                      </div>
+                    </div>
+                  ) : field.type === 'icon' ? (
+                    /* Category Icon Field */
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                        <span>{field.label}</span>
+                      </label>
+
+                      <div className="flex items-center gap-3">
+                        {/* Visual Icon Preview Box */}
+                        <div className="w-11 h-11 rounded-xl border border-stone-200 bg-[#fdfcfb] flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                          {formData[field.name] ? (
+                            <img
+                              src={getMediaUrl(
+                                typeof formData[field.name] === 'object'
+                                  ? formData[field.name].url
+                                  : formData[field.name]
+                              )}
+                              alt="Icon"
+                              className="w-7 h-7 object-contain"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <HiOutlineSparkles className="w-4 h-4 text-stone-300" />
+                          )}
+                        </div>
+
+                        {/* Upload button for icon */}
+                        <label className="flex-1 py-2.5 px-4 bg-stone-50 hover:bg-stone-100 border border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-xl text-stone-700 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs font-semibold shadow-2xs">
+                          {uploadingField === field.name ? (
+                            <>
+                              <div className="w-3.5 h-3.5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                              <span className="text-[#8b6f4e]">Uploading icon...</span>
+                            </>
+                          ) : (
+                            <>
+                              <HiOutlineUpload className="w-4 h-4 text-stone-500" />
+                              <span>{formData[field.name] ? 'Change Category Icon' : 'Upload Category Icon'}</span>
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                            className="hidden"
+                            disabled={uploadingField === field.name}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFileUpload(field.name, file, 'categories');
+                            }}
+                          />
+                        </label>
+
+                        {/* Clear Button */}
+                        {formData[field.name] && (
+                          <button
+                            type="button"
+                            onClick={() => setFormData((prev) => ({ ...prev, [field.name]: '' }))}
+                            className="p-2.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-stone-200"
+                            title="Clear Icon"
+                          >
+                            <HiOutlineX className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
                   ) : (
-                    <input
-                      type={field.type}
-                      required={field.required}
-                      placeholder={field.label}
-                      value={formData[field.name] || ''}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, [field.name]: e.target.value }))
-                      }
-                      className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
+                    <>
+                      <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                        {field.label}
+                      </label>
+                      {field.type === 'select' ? (
+                        <Dropdown
+                          value={formData[field.name] || field.default || ''}
+                          onChange={(val) =>
+                            setFormData((prev) => ({ ...prev, [field.name]: val }))
+                          }
+                          options={field.options}
+                          placeholder={`Select ${field.label}`}
+                          size="sm"
+                          buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
+                        />
+                      ) : field.type === 'lookup' ? (
+                        <Dropdown
+                          value={formData[field.name] || ''}
+                          onChange={(val) =>
+                            setFormData((prev) => ({ ...prev, [field.name]: val }))
+                          }
+                          options={lookupData[field.name] || []}
+                          placeholder={`Select ${field.label}`}
+                          size="sm"
+                          buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
+                        />
+                      ) : (
+                        <input
+                          type={field.type}
+                          required={field.required}
+                          placeholder={field.placeholder || field.label}
+                          value={formData[field.name] || ''}
+                          onChange={(e) =>
+                            setFormData((prev) => ({ ...prev, [field.name]: e.target.value }))
+                          }
+                          className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                        />
+                      )}
+                    </>
                   )}
                 </div>
               ))}
@@ -933,8 +1216,11 @@ const DynamicModuleView = () => {
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-100">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 rounded-xl"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingRecord(null);
+                  }}
+                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 rounded-xl cursor-pointer"
                 >
                   Cancel
                 </button>
@@ -943,7 +1229,13 @@ const DynamicModuleView = () => {
                   disabled={saving}
                   className="px-5 py-2 text-xs font-semibold tracking-wider text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl uppercase shadow-sm cursor-pointer disabled:opacity-50"
                 >
-                  {saving ? 'Creating...' : 'Create Record'}
+                  {saving
+                    ? editingRecord
+                      ? 'Saving...'
+                      : 'Creating...'
+                    : editingRecord
+                      ? 'Save Changes'
+                      : 'Create Record'}
                 </button>
               </div>
             </form>
@@ -985,10 +1277,20 @@ const DynamicModuleView = () => {
             </div>
 
             {/* Media thumbnail if exists */}
-            {(viewingRecord.image?.url || viewingRecord.lightImage?.url || (Array.isArray(viewingRecord.images) && viewingRecord.images[0]?.url)) && (
+            {(viewingRecord.banner?.url ||
+              (typeof viewingRecord.banner === 'string' && viewingRecord.banner) ||
+              viewingRecord.image?.url ||
+              viewingRecord.lightImage?.url ||
+              (Array.isArray(viewingRecord.images) && viewingRecord.images[0]?.url)) && (
               <div className="w-full h-44 rounded-xl overflow-hidden bg-stone-50 border border-stone-200/60 flex items-center justify-center">
                 <img
-                  src={viewingRecord.image?.url || viewingRecord.lightImage?.url || viewingRecord.images[0]?.url}
+                  src={getMediaUrl(
+                    viewingRecord.banner?.url ||
+                      (typeof viewingRecord.banner === 'string' ? viewingRecord.banner : null) ||
+                      viewingRecord.image?.url ||
+                      viewingRecord.lightImage?.url ||
+                      viewingRecord.images[0]?.url
+                  )}
                   alt={getRowLabel(viewingRecord)}
                   className="w-full h-full object-contain"
                 />
@@ -1001,6 +1303,44 @@ const DynamicModuleView = () => {
                 <span className="text-stone-400 font-medium">Name / Title</span>
                 <span className="font-bold text-stone-900 text-right">{getRowLabel(viewingRecord)}</span>
               </div>
+              {viewingRecord.icon && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Category Icon</span>
+                  <span className="flex items-center gap-1.5 font-semibold text-stone-800">
+                    {typeof viewingRecord.icon === 'string' &&
+                    viewingRecord.icon.length <= 4 &&
+                    !viewingRecord.icon.startsWith('http') &&
+                    !viewingRecord.icon.startsWith('/') ? (
+                      <span className="text-base">{viewingRecord.icon}</span>
+                    ) : (
+                      <img
+                        src={getMediaUrl(
+                          typeof viewingRecord.icon === 'object'
+                            ? viewingRecord.icon.url
+                            : viewingRecord.icon
+                        )}
+                        alt="Icon"
+                        className="w-5 h-5 object-contain"
+                      />
+                    )}
+                    <span className="text-xs font-mono text-stone-600">
+                      {typeof viewingRecord.icon === 'object'
+                        ? viewingRecord.icon.url
+                        : viewingRecord.icon}
+                    </span>
+                  </span>
+                </div>
+              )}
+              {viewingRecord.banner && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Category Banner</span>
+                  <span className="font-mono text-[11px] text-stone-700 truncate max-w-[200px]">
+                    {typeof viewingRecord.banner === 'object'
+                      ? viewingRecord.banner.url
+                      : viewingRecord.banner}
+                  </span>
+                </div>
+              )}
               {viewingRecord.sku && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
                   <span className="text-stone-400 font-medium">SKU / Code</span>
@@ -1071,7 +1411,7 @@ const DynamicModuleView = () => {
               )}
             </div>
 
-            {isOrnatePage && (
+            {isOrnatePage ? (
               <button
                 type="button"
                 onClick={() => {
@@ -1081,6 +1421,19 @@ const DynamicModuleView = () => {
               >
                 <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Edit Product (Tab-Wise Designer)</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  const rec = viewingRecord;
+                  setViewingRecord(null);
+                  handleOpenEdit(rec);
+                }}
+                className="w-full py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2 mb-2"
+              >
+                <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Edit {singleName}</span>
               </button>
             )}
 

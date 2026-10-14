@@ -361,8 +361,8 @@ export default function NavigationMenusView() {
       title: '',
       subtitle: '',
       imageUrl: '',
-      categoryId: categories[0]?._id || '',
-      categoryName: categories[0]?.name || '',
+      categoryId: selectedMenu?.categoryId?._id || selectedMenu?.categoryId || '',
+      categoryName: selectedMenu?.categoryId?.name || selectedMenu?.title || '',
       status: 'active',
       order: (selectedMenu?.banners?.length || 0) + 1,
     });
@@ -482,13 +482,10 @@ export default function NavigationMenusView() {
             </button>
           </div>
 
-          {/* ─── Main Tabs Bar (Matches Screenshot 1) ─────────── */}
+          {/* ─── Main Tabs Bar ─────────── */}
           <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
             {[
               { id: 'main', label: 'Main Navigation' },
-              { id: 'footer', label: 'Footer Navigation' },
-              { id: 'utility', label: 'Utility Links' },
-              { id: 'settings', label: 'Settings' },
             ].map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -968,7 +965,7 @@ export default function NavigationMenusView() {
                     </div>
 
                     {/* Banner Editable Form Grid */}
-                    <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                    <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                       {/* Title */}
                       <div className="space-y-1">
                         <label className="text-[11px] font-bold text-stone-700">Title</label>
@@ -988,21 +985,6 @@ export default function NavigationMenusView() {
                           defaultValue={banner.subtitle}
                           onBlur={(e) => handleUpdateBannerField(banner._id, 'subtitle', e.target.value)}
                           className="w-full px-3 py-1.5 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                      </div>
-
-                      {/* Category Selection */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-stone-700">Category</label>
-                        <Dropdown
-                          size="sm"
-                          value={banner.categoryId || categories[0]?._id}
-                          onChange={(val, opt) => {
-                            handleUpdateBannerField(banner._id, 'categoryId', val);
-                            if (opt?.label) handleUpdateBannerField(banner._id, 'categoryName', opt.label);
-                          }}
-                          options={categoryOptions}
-                          buttonClassName="h-8.5 px-3 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
                         />
                       </div>
                     </div>
@@ -1547,21 +1529,6 @@ export default function NavigationMenusView() {
                 </div>
               </div>
 
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">Target Category</label>
-                <Dropdown
-                  size="sm"
-                  value={bannerFormData.categoryId || categories[0]?._id}
-                  onChange={(val, opt) =>
-                    setBannerFormData((prev) => ({
-                      ...prev,
-                      categoryId: val,
-                      categoryName: opt?.label || '',
-                    }))
-                  }
-                  options={categoryOptions}
-                />
-              </div>
 
               <div className="flex justify-end gap-2.5 pt-3 border-t border-stone-100">
                 <button
