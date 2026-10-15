@@ -32,7 +32,7 @@ export default function MetalPuritiesView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPurity, setEditingPurity] = useState(null);
   const [viewingPurity, setViewingPurity] = useState(null);
-  const [metalType, setMetalType] = useState('Gold');
+  const [metalType, setMetalType] = useState('');
   const [karatValue, setKaratValue] = useState('');
   const [purityName, setPurityName] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -86,7 +86,7 @@ export default function MetalPuritiesView() {
   const activeCount = useMemo(() => purities.filter(p => p.status === 'active').length, [purities]);
   const primaryStandard = useMemo(() => {
     const p18 = purities.find(p => String(p.karat) === '18' || p.name?.includes('18'));
-    return p18 ? '18 KT Gold' : (purities[0]?.name || 'Standard');
+    return p18?.name || purities[0]?.name || '';
   }, [purities]);
 
   const statCardsData = [
@@ -110,7 +110,7 @@ export default function MetalPuritiesView() {
     },
     {
       label: 'Supported Metals',
-      value: new Set(purities.map(p => p.metalType || 'Gold')).size || 1,
+      value: new Set(purities.map((p) => p.metalType).filter(Boolean)).size,
       icon: HiOutlineCube,
       color: 'gold',
     },
@@ -119,7 +119,7 @@ export default function MetalPuritiesView() {
   // Open modal to add new purity
   const handleOpenAdd = () => {
     setEditingPurity(null);
-    setMetalType('Gold');
+    setMetalType('');
     setKaratValue('');
     setPurityName('');
     setIsModalOpen(true);
@@ -128,7 +128,7 @@ export default function MetalPuritiesView() {
   // Open modal to edit existing purity
   const handleOpenEdit = (p) => {
     setEditingPurity(p);
-    setMetalType(p.metalType || 'Gold');
+    setMetalType(p.metalType || '');
     setKaratValue(p.karat !== undefined ? String(p.karat) : '');
     setPurityName(p.name || '');
     setIsModalOpen(true);
@@ -150,21 +150,8 @@ export default function MetalPuritiesView() {
     }
   };
 
-  // When metal type is selected, intelligently preset defaults if creating new
   const handleMetalTypeChange = (newType) => {
     setMetalType(newType);
-    if (!editingPurity) {
-      if (newType === 'Gold') {
-        if (!karatValue || karatValue === '925' || karatValue === '950') setKaratValue('18');
-        setPurityName('18KT Gold');
-      } else if (newType === 'Silver') {
-        if (!karatValue || karatValue === '18' || karatValue === '950') setKaratValue('925');
-        setPurityName('925 Silver');
-      } else if (newType === 'Platinum') {
-        if (!karatValue || karatValue === '18' || karatValue === '925') setKaratValue('950');
-        setPurityName('950 Platinum');
-      }
-    }
   };
 
   // Toggle active/inactive status
@@ -401,7 +388,7 @@ export default function MetalPuritiesView() {
 
                       {/* Metal Type */}
                       <td className="py-2.5 px-3 whitespace-nowrap text-stone-600 font-medium text-xs">
-                        {p.metalType || 'Gold'}
+                        {p.metalType || '—'}
                       </td>
 
                       {/* Actions */}

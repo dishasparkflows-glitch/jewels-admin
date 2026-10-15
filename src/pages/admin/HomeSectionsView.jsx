@@ -555,11 +555,11 @@ export default function HomeSectionsView() {
       setSubmitting(true);
       const mappedItems = (formData.selectedProducts || []).map((p, idx) => ({
         productId: p._id || p.id || p.productId || null,
-        title: p.title || 'Fine Jewellery',
+        title: p.title || '',
         subtitle: p.subtitle || p.metalName || '',
         sku: p.sku || '',
         price: Number(p.price || 0),
-        productType: p.productType || (p.isOrnate ? 'ornate' : 'gold'),
+        productType: p.productType || '',
         imageUrl: p.thumbnail || p.imageUrl || '',
         linkUrl: `/products/${p._id || p.id || p.productId}`,
         order: idx + 1,

@@ -3,6 +3,8 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { navSections } from '../../config/navigation';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import api from '../../api/axios';
+import { getMediaUrl } from '../../utils/imageUrl';
 import {
   HiOutlineChevronRight,
   HiOutlineChevronDown,
@@ -19,6 +21,14 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
   
   // Default submenus to collapsed so sidebar stays compact and small, auto-opening only active route
   const [openSubmenus, setOpenSubmenus] = useState({});
+  const [brandLogo, setBrandLogo] = useState({ desktop: '', mobile: '' });
+
+  useEffect(() => {
+    api.get('/settings').then(({ data }) => {
+      const settings = data?.data || {};
+      setBrandLogo({ desktop: getMediaUrl(settings.logoImage?.url), mobile: getMediaUrl(settings.mobileLogoImage?.url) });
+    }).catch(() => {});
+  }, []);
 
   const checkIsChildActive = (childPath) => {
     return (
@@ -84,9 +94,14 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
       {/* ─── Top Brand Header ───────────────────────────────── */}
       <div className="h-14 flex items-center px-5 border-b border-stone-100 flex-shrink-0 bg-white">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shadow-xs flex-shrink-0 font-bold text-xl">
-            N
-          </div>
+          {brandLogo.desktop ? (
+            <picture className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+              {brandLogo.mobile && <source media="(max-width: 640px)" srcSet={brandLogo.mobile} />}
+              <img src={brandLogo.desktop} alt="Website logo" className="max-w-full max-h-full object-contain" />
+            </picture>
+          ) : (
+            <div className="w-9 h-9 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shadow-xs flex-shrink-0 font-bold text-xl">N</div>
+          )}
           {isOpen && (
             <div className="flex flex-col">
               <span className="text-[13px] font-bold tracking-[0.18em] text-stone-900 uppercase font-sans">

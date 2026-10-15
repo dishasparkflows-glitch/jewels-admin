@@ -18,63 +18,24 @@ import { diamondsAPI } from '../../api/services';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 
-// Default attribute fallbacks matching Neirah fine jewellery standards
-const FALLBACK_TYPES = [
-  { _id: 'nat_type', name: 'Natural Diamond' },
-  { _id: 'lab_type', name: 'Lab Grown Diamond' },
-];
 
-const FALLBACK_SHAPES = [
-  { _id: 'shape_fancy', name: 'FANCY' },
-  { _id: 'shape_round', name: 'Round' },
-  { _id: 'shape_oval', name: 'Oval' },
-  { _id: 'shape_princess', name: 'Princess' },
-  { _id: 'shape_emerald', name: 'Emerald' },
-  { _id: 'shape_cushion', name: 'Cushion' },
-  { _id: 'shape_pear', name: 'Pear' },
-  { _id: 'shape_radiant', name: 'Radiant' },
-  { _id: 'shape_marquise', name: 'Marquise' },
-  { _id: 'shape_heart', name: 'Heart' },
-];
-
-const FALLBACK_COLORS = [
-  { _id: 'col_de', name: 'D-E' },
-  { _id: 'col_fg', name: 'F-G' },
-  { _id: 'col_gh', name: 'G-H' },
-  { _id: 'col_hi', name: 'H-I' },
-  { _id: 'col_ij', name: 'I-J' },
-  { _id: 'col_jk', name: 'J-K' },
-  { _id: 'col_fancy_yellow', name: 'Fancy Yellow' },
-  { _id: 'col_fancy_pink', name: 'Fancy Pink' },
-];
-
-const FALLBACK_CLARITIES = [
-  { _id: 'clar_si', name: 'SI' },
-  { _id: 'clar_vs', name: 'VS' },
-  { _id: 'clar_vvs', name: 'VVS' },
-  { _id: 'clar_fl_if', name: 'FL-IF' },
-  { _id: 'clar_i1_i2', name: 'I1-I2' },
-];
-
-// Quick Carat Presets
-const CARAT_PRESETS = [0.3, 0.5, 0.75, 1.0, 1.05, 1.25, 1.5, 2.0];
 
 export default function AddDiamonds() {
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
-  // Attributes lookups
-  const [types, setTypes] = useState(FALLBACK_TYPES);
-  const [shapes, setShapes] = useState(FALLBACK_SHAPES);
-  const [colors, setColors] = useState(FALLBACK_COLORS);
-  const [clarities, setClarities] = useState(FALLBACK_CLARITIES);
+  // Attributes lookups (loaded from API)
+  const [types, setTypes] = useState([]);
+  const [shapes, setShapes] = useState([]);
+  const [colors, setColors] = useState([]);
+  const [clarities, setClarities] = useState([]);
   const [loadingLookups, setLoadingLookups] = useState(true);
 
   // Card 1: Diamond Information
-  const [selectedType, setSelectedType] = useState('Natural Diamond');
-  const [selectedShape, setSelectedShape] = useState('FANCY');
-  const [selectedColor, setSelectedColor] = useState('D-E');
-  const [selectedClarity, setSelectedClarity] = useState('SI');
+  const [selectedType, setSelectedType] = useState('');
+  const [selectedShape, setSelectedShape] = useState('');
+  const [selectedColor, setSelectedColor] = useState('');
+  const [selectedClarity, setSelectedClarity] = useState('');
   const [globalImage, setGlobalImage] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
@@ -100,20 +61,13 @@ export default function AddDiamonds() {
         if (data.colors?.length) setColors(data.colors);
         if (data.clarities?.length) setClarities(data.clarities);
 
-        // Pre-select defaults matching screenshot
-        const nat = data.types?.find((t) => t.name?.toLowerCase().includes('natural'));
-        if (nat) setSelectedType(nat.name);
-
-        const fancy = data.shapes?.find((s) => s.name?.toUpperCase() === 'FANCY');
-        if (fancy) setSelectedShape(fancy.name);
-
-        const de = data.colors?.find((c) => c.name?.toUpperCase() === 'D-E');
-        if (de) setSelectedColor(de.name);
-
-        const si = data.clarities?.find((c) => c.name?.toUpperCase() === 'SI');
-        if (si) setSelectedClarity(si.name);
+        // Pre-select first available option from API
+        if (data.types?.length) setSelectedType(data.types[0].name);
+        if (data.shapes?.length) setSelectedShape(data.shapes[0].name);
+        if (data.colors?.length) setSelectedColor(data.colors[0].name);
+        if (data.clarities?.length) setSelectedClarity(data.clarities[0].name);
       } catch (err) {
-        console.warn('Using fallback lookups for diamond attributes:', err);
+        console.error('Failed to load diamond attribute lookups:', err);
       } finally {
         setLoadingLookups(false);
       }
@@ -123,10 +77,10 @@ export default function AddDiamonds() {
 
   // Helper to generate a standardized SKU
   const generateSku = (type, shape, color, clarity, carat) => {
-    const typeCode = type?.toLowerCase().includes('lab') ? 'LAB' : 'NAT';
-    const shapeCode = (shape || 'FNC').slice(0, 3).toUpperCase();
-    const colorCode = (color || 'DE').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
-    const clarityCode = (clarity || 'SI').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
+    const typeCode = String(type || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
+    const shapeCode = String(shape || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
+    const colorCode = String(color || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
+    const clarityCode = String(clarity || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
     const caratCode = Number(carat).toFixed(2);
     const rand = Math.floor(100 + Math.random() * 900);
     return `DIA-${typeCode}-${shapeCode}-${colorCode}-${clarityCode}-${caratCode}-${rand}`;
@@ -139,6 +93,14 @@ export default function AddDiamonds() {
 
   // Add a Carat Weight
   const handleAddCarat = (value) => {
+    if (!selectedType || !selectedShape || !selectedColor || !selectedClarity) {
+      toast.error('Select diamond type, shape, color, and clarity first');
+      return;
+    }
+    if (bulkRate === '' || !Number.isFinite(Number(bulkRate)) || Number(bulkRate) < 0) {
+      toast.error('Enter the rate per carat before adding a weight');
+      return;
+    }
     const num = parseFloat(value !== undefined ? value : caratInput);
     if (isNaN(num) || num <= 0) {
       toast.error('Please enter a valid carat weight (e.g. 1.05)');
@@ -156,7 +118,7 @@ export default function AddDiamonds() {
     setCaratInput('');
 
     // Generate/append new variant
-    const defaultRate = Number(bulkRate) || 45000;
+    const defaultRate = Number(bulkRate);
     const price = Math.round(rounded * defaultRate);
     const newVariant = {
       id: `${rounded}-${Date.now()}`,
@@ -283,10 +245,14 @@ export default function AddDiamonds() {
     }
 
     // Resolve MongoDB ObjectIds for relations
-    const typeObj = types.find((t) => t.name === selectedType) || types[0];
-    const shapeObj = shapes.find((s) => s.name === selectedShape) || shapes[0];
-    const colorObj = colors.find((c) => c.name === selectedColor) || colors[0];
-    const clarityObj = clarities.find((cl) => cl.name === selectedClarity) || clarities[0];
+    const typeObj = types.find((t) => t.name === selectedType);
+    const shapeObj = shapes.find((s) => s.name === selectedShape);
+    const colorObj = colors.find((c) => c.name === selectedColor);
+    const clarityObj = clarities.find((cl) => cl.name === selectedClarity);
+    if (!typeObj?._id || !shapeObj?._id || !colorObj?._id || !clarityObj?._id) {
+      toast.error('Select valid diamond attributes from the loaded master data');
+      return;
+    }
 
     try {
       setPublishing(true);
@@ -544,21 +510,6 @@ export default function AddDiamonds() {
               <HiOutlinePlus className="w-4 h-4" />
             </button>
           </div>
-        </div>
-
-        {/* Carat Presets and Added Tags */}
-        <div className="flex flex-wrap items-center gap-2 pt-1">
-          <span className="text-[11px] text-stone-400 font-medium">Quick Presets:</span>
-          {CARAT_PRESETS.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => handleAddCarat(preset)}
-              className="px-2.5 py-1 text-[11px] font-medium bg-stone-100 hover:bg-[#faf5ee] hover:text-[#8b6f4e] text-stone-600 rounded-lg transition-colors border border-stone-200/60"
-            >
-              + {preset} ct
-            </button>
-          ))}
         </div>
 
         {/* Active Carat Weight Tags */}

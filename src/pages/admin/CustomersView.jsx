@@ -19,17 +19,6 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 
-// Fallback demo data to ensure pristine presentation matching screenshot if backend returns empty
-const DEFAULT_DEMO_CUSTOMERS = [
-  { _id: 'cust_01', customId: '#CUST-0001', firstName: 'Kavita', lastName: 'Krishnan', email: 'kavita.k@gmail.com', phone: '9899900118', ordersCount: 0, lifetimeValue: 0, createdAt: '2026-10-10' },
-  { _id: 'cust_02', customId: '#CUST-0002', firstName: 'Ishaan', lastName: 'Nanda', email: 'ishaan.nanda@gmail.com', phone: '9811223300', ordersCount: 1, lifetimeValue: 28000, createdAt: '2026-10-10' },
-  { _id: 'cust_03', customId: '#CUST-0003', firstName: 'Aanya', lastName: 'Mehta', email: 'aanya.mehta@gmail.com', phone: '9876543210', ordersCount: 4, lifetimeValue: 112000, createdAt: '2026-10-08' },
-  { _id: 'cust_04', customId: '#CUST-0004', firstName: 'Rohan', lastName: 'Shah', email: 'rohan.shah@gmail.com', phone: '9825012345', ordersCount: 2, lifetimeValue: 56000, createdAt: '2026-10-07' },
-  { _id: 'cust_05', customId: '#CUST-0005', firstName: 'Meera', lastName: 'Patel', email: 'meera.patel@gmail.com', phone: '9904412233', ordersCount: 6, lifetimeValue: 178500, createdAt: '2026-10-05' },
-  { _id: 'cust_06', customId: '#CUST-0006', firstName: 'Aarav', lastName: 'Desai', email: 'aarav.desai@gmail.com', phone: '9876501122', ordersCount: 3, lifetimeValue: 92000, createdAt: '2026-10-03' },
-  { _id: 'cust_07', customId: '#CUST-0007', firstName: 'Nisha', lastName: 'Kapoor', email: 'nisha.kapoor@gmail.com', phone: '9765432109', ordersCount: 2, lifetimeValue: 64000, createdAt: '2026-10-01' },
-];
-
 export default function CustomersView() {
   const confirm = useConfirm();
   const [users, setUsers] = useState([]);
@@ -47,7 +36,7 @@ export default function CustomersView() {
     lastName: '',
     email: '',
     phone: '',
-    password: 'Password@123',
+    password: '',
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -60,17 +49,14 @@ export default function CustomersView() {
       const res = await api.get(`/users?page=${page}&limit=${limit}`);
       const allUsers = res.data?.data?.users || res.data?.data || [];
       const userList = allUsers.filter((u) => u.role === 'user' || !u.role);
-      if (userList.length > 0) {
-        setUsers(userList);
+      setUsers(userList);
       if (res.data?.pagination?.totalDocs !== undefined) {
         setServerTotal(res.data.pagination.totalDocs);
       }
-      } else {
-        setUsers(DEFAULT_DEMO_CUSTOMERS);
-      }
     } catch (err) {
-      console.warn('Backend unavailable, using catalog default customers:', err);
-      setUsers(DEFAULT_DEMO_CUSTOMERS);
+      console.warn('Could not load customers:', err);
+      setUsers([]);
+      toast.error('Could not load customers');
     } finally {
       setLoading(false);
     }
@@ -99,13 +85,7 @@ export default function CustomersView() {
         return next;
       });
     } catch (err) {
-      setUsers((prev) => prev.filter((u) => (u._id || u.id) !== id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-      toast.success('Customer removed');
+      toast.error(err.response?.data?.message || 'Could not delete customer');
     }
   };
 
@@ -134,9 +114,7 @@ export default function CustomersView() {
       setSelectedIds(new Set());
       toast.success(`${count} customer${count > 1 ? 's' : ''} deleted successfully`);
     } catch (err) {
-      setUsers((prev) => prev.filter((u) => !selectedIds.has(u._id || u.id)));
-      setSelectedIds(new Set());
-      toast.success(`${count} customer${count > 1 ? 's' : ''} deleted`);
+      toast.error('Could not delete selected customers');
     }
   };
 
@@ -159,41 +137,26 @@ export default function CustomersView() {
       await api.post('/users', payload);
       toast.success('Customer added successfully');
       setIsAddModalOpen(false);
-      setFormData({ firstName: '', lastName: '', email: '', phone: '', password: 'Password@123' });
+      setFormData({ firstName: '', lastName: '', email: '', phone: '', password: '' });
       fetchUsers();
     } catch (err) {
-      // Mock creation for immediate UI response
-      const newMock = {
-        _id: `cust_${Date.now()}`,
-        customId: `#CUST-${String(users.length + 1).padStart(4, '0')}`,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone || '—',
-        ordersCount: 0,
-        lifetimeValue: 0,
-        createdAt: new Date().toISOString(),
-      };
-      setUsers((prev) => [newMock, ...prev]);
-      toast.success('Customer profile created');
-      setIsAddModalOpen(false);
-      setFormData({ firstName: '', lastName: '', email: '', phone: '', password: 'Password@123' });
+      toast.error(err.response?.data?.message || 'Could not create customer');
     } finally {
       setSubmitting(false);
     }
   };
 
   // Metrics computation matching screenshot: Total 30, Active 30, Orders 18, Revenue ₹ 2,84,500
-  const totalClients = Math.max(users.length, 30);
-  const activeClients = totalClients; // No active/deactive filter
+  const totalClients = serverTotal ?? users.length;
+  const activeClients = users.filter((user) => user.isActive !== false).length;
   const totalOrdersPlaced = users.reduce(
     (sum, u) => sum + (Number(u.statistics?.ordersCount ?? u.ordersCount) || 0),
     0
-  ) || 18;
+  );
   const totalLifetimeRevenue = users.reduce(
     (sum, u) => sum + (Number(u.statistics?.lifetimeValue ?? u.lifetimeValue) || 0),
     0
-  ) || 284500;
+  );
 
   // Filtered users for table (NO active/deactive filter per user instruction!)
   const filteredUsers = useMemo(() => {
@@ -246,13 +209,10 @@ export default function CustomersView() {
     return email.slice(0, 2).toUpperCase();
   };
 
-  const formatJoinedDate = (dateString, idx = 0) => {
-    if (!dateString) {
-      const mockDates = ['10 Oct 2026', '10 Oct 2026', '08 Oct 2026', '07 Oct 2026', '05 Oct 2026', '03 Oct 2026', '01 Oct 2026'];
-      return mockDates[idx % mockDates.length];
-    }
+  const formatJoinedDate = (dateString) => {
+    if (!dateString) return '—';
     const d = new Date(dateString);
-    if (isNaN(d.getTime())) return '10 Oct 2026';
+    if (isNaN(d.getTime())) return '—';
     const day = String(d.getDate()).padStart(2, '0');
     const month = d.toLocaleString('en-US', { month: 'short' });
     const year = d.getFullYear();
@@ -265,8 +225,7 @@ export default function CustomersView() {
       const num = String(user._id).replace('cust_', '');
       if (num.length <= 4) return `#CUST-${num.padStart(4, '0')}`;
     }
-    const num = (currentPage - 1) * pageSize + index + 1;
-    return `#CUST-${String(num).padStart(4, '0')}`;
+    return user._id || user.id || '—';
   };
 
   const statCardsData = [

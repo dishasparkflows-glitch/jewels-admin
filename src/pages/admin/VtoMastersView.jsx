@@ -5,7 +5,6 @@ import {
   HiOutlineUpload,
   HiOutlineX,
   HiOutlineCheck,
-  HiOutlineRefresh,
   HiOutlineTrash,
 } from 'react-icons/hi';
 import { IoSparklesOutline } from 'react-icons/io5';
@@ -43,13 +42,6 @@ const BODY_PART_META = {
     description:
       'Used for Bangles and Bracelets. Upload images of a wrist from a side or top-down angle.',
   },
-};
-
-const DEFAULT_ASSET_MAP = {
-  hand: { light: '/vto/hand_light.jpg', dark: '/vto/hand_dark.jpg' },
-  neck: { light: '/vto/neck_light.jpg', dark: '/vto/neck_dark.jpg' },
-  ear: { light: '/vto/ear_light.jpg', dark: '/vto/ear_dark.jpg' },
-  wrist: { light: '/vto/hand_light.jpg', dark: '/vto/hand_dark.jpg' },
 };
 
 export default function VtoMastersView() {
@@ -145,37 +137,6 @@ export default function VtoMastersView() {
     } finally {
       setUploadingCardTone(null);
       e.target.value = '';
-    }
-  };
-
-  // Restore Default Models
-  const handleRestoreDefaults = async () => {
-    try {
-      setLoading(true);
-      for (const part of ORDERED_PARTS) {
-        const master = masters.find((m) => m.bodyPart === part);
-        const def = DEFAULT_ASSET_MAP[part];
-        const payload = {
-          bodyPart: part,
-          lightImage: { url: def.light, public_id: `${part}_light` },
-          darkImage: { url: def.dark, public_id: `${part}_dark` },
-          status: 'active',
-        };
-
-        if (master?._id) {
-          await api.put(`/vto-masters/${master._id}`, payload);
-        } else {
-          await api.post('/vto-masters', payload);
-        }
-      }
-
-      toast.success('Default VTO model assets restored');
-      await fetchMasters();
-    } catch (err) {
-      console.error('Failed to restore defaults:', err);
-      toast.error('Failed to restore default assets');
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -134,7 +134,7 @@ export default function DiamondShapesView() {
     },
     {
       label: 'Primary Cut',
-      value: roundShape ? 'Round Brilliant' : 'Princess',
+      value: roundShape ? 'Round' : 'Fancy',
       icon: HiOutlineTag,
       color: 'peach',
     },

@@ -18,13 +18,6 @@ import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 
-const DEMO_TIERS = [
-  { _id: 'tier_01', uptoAmount: 15000, chargeType: 'Percentage', chargeValue: 10 },
-  { _id: 'tier_02', uptoAmount: 35000, chargeType: 'Percentage', chargeValue: 15 },
-  { _id: 'tier_03', uptoAmount: 75000, chargeType: 'Fixed', chargeValue: 5000 },
-  { _id: 'tier_04', uptoAmount: 150000, chargeType: 'Percentage', chargeValue: 20 },
-];
-
 export default function CodSequencesView() {
   const confirm = useConfirm();
   const [items, setItems] = useState([]);
@@ -39,8 +32,8 @@ export default function CodSequencesView() {
 
   const [formData, setFormData] = useState({
     uptoAmount: '',
-    chargeType: 'Percentage',
-    chargeValue: '15',
+    chargeType: '',
+    chargeValue: '',
   });
 
   const fetchItems = async () => {
@@ -48,14 +41,11 @@ export default function CodSequencesView() {
       setLoading(true);
       const res = await api.get('/cod-sequences?limit=50');
       const data = res.data?.data?.items || res.data?.data || [];
-      if (Array.isArray(data) && data.length > 0) {
-        setItems(data);
-      } else {
-        setItems(DEMO_TIERS);
-      }
+      setItems(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.warn('Backend unavailable, using fallback COD tiers:', err);
-      setItems(DEMO_TIERS);
+      console.warn('Could not load COD tiers:', err);
+      setItems([]);
+      toast.error('Could not load COD tiers');
     } finally {
       setLoading(false);
     }
@@ -67,7 +57,7 @@ export default function CodSequencesView() {
 
   const handleOpenAdd = () => {
     setEditingItem(null);
-    setFormData({ uptoAmount: '', chargeType: 'Percentage', chargeValue: '15' });
+    setFormData({ uptoAmount: '', chargeType: '', chargeValue: '' });
     setIsModalOpen(true);
   };
 
@@ -75,7 +65,7 @@ export default function CodSequencesView() {
     setEditingItem(item);
     setFormData({
       uptoAmount: item.uptoAmount,
-      chargeType: item.chargeType || 'Percentage',
+      chargeType: item.chargeType || '',
       chargeValue: item.chargeValue,
     });
     setIsModalOpen(true);
@@ -107,27 +97,7 @@ export default function CodSequencesView() {
       setIsModalOpen(false);
       fetchItems();
     } catch (err) {
-      // Mock fallback update
-      if (editingItem) {
-        setItems((prev) =>
-          prev.map((i) =>
-            i._id === editingItem._id
-              ? { ...i, uptoAmount: Number(formData.uptoAmount), chargeType: formData.chargeType, chargeValue: Number(formData.chargeValue) }
-              : i
-          )
-        );
-        toast.success('COD sequence tier updated');
-      } else {
-        const newMock = {
-          _id: `tier_${Date.now()}`,
-          uptoAmount: Number(formData.uptoAmount),
-          chargeType: formData.chargeType,
-          chargeValue: Number(formData.chargeValue),
-        };
-        setItems((prev) => [...prev, newMock]);
-        toast.success('COD sequence tier added');
-      }
-      setIsModalOpen(false);
+      toast.error(err.response?.data?.message || 'Could not save COD tier');
     } finally {
       setSubmitting(false);
     }

@@ -20,30 +20,6 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 
-const DEMO_REVIEWS = [
-  {
-    _id: 'rev_01',
-    customId: '#REV-0001',
-    customer: { name: 'Priya Sharma', email: 'priya.s@gmail.com' },
-    review: { rating: 5, title: 'Bespoke Diamond Solitaire', comment: 'The cut and brilliance on the 2.01ct oval solitaire took my breath away. Neirah Jewellers provided unmatched luxury service.', reviewDate: '2026-10-09' },
-    status: 'approved',
-  },
-  {
-    _id: 'rev_02',
-    customId: '#REV-0002',
-    customer: { name: 'Karan Mehra', email: 'karan.m@gmail.com' },
-    review: { rating: 5, title: 'Flawless Bridal Necklace', comment: 'Craftsmanship was exquisite. Completed ahead of schedule with certified hallmarks.', reviewDate: '2026-10-08' },
-    status: 'approved',
-  },
-  {
-    _id: 'rev_03',
-    customId: '#REV-0003',
-    customer: { name: 'Sunita Reddy', email: 'sunita.r@gmail.com' },
-    review: { rating: 4, title: 'Tennis Bracelet in Platinum', comment: 'Very high clarity diamonds and secure clasp. Packaging was royal.', reviewDate: '2026-10-05' },
-    status: 'approved',
-  },
-];
-
 export default function ReviewsView() {
   const confirm = useConfirm();
   const [reviews, setReviews] = useState([]);
@@ -76,14 +52,11 @@ export default function ReviewsView() {
       setLoading(true);
       const res = await api.get('/reviews?limit=50');
       const data = res.data?.data?.items || res.data?.data || [];
-      if (Array.isArray(data) && data.length > 0) {
-        setReviews(data);
-      } else {
-        setReviews(DEMO_REVIEWS);
-      }
+      setReviews(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.warn('Backend unavailable, using fallback reviews:', err);
-      setReviews(DEMO_REVIEWS);
+      console.warn('Could not load reviews:', err);
+      setReviews([]);
+      toast.error('Could not load reviews');
     } finally {
       setLoading(false);
     }
@@ -175,32 +148,8 @@ export default function ReviewsView() {
 
       setShowAddModal(false);
       fetchReviews();
-    } catch {
-      if (editingReview) {
-        setReviews((prev) =>
-          prev.map((r) =>
-            r._id === editingReview._id
-              ? {
-                  ...r,
-                  customer: { name: formData.name, email: formData.email },
-                  review: { title: formData.title, comment: formData.comment, rating: Number(formData.rating) },
-                }
-              : r
-          )
-        );
-        toast.success('Review updated');
-      } else {
-        const newMock = {
-          _id: `rev_${Date.now()}`,
-          customId: `#REV-${String(reviews.length + 1).padStart(4, '0')}`,
-          customer: { name: formData.name, email: formData.email },
-          review: { title: formData.title, comment: formData.comment, rating: Number(formData.rating), reviewDate: new Date().toISOString() },
-          status: 'approved',
-        };
-        setReviews((prev) => [newMock, ...prev]);
-        toast.success('Review added');
-      }
-      setShowAddModal(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not save review');
     } finally {
       setSubmitting(false);
     }

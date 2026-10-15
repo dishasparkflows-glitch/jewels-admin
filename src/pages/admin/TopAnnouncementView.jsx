@@ -484,23 +484,8 @@ export default function TopAnnouncementView() {
               </div>
               <p className="text-stone-700 font-semibold mb-1">No announcements yet</p>
               <p className="text-xs text-stone-400 max-w-sm mx-auto mb-4">
-                Add your first announcement or load default sample announcements.
+                Create an announcement to display it on the storefront.
               </p>
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await topAnnouncementsAPI.seedDefaults();
-                    toast.success('Default announcements created');
-                    fetchData();
-                  } catch (e) {
-                    toast.error('Failed to seed defaults');
-                  }
-                }}
-                className="px-4 py-2 text-xs font-medium text-[#8b6f4e] bg-[#fbf5ed] border border-[#e8d7be] rounded-xl hover:bg-[#f5ebd9] transition-colors"
-              >
-                Load Default Announcements
-              </button>
             </div>
           ) : (
             <table className="w-full text-left border-separate border-spacing-y-2.5">

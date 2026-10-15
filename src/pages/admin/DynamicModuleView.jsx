@@ -65,7 +65,7 @@ const routeMap = {
     title: 'Metal Purity',
     fields: [
       { name: 'name', label: 'Purity Name (e.g. 18KT, 14KT, Platinum)', type: 'text', required: true },
-      { name: 'metalType', label: 'Metal Category', type: 'select', options: ['Gold', 'Platinum', 'Silver'], default: 'Gold' },
+      { name: 'metalType', label: 'Metal Category', type: 'select', options: ['Gold', 'Platinum', 'Silver'] },
       { name: 'karat', label: 'Karat Value (for Gold)', type: 'number' },
     ],
   },
@@ -148,7 +148,6 @@ const routeMap = {
     singularTitle: 'Category',
     fields: [
       { name: 'name', label: 'Category Name', type: 'text', required: true, placeholder: 'e.g. Rings, Necklaces' },
-      { name: 'type', label: 'Type', type: 'select', options: ['category', 'collection'], default: 'category' },
       { name: 'icon', label: 'Icon', type: 'icon', placeholder: 'Upload Icon' },
       { name: 'banner', label: 'Banner', type: 'banner', placeholder: 'Upload Banner' },
     ],
@@ -225,6 +224,8 @@ const DynamicModuleView = () => {
   const handleOpenAdd = () => {
     if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
       navigate('/catalog/jewelry-products/add');
+    } else if (pathname === '/catalog/silver-products' || pathname.includes('silver-products')) {
+      navigate('/catalog/silver-products/add');
     } else if (pathname === '/catalog/ornate-products' || pathname.includes('ornate-products')) {
       navigate('/catalog/ornate-products/add');
     } else {
@@ -411,8 +412,8 @@ const DynamicModuleView = () => {
       }
 
       if (cleanEndpoint === '/products') {
-        const title = formData.title || 'Diamond Ring';
-        const sku = formData.sku || 'RNG-001';
+        const title = formData.title || '';
+        const sku = formData.sku || '';
         const slug = (formData.slug || title)
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, '-')
@@ -420,13 +421,13 @@ const DynamicModuleView = () => {
         const isOrnate = config.endpoint.includes('isOrnate=true') || Boolean(formData.isOrnate);
         const productType = config.endpoint.includes('productType=Silver')
           ? 'silver'
-          : (isOrnate ? 'ornate' : (formData.productType || 'gold'));
-        const mrp = Number(formData.mrp || formData.price) || 75000;
-        const salePrice = Number(formData.salePrice || formData.price) || 65000;
-        const costPrice = Number(formData.costPrice) || 50000;
-        const displayPrice = Number(formData.displayPrice || salePrice) || 65000;
-        const gstPercentage = Number(formData.gstPercentage) || 3;
-        const markupPercentage = Number(formData.markupPercentage) || 30;
+          : (isOrnate ? 'ornate' : (formData.productType || undefined));
+        const mrp = Number(formData.mrp || formData.price) || 0;
+        const salePrice = Number(formData.salePrice || formData.price) || 0;
+        const costPrice = Number(formData.costPrice) || 0;
+        const displayPrice = Number(formData.displayPrice || salePrice) || 0;
+        const gstPercentage = Number(formData.gstPercentage) || 0;
+        const markupPercentage = Number(formData.markupPercentage) || 0;
 
         payload = {
           ...formData,
@@ -434,7 +435,7 @@ const DynamicModuleView = () => {
             title,
             sku,
             slug,
-            description: formData.description || 'Elegant diamond ring',
+            description: formData.description || '',
             productType,
             isOrnate,
             ...(formData.basicInfo || {}),
@@ -449,13 +450,7 @@ const DynamicModuleView = () => {
             ...(formData.pricing || {}),
           },
           specifications: {
-            metalName: formData.metalName || 'Gold',
-            metalWeight: Number(formData.metalWeight || formData.netWeight) || 2.5,
-            metalPurity: Number(formData.metalPurity || formData.purity) || 18,
-            grossWeight: Number(formData.grossWeight || formData.grossWt) || 2.75,
-            netWeight: Number(formData.netWeight || formData.netWt) || 2.5,
-            stoneWeight: Number(formData.stoneWeight || formData.stoneWt) || 0.25,
-            ...(formData.specifications || {}),
+            metalWeight: Number(formData.metalWeight) || 0,
           },
           ornate: {
             tagNo: formData.tagNo || '',
@@ -954,6 +949,8 @@ const DynamicModuleView = () => {
                                 navigate(`/catalog/ornate-products/edit/${row._id || row.id}`);
                               } else if (pathname.includes('jewelry-products')) {
                                 navigate(`/catalog/jewelry-products/edit/${row._id || row.id}`);
+                              } else if (pathname.includes('silver-products')) {
+                                navigate(`/catalog/silver-products/edit/${row._id || row.id}`);
                               } else {
                                 handleOpenEdit(row);
                               }

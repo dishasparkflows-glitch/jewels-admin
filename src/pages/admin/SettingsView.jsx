@@ -13,6 +13,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { getMediaUrl } from '../../utils/imageUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 
@@ -26,23 +27,22 @@ export default function SettingsView() {
 
   // Form states
   const [businessForm, setBusinessForm] = useState({
-    companyName: 'Neirah',
-    emailAddress: 'info@neirah.in',
-    mobileNumber: '+91 84600-91955',
-    storeAddress:
-      'Sanskrut - 1 GH Road G-1. 1/2 Sector 3D plot no.1182 G-1, near Hi-Tech hospital, Gandhinagar',
-    gstCode: '24AAAAA0000A1Z5',
-    panCode: 'ABCDE1234F',
-    returnPeriodDays: 10,
-    returnPolicy: 'Easy 15-Day Returns & Refund',
+    companyName: '',
+    emailAddress: '',
+    mobileNumber: '',
+    storeAddress: '',
+    gstCode: '',
+    panCode: '',
+    returnPeriodDays: '',
+    returnPolicy: '',
     shippingPolicy: '',
     certificateImageUrl: '',
   });
 
   const [monetaryForm, setMonetaryForm] = useState({
-    bankName: 'HDFC BANK',
-    bankAccountNumber: '50200012345678',
-    ifscCode: 'HDFC0000451',
+    bankName: '',
+    bankAccountNumber: '',
+    ifscCode: '',
   });
 
   const [showAccountRaw, setShowAccountRaw] = useState(false);
@@ -51,6 +51,10 @@ export default function SettingsView() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   const fileInputRef = useRef(null);
+  const logoInputRef = useRef(null);
+  const mobileLogoInputRef = useRef(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingMobileLogo, setUploadingMobileLogo] = useState(false);
 
   // Fetch settings from API
   const fetchSettings = async () => {
@@ -61,24 +65,22 @@ export default function SettingsView() {
       setSettings(data);
 
       setBusinessForm({
-        companyName: data.companyName || 'Neirah',
-        emailAddress: data.emailAddress || 'info@neirah.in',
-        mobileNumber: data.mobileNumber || '+91 84600-91955',
-        storeAddress:
-          data.storeAddress ||
-          'Sanskrut - 1 GH Road G-1. 1/2 Sector 3D plot no.1182 G-1, near Hi-Tech hospital, Gandhinagar',
-        gstCode: data.gstCode || '24AAAAA0000A1Z5',
-        panCode: data.panCode || 'ABCDE1234F',
-        returnPeriodDays: data.returnPeriodDays !== undefined ? data.returnPeriodDays : 10,
-        returnPolicy: data.returnPolicy || 'Easy 15-Day Returns & Refund',
-        shippingPolicy: data.shippingPolicy || '',
-        certificateImageUrl: data.certificateImage?.url || '',
+        companyName: data.companyName ?? '',
+        emailAddress: data.emailAddress ?? '',
+        mobileNumber: data.mobileNumber ?? '',
+        storeAddress: data.storeAddress ?? '',
+        gstCode: data.gstCode ?? '',
+        panCode: data.panCode ?? '',
+        returnPeriodDays: data.returnPeriodDays ?? '',
+        returnPolicy: data.returnPolicy ?? '',
+        shippingPolicy: data.shippingPolicy ?? '',
+        certificateImageUrl: data.certificateImage?.url ?? '',
       });
 
       setMonetaryForm({
-        bankName: data.bankName || 'HDFC BANK',
-        bankAccountNumber: data.bankAccountNumber || '50200012345678',
-        ifscCode: data.ifscCode || 'HDFC0000451',
+        bankName: data.bankName ?? '',
+        bankAccountNumber: data.bankAccountNumber ?? '',
+        ifscCode: data.ifscCode ?? '',
       });
     } catch (err) {
       console.error('Failed to load settings:', err);
@@ -103,7 +105,7 @@ export default function SettingsView() {
         storeAddress: businessForm.storeAddress,
         gstCode: businessForm.gstCode,
         panCode: businessForm.panCode,
-        returnPeriodDays: Number(businessForm.returnPeriodDays),
+        returnPeriodDays: businessForm.returnPeriodDays === '' ? undefined : Number(businessForm.returnPeriodDays),
         returnPolicy: businessForm.returnPolicy,
         shippingPolicy: businessForm.shippingPolicy,
         certificateImage: {
@@ -140,6 +142,34 @@ export default function SettingsView() {
       toast.error(err.response?.data?.message || 'Update failed');
     } finally {
       setSavingMonetary(false);
+    }
+  };
+
+  const handleLogoUpload = async (event, isMobile = false) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      event.target.value = '';
+      return;
+    }
+    const setter = isMobile ? setUploadingMobileLogo : setUploadingLogo;
+    const ref = isMobile ? mobileLogoInputRef : logoInputRef;
+    const field = isMobile ? 'mobileLogoImage' : 'logoImage';
+    try {
+      setter(true);
+      const { fileUrl, key } = await uploadWithPresignedUrl(file, 'brand-logos');
+      const current = settings?.[field] || {};
+      const response = await api.put('/settings', {
+        [field]: { url: fileUrl, public_id: key || current.public_id || '' },
+      });
+      setSettings(response.data?.data || { ...settings, [field]: { url: fileUrl, public_id: key } });
+      toast.success(`${isMobile ? 'Mobile' : 'Website'} logo saved`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Logo upload failed');
+    } finally {
+      setter(false);
+      if (ref.current) ref.current.value = '';
     }
   };
 
@@ -205,6 +235,29 @@ export default function SettingsView() {
 
       {/* ─── 4 Stat Cards ─── */}
       <StatCards cards={statCardsData} />
+
+      {/* Website branding uploads */}
+      <section className="bg-white rounded-lg border border-stone-200/90 shadow-2xs p-3.5 sm:p-4">
+        <div className="mb-3 border-b border-stone-100 pb-2">
+          <h2 className="text-sm font-bold text-stone-900">Website Logos</h2>
+          <p className="mt-1 text-xs text-stone-500">Upload transparent PNG, JPG, or WebP logos. The mobile logo is used on narrow screens when provided.</p>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {[
+            { label: 'Desktop logo', field: 'logoImage', inputRef: logoInputRef, busy: uploadingLogo, mobile: false },
+            { label: 'Mobile logo (optional)', field: 'mobileLogoImage', inputRef: mobileLogoInputRef, busy: uploadingMobileLogo, mobile: true },
+          ].map(({ label, field, inputRef, busy, mobile }) => (
+            <div key={field} className="rounded-xl border border-stone-200 bg-[#fbfaf8] p-3">
+              <p className="text-xs font-semibold text-stone-800 mb-2">{label}</p>
+              <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(event) => handleLogoUpload(event, mobile)} className="sr-only" />
+              <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="min-h-24 w-full flex items-center justify-center rounded-lg border border-dashed border-[#d8c8b2] bg-white px-3 py-2 hover:border-[#8f6d43] hover:bg-[#faf5ee] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30">
+                {settings?.[field]?.url ? <img src={getMediaUrl(settings[field].url)} alt={`${label} preview`} className="max-h-16 max-w-full object-contain" /> : <span className="text-xs text-stone-500">{busy ? 'Uploading…' : 'Tap to choose an image'}</span>}
+              </button>
+              <p className="mt-1.5 text-[10px] text-stone-400">{busy ? 'Saving logo…' : 'PNG, JPG, WebP or SVG'}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* ─── 1. Business & Identity Card ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs p-3.5 sm:p-4 space-y-2.5">

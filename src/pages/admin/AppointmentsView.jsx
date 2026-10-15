@@ -29,13 +29,6 @@ const STATUS_TABS = [
   { id: 'cancelled', label: 'Cancelled' },
 ];
 
-const DEMO_APPOINTMENTS = [
-  { _id: 'apt_01', customId: '#APT-0001', fullName: 'Pooja Sharma', customer: { name: 'Pooja Sharma', email: 'pooja.s@gmail.com', phone: { countryCode: '91', number: '9871234567' } }, appointment: { date: '2026-10-12', preferredTime: '03:00 PM', serviceType: 'Bridal Consultation' }, status: 'pending' },
-  { _id: 'apt_02', customId: '#APT-0002', fullName: 'Aditya Roy', customer: { name: 'Aditya Roy', email: 'aditya.roy@gmail.com', phone: { countryCode: '91', number: '9820011223' } }, appointment: { date: '2026-10-11', preferredTime: '11:30 AM', serviceType: 'Custom Solitaire Viewing' }, status: 'confirmed' },
-  { _id: 'apt_03', customId: '#APT-0003', fullName: 'Simran Bajaj', customer: { name: 'Simran Bajaj', email: 'simran.b@gmail.com', phone: { countryCode: '91', number: '9988776655' } }, appointment: { date: '2026-10-10', preferredTime: '05:00 PM', serviceType: 'Diamond Engagement Ring' }, status: 'completed' },
-  { _id: 'apt_04', customId: '#APT-0004', fullName: 'Vikram Seth', customer: { name: 'Vikram Seth', email: 'vikram.seth@gmail.com', phone: { countryCode: '91', number: '9810102030' } }, appointment: { date: '2026-10-09', preferredTime: '02:00 PM', serviceType: 'Heritage Gold Collection' }, status: 'confirmed' },
-];
-
 export default function AppointmentsView() {
   const confirm = useConfirm();
   const [appointments, setAppointments] = useState([]);
@@ -53,9 +46,9 @@ export default function AppointmentsView() {
     name: '',
     email: '',
     phone: '',
-    date: '2026-10-15',
-    time: '11:00 AM',
-    service: 'Bridal Consultation',
+    date: '',
+    time: '',
+    service: '',
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,14 +60,11 @@ export default function AppointmentsView() {
       setLoading(true);
       const res = await api.get('/appointments?limit=100');
       const data = res.data?.data?.items || res.data?.data || [];
-      if (Array.isArray(data) && data.length > 0) {
-        setAppointments(data);
-      } else {
-        setAppointments(DEMO_APPOINTMENTS);
-      }
+      setAppointments(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.warn('Backend unavailable, using fallback appointments:', err);
-      setAppointments(DEMO_APPOINTMENTS);
+      console.warn('Could not load appointments:', err);
+      setAppointments([]);
+      toast.error('Could not load appointments');
     } finally {
       setLoading(false);
     }
@@ -246,28 +236,10 @@ export default function AppointmentsView() {
       await api.post('/appointments', payload);
       toast.success('Appointment booked successfully');
       setIsBookModalOpen(false);
-      setFormData({ name: '', email: '', phone: '', date: '2026-10-15', time: '11:00 AM', service: 'Bridal Consultation' });
+      setFormData({ name: '', email: '', phone: '', date: '', time: '', service: '' });
       fetchAppointments();
     } catch (err) {
-      const mock = {
-        _id: `apt_${Date.now()}`,
-        customId: `#APT-${String(appointments.length + 1).padStart(4, '0')}`,
-        customer: {
-          name: formData.name,
-          email: formData.email,
-          phone: { countryCode: '91', number: formData.phone || '9876543210' },
-        },
-        appointment: {
-          date: formData.date,
-          preferredTime: formData.time,
-          serviceType: formData.service,
-        },
-        status: 'pending',
-      };
-      setAppointments((prev) => [mock, ...prev]);
-      toast.success('Appointment booked successfully');
-      setIsBookModalOpen(false);
-      setFormData({ name: '', email: '', phone: '', date: '2026-10-15', time: '11:00 AM', service: 'Bridal Consultation' });
+      toast.error(err.response?.data?.message || 'Could not book appointment');
     } finally {
       setSubmitting(false);
     }

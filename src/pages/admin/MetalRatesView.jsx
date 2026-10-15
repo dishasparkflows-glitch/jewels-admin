@@ -24,9 +24,9 @@ export default function MetalRatesView() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   // Base Rates State matching GoldPrice Model
-  const [base24KRate, setBase24KRate] = useState(15700);
-  const [platinumRate, setPlatinumRate] = useState(3500);
-  const [silverRate, setSilverRate] = useState(95);
+  const [base24KRate, setBase24KRate] = useState('');
+  const [platinumRate, setPlatinumRate] = useState('');
+  const [silverRate, setSilverRate] = useState('');
   const [updatedAt, setUpdatedAt] = useState(null);
 
   // Modal State
@@ -34,9 +34,9 @@ export default function MetalRatesView() {
   const [viewingRecord, setViewingRecord] = useState(null);
 
   // Form state for modal
-  const [form24K, setForm24K] = useState('15700');
-  const [formPlatinum, setFormPlatinum] = useState('3500');
-  const [formSilver, setFormSilver] = useState('95');
+  const [form24K, setForm24K] = useState('');
+  const [formPlatinum, setFormPlatinum] = useState('');
+  const [formSilver, setFormSilver] = useState('');
 
   // Fetch current metal rates from backend
   const fetchRates = async () => {
@@ -70,9 +70,11 @@ export default function MetalRatesView() {
 
   // Format currency helper
   const formatINR = (val) => {
-    return Number(val || 0).toLocaleString('en-IN', {
+    const amount = Number(val);
+    if (!Number.isFinite(amount) || amount <= 0) return '—';
+    return amount.toLocaleString('en-IN', {
       maximumFractionDigits: 2,
-      minimumFractionDigits: Number.isInteger(val) ? 0 : 2,
+      minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
     });
   };
 
@@ -516,7 +518,6 @@ export default function MetalRatesView() {
                     required
                     value={form24K}
                     onChange={(e) => setForm24K(e.target.value)}
-                    placeholder="15700"
                     className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
@@ -539,8 +540,7 @@ export default function MetalRatesView() {
                       required
                       value={formPlatinum}
                       onChange={(e) => setFormPlatinum(e.target.value)}
-                      placeholder="3500"
-                      className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
+                        className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                     />
                   </div>
                 </div>
@@ -560,8 +560,7 @@ export default function MetalRatesView() {
                       required
                       value={formSilver}
                       onChange={(e) => setFormSilver(e.target.value)}
-                      placeholder="95"
-                      className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
+                        className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                     />
                   </div>
                 </div>

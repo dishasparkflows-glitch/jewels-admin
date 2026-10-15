@@ -39,7 +39,7 @@ export default function SizesView() {
 
   // Fetch all Sizes and Categories from API
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useState(50);
   const [serverTotal, setServerTotal] = useState(null);
 
   const fetchData = async (page = currentPage, limit = pageSize) => {
@@ -130,7 +130,7 @@ export default function SizesView() {
       return 'Bangles & Bracelets';
     }
     if (nameLower.includes('chain') || nameLower.includes('pendant') || nameLower.includes('inch')) {
-      return 'Pendant & Necklaces';
+      return 'Pendant';
     }
     return 'Rings';
   };
@@ -453,9 +453,9 @@ export default function SizesView() {
                     className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
                 </th>
-                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
                 <th className="py-2 px-3 whitespace-nowrap">SIZE</th>
                 <th className="py-2 px-3 whitespace-nowrap">CATEGORY</th>
+                <th className="py-2 px-3 whitespace-nowrap">VISIBILITY</th>
                 <th className="py-2 px-3 whitespace-nowrap">CREATED DATE</th>
                 <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
@@ -481,10 +481,10 @@ export default function SizesView() {
                   const formattedDate = s.meta?.createdAt
                     ? new Date(s.meta.createdAt).toLocaleDateString('en-GB', {
                         day: '2-digit',
-                        month: 'short',
+                        month: '2-digit',
                         year: 'numeric',
                       })
-                    : '12 Jun 2026';
+                    : '12/06/2026';
 
                   return (
                     <tr
@@ -499,11 +499,6 @@ export default function SizesView() {
                           onChange={() => handleSelectItem(s._id)}
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
-                      </td>
-
-                      {/* Sr No */}
-                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
-                        {(currentPage - 1) * pageSize + idx + 1}
                       </td>
 
                       {/* Size Name */}
@@ -523,13 +518,31 @@ export default function SizesView() {
                           const badge = getCategoryBadgeStyle(categoryName);
                           return (
                             <span
-                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border shadow-2xs tracking-wide ${badge.bg} ${badge.text} ${badge.border}`}
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border shadow-2xs tracking-wide uppercase ${badge.bg} ${badge.text} ${badge.border}`}
                             >
                               <span className={`w-1.5 h-1.5 rounded-full ${badge.dot} shrink-0`} />
                               <span>{categoryName}</span>
                             </span>
                           );
                         })()}
+                      </td>
+
+                      {/* Visibility Toggle */}
+                      <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleVisibility(s)}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${
+                            s.status === 'active' ? 'bg-[#8f6d43]' : 'bg-stone-300'
+                          }`}
+                          title={`Click to set ${s.status === 'active' ? 'inactive' : 'active'}`}
+                        >
+                          <span
+                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform ${
+                              s.status === 'active' ? 'translate-x-4.5' : 'translate-x-1'
+                            }`}
+                          />
+                        </button>
                       </td>
 
                       {/* Created Date */}

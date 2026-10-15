@@ -41,7 +41,6 @@ export const navSections = [
     title: null,
     items: [
       { id: 'dashboard', title: 'Dashboard', path: '/dashboard', icon: HiOutlineViewGrid },
-      { id: 'ornate-products', title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoDiamondOutline, apiEndpoint: '/products?isOrnate=true' },
       { id: 'diamonds', title: 'Diamonds', path: '/diamonds', icon: IoDiamondOutline, apiEndpoint: '/diamonds' },
       { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
 
@@ -54,6 +53,7 @@ export const navSections = [
         children: [
           { title: 'Jewelry Products', path: '/catalog/jewelry-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=Jewelry' },
           { title: 'Silver Products', path: '/catalog/silver-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=Silver' },
+          { title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoDiamondOutline, apiEndpoint: '/products?isOrnate=true' },
           { title: 'Categories', path: '/catalog/categories', icon: IoLayersOutline, apiEndpoint: '/categories' },
           { title: 'Navigation Menus', path: '/catalog/navigation-menus', icon: IoMapOutline, apiEndpoint: '/navigation-menus' },
         ],

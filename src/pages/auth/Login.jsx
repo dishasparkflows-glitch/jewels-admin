@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import api from '../../api/axios';
+import { getMediaUrl } from '../../utils/imageUrl';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineSparkles } from 'react-icons/hi';
 
 const Login = () => {
@@ -10,6 +12,11 @@ const Login = () => {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [brandLogo, setBrandLogo] = useState('');
+
+  useEffect(() => {
+    api.get('/settings').then(({ data }) => setBrandLogo(getMediaUrl(data?.data?.logoImage?.url))).catch(() => {});
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,8 +37,8 @@ const Login = () => {
       <div className="w-full max-w-md bg-white border border-stone-200/80 rounded-3xl p-8 sm:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         {/* Brand Header */}
         <div className="text-center space-y-2 mb-8">
-          <div className="w-12 h-12 rounded-2xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center mx-auto mb-3 shadow-xs">
-            <HiOutlineSparkles className="w-6 h-6 text-[#8b6f4e]" />
+          <div className="w-12 h-12 rounded-2xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center mx-auto mb-3 shadow-xs overflow-hidden">
+            {brandLogo ? <img src={brandLogo} alt="Neirah Jewellers" className="max-w-full max-h-full object-contain p-1" /> : <HiOutlineSparkles className="w-6 h-6 text-[#8b6f4e]" />}
           </div>
           <h1 className="text-sm font-bold tracking-[0.2em] text-stone-900 uppercase">
             NEIRAH JEWELLERS

@@ -32,78 +32,20 @@ import {
 } from 'react-icons/io5';
 import { TbCoins, TbScale, TbDatabase, TbListDetails } from 'react-icons/tb';
 
-// Color master defaults and 3D spherical gradient generator matching Neirah luxury ERP palette
-const DEFAULT_COLOR_OPTIONS = [
-  {
-    name: 'Rose Gold',
-    colorCode: '#e39d8e',
-    colorCodeEnd: '#cf8170',
-  },
-  {
-    name: 'White Gold',
-    colorCode: '#e8ecf1',
-    colorCodeEnd: '#cbd5e1',
-  },
-  {
-    name: 'Yellow Gold',
-    colorCode: '#d9a74a',
-    colorCodeEnd: '#b5852f',
-  },
-  {
-    name: 'Silver',
-    colorCode: '#c0c0c0',
-    colorCodeEnd: '#9ca3af',
-  },
-];
-
 const buildColorOption = (item = {}) => {
   const name = item.name || '';
-  const hex = item.colorCode || item.hex || '#d9a74a';
-  const border = item.colorCodeEnd || item.border || item.colorCode || '#b5852f';
-
-  const sphereStyles = {
-    'White Gold': {
-      gradient: 'radial-gradient(circle at 35% 35%, #ffffff, #f1f5f9 40%, #cbd5e1 75%, #94a3b8 100%)',
-      shadow: 'inset -2px -2px 4px rgba(100,116,139,0.3), inset 1px 1px 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.12)',
-    },
-    'Rose Gold': {
-      gradient: 'radial-gradient(circle at 35% 35%, #fde2d6, #e7a192 45%, #cb7768 75%, #9a3412 100%)',
-      shadow: 'inset -2px -2px 4px rgba(154,52,18,0.35), inset 1px 1px 2px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.12)',
-    },
-    'Yellow Gold': {
-      gradient: 'radial-gradient(circle at 35% 35%, #fffbeb, #fed7aa 25%, #eab308 60%, #a16207 100%)',
-      shadow: 'inset -2px -2px 4px rgba(161,98,7,0.4), inset 1px 1px 2px rgba(255,255,255,0.7), 0 2px 4px rgba(0,0,0,0.12)',
-    },
-    Silver: {
-      gradient: 'radial-gradient(circle at 35% 35%, #ffffff, #f8fafc 30%, #cbd5e1 65%, #64748b 100%)',
-      shadow: 'inset -2px -2px 4px rgba(71,85,105,0.35), inset 1px 1px 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.12)',
-    },
-    Platinum: {
-      gradient: 'radial-gradient(circle at 35% 35%, #f1f5f9, #e2e8f0 40%, #94a3b8 80%, #475569 100%)',
-      shadow: 'inset -2px -2px 4px rgba(51,65,85,0.4), inset 1px 1px 3px rgba(255,255,255,0.9), 0 2px 4px rgba(0,0,0,0.12)',
-    },
-    Black: {
-      gradient: 'radial-gradient(circle at 35% 35%, #4b5563, #1f2937 60%, #000000 100%)',
-      shadow: 'inset -2px -2px 5px rgba(0,0,0,0.6), inset 1px 1px 2px rgba(255,255,255,0.35), 0 2px 4px rgba(0,0,0,0.2)',
-    },
-    Brown: {
-      gradient: 'radial-gradient(circle at 35% 35%, #a1887f, #6d4c41 55%, #3e2723 95%)',
-      shadow: 'inset -2px -2px 5px rgba(0,0,0,0.5), inset 1px 1px 2px rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.15)',
-    },
-  };
-
-  const matched = sphereStyles[name] || {
-    gradient: `radial-gradient(circle at 35% 35%, #ffffff 0%, ${hex} 55%, ${border} 100%)`,
-    shadow: 'inset -2px -2px 4px rgba(0,0,0,0.25), inset 1px 1px 2px rgba(255,255,255,0.6), 0 2px 4px rgba(0,0,0,0.12)',
-  };
+  const hex = item.colorCode || item.hex || '';
+  const border = item.colorCodeEnd || item.border || hex;
 
   return {
     id: item._id || item.id,
     name,
     hex,
     border,
-    sphereGradient: matched.gradient,
-    sphereShadow: matched.shadow,
+    sphereGradient: hex
+      ? 'radial-gradient(circle at 35% 35%, #ffffff 0%, ' + hex + ' 55%, ' + border + ' 100%)'
+      : '',
+    sphereShadow: '',
   };
 };
 
@@ -158,29 +100,29 @@ export default function OrnateProductEdit() {
   const [baseInfo, setBaseInfo] = useState({
     title: '',
     category: '',
-    categoryTag: 'No Banner Tag',
+    categoryTag: '',
     menuItem: '',
-    targetGender: 'Unisex',
-    gstPercentage: 3,
+    targetGender: '',
+    gstPercentage: '',
     status: 'draft',
-    stockStatus: 'In Stock',
-    showInApp: true,
-    showOnWeb: true,
+    stockStatus: '',
+    showInApp: false,
+    showOnWeb: false,
     description: '',
   });
 
   // ─── 2. Pricing & Inventory ────────────────────────────────
   const [pricing, setPricing] = useState({
-    costPrice: 4000,
-    markupPercentage: 10,
-    calculatedPrice: 4400,
-    salePrice: 4529,
-    mrpMarkupPercentage: 0,
-    mrp: 5529,
+    costPrice: '',
+    markupPercentage: '',
+    calculatedPrice: '',
+    salePrice: '',
+    mrpMarkupPercentage: '',
+    mrp: '',
   });
 
   // ─── 3. Variant Configuration (Colors) ─────────────────────
-  const [colorOptions, setColorOptions] = useState(DEFAULT_COLOR_OPTIONS.map(buildColorOption));
+  const [colorOptions, setColorOptions] = useState([]);
   const [selectedColors, setSelectedColors] = useState([]);
   const [expandedColors, setExpandedColors] = useState([]);
   const [variantMedia, setVariantMedia] = useState({});
@@ -189,22 +131,22 @@ export default function OrnateProductEdit() {
 
   // ─── 4. Weights & Purities ─────────────────────────────────
   const [weights, setWeights] = useState({
-    grossWeight: 9.23,
-    netWeight: 9.23,
-    purity: 92.5,
-    caratCategory: '925SL',
+    grossWeight: '',
+    netWeight: '',
+    purity: '',
+    caratCategory: '',
   });
 
   // ─── 5. Classification & ERP Details ───────────────────────
   const [erpDetails, setErpDetails] = useState({
-    customGroupName: '92.5 BRACELET',
-    itemName: '92.5 BRACELET',
-    groupName: '92.5 SILVER ORNAMENT',
-    varietyName: 'HEAVY WT 925',
-    metalName: 'SILVER',
-    uniqueLabelId: '1000000220165',
-    barcodeNumber: '1000000220124',
-    labelNumber: '925SL/911',
+    customGroupName: '',
+    itemName: '',
+    groupName: '',
+    varietyName: '',
+    metalName: '',
+    uniqueLabelId: '',
+    barcodeNumber: '',
+    labelNumber: '',
   });
 
   // ─── 6. Ornate Images ──────────────────────────────────────
@@ -251,10 +193,6 @@ export default function OrnateProductEdit() {
           if (Array.isArray(rawColors) && rawColors.length > 0) {
             const built = rawColors.map(buildColorOption);
             setColorOptions(built);
-            setSelectedColors((prev) => {
-              if (prev && prev.length > 0) return prev;
-              return built.map((c) => c.name);
-            });
           }
         }
       } catch (err) {
@@ -282,16 +220,16 @@ export default function OrnateProductEdit() {
             category: Array.isArray(product.category)
               ? (product.category[0]?._id || product.category[0] || '')
               : (product.category?._id || product.category || ''),
-            categoryTag: (Array.isArray(product.promoBanner) && product.promoBanner[0]) || product.categoryTag || 'No Banner Tag',
+            categoryTag: (Array.isArray(product.promoBanner) && product.promoBanner[0]) || product.categoryTag || '',
             menuItem: Array.isArray(product.menuItem)
               ? (product.menuItem[0]?._id || product.menuItem[0] || '')
               : (product.menuItem?._id || product.menuItem || ''),
-            targetGender: (Array.isArray(product.gender) && product.gender[0]) || product.gender || 'Unisex',
-            gstPercentage: product.gstPer ?? product.gstPercentage ?? product.pricing?.gstPercentage ?? 3,
+            targetGender: (Array.isArray(product.gender) && product.gender[0]) || product.gender || '',
+            gstPercentage: product.gstPer ?? product.gstPercentage ?? product.pricing?.gstPercentage ?? '',
             status: product.status || 'draft',
-            stockStatus: product.stockStatus || 'In Stock',
-            showInApp: product.inapp !== undefined ? product.inapp : true,
-            showOnWeb: product.inweb !== undefined ? product.inweb : true,
+            stockStatus: product.stockStatus || '',
+            showInApp: Boolean(product.inapp),
+            showOnWeb: Boolean(product.inweb),
             description: product.description || product.basicInfo?.description || '',
           });
 
@@ -355,7 +293,7 @@ export default function OrnateProductEdit() {
             grossWeight: Number(product.grossWt ?? product.specifications?.grossWeight ?? 0),
             netWeight: Number(product.netWt ?? product.specifications?.netWeight ?? 0),
             purity: Number(product.purity ?? product.specifications?.metalPurity ?? 0),
-            caratCategory: product.carat || product.specifications?.caratCategory || '925SL',
+            caratCategory: product.carat || product.specifications?.caratCategory || '',
           });
 
           // Populate Classification & ERP Details
@@ -364,7 +302,7 @@ export default function OrnateProductEdit() {
             itemName: product.itemName || product.title || '',
             groupName: product.groupName || '',
             varietyName: product.varietyName || '',
-            metalName: product.metalName || product.specifications?.metalName || 'SILVER',
+            metalName: product.metalName || product.specifications?.metalName || '',
             uniqueLabelId: product.uniqueLabelID || product.tagNo || '',
             barcodeNumber: product.barcodeNo || product.barcode || '',
             labelNumber: product.labelNo || product.tagNo || '',
@@ -877,11 +815,11 @@ export default function OrnateProductEdit() {
         category: baseInfo.category ? [baseInfo.category] : [],
         promoBanner: baseInfo.categoryTag ? [baseInfo.categoryTag] : [],
         menuItem: baseInfo.menuItem ? [baseInfo.menuItem] : [],
-        gender: baseInfo.targetGender ? [baseInfo.targetGender] : ['Unisex'],
-        gstPercentage: Number(baseInfo.gstPercentage) || 3,
-        gstPer: Number(baseInfo.gstPercentage) || 3,
+        gender: baseInfo.targetGender ? [baseInfo.targetGender] : [],
+        gstPercentage: Number(baseInfo.gstPercentage) || 0,
+        gstPer: Number(baseInfo.gstPercentage) || 0,
         status: activeStatus,
-        stockStatus: baseInfo.stockStatus || 'In Stock',
+        stockStatus: baseInfo.stockStatus || undefined,
         inapp: Boolean(baseInfo.showInApp),
         inweb: Boolean(baseInfo.showOnWeb),
         isOrnate: true,
@@ -900,15 +838,15 @@ export default function OrnateProductEdit() {
         grossWt: Number(weights.grossWeight) || 0,
         netWt: Number(weights.netWeight) || 0,
         baseMetalWeight: Number(weights.netWeight) || 0,
-        purity: Number(weights.purity) || 92.5,
-        carat: weights.caratCategory || '925SL',
+        purity: Number(weights.purity) || 0,
+        carat: weights.caratCategory || '',
 
         // ERP Details
         customGroupName: erpDetails.customGroupName || '',
         itemName: erpDetails.itemName || baseInfo.title,
         groupName: erpDetails.groupName || '',
         varietyName: erpDetails.varietyName || '',
-        metalName: erpDetails.metalName || 'SILVER',
+        metalName: erpDetails.metalName || '',
         uniqueLabelID: erpDetails.uniqueLabelId || '',
         barcodeNo: erpDetails.barcodeNumber || '',
         barcode: erpDetails.barcodeNumber || '',
@@ -950,7 +888,7 @@ export default function OrnateProductEdit() {
         },
 
         // Color variants
-        color: selectedColors[0] || (colorOptions[0]?.name || 'Rose Gold'),
+        color: selectedColors[0] || undefined,
         metalColors: selectedColors.map((cName) => {
           const matched = colorOptions.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
           return matched?.id || cName;
@@ -983,16 +921,11 @@ export default function OrnateProductEdit() {
           salePrice: Number(pricing.salePrice) || 0,
           costPrice: Number(pricing.costPrice) || 0,
           displayPrice: Number(pricing.salePrice) || 0,
-          gstPercentage: Number(baseInfo.gstPercentage) || 3,
+          gstPercentage: Number(baseInfo.gstPercentage) || 0,
           markupPercentage: Number(pricing.markupPercentage) || 0,
         },
         specifications: {
-          metalName: erpDetails.metalName || 'SILVER',
           metalWeight: Number(weights.netWeight) || 0,
-          metalPurity: Number(weights.purity) || 92.5,
-          grossWeight: Number(weights.grossWeight) || 0,
-          netWeight: Number(weights.netWeight) || 0,
-          stoneWeight: 0,
         },
       };
 
@@ -1081,7 +1014,7 @@ export default function OrnateProductEdit() {
               )}
             </div>
             <p className="text-[11px] text-stone-500 font-medium">
-              ERP SKU: <span className="font-mono text-stone-700">{erpDetails.labelNumber || '—'}</span> &bull; Variety: <span className="text-stone-700">{erpDetails.varietyName || '—'}</span> &bull; Metal: <span className="text-stone-700">{erpDetails.metalName || 'SILVER'}</span>
+              ERP SKU: <span className="font-mono text-stone-700">{erpDetails.labelNumber || '—'}</span> &bull; Variety: <span className="text-stone-700">{erpDetails.varietyName || '—'}</span> &bull; Metal: <span className="text-stone-700">{erpDetails.metalName || '—'}</span>
             </p>
           </div>
         </div>
@@ -1221,7 +1154,7 @@ export default function OrnateProductEdit() {
                     value={baseInfo.categoryTag}
                     onChange={(val) => setBaseInfo((prev) => ({ ...prev, categoryTag: val }))}
                     options={CATEGORY_TAG_OPTIONS}
-                    placeholder="No Banner Tag"
+                    placeholder="Select category tag"
                     size="sm"
                     buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
                   />
@@ -1294,7 +1227,7 @@ export default function OrnateProductEdit() {
                     value={baseInfo.stockStatus}
                     onChange={(val) => setBaseInfo((prev) => ({ ...prev, stockStatus: val }))}
                     options={STOCK_STATUS_OPTIONS}
-                    placeholder="In Stock"
+                    placeholder="Select stock status"
                     size="sm"
                     buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
                   />

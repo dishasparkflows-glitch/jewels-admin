@@ -61,7 +61,6 @@ export const topAnnouncementsAPI = {
   toggleStatus: (id) => api.patch(`/top-announcements/${id}/toggle-status`),
   duplicate: (id) => api.post(`/top-announcements/${id}/duplicate`),
   reorder: (items) => api.put('/top-announcements/reorder', { items }),
-  seedDefaults: () => api.post('/top-announcements/seed'),
   getPublic: () => api.get('/top-announcements/public'),
 };
 

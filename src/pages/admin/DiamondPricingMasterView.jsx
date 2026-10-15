@@ -13,120 +13,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Dropdown from '../../components/common/Dropdown';
 import { useConfirm } from '../../contexts/ConfirmContext';
-
-// Default Master Options matching luxury portal
-const DEFAULT_SHAPES = ['FANCY', 'ROUND', 'OVAL', 'EMERALD', 'PEAR', 'CUSHION', 'PRINCESS', 'MARQUISE', 'RADIANT', 'ASSCHER', 'HEART'];
-const DEFAULT_COLORS = ['D-E', 'E-F', 'F-G', 'G-H', 'I-J', 'K-L', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
-const DEFAULT_CLARITIES = ['VS', 'VVS', '-', 'SI', 'FL', 'IF', 'VVS1', 'VVS2', 'VS1', 'VS2', 'SI1', 'SI2'];
-
-// Generates 62 Initial Realistic Price Rows ending with rows 54-62 from User Screenshot
-const generateInitialCenterRows = () => {
-  const rows = [];
-  let idCounter = 1;
-
-  const brackets = [
-    { from: 0.3, to: 1.49 },
-    { from: 1.5, to: 5.99 },
-    { from: 6.0, to: 10.0 },
-  ];
-
-  // 1. ROUND (18 rows)
-  ['D-E', 'E-F', 'F-G', 'G-H', 'I-J', 'K-L'].forEach((col) => {
-    brackets.forEach((br) => {
-      const base = col === 'D-E' ? 23100 : col === 'E-F' ? 18500 : col === 'F-G' ? 15500 : col === 'G-H' ? 12800 : col === 'I-J' ? 10200 : 8500;
-      const rate = br.from >= 6 ? Math.round(base * 1.35) : br.from >= 1.5 ? Math.round(base * 1.15) : base;
-      rows.push({
-        id: `c_${idCounter++}`,
-        shape: 'ROUND',
-        color: col,
-        clarity: col === 'D-E' ? 'VVS' : 'VS',
-        sizeFrom: br.from,
-        sizeTo: br.to,
-        priceINR: rate,
-      });
-    });
-  });
-
-  // 2. OVAL (15 rows)
-  ['D-E', 'E-F', 'F-G', 'G-H', 'I-J'].forEach((col) => {
-    brackets.forEach((br) => {
-      const base = col === 'D-E' ? 23500 : col === 'E-F' ? 18900 : col === 'F-G' ? 15800 : col === 'G-H' ? 13100 : 10500;
-      const rate = br.from >= 6 ? Math.round(base * 1.35) : br.from >= 1.5 ? Math.round(base * 1.15) : base;
-      rows.push({
-        id: `c_${idCounter++}`,
-        shape: 'OVAL',
-        color: col,
-        clarity: 'VS',
-        sizeFrom: br.from,
-        sizeTo: br.to,
-        priceINR: rate,
-      });
-    });
-  });
-
-  // 3. EMERALD (12 rows)
-  ['D-E', 'E-F', 'F-G', 'G-H'].forEach((col) => {
-    brackets.forEach((br) => {
-      const base = col === 'D-E' ? 22800 : col === 'E-F' ? 18200 : col === 'F-G' ? 15200 : 12500;
-      const rate = br.from >= 6 ? Math.round(base * 1.35) : br.from >= 1.5 ? Math.round(base * 1.15) : base;
-      rows.push({
-        id: `c_${idCounter++}`,
-        shape: 'EMERALD',
-        color: col,
-        clarity: 'VS',
-        sizeFrom: br.from,
-        sizeTo: br.to,
-        priceINR: rate,
-      });
-    });
-  });
-
-  // 4. PEAR (8 rows)
-  ['D-E', 'F-G', 'G-H'].forEach((col) => {
-    brackets.forEach((br) => {
-      if (rows.length >= 53) return;
-      const base = col === 'D-E' ? 22500 : 15100;
-      const rate = br.from >= 6 ? Math.round(base * 1.35) : br.from >= 1.5 ? Math.round(base * 1.15) : base;
-      rows.push({
-        id: `c_${idCounter++}`,
-        shape: 'PEAR',
-        color: col,
-        clarity: 'VS',
-        sizeFrom: br.from,
-        sizeTo: br.to,
-        priceINR: rate,
-      });
-    });
-  });
-
-  // 5. Exactly rows 54-62 matching user screenshot for FANCY!
-  rows.push(
-    { id: 'c_54', shape: 'FANCY', color: 'E-F', clarity: '-', sizeFrom: 0.3, sizeTo: 1.49, priceINR: 14553 },
-    { id: 'c_55', shape: 'FANCY', color: 'E-F', clarity: '-', sizeFrom: 1.5, sizeTo: 5.99, priceINR: 16008 },
-    { id: 'c_56', shape: 'FANCY', color: 'E-F', clarity: '-', sizeFrom: 6, sizeTo: 10, priceINR: 21000 },
-    { id: 'c_57', shape: 'FANCY', color: 'F-G', clarity: '-', sizeFrom: 0.3, sizeTo: 1.49, priceINR: 13340.25 },
-    { id: 'c_58', shape: 'FANCY', color: 'F-G', clarity: '-', sizeFrom: 1.5, sizeTo: 5.99, priceINR: 14674 },
-    { id: 'c_59', shape: 'FANCY', color: 'F-G', clarity: '-', sizeFrom: 6, sizeTo: 10, priceINR: 21750 },
-    { id: 'c_60', shape: 'FANCY', color: 'G-H', clarity: '-', sizeFrom: 0.3, sizeTo: 1.49, priceINR: 10914.75 },
-    { id: 'c_61', shape: 'FANCY', color: 'G-H', clarity: '-', sizeFrom: 1.5, sizeTo: 5.99, priceINR: 12006 },
-    { id: 'c_62', shape: 'FANCY', color: 'G-H', clarity: '-', sizeFrom: 6, sizeTo: 10, priceINR: 18002 },
-  );
-
-  return rows;
-};
-
-const INITIAL_CENTER_ROWS = generateInitialCenterRows();
-
-const INITIAL_SIDE_ROWS = [
-  { id: 's1', shape: 'ROUND', color: 'D-E', clarity: 'VVS', sizeFrom: 0.01, sizeTo: 0.05, priceINR: 42000 },
-  { id: 's2', shape: 'ROUND', color: 'D-E', clarity: 'VS', sizeFrom: 0.01, sizeTo: 0.05, priceINR: 38000 },
-  { id: 's3', shape: 'ROUND', color: 'F-G', clarity: 'VS', sizeFrom: 0.01, sizeTo: 0.05, priceINR: 32000 },
-  { id: 's4', shape: 'ROUND', color: 'F-G', clarity: 'VS', sizeFrom: 0.05, sizeTo: 0.15, priceINR: 36000 },
-  { id: 's5', shape: 'ROUND', color: 'G-H', clarity: 'VS', sizeFrom: 0.01, sizeTo: 0.05, priceINR: 28000 },
-  { id: 's6', shape: 'BAGUETTE', color: 'D-E', clarity: 'VS', sizeFrom: 0.01, sizeTo: 0.05, priceINR: 44000 },
-  { id: 's7', shape: 'BAGUETTE', color: 'F-G', clarity: 'VS', sizeFrom: 0.01, sizeTo: 0.05, priceINR: 36000 },
-  { id: 's8', shape: 'PRINCESS', color: 'D-E', clarity: 'VS', sizeFrom: 0.01, sizeTo: 0.05, priceINR: 41000 },
-];
+import Pagination from '../../components/common/Pagination';
 
 export default function DiamondPricingMasterView() {
   const [searchParams] = useSearchParams();
@@ -135,21 +22,26 @@ export default function DiamondPricingMasterView() {
   const tableEndRef = useRef(null);
 
   // Active Type & Tab State
-  const [activeType, setActiveType] = useState('Lab Grown Diamond'); // 'Lab Grown Diamond' | 'Natural Diamond'
+  const [activeType, setActiveType] = useState('')
   const [activeTab, setActiveTab] = useState('center'); // 'center' | 'side'
 
   // Master attributes lookup
-  const [shapesList, setShapesList] = useState(DEFAULT_SHAPES);
-  const [colorsList, setColorsList] = useState(DEFAULT_COLORS);
-  const [claritiesList, setClaritiesList] = useState(DEFAULT_CLARITIES);
-  const [typesList, setTypesList] = useState(['Lab Grown Diamond', 'Natural Diamond']);
+  const [shapesList, setShapesList] = useState([]);
+  const [colorsList, setColorsList] = useState([]);
+  const [claritiesList, setClaritiesList] = useState([]);
+  const [typesList, setTypesList] = useState([]);
   const [masterIds, setMasterIds] = useState({ types: {}, shapes: {}, colors: {}, clarities: {} });
+  const [mastersLoaded, setMastersLoaded] = useState(false);
 
   // Rows state for Center and Side
-  const [centerRows, setCenterRows] = useState(INITIAL_CENTER_ROWS);
-  const [sideRows, setSideRows] = useState(INITIAL_SIDE_ROWS);
+  const [centerRows, setCenterRows] = useState([]);
+  const [sideRows, setSideRows] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [serverTotal, setServerTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploadingFile, setUploadingFile] = useState(false);
 
   // Sync initial query params if present (e.g. ?type=Lab+Grown+Diamond&shape=FANCY...)
   useEffect(() => {
@@ -178,42 +70,43 @@ export default function DiamondPricingMasterView() {
 
         if (resTypes.status === 'fulfilled' && resTypes.value.data?.data) {
           const items = resTypes.value.data.data.items || resTypes.value.data.data || [];
-          if (Array.isArray(items) && items.length > 0) {
-            setTypesList(items.map((i) => i.name));
-            items.forEach((i) => { ids.types[i.name.toLowerCase()] = i._id || i.id; });
+          if (Array.isArray(items)) {
+            const names = items.map((i) => i.name).filter(Boolean);
+            setTypesList(names);
+            setActiveType((current) => names.some((name) => name.toLowerCase() === current.toLowerCase()) ? current : (names[0] || ''));
+            items.forEach((i) => { if (i.name) ids.types[i.name.toLowerCase()] = i._id || i.id; });
           }
         }
 
         if (resShapes.status === 'fulfilled' && resShapes.value.data?.data) {
           const items = resShapes.value.data.data.items || resShapes.value.data.data || [];
-          if (Array.isArray(items) && items.length > 0) {
-            const names = items.map((i) => String(i.name || '').toUpperCase());
-            setShapesList(Array.from(new Set([...names, ...DEFAULT_SHAPES])));
-            items.forEach((i) => { ids.shapes[String(i.name).toUpperCase()] = i._id || i.id; });
+          if (Array.isArray(items)) {
+            setShapesList(items.map((i) => String(i.name || '').toUpperCase()).filter(Boolean));
+            items.forEach((i) => { if (i.name) ids.shapes[String(i.name).toUpperCase()] = i._id || i.id; });
           }
         }
 
         if (resColors.status === 'fulfilled' && resColors.value.data?.data) {
           const items = resColors.value.data.data.items || resColors.value.data.data || [];
-          if (Array.isArray(items) && items.length > 0) {
-            const names = items.map((i) => String(i.name || '').toUpperCase());
-            setColorsList(Array.from(new Set([...names, ...DEFAULT_COLORS])));
-            items.forEach((i) => { ids.colors[String(i.name).toUpperCase()] = i._id || i.id; });
+          if (Array.isArray(items)) {
+            setColorsList(items.map((i) => String(i.name || '').toUpperCase()).filter(Boolean));
+            items.forEach((i) => { if (i.name) ids.colors[String(i.name).toUpperCase()] = i._id || i.id; });
           }
         }
 
         if (resClarities.status === 'fulfilled' && resClarities.value.data?.data) {
           const items = resClarities.value.data.data.items || resClarities.value.data.data || [];
-          if (Array.isArray(items) && items.length > 0) {
-            const names = items.map((i) => String(i.name || '').toUpperCase());
-            setClaritiesList(Array.from(new Set([...names, ...DEFAULT_CLARITIES])));
-            items.forEach((i) => { ids.clarities[String(i.name).toUpperCase()] = i._id || i.id; });
+          if (Array.isArray(items)) {
+            setClaritiesList(items.map((i) => String(i.name || '').toUpperCase()).filter(Boolean));
+            items.forEach((i) => { if (i.name) ids.clarities[String(i.name).toUpperCase()] = i._id || i.id; });
           }
         }
 
         setMasterIds(ids);
       } catch (err) {
         console.warn('Masters lookup notice:', err);
+      } finally {
+        setMastersLoaded(true);
       }
     };
 
@@ -221,19 +114,23 @@ export default function DiamondPricingMasterView() {
   }, []);
 
   // Fetch Diamond Prices from Backend API
-  const fetchPrices = async () => {
+  const fetchPrices = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
       const endpoint = activeTab === 'center' ? '/center-diamond-prices' : '/side-diamond-prices';
-      const res = await api.get(`${endpoint}?limit=500`);
-      const items = res.data?.data?.items || res.data?.data || [];
+      const typeId = masterIds.types[activeType.toLowerCase()];
+      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+      if (typeId) params.set('diamondTypeId', typeId);
+      const res = await api.get(`${endpoint}?${params.toString()}`);
+      const items = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
+      setServerTotal(Number(res.data?.pagination?.totalDocs ?? items.length));
 
-      if (Array.isArray(items) && items.length > 0) {
+      if (Array.isArray(items)) {
         const formatted = items.map((doc) => {
-          const sName = doc.diamondShapeId?.name || doc.diamondShape || 'ROUND';
-          const cName = doc.diamondColorId?.name || doc.diamondColor || 'D-E';
-          const clName = doc.diamondClarityId?.name || doc.diamondClarity || 'VS';
-          const tName = doc.diamondTypeId?.name || doc.diamondType || 'Lab Grown Diamond';
+          const sName = doc.diamondShapeId?.name || doc.diamondShape || '';
+          const cName = doc.diamondColorId?.name || doc.diamondColor || '';
+          const clName = doc.diamondClarityId?.name || doc.diamondClarity || '';
+          const tName = doc.diamondTypeId?.name || doc.diamondType || activeType;
 
           return {
             _id: doc._id || doc.id,
@@ -242,9 +139,9 @@ export default function DiamondPricingMasterView() {
             shape: String(sName).toUpperCase(),
             color: String(cName).toUpperCase(),
             clarity: String(clName).toUpperCase(),
-            sizeFrom: Number(doc.sizeFrom ?? 0.3),
-            sizeTo: Number(doc.sizeTo ?? 1.49),
-            priceINR: Number(doc.priceINR ?? 20000),
+            sizeFrom: doc.sizeFrom ?? '',
+            sizeTo: doc.sizeTo ?? '',
+            priceINR: doc.priceINR ?? '',
             priceUSD: Number(doc.priceUSD ?? 0),
           };
         });
@@ -256,15 +153,22 @@ export default function DiamondPricingMasterView() {
         }
       }
     } catch (err) {
-      console.warn(`Could not load ${activeTab} diamond prices from API, keeping configured master rows:`, err);
+      console.warn(`Could not load ${activeTab} diamond prices from API:`, err);
+      setServerTotal(0);
+      if (activeTab === 'center') setCenterRows([]);
+      else setSideRows([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchPrices();
-  }, [activeTab]);
+    if (mastersLoaded) fetchPrices(currentPage, pageSize);
+  }, [activeTab, activeType, currentPage, pageSize, mastersLoaded, masterIds.types]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, activeType]);
 
   // Current active rows
   const currentRows = activeTab === 'center' ? centerRows : sideRows;
@@ -375,70 +279,39 @@ export default function DiamondPricingMasterView() {
     }
   };
 
-  const handleFileUpload = (e) => {
-    const file = e.target.files?.[0];
+  const handleFileUpload = async (event) => {
+    const file = event.target.files?.[0];
     if (!file) return;
+    const typeId = masterIds.types[activeType.toLowerCase()];
+    if (!typeId) {
+      toast.error('Could not identify the selected diamond type. Please reload and try again.');
+      event.target.value = '';
+      return;
+    }
+    if (!/\.(xlsx|csv)$/i.test(file.name)) {
+      toast.error('Please select an .xlsx or .csv file');
+      event.target.value = '';
+      return;
+    }
 
-    const reader = new FileReader();
-    reader.onload = (evt) => {
-      try {
-        const text = evt.target.result;
-        const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
-        if (lines.length < 2) {
-          toast.error('File appears to be empty or missing data rows');
-          return;
-        }
-
-        const headerLine = lines[0].toLowerCase();
-        const headerParts = headerLine.split(/[,;\t]/).map((h) => h.replace(/["']/g, '').trim());
-
-        const shapeIdx = headerParts.findIndex((h) => h.includes('shape'));
-        const colorIdx = headerParts.findIndex((h) => h.includes('color'));
-        const clarityIdx = headerParts.findIndex((h) => h.includes('clarity'));
-        const fromIdx = headerParts.findIndex((h) => h.includes('from') || h.includes('min'));
-        const toIdx = headerParts.findIndex((h) => h.includes('to') || h.includes('max'));
-        const priceIdx = headerParts.findIndex((h) => h.includes('price') || h.includes('rate') || h.includes('inr'));
-
-        const parsedRows = [];
-        for (let i = 1; i < lines.length; i++) {
-          const parts = lines[i].split(/[,;\t]/).map((p) => p.replace(/["']/g, '').trim());
-          if (parts.length < 3) continue;
-
-          const shape = (shapeIdx !== -1 ? parts[shapeIdx] : parts[0] || 'ROUND').toUpperCase();
-          const color = (colorIdx !== -1 ? parts[colorIdx] : parts[1] || 'D-E').toUpperCase();
-          const clarity = (clarityIdx !== -1 ? parts[clarityIdx] : parts[2] || 'VS').toUpperCase();
-          const sizeFrom = parseFloat(fromIdx !== -1 ? parts[fromIdx] : parts[3]) || 0.3;
-          const sizeTo = parseFloat(toIdx !== -1 ? parts[toIdx] : parts[4]) || 1.49;
-          const priceINR = parseFloat(priceIdx !== -1 ? parts[priceIdx] : parts[5]) || 20000;
-
-          parsedRows.push({
-            id: `new_${Date.now()}_${i}`,
-            _id: `new_${Date.now()}_${i}`,
-            type: activeType,
-            shape,
-            color,
-            clarity,
-            sizeFrom,
-            sizeTo,
-            priceINR,
-            isNew: true,
-          });
-        }
-
-        if (parsedRows.length === 0) {
-          toast.error('Could not parse valid diamond price rows from file');
-          return;
-        }
-
-        setCurrentRows((prev) => [...parsedRows, ...prev]);
-        toast.success(`Imported ${parsedRows.length} rows from Excel! Click "Save Master" to persist.`);
-      } catch (parseErr) {
-        console.error('File parsing error:', parseErr);
-        toast.error('Failed to parse spreadsheet file');
-      }
-    };
-
-    reader.readAsText(file);
+    try {
+      setUploadingFile(true);
+      const endpoint = activeTab === 'center' ? '/center-diamond-prices' : '/side-diamond-prices';
+      const response = await api.post(
+        `${endpoint}/import?diamondTypeId=${encodeURIComponent(typeId)}&filename=${encodeURIComponent(file.name)}`,
+        file,
+        { headers: { 'Content-Type': 'application/octet-stream' } }
+      );
+      const count = response.data?.data?.count ?? 0;
+      toast.success(`Imported and saved ${count} ${activeTab} diamond price rows`);
+      setCurrentPage(1);
+      await fetchPrices(1, pageSize);
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message || 'Failed to import Excel file');
+    } finally {
+      setUploadingFile(false);
+      event.target.value = '';
+    }
   };
 
   // Save Master Handler: Persists all rows to the backend API
@@ -499,7 +372,7 @@ export default function DiamondPricingMasterView() {
         type="file"
         ref={fileInputRef}
         onChange={handleFileUpload}
-        accept=".csv,.tsv,.txt,.xlsx,.xls"
+        accept=".csv,.xlsx"
         className="hidden"
       />
 
@@ -530,11 +403,12 @@ export default function DiamondPricingMasterView() {
           <button
             type="button"
             onClick={handleUploadClick}
+            disabled={uploadingFile}
             className="px-3.5 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"
-            title="Import rates from Excel / CSV"
+            title="Import .xlsx or .csv and save to the database. Blank clarity cells are treated as SI."
           >
             <HiOutlineUpload className="w-4 h-4 stroke-2 text-[#8b6f4e]" />
-            <span>Upload Excel</span>
+            <span>{uploadingFile ? 'Importing…' : 'Upload Excel'}</span>
           </button>
 
           {/* 3. Export Excel (Boxed in User Screenshot) */}
@@ -567,7 +441,7 @@ export default function DiamondPricingMasterView() {
 
       {/* Diamond Type Selector Pill (LAB GROWN DIAMOND vs NATURAL DIAMOND) */}
       <div className="flex items-center gap-2">
-        {['Lab Grown Diamond', 'Natural Diamond'].map((type) => {
+        {typesList.map((type) => {
           const isSelected = activeType.toLowerCase() === type.toLowerCase();
           return (
             <button
@@ -615,7 +489,7 @@ export default function DiamondPricingMasterView() {
 
         {/* Total Rows Indicator */}
         <div className="text-xs font-extrabold uppercase tracking-widest text-stone-500">
-          TOTAL ROWS: {filteredRows.length}
+          TOTAL ROWS: {serverTotal}
         </div>
       </div>
 
@@ -656,7 +530,7 @@ export default function DiamondPricingMasterView() {
                   <tr key={row.id} className="hover:bg-stone-50/40 transition-colors">
                     {/* # Index */}
                     <td className="py-2.5 px-4 text-center text-xs font-semibold text-stone-400 whitespace-nowrap">
-                      {String(index + 1).padStart(2, '0')}
+                      {String((currentPage - 1) * pageSize + index + 1).padStart(2, '0')}
                     </td>
 
                     {/* SHAPE Dropdown */}
@@ -749,6 +623,16 @@ export default function DiamondPricingMasterView() {
           </table>
         </div>
 
+        <Pagination
+          currentPage={currentPage}
+          totalItems={serverTotal}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
+          pageSizeOptions={[10, 25, 50, 100]}
+          itemLabel="diamond rates"
+        />
+
         {/* Bottom Action Bar */}
         <div className="p-3 bg-stone-50/60 border-t border-stone-200/80 flex items-center justify-between">
           <button
@@ -760,7 +644,7 @@ export default function DiamondPricingMasterView() {
             <span>Add Row</span>
           </button>
           <span className="text-[11px] font-semibold text-stone-400">
-            Total {filteredRows.length} diamond rate {filteredRows.length === 1 ? 'row' : 'rows'}
+            Total {serverTotal} diamond rate {serverTotal === 1 ? 'row' : 'rows'}
           </span>
         </div>
         <div ref={tableEndRef} />

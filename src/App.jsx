@@ -153,8 +153,12 @@ function App() {
             <Route path="/product-config/vto-masters" element={<VtoMastersView />} />
 
             {/* Luxury Add Jewelry Product (Matches Exact User Screenshot) */}
+            <Route path="/catalog/jewelry-products/edit/:id" element={<AddJewelryProduct />} />
             <Route path="/catalog/jewelry-products/add" element={<AddJewelryProduct />} />
             <Route path="/catalog/jewelry-products/new" element={<AddJewelryProduct />} />
+            <Route path="/catalog/silver-products/edit/:id" element={<AddJewelryProduct />} />
+            <Route path="/catalog/silver-products/add" element={<AddJewelryProduct />} />
+            <Route path="/catalog/silver-products/new" element={<AddJewelryProduct />} />
             <Route path="/catalog/add-jewelry-product" element={<AddJewelryProduct />} />
             <Route path="/add-jewelry-product" element={<AddJewelryProduct />} />
 

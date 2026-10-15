@@ -385,21 +385,21 @@ export default function CustomInquiriesView() {
                 paginatedItems.map((inq) => {
                   const id = inq._id || inq.id;
                   const isSelected = selectedIds.includes(id);
-                  const clientName = inq.customer?.name || 'Anonymous Client';
+                  const clientName = inq.customer?.name || '—';
                   const clientEmail = inq.customer?.email || '—';
                   const phoneNum = formatPhone(inq.customer?.phone);
-                  const initial = (clientName || 'C')
+                  const initial = (clientName === '—' ? '' : clientName)
                     .split(' ')
                     .map((s) => s[0])
                     .join('')
                     .toUpperCase()
                     .slice(0, 2);
 
-                  const stone = inq.requirements?.stoneType || 'Natural Diamond';
-                  const metal = inq.requirements?.metalType || '18KT Gold';
+                  const stone = inq.requirements?.stoneType || '—';
+                  const metal = inq.requirements?.metalType || '—';
                   const jTypes = Array.isArray(inq.requirements?.jewelryTypes)
                     ? inq.requirements.jewelryTypes.join(', ')
-                    : 'RING/BAND';
+                    : '—';
 
                   const budgetStr = formatBudget(inq.requirements);
                   const statusVal = (inq.status || 'pending').toLowerCase();
@@ -726,7 +726,7 @@ export default function CustomInquiriesView() {
                   <span className="font-bold text-stone-900">
                     {Array.isArray(viewingInquiry.requirements?.jewelryTypes)
                       ? viewingInquiry.requirements.jewelryTypes.join(', ')
-                      : 'RING/BAND'}
+                      : '—'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
