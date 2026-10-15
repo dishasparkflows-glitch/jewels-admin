@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { navSections } from '../../config/navigation';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   HiOutlineChevronRight,
   HiOutlineChevronDown,
@@ -12,34 +13,76 @@ import {
 
 const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { currentTheme } = useTheme();
   
   // Default submenus to collapsed so sidebar stays compact and small, auto-opening only active route
   const [openSubmenus, setOpenSubmenus] = useState({});
 
+  const checkIsChildActive = (childPath) => {
+    return (
+      location.pathname === childPath ||
+      location.pathname.startsWith(childPath) ||
+      (childPath === '/diamond-types' && (location.pathname === '/diamond-config/types' || location.pathname === '/diamond-types')) ||
+      (childPath === '/diamond-shapes' && (location.pathname === '/diamond-config/shapes' || location.pathname === '/diamond-shapes')) ||
+      (childPath === '/diamond-color' && (location.pathname === '/diamond-config/color' || location.pathname === '/diamond-color')) ||
+      (childPath === '/diamond-clarity' && (location.pathname === '/diamond-config/clarity' || location.pathname === '/diamond-clarity')) ||
+      (childPath === '/diamond-size' && (location.pathname === '/diamond-config/size' || location.pathname === '/diamond-size')) ||
+      (childPath === '/metal-purity' && (location.pathname === '/product-config/metal-purity' || location.pathname === '/metal-purity')) ||
+      (childPath === '/metal-color' && (location.pathname === '/product-config/metal-color' || location.pathname === '/metal-color')) ||
+      (childPath === '/sizes' && (location.pathname === '/product-config/sizes' || location.pathname === '/sizes')) ||
+      (childPath === '/pricing-hub/metal-rates' && (location.pathname === '/pricing-hub/metal-rates' || location.pathname === '/metal-rates' || location.pathname === '/goldprice')) ||
+      (childPath === '/vto-masters' && (location.pathname === '/product-config/vto-masters' || location.pathname === '/vto-masters'))
+    );
+  };
+
   useEffect(() => {
-    // Automatically ensure the section of the current path is opened
+    // Automatically ensure ONLY the section of the current active path is opened (turn off others)
+    let activeParentId = null;
     navSections.forEach((section) => {
       section.items.forEach((item) => {
         if (item.children) {
-          const isChildActive = item.children.some(
-            (c) => location.pathname === c.path || location.pathname.startsWith(c.path)
-          );
+          const isChildActive = item.children.some((c) => checkIsChildActive(c.path));
           if (isChildActive) {
-            setOpenSubmenus((prev) => ({ ...prev, [item.id]: true }));
+            activeParentId = item.id;
           }
         }
       });
     });
+
+    if (activeParentId) {
+      setOpenSubmenus({ [activeParentId]: true });
+    }
   }, [location.pathname]);
 
   const toggleSubmenu = (id) => {
-    setOpenSubmenus((prev) => ({ ...prev, [id]: !prev[id] }));
+    setOpenSubmenus((prev) => {
+      const wasOpen = !!prev[id];
+      // If was open, turn off. If was closed, open this and turn off others
+      return wasOpen ? {} : { [id]: true };
+    });
+  };
+
+  const handleParentClick = (item) => {
+    const isCurrentlyOpen = !!openSubmenus[item.id];
+
+    if (item.children && item.children.length > 0) {
+      const isAlreadyOnChild = item.children.some((c) => checkIsChildActive(c.path));
+      if (!isAlreadyOnChild) {
+        // Auto-open this submenu and turn off others, navigate to first child
+        setOpenSubmenus({ [item.id]: true });
+        navigate(item.children[0].path);
+      } else {
+        // If already in this section, toggle open and off
+        setOpenSubmenus(isCurrentlyOpen ? {} : { [item.id]: true });
+      }
+    }
   };
 
   return (
     <aside
-      className={`fixed top-0 left-0 z-50 h-screen bg-white border-r-4 border-[#9c7849] transition-all duration-300 flex flex-col justify-between shadow-xs
+      className={`fixed top-0 left-0 z-50 h-screen bg-white border-r border-[#eee8df] transition-all duration-300 flex flex-col justify-between shadow-xs
         ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
         lg:translate-x-0
         ${isOpen ? 'w-64' : 'w-20'}
@@ -48,7 +91,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
       {/* ─── Top Brand Header ───────────────────────────────── */}
       <div className="h-14 flex items-center px-5 border-b border-stone-100 flex-shrink-0 bg-white">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shadow-xs flex-shrink-0 font-serif font-bold text-xl">
+          <div className="w-9 h-9 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shadow-xs flex-shrink-0 font-bold text-xl">
             N
           </div>
           {isOpen && (
@@ -80,11 +123,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
               const isSubOpen = openSubmenus[item.id];
               const isGroupActive =
                 hasChildren &&
-                item.children.some(
-                  (child) =>
-                    location.pathname === child.path ||
-                    location.pathname.startsWith(child.path)
-                );
+                item.children.some((child) => checkIsChildActive(child.path));
               const isActive =
                 !hasChildren &&
                 (location.pathname === item.path ||
@@ -100,12 +139,12 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                     {/* Accordion Group Header (Matches User Screenshot) */}
                     <button
                       type="button"
-                      onClick={() => toggleSubmenu(item.id)}
+                      onClick={() => handleParentClick(item)}
                       onKeyDown={(e) => {
                         if (e.key === 'ArrowRight' && !isSubOpen) toggleSubmenu(item.id);
                         if (e.key === 'ArrowLeft' && isSubOpen) toggleSubmenu(item.id);
                       }}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 ${
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-2xl text-[13px] font-medium transition-all focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 cursor-pointer ${
                         isSubOpen || isGroupActive
                           ? 'bg-[#faf8f5] text-[#8f6d43] font-semibold'
                           : 'text-stone-700 hover:text-stone-900 hover:bg-stone-50'
@@ -120,7 +159,16 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                         )}
                       </div>
                       {isOpen && (
-                        <span className="text-stone-400 text-xs flex items-center">
+                        <span
+                          role="button"
+                          tabIndex={0}
+                          aria-label={`Toggle ${item.title} undermenu`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleSubmenu(item.id);
+                          }}
+                          className="text-stone-400 hover:text-stone-700 text-xs flex items-center p-1 rounded-md transition-colors cursor-pointer"
+                        >
                           {isSubOpen ? (
                             <HiOutlineChevronUp className="w-4 h-4 text-stone-400 stroke-2" />
                           ) : (
@@ -218,14 +266,28 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
 
       {/* ─── Bottom User Profile Footer ─────────────────────── */}
       <div className="p-3 border-t border-stone-100 flex-shrink-0 bg-white">
-        <div className="flex items-center justify-between p-2.5 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 transition-colors">
+        <div
+          onClick={() => {
+            navigate('/profile');
+            onMobileClose?.();
+          }}
+          className="flex items-center justify-between p-2.5 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 transition-colors cursor-pointer group"
+          title="View Profile & Theme Options"
+        >
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-[#f4ece0] border border-[#e8d9c2] flex items-center justify-center font-bold text-xs text-[#8b6f4e] flex-shrink-0">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 transition-transform group-hover:scale-105 border"
+              style={{
+                backgroundColor: currentTheme.light,
+                borderColor: currentTheme.border,
+                color: currentTheme.primary,
+              }}
+            >
               {user?.firstName?.[0] || 'S'}
             </div>
             {isOpen && (
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-bold text-stone-900 truncate">
+              <div className="flex flex-col min-w-0 text-left">
+                <span className="text-xs font-bold text-stone-900 truncate group-hover:text-black">
                   {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
                 </span>
                 <span className="text-[10px] text-stone-400 truncate">
@@ -237,7 +299,11 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
 
           {isOpen && (
             <button
-              onClick={logout}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                logout();
+              }}
               title="Sign Out"
               className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
             >

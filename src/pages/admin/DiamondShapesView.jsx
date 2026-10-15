@@ -50,7 +50,7 @@ function VisualShapeBadge({ name = '', imageUrl, className = 'w-6 h-6' }) {
       className={`${className} rounded-lg bg-[#fafafc] border border-stone-200/80 flex items-center justify-center select-none shadow-2xs`}
       title={name || 'Diamond Shape'}
     >
-      <span className="text-stone-300 italic font-serif text-[10px] font-medium tracking-wider">
+      <span className="text-stone-300 italic text-[10px] font-medium tracking-wider">
         DS
       </span>
     </div>

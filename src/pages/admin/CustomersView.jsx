@@ -503,7 +503,7 @@ export default function CustomersView() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div>
-                <h3 className="text-lg font-bold text-stone-900 font-serif">
+                <h3 className="text-lg font-bold text-stone-900">
                   Add New Customer
                 </h3>
                 <p className="text-xs text-stone-400 mt-0.5">
@@ -522,8 +522,8 @@ export default function CustomersView() {
             <form onSubmit={handleCreateCustomer} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                    First Name *
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    First Name <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -531,11 +531,11 @@ export default function CustomersView() {
                     placeholder="e.g. Kavita"
                     value={formData.firstName}
                     onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Last Name
                   </label>
                   <input
@@ -543,14 +543,14 @@ export default function CustomersView() {
                     placeholder="e.g. Krishnan"
                     value={formData.lastName}
                     onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                  Email Address *
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Email Address <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="email"
@@ -558,12 +558,12 @@ export default function CustomersView() {
                   placeholder="e.g. customer@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Phone Number
                 </label>
                 <input
@@ -571,7 +571,7 @@ export default function CustomersView() {
                   placeholder="e.g. 9899900118"
                   value={formData.phone}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
               </div>
 
@@ -607,7 +607,7 @@ export default function CustomersView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900 font-serif">
+              <h3 className="text-base font-bold text-stone-900">
                 Customer Details
               </h3>
               <button

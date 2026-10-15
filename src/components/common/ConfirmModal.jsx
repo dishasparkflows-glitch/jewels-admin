@@ -114,7 +114,7 @@ export default function ConfirmModal({
 
         {/* Content Section */}
         <div className="space-y-2">
-          <h3 className="font-serif font-bold text-lg text-stone-900 tracking-tight">
+          <h3 className="font-bold text-lg text-stone-900 tracking-tight">
             {title}
           </h3>
           <p className="text-xs sm:text-sm text-stone-500 font-sans leading-relaxed">

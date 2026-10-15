@@ -382,7 +382,7 @@ export default function CodSequencesView() {
                       {/* Order Value Bracket */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-[#f4ece3] text-[#8b6f4e] font-semibold text-[11px] flex items-center justify-center border border-[#8b6f4e]/20 shadow-2xs shrink-0 font-serif">
+                          <div className="w-7 h-7 rounded-full bg-[#f4ece3] text-[#8b6f4e] font-semibold text-[11px] flex items-center justify-center border border-[#8b6f4e]/20 shadow-2xs shrink-0">
                             ₹
                           </div>
                           <div className="leading-tight">
@@ -458,7 +458,7 @@ export default function CodSequencesView() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div>
-                <h3 className="text-lg font-bold text-stone-900 font-serif">
+                <h3 className="text-lg font-bold text-stone-900">
                   {editingItem ? 'Edit COD Tier' : 'Add COD Tier'}
                 </h3>
                 <p className="text-xs text-stone-400 mt-0.5">
@@ -476,8 +476,8 @@ export default function CodSequencesView() {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                  Upto Amount (₹) *
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Upto Amount (₹) <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="number"
@@ -485,12 +485,12 @@ export default function CodSequencesView() {
                   placeholder="e.g. 50000"
                   value={formData.uptoAmount}
                   onChange={(e) => setFormData({ ...formData, uptoAmount: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Advance Payment Type
                 </label>
                 <Dropdown
@@ -501,13 +501,13 @@ export default function CodSequencesView() {
                     { value: 'Fixed', label: 'Fixed Amount (₹)' },
                   ]}
                   size="sm"
-                  buttonClassName="w-full h-9 rounded-lg text-xs bg-white border-stone-200"
+                  buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium bg-white border border-[#d6cfc2] hover:border-[#bdae99]"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                  {formData.chargeType === 'Percentage' ? 'Advance Percentage (%) *' : 'Advance Amount (₹) *'}
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  {formData.chargeType === 'Percentage' ? 'Advance Percentage (%)' : 'Advance Amount (₹)'} <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="number"
@@ -516,7 +516,7 @@ export default function CodSequencesView() {
                   placeholder={formData.chargeType === 'Percentage' ? 'e.g. 15' : 'e.g. 2500'}
                   value={formData.chargeValue}
                   onChange={(e) => setFormData({ ...formData, chargeValue: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
               </div>
 
@@ -552,7 +552,7 @@ export default function CodSequencesView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900 font-serif">
+              <h3 className="text-base font-bold text-stone-900">
                 COD Tier Information
               </h3>
               <button

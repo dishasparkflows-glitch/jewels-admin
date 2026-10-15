@@ -3,19 +3,50 @@
 @tailwind utilities;
 
 @layer base {
-  * {
+  *,
+  *::before,
+  *::after {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
+    font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif !important;
   }
 
+  html,
   body {
-    font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif !important;
     background-color: #fbfaf8;
     color: #1a1a1a;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  h1, h2, h3, h4, h5, h6,
+  input, select, textarea, button,
+  p, span, label, a, td, th {
+    font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif !important;
+  }
+}
+
+/* Enforce Plus Jakarta Sans globally for any font-serif or typography classes across the entire admin panel */
+.font-serif,
+.font-sans,
+[class*="font-serif"],
+h1, h2, h3, h4, h5, h6,
+p, span, label, input, select, textarea, button, div {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif !important;
+}
+
+/* Universal Form Label Luxury Typography Standard (matches AddJewelryProduct "Metal Name") */
+label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge"]):not([class*="btn"]):not([class*="cursor-pointer"]):not(:has(input[type="checkbox"])):not(:has(input[type="radio"])):not(:has(input[type="file"])) {
+  font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: #1c1917 !important;
+  letter-spacing: normal !important;
+}
+
+@layer base {
 
   /* Elegant Thin Scrollbar */
   ::-webkit-scrollbar {
@@ -39,8 +70,29 @@
 
 @layer components {
   .luxury-card {
-    @apply bg-white rounded-2xl border border-stone-200/70 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.02)]
+    @apply bg-white rounded-2xl border border-[#eee8df] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]
            transition-all duration-200;
+  }
+
+  .luxury-panel {
+    @apply bg-white rounded-2xl border border-[#eee8df] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]
+           transition-all duration-200;
+  }
+
+  .luxury-label {
+    @apply text-xs font-bold text-stone-900 flex items-center gap-1 leading-snug;
+  }
+
+  .luxury-input {
+    @apply w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs;
+  }
+
+  .luxury-select {
+    @apply w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all appearance-none pr-8 cursor-pointer shadow-2xs;
+  }
+
+  .luxury-callout {
+    @apply flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fcf6ee] border border-[#ebdcc9] text-[11px] font-medium text-[#8b6f4e];
   }
 
   .badge-paid {

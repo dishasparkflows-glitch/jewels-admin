@@ -8,6 +8,7 @@ import {
   HiOutlineSearch,
   HiOutlineCube,
   HiOutlineSparkles,
+  HiChevronDown,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -135,9 +136,32 @@ export default function MetalPuritiesView() {
   // Auto-fill purity name when karat value changes if user hasn't explicitly set another name
   const handleKaratChange = (val) => {
     setKaratValue(val);
-    if (!editingPurity && (!purityName || purityName.endsWith('KT') || purityName.endsWith('K'))) {
+    if (!editingPurity) {
       if (val) {
-        setPurityName(`${val}KT`);
+        if (metalType === 'Gold') {
+          setPurityName(`${val}KT Gold`);
+        } else if (metalType === 'Silver') {
+          setPurityName(val === '92.5' || val === '925' ? '925 Silver' : `${val} Silver`);
+        } else if (metalType === 'Platinum') {
+          setPurityName(val === '95' || val === '950' ? '950 Platinum' : `${val} Platinum`);
+        }
+      }
+    }
+  };
+
+  // When metal type is selected, intelligently preset defaults if creating new
+  const handleMetalTypeChange = (newType) => {
+    setMetalType(newType);
+    if (!editingPurity) {
+      if (newType === 'Gold') {
+        if (!karatValue || karatValue === '925' || karatValue === '950') setKaratValue('18');
+        setPurityName('18KT Gold');
+      } else if (newType === 'Silver') {
+        if (!karatValue || karatValue === '18' || karatValue === '950') setKaratValue('925');
+        setPurityName('925 Silver');
+      } else if (newType === 'Platinum') {
+        if (!karatValue || karatValue === '18' || karatValue === '925') setKaratValue('950');
+        setPurityName('950 Platinum');
       }
     }
   };
@@ -438,44 +462,68 @@ export default function MetalPuritiesView() {
 
             {/* Modal Form (Matches Screenshot 2) */}
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Metal Type Display Box */}
+              {/* Metal Type Selector */}
               <div>
-                <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                  METAL TYPE
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Metal Type <span className="text-rose-500 font-bold">*</span>
                 </label>
-                <div className="w-full h-11 px-4 rounded-xl border border-[#8f6d43]/60 bg-white flex items-center justify-center text-xs font-bold tracking-widest text-[#8f6d43] uppercase select-none">
-                  GOLD
+                <div className="relative">
+                  <select
+                    value={metalType}
+                    onChange={(e) => handleMetalTypeChange(e.target.value)}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all appearance-none pr-8 cursor-pointer shadow-2xs"
+                  >
+                    <option value="Gold">Gold</option>
+                    <option value="Silver">Silver</option>
+                    <option value="Platinum">Platinum</option>
+                  </select>
+                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-stone-500">
+                    <HiChevronDown className="w-4 h-4" />
+                  </div>
                 </div>
               </div>
 
               {/* Karat Value */}
               <div>
-                <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                  KARAT VALUE
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  {metalType === 'Gold' ? 'Karat Value (KT)' : 'Purity Value / Standard'}
                 </label>
                 <input
                   type="number"
                   min="0"
-                  max="24"
+                  max={metalType === 'Gold' ? 24 : 1000}
+                  step="any"
                   value={karatValue}
                   onChange={(e) => handleKaratChange(e.target.value)}
-                  placeholder="e.g. 18"
-                  className="w-full h-11 px-4 text-xs font-semibold rounded-xl border border-stone-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
+                  placeholder={
+                    metalType === 'Gold'
+                      ? 'e.g. 18'
+                      : metalType === 'Silver'
+                      ? 'e.g. 92.5 or 925'
+                      : 'e.g. 95 or 950'
+                  }
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
               </div>
 
               {/* Purity Name */}
               <div>
-                <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                  PURITY NAME
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Purity Name <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
                   required
                   value={purityName}
                   onChange={(e) => setPurityName(e.target.value)}
-                  placeholder="e.g. 18KT"
-                  className="w-full h-11 px-4 text-xs font-semibold rounded-xl border border-stone-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
+                  placeholder={
+                    metalType === 'Gold'
+                      ? 'e.g. 18KT Gold'
+                      : metalType === 'Silver'
+                      ? 'e.g. 925 Silver'
+                      : 'e.g. 950 Platinum'
+                  }
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
               </div>
 

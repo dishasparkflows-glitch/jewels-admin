@@ -540,8 +540,8 @@ export default function CouponsView() {
               {/* Row 1: Coupon Code & Headline/Desc */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    COUPON CODE
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Coupon Code <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -549,20 +549,20 @@ export default function CouponsView() {
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                     placeholder="e.g. WELCOME10"
-                    className="w-full h-11 px-3.5 text-xs font-semibold tracking-wider uppercase rounded-lg border border-stone-200 bg-white text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium tracking-wider uppercase text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    HEADLINE / DESC
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Headline / Description
                   </label>
                   <input
                     type="text"
                     value={headline}
                     onChange={(e) => setHeadline(e.target.value)}
                     placeholder="e.g. Special festive discount"
-                    className="w-full h-11 px-3.5 text-xs font-medium rounded-lg border border-stone-200 bg-white text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
               </div>
@@ -570,8 +570,8 @@ export default function CouponsView() {
               {/* Row 2: Discount Type & Discount Value */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    DISCOUNT TYPE
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Discount Type <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <Dropdown
                     value={discountType}
@@ -580,13 +580,13 @@ export default function CouponsView() {
                       { value: 'Percentage', label: 'Percentage %' },
                       { value: 'Fixed', label: 'Fixed Amount (₹)' },
                     ]}
-                    buttonClassName="h-11 rounded-lg text-xs font-semibold"
+                    buttonClassName="h-10 rounded-xl text-xs sm:text-[13px] font-medium border border-[#d6cfc2] hover:border-[#bdae99]"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    DISCOUNT VALUE
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Discount Value <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="number"
@@ -595,15 +595,15 @@ export default function CouponsView() {
                     value={discountValue}
                     onChange={(e) => setDiscountValue(e.target.value)}
                     placeholder="e.g. 10 or 500"
-                    className="w-full h-11 px-3.5 text-xs font-medium rounded-lg border border-stone-200 bg-white text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
               </div>
 
               {/* Row 3: Minimum Order Amount */}
               <div>
-                <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                  MIN ORDER AMOUNT (₹)
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Min Order Amount (₹)
                 </label>
                 <input
                   type="number"
@@ -611,33 +611,37 @@ export default function CouponsView() {
                   value={minOrderAmount}
                   onChange={(e) => setMinOrderAmount(e.target.value)}
                   placeholder="0"
-                  className="w-full h-11 px-3.5 text-xs font-medium rounded-lg border border-stone-200 bg-white text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
               </div>
 
               {/* Row 4: Start Date & Expiry Date */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    START DATE
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Start Date
                   </label>
                   <input
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full h-11 px-3.5 text-xs font-medium rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all cursor-pointer"
+                    onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                    onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer shadow-2xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    EXPIRY DATE
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Expiry Date
                   </label>
                   <input
                     type="date"
                     value={expiryDate}
                     onChange={(e) => setExpiryDate(e.target.value)}
-                    className="w-full h-11 px-3.5 text-xs font-medium rounded-lg border border-stone-200 bg-white text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all cursor-pointer"
+                    onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                    onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer shadow-2xs"
                   />
                 </div>
               </div>
@@ -645,8 +649,8 @@ export default function CouponsView() {
               {/* Row 5: Total Usage Limit & Limit Per User */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    TOTAL USAGE LIMIT
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Total Usage Limit
                   </label>
                   <input
                     type="number"
@@ -654,13 +658,13 @@ export default function CouponsView() {
                     value={totalUsageLimit}
                     onChange={(e) => setTotalUsageLimit(e.target.value)}
                     placeholder="Unlimited"
-                    className="w-full h-11 px-3.5 text-xs font-medium rounded-lg border border-stone-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    LIMIT PER USER
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Limit Per User
                   </label>
                   <input
                     type="number"
@@ -668,7 +672,7 @@ export default function CouponsView() {
                     value={limitPerUser}
                     onChange={(e) => setLimitPerUser(e.target.value)}
                     placeholder="1"
-                    className="w-full h-11 px-3.5 text-xs font-medium rounded-lg border border-stone-200 bg-white text-stone-800 placeholder-stone-300 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 focus:border-[#8f6d43] transition-all"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
               </div>

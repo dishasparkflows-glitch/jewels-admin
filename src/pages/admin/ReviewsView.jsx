@@ -397,8 +397,8 @@ export default function ReviewsView() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
-                <th className="py-2 pl-4 pr-1 w-8">
+              <tr className="border-b border-stone-200/80 bg-[#fbfaf8] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                <th className="py-2.5 pl-4 pr-1 w-8">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -407,7 +407,7 @@ export default function ReviewsView() {
                     aria-label="Select all reviews"
                   />
                 </th>
-                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
+                <th className="py-2.5 px-2 text-center w-12 whitespace-nowrap text-[11px] font-bold text-stone-700 uppercase tracking-wider">SR NO</th>
                 <th className="py-2 px-3 whitespace-nowrap">REVIEWER</th>
                 <th className="py-2 px-3 whitespace-nowrap">RATING</th>
                 <th className="py-2 px-3 whitespace-nowrap">FEEDBACK & TESTIMONIAL</th>
@@ -473,7 +473,7 @@ export default function ReviewsView() {
                             {initial}
                           </div>
                           <div>
-                            <p className="font-semibold text-stone-900 text-xs">
+                            <p className="font-bold text-stone-900 text-xs sm:text-[13px]">
                               {reviewerName}
                             </p>
                           </div>
@@ -496,7 +496,7 @@ export default function ReviewsView() {
                       <td className="py-2.5 px-3">
                         <div className="max-w-md space-y-0.5">
                           {reviewTitle && (
-                            <p className="font-semibold text-stone-900 text-xs">
+                            <p className="font-bold text-stone-900 text-xs sm:text-[13px]">
                               {reviewTitle}
                             </p>
                           )}
@@ -557,7 +557,7 @@ export default function ReviewsView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-lg font-bold text-stone-900 font-serif">
+              <h3 className="text-lg font-bold text-stone-900">
                 {editingReview ? 'Edit Review' : 'Create Verified Review'}
               </h3>
               <button
@@ -570,10 +570,10 @@ export default function ReviewsView() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                    Client Name *
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                    Client Name <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -581,11 +581,11 @@ export default function ReviewsView() {
                     placeholder="e.g. Priya Sharma"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
                   />
                 </div>
-                <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
                     Email Address
                   </label>
                   <input
@@ -593,41 +593,43 @@ export default function ReviewsView() {
                     placeholder="e.g. priya@gmail.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                  Star Rating
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                  Star Rating <span className="text-rose-500 font-bold">*</span>
                 </label>
-                <div className="flex items-center gap-1.5">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      onMouseEnter={() => setHoverRating(star)}
-                      onMouseLeave={() => setHoverRating(0)}
-                      onClick={() => setFormData({ ...formData, rating: star })}
-                      className="p-1 cursor-pointer"
-                    >
-                      <IoStar
-                        className={`w-6 h-6 transition-colors ${
-                          star <= (hoverRating || formData.rating) ? 'text-amber-400' : 'text-stone-200'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                  <span className="text-xs text-stone-500 ml-2 font-medium">
+                <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[#d6cfc2]/70 bg-stone-50/40">
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        onClick={() => setFormData({ ...formData, rating: star })}
+                        className="p-1 cursor-pointer transition-transform hover:scale-110"
+                      >
+                        <IoStar
+                          className={`w-5 h-5 transition-colors ${
+                            star <= (hoverRating || formData.rating) ? 'text-amber-400' : 'text-stone-200'
+                          }`}
+                        />
+                      </button>
+                    ))}
+                  </div>
+                  <span className="text-xs font-bold text-stone-800 ml-1">
                     {hoverRating || formData.rating} of 5 Stars
                   </span>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                  Review Headline *
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                  Review Headline <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
@@ -635,13 +637,13 @@ export default function ReviewsView() {
                   placeholder="e.g. Exquisite Custom Solitaire"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
                 />
               </div>
 
-              <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                  Client Feedback Text *
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                  Client Feedback Text <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <textarea
                   rows="3"
@@ -649,7 +651,7 @@ export default function ReviewsView() {
                   placeholder="Write the verified feedback or customer testimonial..."
                   value={formData.comment}
                   onChange={(e) => setFormData({ ...formData, comment: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400 resize-y"
                 />
               </div>
 
@@ -657,14 +659,14 @@ export default function ReviewsView() {
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 rounded-lg cursor-pointer"
+                  className="px-4 py-2.5 text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-100 rounded-xl transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
+                  className="px-5 py-2.5 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl shadow-xs cursor-pointer disabled:opacity-50 transition-all"
                 >
                   {submitting ? 'Publishing...' : editingReview ? 'Save Changes' : 'Publish Review'}
                 </button>
@@ -685,7 +687,7 @@ export default function ReviewsView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900 font-serif">
+              <h3 className="text-base font-bold text-stone-900">
                 Client Testimonial
               </h3>
               <button
@@ -697,32 +699,33 @@ export default function ReviewsView() {
               </button>
             </div>
 
-            <div className="space-y-3 text-xs bg-stone-50/70 p-4 rounded-xl border border-stone-200/60">
+            <div className="space-y-3.5 text-xs bg-stone-50/70 p-4 sm:p-5 rounded-2xl border border-stone-200/60">
               <div className="flex justify-between items-center">
-                <span className="text-stone-400">Reviewer</span>
-                <span className="font-semibold text-stone-900">{viewingReview.reviewerName}</span>
+                <span className="text-xs font-bold text-stone-500">Reviewer</span>
+                <span className="font-bold text-stone-900 text-xs sm:text-[13px]">{viewingReview.reviewerName}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-stone-400">Rating</span>
+                <span className="text-xs font-bold text-stone-500">Rating</span>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((s) => (
                     <IoStar key={s} className={`w-3.5 h-3.5 ${s <= viewingReview.rating ? 'text-amber-400' : 'text-stone-200'}`} />
                   ))}
+                  <span className="font-bold text-stone-800 text-xs ml-1">{viewingReview.rating}/5</span>
                 </div>
               </div>
-              <div className="pt-2 border-t border-stone-200/50">
-                <span className="text-stone-400 block mb-1">Headline</span>
+              <div className="pt-2.5 border-t border-stone-200/50">
+                <span className="text-xs font-bold text-stone-500 block mb-1">Headline</span>
                 <span className="font-bold text-stone-900 text-sm">{viewingReview.reviewTitle}</span>
               </div>
               <div>
-                <span className="text-stone-400 block mb-1">Testimonial</span>
-                <p className="text-stone-700 italic leading-relaxed bg-white p-3 rounded-lg border border-stone-200">
+                <span className="text-xs font-bold text-stone-500 block mb-1">Testimonial</span>
+                <p className="text-stone-800 text-xs sm:text-[13px] italic leading-relaxed bg-white p-3.5 rounded-xl border border-stone-200 shadow-2xs">
                   &quot;{viewingReview.reviewComment}&quot;
                 </p>
               </div>
               <div className="flex justify-between items-center pt-2">
-                <span className="text-stone-400">Date</span>
-                <span className="font-medium text-stone-600">{viewingReview.dateStr}</span>
+                <span className="text-xs font-bold text-stone-500">Date</span>
+                <span className="font-semibold text-stone-700">{viewingReview.dateStr}</span>
               </div>
             </div>
 

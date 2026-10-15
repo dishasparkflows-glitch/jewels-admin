@@ -118,9 +118,11 @@ export default function SizesView() {
 
   // Helper to reliably resolve human category name
   const resolveCategoryName = (s) => {
+    if (s?.categoryId?.name) return s.categoryId.name;
     if (s?.category?.name) return s.category.name;
-    if (typeof s?.category === 'string') {
-      const match = categories.find((c) => c._id === s.category || c.id === s.category);
+    const catId = s?.categoryId?._id || s?.categoryId || s?.category?._id || s?.category;
+    if (catId) {
+      const match = categories.find((c) => String(c._id) === String(catId) || String(c.id) === String(catId));
       if (match?.name) return match.name;
     }
     const nameLower = (s?.name || '').toLowerCase();
@@ -134,7 +136,6 @@ export default function SizesView() {
   };
 
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [showCategoryFilter, setShowCategoryFilter] = useState(false);
 
   // Group unique categories with item counts
   const uniqueCategories = useMemo(() => {
@@ -145,6 +146,27 @@ export default function SizesView() {
     });
     return Array.from(map.entries()).map(([name, count]) => ({ name, count }));
   }, [sizes, categories]);
+
+  // Options for Category Filter Dropdown
+  const categoryOptions = useMemo(() => {
+    const opts = [
+      {
+        value: 'all',
+        label: `All Categories (${sizes.length})`,
+      },
+    ];
+
+    uniqueCategories.forEach((cat) => {
+      const badge = getCategoryBadgeStyle(cat.name);
+      opts.push({
+        value: cat.name,
+        label: `${cat.name} (${cat.count})`,
+        dotColor: badge.dot,
+      });
+    });
+
+    return opts;
+  }, [uniqueCategories, sizes.length]);
 
   // Search & Category filtering
   const filteredSizes = useMemo(() => {
@@ -221,7 +243,7 @@ export default function SizesView() {
   const handleOpenEdit = (s) => {
     setEditingSize(s);
     setSizeName(s.name || '');
-    setCategoryId(s.category?._id || s.category || categories[0]?._id || '');
+    setCategoryId(s.categoryId?._id || s.categoryId || s.category?._id || s.category || categories[0]?._id || '');
     setIsModalOpen(true);
   };
 
@@ -321,7 +343,7 @@ export default function SizesView() {
       setSubmitting(true);
       const payload = {
         name: sizeName.trim(),
-        category: categoryId,
+        categoryId,
         status: 'active',
       };
 
@@ -362,75 +384,56 @@ export default function SizesView() {
       {/* ─── Search & Filter Bar ─── */}
       <SearchFilterBar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={(val) => {
+          setSearch(val);
+          setCurrentPage(1);
+        }}
         placeholder="Search sizes..."
-        onFilterClick={() => setShowCategoryFilter((prev) => !prev)}
-        filterActive={selectedCategory !== 'all' || showCategoryFilter}
+        onFilterClick={() => {
+          if (selectedCategory !== 'all') {
+            setSelectedCategory('all');
+            setCurrentPage(1);
+          }
+        }}
+        filterActive={selectedCategory !== 'all'}
         extraActions={
-          <button
-            type="button"
-            onClick={handleBulkDelete}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
-              selectedIds.length > 0
-                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
-                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
-            }`}
-            title={
-              selectedIds.length > 0
-                ? `Delete ${selectedIds.length} selected size${selectedIds.length > 1 ? 's' : ''}`
-                : 'Select sizes to delete'
-            }
-          >
-            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
-            <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Category Filter Dropdown */}
+            <Dropdown
+              value={selectedCategory}
+              onChange={(val) => {
+                setSelectedCategory(val);
+                setCurrentPage(1);
+              }}
+              options={categoryOptions}
+              size="sm"
+              showStatusDot
+              className="w-48 sm:w-56"
+              buttonClassName="h-7.5 px-2.5 text-xs rounded-md bg-white border-stone-200/90 text-stone-700 font-medium hover:border-stone-300 shadow-2xs"
+              placeholder="All Categories"
+            />
+
+            {/* Bulk Delete Button */}
+            <button
+              type="button"
+              onClick={handleBulkDelete}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+                selectedIds.length > 0
+                  ? 'bg-[#fdeeed] text-[#d93025] border-[#fadbd8] hover:bg-[#fadbd8] active:scale-95'
+                  : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+              }`}
+              title={
+                selectedIds.length > 0
+                  ? `Delete ${selectedIds.length} selected size${selectedIds.length > 1 ? 's' : ''}`
+                  : 'Select sizes to delete'
+              }
+            >
+              <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+              <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
+            </button>
+          </div>
         }
       />
-
-      {/* ─── Category Highlight & Quick Filter Chips ─── */}
-      {uniqueCategories.length > 0 && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mr-1 shrink-0">
-            Category:
-          </span>
-          <button
-            type="button"
-            onClick={() => setSelectedCategory('all')}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
-              selectedCategory === 'all'
-                ? 'bg-[#8b6f4e] text-white border-[#8b6f4e] shadow-2xs'
-                : 'bg-white text-stone-600 border-stone-200/80 hover:bg-stone-50 hover:text-stone-900'
-            }`}
-          >
-            All Categories ({sizes.length})
-          </button>
-          {uniqueCategories.map((cat) => {
-            const badge = getCategoryBadgeStyle(cat.name);
-            const isSelected = selectedCategory === cat.name;
-            return (
-              <button
-                key={cat.name}
-                type="button"
-                onClick={() => setSelectedCategory(isSelected ? 'all' : cat.name)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
-                  isSelected
-                    ? 'bg-stone-900 text-white border-stone-900 shadow-2xs ring-1 ring-stone-900/30'
-                    : `${badge.bg} ${badge.text} ${badge.border} hover:shadow-2xs hover:brightness-95`
-                }`}
-                title={`Filter by ${cat.name}`}
-              >
-                <span
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                    isSelected ? 'bg-white' : badge.dot
-                  }`}
-                />
-                <span>{cat.name}</span>
-                <span className="text-[10px] opacity-75">({cat.count})</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* ─── Sizes Table Card ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
@@ -597,9 +600,9 @@ export default function SizesView() {
             {/* Modal Form (Matches Screenshot 2) */}
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Size Name */}
-              <div>
-                <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                  SIZE NAME
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                  Size Name <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
@@ -607,14 +610,14 @@ export default function SizesView() {
                   value={sizeName}
                   onChange={(e) => setSizeName(e.target.value)}
                   placeholder="e.g. Size 7 or 2.4"
-                  className="w-full h-11 px-4 text-xs font-semibold rounded-xl border border-[#8f6d43]/60 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
                 />
               </div>
 
               {/* Category */}
-              <div>
-                <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                  CATEGORY
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                  Category <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <Dropdown
                   value={categoryId}
@@ -624,7 +627,7 @@ export default function SizesView() {
                     label: cat.name,
                   }))}
                   placeholder="Select Category"
-                  buttonClassName="h-11 rounded-xl text-xs font-semibold"
+                  buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900"
                 />
               </div>
 

@@ -234,7 +234,7 @@ export default function CurrenciesView() {
             <TbCoins className="w-5 h-5 text-[#8f6d43]" />
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-stone-900 font-serif leading-tight">
+            <h1 className="text-xl font-bold tracking-tight text-stone-900 leading-tight">
               CURRENCY MANAGEMENT
             </h1>
             <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase mt-0.5">
@@ -484,7 +484,7 @@ export default function CurrenciesView() {
                   <TbCoins className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-serif font-bold text-stone-900 text-base leading-tight">
+                  <h3 className="font-bold text-stone-900 text-base leading-tight">
                     {editingItem ? `Edit ${editingItem.currencyInfo?.code}` : 'Add Currency'}
                   </h3>
                   <p className="text-[10px] text-stone-400 mt-0.5">
@@ -506,8 +506,8 @@ export default function CurrenciesView() {
               {/* Code & Symbol */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1">
-                    Currency Code *
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Currency Code <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -516,12 +516,12 @@ export default function CurrenciesView() {
                     value={formCode}
                     onChange={(e) => setFormCode(e.target.value.toUpperCase())}
                     placeholder="e.g. USD"
-                    className="w-full px-3 py-2 text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1">
-                    Symbol *
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Symbol <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -529,7 +529,7 @@ export default function CurrenciesView() {
                     value={formSymbol}
                     onChange={(e) => setFormSymbol(e.target.value)}
                     placeholder="e.g. $"
-                    className="w-full px-3 py-2 text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
               </div>
@@ -537,8 +537,8 @@ export default function CurrenciesView() {
               {/* Name & Country Code */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="col-span-2">
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1">
-                    Currency Name *
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Currency Name <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -546,11 +546,11 @@ export default function CurrenciesView() {
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="e.g. US Dollar"
-                    className="w-full px-3 py-2 text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1">
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Country Code
                   </label>
                   <input
@@ -559,14 +559,14 @@ export default function CurrenciesView() {
                     value={formCountryCode}
                     onChange={(e) => setFormCountryCode(e.target.value.toUpperCase())}
                     placeholder="e.g. US"
-                    className="w-full px-3 py-2 text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
               </div>
 
               {/* Value in INR */}
               <div>
-                <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1">
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Value in INR (1 {formCode || 'UNIT'} in ₹)
                 </label>
                 <div className="relative flex items-center">
@@ -581,7 +581,7 @@ export default function CurrenciesView() {
                     value={formIsBase ? '1' : formInrRate}
                     onChange={(e) => setFormInrRate(e.target.value)}
                     placeholder="84.5"
-                    className="w-full pl-7 pr-3 py-2 text-xs font-semibold text-stone-900 bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e] disabled:opacity-60"
+                    className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs disabled:opacity-60"
                   />
                 </div>
                 {!formIsBase && Number(formInrRate) > 0 && (

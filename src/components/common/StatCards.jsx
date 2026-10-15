@@ -53,7 +53,7 @@ export default function StatCards({ cards = [] }) {
               <p className="text-[10px] font-semibold text-stone-500 truncate leading-none">
                 {card.label}
               </p>
-              <p className="text-base sm:text-lg font-bold text-stone-900 font-serif tracking-tight mt-0.5 truncate leading-none">
+              <p className="text-base sm:text-lg font-bold text-stone-900 tracking-tight mt-0.5 truncate leading-none">
                 {card.value}
               </p>
             </div>

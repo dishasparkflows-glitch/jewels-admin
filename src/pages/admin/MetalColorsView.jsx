@@ -450,8 +450,8 @@ export default function MetalColorsView() {
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Color Name */}
               <div>
-                <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                  COLOR NAME
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Color Name <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
@@ -459,14 +459,14 @@ export default function MetalColorsView() {
                   value={colorName}
                   onChange={(e) => setColorName(e.target.value)}
                   placeholder="e.g. Yellow Gold"
-                  className="w-full h-11 px-4 text-xs font-semibold rounded-xl border border-stone-200 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
               </div>
 
               {/* Color Gradient Swatches Preview */}
               <div>
-                <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                  COLOR GRADIENT SWATCHES
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Color Gradient Swatches
                 </label>
                 <div
                   style={{
@@ -484,10 +484,10 @@ export default function MetalColorsView() {
               <div className="grid grid-cols-2 gap-4">
                 {/* Start Color */}
                 <div>
-                  <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    START COLOR
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Start Color <span className="text-rose-500 font-bold">*</span>
                   </label>
-                  <div className="flex items-center gap-2 border border-stone-200 rounded-xl px-2.5 py-1.5 bg-white">
+                  <div className="flex items-center gap-2 border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl px-2.5 py-1.5 bg-white transition-all">
                     <input
                       type="color"
                       value={startColor}
@@ -498,17 +498,17 @@ export default function MetalColorsView() {
                       type="text"
                       value={startColor}
                       onChange={(e) => setStartColor(e.target.value.toUpperCase())}
-                      className="w-full text-xs font-mono font-semibold text-stone-700 uppercase focus:outline-none"
+                      className="w-full text-xs font-mono font-semibold text-stone-900 uppercase focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {/* End Color */}
                 <div>
-                  <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-2">
-                    END COLOR
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    End Color <span className="text-rose-500 font-bold">*</span>
                   </label>
-                  <div className="flex items-center gap-2 border border-stone-200 rounded-xl px-2.5 py-1.5 bg-white">
+                  <div className="flex items-center gap-2 border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl px-2.5 py-1.5 bg-white transition-all">
                     <input
                       type="color"
                       value={endColor}
@@ -519,7 +519,7 @@ export default function MetalColorsView() {
                       type="text"
                       value={endColor}
                       onChange={(e) => setEndColor(e.target.value.toUpperCase())}
-                      className="w-full text-xs font-mono font-semibold text-stone-700 uppercase focus:outline-none"
+                      className="w-full text-xs font-mono font-semibold text-stone-900 uppercase focus:outline-none"
                     />
                   </div>
                 </div>

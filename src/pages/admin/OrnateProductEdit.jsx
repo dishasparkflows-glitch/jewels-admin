@@ -1071,7 +1071,7 @@ export default function OrnateProductEdit() {
           </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base sm:text-lg font-bold text-stone-900 font-serif tracking-tight leading-tight">
+              <h1 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight">
                 {isEditMode ? 'Refine the details of ERP product' : 'Add New Ornate Product'}
               </h1>
               {erpDetails.barcodeNumber && (
@@ -1173,7 +1173,7 @@ export default function OrnateProductEdit() {
                 1
               </div>
               <div>
-                <h3 className="text-sm font-bold text-stone-900 font-serif">
+                <h3 className="text-sm font-bold text-stone-900">
                   Base Information
                 </h3>
                 <p className="text-[11px] text-stone-400">
@@ -1360,7 +1360,7 @@ export default function OrnateProductEdit() {
                 ₹
               </div>
               <div>
-                <h3 className="text-sm font-bold text-stone-900 font-serif">
+                <h3 className="text-sm font-bold text-stone-900">
                   Pricing & Inventory
                 </h3>
                 <p className="text-[11px] text-stone-400">
@@ -1491,7 +1491,7 @@ export default function OrnateProductEdit() {
                   <IoColorPaletteOutline className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-sm sm:text-base font-bold text-stone-900 font-serif tracking-tight">
+                  <h3 className="text-sm sm:text-base font-bold text-stone-900 tracking-tight">
                     Configure color variants
                   </h3>
                   <p className="text-[11px] sm:text-xs text-stone-500">
@@ -1805,7 +1805,7 @@ export default function OrnateProductEdit() {
                   <TbScale className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-900 font-serif">
+                  <h3 className="text-sm font-bold text-stone-900">
                     Weights & Purities
                   </h3>
                   <p className="text-[11px] text-stone-400">
@@ -1884,7 +1884,7 @@ export default function OrnateProductEdit() {
                   <TbDatabase className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-900 font-serif">
+                  <h3 className="text-sm font-bold text-stone-900">
                     Classification & ERP Details
                   </h3>
                   <p className="text-[11px] text-stone-400">
@@ -2021,7 +2021,7 @@ export default function OrnateProductEdit() {
                   <HiOutlinePhotograph className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-900 font-serif">
+                  <h3 className="text-sm font-bold text-stone-900">
                     Ornate Images
                   </h3>
                   <p className="text-[11px] text-stone-400">
@@ -2111,16 +2111,13 @@ export default function OrnateProductEdit() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-stone-900 font-serif">
+                      <h3 className="text-sm font-bold text-stone-900">
                         Product Information & Care Sections
                       </h3>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/60">
                         {careSections.length} Added
                       </span>
                     </div>
-                    <p className="text-[11px] text-stone-400">
-                      Add custom expandable sections displayed on the storefront (e.g. &ldquo;How to Care&rdquo;, &ldquo;How to Maintain&rdquo;).
-                    </p>
                   </div>
                 </div>
 
@@ -2292,7 +2289,7 @@ export default function OrnateProductEdit() {
                             type="button"
                             title="Bold"
                             onClick={() => handleFormatText(sec.id, 'bold')}
-                            className="w-7 h-7 rounded-lg text-xs font-serif font-bold text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                            className="w-7 h-7 rounded-lg text-xs font-bold text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
                           >
                             B
                           </button>
@@ -2302,7 +2299,7 @@ export default function OrnateProductEdit() {
                             type="button"
                             title="Italic"
                             onClick={() => handleFormatText(sec.id, 'italic')}
-                            className="w-7 h-7 rounded-lg text-xs font-serif italic text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                            className="w-7 h-7 rounded-lg text-xs italic text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
                           >
                             I
                           </button>
@@ -2312,7 +2309,7 @@ export default function OrnateProductEdit() {
                             type="button"
                             title="Underline"
                             onClick={() => handleFormatText(sec.id, 'underline')}
-                            className="w-7 h-7 rounded-lg text-xs font-serif underline text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                            className="w-7 h-7 rounded-lg text-xs underline text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
                           >
                             U
                           </button>
@@ -2392,16 +2389,13 @@ export default function OrnateProductEdit() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-stone-900 font-serif">
+                      <h3 className="text-sm font-bold text-stone-900">
                         Product Specifications
                       </h3>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/60">
                         {specifications.length} Added
                       </span>
                     </div>
-                    <p className="text-[11px] text-stone-400">
-                      Technical key-value specification attributes displayed on product specification table.
-                    </p>
                   </div>
                 </div>
 
@@ -2491,7 +2485,7 @@ export default function OrnateProductEdit() {
                 <HiOutlineSparkles className="w-4 h-4" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-stone-900 font-serif">
+                <h3 className="text-sm font-bold text-stone-900">
                   SEO Configuration
                 </h3>
                 <p className="text-[11px] text-stone-400">

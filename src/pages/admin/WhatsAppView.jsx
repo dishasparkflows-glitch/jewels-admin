@@ -784,9 +784,9 @@ export default function WhatsAppView() {
                                 type="button"
                                 onClick={() => handleDeleteTemplate(tmpl)}
                                 title="Delete Template"
-                                className="w-7 h-7 rounded-lg border border-[#fee2e2] bg-[#fef2f2] text-[#ef4444] hover:bg-[#fee2e2] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                                className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                               >
-                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
                               </button>
                             </div>
                           </td>
@@ -973,7 +973,7 @@ export default function WhatsAppView() {
                 <div className="w-8 h-8 rounded-lg bg-[#f0e6d8] text-[#8b6f4e] flex items-center justify-center">
                   <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
                 </div>
-                <h3 className="text-base font-serif font-bold text-stone-900">
+                <h3 className="text-base font-bold text-stone-900">
                   Create WhatsApp Template
                 </h3>
               </div>
@@ -989,8 +989,8 @@ export default function WhatsAppView() {
             <form onSubmit={handleCreateTemplate} className="p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-                    Template Name (Key) *
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Template Name (Key) <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="text"
@@ -998,7 +998,7 @@ export default function WhatsAppView() {
                     placeholder="e.g. vip_private_sale"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e] focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                   <span className="text-[10px] text-stone-400 mt-1 block">
                     Use lowercase letters and underscores only.
@@ -1006,8 +1006,8 @@ export default function WhatsAppView() {
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-                    Category *
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Category <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <Dropdown
                     value={formCategory}
@@ -1018,14 +1018,14 @@ export default function WhatsAppView() {
                       { value: 'AUTHENTICATION', label: 'Authentication' },
                     ]}
                     size="sm"
-                    buttonClassName="w-full h-9 rounded-xl text-xs bg-white border-stone-200"
+                    buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium bg-white border border-[#d6cfc2] hover:border-[#bdae99]"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-                  Language *
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Language <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <Dropdown
                   value={formLanguage}
@@ -1036,13 +1036,13 @@ export default function WhatsAppView() {
                     { value: 'Spanish', label: 'Spanish' },
                   ]}
                   size="sm"
-                  buttonClassName="w-full h-9 rounded-xl text-xs bg-white border-stone-200"
+                  buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium bg-white border border-[#d6cfc2] hover:border-[#bdae99]"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-                  Message Body *
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Message Body <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <textarea
                   required
@@ -1050,7 +1050,7 @@ export default function WhatsAppView() {
                   placeholder="Welcome to Neirah Jewellers! Your private consultation for {{1}} has been confirmed."
                   value={formBody}
                   onChange={(e) => setFormBody(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e] focus:border-[#8b6f4e] leading-relaxed"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs leading-relaxed"
                 />
                 <span className="text-[11px] text-stone-400 mt-1 block">
                   Add dynamic placeholders like <code className="text-[#8b6f4e] font-mono font-bold">{`{{1}}`}</code>, <code className="text-[#8b6f4e] font-mono font-bold">{`{{2}}`}</code> for customer name, order number, or discount.
@@ -1093,7 +1093,7 @@ export default function WhatsAppView() {
                 <div className="w-8 h-8 rounded-lg bg-[#e8f5e9] text-[#16a34a] flex items-center justify-center">
                   <HiOutlinePaperAirplane className="w-4 h-4 rotate-45 transform" />
                 </div>
-                <h3 className="text-base font-serif font-bold text-stone-900">
+                <h3 className="text-base font-bold text-stone-900">
                   Send WhatsApp Test Message
                 </h3>
               </div>
@@ -1108,8 +1108,8 @@ export default function WhatsAppView() {
 
             <form onSubmit={handleSendTestMessage} className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-                  Recipient Phone Number *
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Recipient Phone Number <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
@@ -1117,7 +1117,7 @@ export default function WhatsAppView() {
                   placeholder="+91 98765 43210"
                   value={testPhone}
                   onChange={(e) => setTestPhone(e.target.value)}
-                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-white font-mono focus:outline-none focus:ring-1 focus:ring-[#8b6f4e] focus:border-[#8b6f4e]"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl font-mono focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
                 <span className="text-[10px] text-stone-400 mt-1 block">
                   Must include country code (e.g. +91 for India).
@@ -1125,7 +1125,7 @@ export default function WhatsAppView() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Select Template
                 </label>
                 <Dropdown
@@ -1139,7 +1139,7 @@ export default function WhatsAppView() {
                   }))}
                   placeholder="Select a template"
                   size="sm"
-                  buttonClassName="w-full h-10 rounded-xl text-xs bg-white border-stone-200"
+                  buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium bg-white border border-[#d6cfc2] hover:border-[#bdae99]"
                 />
               </div>
 

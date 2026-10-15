@@ -41,17 +41,11 @@ export const navSections = [
     title: null,
     items: [
       { id: 'dashboard', title: 'Dashboard', path: '/dashboard', icon: HiOutlineViewGrid },
-      { id: 'orders', title: 'Orders', path: '/orders', icon: HiOutlineShoppingBag },
-      { id: 'returns', title: 'Returns', path: '/returns', icon: HiOutlineRefresh },
-      { id: 'cod-sequence', title: 'COD Sequence', path: '/cod-sequences', icon: HiOutlineCash },
-      { id: 'customers', title: 'Customers', path: '/customers', icon: HiOutlineUserGroup },
-      { id: 'appointments', title: 'Appointments', path: '/appointments', icon: HiOutlineCalendar },
-      { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles },
       { id: 'ornate-products', title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoDiamondOutline, apiEndpoint: '/products?isOrnate=true' },
       { id: 'diamonds', title: 'Diamonds', path: '/diamonds', icon: IoDiamondOutline, apiEndpoint: '/diamonds' },
       { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
 
-      // ─── 1. Catalog (Matches User Screenshot 1-4) ───
+      // ─── 1. Catalog (Matches User Screenshot) ───
       {
         id: 'catalog',
         title: 'Catalog',
@@ -65,7 +59,7 @@ export const navSections = [
         ],
       },
 
-      // ─── 2. Pricing Hub (Matches User Screenshot 1-4) ───
+      // ─── 2. Pricing Hub (Matches User Screenshot) ───
       {
         id: 'pricing-hub',
         title: 'Pricing Hub',
@@ -78,7 +72,7 @@ export const navSections = [
         ],
       },
 
-      // ─── 3. Product Config (Matches User Screenshot 1-4) ───
+      // ─── 3. Product Config (Matches User Screenshot) ───
       {
         id: 'product-config',
         title: 'Product Config',
@@ -92,7 +86,7 @@ export const navSections = [
         ],
       },
 
-      // ─── 4. Diamond Config (Matches User Screenshot 1-4) ───
+      // ─── 4. Diamond Config (Matches User Screenshot) ───
       {
         id: 'diamond-config',
         title: 'Diamond Config',
@@ -109,15 +103,27 @@ export const navSections = [
     ],
   },
   {
+    id: 'orders-sales',
+    title: 'SALES & ORDERS',
+    items: [
+      { id: 'orders', title: 'Orders', path: '/orders', icon: HiOutlineShoppingBag },
+      { id: 'returns', title: 'Returns', path: '/returns', icon: HiOutlineRefresh },
+      { id: 'cod-sequence', title: 'COD Sequence', path: '/cod-sequences', icon: HiOutlineCash },
+      { id: 'customers', title: 'Customers', path: '/customers', icon: HiOutlineUserGroup },
+      { id: 'appointments', title: 'Appointments', path: '/appointments', icon: HiOutlineCalendar },
+      { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles },
+    ],
+  },
+  {
     id: 'marketing',
     title: 'MARKETING',
     items: [
       { id: 'home-sections', title: 'Home Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
       { id: 'celebrate-gifts', title: 'Celebrate & Gifts', path: '/celebrate-gifts', icon: IoDiamondOutline, apiEndpoint: '/featured' },
+      { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
+      { id: 'offers', title: 'Offers', path: '/coupons', icon: HiOutlineTicket, apiEndpoint: '/coupons' },
       { id: 'top-announcement', title: 'Top Announcement', path: '/top-announcement', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
-      { id: 'banners', title: 'Website Sections', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
       { id: 'before-after', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineEye, apiEndpoint: '/cust-jewellery-before-after' },
-      { id: 'coupons', title: 'Coupons', path: '/coupons', icon: HiOutlineTicket, apiEndpoint: '/coupons' },
       { id: 'birthstones', title: 'Birthstones', path: '/birthstones', icon: IoDiamondOutline, apiEndpoint: '/birthstones' },
       { id: 'instagram', title: 'Instagram Posts', path: '/instagram-posts', icon: HiOutlineCamera, apiEndpoint: '/instagram-posts' },
       { id: 'footer-management', title: 'Footer Management', path: '/footer-settings', icon: HiOutlineTemplate, apiEndpoint: '/footer-settings' },
@@ -128,6 +134,7 @@ export const navSections = [
     title: 'SYSTEM',
     items: [
       { id: 'whatsapp', title: 'WhatsApp Connect', path: '/system/whatsapp', icon: HiOutlineChatAlt2 },
+      { id: 'profile', title: 'User Profile & Theme', path: '/profile', icon: HiOutlineColorSwatch },
       { id: 'settings', title: 'Settings', path: '/settings', icon: HiOutlineCog },
     ],
   },

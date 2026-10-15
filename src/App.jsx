@@ -39,13 +39,16 @@ import MetalRatesView from './pages/admin/MetalRatesView';
 import CurrenciesView from './pages/admin/CurrenciesView';
 import BeforeAfterView from './pages/admin/BeforeAfterView';
 import DynamicModuleView from './pages/admin/DynamicModuleView';
+import ProfileView from './pages/admin/ProfileView';
+import { ThemeProvider } from './contexts/ThemeContext';
 
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <ConfirmProvider>
-          <Toaster
+        <ThemeProvider>
+          <ConfirmProvider>
+            <Toaster
           position="top-right"
           containerStyle={{
             top: 20,
@@ -79,6 +82,12 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<Dashboard />} />
+
+            {/* Parent Route Auto-Redirects to First Submenu Page */}
+            <Route path="/catalog" element={<Navigate to="/catalog/jewelry-products" replace />} />
+            <Route path="/pricing-hub" element={<Navigate to="/pricing-hub/metal-rates" replace />} />
+            <Route path="/product-config" element={<Navigate to="/metal-purity" replace />} />
+            <Route path="/diamond-config" element={<Navigate to="/diamond-types" replace />} />
 
             {/* Exact Screenshot Views */}
             <Route path="/cod-sequences" element={<CodSequencesView />} />
@@ -145,6 +154,8 @@ function App() {
             {/* Luxury Add Jewelry Product (Matches Exact User Screenshot) */}
             <Route path="/catalog/jewelry-products/add" element={<AddJewelryProduct />} />
             <Route path="/catalog/jewelry-products/new" element={<AddJewelryProduct />} />
+            <Route path="/catalog/add-jewelry-product" element={<AddJewelryProduct />} />
+            <Route path="/add-jewelry-product" element={<AddJewelryProduct />} />
 
             {/* Luxury Tab-Wise Ornate Product Edit (Matches Exact User Screenshot) */}
             <Route path="/catalog/ornate-products/edit/:id" element={<OrnateProductEdit />} />
@@ -170,7 +181,11 @@ function App() {
             {/* Currency Management (Matches Exact User Screenshot) */}
             <Route path="/pricing-hub/currencies" element={<CurrenciesView />} />
             <Route path="/currencies" element={<CurrenciesView />} />
-            <Route path="/currency" element={<CurrenciesView />} />
+            {/* User Profile & Theme Customization */}
+            <Route path="/profile" element={<ProfileView />} />
+            <Route path="/theme" element={<ProfileView />} />
+            <Route path="/settings/profile" element={<ProfileView />} />
+            <Route path="/user-profile" element={<ProfileView />} />
 
             {/* Senior Dynamic View for all Config & Catalog modules */}
             <Route path="*" element={<DynamicModuleView />} />
@@ -179,9 +194,10 @@ function App() {
           {/* Root Redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
-      </ConfirmProvider>
-    </AuthProvider>
-  </BrowserRouter>
+          </ConfirmProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }
 

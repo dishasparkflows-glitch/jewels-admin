@@ -14,6 +14,9 @@ import {
   HiOutlineExternalLink,
   HiOutlineFilm,
   HiOutlineSearch,
+  HiOutlineTag,
+  HiOutlineGift,
+  HiOutlineClock,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -30,6 +33,18 @@ const getMediaUrl = (url) => {
   return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
+const formatForInput = (dateStr) => {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  } catch {
+    return '';
+  }
+};
+
 const SECTION_TYPE_CONFIG = {
   herobanner: {
     label: 'Hero Banner',
@@ -40,6 +55,16 @@ const SECTION_TYPE_CONFIG = {
     label: 'Collection Banner',
     badgeClass: 'bg-[#e6f4ff] text-[#0958d9] border border-[#91caff]/50',
     icon: HiOutlineViewGrid,
+  },
+  categorybanner: {
+    label: 'Category Banner',
+    badgeClass: 'bg-[#e6f7f0] text-[#047857] border border-[#a7f3d0]/60',
+    icon: HiOutlineTag,
+  },
+  offerbanner: {
+    label: 'Offer Banner',
+    badgeClass: 'bg-[#fff1f2] text-[#e11d48] border border-[#fecdd3]/60',
+    icon: HiOutlineGift,
   },
   mobileappbanner: {
     label: 'App Banner',
@@ -61,6 +86,8 @@ const SECTION_TYPE_CONFIG = {
 const SECTION_TYPE_OPTIONS = [
   { value: 'herobanner', label: 'Hero Banner', icon: HiOutlinePhotograph },
   { value: 'collectionbanner', label: 'Collection Banner', icon: HiOutlineViewGrid },
+  { value: 'categorybanner', label: 'Category Banner', icon: HiOutlineTag },
+  { value: 'offerbanner', label: 'Offer Banner', icon: HiOutlineGift },
   { value: 'mobileappbanner', label: 'App Banner', icon: HiOutlineDeviceMobile },
   { value: 'bookappointbanner', label: 'Appointment Banner', icon: HiOutlineCalendar },
   { value: 'websitebanner', label: 'Other Section', icon: HiOutlineSparkles },
@@ -70,6 +97,8 @@ const TABS = [
   { key: 'all', label: 'All Sections' },
   { key: 'herobanner', label: 'Hero Banner' },
   { key: 'collectionbanner', label: 'Collection Banner' },
+  { key: 'categorybanner', label: 'Category Banner' },
+  { key: 'offerbanner', label: 'Offer Banner' },
   { key: 'mobileappbanner', label: 'App Banner' },
   { key: 'bookappointbanner', label: 'Appointment Banner' },
   { key: 'websitebanner', label: 'Other' },
@@ -92,14 +121,18 @@ export default function BannersView() {
   const [submitting, setSubmitting] = useState(false);
 
   // Form states matching screenshot
-  const [formType, setFormType] = useState('mobileappbanner');
+  const [formType, setFormType] = useState('herobanner');
   const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
+  const [title, setTitle] = useState('');
+  const [subtitle, setSubtitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [mediaType, setMediaType] = useState('image');
   const [destinationLink, setDestinationLink] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [status, setStatus] = useState('active');
   const [order, setOrder] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
@@ -131,12 +164,14 @@ export default function BannersView() {
       all: banners.length,
       herobanner: 0,
       collectionbanner: 0,
+      categorybanner: 0,
+      offerbanner: 0,
       mobileappbanner: 0,
       bookappointbanner: 0,
       websitebanner: 0,
     };
     banners.forEach((b) => {
-      const type = (b.display?.type || b.type || 'herobanner').toLowerCase();
+      const type = (b.display?.type || 'herobanner').toLowerCase();
       if (counts[type] !== undefined) {
         counts[type] += 1;
       } else {
@@ -152,7 +187,7 @@ export default function BannersView() {
 
     if (activeTab !== 'all') {
       list = list.filter((b) => {
-        const type = (b.display?.type || b.type || 'herobanner').toLowerCase();
+        const type = (b.display?.type || 'herobanner').toLowerCase();
         return type === activeTab;
       });
     }
@@ -160,18 +195,22 @@ export default function BannersView() {
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((b) => {
-        const t = (b.content?.title || b.title || '').toLowerCase();
-        const sub = (b.content?.subtitle || b.subtitle || '').toLowerCase();
-        const type = (b.display?.type || b.type || '').toLowerCase();
-        const cat = (typeof b.display?.category === 'object' ? b.display?.category?.name : '') || '';
+        const t = (b.content?.title || '').toLowerCase();
+        const sub = (b.content?.subtitle || '').toLowerCase();
+        const type = (b.display?.type || '').toLowerCase();
+        const catObj = b.display?.categoryId || b.display?.category;
+        const cat =
+          (typeof catObj === 'object' ? catObj?.name : '') ||
+          categories.find((c) => c._id === (catObj?._id || catObj))?.name ||
+          '';
         return t.includes(q) || sub.includes(q) || type.includes(q) || cat.toLowerCase().includes(q);
       });
     }
 
     // Sort by order ascending
     list.sort((a, b) => {
-      const orderA = a.display?.order ?? a.order ?? 0;
-      const orderB = b.display?.order ?? b.order ?? 0;
+      const orderA = a.display?.order ?? 0;
+      const orderB = b.display?.order ?? 0;
       return orderA - orderB;
     });
 
@@ -197,13 +236,18 @@ export default function BannersView() {
   // Open Add Drawer
   const handleOpenAdd = () => {
     setEditingBanner(null);
-    setFormType('mobileappbanner');
+    const initialType = activeTab !== 'all' && SECTION_TYPE_CONFIG[activeTab] ? activeTab : 'herobanner';
+    setFormType(initialType);
+    setTitle('');
+    setSubtitle('');
     setImageUrl('');
     setMediaType('image');
     setDestinationLink('');
-    setSelectedCategory(categories[0]?._id || '');
+    setSelectedCategory('');
     setStatus('active');
     setOrder(banners.length + 1);
+    setStartDate('');
+    setEndDate('');
     setIsTypeDropdownOpen(false);
     setIsDrawerOpen(true);
   };
@@ -211,18 +255,22 @@ export default function BannersView() {
   // Open Edit Drawer
   const handleOpenEdit = (banner) => {
     setEditingBanner(banner);
-    const bType = banner.display?.type || banner.type || 'herobanner';
+    const bType = banner.display?.type || 'herobanner';
     setFormType(bType);
+    setTitle(banner.content?.title || '');
+    setSubtitle(banner.content?.subtitle || '');
     setImageUrl(banner.mediaType === 'video' ? banner.video?.url : banner.image?.url || '');
     setMediaType(banner.mediaType || 'image');
     setDestinationLink(banner.link || '');
 
-    const catObj = banner.display?.category || banner.category;
+    const catObj = banner.display?.categoryId || banner.display?.category;
     const catId = typeof catObj === 'object' ? catObj?._id : catObj || '';
     setSelectedCategory(catId);
 
     setStatus(banner.status || 'active');
-    setOrder(banner.display?.order ?? banner.order ?? 1);
+    setOrder(banner.display?.order ?? 1);
+    setStartDate(formatForInput(banner.startDate));
+    setEndDate(formatForInput(banner.endDate));
     setIsTypeDropdownOpen(false);
     setIsDrawerOpen(true);
   };
@@ -307,7 +355,6 @@ export default function BannersView() {
         b._id === banner._id
           ? {
               ...b,
-              order: num,
               display: { ...(b.display || {}), order: num },
             }
           : b
@@ -407,6 +454,7 @@ export default function BannersView() {
       setSubmitting(true);
 
       const sectionTitle =
+        title.trim() ||
         editingBanner?.content?.title ||
         editingBanner?.title ||
         SECTION_TYPE_CONFIG[formType]?.label ||
@@ -415,11 +463,11 @@ export default function BannersView() {
       const payload = {
         content: {
           title: sectionTitle,
-          subtitle: editingBanner?.content?.subtitle || '',
-          description: '',
+          subtitle: subtitle.trim() || editingBanner?.content?.subtitle || '',
+          description: editingBanner?.content?.description || '',
         },
         display: {
-          category: selectedCategory || null,
+          categoryId: selectedCategory || null,
           type: formType,
           order: Number(order) || 0,
           position: editingBanner?.display?.position || editingBanner?.position || 'none',
@@ -427,7 +475,15 @@ export default function BannersView() {
         link: destinationLink.trim(),
         mediaType,
         status,
+        startDate: formType === 'offerbanner' && startDate ? new Date(startDate).toISOString() : null,
+        endDate: formType === 'offerbanner' && endDate ? new Date(endDate).toISOString() : null,
       };
+
+      if (formType === 'offerbanner' && startDate && endDate && new Date(endDate) <= new Date(startDate)) {
+        toast.error('Offer End Date & Time must be after Start Date & Time');
+        setSubmitting(false);
+        return;
+      }
 
       if (mediaType === 'image') {
         payload.image = { url: imageUrl };
@@ -463,7 +519,7 @@ export default function BannersView() {
       {/* ─── Page Header Matching Screenshot ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-serif text-stone-900 font-bold tracking-tight">
+          <h1 className="text-2xl sm:text-3xl text-stone-900 font-bold tracking-tight">
             Website Sections
           </h1>
           <p className="text-xs sm:text-sm text-stone-500 font-normal mt-1">
@@ -574,13 +630,13 @@ export default function BannersView() {
                 </tr>
               ) : (
                 paginatedItems.map((banner) => {
-                  const bType = (banner.display?.type || banner.type || 'herobanner').toLowerCase();
+                  const bType = (banner.display?.type || 'herobanner').toLowerCase();
                   const typeConfig = SECTION_TYPE_CONFIG[bType] || SECTION_TYPE_CONFIG.websitebanner;
-                  const bTitle = banner.content?.title || banner.title || typeConfig.label || 'Website Section';
+                  const bTitle = banner.content?.title || typeConfig.label || 'Website Section';
                   const assetUrl =
                     banner.mediaType === 'video' ? banner.video?.url : banner.image?.url;
                   const isActive = banner.status === 'active';
-                  const bOrder = banner.display?.order ?? banner.order ?? 1;
+                  const bOrder = banner.display?.order ?? 1;
 
                   return (
                     <tr
@@ -627,6 +683,51 @@ export default function BannersView() {
                         {banner.content?.subtitle && (
                           <div className="text-[11px] text-stone-400 font-normal truncate max-w-[220px]">
                             {banner.content.subtitle}
+                          </div>
+                        )}
+                        {(() => {
+                          const catObj = banner.display?.categoryId || banner.display?.category;
+                          const catName =
+                            typeof catObj === 'object' && catObj?.name
+                              ? catObj.name
+                              : categories.find((c) => c._id === (catObj?._id || catObj))?.name || '';
+                          if (!catName) return null;
+                          return (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 text-[10px] font-medium border border-stone-200/60">
+                                <HiOutlineTag className="w-3 h-3 text-[#8a6d4b]" />
+                                {catName}
+                              </span>
+                            </div>
+                          );
+                        })()}
+
+                        {/* Offer Validity and Expiry Status for offer banners */}
+                        {bType === 'offerbanner' && (banner.startDate || banner.endDate) && (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {banner.endDate && (() => {
+                              const isPast = new Date(banner.endDate) < new Date();
+                              return (
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium border ${
+                                    isPast
+                                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  }`}
+                                  title={`Ends: ${new Date(banner.endDate).toLocaleString()}`}
+                                >
+                                  <HiOutlineClock className="w-3 h-3" />
+                                  {isPast
+                                    ? 'Expired'
+                                    : `Ends: ${new Date(banner.endDate).toLocaleDateString(undefined, {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                      })}`}
+                                </span>
+                              );
+                            })()}
                           </div>
                         )}
                       </td>
@@ -864,50 +965,171 @@ export default function BannersView() {
                   </p>
                 </div>
 
-                {/* ─── Optional Collection Settings (Only for Collection Banner) ─── */}
-                {formType === 'collectionbanner' && (
-                  <div className="space-y-3.5">
-                    <h3 className="text-xs font-semibold text-stone-700">
-                      Collection Settings
-                    </h3>
+                {/* ─── 3. Section Details & Category Settings ─── */}
+                <div className="space-y-3.5">
+                  <h3 className="text-xs font-semibold text-stone-700">
+                    3. Section & Category Settings
+                  </h3>
 
+                  {/* Title (Optional / Customizable for Hero, Category, Offer, etc.) */}
+                  <div>
+                    <label className="block text-[11px] font-medium text-stone-600 mb-1">
+                      {formType === 'offerbanner' ? 'Offer Title' : 'Title / Heading'}{' '}
+                      <span className="text-stone-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder={
+                        formType === 'herobanner'
+                          ? 'e.g. Pure Elegance & Craftsmanship'
+                          : formType === 'offerbanner'
+                          ? 'e.g. Flat 20% Off on Diamond Rings'
+                          : formType === 'categorybanner'
+                          ? 'e.g. Rings & Bands Collection'
+                          : 'Enter title'
+                      }
+                      className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all bg-white"
+                    />
+                  </div>
+
+                  {/* Subtitle (Optional) */}
+                  <div>
+                    <label className="block text-[11px] font-medium text-stone-600 mb-1">
+                      {formType === 'offerbanner' ? 'Offer Subtitle / Validity' : 'Subtitle'}{' '}
+                      <span className="text-stone-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={subtitle}
+                      onChange={(e) => setSubtitle(e.target.value)}
+                      placeholder={
+                        formType === 'offerbanner'
+                          ? 'e.g. Valid until Diwali | Use code SPARKLE20'
+                          : 'e.g. Handcrafted with fine gemstones'
+                      }
+                      className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all bg-white"
+                    />
+                  </div>
+
+                  {/* Offer Banner Active Time Window (Start & End Date with Cron Auto-Deletion) */}
+                  {formType === 'offerbanner' && (
+                    <div className="p-3.5 rounded-xl bg-[#fff8f2] border border-[#f5d7b5] space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8a4b12]">
+                          <HiOutlineClock className="w-4 h-4 text-[#c05621]" />
+                          <span>Offer Time Window (Cron Auto-Expires)</span>
+                        </div>
+                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#faecd8] text-[#9c4221] border border-[#f5d7b5]">
+                          Auto-Delete on Expiry
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[11px] font-medium text-stone-700 mb-1">
+                            Start Date & Time <span className="text-stone-400 font-normal">(Optional)</span>
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                            className="w-full h-10 px-3 rounded-xl border border-[#e8c8a7] bg-white text-xs text-stone-800 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all cursor-pointer"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-medium text-stone-700 mb-1">
+                            End Date & Time <span className="text-stone-400 font-normal">(Auto-Delete on pass)</span>
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                            className="w-full h-10 px-3 rounded-xl border border-[#e8c8a7] bg-white text-xs text-stone-800 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all cursor-pointer"
+                          />
+                        </div>
+                      </div>
+
+                      <p className="text-[11px] text-[#9c4221] leading-relaxed">
+                        ⏳ When the <strong>End Date & Time</strong> passes, the scheduled backend cron job will automatically delete this expired offer banner from the website.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Category Selection Option (Supported for herobanner, categorybanner, collectionbanner, offerbanner) */}
+                  {(formType === 'herobanner' ||
+                    formType === 'categorybanner' ||
+                    formType === 'collectionbanner' ||
+                    formType === 'offerbanner') && (
                     <div>
                       <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                        Linked Category <span className="text-red-500">*</span>
+                        Linked Category{' '}
+                        {formType === 'categorybanner' ? (
+                          <span className="text-red-500">*</span>
+                        ) : (
+                          <span className="text-stone-400 font-normal">(Optional)</span>
+                        )}
                       </label>
                       <select
                         value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="w-full h-11 px-3 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all"
+                        onChange={(e) => {
+                          const catId = e.target.value;
+                          setSelectedCategory(catId);
+                          const cat = categories.find((c) => c._id === catId);
+                          if (cat) {
+                            if (!destinationLink || destinationLink.startsWith('/shop?category=') || destinationLink === '/shop') {
+                              setDestinationLink(`/shop?category=${cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-')}`);
+                            }
+                            if (!title && formType === 'categorybanner') {
+                              setTitle(`${cat.name} Collection`);
+                            }
+                          }
+                        }}
+                        className="w-full h-11 px-3 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all cursor-pointer"
                       >
-                        <option value="">Select a Category</option>
+                        <option value="">
+                          {formType === 'herobanner'
+                            ? 'Select Category (Optional - General Store)'
+                            : formType === 'offerbanner'
+                            ? 'Select Category (Optional - All Products)'
+                            : 'Select a Category'}
+                        </option>
                         {categories.map((cat) => (
                           <option key={cat._id} value={cat._id}>
                             {cat.name}
                           </option>
                         ))}
                       </select>
+                      {formType === 'herobanner' && (
+                        <p className="text-[11px] text-stone-400 mt-1">
+                          Linking a category connects this hero banner's "Shop Now" action directly to that collection.
+                        </p>
+                      )}
                     </div>
+                  )}
 
-                    <div>
-                      <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                        Destination Link (URL)
-                      </label>
-                      <input
-                        type="text"
-                        value={destinationLink}
-                        onChange={(e) => setDestinationLink(e.target.value)}
-                        placeholder="e.g. /shop?category=bangles"
-                        className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all bg-white"
-                      />
-                    </div>
+                  {/* Destination Link */}
+                  <div>
+                    <label className="block text-[11px] font-medium text-stone-600 mb-1">
+                      Destination Link (URL){' '}
+                      <span className="text-stone-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={destinationLink}
+                      onChange={(e) => setDestinationLink(e.target.value)}
+                      placeholder="e.g. /shop?category=bangles"
+                      className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all bg-white"
+                    />
                   </div>
-                )}
+                </div>
 
-                {/* ─── 3. Display Settings ─── */}
+                {/* ─── 4. Display Settings ─── */}
                 <div className="space-y-3.5">
                   <h3 className="text-xs font-semibold text-stone-700">
-                    3. Display Settings
+                    4. Display Settings
                   </h3>
 
                   <div className="grid grid-cols-2 gap-4 items-center">

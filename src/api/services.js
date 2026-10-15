@@ -17,6 +17,7 @@ export const usersAPI = {
   delete: (id) => api.delete(`/users/${id}`),
   toggleStatus: (id) => api.patch(`/users/${id}/toggle-status`),
   getMe: () => api.get('/users/me'),
+  updateMe: (data) => api.put('/users/me', data),
 };
 
 // ─── Notifications ────────────────────────────────

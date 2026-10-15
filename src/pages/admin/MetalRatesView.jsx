@@ -481,7 +481,7 @@ export default function MetalRatesView() {
                   <TbCoins className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-serif font-bold text-stone-900 text-base leading-tight">
+                  <h3 className="font-bold text-stone-900 text-base leading-tight">
                     Update Metal Rates
                   </h3>
                   <p className="text-[10px] text-stone-500 mt-0.5">
@@ -502,8 +502,8 @@ export default function MetalRatesView() {
             <form onSubmit={handleSaveRates} className="p-5 space-y-4">
               {/* 24K Gold Base */}
               <div>
-                <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1">
-                  24K Gold Base Rate (per gram in ₹)
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  24K Gold Base Rate (per gram in ₹) <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <div className="relative flex items-center">
                   <span className="absolute left-3 text-stone-400 font-medium text-xs">
@@ -517,7 +517,7 @@ export default function MetalRatesView() {
                     value={form24K}
                     onChange={(e) => setForm24K(e.target.value)}
                     placeholder="15700"
-                    className="w-full pl-7 pr-3 py-2 text-xs font-semibold text-stone-900 bg-stone-50/60 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e] focus:border-[#8b6f4e] transition-all"
+                    className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
               </div>
@@ -525,8 +525,8 @@ export default function MetalRatesView() {
               {/* Platinum & Silver Row */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1">
-                    Platinum Rate (₹/g)
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Platinum Rate (₹/g) <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-3 text-stone-400 font-medium text-xs">
@@ -540,14 +540,14 @@ export default function MetalRatesView() {
                       value={formPlatinum}
                       onChange={(e) => setFormPlatinum(e.target.value)}
                       placeholder="3500"
-                      className="w-full pl-7 pr-3 py-2 text-xs font-semibold text-stone-900 bg-stone-50/60 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e] focus:border-[#8b6f4e] transition-all"
+                      className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-600 uppercase mb-1">
-                    Silver Rate (₹/g)
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Silver Rate (₹/g) <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <div className="relative flex items-center">
                     <span className="absolute left-3 text-stone-400 font-medium text-xs">
@@ -561,7 +561,7 @@ export default function MetalRatesView() {
                       value={formSilver}
                       onChange={(e) => setFormSilver(e.target.value)}
                       placeholder="95"
-                      className="w-full pl-7 pr-3 py-2 text-xs font-semibold text-stone-900 bg-stone-50/60 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e] focus:border-[#8b6f4e] transition-all"
+                      className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                     />
                   </div>
                 </div>
@@ -625,7 +625,7 @@ export default function MetalRatesView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-5 py-4 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5]">
-              <span className="font-serif font-bold text-stone-900 text-sm">
+              <span className="font-bold text-stone-900 text-sm">
                 {viewingRecord.name} Details
               </span>
               <button

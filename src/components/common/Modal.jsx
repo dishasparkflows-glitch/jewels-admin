@@ -66,7 +66,7 @@ export default function Modal({
           <div className="flex items-start justify-between pb-3 border-b border-stone-100/90 shrink-0">
             <div>
               {title && (
-                <h3 className="font-serif font-bold text-lg sm:text-xl text-stone-900 tracking-tight">
+                <h3 className="font-bold text-lg sm:text-xl text-stone-900 tracking-tight">
                   {title}
                 </h3>
               )}

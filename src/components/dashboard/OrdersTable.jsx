@@ -8,7 +8,7 @@ const OrdersTable = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="font-bold text-stone-900 text-sm font-serif">Recent Orders</h3>
+          <h3 className="font-bold text-stone-900 text-sm">Recent Orders</h3>
           <p className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
             Showing last 5 orders only
           </p>

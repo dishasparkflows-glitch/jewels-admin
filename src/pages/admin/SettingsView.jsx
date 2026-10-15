@@ -245,20 +245,20 @@ export default function SettingsView() {
         </div>
 
         {/* Form Fields Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Company Name */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              * COMPANY NAME
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Company Name <span className="text-rose-500 font-bold">*</span>
             </label>
             <input
               type="text"
               disabled={!isEditingBusiness}
               value={businessForm.companyName}
               onChange={(e) => setBusinessForm({ ...businessForm, companyName: e.target.value })}
-              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
+              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -266,17 +266,17 @@ export default function SettingsView() {
 
           {/* Email Address */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              EMAIL ADDRESS
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Email Address
             </label>
             <input
               type="email"
               disabled={!isEditingBusiness}
               value={businessForm.emailAddress}
               onChange={(e) => setBusinessForm({ ...businessForm, emailAddress: e.target.value })}
-              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
+              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -284,8 +284,8 @@ export default function SettingsView() {
 
           {/* Mobile Number with India Flag */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              MOBILE NUMBER
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Mobile Number
             </label>
             <div className="relative flex items-center">
               <span className="absolute left-2.5 text-xs select-none pointer-events-none">
@@ -296,9 +296,9 @@ export default function SettingsView() {
                 disabled={!isEditingBusiness}
                 value={businessForm.mobileNumber}
                 onChange={(e) => setBusinessForm({ ...businessForm, mobileNumber: e.target.value })}
-                className={`w-full h-8 pl-8 pr-2.5 text-xs font-medium rounded-md border transition-all ${
+                className={`w-full h-9 pl-8 pr-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
                   isEditingBusiness
-                    ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                    ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                     : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
                 }`}
               />
@@ -307,8 +307,8 @@ export default function SettingsView() {
 
           {/* Store Address */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              STORE ADDRESS
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Store Address
             </label>
             <input
               type="text"
@@ -316,9 +316,9 @@ export default function SettingsView() {
               value={businessForm.storeAddress}
               title={businessForm.storeAddress}
               onChange={(e) => setBusinessForm({ ...businessForm, storeAddress: e.target.value })}
-              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border truncate transition-all ${
+              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border truncate transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -326,17 +326,17 @@ export default function SettingsView() {
 
           {/* GST Code */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              GST CODE
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              GST Code
             </label>
             <input
               type="text"
               disabled={!isEditingBusiness}
               value={businessForm.gstCode}
               onChange={(e) => setBusinessForm({ ...businessForm, gstCode: e.target.value })}
-              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
+              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -344,17 +344,17 @@ export default function SettingsView() {
 
           {/* PAN Code */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              PAN CODE
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              PAN Code
             </label>
             <input
               type="text"
               disabled={!isEditingBusiness}
               value={businessForm.panCode}
               onChange={(e) => setBusinessForm({ ...businessForm, panCode: e.target.value })}
-              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
+              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -362,17 +362,17 @@ export default function SettingsView() {
 
           {/* Return Period */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              RETURN PERIOD (DAYS)
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Return Period (Days)
             </label>
             <input
               type="number"
               disabled={!isEditingBusiness}
               value={businessForm.returnPeriodDays}
               onChange={(e) => setBusinessForm({ ...businessForm, returnPeriodDays: e.target.value })}
-              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
+              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -380,17 +380,17 @@ export default function SettingsView() {
 
           {/* Return Policy */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              RETURN POLICY
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Return Policy
             </label>
             <input
               type="text"
               disabled={!isEditingBusiness}
               value={businessForm.returnPolicy}
               onChange={(e) => setBusinessForm({ ...businessForm, returnPolicy: e.target.value })}
-              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
+              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -401,8 +401,8 @@ export default function SettingsView() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 pt-1">
           {/* Shipping Policy (Left Col - 7 cols) */}
           <div className="lg:col-span-7">
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              SHIPPING POLICY
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Shipping Policy
             </label>
             <textarea
               rows={2}
@@ -410,9 +410,9 @@ export default function SettingsView() {
               placeholder="Describe the platform shipping and delivery terms..."
               value={businessForm.shippingPolicy}
               onChange={(e) => setBusinessForm({ ...businessForm, shippingPolicy: e.target.value })}
-              className={`w-full p-2.5 text-xs rounded-md border transition-all resize-none leading-relaxed ${
+              className={`w-full p-2.5 text-xs rounded-xl border transition-all resize-none leading-relaxed ${
                 isEditingBusiness
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -420,8 +420,8 @@ export default function SettingsView() {
 
           {/* Certificate of Authenticity (Right Col - 5 cols) */}
           <div className="lg:col-span-5">
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              CERTIFICATE OF AUTHENTICITY IMAGE
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Certificate of Authenticity Image
             </label>
             <input
               type="file"
@@ -509,20 +509,20 @@ export default function SettingsView() {
         </div>
 
         {/* Monetary Fields Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {/* Bank Name */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              BANK NAME
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Bank Name
             </label>
             <input
               type="text"
               disabled={!isEditingMonetary}
               value={monetaryForm.bankName}
               onChange={(e) => setMonetaryForm({ ...monetaryForm, bankName: e.target.value })}
-              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all ${
+              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
                 isEditingMonetary
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />
@@ -530,8 +530,8 @@ export default function SettingsView() {
 
           {/* Bank Account Number */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              BANK ACCOUNT NUMBER
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Bank Account Number
             </label>
             <div className="relative flex items-center">
               <input
@@ -545,9 +545,9 @@ export default function SettingsView() {
                 onChange={(e) =>
                   setMonetaryForm({ ...monetaryForm, bankAccountNumber: e.target.value })
                 }
-                className={`w-full h-8 pl-2.5 pr-8 text-xs font-medium rounded-md border transition-all tracking-wider ${
+                className={`w-full h-9 pl-3 pr-8 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
                   isEditingMonetary
-                    ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30 tracking-normal'
+                    ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                     : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
                 }`}
               />
@@ -569,17 +569,17 @@ export default function SettingsView() {
 
           {/* IFSC Code */}
           <div>
-            <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
-              IFSC CODE
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              IFSC Code
             </label>
             <input
               type="text"
               disabled={!isEditingMonetary}
               value={monetaryForm.ifscCode}
               onChange={(e) => setMonetaryForm({ ...monetaryForm, ifscCode: e.target.value })}
-              className={`w-full h-8 px-2.5 text-xs font-medium rounded-md border transition-all uppercase ${
+              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all uppercase ${
                 isEditingMonetary
-                  ? 'bg-white border-[#8f6d43] text-stone-900 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/30'
+                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
                   : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
               }`}
             />

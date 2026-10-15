@@ -58,13 +58,13 @@ export default function RowActions({
         </button>
       )}
 
-      {/* Delete Action (Trash button - Soft Red/Peach tint with vivid red icon) */}
+      {/* Delete Action (Trash button - Matching user screenshot: soft warm rose with vivid red icon) */}
       {onDelete && (
         <button
           type="button"
           onClick={onDelete}
           title={activeDeleteLabel}
-          className="w-7 h-7 rounded-lg border border-[#fee2e2] bg-[#fef2f2] text-[#ef4444] hover:bg-[#fee2e2] hover:border-[#fecaca] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+          className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
         >
           <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2]" />
         </button>

@@ -398,7 +398,15 @@ export default function Dropdown({
   }[variant] || variantStyles.default;
 
   // Render status dot if enabled or mapped
-  const renderStatusDot = (val) => {
+  const renderStatusDot = (val, opt) => {
+    if (opt?.dotColor) {
+      return (
+        <span
+          className={`w-2 h-2 rounded-full shrink-0 ${opt.dotColor}`}
+          aria-hidden="true"
+        />
+      );
+    }
     const valKey = String(val).toLowerCase();
     const config = STATUS_COLORS[valKey];
     if (config?.dot) {
@@ -456,7 +464,7 @@ export default function Dropdown({
       >
         <span className="flex items-center gap-2 truncate">
           {prefixIcon && <span className="shrink-0 text-stone-400">{prefixIcon}</span>}
-          {showStatusDot && value && renderStatusDot(value)}
+          {showStatusDot && value && renderStatusDot(value, selectedOption)}
           <span
             className={`truncate ${
               !selectedOption ? 'text-stone-400 font-normal' : 'text-stone-800 font-medium'
@@ -537,7 +545,7 @@ export default function Dropdown({
                 >
                   <div className="flex items-center gap-2 truncate">
                     {opt.icon && <span className="shrink-0">{opt.icon}</span>}
-                    {showStatusDot && renderStatusDot(opt.value)}
+                    {showStatusDot && renderStatusDot(opt.value, opt)}
                     <span className="truncate">{opt.label}</span>
                     {opt.sublabel && (
                       <span className="text-[11px] text-stone-400 font-normal truncate">

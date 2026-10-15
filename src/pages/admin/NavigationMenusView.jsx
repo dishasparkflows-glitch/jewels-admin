@@ -353,7 +353,7 @@ export default function NavigationMenusView() {
                 <HiOutlineFolder className="w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg sm:text-xl font-bold text-stone-900 font-serif tracking-tight leading-tight">
+                <h1 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight leading-tight">
                   Navigation Menus
                 </h1>
                 <p className="text-xs text-stone-400">
@@ -641,7 +641,7 @@ export default function NavigationMenusView() {
 
               <div>
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-stone-900 font-serif leading-tight">
+                  <h2 className="text-xl font-bold text-stone-900 leading-tight">
                     {selectedMenu.title}
                   </h2>
                   <span
@@ -776,10 +776,10 @@ export default function NavigationMenusView() {
                               <button
                                 type="button"
                                 onClick={() => handleDeleteSection(section._id)}
-                                className="w-7 h-7 rounded-lg border border-rose-200 bg-rose-50/50 text-rose-600 hover:bg-rose-100 flex items-center justify-center transition-colors cursor-pointer"
+                                className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                                 title="Delete Section"
                               >
-                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
                               </button>
                             </div>
                           </td>
@@ -796,7 +796,7 @@ export default function NavigationMenusView() {
           {/* ─── BASIC INFO TAB ─────────────────────────────────── */}
           {detailTab === 'basic' && (
             <div className="bg-white rounded-2xl border border-stone-200/90 p-6 shadow-2xs space-y-4 max-w-xl animate-fadeIn">
-              <h3 className="text-sm font-bold text-stone-900 font-serif">
+              <h3 className="text-sm font-bold text-stone-900">
                 Edit Menu Settings
               </h3>
               <div className="space-y-3 text-xs">
@@ -882,7 +882,7 @@ export default function NavigationMenusView() {
           >
             {/* Modal Title & Close Button */}
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900 font-serif">
+              <h3 className="text-base font-bold text-stone-900">
                 {isEditMenuModalOpen ? 'Edit Menu Item' : 'Add Menu Item'}
               </h3>
               <button
@@ -1108,7 +1108,7 @@ export default function NavigationMenusView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900 font-serif">
+              <h3 className="text-base font-bold text-stone-900">
                 {editingSectionId ? 'Edit Section' : 'Add Menu Section'}
               </h3>
               <button
@@ -1200,7 +1200,7 @@ export default function NavigationMenusView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <h4 className="text-sm font-bold text-stone-900 font-serif">
+              <h4 className="text-sm font-bold text-stone-900">
                 Select Luxury Icon
               </h4>
               <button

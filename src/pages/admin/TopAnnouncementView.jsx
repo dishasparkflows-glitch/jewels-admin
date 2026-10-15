@@ -619,10 +619,10 @@ export default function TopAnnouncementView() {
                           <button
                             type="button"
                             onClick={() => handleDelete(item)}
-                            className="p-2 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors"
+                            className="w-8 h-8 rounded-xl bg-[#fdeeed] hover:bg-[#fadbd8] text-[#d93025] border border-[#fadbd8] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
                             title="Delete Announcement"
                           >
-                            <HiOutlineTrash className="w-4 h-4" />
+                            <HiOutlineTrash className="w-4 h-4 stroke-2" />
                           </button>
                         </div>
                       </td>
@@ -675,8 +675,8 @@ export default function TopAnnouncementView() {
         <form onSubmit={handleSubmitForm} className="space-y-4">
           {/* Announcement Message */}
           <div>
-            <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-              Message <span className="text-rose-500">*</span>
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
+              Message <span className="text-rose-500 font-bold">*</span>
             </label>
             <input
               type="text"
@@ -684,7 +684,7 @@ export default function TopAnnouncementView() {
               value={formData.message}
               onChange={(e) => setFormData({ ...formData, message: e.target.value })}
               placeholder="e.g. BIS Hallmarked & Certified Jewellery ✨"
-              className="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all"
+              className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
             />
 
             {/* Quick emoji helper chips */}
@@ -706,11 +706,11 @@ export default function TopAnnouncementView() {
 
           {/* Optional Link */}
           <div>
-            <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+            <label className="block text-xs font-bold text-stone-900 mb-1.5">
               Link (Optional)
             </label>
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-stone-400">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-stone-400">
                 <HiOutlineLink className="w-4 h-4" />
               </div>
               <input
@@ -718,7 +718,7 @@ export default function TopAnnouncementView() {
                 value={formData.link}
                 onChange={(e) => setFormData({ ...formData, link: e.target.value })}
                 placeholder="e.g. /about-bis or /collections/festive"
-                className="w-full pl-9 pr-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all"
+                className="w-full pl-9 pr-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
               />
             </div>
             <p className="text-[11px] text-stone-400 mt-1">
@@ -727,12 +727,12 @@ export default function TopAnnouncementView() {
           </div>
 
           {/* Status Switch */}
-          <div className="flex items-center justify-between p-3 bg-stone-50 border border-stone-200/80 rounded-xl">
+          <div className="flex items-center justify-between p-3.5 bg-stone-50 border border-stone-200/80 rounded-xl">
             <div>
-              <span className="text-xs font-semibold text-stone-800 uppercase tracking-wider block">
+              <span className="text-xs font-bold text-stone-900 block">
                 Status
               </span>
-              <span className="text-[11px] text-stone-400">
+              <span className="text-[11px] text-stone-500">
                 {formData.isActive ? 'Active and visible on rotating banner' : 'Inactive (hidden from rotation)'}
               </span>
             </div>
@@ -756,7 +756,7 @@ export default function TopAnnouncementView() {
           {/* Schedule Configuration */}
           <div className="p-3.5 bg-stone-50 border border-stone-200/80 rounded-xl space-y-3">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold text-stone-800 uppercase tracking-wider">
+              <span className="text-xs font-bold text-stone-900">
                 Schedule & Duration
               </span>
 
@@ -773,27 +773,31 @@ export default function TopAnnouncementView() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
               <div>
-                <label className="block text-[11px] font-medium text-stone-500 mb-1">
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Start Date
                 </label>
                 <input
                   type="date"
                   value={formData.startDate}
                   onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-stone-200 rounded-lg focus:outline-hidden focus:border-[#8b6f4e]"
+                  onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                  onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer shadow-2xs"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-medium text-stone-500 mb-1">
-                  End Date {formData.hasNoEndDate && <span className="text-stone-400">(Disabled)</span>}
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  End Date {formData.hasNoEndDate && <span className="text-stone-400 font-normal">(Disabled)</span>}
                 </label>
                 <input
                   type="date"
                   disabled={formData.hasNoEndDate}
                   value={formData.endDate}
                   onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="w-full px-3 py-2 text-xs bg-white border border-stone-200 rounded-lg focus:outline-hidden focus:border-[#8b6f4e] disabled:bg-stone-100 disabled:text-stone-400"
+                  onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                  onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all disabled:bg-stone-100 disabled:text-stone-400 cursor-pointer shadow-2xs"
                 />
               </div>
             </div>

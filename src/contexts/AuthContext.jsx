@@ -58,6 +58,14 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const updateUser = (updatedUser) => {
+    setUser((prev) => {
+      const merged = { ...prev, ...updatedUser };
+      localStorage.setItem('user', JSON.stringify(merged));
+      return merged;
+    });
+  };
+
   const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
   const isSuperAdmin = user?.role === 'super_admin';
 
@@ -70,6 +78,8 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        updateUser,
+        refreshUser: fetchUser,
         isAuthenticated: !!token && !!user,
         isAdmin,
         isSuperAdmin,

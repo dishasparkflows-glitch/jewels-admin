@@ -60,6 +60,21 @@ const PLACEMENT_OPTIONS = [
   { value: 'all', label: 'All Pages / Global' },
 ];
 
+const PRODUCT_PICKER_TABS = [
+  { id: 'gold', label: 'Gold Jewelry', icon: IoDiamondOutline, badge: 'GOLD' },
+  { id: 'silver', label: 'Silver Jewelry', icon: IoCubeOutline, badge: 'SILVER' },
+  { id: 'ornate', label: 'Ornate Products', icon: HiOutlineSparkles, badge: 'ORNATE' },
+  { id: 'all', label: 'All Products', icon: IoLayersOutline, badge: 'ALL' },
+];
+
+const getProductBadgeLabel = (prod) => {
+  if (prod.isOrnate || prod.productType === 'ornate') return 'ORNATE';
+  const metal = (prod.metalName || '').toLowerCase();
+  if (metal.includes('gold') || prod.productType === 'gold') return 'GOLD';
+  if (metal.includes('silver') || prod.productType === 'silver') return 'SILVER';
+  return 'JEWELRY';
+};
+
 export default function HomeSectionsView() {
   const confirm = useConfirm();
 
@@ -81,23 +96,43 @@ export default function HomeSectionsView() {
   const [editingSection, setEditingSection] = useState(null);
 
   // Form State
-  const [activeTab, setActiveTab] = useState('basic'); // 'basic' | 'media' | 'items'
   const [formData, setFormData] = useState({
     title: '',
     subtitle: '',
     description: '',
     sectionKey: '',
-    sectionType: 'hero_slider',
+    sectionType: 'product_carousel',
     placement: 'home_middle',
     order: 0,
     status: 'active',
+    visibility: {
+      website: true,
+      mobileApp: true,
+    },
     badgeText: '',
     buttonText: '',
     buttonLink: '',
     imageUrl: '',
     imagePublicId: '',
+    selectedProducts: [],
     items: [],
   });
+
+  // Product Picker Modal State (Screenshot 2)
+  const [isProductPickerOpen, setIsProductPickerOpen] = useState(false);
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerTab, setPickerTab] = useState('gold'); // 'gold' | 'silver' | 'ornate' | 'all'
+  const [pickerPage, setPickerPage] = useState(1);
+  const [pickerLimit, setPickerLimit] = useState(25);
+  const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerProducts, setPickerProducts] = useState([]);
+  const [pickerPagination, setPickerPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalDocs: 0,
+    limit: 25,
+  });
+  const [tempSelectedMap, setTempSelectedMap] = useState(new Map());
 
   // Upload state
   const [uploading, setUploading] = useState(false);
@@ -181,6 +216,145 @@ export default function HomeSectionsView() {
       .replace(/^-+|-+$/g, '');
   };
 
+  // Fetch products for picker modal
+  const fetchPickerProducts = async (
+    page = pickerPage,
+    type = pickerTab,
+    searchStr = pickerSearch,
+    limit = pickerLimit
+  ) => {
+    try {
+      setPickerLoading(true);
+      const params = new URLSearchParams();
+      params.append('page', String(page));
+      params.append('limit', String(limit));
+      params.append('status', 'active');
+      if (type && type !== 'all') {
+        params.append('productType', type);
+      }
+      if (searchStr && searchStr.trim()) {
+        params.append('search', searchStr.trim());
+      }
+
+      const res = await api.get(`/products/lookup?${params.toString()}`);
+      const items = res.data?.data || [];
+      const pagination = res.data?.pagination || {
+        currentPage: page,
+        totalPages: 1,
+        totalDocs: items.length,
+        limit,
+      };
+
+      setPickerProducts(Array.isArray(items) ? items : []);
+      setPickerPagination(pagination);
+      setPickerPage(page);
+    } catch (err) {
+      console.error('Failed to load products for picker:', err);
+      toast.error('Failed to load products');
+    } finally {
+      setPickerLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!isProductPickerOpen) return;
+    const timer = setTimeout(() => {
+      fetchPickerProducts(pickerPage, pickerTab, pickerSearch, pickerLimit);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [isProductPickerOpen, pickerTab, pickerSearch, pickerPage, pickerLimit]);
+
+  // Product picker selection handlers
+  const handleOpenProductPicker = () => {
+    const newMap = new Map();
+    (formData.selectedProducts || []).forEach((p) => {
+      const key = String(p._id || p.id || p.productId);
+      newMap.set(key, p);
+    });
+    setTempSelectedMap(newMap);
+    setPickerSearch('');
+    setPickerPage(1);
+    setIsProductPickerOpen(true);
+  };
+
+  const handleToggleProductSelection = (product) => {
+    const key = String(product._id || product.id);
+    setTempSelectedMap((prev) => {
+      const next = new Map(prev);
+      if (next.has(key)) {
+        next.delete(key);
+      } else {
+        next.set(key, {
+          _id: product._id,
+          id: product._id,
+          productId: product._id,
+          title: product.title,
+          subtitle: product.subtitle || product.metalName || '',
+          sku: product.sku || '',
+          price: product.price || product.salePrice || 0,
+          productType: product.productType || '',
+          metalName: product.metalName || '',
+          isOrnate: product.isOrnate,
+          thumbnail: product.thumbnail || product.images?.[0]?.url || product.images?.[0] || '',
+        });
+      }
+      return next;
+    });
+  };
+
+  const isAllPageSelected = useMemo(() => {
+    if (pickerProducts.length === 0) return false;
+    return pickerProducts.every((p) => tempSelectedMap.has(String(p._id || p.id)));
+  }, [pickerProducts, tempSelectedMap]);
+
+  const handleToggleSelectAllPage = () => {
+    setTempSelectedMap((prev) => {
+      const next = new Map(prev);
+      if (isAllPageSelected) {
+        pickerProducts.forEach((p) => {
+          next.delete(String(p._id || p.id));
+        });
+      } else {
+        pickerProducts.forEach((p) => {
+          const key = String(p._id || p.id);
+          next.set(key, {
+            _id: p._id,
+            id: p._id,
+            productId: p._id,
+            title: p.title,
+            subtitle: p.subtitle || p.metalName || '',
+            sku: p.sku || '',
+            price: p.price || p.salePrice || 0,
+            productType: p.productType || '',
+            metalName: p.metalName || '',
+            isOrnate: p.isOrnate,
+            thumbnail: p.thumbnail || p.images?.[0]?.url || p.images?.[0] || '',
+          });
+        });
+      }
+      return next;
+    });
+  };
+
+  const handleApplyProductSelection = () => {
+    const selectedList = Array.from(tempSelectedMap.values());
+    setFormData((prev) => ({
+      ...prev,
+      selectedProducts: selectedList,
+    }));
+    setIsProductPickerOpen(false);
+    toast.success(`${selectedList.length} product${selectedList.length === 1 ? '' : 's'} added to section`);
+  };
+
+  const handleRemoveSelectedProduct = (productId) => {
+    setFormData((prev) => ({
+      ...prev,
+      selectedProducts: (prev.selectedProducts || []).filter(
+        (p) => String(p._id || p.id || p.productId) !== String(productId)
+      ),
+    }));
+  };
+
   // Open Add Modal
   const handleOpenAdd = () => {
     setEditingSection(null);
@@ -189,41 +363,62 @@ export default function HomeSectionsView() {
       subtitle: '',
       description: '',
       sectionKey: '',
-      sectionType: 'hero_slider',
+      sectionType: 'product_carousel',
       placement: 'home_middle',
       order: sections.length + 1,
       status: 'active',
+      visibility: {
+        website: true,
+        mobileApp: true,
+      },
       badgeText: '',
       buttonText: '',
       buttonLink: '',
       imageUrl: '',
       imagePublicId: '',
+      selectedProducts: [],
       items: [],
     });
-    setActiveTab('basic');
     setIsModalOpen(true);
   };
 
   // Open Edit Modal
   const handleOpenEdit = (sec) => {
     setEditingSection(sec);
+    const loadedSelected = (sec.items || []).map((it) => ({
+      _id: it.productId || it._id,
+      id: it.productId || it._id,
+      productId: it.productId,
+      title: it.title,
+      subtitle: it.subtitle,
+      thumbnail: it.imageUrl,
+      sku: it.sku || '',
+      price: it.price || 0,
+      productType: it.productType || '',
+      metalName: it.productType || '',
+    }));
+
     setFormData({
       title: sec.title || '',
       subtitle: sec.subtitle || '',
       description: sec.description || '',
       sectionKey: sec.sectionKey || '',
-      sectionType: sec.sectionType || 'custom_content',
+      sectionType: sec.sectionType || 'product_carousel',
       placement: sec.placement || 'home_middle',
       order: sec.order || 0,
       status: sec.status || 'active',
+      visibility: {
+        website: sec.visibility?.website ?? true,
+        mobileApp: sec.visibility?.mobileApp ?? true,
+      },
       badgeText: sec.badgeText || '',
       buttonText: sec.buttonText || '',
       buttonLink: sec.buttonLink || '',
       imageUrl: sec.image?.url || '',
       imagePublicId: sec.image?.public_id || '',
+      selectedProducts: loadedSelected,
       items: (sec.items || []).map((it) => ({ ...it })),
     });
-    setActiveTab('basic');
     setIsModalOpen(true);
   };
 
@@ -322,7 +517,6 @@ export default function HomeSectionsView() {
     }
   };
 
-
   // Main Image Upload
   const handleMainImageUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -349,57 +543,6 @@ export default function HomeSectionsView() {
     }
   };
 
-  // Repeater Items handlers
-  const handleAddItem = () => {
-    setFormData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          title: '',
-          subtitle: '',
-          description: '',
-          imageUrl: '',
-          imagePublicId: '',
-          linkUrl: '',
-          badge: '',
-          buttonText: '',
-          order: prev.items.length + 1,
-          rating: 5,
-          authorName: '',
-          authorLocation: '',
-        },
-      ],
-    }));
-  };
-
-  const handleUpdateItem = (index, field, value) => {
-    setFormData((prev) => {
-      const updated = [...prev.items];
-      updated[index] = { ...updated[index], [field]: value };
-      return { ...prev, items: updated };
-    });
-  };
-
-  const handleRemoveItem = (index) => {
-    setFormData((prev) => ({
-      ...prev,
-      items: prev.items.filter((_, i) => i !== index),
-    }));
-  };
-
-  const handleItemImageUpload = async (index, file) => {
-    if (!file) return;
-    try {
-      const res = await uploadWithPresignedUrl(file, 'home-sections');
-      handleUpdateItem(index, 'imageUrl', res.url);
-      handleUpdateItem(index, 'imagePublicId', res.public_id || '');
-      toast.success('Item image uploaded');
-    } catch (err) {
-      toast.error('Failed to upload item image');
-    }
-  };
-
   // Save / Submit Form
   const handleSubmitForm = async (e) => {
     e.preventDefault();
@@ -410,26 +553,41 @@ export default function HomeSectionsView() {
 
     try {
       setSubmitting(true);
+      const mappedItems = (formData.selectedProducts || []).map((p, idx) => ({
+        productId: p._id || p.id || p.productId || null,
+        title: p.title || 'Fine Jewellery',
+        subtitle: p.subtitle || p.metalName || '',
+        sku: p.sku || '',
+        price: Number(p.price || 0),
+        productType: p.productType || (p.isOrnate ? 'ornate' : 'gold'),
+        imageUrl: p.thumbnail || p.imageUrl || '',
+        linkUrl: `/products/${p._id || p.id || p.productId}`,
+        order: idx + 1,
+        badge: p.badge || '',
+        buttonText: 'View Details',
+      }));
+
       const payload = {
         title: formData.title.trim(),
         subtitle: formData.subtitle.trim(),
         description: formData.description.trim(),
         sectionKey: formData.sectionKey.trim() || slugify(formData.title),
-        sectionType: formData.sectionType,
-        placement: formData.placement,
+        sectionType: formData.sectionType || 'product_carousel',
+        placement: formData.placement || 'home_middle',
         order: Number(formData.order) || 0,
-        status: formData.status,
+        status: formData.status || 'active',
+        visibility: {
+          website: Boolean(formData.visibility?.website),
+          mobileApp: Boolean(formData.visibility?.mobileApp),
+        },
         badgeText: formData.badgeText.trim(),
         buttonText: formData.buttonText.trim(),
         buttonLink: formData.buttonLink.trim(),
         image: {
-          url: formData.imageUrl.trim(),
-          public_id: formData.imagePublicId.trim(),
+          url: formData.imageUrl?.trim() || '',
+          public_id: formData.imagePublicId?.trim() || '',
         },
-        items: formData.items.map((it, idx) => ({
-          ...it,
-          order: it.order || idx + 1,
-        })),
+        items: mappedItems.length > 0 ? mappedItems : formData.items,
       };
 
       if (editingSection) {
@@ -449,6 +607,7 @@ export default function HomeSectionsView() {
       setSubmitting(false);
     }
   };
+
 
   // Open Reorder Modal
   const handleOpenReorderModal = () => {
@@ -766,6 +925,12 @@ export default function HomeSectionsView() {
                               <code className="text-[10px] text-[#8b6f4e] bg-[#faf3e8] px-1 py-0.2 rounded font-mono font-medium">
                                 #{sec.sectionKey}
                               </code>
+                              {sec.visibility && (
+                                <span className="inline-flex items-center gap-1 text-[10px] text-stone-600 bg-stone-100 px-1.5 py-0.2 rounded">
+                                  {sec.visibility.website !== false && <span title="Visible on Website">🌐</span>}
+                                  {sec.visibility.mobileApp !== false && <span title="Visible on Mobile App">📱</span>}
+                                </span>
+                              )}
                               {sec.subtitle && (
                                 <span className="text-[11px] text-stone-400 truncate max-w-xs">
                                   {sec.subtitle}
@@ -854,105 +1019,231 @@ export default function HomeSectionsView() {
         />
       </div>
 
-      {/* ─── Add / Edit Modal ───────────────────────────────── */}
+      {/* ─── Add / Edit Home Section Modal (Screenshot 1) ───────────────── */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs animate-fadeIn overflow-y-auto cursor-pointer"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-fadeIn overflow-y-auto cursor-pointer"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-3xl overflow-hidden my-auto max-h-[90vh] flex flex-col cursor-default"
+            className="bg-white rounded-3xl border border-stone-200/80 shadow-2xl w-full max-w-4xl overflow-hidden my-auto max-h-[92vh] flex flex-col cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-50">
+            <div className="flex items-center justify-between px-8 py-5 border-b border-stone-100 bg-white">
               <div>
-                <h2 className="text-base font-bold text-stone-900 font-serif">
-                  {editingSection ? `Edit Section: ${editingSection.title}` : 'Create New Home Section'}
+                <h2 className="text-xl font-bold text-stone-900 tracking-tight">
+                  {editingSection ? 'Edit Home Section' : 'Create Home Section'}
                 </h2>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Configure storefront section metadata, banner media, and content cards.
+                <p className="text-[11px] font-bold tracking-widest text-[#8b6f4e] uppercase mt-0.5">
+                  HOMEPAGE CURATED PRODUCTS
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 flex items-center justify-center transition-colors cursor-pointer"
+                className="w-9 h-9 rounded-full border border-stone-200 text-stone-400 hover:text-stone-700 hover:bg-stone-50 flex items-center justify-center transition-colors cursor-pointer"
               >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
 
-            {/* Modal Tabs */}
-            <div className="flex items-center border-b border-stone-200 px-6 bg-white shrink-0">
-              <button
-                type="button"
-                onClick={() => setActiveTab('basic')}
-                className={`py-3 px-4 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-                  activeTab === 'basic'
-                    ? 'border-[#8b6f4e] text-[#8b6f4e]'
-                    : 'border-transparent text-stone-500 hover:text-stone-800'
-                }`}
-              >
-                1. General Info
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('media')}
-                className={`py-3 px-4 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-                  activeTab === 'media'
-                    ? 'border-[#8b6f4e] text-[#8b6f4e]'
-                    : 'border-transparent text-stone-500 hover:text-stone-800'
-                }`}
-              >
-                2. Featured Media & CTA
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('items')}
-                className={`py-3 px-4 text-xs font-semibold border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
-                  activeTab === 'items'
-                    ? 'border-[#8b6f4e] text-[#8b6f4e]'
-                    : 'border-transparent text-stone-500 hover:text-stone-800'
-                }`}
-              >
-                <span>3. Content Cards / Slides</span>
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-stone-100 font-mono">
-                  {formData.items.length}
-                </span>
-              </button>
-            </div>
-
             {/* Modal Body */}
-            <form onSubmit={handleSubmitForm} className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* TAB 1: BASIC INFO */}
-              {activeTab === 'basic' && (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">
-                        Section Title <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.title}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setFormData((prev) => ({
-                            ...prev,
-                            title: val,
-                            sectionKey: prev.sectionKey ? prev.sectionKey : slugify(val),
-                          }));
-                        }}
-                        placeholder="e.g. Curated Solitaires & Rings"
-                        className="w-full text-xs bg-white border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
-                      />
-                    </div>
+            <form onSubmit={handleSubmitForm} className="flex-1 overflow-y-auto p-8 space-y-6">
+              {/* Row 1: Section Title & Subtitle */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-800 uppercase tracking-wider mb-2">
+                    SECTION TITLE <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.title}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        title: val,
+                        sectionKey: prev.sectionKey ? prev.sectionKey : slugify(val),
+                      }));
+                    }}
+                    placeholder="e.g. Trending Lab Grown Diamonds"
+                    className="w-full text-xs bg-white border border-[#d6cfc2] rounded-xl px-4 py-3 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
+                  />
+                </div>
 
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-800 uppercase tracking-wider mb-2">
+                    TAGLINE / SUBTITLE (OPTIONAL)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.subtitle}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, subtitle: e.target.value }))}
+                    placeholder="e.g. Handcrafted luxury for every celebration"
+                    className="w-full text-xs bg-white border border-[#d6cfc2] rounded-xl px-4 py-3 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Platform Visibility */}
+              <div className="border border-stone-200/90 rounded-2xl p-4 bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+                  PLATFORM VISIBILITY
+                </span>
+                <div className="flex items-center gap-6">
+                  <label className="inline-flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={formData.visibility?.website ?? true}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          visibility: { ...prev.visibility, website: e.target.checked },
+                        }))
+                      }
+                      className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer accent-[#8b6f4e]"
+                    />
+                    <span className="flex items-center gap-1.5">
+                      <span>🌐</span>
+                      <span>Website</span>
+                    </span>
+                  </label>
+
+                  <label className="inline-flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={formData.visibility?.mobileApp ?? true}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          visibility: { ...prev.visibility, mobileApp: e.target.checked },
+                        }))
+                      }
+                      className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer accent-[#8b6f4e]"
+                    />
+                    <span className="flex items-center gap-1.5">
+                      <span>📱</span>
+                      <span>Mobile App</span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Row 3: Selected Products Header */}
+              <div className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                      SELECTED PRODUCTS ({formData.selectedProducts?.length || 0})
+                    </h3>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Click the button to open the product catalog pop-up and pick products with pagination.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenProductPicker}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer self-start sm:self-auto"
+                  >
+                    <HiOutlinePlus className="w-4 h-4" />
+                    <span>Browse & Select Products</span>
+                  </button>
+                </div>
+
+                {/* Product Container: Empty state vs Selected Products list */}
+                {(!formData.selectedProducts || formData.selectedProducts.length === 0) ? (
+                  <div className="border-2 border-dashed border-stone-200/90 rounded-2xl p-8 sm:p-12 text-center bg-stone-50/30">
+                    <div className="w-12 h-12 rounded-full bg-[#f6efe6] text-[#8b6f4e] flex items-center justify-center mx-auto mb-3 shadow-2xs">
+                      <IoLayersOutline className="w-6 h-6" />
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-800 mb-1">
+                      No products added yet
+                    </h4>
+                    <p className="text-xs text-stone-500 max-w-md mx-auto mb-5 leading-relaxed">
+                      Open the product catalog pop-up to search, browse by page, and checkmark products to show in this section.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleOpenProductPicker}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+                    >
+                      <HiOutlinePlus className="w-4 h-4" />
+                      <span>Browse & Select Products</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border border-stone-200/90 rounded-2xl p-4 bg-stone-50/40">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-72 overflow-y-auto pr-1">
+                      {formData.selectedProducts.map((prod, idx) => (
+                        <div
+                          key={prod._id || prod.id || idx}
+                          className="flex items-center gap-3 p-2.5 bg-white rounded-xl border border-stone-200 shadow-2xs group relative hover:border-[#8b6f4e] transition-colors"
+                        >
+                          <div className="w-12 h-12 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center p-1 shrink-0 overflow-hidden">
+                            {prod.thumbnail || prod.imageUrl ? (
+                              <img
+                                src={prod.thumbnail || prod.imageUrl}
+                                alt={prod.title}
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <IoDiamondOutline className="w-5 h-5 text-stone-400" />
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-stone-400 font-mono">
+                                #{idx + 1}
+                              </span>
+                              <span className="text-[9px] font-bold text-[#8b6f4e] bg-[#faf3e8] px-1.5 py-0.2 rounded uppercase">
+                                {getProductBadgeLabel(prod)}
+                              </span>
+                            </div>
+                            <p className="text-xs font-semibold text-stone-800 truncate mt-0.5" title={prod.title}>
+                              {prod.title}
+                            </p>
+                            <div className="flex items-center justify-between text-[11px] text-stone-500 mt-0.5">
+                              <span className="font-bold text-stone-900">
+                                ₹{Number(prod.price || prod.salePrice || 0).toLocaleString('en-IN')}
+                              </span>
+                              {prod.sku && (
+                                <span className="text-[10px] font-mono text-stone-400 truncate max-w-[80px]">
+                                  {prod.sku}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveSelectedProduct(prod._id || prod.id || prod.productId)}
+                            className="w-6 h-6 rounded-full bg-stone-100 hover:bg-red-50 hover:text-red-600 text-stone-400 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                            title="Remove product"
+                          >
+                            <HiOutlineX className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Optional Section Settings Accordion */}
+              <div className="pt-2">
+                <details className="group border border-stone-200/70 rounded-xl bg-stone-50/30 p-3">
+                  <summary className="text-[11px] font-bold text-stone-600 hover:text-[#8b6f4e] cursor-pointer list-none flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <HiOutlineFilter className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                      <span>Advanced Settings (Placement, Identifier Slug, Status)</span>
+                    </span>
+                    <span className="text-[10px] text-stone-400 group-open:rotate-180 transition-transform">▼</span>
+                  </summary>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 mt-2 border-t border-stone-200/60">
                     <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">
-                        Identifier Key (Slug) <span className="text-stone-400 font-normal">unique</span>
+                      <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                        Identifier Slug (Unique)
                       </label>
                       <input
                         type="text"
@@ -960,48 +1251,12 @@ export default function HomeSectionsView() {
                         onChange={(e) =>
                           setFormData((prev) => ({ ...prev, sectionKey: slugify(e.target.value) }))
                         }
-                        placeholder="e.g. curated-solitaires"
-                        className="w-full text-xs font-mono bg-stone-50 border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
+                        placeholder="e.g. trending-lab-grown"
+                        className="w-full text-xs font-mono bg-white border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
                       />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">
-                        Subtitle / Tagline
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.subtitle}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, subtitle: e.target.value }))}
-                        placeholder="e.g. Handcrafted In 18K Hallmarked Gold"
-                        className="w-full text-xs bg-white border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">
-                        Section Type
-                      </label>
-                      <Dropdown
-                        value={formData.sectionType}
-                        onChange={(val) => setFormData((prev) => ({ ...prev, sectionType: val }))}
-                        options={SECTION_TYPES.map((t) => ({
-                          value: t.value,
-                          label: t.label,
-                          sublabel: t.desc,
-                          icon: t.icon,
-                        }))}
-                        size="sm"
-                        buttonClassName="w-full h-9 rounded-lg text-xs bg-white border-stone-200"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">Placement</label>
+                      <label className="block text-[11px] font-semibold text-stone-700 mb-1">Placement</label>
                       <Dropdown
                         value={formData.placement}
                         onChange={(val) => setFormData((prev) => ({ ...prev, placement: val }))}
@@ -1013,19 +1268,8 @@ export default function HomeSectionsView() {
                         buttonClassName="w-full h-9 rounded-lg text-xs bg-white border-stone-200"
                       />
                     </div>
-
                     <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">Display Order</label>
-                      <input
-                        type="number"
-                        value={formData.order}
-                        onChange={(e) => setFormData((prev) => ({ ...prev, order: e.target.value }))}
-                        className="w-full text-xs bg-white border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">Status</label>
+                      <label className="block text-[11px] font-semibold text-stone-700 mb-1">Status</label>
                       <Dropdown
                         value={formData.status}
                         onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
@@ -1039,315 +1283,309 @@ export default function HomeSectionsView() {
                       />
                     </div>
                   </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
-                      Editorial Description
-                    </label>
-                    <textarea
-                      rows={3}
-                      value={formData.description}
-                      onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-                      placeholder="Brief story, promotional highlights or collection description..."
-                      className="w-full text-xs bg-white border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 2: MEDIA & CTA */}
-              {activeTab === 'media' && (
-                <div className="space-y-4 animate-fadeIn">
-                  {/* Image Upload Box */}
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
-                      Featured Background or Header Banner
-                    </label>
-                    <div className="border-2 border-dashed border-stone-200 rounded-xl p-4 text-center hover:border-[#8b6f4e] transition-colors bg-stone-50/50">
-                      {formData.imageUrl ? (
-                        <div className="space-y-2">
-                          <img
-                            src={formData.imageUrl}
-                            alt="Banner Preview"
-                            className="max-h-48 mx-auto rounded-lg object-contain shadow-xs border border-stone-200"
-                          />
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setFormData((p) => ({ ...p, imageUrl: '', imagePublicId: '' }))}
-                              className="px-2.5 py-1 text-xs text-red-600 bg-red-50 hover:bg-red-100 rounded-md font-medium cursor-pointer"
-                            >
-                              Remove Image
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="space-y-2">
-                          <HiOutlinePhotograph className="w-10 h-10 text-stone-400 mx-auto" />
-                          <p className="text-xs text-stone-600 font-medium">
-                            Drag & drop or choose high-resolution jewelry banner
-                          </p>
-                          <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#8b6f4e] hover:bg-[#785e40] text-white rounded-lg text-xs font-semibold cursor-pointer transition-colors shadow-2xs">
-                            <HiOutlineUpload className="w-4 h-4" />
-                            <span>{uploading ? `Uploading (${uploadProgress}%)` : 'Select Image File'}</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              disabled={uploading}
-                              onChange={handleMainImageUpload}
-                              className="hidden"
-                            />
-                          </label>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="mt-2">
-                      <label className="block text-[11px] text-stone-400 mb-0.5">
-                        Or enter direct Image URL:
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.imageUrl}
-                        onChange={(e) => setFormData((p) => ({ ...p, imageUrl: e.target.value }))}
-                        placeholder="https://... (CDN image URL)"
-                        className="w-full text-xs font-mono bg-white border border-stone-200 rounded-lg px-3 py-1.5 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Badges and CTA buttons */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-stone-100">
-                    <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">
-                        Pill Badge Text
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.badgeText}
-                        onChange={(e) => setFormData((p) => ({ ...p, badgeText: e.target.value }))}
-                        placeholder="e.g. LIMITED EDITION"
-                        className="w-full text-xs bg-white border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">
-                        Button Label
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.buttonText}
-                        onChange={(e) => setFormData((p) => ({ ...p, buttonText: e.target.value }))}
-                        placeholder="e.g. Explore Collection"
-                        className="w-full text-xs bg-white border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">
-                        Button Link URL
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.buttonLink}
-                        onChange={(e) => setFormData((p) => ({ ...p, buttonLink: e.target.value }))}
-                        placeholder="e.g. /shop?category=rings"
-                        className="w-full text-xs bg-white border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* TAB 3: CONTENT CARDS / ITEMS REPEATER */}
-              {activeTab === 'items' && (
-                <div className="space-y-4 animate-fadeIn">
-                  <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-                    <div>
-                      <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
-                        Curated Cards, Tiles & Slides ({formData.items.length})
-                      </h4>
-                      <p className="text-[11px] text-stone-500">
-                        Add individual cards with images, captions, and links for this section.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleAddItem}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-[#8b6f4e] hover:bg-[#785e40] text-white rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-                    >
-                      <HiOutlinePlus className="w-4 h-4" />
-                      <span>Add Card</span>
-                    </button>
-                  </div>
-
-                  {formData.items.length === 0 ? (
-                    <div className="py-10 text-center border-2 border-dashed border-stone-200 rounded-xl">
-                      <IoCubeOutline className="w-8 h-8 text-stone-300 mx-auto mb-2" />
-                      <p className="text-xs text-stone-500">No cards added to this section yet.</p>
-                      <button
-                        type="button"
-                        onClick={handleAddItem}
-                        className="mt-2 text-xs font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
-                      >
-                        + Click here to add your first item card
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {formData.items.map((item, index) => (
-                        <div
-                          key={index}
-                          className="bg-stone-50/70 border border-stone-200 rounded-xl p-3.5 space-y-3 relative group"
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-stone-800 font-mono">
-                              Card #{index + 1}
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(index)}
-                              className="text-stone-400 hover:text-red-600 transition-colors cursor-pointer p-1"
-                              title="Delete card"
-                            >
-                              <HiOutlineTrash className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                            <div>
-                              <label className="block text-[11px] font-semibold text-stone-700 mb-0.5">
-                                Card Title
-                              </label>
-                              <input
-                                type="text"
-                                value={item.title || ''}
-                                onChange={(e) => handleUpdateItem(index, 'title', e.target.value)}
-                                placeholder="e.g. Diamond Pendant"
-                                className="w-full text-xs bg-white border border-stone-200 rounded-md px-2.5 py-1.5"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-[11px] font-semibold text-stone-700 mb-0.5">
-                                Subtitle / Tagline
-                              </label>
-                              <input
-                                type="text"
-                                value={item.subtitle || ''}
-                                onChange={(e) => handleUpdateItem(index, 'subtitle', e.target.value)}
-                                placeholder="e.g. 18K Solitaire Setting"
-                                className="w-full text-xs bg-white border border-stone-200 rounded-md px-2.5 py-1.5"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-[11px] font-semibold text-stone-700 mb-0.5">
-                                Target Link URL
-                              </label>
-                              <input
-                                type="text"
-                                value={item.linkUrl || ''}
-                                onChange={(e) => handleUpdateItem(index, 'linkUrl', e.target.value)}
-                                placeholder="e.g. /shop?category=pendant"
-                                className="w-full text-xs bg-white border border-stone-200 rounded-md px-2.5 py-1.5"
-                              />
-                            </div>
-                          </div>
-
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                            <div className="sm:col-span-2">
-                              <label className="block text-[11px] font-semibold text-stone-700 mb-0.5">
-                                Image URL or File
-                              </label>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="text"
-                                  value={item.imageUrl || ''}
-                                  onChange={(e) => handleUpdateItem(index, 'imageUrl', e.target.value)}
-                                  placeholder="https://... (CDN image URL)"
-                                  className="flex-1 text-xs bg-white border border-stone-200 rounded-md px-2.5 py-1.5 font-mono"
-                                />
-                                <label className="px-2 py-1.5 bg-stone-200 hover:bg-stone-300 rounded text-[11px] font-semibold text-stone-700 cursor-pointer shrink-0">
-                                  <span>Upload</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    onChange={(e) => handleItemImageUpload(index, e.target.files?.[0])}
-                                    className="hidden"
-                                  />
-                                </label>
-                              </div>
-                            </div>
-
-                            <div>
-                              <label className="block text-[11px] font-semibold text-stone-700 mb-0.5">
-                                Badge / Pill
-                              </label>
-                              <input
-                                type="text"
-                                value={item.badge || ''}
-                                onChange={(e) => handleUpdateItem(index, 'badge', e.target.value)}
-                                placeholder="e.g. NEW or 20% OFF"
-                                className="w-full text-xs bg-white border border-stone-200 rounded-md px-2.5 py-1.5"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
+                </details>
+              </div>
 
               {/* Modal Actions */}
-              <div className="pt-4 border-t border-stone-200 flex items-center justify-between">
+              <div className="pt-4 border-t border-stone-100 flex items-center justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 border border-stone-200 text-stone-700 rounded-lg text-xs font-semibold hover:bg-stone-50 cursor-pointer"
+                  className="px-5 py-2.5 border border-stone-200 text-stone-700 bg-white rounded-xl text-xs font-semibold hover:bg-stone-50 cursor-pointer shadow-2xs transition-colors"
                 >
                   Cancel
                 </button>
-
-                <div className="flex items-center gap-2">
-                  {activeTab !== 'basic' && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveTab(activeTab === 'items' ? 'media' : 'basic')
-                      }
-                      className="px-3 py-2 text-xs font-semibold text-stone-600 hover:text-stone-900 cursor-pointer"
-                    >
-                      Back
-                    </button>
-                  )}
-                  {activeTab !== 'items' ? (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setActiveTab(activeTab === 'basic' ? 'media' : 'items')
-                      }
-                      className="px-4 py-2 bg-[#8b6f4e] text-white rounded-lg text-xs font-semibold hover:bg-[#785e40] transition-colors cursor-pointer"
-                    >
-                      Next Step →
-                    </button>
-                  ) : (
-                    <button
-                      type="submit"
-                      disabled={submitting}
-                      className="px-5 py-2 bg-[#8b6f4e] hover:bg-[#785e40] disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
-                    >
-                      {submitting ? 'Saving...' : editingSection ? 'Save Changes' : 'Create Section'}
-                    </button>
-                  )}
-                </div>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="px-6 py-2.5 bg-[#8b6f4e] hover:bg-[#785e40] disabled:opacity-50 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                >
+                  {submitting ? 'Saving...' : editingSection ? 'Save Changes' : 'Create Section'}
+                </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* ─── Product Picker Modal (Screenshot 2) ───────────────────────── */}
+      {isProductPickerOpen && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-xs animate-fadeIn overflow-y-auto cursor-pointer"
+          onClick={() => setIsProductPickerOpen(false)}
+        >
+          <div
+            className="bg-white rounded-3xl border border-stone-200 shadow-2xl w-full max-w-5xl overflow-hidden my-auto max-h-[92vh] flex flex-col cursor-default relative z-[71]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Picker Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 bg-white">
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h3 className="text-base font-bold text-stone-900 tracking-tight">
+                    Select Products for Homepage Section
+                  </h3>
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#8b6f4e] text-white shadow-2xs">
+                    {tempSelectedMap.size} Selected
+                  </span>
+                </div>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Search and select products across pages. Selections stay saved when navigating pages.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsProductPickerOpen(false)}
+                className="w-8 h-8 rounded-full border border-stone-200 text-stone-400 hover:text-stone-700 hover:bg-stone-50 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <HiOutlineX className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Filter Tabs & Search Bar */}
+            <div className="px-6 py-3 border-b border-stone-100 bg-stone-50/40 space-y-3">
+              {/* Category Tabs: Gold, Silver, Ornate Products, All Products */}
+              <div className="flex flex-wrap items-center gap-2">
+                {PRODUCT_PICKER_TABS.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = pickerTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => {
+                        setPickerTab(tab.id);
+                        setPickerPage(1);
+                      }}
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                        isActive
+                          ? 'bg-[#8b6f4e] text-white shadow-xs'
+                          : 'bg-white border border-stone-200 text-stone-600 hover:border-stone-300 hover:bg-stone-50'
+                      }`}
+                    >
+                      <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-[#8b6f4e]'}`} />
+                      <span>{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Search, Select All Page, and Show Limit */}
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <div className="relative flex-1 w-full">
+                  <HiOutlineSearch className="w-4 h-4 text-stone-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={pickerSearch}
+                    onChange={(e) => {
+                      setPickerSearch(e.target.value);
+                      setPickerPage(1);
+                    }}
+                    placeholder="Search Jewelry by title or SKU..."
+                    className="w-full text-xs bg-white border border-stone-200 rounded-xl pl-9 pr-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={handleToggleSelectAllPage}
+                    className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer shadow-2xs ${
+                      isAllPageSelected
+                        ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                        : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
+                    }`}
+                  >
+                    <HiOutlineCheck className={`w-3.5 h-3.5 ${isAllPageSelected ? 'text-emerald-600' : 'text-stone-400'}`} />
+                    <span>{isAllPageSelected ? 'Deselect Page' : 'Select All Page'}</span>
+                  </button>
+
+                  <div className="flex items-center gap-1.5 text-xs text-stone-500">
+                    <span className="text-[11px] font-bold text-stone-400 uppercase">SHOW</span>
+                    <select
+                      value={pickerLimit}
+                      onChange={(e) => {
+                        setPickerLimit(Number(e.target.value));
+                        setPickerPage(1);
+                      }}
+                      className="bg-white border border-stone-200 rounded-xl px-2 py-1.5 text-xs text-stone-800 font-semibold focus:outline-none focus:border-[#8b6f4e] cursor-pointer shadow-2xs"
+                    >
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Product Grid Area */}
+            <div className="flex-1 overflow-y-auto p-6 bg-stone-50/20">
+              {pickerLoading ? (
+                <div className="py-20 flex flex-col items-center justify-center text-stone-400 gap-2">
+                  <div className="w-8 h-8 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs font-semibold">Loading catalog pieces...</span>
+                </div>
+              ) : pickerProducts.length === 0 ? (
+                <div className="py-16 text-center">
+                  <IoDiamondOutline className="w-10 h-10 text-stone-300 mx-auto mb-2" />
+                  <h4 className="text-sm font-bold text-stone-800">No products found</h4>
+                  <p className="text-xs text-stone-500 mt-1">
+                    Try adjusting your search query or selecting a different jewelry category.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                  {pickerProducts.map((prod) => {
+                    const isSelected = tempSelectedMap.has(String(prod._id || prod.id));
+                    const badge = getProductBadgeLabel(prod);
+                    return (
+                      <div
+                        key={prod._id || prod.id}
+                        onClick={() => handleToggleProductSelection(prod)}
+                        className={`relative flex flex-col p-2.5 rounded-2xl bg-white border transition-all cursor-pointer select-none group shadow-2xs ${
+                          isSelected
+                            ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/30 bg-[#faf6f0]'
+                            : 'border-stone-200 hover:border-stone-300 hover:shadow-xs'
+                        }`}
+                      >
+                        {/* Top card row: Checkbox and Category Badge */}
+                        <div className="flex items-center justify-between mb-1">
+                          <div
+                            className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                              isSelected
+                                ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white'
+                                : 'border-stone-300 bg-white'
+                            }`}
+                          >
+                            {isSelected && <HiOutlineCheck className="w-3 h-3 stroke-2" />}
+                          </div>
+                          <span className="text-[9px] font-bold text-[#8b6f4e] tracking-wider uppercase">
+                            {badge}
+                          </span>
+                        </div>
+
+                        {/* Product Image */}
+                        <div className="h-28 flex items-center justify-center p-1.5 my-1 overflow-hidden">
+                          {prod.thumbnail || prod.images?.[0]?.url || prod.images?.[0] ? (
+                            <img
+                              src={prod.thumbnail || prod.images?.[0]?.url || prod.images?.[0]}
+                              alt={prod.title}
+                              className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-200"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <IoDiamondOutline className="w-8 h-8 text-stone-300" />
+                          )}
+                        </div>
+
+                        {/* Product Info */}
+                        <div className="mt-auto pt-1">
+                          <h5
+                            className="text-[11px] font-semibold text-stone-800 line-clamp-2 leading-tight"
+                            title={prod.title}
+                          >
+                            {prod.title}
+                          </h5>
+                          <p className="text-xs font-bold text-stone-900 mt-1">
+                            ₹{Number(prod.price || prod.salePrice || 0).toLocaleString('en-IN')}
+                          </p>
+                          <p className="text-[10px] text-stone-400 font-mono mt-0.5 truncate">
+                            SKU: {prod.sku || 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Pagination Footer */}
+            <div className="px-6 py-3 border-t border-stone-100 bg-white flex flex-col sm:flex-row items-center justify-between gap-2">
+              <span className="text-xs text-stone-500 font-medium">
+                Showing {pickerProducts.length > 0 ? (pickerPage - 1) * pickerLimit + 1 : 0} to{' '}
+                {Math.min(pickerPage * pickerLimit, pickerPagination.totalDocs || pickerProducts.length)} of{' '}
+                {pickerPagination.totalDocs || pickerProducts.length} pieces
+              </span>
+
+              {pickerPagination.totalPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    disabled={pickerPage <= 1}
+                    onClick={() => setPickerPage((p) => Math.max(1, p - 1))}
+                    className="w-7 h-7 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 disabled:opacity-30 flex items-center justify-center text-xs cursor-pointer"
+                  >
+                    &lt;
+                  </button>
+                  {Array.from({ length: Math.min(5, pickerPagination.totalPages) }, (_, i) => {
+                    let pageNum = i + 1;
+                    if (pickerPagination.totalPages > 5 && pickerPage > 3) {
+                      pageNum = pickerPage - 2 + i;
+                      if (pageNum > pickerPagination.totalPages) {
+                        pageNum = pickerPagination.totalPages - 4 + i;
+                      }
+                    }
+                    const isCurrent = pageNum === pickerPage;
+                    return (
+                      <button
+                        key={pageNum}
+                        type="button"
+                        onClick={() => setPickerPage(pageNum)}
+                        className={`w-7 h-7 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                          isCurrent
+                            ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                            : 'border border-stone-200 text-stone-700 hover:bg-stone-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    disabled={pickerPage >= pickerPagination.totalPages}
+                    onClick={() => setPickerPage((p) => p + 1)}
+                    className="w-7 h-7 rounded-lg border border-stone-200 text-stone-600 hover:bg-stone-50 disabled:opacity-30 flex items-center justify-center text-xs cursor-pointer"
+                  >
+                    &gt;
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Action Bar */}
+            <div className="px-6 py-3.5 border-t border-stone-200 bg-stone-50/70 flex items-center justify-between">
+              <span className="text-xs font-semibold text-stone-700">
+                <strong className="text-stone-900">SELECTED ({tempSelectedMap.size}):</strong>{' '}
+                <span className="text-stone-500 font-normal">
+                  {tempSelectedMap.size === 0 ? 'No products chosen yet' : `${tempSelectedMap.size} product${tempSelectedMap.size > 1 ? 's' : ''} chosen across tabs`}
+                </span>
+              </span>
+
+              <div className="flex items-center gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => setIsProductPickerOpen(false)}
+                  className="px-4 py-2 border border-stone-200 text-stone-700 bg-white rounded-xl text-xs font-semibold hover:bg-stone-50 cursor-pointer shadow-2xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleApplyProductSelection}
+                  className="px-5 py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                >
+                  Apply Selection ({tempSelectedMap.size})
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* ─── Preview / View Modal ────────────────────────────── */}
       {isViewModalOpen && viewingSection && (
@@ -1364,7 +1602,7 @@ export default function HomeSectionsView() {
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[#8b6f4e] bg-[#faf3e8] px-2 py-0.5 rounded">
                   {viewingSection.sectionType}
                 </span>
-                <h3 className="text-base font-bold text-stone-900 font-serif mt-1">
+                <h3 className="text-base font-bold text-stone-900 mt-1">
                   {viewingSection.title}
                 </h3>
               </div>
@@ -1417,38 +1655,63 @@ export default function HomeSectionsView() {
                 </div>
               )}
 
+              {/* Platform Visibility Status */}
+              <div className="flex items-center gap-4 bg-stone-50 p-3 rounded-xl border border-stone-100">
+                <span className="text-stone-500 text-xs font-semibold">Visibility:</span>
+                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${viewingSection.visibility?.website !== false ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-400'}`}>
+                  <span>🌐</span>
+                  <span>Website {viewingSection.visibility?.website !== false ? '✓' : '✗'}</span>
+                </span>
+                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${viewingSection.visibility?.mobileApp !== false ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-400'}`}>
+                  <span>📱</span>
+                  <span>Mobile App {viewingSection.visibility?.mobileApp !== false ? '✓' : '✗'}</span>
+                </span>
+              </div>
+
               {viewingSection.items && viewingSection.items.length > 0 && (
                 <div>
                   <span className="text-stone-400 text-[10px] uppercase font-semibold">
-                    Attached Cards ({viewingSection.items.length})
+                    Curated Products ({viewingSection.items.length})
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                     {viewingSection.items.map((item, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center gap-2.5 p-2 rounded-lg bg-stone-50 border border-stone-200/80"
+                        className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200/80 shadow-2xs"
                       >
-                        {item.imageUrl && (
-                          <img
-                            src={item.imageUrl}
-                            alt={item.title}
-                            className="w-10 h-10 rounded object-cover border border-stone-200 shrink-0"
-                          />
-                        )}
-                        <div className="min-w-0">
-                          <p className="font-semibold text-stone-800 truncate">{item.title}</p>
-                          <p className="text-[11px] text-stone-500 truncate">{item.subtitle}</p>
-                          {item.linkUrl && (
-                            <a
-                              href={item.linkUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="text-[10px] text-[#8b6f4e] hover:underline flex items-center gap-1 mt-0.5"
-                            >
-                              <span>{item.linkUrl}</span>
-                              <HiOutlineExternalLink className="w-2.5 h-2.5" />
-                            </a>
+                        <div className="w-12 h-12 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center p-1 shrink-0 overflow-hidden">
+                          {item.imageUrl ? (
+                            <img
+                              src={item.imageUrl}
+                              alt={item.title}
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <IoDiamondOutline className="w-5 h-5 text-stone-400" />
                           )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-[10px] font-bold text-stone-400 font-mono">#{idx + 1}</span>
+                            {item.productType && (
+                              <span className="text-[9px] font-bold text-[#8b6f4e] bg-[#faf3e8] px-1 py-0.2 rounded uppercase">
+                                {item.productType}
+                              </span>
+                            )}
+                          </div>
+                          <p className="font-semibold text-stone-900 text-xs truncate mt-0.5">{item.title}</p>
+                          <div className="flex items-center justify-between text-[11px] text-stone-500 mt-0.5">
+                            {item.price > 0 && (
+                              <span className="font-bold text-stone-900">
+                                ₹{Number(item.price).toLocaleString('en-IN')}
+                              </span>
+                            )}
+                            {item.sku && (
+                              <span className="text-[10px] font-mono text-stone-400 truncate max-w-[80px]">
+                                {item.sku}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -1484,7 +1747,7 @@ export default function HomeSectionsView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-stone-200 bg-stone-50">
-              <h3 className="text-sm font-bold text-stone-900 font-serif">
+              <h3 className="text-sm font-bold text-stone-900">
                 Reorder Storefront Sections
               </h3>
               <button

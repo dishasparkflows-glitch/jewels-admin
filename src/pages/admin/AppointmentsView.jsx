@@ -3,12 +3,14 @@ import {
   HiOutlineCalendar,
   HiOutlineClock,
   HiOutlineCheckCircle,
+  HiOutlineXCircle,
   HiOutlineSparkles,
   HiOutlinePhone,
   HiOutlineMail,
   HiOutlineX,
   HiOutlineCheck,
   HiOutlineTrash,
+  HiOutlineEye,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -18,13 +20,20 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
-import RowActions from '../../components/common/RowActions';
+
+const STATUS_TABS = [
+  { id: 'all', label: 'All Appointments' },
+  { id: 'pending', label: 'Pending' },
+  { id: 'confirmed', label: 'Confirmed' },
+  { id: 'completed', label: 'Completed' },
+  { id: 'cancelled', label: 'Cancelled' },
+];
 
 const DEMO_APPOINTMENTS = [
-  { _id: 'apt_01', customId: '#APT-0001', customer: { name: 'Pooja Sharma', email: 'pooja.s@gmail.com', phone: { countryCode: '91', number: '9871234567' } }, appointment: { date: '2026-10-12', preferredTime: '03:00 PM', serviceType: 'Bridal Consultation' }, status: 'pending' },
-  { _id: 'apt_02', customId: '#APT-0002', customer: { name: 'Aditya Roy', email: 'aditya.roy@gmail.com', phone: { countryCode: '91', number: '9820011223' } }, appointment: { date: '2026-10-11', preferredTime: '11:30 AM', serviceType: 'Custom Solitaire Viewing' }, status: 'confirmed' },
-  { _id: 'apt_03', customId: '#APT-0003', customer: { name: 'Simran Bajaj', email: 'simran.b@gmail.com', phone: { countryCode: '91', number: '9988776655' } }, appointment: { date: '2026-10-10', preferredTime: '05:00 PM', serviceType: 'Diamond Engagement Ring' }, status: 'completed' },
-  { _id: 'apt_04', customId: '#APT-0004', customer: { name: 'Vikram Seth', email: 'vikram.seth@gmail.com', phone: { countryCode: '91', number: '9810102030' } }, appointment: { date: '2026-10-09', preferredTime: '02:00 PM', serviceType: 'Heritage Gold Collection' }, status: 'confirmed' },
+  { _id: 'apt_01', customId: '#APT-0001', fullName: 'Pooja Sharma', customer: { name: 'Pooja Sharma', email: 'pooja.s@gmail.com', phone: { countryCode: '91', number: '9871234567' } }, appointment: { date: '2026-10-12', preferredTime: '03:00 PM', serviceType: 'Bridal Consultation' }, status: 'pending' },
+  { _id: 'apt_02', customId: '#APT-0002', fullName: 'Aditya Roy', customer: { name: 'Aditya Roy', email: 'aditya.roy@gmail.com', phone: { countryCode: '91', number: '9820011223' } }, appointment: { date: '2026-10-11', preferredTime: '11:30 AM', serviceType: 'Custom Solitaire Viewing' }, status: 'confirmed' },
+  { _id: 'apt_03', customId: '#APT-0003', fullName: 'Simran Bajaj', customer: { name: 'Simran Bajaj', email: 'simran.b@gmail.com', phone: { countryCode: '91', number: '9988776655' } }, appointment: { date: '2026-10-10', preferredTime: '05:00 PM', serviceType: 'Diamond Engagement Ring' }, status: 'completed' },
+  { _id: 'apt_04', customId: '#APT-0004', fullName: 'Vikram Seth', customer: { name: 'Vikram Seth', email: 'vikram.seth@gmail.com', phone: { countryCode: '91', number: '9810102030' } }, appointment: { date: '2026-10-09', preferredTime: '02:00 PM', serviceType: 'Heritage Gold Collection' }, status: 'confirmed' },
 ];
 
 export default function AppointmentsView() {
@@ -32,6 +41,7 @@ export default function AppointmentsView() {
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('pending'); // default to pending as in Screenshot 1, or 'all'
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [viewingApt, setViewingApt] = useState(null);
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
@@ -52,10 +62,10 @@ export default function AppointmentsView() {
   const [pageSize, setPageSize] = useState(10);
   const [serverTotal, setServerTotal] = useState(null);
 
-  const fetchAppointments = async (page = currentPage, limit = pageSize) => {
+  const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/appointments?page=${page}&limit=${limit}`);
+      const res = await api.get('/appointments?limit=100');
       const data = res.data?.data?.items || res.data?.data || [];
       if (Array.isArray(data) && data.length > 0) {
         setAppointments(data);
@@ -71,21 +81,42 @@ export default function AppointmentsView() {
   };
 
   useEffect(() => {
-    fetchAppointments(currentPage, pageSize);
-  }, [currentPage, pageSize]);
+    fetchAppointments();
+  }, []);
 
   const handleUpdateStatus = async (id, newStatus) => {
+    // Optimistic update
+    setAppointments((prev) =>
+      prev.map((a) => ((a._id || a.id) === id ? { ...a, status: newStatus } : a))
+    );
+
     try {
-      await api.put(`/appointments/${id}`, { status: newStatus });
-      toast.success(`Appointment marked as ${newStatus}`);
-      fetchAppointments();
-    } catch (err) {
-      setAppointments((prev) =>
-        prev.map((a) => ((a._id || a.id) === id ? { ...a, status: newStatus } : a))
+      await api.patch(`/appointments/${id}/status`, { status: newStatus });
+      toast.success(
+        newStatus === 'confirmed'
+          ? 'Appointment accepted and confirmed'
+          : newStatus === 'cancelled'
+          ? 'Appointment cancelled'
+          : `Appointment marked as ${newStatus}`
       );
-      toast.success(`Appointment marked as ${newStatus}`);
+    } catch (err) {
+      try {
+        await api.put(`/appointments/${id}`, { status: newStatus });
+        toast.success(
+          newStatus === 'confirmed'
+            ? 'Appointment accepted and confirmed'
+            : newStatus === 'cancelled'
+            ? 'Appointment cancelled'
+            : `Appointment marked as ${newStatus}`
+        );
+      } catch (err2) {
+        console.error('Failed to update status:', err2);
+        toast.error('Failed to update appointment status');
+        fetchAppointments();
+      }
     }
   };
+
 
   const handleDelete = async (id, name) => {
     const isConfirmed = await confirm({
@@ -204,24 +235,38 @@ export default function AppointmentsView() {
   };
 
   // Metrics
-  const totalCount = Math.max(appointments.length, 14);
-  const pendingCount = appointments.filter((a) => a.status === 'pending').length || 4;
-  const confirmedCount = appointments.filter((a) => a.status === 'confirmed').length || 7;
-  const completedCount = appointments.filter((a) => a.status === 'completed').length || 3;
+  const totalCount = appointments.length;
+  const pendingCount = appointments.filter((a) => a.status === 'pending').length;
+  const confirmedCount = appointments.filter((a) => a.status === 'confirmed').length;
+  const completedCount = appointments.filter((a) => a.status === 'completed').length;
+  const cancelledCount = appointments.filter((a) => a.status === 'cancelled').length;
 
-  // Filtered List (NO active/deactive filter!)
+  // Filtered List
   const displayedList = useMemo(() => {
-    if (!search.trim()) return appointments;
-    const q = search.toLowerCase();
     return appointments.filter((a) => {
-      const name = (a.customer?.name || '').toLowerCase();
-      const email = (a.customer?.email || '').toLowerCase();
-      const phone = (a.customer?.phone?.number || '').toLowerCase();
-      const idStr = String(a.customId || a._id || '').toLowerCase();
-      const service = (a.appointment?.serviceType || '').toLowerCase();
-      return name.includes(q) || email.includes(q) || phone.includes(q) || idStr.includes(q) || service.includes(q);
+      // Tab status filter
+      if (statusFilter !== 'all' && a.status !== statusFilter) {
+        return false;
+      }
+      // Search filter
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const name = (a.fullName || a.customer?.name || a.name || '').toLowerCase();
+        const email = (a.email || a.customer?.email || '').toLowerCase();
+        const phone = (a.phoneNumber || a.phone || a.customer?.phone?.number || '').toLowerCase();
+        const idStr = String(a.customId || a.appointmentId || a._id || '').toLowerCase();
+        const service = (a.serviceType || a.appointment?.serviceType || '').toLowerCase();
+        return (
+          name.includes(q) ||
+          email.includes(q) ||
+          phone.includes(q) ||
+          idStr.includes(q) ||
+          service.includes(q)
+        );
+      }
+      return true;
     });
-  }, [appointments, search]);
+  }, [appointments, statusFilter, search]);
 
   const {
     totalItems,
@@ -249,9 +294,9 @@ export default function AppointmentsView() {
   const allSelected = paginatedItems.length > 0 && paginatedItems.every((a) => selectedIds.has(a._id || a.id));
 
   const formatDate = (dateStr) => {
-    if (!dateStr) return '12 Oct 2026';
+    if (!dateStr) return '—';
     const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '12 Oct 2026';
+    if (isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
@@ -263,27 +308,27 @@ export default function AppointmentsView() {
       color: 'bronze',
     },
     {
-      label: 'Confirmed Consultations',
-      value: confirmedCount,
-      icon: HiOutlineCheckCircle,
-      color: 'green',
-    },
-    {
       label: 'Pending Requests',
       value: pendingCount,
       icon: HiOutlineClock,
       color: 'peach',
     },
     {
-      label: 'Completed Sessions',
-      value: completedCount,
-      icon: HiOutlineSparkles,
-      color: 'gold',
+      label: 'Confirmed Consultations',
+      value: confirmedCount,
+      icon: HiOutlineCheckCircle,
+      color: 'green',
+    },
+    {
+      label: 'Total Cancelled',
+      value: cancelledCount,
+      icon: HiOutlineXCircle,
+      color: 'rose',
     },
   ];
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {/* ─── Breadcrumb & Header Row ─── */}
       <ModuleHeader
         breadcrumbs={['Home', 'Appointments']}
@@ -297,6 +342,48 @@ export default function AppointmentsView() {
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />
+
+      {/* ─── Status Filter Tabs Row (Screenshot 1) ─── */}
+      <div className="flex items-center gap-2 overflow-x-auto py-1">
+        {STATUS_TABS.map((tab) => {
+          const isActive = statusFilter === tab.id;
+          const count =
+            tab.id === 'all'
+              ? totalCount
+              : tab.id === 'pending'
+              ? pendingCount
+              : tab.id === 'confirmed'
+              ? confirmedCount
+              : tab.id === 'completed'
+              ? completedCount
+              : cancelledCount;
+
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => {
+                setStatusFilter(tab.id);
+                setCurrentPage(1);
+              }}
+              className={`px-4 py-2 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-2xs cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                isActive
+                  ? 'bg-[#8b6f4e] text-white shadow-xs'
+                  : 'bg-white border border-stone-200/90 text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+              }`}
+            >
+              <span>{tab.label}</span>
+              <span
+                className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                  isActive ? 'bg-white/20 text-white' : 'bg-stone-100 text-stone-500'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
 
       {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
       <SearchFilterBar
@@ -367,15 +454,15 @@ export default function AppointmentsView() {
                 paginatedItems.map((apt, idx) => {
                   const id = apt._id || apt.id || `apt_${idx}`;
                   const isSelected = selectedIds.has(id);
-                  const clientName = apt.customer?.name || 'Client';
-                  const clientEmail = apt.customer?.email || '—';
+                  const clientName = apt.fullName || apt.customer?.name || apt.name || 'Client';
+                  const clientEmail = apt.email || apt.customer?.email || '—';
                   const countryCode = apt.customer?.phone?.countryCode || '91';
-                  const rawPhone = apt.customer?.phone?.number || '';
+                  const rawPhone = apt.phoneNumber || apt.phone || apt.customer?.phone?.number || '';
                   const initial = (clientName || 'C')[0].toUpperCase();
-                  const service = apt.appointment?.serviceType || 'Jewelry Viewing';
-                  const aptDate = apt.appointment?.date;
-                  const prefTime = apt.appointment?.preferredTime || '12:00 PM';
-                  const displayId = apt.customId || `#APT-${String((currentPage - 1) * pageSize + idx + 1).padStart(4, '0')}`;
+                  const service = apt.serviceType || apt.appointment?.serviceType || 'Jewelry Viewing';
+                  const aptDate = apt.appointmentDate || apt.appointment?.date || apt.date;
+                  const prefTime = apt.preferredTime || apt.appointment?.preferredTime || apt.time || '12:00 PM';
+                  const displayId = apt.customId || apt.appointmentId || `#APT-${String((currentPage - 1) * pageSize + idx + 1).padStart(4, '0')}`;
 
                   return (
                     <tr
@@ -410,6 +497,11 @@ export default function AppointmentsView() {
                             <p className="font-semibold text-stone-900 text-xs leading-none">
                               {clientName}
                             </p>
+                            {clientEmail !== '—' && (
+                              <p className="text-[10px] text-stone-400 mt-0.5 truncate max-w-[140px]">
+                                {clientEmail}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </td>
@@ -417,14 +509,20 @@ export default function AppointmentsView() {
                       {/* Contact */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <div className="leading-tight">
-                          <div className="flex items-center gap-1.5 text-stone-600 text-xs">
-                            <HiOutlineMail className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                            <span className="truncate max-w-[160px]">{clientEmail}</span>
-                          </div>
-                          {rawPhone && (
+                          {rawPhone ? (
+                            <div className="flex items-center gap-1.5 text-stone-700 text-xs font-medium">
+                              <HiOutlinePhone className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              <span>{rawPhone}</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5 text-stone-400 text-xs">
+                              <span>—</span>
+                            </div>
+                          )}
+                          {clientEmail !== '—' && (
                             <div className="flex items-center gap-1.5 text-stone-400 text-[10px] mt-1">
-                              <HiOutlinePhone className="w-3 h-3 text-stone-400 shrink-0" />
-                              <span>+{countryCode} {rawPhone}</span>
+                              <HiOutlineMail className="w-3 h-3 text-stone-400 shrink-0" />
+                              <span className="truncate max-w-[150px]">{clientEmail}</span>
                             </div>
                           )}
                         </div>
@@ -432,61 +530,85 @@ export default function AppointmentsView() {
 
                       {/* Schedule */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="flex items-center gap-1.5 text-stone-700 text-xs">
-                          <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                          <span className="font-medium">{formatDate(aptDate)}</span>
-                          <span className="text-stone-300">·</span>
-                          <span className="text-stone-500">{prefTime}</span>
+                        <div className="leading-tight">
+                          <div className="flex items-center gap-1.5 text-stone-800 text-xs font-medium">
+                            <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8b6f4e] shrink-0" />
+                            <span>{formatDate(aptDate)}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-stone-400 text-[10px] mt-1">
+                            <HiOutlineClock className="w-3 h-3 text-stone-400 shrink-0" />
+                            <span>{prefTime}</span>
+                          </div>
                         </div>
                       </td>
 
-                      {/* Status */}
+                      {/* Status (Matches Image 1) */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         {apt.status === 'pending' && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-amber-50 text-amber-700 border border-amber-200">
-                            PENDING
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#feefe3] text-[#b06000] border border-[#fedfc8]">
+                            Pending
                           </span>
                         )}
                         {apt.status === 'confirmed' && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            CONFIRMED
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#e6f4ea] text-[#137333] border border-[#ceead6]">
+                            Confirmed
                           </span>
                         )}
                         {apt.status === 'completed' && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-blue-50 text-blue-700 border border-blue-200">
-                            COMPLETED
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#e8f0fe] text-[#1a73e8] border border-[#d2e3fc]">
+                            Completed
                           </span>
                         )}
                         {apt.status === 'cancelled' && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-rose-50 text-rose-700 border border-rose-200">
-                            CANCELLED
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#fce8e6] text-[#c5221f] border border-[#fad2cf]">
+                            Cancelled
                           </span>
                         )}
                       </td>
 
-                      {/* Actions: Eye & Three Dots */}
-                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
-                        <RowActions
-                          onView={() => setViewingApt({ ...apt, clientName, clientEmail, rawPhone, countryCode, service, displayId, prefTime, aptDate })}
-                          onDelete={() => handleDelete(id, clientName)}
-                          extraActions={[
-                            ...(apt.status === 'pending'
-                              ? [
-                                  {
-                                    label: 'Confirm Booking',
-                                    icon: HiOutlineCheck,
-                                    onClick: () => handleUpdateStatus(id, 'confirmed'),
-                                  },
-                                  {
-                                    label: 'Cancel Booking',
-                                    icon: HiOutlineX,
-                                    onClick: () => handleUpdateStatus(id, 'cancelled'),
-                                  },
-                                ]
-                              : []),
-                          ]}
-                          viewTitle="View appointment details"
-                        />
+                      {/* Actions: 4 Icon Buttons (Check, Cancel, Eye, Trash - Exact match to user screenshot) */}
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2">
+                          {/* 1. Accept / Confirm Check Icon Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(id, apt.status === 'confirmed' ? 'completed' : 'confirmed')}
+                            className="w-8 h-8 rounded-xl bg-[#e8f5ec] hover:bg-[#d4edd9] text-[#1b7a42] border border-[#d1edd7] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
+                            title={apt.status === 'confirmed' ? 'Mark Completed' : 'Accept & Confirm Appointment'}
+                          >
+                            <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
+                          </button>
+
+                          {/* 2. Cancel Cross Icon Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateStatus(id, 'cancelled')}
+                            className="w-8 h-8 rounded-xl bg-[#fdeeed] hover:bg-[#fadbd8] text-[#d93025] border border-[#fadbd8] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
+                            title="Cancel Appointment"
+                          >
+                            <HiOutlineXCircle className="w-4 h-4 stroke-2" />
+                          </button>
+
+                          {/* 3. View Eye Icon Button */}
+                          <button
+                            type="button"
+                            onClick={() => setViewingApt({ ...apt, clientName, clientEmail, rawPhone, countryCode, service, displayId, prefTime, aptDate })}
+                            className="w-8 h-8 rounded-xl bg-[#f5eee6] hover:bg-[#eadbc9] text-[#8b6f4e] border border-[#eadbc9] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
+                            title="View Appointment Details"
+                          >
+                            <HiOutlineEye className="w-4 h-4 stroke-2" />
+                          </button>
+
+                          {/* 4. Delete Trash Icon Button */}
+                          <button
+                            type="button"
+                            onClick={() => handleDelete(id, clientName)}
+                            className="w-8 h-8 rounded-xl bg-[#fdeeed] hover:bg-[#fadbd8] text-[#d93025] border border-[#fadbd8] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
+                            title="Delete Appointment"
+                          >
+                            <HiOutlineTrash className="w-4 h-4 stroke-2" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -518,7 +640,7 @@ export default function AppointmentsView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-lg font-bold text-stone-900 font-serif">
+              <h3 className="text-lg font-bold text-stone-900">
                 Schedule Appointment
               </h3>
               <button
@@ -532,8 +654,8 @@ export default function AppointmentsView() {
 
             <form onSubmit={handleCreateAppointment} className="space-y-4">
               <div>
-                <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                  Client Full Name *
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Client Full Name <span className="text-rose-500 font-bold">*</span>
                 </label>
                 <input
                   type="text"
@@ -541,14 +663,14 @@ export default function AppointmentsView() {
                   placeholder="e.g. Pooja Sharma"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
-                    Email Address *
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                    Email Address <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
                     type="email"
@@ -556,11 +678,11 @@ export default function AppointmentsView() {
                     placeholder="pooja@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Phone Number
                   </label>
                   <input
@@ -568,25 +690,27 @@ export default function AppointmentsView() {
                     placeholder="9871234567"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Date
                   </label>
                   <input
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                    onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                    onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer shadow-2xs"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold text-stone-600 uppercase tracking-wider mb-1.5">
+                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Time
                   </label>
                   <input
@@ -594,7 +718,7 @@ export default function AppointmentsView() {
                     placeholder="e.g. 03:00 PM"
                     value={formData.time}
                     onChange={(e) => setFormData({ ...formData, time: e.target.value })}
-                    className="w-full px-3 py-2 text-xs rounded-lg border border-stone-200 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
               </div>
@@ -631,7 +755,7 @@ export default function AppointmentsView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900 font-serif">
+              <h3 className="text-base font-bold text-stone-900">
                 Appointment Details
               </h3>
               <button
@@ -666,11 +790,52 @@ export default function AppointmentsView() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
+            <div className="flex items-center justify-between gap-3 pt-3 border-t border-stone-100">
+              <div className="flex items-center gap-2">
+                {viewingApt.status === 'pending' && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleUpdateStatus(viewingApt._id || viewingApt.id, 'confirmed');
+                        setViewingApt(null);
+                      }}
+                      className="px-3.5 py-1.5 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+                    >
+                      <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
+                      <span>ACCEPT</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleUpdateStatus(viewingApt._id || viewingApt.id, 'cancelled');
+                        setViewingApt(null);
+                      }}
+                      className="px-3.5 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-300 text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+                    >
+                      <HiOutlineXCircle className="w-4 h-4 stroke-2" />
+                      <span>CANCEL</span>
+                    </button>
+                  </>
+                )}
+                {viewingApt.status === 'confirmed' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleUpdateStatus(viewingApt._id || viewingApt.id, 'completed');
+                      setViewingApt(null);
+                    }}
+                    className="px-3.5 py-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
+                  >
+                    <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
+                    <span>COMPLETE</span>
+                  </button>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={() => setViewingApt(null)}
-                className="w-full py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                className="px-4 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
               >
                 Close
               </button>

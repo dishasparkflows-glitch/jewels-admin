@@ -30,6 +30,10 @@ import {
   HiOutlineChevronLeft,
   HiOutlineCheckCircle,
   HiOutlineLink,
+  HiOutlineChevronDown,
+  HiOutlineCurrencyRupee,
+  HiOutlineSparkles,
+  HiCheck,
 } from 'react-icons/hi';
 import {
   IoDiamondOutline,
@@ -244,17 +248,17 @@ export default function AddJewelryProduct() {
     sku: '',
     category: '',
     subType: '',
-    productType: 'jewelry',
+    productType: 'gold',
     gender: '',
     description: '',
     isOrnate: false,
   });
 
   // ─── Step 2: Metal Options ──────────────────────────────
-  const [selectedPurities, setSelectedPurities] = useState([]);
-  const [selectedColors, setSelectedColors] = useState([]);
+  const [selectedPurities, setSelectedPurities] = useState(['14KT Gold']);
+  const [selectedColors, setSelectedColors] = useState(['Rose Gold']);
   // Primary active preview color pill
-  const [activeColorPill, setActiveColorPill] = useState('');
+  const [activeColorPill, setActiveColorPill] = useState('Rose Gold');
 
   // ─── Step 2: Diamond Configurations ─────────────────────
   const [centerDiamond, setCenterDiamond] = useState({
@@ -663,34 +667,34 @@ export default function AddJewelryProduct() {
 
   // ─── Step 4: Specifications ─────────────────────────────
   const [specs, setSpecs] = useState({
-    metalName: '',
-    metalWeight: '',
-    metalPurity: '',
-    baseMetalWeight: '',
-    grossWeight: '',
-    netWeight: '',
-    stoneWeight: '',
-    baseLabourCharge: '',
-    certificateCharge: '',
+    metalName: 'Gold',
+    metalWeight: '5.250',
+    metalPurity: '18',
+    baseMetalWeight: '5.100',
+    grossWeight: '5.400',
+    netWeight: '5.100',
+    stoneWeight: '0.300',
+    baseLabourCharge: '1250',
+    certificateCharge: '500',
     gstPercentage: 3,
-    sizesAvailable: [],
+    sizesAvailable: ['Size 6', 'Size 7', 'Size 8', 'Size 9'],
   });
 
   // ─── Structured Pricing Block ───────────────────────────
   const [pricing, setPricing] = useState({
-    mrp: '',
-    salePrice: '',
-    costPrice: '',
-    displayPrice: '',
+    mrp: '28500',
+    salePrice: '22800',
+    costPrice: '19500',
+    displayPrice: '22800',
     gstPercentage: 3,
-    markupPercentage: '',
+    markupPercentage: '25',
   });
 
   // ─── Default Ornate Values (Not exposed in Jewelry Products UI) ────────
   const [ornate] = useState({
-    tagNo: '',
-    barcode: '',
-    itemCode: '',
+    tagNo: '925SL-011',
+    barcode: '10000008202124',
+    itemCode: '925SL-011',
     goldAmt: 0,
     labourAmt: 0,
     diamondAmt: 0,
@@ -725,13 +729,28 @@ export default function AddJewelryProduct() {
     });
   };
 
-  // Toggle Color selection
+  // Toggle Color selection (Multi-selection)
   const handleToggleColor = (colorName) => {
-    setActiveColorPill(colorName);
     setSelectedColors((prev) => {
       const exists = prev.includes(colorName);
-      if (exists && prev.length === 1) return prev; // Keep at least one
-      return exists ? prev.filter((c) => c !== colorName) : [...prev, colorName];
+      let updated;
+      if (exists) {
+        if (prev.length === 1) {
+          toast('At least one metal color must be selected', { icon: 'ℹ️' });
+          return prev;
+        }
+        updated = prev.filter((c) => c !== colorName);
+      } else {
+        updated = [...prev, colorName];
+      }
+      setProductColors(updated);
+      if (!updated.includes(activeColorPill)) {
+        setActiveColorPill(updated[0] || '');
+      }
+      if (!updated.includes(activeMediaColor)) {
+        setActiveMediaColor(updated[0] || '');
+      }
+      return updated;
     });
   };
 
@@ -1110,7 +1129,7 @@ export default function AddJewelryProduct() {
           sku: activeSku,
           slug: activeSlug,
           description: activeDesc,
-          productType: basicDetails.productType || 'jewelry',
+          productType: basicDetails.productType || 'gold',
           isOrnate: Boolean(basicDetails.isOrnate),
         },
 
@@ -1148,8 +1167,8 @@ export default function AddJewelryProduct() {
         sku: activeSku,
         slug: activeSlug,
         description: activeDesc,
-        productType: 'jewelry',
-        isOrnate: false,
+        productType: basicDetails.productType || 'gold',
+        isOrnate: Boolean(basicDetails.isOrnate),
         price: mrpNum,
         salePrice: salePriceNum,
         costPrice: costPriceNum,
@@ -1291,27 +1310,27 @@ export default function AddJewelryProduct() {
   return (
     <div className="space-y-4 pb-8 font-sans text-stone-800 animate-fadeIn">
       {/* ─── Top Bar (Title & Actions Matching Screenshot) ───────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200/90 shadow-2xs">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-[#eee8df] shadow-2xs">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={() => navigate('/catalog/jewelry-products')}
-            className="w-9 h-9 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 flex items-center justify-center text-stone-600 transition-colors shadow-2xs cursor-pointer"
+            className="w-9 h-9 rounded-xl border border-[#d6cfc2] bg-white hover:bg-stone-50 flex items-center justify-center text-stone-800 transition-colors shadow-2xs cursor-pointer"
             title="Back to Jewelry Products"
           >
             <HiOutlineArrowLeft className="w-4 h-4 stroke-[2.5]" />
           </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base sm:text-lg font-bold text-stone-900 font-serif tracking-tight leading-tight">
+              <h1 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight">
                 Add New Product
               </h1>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70">
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#ebdcc9]">
                 Barcode: {ornate.barcode || '10000008202124'}
               </span>
             </div>
-            <p className="text-[11px] text-stone-500 font-medium">
-              ERP SKU: <span className="font-mono text-stone-700">{ornate.tagNo || '925SL-011'}</span> &bull; Variety: <span className="text-stone-700">HEAVY WT 92.5</span> &bull; Metal: <span className="text-stone-700">{specs.metalName || 'MIXED'}</span>
+            <p className="text-xs text-stone-500 font-medium mt-0.5">
+              ERP SKU: <span className="font-mono text-stone-800 font-semibold">{ornate.tagNo || '925SL-011'}</span> &bull; Variety: <span className="text-stone-800 font-semibold">HEAVY WT 92.5</span> &bull; Metal: <span className="text-stone-800 font-semibold">{specs.metalName || 'MIXED'}</span>
             </p>
           </div>
         </div>
@@ -1322,9 +1341,9 @@ export default function AddJewelryProduct() {
             type="button"
             onClick={handleSaveDraft}
             disabled={saving}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 rounded-lg hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-stone-800 bg-white border border-[#d6cfc2] rounded-xl hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer disabled:opacity-50"
           >
-            <HiOutlineDocumentText className="w-3.5 h-3.5 text-stone-500" />
+            <HiOutlineDocumentText className="w-4 h-4 text-stone-600" />
             <span>Save Draft</span>
           </button>
 
@@ -1332,57 +1351,54 @@ export default function AddJewelryProduct() {
             type="button"
             onClick={handleNextStep}
             disabled={saving}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-lg transition-all shadow-xs cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
           >
             <span>{getNextButtonText()}</span>
-            <HiOutlineArrowRight className="w-3 h-3 stroke-[2.5]" />
+            <HiOutlineArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
           </button>
         </div>
       </div>
 
       {/* ─── Stepper Wizard Bar (Matches Screenshot) ─────────── */}
-      <div className="bg-white rounded-xl border border-stone-200/90 p-2 sm:p-2.5 shadow-2xs">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 items-center">
+      <div className="bg-white rounded-2xl border border-[#eee8df] p-2 sm:p-2.5 shadow-2xs">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2 items-center">
           {steps.map((s, idx) => {
             const isActive = activeStep === s.num;
-            const isCompleted = activeStep > s.num;
 
             return (
               <div key={s.num} className="flex items-center">
                 <button
                   type="button"
                   onClick={() => setActiveStep(s.num)}
-                  className={`flex items-center gap-2 text-left w-full p-1 rounded-lg transition-all cursor-pointer group ${
-                    isActive ? 'bg-[#faf6f0]' : 'hover:bg-stone-50'
+                  className={`flex items-center gap-2.5 text-left w-full p-2 rounded-xl transition-all cursor-pointer group ${
+                    isActive
+                      ? 'bg-[#f8ede2] border border-[#ebdcc9]'
+                      : 'hover:bg-stone-50 border border-transparent'
                   }`}
                 >
-                  {/* Step Indicator Circle */}
+                  {/* Step Indicator Circle with exact number */}
                   <div
-                    className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-[11px] flex-shrink-0 transition-all ${
+                    className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 transition-all ${
                       isActive
                         ? 'bg-[#8b6f4e] text-white shadow-xs'
-                        : isCompleted
-                        ? 'bg-[#faf5ee] border border-[#d9c4a8] text-[#8b6f4e]'
-                        : 'border border-stone-200 bg-stone-50 text-stone-400 group-hover:border-stone-300'
+                        : 'border border-stone-300 bg-white text-stone-700 group-hover:border-stone-400'
                     }`}
                   >
-                    {isCompleted ? <IoCheckmarkCircle className="w-3.5 h-3.5 text-[#8b6f4e]" /> : s.num}
+                    {s.num}
                   </div>
 
                   {/* Title & Subtitle */}
                   <div className="min-w-0">
                     <p
-                      className={`text-[11px] font-bold truncate leading-tight ${
-                        isActive
-                          ? 'text-[#8b6f4e]'
-                          : isCompleted
-                          ? 'text-stone-800'
-                          : 'text-stone-500'
+                      className={`text-xs font-bold truncate leading-tight ${
+                        isActive ? 'text-stone-900' : 'text-stone-800'
                       }`}
                     >
                       {s.title}
                     </p>
-                    <p className="text-[9.5px] text-stone-400 truncate leading-tight">
+                    <p className={`text-[10px] truncate leading-tight mt-0.5 ${
+                      isActive ? 'text-stone-600' : 'text-stone-400'
+                    }`}>
                       {s.subtitle}
                     </p>
                   </div>
@@ -1404,24 +1420,26 @@ export default function AddJewelryProduct() {
               STEP 1: BASIC DETAILS
           ════════════════════════════════════════════════════ */}
           {activeStep === 1 && (
-            <div className="bg-white rounded-2xl border border-stone-200/90 p-6 shadow-2xs space-y-5 animate-fadeIn">
-              <div className="flex items-center gap-2 pb-3 border-b border-stone-100">
-                <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
+            <div className="bg-white rounded-2xl border border-[#eee8df] p-6 shadow-xs space-y-6 animate-fadeIn">
+              <div className="flex items-center gap-3.5 pb-4 border-b border-stone-100">
+                <div className="w-8 h-8 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
                   1
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-900 font-serif">
+                  <h3 className="text-base font-bold text-stone-900">
                     Basic Product Information
                   </h3>
-                  <p className="text-[11px] text-stone-400">
+                  <p className="text-xs text-stone-500">
                     Enter the master product name, SKU prefix and category categorization.
                   </p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-xs font-bold text-stone-700">Product Title *</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                    Product Title <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <input
                     type="text"
                     value={basicDetails.title}
@@ -1429,12 +1447,14 @@ export default function AddJewelryProduct() {
                       setBasicDetails((prev) => ({ ...prev, title: e.target.value }))
                     }
                     placeholder="e.g. Royal Diamond Solitaire Ring"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] transition-colors"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">Master SKU Prefix *</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                    Master SKU Prefix <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <input
                     type="text"
                     value={basicDetails.sku}
@@ -1442,12 +1462,14 @@ export default function AddJewelryProduct() {
                       setBasicDetails((prev) => ({ ...prev, sku: e.target.value.toUpperCase() }))
                     }
                     placeholder="NR-RING-001"
-                    className="w-full px-3.5 py-2.5 text-xs font-mono uppercase rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs font-mono uppercase font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">Category *</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                    Category <span className="text-rose-500 font-bold">*</span>
+                  </label>
                   <Dropdown
                     size="sm"
                     value={basicDetails.category}
@@ -1455,12 +1477,14 @@ export default function AddJewelryProduct() {
                       setBasicDetails((prev) => ({ ...prev, category: val }))
                     }
                     options={categoryList.map((c) => c.name)}
-                    buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
+                    buttonClassName="h-10 px-3.5 text-xs font-medium text-stone-900 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] shadow-2xs"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">Sub-Category / Collection</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">
+                    Sub-Category / Collection
+                  </label>
                   <input
                     type="text"
                     value={basicDetails.subType}
@@ -1468,12 +1492,12 @@ export default function AddJewelryProduct() {
                       setBasicDetails((prev) => ({ ...prev, subType: e.target.value }))
                     }
                     placeholder="e.g. Solitaire Rings, Halo, Bridal"
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">Gender Target</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">Gender Target</label>
                   <Dropdown
                     size="sm"
                     value={basicDetails.gender}
@@ -1481,15 +1505,15 @@ export default function AddJewelryProduct() {
                       setBasicDetails((prev) => ({ ...prev, gender: val }))
                     }
                     options={['Female', 'Male', 'Unisex']}
-                    buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
+                    buttonClassName="h-10 px-3.5 text-xs font-medium text-stone-900 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] shadow-2xs"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">Product Type</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">Product Type</label>
                   <Dropdown
                     size="sm"
-                    value={basicDetails.productType || 'jewelry'}
+                    value={basicDetails.productType || 'gold'}
                     onChange={(val) =>
                       setBasicDetails((prev) => ({
                         ...prev,
@@ -1497,8 +1521,8 @@ export default function AddJewelryProduct() {
                         isOrnate: val === 'ornate' ? true : prev.isOrnate,
                       }))
                     }
-                    options={['jewelry', 'standard', 'ornate']}
-                    buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
+                    options={['gold', 'silver', 'ornate']}
+                    buttonClassName="h-10 px-3.5 text-xs font-medium text-stone-900 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] shadow-2xs"
                   />
                 </div>
 
@@ -1552,8 +1576,8 @@ export default function AddJewelryProduct() {
                   </div>
                 </div>
 
-                <div className="sm:col-span-2 space-y-1">
-                  <label className="text-xs font-bold text-stone-700">Luxury Description</label>
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">Luxury Description</label>
                   <textarea
                     rows={4}
                     value={basicDetails.description}
@@ -1561,7 +1585,7 @@ export default function AddJewelryProduct() {
                       setBasicDetails((prev) => ({ ...prev, description: e.target.value }))
                     }
                     placeholder="Describe craftsmanship, finish and diamond brilliance..."
-                    className="w-full px-3.5 py-2.5 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] leading-relaxed"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all leading-relaxed shadow-2xs placeholder:text-stone-400"
                   />
                 </div>
               </div>
@@ -1572,18 +1596,18 @@ export default function AddJewelryProduct() {
               STEP 2: VARIANT CONFIGURATION (Matches Screenshot)
           ════════════════════════════════════════════════════ */}
           {activeStep === 2 && (
-            <div className="bg-white rounded-xl border border-stone-200/90 p-4 sm:p-5 shadow-2xs space-y-4 animate-fadeIn">
-              {/* Banner: Variant Configuration */}
-              <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center flex-shrink-0">
-                  <HiOutlineInformationCircle className="w-3.5 h-3.5 text-[#8b6f4e]" />
+            <div className="bg-white rounded-2xl border border-[#eee8df] p-6 shadow-xs space-y-6 animate-fadeIn">
+              {/* Step Header */}
+              <div className="flex items-center gap-3.5 pb-4 border-b border-stone-100">
+                <div className="w-8 h-8 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+                  2
                 </div>
                 <div>
-                  <h2 className="text-xs sm:text-[13px] font-bold text-stone-900 tracking-tight">
+                  <h3 className="text-base font-bold text-stone-900">
                     Variant Configuration
-                  </h2>
-                  <p className="text-[11px] text-stone-400">
-                    Configure metal options and diamond details. Variants will be generated automatically.
+                  </h3>
+                  <p className="text-xs text-stone-500">
+                    Configure metal options, purities and diamond details. Variants will be generated automatically.
                   </p>
                 </div>
               </div>
@@ -1636,23 +1660,20 @@ export default function AddJewelryProduct() {
                     </label>
                     <div className="flex items-center gap-1.5 flex-wrap">
                       {colorsList.map((color) => {
-                        const isSelected = activeColorPill === color.name || selectedColors.includes(color.name);
-                        const isPrimary = activeColorPill === color.name;
+                        const isSelected = selectedColors.includes(color.name);
                         return (
                           <button
                             key={color.name}
                             type="button"
                             onClick={() => handleToggleColor(color.name)}
                             className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold rounded-lg border transition-all cursor-pointer ${
-                              isPrimary
+                              isSelected
                                 ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs'
-                                : isSelected
-                                ? 'bg-[#fcfaf7] border-[#8b6f4e]/50 text-stone-800'
                                 : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300'
                             }`}
                           >
                             <span
-                              className="w-2 h-2 rounded-full border border-black/20"
+                              className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0"
                               style={{ backgroundColor: color.code }}
                             />
                             <span>{color.name}</span>
@@ -1990,7 +2011,7 @@ export default function AddJewelryProduct() {
                     <HiOutlinePhotograph className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm sm:text-base font-bold text-stone-900 font-serif tracking-tight">
+                    <h3 className="text-sm sm:text-base font-bold text-stone-900 tracking-tight">
                       Product Media & Virtual Try-On (VTO)
                     </h3>
                     <p className="text-[11px] text-stone-500">
@@ -2095,9 +2116,6 @@ export default function AddJewelryProduct() {
                             Active
                           </span>
                         </div>
-                        <p className="text-[11px] text-stone-500">
-                          Upload product images, videos and configure VTO for {activeMediaColor} variant.
-                        </p>
                       </div>
                     </div>
 
@@ -2357,7 +2375,7 @@ export default function AddJewelryProduct() {
                           <HiOutlineUpload className="w-4 h-4" />
                         </div>
                         <div>
-                          <h3 className="text-sm font-bold text-stone-900 font-serif">
+                          <h3 className="text-sm font-bold text-stone-900">
                             Virtual Try-On (VTO) Studio
                           </h3>
                           <p className="text-[10px] font-bold tracking-widest text-stone-400 uppercase">
@@ -2721,7 +2739,7 @@ export default function AddJewelryProduct() {
                         <div className="w-8 h-8 rounded-xl bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-sm">
                           ?
                         </div>
-                        <h3 className="text-base font-bold text-stone-900 font-serif">
+                        <h3 className="text-base font-bold text-stone-900">
                           How Media & VTO Works
                         </h3>
                       </div>
@@ -2771,7 +2789,7 @@ export default function AddJewelryProduct() {
                     className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-md w-full p-6 space-y-5 cursor-default"
                   >
                     <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                      <h3 className="text-sm font-bold text-stone-900 font-serif">
+                      <h3 className="text-sm font-bold text-stone-900">
                         Add Metal Color to Product
                       </h3>
                       <button
@@ -2788,7 +2806,7 @@ export default function AddJewelryProduct() {
                       <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider block">
                         Choose from Metal Color Master
                       </label>
-                      <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto p-1">
+                      <div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto p-1">
                         {(colorsList.length > 0 ? colorsList : DEFAULT_COLOR_OPTIONS).map((col) => {
                           const isAlreadyAdded = productColors.includes(col.name);
                           const sphere = getSphereStyle(col.name, col.code);
@@ -2815,36 +2833,6 @@ export default function AddJewelryProduct() {
                         })}
                       </div>
                     </div>
-
-                    {/* Or Create Custom Color */}
-                    <div className="space-y-2.5 pt-3 border-t border-stone-100">
-                      <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider block">
-                        Or Create Custom Color
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="text"
-                          value={customColorInput.name}
-                          onChange={(e) => setCustomColorInput((prev) => ({ ...prev, name: e.target.value }))}
-                          placeholder="e.g. Antique Silver, Rose Vermeil"
-                          className="flex-1 px-3 py-2 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                        <input
-                          type="color"
-                          value={customColorInput.code}
-                          onChange={(e) => setCustomColorInput((prev) => ({ ...prev, code: e.target.value }))}
-                          className="w-9 h-9 rounded-xl border border-stone-200 cursor-pointer p-0.5 bg-white"
-                          title="Choose Color Swatch"
-                        />
-                        <button
-                          type="button"
-                          onClick={handleCreateCustomColor}
-                          className="px-3.5 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-xs cursor-pointer"
-                        >
-                          Add
-                        </button>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
@@ -2854,64 +2842,95 @@ export default function AddJewelryProduct() {
           {/* ═══════════════════════════════════════════════════
               STEP 4: SPECIFICATIONS
           ════════════════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════════
+              STEP 4: SPECIFICATIONS & PRICING
+          ════════════════════════════════════════════════════ */}
           {activeStep === 4 && (
-            <div className="bg-white rounded-2xl border border-stone-200/90 p-6 shadow-2xs space-y-5 animate-fadeIn">
-              <div className="flex items-center gap-2 pb-3 border-b border-stone-100">
-                <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
+            <div className="bg-white rounded-2xl border border-[#eee8df] p-6 shadow-xs space-y-6 animate-fadeIn">
+              {/* Step Header */}
+              <div className="flex items-center gap-3.5 pb-4 border-b border-stone-100">
+                <div className="w-8 h-8 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
                   4
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-900 font-serif">
+                  <h3 className="text-base font-bold text-stone-900">
                     Jewelry Specifications & Costing
                   </h3>
-                  <p className="text-[11px] text-stone-400">
-                    Weights, labour charges, certificate fees and ring sizes.
+                  <p className="text-xs text-stone-500">
+                    Add metal, stone, weight, labour charges and set your pricing.
                   </p>
                 </div>
               </div>
 
-              {/* ─── Specifications Grid (Weights & Metals) ─── */}
-              <div className="space-y-2.5">
-                <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider pb-1 border-b border-stone-100">
-                  Metal & Stone Specifications
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Metal Name</label>
-                    <input
-                      type="text"
-                      value={specs.metalName || 'Gold'}
-                      onChange={(e) => setSpecs((prev) => ({ ...prev, metalName: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
+              {/* ─── Box 1: Metal & Stone Specifications ─── */}
+              <div className="rounded-2xl border border-[#eee8df] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex items-center gap-2.5 pb-1">
+                  <div className="w-6 h-6 rounded-lg bg-[#faf5ee] border border-[#ecd9c2] flex items-center justify-center text-[#8b6f4e] shrink-0">
+                    <HiOutlineCube className="w-3.5 h-3.5 stroke-[2.2]" />
+                  </div>
+                  <h4 className="text-sm font-bold text-stone-900">
+                    Metal & Stone Specifications
+                  </h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+                  {/* Metal Name * */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                      Metal Name <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={specs.metalName || 'Gold'}
+                        onChange={(e) => setSpecs((prev) => ({ ...prev, metalName: e.target.value }))}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all appearance-none pr-8 cursor-pointer shadow-2xs"
+                      >
+                        <option value="Gold">Gold</option>
+                        <option value="Silver">Silver</option>
+                        <option value="Platinum">Platinum</option>
+                        <option value="Mixed">Mixed</option>
+                        <option value="Rose Gold">Rose Gold</option>
+                        <option value="White Gold">White Gold</option>
+                      </select>
+                      <HiOutlineChevronDown className="w-4 h-4 text-stone-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Metal Weight (g)</label>
+                  {/* Metal Weight (g) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900">
+                      Metal Weight (g)
+                    </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.001"
                       value={specs.metalWeight ?? specs.netWeight}
                       onChange={(e) => setSpecs((prev) => ({ ...prev, metalWeight: e.target.value, netWeight: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Metal Purity (KT)</label>
+                  {/* Metal Purity (KT) * */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                      Metal Purity (KT) <span className="text-rose-500 font-bold">*</span>
+                    </label>
                     <input
                       type="number"
                       value={specs.metalPurity || 18}
                       onChange={(e) => setSpecs((prev) => ({ ...prev, metalPurity: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Net Metal Weight (g) *</label>
+                  {/* Net Metal Weight (g) * */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                      Net Metal Weight (g) <span className="text-rose-500 font-bold">*</span>
+                    </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.001"
                       value={specs.netWeight}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -2927,15 +2946,18 @@ export default function AddJewelryProduct() {
                           };
                         });
                       }}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Gross Weight (g) *</label>
+                  {/* Gross Weight (g) * */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                      Gross Weight (g) <span className="text-rose-500 font-bold">*</span>
+                    </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.001"
                       value={specs.grossWeight}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -2949,61 +2971,90 @@ export default function AddJewelryProduct() {
                           };
                         });
                       }}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Stone Weight (g)</label>
+                  {/* Stone Weight (g) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900">
+                      Stone Weight (g)
+                    </label>
                     <input
                       type="number"
-                      step="0.01"
+                      step="0.001"
                       value={specs.stoneWeight}
                       onChange={(e) => setSpecs((prev) => ({ ...prev, stoneWeight: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Base Labour / Making (₹)</label>
+                  {/* Base Labour / Making (₹) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900">
+                      Base Labour / Making (₹)
+                    </label>
                     <input
                       type="number"
                       value={specs.baseLabourCharge}
                       onChange={(e) => setSpecs((prev) => ({ ...prev, baseLabourCharge: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Certificate Charge (₹)</label>
+                  {/* Certificate Charge (₹) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900">
+                      Certificate Charge (₹)
+                    </label>
                     <input
                       type="number"
                       value={specs.certificateCharge}
                       onChange={(e) => setSpecs((prev) => ({ ...prev, certificateCharge: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* ─── Structured Pricing & Costing Block ─────── */}
-              <div className="space-y-2.5 pt-2">
-                <h4 className="text-xs font-bold text-stone-800 uppercase tracking-wider pb-1 border-b border-stone-100">
-                  Pricing & Commercial Margins
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">MRP (Original ₹) *</label>
+              {/* ─── Box 2: Pricing & Commercial Margins ─── */}
+              <div className="rounded-2xl border border-[#eee8df] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-1">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-[#faf5ee] border border-[#ecd9c2] flex items-center justify-center text-[#8b6f4e] shrink-0">
+                      <HiOutlineCurrencyRupee className="w-3.5 h-3.5 stroke-[2.2]" />
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900">
+                      Pricing & Commercial Margins
+                    </h4>
+                  </div>
+
+                  {/* Info callout badge from screenshot */}
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fcf6ee] border border-[#ebdcc9] text-[11px] font-medium text-[#8b6f4e]">
+                    <HiOutlineInformationCircle className="w-4 h-4 text-[#8b6f4e] shrink-0" />
+                    <span>Enter accurate pricing and markup to calculate final selling price.</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+                  {/* MRP (Original ₹) * */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                      MRP (Original ₹) <span className="text-rose-500 font-bold">*</span>
+                    </label>
                     <input
                       type="number"
                       value={pricing.mrp}
                       onChange={(e) => setPricing((prev) => ({ ...prev, mrp: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] font-semibold"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Sale Price (Selling ₹) *</label>
+                  {/* Sale Price (Selling ₹) * */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                      Sale Price (Selling ₹) <span className="text-rose-500 font-bold">*</span>
+                    </label>
                     <input
                       type="number"
                       value={pricing.salePrice}
@@ -3014,61 +3065,99 @@ export default function AddJewelryProduct() {
                           displayPrice: e.target.value,
                         }))
                       }
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] font-semibold text-emerald-800"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Cost Price (Internal ₹)</label>
+                  {/* Cost Price (Internal ₹) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900">
+                      Cost Price (Internal ₹)
+                    </label>
                     <input
                       type="number"
                       value={pricing.costPrice}
                       onChange={(e) => setPricing((prev) => ({ ...prev, costPrice: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Display Price (₹)</label>
+                  {/* Display Price (₹) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900">
+                      Display Price (₹)
+                    </label>
                     <input
                       type="number"
                       value={pricing.displayPrice}
                       onChange={(e) => setPricing((prev) => ({ ...prev, displayPrice: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Markup (%)</label>
+                  {/* Markup (%) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900">
+                      Markup (%)
+                    </label>
                     <input
                       type="number"
                       value={pricing.markupPercentage}
                       onChange={(e) => setPricing((prev) => ({ ...prev, markupPercentage: e.target.value }))}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                     />
                   </div>
 
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">GST Rate (%)</label>
-                    <input
-                      type="number"
-                      value={pricing.gstPercentage}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setPricing((prev) => ({ ...prev, gstPercentage: val }));
-                        setSpecs((prev) => ({ ...prev, gstPercentage: val }));
-                      }}
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
+                  {/* GST Rate (%) */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900">
+                      GST Rate (%)
+                    </label>
+                    <div className="relative">
+                      <select
+                        value={pricing.gstPercentage ?? 3}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setPricing((prev) => ({ ...prev, gstPercentage: val }));
+                          setSpecs((prev) => ({ ...prev, gstPercentage: val }));
+                        }}
+                        className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all appearance-none pr-8 cursor-pointer shadow-2xs"
+                      >
+                        <option value={0}>0</option>
+                        <option value={1.5}>1.5</option>
+                        <option value={3}>3</option>
+                        <option value={5}>5</option>
+                        <option value={12}>12</option>
+                        <option value={18}>18</option>
+                      </select>
+                      <HiOutlineChevronDown className="w-4 h-4 text-stone-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2 pt-3">
-                <label className="text-xs font-bold text-stone-700">Available Ring Sizes</label>
-                <div className="flex flex-wrap gap-2">
+              {/* ─── Box 3: Available Ring Sizes ─── */}
+              <div className="rounded-2xl border border-[#eee8df] bg-white p-5 sm:p-6 shadow-xs space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2 pb-1">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-[#faf5ee] border border-[#ecd9c2] flex items-center justify-center text-[#8b6f4e] shrink-0">
+                      <HiOutlineSparkles className="w-3.5 h-3.5 stroke-[2.2]" />
+                    </div>
+                    <h4 className="text-sm font-bold text-stone-900">
+                      Available Ring Sizes
+                    </h4>
+                  </div>
+
+                  {/* Info callout badge from screenshot */}
+                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fcf6ee] border border-[#ebdcc9] text-[11px] font-medium text-[#8b6f4e]">
+                    <HiOutlineInformationCircle className="w-4 h-4 text-[#8b6f4e] shrink-0" />
+                    <span>Select the ring sizes available for this product.</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap gap-2.5 pt-1">
                   {['Size 5', 'Size 6', 'Size 7', 'Size 8', 'Size 9', 'Size 10', 'Size 11', 'Size 12'].map((sz) => {
-                    const isSelected = specs.sizesAvailable.includes(sz);
+                    const isSelected = (specs.sizesAvailable || []).includes(sz);
                     return (
                       <button
                         key={sz}
@@ -3077,17 +3166,27 @@ export default function AddJewelryProduct() {
                           setSpecs((prev) => ({
                             ...prev,
                             sizesAvailable: isSelected
-                              ? prev.sizesAvailable.filter((s) => s !== sz)
-                              : [...prev.sizesAvailable, sz],
+                              ? (prev.sizesAvailable || []).filter((s) => s !== sz)
+                              : [...(prev.sizesAvailable || []), sz],
                           }));
                         }}
-                        className={`px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
+                        className={`flex items-center gap-2.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer border ${
                           isSelected
-                            ? 'bg-[#8b6f4e] text-white border-[#8b6f4e]'
-                            : 'bg-white text-stone-700 border-stone-200 hover:border-stone-300'
+                            ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs'
+                            : 'bg-white border-[#d6cfc2] hover:border-[#bdae99] text-stone-800 hover:bg-stone-50'
                         }`}
                       >
-                        {sz}
+                        {/* Checkbox square indicator */}
+                        <div
+                          className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
+                            isSelected
+                              ? 'bg-white/20 border border-white/60 text-white'
+                              : 'bg-white border border-stone-300'
+                          }`}
+                        >
+                          {isSelected && <HiCheck className="w-3 h-3 stroke-[3] text-white" />}
+                        </div>
+                        <span>{sz}</span>
                       </button>
                     );
                   })}
@@ -3110,16 +3209,13 @@ export default function AddJewelryProduct() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-stone-900 font-serif">
+                        <h3 className="text-sm font-bold text-stone-900">
                           Product Information & Care Sections
                         </h3>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/60">
                           {careSections.length} Added
                         </span>
                       </div>
-                      <p className="text-[11px] text-stone-400">
-                        Add custom expandable sections displayed on the storefront (e.g. &ldquo;How to Care&rdquo;, &ldquo;How to Maintain&rdquo;).
-                      </p>
                     </div>
                   </div>
 
@@ -3291,7 +3387,7 @@ export default function AddJewelryProduct() {
                               type="button"
                               title="Bold"
                               onClick={() => handleFormatText(sec.id, 'bold')}
-                              className="w-7 h-7 rounded-lg text-xs font-serif font-bold text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                              className="w-7 h-7 rounded-lg text-xs font-bold text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
                             >
                               B
                             </button>
@@ -3301,7 +3397,7 @@ export default function AddJewelryProduct() {
                               type="button"
                               title="Italic"
                               onClick={() => handleFormatText(sec.id, 'italic')}
-                              className="w-7 h-7 rounded-lg text-xs font-serif italic text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                              className="w-7 h-7 rounded-lg text-xs italic text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
                             >
                               I
                             </button>
@@ -3311,7 +3407,7 @@ export default function AddJewelryProduct() {
                               type="button"
                               title="Underline"
                               onClick={() => handleFormatText(sec.id, 'underline')}
-                              className="w-7 h-7 rounded-lg text-xs font-serif underline text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
+                              className="w-7 h-7 rounded-lg text-xs underline text-stone-700 hover:bg-stone-200/70 hover:text-stone-900 flex items-center justify-center cursor-pointer transition-colors"
                             >
                               U
                             </button>
@@ -3391,16 +3487,13 @@ export default function AddJewelryProduct() {
                     </div>
                     <div>
                       <div className="flex items-center gap-2">
-                        <h3 className="text-sm font-bold text-stone-900 font-serif">
+                        <h3 className="text-sm font-bold text-stone-900">
                           Product Specifications
                         </h3>
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/60">
                           {specifications.length} Added
                         </span>
                       </div>
-                      <p className="text-[11px] text-stone-400">
-                        Technical key-value specification attributes displayed on product specification table.
-                      </p>
                     </div>
                   </div>
 
@@ -3493,7 +3586,7 @@ export default function AddJewelryProduct() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm sm:text-base font-bold text-stone-900 font-serif">
+                      <h3 className="text-sm sm:text-base font-bold text-stone-900">
                         Product Storefront Preview
                       </h3>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#e8dac7]">
@@ -3677,7 +3770,7 @@ export default function AddJewelryProduct() {
                       <span>›</span>
                       <span>{basicDetails.subType}</span>
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-bold text-stone-900 font-serif leading-snug">
+                    <h2 className="text-xl sm:text-2xl font-bold text-stone-900 leading-snug">
                       {basicDetails.title}
                     </h2>
                     <p className="text-xs text-stone-400 flex items-center gap-2">
@@ -3702,7 +3795,7 @@ export default function AddJewelryProduct() {
                   {/* Price Box */}
                   <div className="p-3.5 rounded-xl bg-white border border-stone-200/90 shadow-2xs space-y-1">
                     <div className="flex items-baseline gap-2.5">
-                      <span className="text-2xl font-bold text-stone-900 font-serif">
+                      <span className="text-2xl font-bold text-stone-900">
                         ₹{Number(pricing.salePrice || 65000).toLocaleString()}
                       </span>
                       <span className="text-xs text-stone-400 line-through">
@@ -3979,7 +4072,7 @@ export default function AddJewelryProduct() {
                             <td className="py-2 pr-2 text-stone-600 text-[10px]">
                               {v.diamondDetails?.center || '1.00Ct Round'}
                             </td>
-                            <td className="py-2 text-right font-bold text-stone-900 font-serif">
+                            <td className="py-2 text-right font-bold text-stone-900">
                               ₹{v.price}
                             </td>
                             <td className="py-2 text-right">
@@ -4066,49 +4159,49 @@ export default function AddJewelryProduct() {
               STEP 7: SEO & PUBLISH
           ════════════════════════════════════════════════════ */}
           {activeStep === 7 && (
-            <div className="bg-white rounded-2xl border border-stone-200/90 p-6 shadow-2xs space-y-5 animate-fadeIn">
-              <div className="flex items-center gap-2 pb-3 border-b border-stone-100">
-                <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
+            <div className="bg-white rounded-2xl border border-[#eee8df] p-6 shadow-xs space-y-6 animate-fadeIn">
+              <div className="flex items-center gap-3.5 pb-4 border-b border-stone-100">
+                <div className="w-8 h-8 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
                   7
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-stone-900 font-serif">
+                  <h3 className="text-base font-bold text-stone-900">
                     SEO Configuration
                   </h3>
-                  <p className="text-[11px] text-stone-400">
+                  <p className="text-xs text-stone-500">
                     Optimize search engine rankings, meta titles, and URL slug.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">URL Slug</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">URL Slug</label>
                   <input
                     type="text"
                     value={seo.slug}
                     onChange={(e) => setSeo((prev) => ({ ...prev, slug: e.target.value }))}
-                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">Meta Title</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">Meta Title</label>
                   <input
                     type="text"
                     value={seo.metaTitle}
                     onChange={(e) => setSeo((prev) => ({ ...prev, metaTitle: e.target.value }))}
-                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                   />
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold text-stone-700">Meta Description</label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">Meta Description</label>
                   <textarea
                     rows={3}
                     value={seo.metaDescription}
                     onChange={(e) => setSeo((prev) => ({ ...prev, metaDescription: e.target.value }))}
-                    className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs leading-relaxed placeholder:text-stone-400"
                   />
                 </div>
               </div>

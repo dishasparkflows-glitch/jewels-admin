@@ -432,7 +432,7 @@ export default function BirthstonePortfolioView() {
                       <td className="py-2.5 px-3">
                         <div className="flex items-center gap-2.5">
                           <span
-                            className="w-7 h-7 rounded-md flex items-center justify-center font-serif font-bold text-[10px] shadow-2xs border shrink-0"
+                            className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-[10px] shadow-2xs border shrink-0"
                             style={{
                               backgroundColor: `${item.color}15`,
                               borderColor: `${item.color}35`,
@@ -557,7 +557,7 @@ export default function BirthstonePortfolioView() {
                   <IoDiamondOutline className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="font-serif font-bold text-stone-900 text-lg">
+                  <h3 className="font-bold text-stone-900 text-lg">
                     Configure {formMonth} Birthstone
                   </h3>
                   <p className="text-xs text-stone-400">
@@ -736,7 +736,7 @@ export default function BirthstonePortfolioView() {
           >
             <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5]">
               <div className="flex items-center gap-2">
-                <span className="font-serif font-bold text-stone-900 text-base">
+                <span className="font-bold text-stone-900 text-base">
                   {viewingMonth.month} Portfolio
                 </span>
               </div>
@@ -774,7 +774,7 @@ export default function BirthstonePortfolioView() {
                 <span className="text-[11px] font-bold tracking-[0.2em] text-[#8b6f4e] uppercase">
                   ASSIGNED GEMSTONE
                 </span>
-                <h4 className="text-2xl font-serif font-bold text-stone-900 mt-1">
+                <h4 className="text-2xl font-bold text-stone-900 mt-1">
                   {viewingMonth.stoneName}
                 </h4>
                 <p className="text-xs text-stone-500 mt-1">

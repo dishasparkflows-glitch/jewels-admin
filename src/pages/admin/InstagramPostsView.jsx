@@ -395,7 +395,7 @@ export default function InstagramPostsView() {
             </svg>
           </div>
           <div>
-            <h1 className="font-serif text-2xl font-bold text-stone-900 tracking-tight leading-none">
+            <h1 className="text-2xl font-bold text-stone-900 tracking-tight leading-none">
               Instagram Posts
             </h1>
             <p className="text-xs text-stone-500 font-normal mt-1.5">
@@ -660,10 +660,10 @@ export default function InstagramPostsView() {
                         e.stopPropagation();
                         handleDelete(post._id);
                       }}
-                      className="w-7 h-7 rounded-lg border border-stone-200/90 text-rose-500 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                      className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] active:scale-95 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
                       title="Delete Post"
                     >
-                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                      <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
                     </button>
                   </div>
                 </div>
@@ -811,7 +811,7 @@ export default function InstagramPostsView() {
                   <HiOutlinePhotograph className="w-5 h-5 text-[#8c6d46]" />
                 </div>
                 <div>
-                  <h3 className="font-serif font-bold text-stone-900 text-lg">
+                  <h3 className="font-bold text-stone-900 text-lg">
                     {editingPost ? 'Edit Instagram Post' : 'Add Instagram Post'}
                   </h3>
                   <p className="text-xs text-stone-400">
@@ -923,7 +923,7 @@ export default function InstagramPostsView() {
                 <div className="w-8 h-8 rounded-lg bg-[#faf4ed] flex items-center justify-center text-[#8c6d46]">
                   <HiOutlinePhotograph className="w-4 h-4" />
                 </div>
-                <span className="font-serif font-bold text-stone-900 text-base">
+                <span className="font-bold text-stone-900 text-base">
                   {viewingPost.title || 'Instagram Post'}
                 </span>
               </div>

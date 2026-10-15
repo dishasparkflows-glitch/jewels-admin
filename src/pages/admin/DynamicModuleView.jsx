@@ -419,8 +419,8 @@ const DynamicModuleView = () => {
           .replace(/^-+|-+$/g, '');
         const isOrnate = config.endpoint.includes('isOrnate=true') || Boolean(formData.isOrnate);
         const productType = config.endpoint.includes('productType=Silver')
-          ? 'jewelry'
-          : (isOrnate ? 'ornate' : (formData.productType || 'jewelry'));
+          ? 'silver'
+          : (isOrnate ? 'ornate' : (formData.productType || 'gold'));
         const mrp = Number(formData.mrp || formData.price) || 75000;
         const salePrice = Number(formData.salePrice || formData.price) || 65000;
         const costPrice = Number(formData.costPrice) || 50000;
@@ -683,7 +683,7 @@ const DynamicModuleView = () => {
             ? 'Add Jewelry Product'
             : isOrnatePage
             ? 'Add Ornate Product'
-            : `Add ${config.title.replace(/s$/, '')}`
+            : `Add ${singleName}`
         }
         extraActions={
           isOrnatePage && (
@@ -1022,7 +1022,7 @@ const DynamicModuleView = () => {
                     <div className="space-y-2 p-3.5 bg-stone-50/80 rounded-2xl border border-stone-200/80">
                       <div className="flex items-center gap-1.5">
                         <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
-                        <span className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                        <span className="text-xs font-bold text-stone-900">
                           {field.label}
                         </span>
                       </div>
@@ -1105,7 +1105,7 @@ const DynamicModuleView = () => {
                   ) : field.type === 'icon' ? (
                     /* Category Icon Field */
                     <div className="space-y-1.5">
-                      <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1.5">
+                      <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
                         <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
                         <span>{field.label}</span>
                       </label>
@@ -1170,9 +1170,9 @@ const DynamicModuleView = () => {
                       </div>
                     </div>
                   ) : (
-                    <>
-                      <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                        {field.label}
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                        {field.label} {field.required && <span className="text-rose-500 font-bold">*</span>}
                       </label>
                       {field.type === 'select' ? (
                         <Dropdown
@@ -1183,7 +1183,7 @@ const DynamicModuleView = () => {
                           options={field.options}
                           placeholder={`Select ${field.label}`}
                           size="sm"
-                          buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
+                          buttonClassName="w-full h-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
                         />
                       ) : field.type === 'lookup' ? (
                         <Dropdown
@@ -1194,7 +1194,7 @@ const DynamicModuleView = () => {
                           options={lookupData[field.name] || []}
                           placeholder={`Select ${field.label}`}
                           size="sm"
-                          buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
+                          buttonClassName="w-full h-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
                         />
                       ) : (
                         <input
@@ -1205,10 +1205,10 @@ const DynamicModuleView = () => {
                           onChange={(e) =>
                             setFormData((prev) => ({ ...prev, [field.name]: e.target.value }))
                           }
-                          className="w-full px-3 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                          className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
                         />
                       )}
-                    </>
+                    </div>
                   )}
                 </div>
               ))}
@@ -1254,17 +1254,14 @@ const DynamicModuleView = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#faf5ed] text-[#8b6f4e] flex items-center justify-center font-bold text-sm">
                   <HiOutlineEye className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-stone-900 font-serif">
-                    {config.title.replace(/s$/, '')} Details
+                  <h3 className="text-base font-bold text-stone-900 leading-tight">
+                    {singleName} Details
                   </h3>
-                  <p className="text-[10px] text-stone-400 font-mono">
-                    ID: {viewingRecord._id || viewingRecord.id || viewingRecord.customId || '—'}
-                  </p>
                 </div>
               </div>
               <button
@@ -1277,35 +1274,102 @@ const DynamicModuleView = () => {
             </div>
 
             {/* Media thumbnail if exists */}
-            {(viewingRecord.banner?.url ||
-              (typeof viewingRecord.banner === 'string' && viewingRecord.banner) ||
-              viewingRecord.image?.url ||
-              viewingRecord.lightImage?.url ||
-              (Array.isArray(viewingRecord.images) && viewingRecord.images[0]?.url)) && (
-              <div className="w-full h-44 rounded-xl overflow-hidden bg-stone-50 border border-stone-200/60 flex items-center justify-center">
-                <img
-                  src={getMediaUrl(
-                    viewingRecord.banner?.url ||
-                      (typeof viewingRecord.banner === 'string' ? viewingRecord.banner : null) ||
-                      viewingRecord.image?.url ||
-                      viewingRecord.lightImage?.url ||
-                      viewingRecord.images[0]?.url
-                  )}
-                  alt={getRowLabel(viewingRecord)}
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            )}
+            {(() => {
+              const mediaUrl = getMediaUrl(
+                viewingRecord.banner?.url ||
+                  (typeof viewingRecord.banner === 'string' ? viewingRecord.banner : null) ||
+                  viewingRecord.image?.url ||
+                  viewingRecord.lightImage?.url ||
+                  (Array.isArray(viewingRecord.images) && viewingRecord.images[0]?.url)
+              );
+              if (!mediaUrl) return null;
+              return (
+                <div className="w-full h-44 rounded-xl overflow-hidden bg-stone-50 border border-stone-200/60 flex items-center justify-center image-preview-container">
+                  <img
+                    src={mediaUrl}
+                    alt={getRowLabel(viewingRecord)}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      const container = e.currentTarget.closest('.image-preview-container');
+                      if (container) container.style.display = 'none';
+                    }}
+                  />
+                </div>
+              );
+            })()}
 
-            {/* Details Grid */}
+            {/* Details Grid - Display All Available Fields */}
             <div className="space-y-2 bg-stone-50/70 p-4 rounded-xl border border-stone-200/60 text-xs">
+              {/* Name / Title */}
               <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
                 <span className="text-stone-400 font-medium">Name / Title</span>
                 <span className="font-bold text-stone-900 text-right">{getRowLabel(viewingRecord)}</span>
               </div>
+
+              {/* Slug */}
+              {viewingRecord.slug && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Slug</span>
+                  <span className="font-mono text-stone-700 bg-stone-100 px-2 py-0.5 rounded text-[11px]">
+                    /{viewingRecord.slug}
+                  </span>
+                </div>
+              )}
+
+              {/* Type / Collection */}
+              {viewingRecord.type && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Type</span>
+                  <span className="capitalize font-semibold text-[#8b6f4e] bg-[#faf5ed] border border-[#e8d8c0] px-2 py-0.5 rounded-full text-[10px]">
+                    {typeof viewingRecord.type === 'object' ? viewingRecord.type.name : viewingRecord.type}
+                  </span>
+                </div>
+              )}
+
+              {/* Status */}
+              {viewingRecord.status !== undefined && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Status</span>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${
+                      String(viewingRecord.status).toLowerCase() === 'inactive'
+                        ? 'bg-stone-100 text-stone-600 border-stone-200'
+                        : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
+                    }`}
+                  >
+                    {typeof viewingRecord.status === 'object' ? viewingRecord.status.name : String(viewingRecord.status)}
+                  </span>
+                </div>
+              )}
+
+              {/* Sub Types */}
+              {Array.isArray(viewingRecord.subTypes) && viewingRecord.subTypes.length > 0 && (
+                <div className="flex flex-col gap-1.5 pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">
+                    Sub Types ({viewingRecord.subTypes.length})
+                  </span>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {viewingRecord.subTypes.map((st, i) => (
+                      <span
+                        key={st._id || st.code || i}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-stone-200 text-stone-800 text-[11px] font-medium shadow-2xs"
+                      >
+                        <span>{st.name || st.title || st}</span>
+                        {st.code && (
+                          <span className="font-mono text-[9px] text-[#8b6f4e] font-bold">
+                            [{st.code}]
+                          </span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Category Icon */}
               {viewingRecord.icon && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
-                  <span className="text-stone-400 font-medium">Category Icon</span>
+                  <span className="text-stone-400 font-medium">Icon</span>
                   <span className="flex items-center gap-1.5 font-semibold text-stone-800">
                     {typeof viewingRecord.icon === 'string' &&
                     viewingRecord.icon.length <= 4 &&
@@ -1321,9 +1385,10 @@ const DynamicModuleView = () => {
                         )}
                         alt="Icon"
                         className="w-5 h-5 object-contain"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
                     )}
-                    <span className="text-xs font-mono text-stone-600">
+                    <span className="text-xs font-mono text-stone-600 truncate max-w-[180px]">
                       {typeof viewingRecord.icon === 'object'
                         ? viewingRecord.icon.url
                         : viewingRecord.icon}
@@ -1331,9 +1396,11 @@ const DynamicModuleView = () => {
                   </span>
                 </div>
               )}
+
+              {/* Category Banner */}
               {viewingRecord.banner && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
-                  <span className="text-stone-400 font-medium">Category Banner</span>
+                  <span className="text-stone-400 font-medium">Banner</span>
                   <span className="font-mono text-[11px] text-stone-700 truncate max-w-[200px]">
                     {typeof viewingRecord.banner === 'object'
                       ? viewingRecord.banner.url
@@ -1341,42 +1408,136 @@ const DynamicModuleView = () => {
                   </span>
                 </div>
               )}
+
+              {/* Gallery Images */}
+              {Array.isArray(viewingRecord.images) && viewingRecord.images.length > 0 && (
+                <div className="flex flex-col gap-1.5 pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">
+                    Gallery Images ({viewingRecord.images.length})
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2 pt-0.5">
+                    {viewingRecord.images.map((img, i) => (
+                      <div key={i} className="flex items-center gap-1.5 px-2 py-1 bg-white rounded-lg border border-stone-200 shadow-2xs">
+                        <img
+                          src={getMediaUrl(img.url || img)}
+                          alt={img.title || `Image ${i + 1}`}
+                          className="w-6 h-6 rounded object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
+                        <span className="text-[11px] font-medium text-stone-700">
+                          {img.title || `Image #${i + 1}`}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Promo Banners */}
+              {(Array.isArray(viewingRecord.promoBanners) && viewingRecord.promoBanners.length > 0) && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Promo Banners</span>
+                  <span className="font-medium text-stone-800">
+                    {viewingRecord.promoBanners.map(p => p.title || 'Banner').join(', ')}
+                  </span>
+                </div>
+              )}
+
+              {/* Size Chart */}
+              {viewingRecord.sizeChart && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Size Chart</span>
+                  <span className="font-mono text-[11px] text-[#8b6f4e]">
+                    {typeof viewingRecord.sizeChart === 'object' ? viewingRecord.sizeChart.url : viewingRecord.sizeChart}
+                  </span>
+                </div>
+              )}
+
+              {/* SKU / Code */}
               {viewingRecord.sku && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
                   <span className="text-stone-400 font-medium">SKU / Code</span>
                   <span className="font-mono font-semibold text-stone-900">{viewingRecord.sku}</span>
                 </div>
               )}
+
+              {/* Price */}
               {viewingRecord.price !== undefined && viewingRecord.price !== null && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
                   <span className="text-stone-400 font-medium">Price</span>
                   <span className="font-bold text-[#8b6f4e] text-sm">₹ {Number(viewingRecord.price).toLocaleString('en-IN')}</span>
                 </div>
               )}
+
+              {/* MRP / Sale Price */}
+              {viewingRecord.mrp !== undefined && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">MRP</span>
+                  <span className="font-semibold text-stone-800">₹ {Number(viewingRecord.mrp).toLocaleString('en-IN')}</span>
+                </div>
+              )}
+              {viewingRecord.salePrice !== undefined && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Sale Price</span>
+                  <span className="font-bold text-emerald-600">₹ {Number(viewingRecord.salePrice).toLocaleString('en-IN')}</span>
+                </div>
+              )}
+
+              {/* Carat Weight */}
               {viewingRecord.carat !== undefined && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
                   <span className="text-stone-400 font-medium">Carat Weight</span>
                   <span className="font-semibold text-stone-800">{viewingRecord.carat} ct</span>
                 </div>
               )}
+
+              {/* Rate / Carat */}
               {viewingRecord.ratePerCarat && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
-                  <span className="text-stone-400 font-medium">Rate / Carat</span>
+                  <span className="text-stone-400 font-medium">Rate / Carat (INR)</span>
                   <span className="font-semibold text-stone-800">₹ {Number(viewingRecord.ratePerCarat).toLocaleString('en-IN')}</span>
                 </div>
               )}
+              {viewingRecord.ratePerCaratUSD && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Rate / Carat (USD)</span>
+                  <span className="font-semibold text-stone-800">$ {Number(viewingRecord.ratePerCaratUSD).toLocaleString('en-US')}</span>
+                </div>
+              )}
+
+              {/* Size Range */}
+              {(viewingRecord.sizeFrom !== undefined || viewingRecord.sizeTo !== undefined) && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Size Range</span>
+                  <span className="font-semibold text-stone-800">{viewingRecord.sizeFrom} - {viewingRecord.sizeTo} ct</span>
+                </div>
+              )}
+
+              {/* Karat */}
               {viewingRecord.karat && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
                   <span className="text-stone-400 font-medium">Karat</span>
                   <span className="font-semibold text-stone-800">{viewingRecord.karat}KT</span>
                 </div>
               )}
+
+              {/* Metal Category */}
               {viewingRecord.metalType && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
                   <span className="text-stone-400 font-medium">Metal Category</span>
                   <span className="font-semibold text-stone-800">{viewingRecord.metalType}</span>
                 </div>
               )}
+
+              {/* Metal Color */}
+              {viewingRecord.metalColor && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Metal Color</span>
+                  <span className="font-semibold text-stone-800">{viewingRecord.metalColor}</span>
+                </div>
+              )}
+
+              {/* Color Swatch */}
               {viewingRecord.colorCode && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
                   <span className="text-stone-400 font-medium">Color Swatch</span>
@@ -1393,19 +1554,71 @@ const DynamicModuleView = () => {
                   </span>
                 </div>
               )}
-              {viewingRecord.status !== undefined && (
+
+              {/* Body Part */}
+              {viewingRecord.bodyPart && (
                 <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
-                  <span className="text-stone-400 font-medium">Status</span>
-                  <span className="capitalize font-semibold text-stone-800">
-                    {typeof viewingRecord.status === 'object' ? viewingRecord.status.name : String(viewingRecord.status)}
+                  <span className="text-stone-400 font-medium">Body Part</span>
+                  <span className="capitalize font-semibold text-stone-800">{viewingRecord.bodyPart}</span>
+                </div>
+              )}
+
+              {/* Description */}
+              {viewingRecord.description && (
+                <div className="flex flex-col gap-1 pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Description</span>
+                  <span className="text-stone-700 leading-relaxed text-xs">{viewingRecord.description}</span>
+                </div>
+              )}
+
+              {/* Any additional config.fields not already rendered */}
+              {(config.fields || []).map((f) => {
+                const renderedKeys = [
+                  'name', 'title', 'slug', 'type', 'status', 'icon', 'banner', 'images',
+                  'subTypes', 'promoBanners', 'sizeChart', 'sku', 'price', 'mrp', 'salePrice',
+                  'carat', 'ratePerCarat', 'ratePerCaratUSD', 'sizeFrom', 'sizeTo', 'karat',
+                  'metalType', 'metalColor', 'colorCode', 'colorCodeEnd', 'bodyPart', 'description'
+                ];
+                if (renderedKeys.includes(f.name)) return null;
+                const val = viewingRecord[f.name];
+                if (val === undefined || val === null || val === '') return null;
+                return (
+                  <div key={f.name} className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                    <span className="text-stone-400 font-medium">{f.label || f.name}</span>
+                    <span className="font-semibold text-stone-800">
+                      {typeof val === 'object' ? (val.name || val.title || JSON.stringify(val)) : String(val)}
+                    </span>
+                  </div>
+                );
+              })}
+
+              {/* Timestamps */}
+              {(viewingRecord.createdAt || viewingRecord.meta?.createdAt) && (
+                <div className="flex justify-between items-center pb-1">
+                  <span className="text-stone-400 font-medium">Created On</span>
+                  <span className="font-medium text-stone-600">
+                    {new Date(viewingRecord.createdAt || viewingRecord.meta?.createdAt).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </span>
                 </div>
               )}
-              {viewingRecord.createdAt && (
+
+              {(viewingRecord.updatedAt || viewingRecord.meta?.updatedAt) && (
                 <div className="flex justify-between items-center">
-                  <span className="text-stone-400 font-medium">Created On</span>
+                  <span className="text-stone-400 font-medium">Last Updated</span>
                   <span className="font-medium text-stone-600">
-                    {new Date(viewingRecord.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    {new Date(viewingRecord.updatedAt || viewingRecord.meta?.updatedAt).toLocaleDateString('en-IN', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
                   </span>
                 </div>
               )}

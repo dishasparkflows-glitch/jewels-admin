@@ -219,7 +219,7 @@ export default function CustomInquiriesView() {
       {/* ─── Header Row ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl font-bold text-stone-900 tracking-tight font-serif">
+          <h1 className="text-xl font-bold text-stone-900 tracking-tight">
             Custom Design Inquiries
           </h1>
           <p className="text-xs text-stone-400 mt-0.5">
@@ -248,7 +248,7 @@ export default function CustomInquiriesView() {
             <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
               TOTAL INQUIRIES
             </span>
-            <span className="text-2xl font-bold text-stone-900 font-serif">
+            <span className="text-2xl font-bold text-stone-900">
               {totalInquiries}
             </span>
           </div>
@@ -263,7 +263,7 @@ export default function CustomInquiriesView() {
             <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
               TOTAL PENDING
             </span>
-            <span className="text-2xl font-bold text-stone-900 font-serif">
+            <span className="text-2xl font-bold text-stone-900">
               {totalPending}
             </span>
           </div>
@@ -278,7 +278,7 @@ export default function CustomInquiriesView() {
             <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
               TOTAL COMPLETED
             </span>
-            <span className="text-2xl font-bold text-stone-900 font-serif">
+            <span className="text-2xl font-bold text-stone-900">
               {totalCompleted}
             </span>
           </div>
@@ -293,7 +293,7 @@ export default function CustomInquiriesView() {
             <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
               TOTAL CANCELLED
             </span>
-            <span className="text-2xl font-bold text-stone-900 font-serif">
+            <span className="text-2xl font-bold text-stone-900">
               {totalCancelled}
             </span>
           </div>
@@ -303,33 +303,34 @@ export default function CustomInquiriesView() {
         </div>
       </div>
 
-      {/* ─── Status Filter Tabs ─── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-        {STATUS_TABS.map((tab) => {
-          const isActive = statusFilter === tab.value;
-          return (
-            <button
-              key={tab.value}
-              type="button"
-              onClick={() => {
-                setStatusFilter(tab.value);
-                setCurrentPage(1);
-              }}
-              className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
-                isActive
-                  ? 'bg-[#8a6d4b] text-white shadow-xs'
-                  : 'bg-white hover:bg-stone-100 text-stone-500 border border-stone-200/70'
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* ─── Status Filter Tabs & Search Bar Row ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        {/* Left: Filter Tabs */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none shrink-0">
+          {STATUS_TABS.map((tab) => {
+            const isActive = statusFilter === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => {
+                  setStatusFilter(tab.value);
+                  setCurrentPage(1);
+                }}
+                className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                  isActive
+                    ? 'bg-[#8a6d4b] text-white shadow-xs'
+                    : 'bg-white hover:bg-stone-100 text-stone-500 border border-stone-200/70'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
-      {/* ─── Search Input Bar ─── */}
-      <div className="bg-white rounded-2xl border border-stone-200/80 p-3 shadow-2xs flex items-center justify-between gap-4">
-        <div className="relative flex-1">
+        {/* Right: Search Input */}
+        <div className="relative w-full sm:w-80 md:w-96 shrink-0">
           <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
           <input
             type="text"
@@ -339,7 +340,7 @@ export default function CustomInquiriesView() {
               setCurrentPage(1);
             }}
             placeholder="Search client name or contact..."
-            className="w-full h-10 pl-10 pr-4 rounded-xl bg-stone-50/60 border border-transparent focus:border-[#8f6d43] focus:bg-white text-xs text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-1 focus:ring-[#8f6d43]/20 transition-all"
+            className="w-full h-10 pl-10 pr-4 rounded-xl bg-white border border-stone-200/90 focus:border-[#8f6d43] text-xs font-medium text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 shadow-2xs transition-all"
           />
         </div>
       </div>
@@ -531,9 +532,9 @@ export default function CustomInquiriesView() {
                             type="button"
                             onClick={() => handleDelete(id, clientName)}
                             title="Delete Inquiry"
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            className="w-8 h-8 rounded-xl bg-[#fdeeed] hover:bg-[#fadbd8] text-[#d93025] border border-[#fadbd8] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
                           >
-                            <HiOutlineTrash className="w-4 h-4" />
+                            <HiOutlineTrash className="w-4 h-4 stroke-2" />
                           </button>
                         </div>
                       </td>
@@ -580,7 +581,7 @@ export default function CustomInquiriesView() {
             </div>
 
             <div>
-              <h3 className="text-lg font-bold text-stone-900 tracking-tight font-serif">
+              <h3 className="text-lg font-bold text-stone-900 tracking-tight">
                 Confirm Inquiry
               </h3>
               <p className="text-xs text-stone-500 mt-1">
@@ -631,7 +632,7 @@ export default function CustomInquiriesView() {
             </div>
 
             <div>
-              <h3 className="text-lg font-bold text-stone-900 tracking-tight font-serif">
+              <h3 className="text-lg font-bold text-stone-900 tracking-tight">
                 Cancel Inquiry
               </h3>
               <p className="text-xs text-stone-500 mt-1">
@@ -671,7 +672,7 @@ export default function CustomInquiriesView() {
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div>
-                <h3 className="text-base font-bold text-stone-900 font-serif">
+                <h3 className="text-base font-bold text-stone-900">
                   Custom Jewelry Inquiry Details
                 </h3>
                 <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">

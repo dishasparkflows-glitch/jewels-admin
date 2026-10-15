@@ -319,10 +319,10 @@ export default function DiamondsView() {
                       <button
                         type="button"
                         onClick={() => handleDelete(item)}
-                        className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+                        className="w-8 h-8 rounded-xl border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                         title="Delete Diamond"
                       >
-                        <HiOutlineTrash className="w-4 h-4" />
+                        <HiOutlineTrash className="w-4 h-4 stroke-2" />
                       </button>
                     </td>
                   </tr>
