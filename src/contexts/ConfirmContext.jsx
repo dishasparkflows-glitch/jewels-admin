@@ -60,6 +60,7 @@ export function ConfirmProvider({ children }) {
           confirmText={config.confirmText}
           cancelText={config.cancelText}
           type={config.type}
+          icon={config.icon}
           onConfirm={handleConfirm}
           onCancel={handleCancel}
         />

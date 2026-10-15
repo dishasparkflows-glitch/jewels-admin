@@ -25,6 +25,7 @@ import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
+import Dropdown from '../../components/common/Dropdown';
 
 const getMediaUrl = (url) => {
   if (!url) return '';
@@ -815,38 +816,36 @@ export default function BannersView() {
         />
       </div>
 
-      {/* ─── Slide-Over Drawer Matching Screenshot Exactly ─── */}
+      {/* ─── Centered Modal Pop-up (Replaces Sidebar Drawer) ─── */}
       {isDrawerOpen && (
-        <div className="fixed inset-0 z-50 overflow-hidden">
-          {/* Backdrop */}
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
+          onClick={handleCloseDrawer}
+        >
           <div
-            className="fixed inset-0 bg-black/25 backdrop-blur-2xs transition-opacity"
-            onClick={handleCloseDrawer}
-          />
-
-          {/* Drawer Container */}
-          <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
-            <div className="w-screen max-w-md bg-white shadow-2xl flex flex-col justify-between animate-slideInRight">
-              {/* Drawer Header */}
-              <div className="px-6 py-5 border-b border-stone-200/80 flex items-center justify-between bg-white shrink-0">
-                <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
-                  {editingBanner ? 'Edit Section' : 'Add Section'}
-                </h2>
-                <button
-                  type="button"
-                  onClick={handleCloseDrawer}
-                  className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg transition-colors cursor-pointer"
-                >
-                  <HiOutlineX className="w-5 h-5 stroke-2" />
-                </button>
-              </div>
-
-              {/* Drawer Form Body */}
-              <form
-                id="bannerDrawerForm"
-                onSubmit={handleSubmit}
-                className="flex-1 overflow-y-auto p-6 space-y-6"
+            className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-stone-200/90 flex flex-col max-h-[92vh] animate-scaleUp overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100 shrink-0">
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
+                {editingBanner ? 'Edit Section' : 'Add Section'}
+              </h2>
+              <button
+                type="button"
+                onClick={handleCloseDrawer}
+                className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
               >
+                <HiOutlineX className="w-4 h-4 stroke-[2]" />
+              </button>
+            </div>
+
+            {/* Modal Form Body */}
+            <form
+              id="bannerDrawerForm"
+              onSubmit={handleSubmit}
+              className="flex-1 overflow-y-auto py-4 px-1 space-y-5 scrollbar-thin scrollbar-thumb-stone-200"
+            >
                 {/* ─── 1. Select Section Type ─── */}
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold text-stone-700">
@@ -994,25 +993,6 @@ export default function BannersView() {
                     />
                   </div>
 
-                  {/* Subtitle (Optional) */}
-                  <div>
-                    <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                      {formType === 'offerbanner' ? 'Offer Subtitle / Validity' : 'Subtitle'}{' '}
-                      <span className="text-stone-400 font-normal">(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={subtitle}
-                      onChange={(e) => setSubtitle(e.target.value)}
-                      placeholder={
-                        formType === 'offerbanner'
-                          ? 'e.g. Valid until Diwali | Use code SPARKLE20'
-                          : 'e.g. Handcrafted with fine gemstones'
-                      }
-                      className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all bg-white"
-                    />
-                  </div>
-
                   {/* Offer Banner Active Time Window (Start & End Date with Cron Auto-Deletion) */}
                   {formType === 'offerbanner' && (
                     <div className="p-3.5 rounded-xl bg-[#fff8f2] border border-[#f5d7b5] space-y-3">
@@ -1072,10 +1052,9 @@ export default function BannersView() {
                           <span className="text-stone-400 font-normal">(Optional)</span>
                         )}
                       </label>
-                      <select
+                      <Dropdown
                         value={selectedCategory}
-                        onChange={(e) => {
-                          const catId = e.target.value;
+                        onChange={(catId) => {
                           setSelectedCategory(catId);
                           const cat = categories.find((c) => c._id === catId);
                           if (cat) {
@@ -1087,21 +1066,25 @@ export default function BannersView() {
                             }
                           }
                         }}
-                        className="w-full h-11 px-3 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all cursor-pointer"
-                      >
-                        <option value="">
-                          {formType === 'herobanner'
-                            ? 'Select Category (Optional - General Store)'
-                            : formType === 'offerbanner'
-                            ? 'Select Category (Optional - All Products)'
-                            : 'Select a Category'}
-                        </option>
-                        {categories.map((cat) => (
-                          <option key={cat._id} value={cat._id}>
-                            {cat.name}
-                          </option>
-                        ))}
-                      </select>
+                        options={[
+                          {
+                            value: '',
+                            label:
+                              formType === 'herobanner'
+                                ? 'Select Category (Optional - General Store)'
+                                : formType === 'offerbanner'
+                                ? 'Select Category (Optional - All Products)'
+                                : 'Select a Category',
+                          },
+                          ...categories.map((cat) => ({
+                            value: cat._id,
+                            label: cat.name,
+                          })),
+                        ]}
+                        placeholder="Select Category"
+                        buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
+                        menuClassName="z-[60]"
+                      />
                       {formType === 'herobanner' && (
                         <p className="text-[11px] text-stone-400 mt-1">
                           Linking a category connects this hero banner's "Shop Now" action directly to that collection.
@@ -1170,24 +1153,23 @@ export default function BannersView() {
                 </div>
               </form>
 
-              {/* Drawer Footer Actions Matching Screenshot */}
-              <div className="p-6 border-t border-stone-200/80 bg-white space-y-2.5 shrink-0">
-                <button
-                  type="submit"
-                  form="bannerDrawerForm"
-                  disabled={submitting || isUploading}
-                  className="w-full h-12 rounded-xl bg-[#8a6d4b] hover:bg-[#785b3a] text-white font-medium text-sm transition-all shadow-xs cursor-pointer disabled:opacity-50 flex items-center justify-center"
-                >
-                  {submitting ? 'Saving...' : 'Save Section'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCloseDrawer}
-                  className="w-full h-12 rounded-xl border border-stone-200 hover:bg-stone-50 text-stone-700 font-medium text-sm transition-all cursor-pointer flex items-center justify-center"
-                >
-                  Cancel
-                </button>
-              </div>
+            {/* Modal Footer Actions */}
+            <div className="pt-4 border-t border-stone-100 flex items-center justify-between gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={handleCloseDrawer}
+                className="w-1/2 h-11 bg-[#f7f7f9] hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                form="bannerDrawerForm"
+                disabled={submitting || isUploading}
+                className="w-1/2 h-11 bg-[#8a6d4b] hover:bg-[#785b3a] text-white text-xs font-semibold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50 flex items-center justify-center"
+              >
+                {submitting ? 'Saving...' : 'Save Section'}
+              </button>
             </div>
           </div>
         </div>

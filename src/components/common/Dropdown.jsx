@@ -373,6 +373,12 @@ export default function Dropdown({
       option: 'py-1.5 px-2.5 text-xs',
       menu: 'py-1 rounded-xl',
     },
+    field: {
+      button: 'h-10 px-3.5 text-xs sm:text-[13px] rounded-xl gap-2',
+      icon: 'w-4 h-4',
+      option: 'py-2 px-3.5 text-xs sm:text-[13px]',
+      menu: 'py-1.5 rounded-2xl',
+    },
     md: {
       button: 'h-11 px-3.5 text-xs sm:text-sm rounded-xl gap-2',
       icon: 'w-4 h-4',
@@ -390,9 +396,11 @@ export default function Dropdown({
   // Variant styling tokens
   const variantStyles = {
     default:
-      'bg-white border border-stone-200/90 hover:border-stone-300 focus:border-[#8f6d43] focus:ring-2 focus:ring-[#8f6d43]/15 shadow-2xs text-stone-800',
+      'bg-white border border-stone-200/90 hover:border-stone-300 focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 shadow-2xs text-stone-800',
+    input:
+      'bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 shadow-2xs text-stone-900',
     minimal:
-      'bg-transparent border border-transparent hover:border-stone-200 focus:border-[#8f6d43] text-stone-700',
+      'bg-transparent border border-transparent hover:border-stone-200 focus:border-[#8b6f4e] text-stone-700',
     inline:
       'bg-stone-50/80 border border-stone-200 hover:border-stone-300 text-stone-700',
   }[variant] || variantStyles.default;
@@ -459,7 +467,7 @@ export default function Dropdown({
         className={`w-full flex items-center justify-between text-left font-medium transition-all duration-150 outline-none cursor-pointer ${
           sizeStyles.button
         } ${variantStyles} ${
-          isOpen ? 'border-[#8f6d43] ring-2 ring-[#8f6d43]/15' : ''
+          isOpen ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20' : ''
         } ${disabled ? 'opacity-50 cursor-not-allowed bg-stone-100/60' : ''} ${buttonClassName}`}
       >
         <span className="flex items-center gap-2 truncate">
@@ -467,7 +475,7 @@ export default function Dropdown({
           {showStatusDot && value && renderStatusDot(value, selectedOption)}
           <span
             className={`truncate ${
-              !selectedOption ? 'text-stone-400 font-normal' : 'text-stone-800 font-medium'
+              !selectedOption ? 'text-stone-400 font-normal' : 'text-stone-900 font-medium'
             }`}
           >
             {selectedOption ? selectedOption.label : placeholder}
@@ -477,7 +485,7 @@ export default function Dropdown({
         {/* Animated Chevron Icon */}
         <HiOutlineChevronDown
           className={`${sizeStyles.icon} text-stone-400 transition-transform duration-200 shrink-0 ml-2 ${
-            isOpen ? 'rotate-180 text-[#8f6d43]' : ''
+            isOpen ? 'rotate-180 text-[#8b6f4e]' : ''
           }`}
         />
       </button>

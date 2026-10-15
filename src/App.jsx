@@ -36,6 +36,7 @@ import OrnateProductEdit from './pages/admin/OrnateProductEdit';
 import NavigationMenusView from './pages/admin/NavigationMenusView';
 import WhatsAppView from './pages/admin/WhatsAppView';
 import MetalRatesView from './pages/admin/MetalRatesView';
+import DiamondPricingMasterView from './pages/admin/DiamondPricingMasterView';
 import CurrenciesView from './pages/admin/CurrenciesView';
 import BeforeAfterView from './pages/admin/BeforeAfterView';
 import DynamicModuleView from './pages/admin/DynamicModuleView';
@@ -177,6 +178,13 @@ function App() {
             <Route path="/pricing-hub/metal-rates" element={<MetalRatesView />} />
             <Route path="/metal-rates" element={<MetalRatesView />} />
             <Route path="/goldprice" element={<MetalRatesView />} />
+
+            {/* Diamond Pricing Master (Matches Exact User Screenshot at /diamondprice) */}
+            <Route path="/pricing-hub/diamond-rates" element={<DiamondPricingMasterView />} />
+            <Route path="/pricing-hub/diamond-price" element={<DiamondPricingMasterView />} />
+            <Route path="/diamondprice" element={<DiamondPricingMasterView />} />
+            <Route path="/diamond-price" element={<DiamondPricingMasterView />} />
+            <Route path="/diamond-rates" element={<DiamondPricingMasterView />} />
 
             {/* Currency Management (Matches Exact User Screenshot) */}
             <Route path="/pricing-hub/currencies" element={<CurrenciesView />} />

@@ -117,13 +117,52 @@ export default function AppointmentsView() {
     }
   };
 
+  const handleAcceptAppointment = async (apt, clientName) => {
+    const id = apt._id || apt.id;
+    const isAlreadyConfirmed = apt.status === 'confirmed';
+    const targetStatus = isAlreadyConfirmed ? 'completed' : 'confirmed';
+
+    const isConfirmed = await confirm({
+      title: isAlreadyConfirmed ? 'Complete Appointment' : 'Accept Appointment',
+      message: isAlreadyConfirmed
+        ? `Are you sure you want to mark the appointment for "${clientName || 'this client'}" as completed?`
+        : `Are you sure you want to accept and confirm the appointment for "${clientName || 'this client'}"?`,
+      confirmText: isAlreadyConfirmed ? 'Mark Completed' : 'Accept & Confirm',
+      cancelText: 'Cancel',
+      type: 'success',
+      icon: <HiOutlineCheckCircle className="w-6 h-6 stroke-[2]" />,
+    });
+
+    if (!isConfirmed) return false;
+
+    await handleUpdateStatus(id, targetStatus);
+    return true;
+  };
+
+  const handleRejectAppointment = async (apt, clientName) => {
+    const id = apt._id || apt.id;
+
+    const isConfirmed = await confirm({
+      title: 'Reject Appointment',
+      message: `Are you sure you want to reject and cancel the appointment for "${clientName || 'this client'}"?`,
+      confirmText: 'Reject Appointment',
+      cancelText: 'Keep Appointment',
+      type: 'danger',
+      icon: <HiOutlineXCircle className="w-6 h-6 stroke-[2]" />,
+    });
+
+    if (!isConfirmed) return false;
+
+    await handleUpdateStatus(id, 'cancelled');
+    return true;
+  };
 
   const handleDelete = async (id, name) => {
     const isConfirmed = await confirm({
-      title: 'Cancel Appointment',
+      title: 'Delete Appointment',
       message: `Are you sure you want to remove appointment for "${name}"? This action cannot be undone.`,
-      confirmText: 'Remove',
-      cancelText: 'Keep',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
       type: 'danger',
     });
     if (!isConfirmed) return;
@@ -572,19 +611,19 @@ export default function AppointmentsView() {
                           {/* 1. Accept / Confirm Check Icon Button */}
                           <button
                             type="button"
-                            onClick={() => handleUpdateStatus(id, apt.status === 'confirmed' ? 'completed' : 'confirmed')}
+                            onClick={() => handleAcceptAppointment(apt, clientName)}
                             className="w-8 h-8 rounded-xl bg-[#e8f5ec] hover:bg-[#d4edd9] text-[#1b7a42] border border-[#d1edd7] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
                             title={apt.status === 'confirmed' ? 'Mark Completed' : 'Accept & Confirm Appointment'}
                           >
                             <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
                           </button>
 
-                          {/* 2. Cancel Cross Icon Button */}
+                          {/* 2. Cancel / Reject Cross Icon Button */}
                           <button
                             type="button"
-                            onClick={() => handleUpdateStatus(id, 'cancelled')}
+                            onClick={() => handleRejectAppointment(apt, clientName)}
                             className="w-8 h-8 rounded-xl bg-[#fdeeed] hover:bg-[#fadbd8] text-[#d93025] border border-[#fadbd8] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
-                            title="Cancel Appointment"
+                            title="Reject Appointment"
                           >
                             <HiOutlineXCircle className="w-4 h-4 stroke-2" />
                           </button>
@@ -796,9 +835,9 @@ export default function AppointmentsView() {
                   <>
                     <button
                       type="button"
-                      onClick={() => {
-                        handleUpdateStatus(viewingApt._id || viewingApt.id, 'confirmed');
-                        setViewingApt(null);
+                      onClick={async () => {
+                        const ok = await handleAcceptAppointment(viewingApt, viewingApt.clientName);
+                        if (ok) setViewingApt(null);
                       }}
                       className="px-3.5 py-1.5 bg-[#059669] hover:bg-[#047857] text-white text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
                     >
@@ -807,23 +846,23 @@ export default function AppointmentsView() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        handleUpdateStatus(viewingApt._id || viewingApt.id, 'cancelled');
-                        setViewingApt(null);
+                      onClick={async () => {
+                        const ok = await handleRejectAppointment(viewingApt, viewingApt.clientName);
+                        if (ok) setViewingApt(null);
                       }}
                       className="px-3.5 py-1.5 bg-white hover:bg-rose-50 text-rose-600 border border-rose-300 text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
                     >
                       <HiOutlineXCircle className="w-4 h-4 stroke-2" />
-                      <span>CANCEL</span>
+                      <span>REJECT</span>
                     </button>
                   </>
                 )}
                 {viewingApt.status === 'confirmed' && (
                   <button
                     type="button"
-                    onClick={() => {
-                      handleUpdateStatus(viewingApt._id || viewingApt.id, 'completed');
-                      setViewingApt(null);
+                    onClick={async () => {
+                      const ok = await handleAcceptAppointment(viewingApt, viewingApt.clientName);
+                      if (ok) setViewingApt(null);
                     }}
                     className="px-3.5 py-1.5 bg-[#2563eb] hover:bg-[#1d4ed8] text-white text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer uppercase tracking-wider"
                   >

@@ -19,6 +19,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import Dropdown from '../../components/common/Dropdown';
 
 export default function MetalPuritiesView() {
   const confirm = useConfirm();
@@ -462,25 +463,19 @@ export default function MetalPuritiesView() {
 
             {/* Modal Form (Matches Screenshot 2) */}
             <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Metal Type Selector */}
+              {/* Metal Type Selector (Using Common Luxury Dropdown) */}
               <div>
                 <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Metal Type <span className="text-rose-500 font-bold">*</span>
                 </label>
-                <div className="relative">
-                  <select
-                    value={metalType}
-                    onChange={(e) => handleMetalTypeChange(e.target.value)}
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all appearance-none pr-8 cursor-pointer shadow-2xs"
-                  >
-                    <option value="Gold">Gold</option>
-                    <option value="Silver">Silver</option>
-                    <option value="Platinum">Platinum</option>
-                  </select>
-                  <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-stone-500">
-                    <HiChevronDown className="w-4 h-4" />
-                  </div>
-                </div>
+                <Dropdown
+                  value={metalType}
+                  onChange={(val) => handleMetalTypeChange(val)}
+                  options={['Gold', 'Silver', 'Platinum']}
+                  placeholder="Select Metal Type"
+                  buttonClassName="w-full h-11 px-3.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl shadow-2xs"
+                  menuClassName="z-[60]"
+                />
               </div>
 
               {/* Karat Value */}

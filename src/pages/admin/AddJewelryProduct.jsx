@@ -102,16 +102,44 @@ const VTO_ENV_OPTIONS = [
   { id: 'wrist', value: 'wrist', label: 'Wrist View (Bracelets & Bangles)' },
 ];
 
-const DEFAULT_DIAMOND_TYPES = ['Natural', 'Lab Grown'];
-const DEFAULT_DIAMOND_SHAPES = ['Round', 'Princess', 'Cushion', 'Oval', 'Emerald', 'Pear', 'Marquise', 'Heart'];
+const DEFAULT_DIAMOND_TYPES = ['Lab Grown Diamond', 'Natural Diamond'];
+const DEFAULT_DIAMOND_SHAPES = ['Fancy', 'Round', 'Princess', 'Cushion', 'Oval', 'Emerald', 'Pear', 'Marquise', 'Heart'];
 const DEFAULT_DIAMOND_COLORS = ['D-E', 'F-G', 'G-H', 'I-J'];
 const DEFAULT_DIAMOND_CLARITIES = ['FL', 'IF', 'VVS1', 'VVS2', 'VS', 'SI', 'I1'];
 const DEFAULT_SIDE_SHAPES = ['Round', 'Baguette', 'Princess', 'Marquise'];
+
+// Fallback Luxury Jewelry Categories
+const DEFAULT_CATEGORIES = [
+  'Rings',
+  'Earrings',
+  'Pendants',
+  'Necklaces',
+  'Bracelets',
+  'Bangles',
+  'Solitaires',
+  'Mangalsutra',
+  'Chains',
+  'Nose Pins',
+];
 
 export default function AddJewelryProduct() {
   const navigate = useNavigate();
 
   const { categories: categoryList } = useCategoryLookup();
+
+  // Category dropdown options with luxury jewelry defaults
+  const categoryOptions = useMemo(() => {
+    if (Array.isArray(categoryList) && categoryList.length > 0) {
+      return categoryList.map((c) => ({
+        value: typeof c === 'string' ? c : c.name || c.title || c._id,
+        label: typeof c === 'string' ? c : c.name || c.title || String(c),
+      }));
+    }
+    return DEFAULT_CATEGORIES.map((cat) => ({
+      value: cat,
+      label: cat,
+    }));
+  }, [categoryList]);
 
   // Active Wizard Step: 1 = Basic, 2 = Variants (Screenshot view), 3 = Media, 4 = Specs, 5 = SEO
   const [activeStep, setActiveStep] = useState(1);
@@ -246,10 +274,10 @@ export default function AddJewelryProduct() {
   const [basicDetails, setBasicDetails] = useState({
     title: '',
     sku: '',
-    category: '',
+    category: 'Rings',
     subType: '',
     productType: 'gold',
-    gender: '',
+    gender: 'Female',
     description: '',
     isOrnate: false,
   });
@@ -260,21 +288,184 @@ export default function AddJewelryProduct() {
   // Primary active preview color pill
   const [activeColorPill, setActiveColorPill] = useState('Rose Gold');
 
-  // ─── Step 2: Diamond Configurations ─────────────────────
+  // ─── Step 2: Center Diamond Configuration (Portal Match) ──
+  const [centerDiamondType, setCenterDiamondType] = useState('Lab Grown Diamond');
+  const [centerDiamondShape, setCenterDiamondShape] = useState('Fancy');
+  const [centerDiamondColors, setCenterDiamondColors] = useState(['D-E', 'F-G']);
+  const [centerDiamondClarities, setCenterDiamondClarities] = useState(['VS']);
+  const [centerDiamondCarats, setCenterDiamondCarats] = useState([1, 2]);
+  const [caratInput, setCaratInput] = useState('');
+  const [customComboRates, setCustomComboRates] = useState({});
+  const [apiCenterRates, setApiCenterRates] = useState([]);
+
+  // Fetch live diamond pricing master from backend
+  useEffect(() => {
+    const fetchLiveRates = async () => {
+      try {
+        const res = await api.get('/center-diamond-prices?limit=500');
+        const items = res.data?.data?.items || res.data?.data || [];
+        if (Array.isArray(items) && items.length > 0) {
+          setApiCenterRates(items);
+        }
+      } catch (err) {
+        console.warn('Center diamond prices live lookup notice:', err);
+      }
+    };
+    fetchLiveRates();
+  }, []);
+
+  const centerColorOptions = ['D-E', 'F-G', 'G-H', 'I-J'];
+  const centerClarityOptions = ['VS', 'VVS'];
+
+  const getCenterDiamondRate = (type, shape, color, clarity, carat) => {
+    const key = `${type}-${shape}-${color}-${clarity}-${carat}`;
+    if (customComboRates[key] !== undefined) {
+      return customComboRates[key];
+    }
+
+    // Check live API master rates first
+    if (apiCenterRates.length > 0) {
+      const ctNum = Number(carat) || 1;
+      const matched = apiCenterRates.find((r) => {
+        const s = String(r.diamondShapeId?.name || r.diamondShape || '').toUpperCase();
+        const c = String(r.diamondColorId?.name || r.diamondColor || '').toUpperCase();
+        const cl = String(r.diamondClarityId?.name || r.diamondClarity || '').toUpperCase();
+        const from = Number(r.sizeFrom ?? 0);
+        const to = Number(r.sizeTo ?? 999);
+
+        return (
+          (!shape || s === String(shape).toUpperCase()) &&
+          (!color || c === String(color).toUpperCase()) &&
+          (!clarity || cl === String(clarity).toUpperCase()) &&
+          ctNum >= from &&
+          ctNum <= to
+        );
+      });
+
+      if (matched && Number(matched.priceINR) > 0) {
+        return Number(matched.priceINR);
+      }
+    }
+
+    // Base rates matching screenshot fine jewelry portal
+    const baseRates = {
+      'D-E': 19404,
+      'F-G': 14553,
+      'G-H': 11820,
+      'I-J': 9460,
+    };
+
+    let rate = baseRates[color] || 15000;
+
+    // Premium for VVS
+    if (clarity === 'VVS' || clarity === 'VVS1' || clarity === 'VVS2') {
+      rate = Math.round(rate * 1.18);
+    }
+
+    // Carat multiplier (1ct is base rate, 2ct is +10%)
+    const ct = Number(carat) || 1;
+    if (ct > 1) {
+      rate = Math.round(rate * (1 + 0.10 * (ct - 1)));
+    }
+
+    // Natural diamond multiplier
+    if (String(type).toLowerCase().includes('natural')) {
+      rate = Math.round(rate * 6.5);
+    }
+
+    return rate;
+  };
+
+  const centerDiamondCombinations = useMemo(() => {
+    const combos = [];
+    centerDiamondColors.forEach((color) => {
+      centerDiamondClarities.forEach((clarity) => {
+        centerDiamondCarats.forEach((carat) => {
+          const comboId = `${centerDiamondType}-${centerDiamondShape}-${color}-${clarity}-${carat}`;
+          const rate = getCenterDiamondRate(centerDiamondType, centerDiamondShape, color, clarity, carat);
+          combos.push({
+            id: comboId,
+            diamondType: centerDiamondType,
+            shape: centerDiamondShape,
+            color,
+            clarity,
+            carat,
+            rate,
+            totalPrice: carat * rate,
+          });
+        });
+      });
+    });
+    return combos;
+  }, [
+    centerDiamondType,
+    centerDiamondShape,
+    centerDiamondColors,
+    centerDiamondClarities,
+    centerDiamondCarats,
+    customComboRates,
+  ]);
+
+  const handleAddCarat = () => {
+    const val = parseFloat(caratInput.trim());
+    if (isNaN(val) || val <= 0) {
+      toast.error('Please enter a valid carat weight');
+      return;
+    }
+    if (centerDiamondCarats.includes(val)) {
+      toast.error('Carat weight already added');
+      return;
+    }
+    setCenterDiamondCarats((prev) => [...prev, val].sort((a, b) => a - b));
+    setCaratInput('');
+  };
+
+  const handleRemoveCarat = (val) => {
+    setCenterDiamondCarats((prev) => prev.filter((c) => c !== val));
+  };
+
+  const toggleCenterColor = (col) => {
+    setCenterDiamondColors((prev) =>
+      prev.includes(col)
+        ? prev.length > 1
+          ? prev.filter((c) => c !== col)
+          : prev
+        : [...prev, col]
+    );
+  };
+
+  const toggleCenterClarity = (cla) => {
+    setCenterDiamondClarities((prev) =>
+      prev.includes(cla)
+        ? prev.length > 1
+          ? prev.filter((c) => c !== cla)
+          : prev
+        : [...prev, cla]
+    );
+  };
+
+  const handleUpdateComboRate = (comboId, newRate) => {
+    setCustomComboRates((prev) => ({
+      ...prev,
+      [comboId]: newRate,
+    }));
+  };
+
+  // Backwards-compatible single centerDiamond & sideDiamonds
   const [centerDiamond, setCenterDiamond] = useState({
-    type: '',
-    shape: '',
-    color: '',
-    clarity: '',
-    caratWeight: '',
+    type: 'Lab Grown Diamond',
+    shape: 'Fancy',
+    color: 'D-E',
+    clarity: 'VS',
+    caratWeight: '1',
   });
 
   const [sideDiamonds, setSideDiamonds] = useState({
     enabled: false,
-    type: '',
-    shape: '',
-    color: '',
-    clarity: '',
+    type: 'Lab Grown',
+    shape: 'Round',
+    color: 'F-G',
+    clarity: 'VS',
     sizeFrom: '',
     sizeTo: '',
     pieces: '',
@@ -802,7 +993,9 @@ export default function AddJewelryProduct() {
         const calculatedPrice = base + colorOffset;
         const suffix = colorSuffixMap[color] || color.substring(0, 2).toUpperCase();
 
-        const centerDetail = centerDiamond.caratWeight
+        const centerDetail = centerDiamondCombinations.length > 0
+          ? `Center: ${centerDiamondCombinations.length} Combos (${centerDiamondShape}, ${centerDiamondType})`
+          : centerDiamond.caratWeight
           ? `Center: ${centerDiamond.caratWeight}Ct (${centerDiamond.color || 'D-E'}, ${centerDiamond.clarity || 'VS'})`
           : centerDiamond.type
           ? `Center: ${centerDiamond.type} Diamond`
@@ -1077,6 +1270,14 @@ export default function AddJewelryProduct() {
         mediaVideos,
         vtoConfigs,
         centerDiamond,
+        centerDiamondConfig: {
+          type: centerDiamondType,
+          shape: centerDiamondShape,
+          colors: centerDiamondColors,
+          clarities: centerDiamondClarities,
+          carats: centerDiamondCarats,
+          combinations: centerDiamondCombinations,
+        },
         sideDiamonds,
         variants,
         specs,
@@ -1130,6 +1331,9 @@ export default function AddJewelryProduct() {
           slug: activeSlug,
           description: activeDesc,
           productType: basicDetails.productType || 'gold',
+          category: basicDetails.category || 'Rings',
+          subCategory: basicDetails.subType || '',
+          gender: basicDetails.gender || 'Female',
           isOrnate: Boolean(basicDetails.isOrnate),
         },
 
@@ -1168,6 +1372,9 @@ export default function AddJewelryProduct() {
         slug: activeSlug,
         description: activeDesc,
         productType: basicDetails.productType || 'gold',
+        category: basicDetails.category || 'Rings',
+        subCategory: basicDetails.subType || '',
+        gender: basicDetails.gender || 'Female',
         isOrnate: Boolean(basicDetails.isOrnate),
         price: mrpNum,
         salePrice: salePriceNum,
@@ -1238,6 +1445,34 @@ export default function AddJewelryProduct() {
           stock: Number(v.stock) || 5,
           metalWeight: Number(v.weight) || netWeightNum,
         })),
+
+        // ── Diamond Configuration Payload (Matching product.model.js) ──
+        centerDiamondRows: centerDiamondCombinations.map((c) => ({
+          diamondType: c.diamondType,
+          diamondShape: c.shape,
+          diamondColor: c.color,
+          diamondClarity: c.clarity,
+          caratWeight: Number(c.carat) || 0,
+          pricePerCarat: Number(c.rate) || 0,
+          totalPrice: Number(c.carat * c.rate) || 0,
+        })),
+        centerDiamondConfig: {
+          type: centerDiamondType,
+          shape: centerDiamondShape,
+          colors: centerDiamondColors,
+          clarities: centerDiamondClarities,
+          carats: centerDiamondCarats,
+          combinations: centerDiamondCombinations,
+        },
+        sideDiamondRows: sideDiamonds.enabled ? [{
+          diamondType: sideDiamonds.type,
+          diamondShape: sideDiamonds.shape,
+          diamondColor: sideDiamonds.color,
+          diamondClarity: sideDiamonds.clarity,
+          sizeFrom: Number(sideDiamonds.sizeFrom) || 0,
+          sizeTo: Number(sideDiamonds.sizeTo) || 0,
+          pieces: Number(sideDiamonds.pieces) || 0,
+        }] : [],
 
         // Care & Specifications
         descriptionSections: careSections
@@ -1471,13 +1706,15 @@ export default function AddJewelryProduct() {
                     Category <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <Dropdown
-                    size="sm"
+                    size="field"
+                    variant="input"
                     value={basicDetails.category}
                     onChange={(val) =>
                       setBasicDetails((prev) => ({ ...prev, category: val }))
                     }
-                    options={categoryList.map((c) => c.name)}
-                    buttonClassName="h-10 px-3.5 text-xs font-medium text-stone-900 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] shadow-2xs"
+                    placeholder="Select Category"
+                    options={categoryOptions}
+                    className="w-full"
                   />
                 </div>
 
@@ -1499,20 +1736,27 @@ export default function AddJewelryProduct() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-stone-900">Gender Target</label>
                   <Dropdown
-                    size="sm"
+                    size="field"
+                    variant="input"
                     value={basicDetails.gender}
                     onChange={(val) =>
                       setBasicDetails((prev) => ({ ...prev, gender: val }))
                     }
-                    options={['Female', 'Male', 'Unisex']}
-                    buttonClassName="h-10 px-3.5 text-xs font-medium text-stone-900 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] shadow-2xs"
+                    placeholder="Select Gender"
+                    options={[
+                      { value: 'Female', label: 'Female' },
+                      { value: 'Male', label: 'Male' },
+                      { value: 'Unisex', label: 'Unisex' },
+                    ]}
+                    className="w-full"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-stone-900">Product Type</label>
                   <Dropdown
-                    size="sm"
+                    size="field"
+                    variant="input"
                     value={basicDetails.productType || 'gold'}
                     onChange={(val) =>
                       setBasicDetails((prev) => ({
@@ -1521,58 +1765,55 @@ export default function AddJewelryProduct() {
                         isOrnate: val === 'ornate' ? true : prev.isOrnate,
                       }))
                     }
-                    options={['gold', 'silver', 'ornate']}
-                    buttonClassName="h-10 px-3.5 text-xs font-medium text-stone-900 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] shadow-2xs"
+                    placeholder="Select Product Type"
+                    options={[
+                      { value: 'gold', label: 'gold' },
+                      { value: 'silver', label: 'silver' },
+                      { value: 'ornate', label: 'ornate' },
+                    ]}
+                    className="w-full"
                   />
                 </div>
 
-                {/* ─── Platform Visibility (Matches Screenshot) ── */}
-                <div className="sm:col-span-2 pt-1">
-                  <div className="p-3 sm:p-3.5 rounded-xl border border-stone-200/80 bg-[#fdfcfb] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shadow-2xs">
-                    <div>
-                      <label className="block text-[11px] font-bold tracking-wider text-stone-400 uppercase select-none mb-0.5">
-                        PLATFORM VISIBILITY
-                      </label>
-                      <p className="text-[11px] text-stone-500">
-                        Choose which customer channels this jewelry piece will appear on.
-                      </p>
-                    </div>
+                {/* ─── Platform Visibility (Moved Next to Product Type) ── */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">
+                    Platform Visibility
+                  </label>
+                  <div className="h-10 px-4 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white flex items-center gap-6 shadow-2xs transition-colors">
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
+                      <input
+                        type="checkbox"
+                        checked={platformVisibility.showInApp}
+                        onChange={(e) =>
+                          setPlatformVisibility((prev) => ({
+                            ...prev,
+                            showInApp: e.target.checked,
+                          }))
+                        }
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-stone-300 transition cursor-pointer accent-blue-600"
+                      />
+                      <span className="text-xs sm:text-[13px] font-semibold text-stone-800 group-hover:text-stone-900 transition-colors">
+                        Show in App
+                      </span>
+                    </label>
 
-                    <div className="flex items-center gap-6">
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
-                        <input
-                          type="checkbox"
-                          checked={platformVisibility.showInApp}
-                          onChange={(e) =>
-                            setPlatformVisibility((prev) => ({
-                              ...prev,
-                              showInApp: e.target.checked,
-                            }))
-                          }
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-stone-300 transition cursor-pointer accent-blue-600"
-                        />
-                        <span className="text-xs sm:text-sm font-semibold text-stone-800 group-hover:text-stone-900 transition-colors">
-                          Show in App
-                        </span>
-                      </label>
-
-                      <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
-                        <input
-                          type="checkbox"
-                          checked={platformVisibility.showOnWeb}
-                          onChange={(e) =>
-                            setPlatformVisibility((prev) => ({
-                              ...prev,
-                              showOnWeb: e.target.checked,
-                            }))
-                          }
-                          className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-stone-300 transition cursor-pointer accent-blue-600"
-                        />
-                        <span className="text-xs sm:text-sm font-semibold text-stone-800 group-hover:text-stone-900 transition-colors">
-                          Show on Web
-                        </span>
-                      </label>
-                    </div>
+                    <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
+                      <input
+                        type="checkbox"
+                        checked={platformVisibility.showOnWeb}
+                        onChange={(e) =>
+                          setPlatformVisibility((prev) => ({
+                            ...prev,
+                            showOnWeb: e.target.checked,
+                          }))
+                        }
+                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-stone-300 transition cursor-pointer accent-blue-600"
+                      />
+                      <span className="text-xs sm:text-[13px] font-semibold text-stone-800 group-hover:text-stone-900 transition-colors">
+                        Show on Web
+                      </span>
+                    </label>
                   </div>
                 </div>
 
@@ -1685,8 +1926,8 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
-              {/* ─── Sub-Section 2: Diamond Configuration ──── */}
-              <div className="space-y-2.5 pt-3 border-t border-stone-100">
+              {/* ─── Sub-Section 2: Center & Side Diamond Configuration ──── */}
+              <div className="space-y-4 pt-3 border-t border-stone-100">
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
                     2
@@ -1694,182 +1935,339 @@ export default function AddJewelryProduct() {
                   <div>
                     <h3 className="text-xs font-bold text-stone-900">Diamond Configuration</h3>
                     <p className="text-[10px] text-stone-400">
-                      Set center and side diamond options for this product.
+                      Configure multi-stone center combinations and optional side diamonds.
                     </p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-7 pt-0.5">
-                  {/* Center Diamond Box */}
-                  <div className="p-3 rounded-xl border border-stone-200/80 bg-[#fdfcfb] space-y-2.5 shadow-2xs">
-                    <div className="flex items-center gap-1.5">
-                      <IoDiamondOutline className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                      <h4 className="text-[11px] font-bold text-stone-900">Center Diamond</h4>
+                {/* ── Center Diamond Configuration Card (Exact match to portal screenshot) ── */}
+                <div className="p-5 rounded-2xl border border-stone-200/90 bg-white space-y-4 shadow-2xs">
+                  {/* Card Header */}
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                    <div className="flex items-center gap-2">
+                      <IoDiamondOutline className="w-4 h-4 text-[#8b6f4e]" />
+                      <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
+                        CENTER DIAMOND CONFIGURATION
+                      </h4>
                     </div>
+                    <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d8c0]">
+                      {centerDiamondCombinations.length} {centerDiamondCombinations.length === 1 ? 'Combination' : 'Combinations'}
+                    </span>
+                  </div>
 
-                    <div className="grid grid-cols-4 gap-1.5">
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-500 uppercase">Type</label>
-                        <Dropdown
-                          size="sm"
-                          value={centerDiamond.type}
-                          onChange={(val) =>
-                            setCenterDiamond((prev) => ({ ...prev, type: val }))
-                          }
-                          options={diamondTypesList}
-                          buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
-                        />
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-500 uppercase">Shape</label>
-                        <Dropdown
-                          size="sm"
-                          value={centerDiamond.shape}
-                          onChange={(val) =>
-                            setCenterDiamond((prev) => ({ ...prev, shape: val }))
-                          }
-                          options={diamondShapesList}
-                          buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
-                        />
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-500 uppercase">Color</label>
-                        <Dropdown
-                          size="sm"
-                          value={centerDiamond.color}
-                          onChange={(val) =>
-                            setCenterDiamond((prev) => ({ ...prev, color: val }))
-                          }
-                          options={diamondColorsList}
-                          buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
-                        />
-                      </div>
-
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-500 uppercase">Clarity</label>
-                        <Dropdown
-                          size="sm"
-                          value={centerDiamond.clarity}
-                          onChange={(val) =>
-                            setCenterDiamond((prev) => ({ ...prev, clarity: val }))
-                          }
-                          options={diamondClaritiesList}
-                          buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="space-y-0.5 pt-0.5">
-                      <label className="text-[10px] font-bold text-stone-700">Carat Weight (Ct)</label>
-                      <input
-                        type="text"
-                        value={centerDiamond.caratWeight}
-                        onChange={(e) =>
-                          setCenterDiamond((prev) => ({ ...prev, caratWeight: e.target.value }))
-                        }
-                        className="w-full h-7 px-2.5 text-[11px] rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                  {/* Top Controls Grid: Type, Shape, Color, Clarity, Carat Weight */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start pt-1">
+                    {/* 1. DIAMOND TYPE */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                        DIAMOND TYPE
+                      </label>
+                      <Dropdown
+                        size="sm"
+                        value={centerDiamondType}
+                        onChange={(val) => {
+                          setCenterDiamondType(val);
+                          setCenterDiamond((prev) => ({ ...prev, type: val }));
+                        }}
+                        options={diamondTypesList.length > 0 ? diamondTypesList : ['Lab Grown Diamond', 'Natural Diamond']}
+                        placeholder="Select Diamond Type"
+                        buttonClassName="h-8 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800"
                       />
+                    </div>
+
+                    {/* 2. DIAMOND SHAPE */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                        DIAMOND SHAPE
+                      </label>
+                      <Dropdown
+                        size="sm"
+                        value={centerDiamondShape}
+                        onChange={(val) => {
+                          setCenterDiamondShape(val);
+                          setCenterDiamond((prev) => ({ ...prev, shape: val }));
+                        }}
+                        options={diamondShapesList.length > 0 ? diamondShapesList : DEFAULT_DIAMOND_SHAPES}
+                        buttonClassName="h-8 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
+                      />
+                    </div>
+
+                    {/* 3. COLOR */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                        COLOR
+                      </label>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {centerColorOptions.map((c) => {
+                          const isSelected = centerDiamondColors.includes(c);
+                          return (
+                            <button
+                              key={c}
+                              type="button"
+                              onClick={() => toggleCenterColor(c)}
+                              className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                                  : 'bg-white border border-stone-200 text-stone-700 hover:border-stone-300'
+                              }`}
+                            >
+                              {c}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 4. CLARITY */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                        CLARITY
+                      </label>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {centerClarityOptions.map((cla) => {
+                          const isSelected = centerDiamondClarities.includes(cla);
+                          return (
+                            <button
+                              key={cla}
+                              type="button"
+                              onClick={() => toggleCenterClarity(cla)}
+                              className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
+                                isSelected
+                                  ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                                  : 'bg-white border border-stone-200 text-stone-700 hover:border-stone-300'
+                              }`}
+                            >
+                              {cla}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 5. TOTAL CARAT WEIGHT (CT) */}
+                    <div className="space-y-2">
+                      <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                        TOTAL CARAT WEIGHT (CT)
+                      </label>
+                      <div className="flex items-center gap-1.5">
+                        <input
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g. 1.5"
+                          value={caratInput}
+                          onChange={(e) => setCaratInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              e.preventDefault();
+                              handleAddCarat();
+                            }
+                          }}
+                          className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddCarat}
+                          className="w-8 h-8 flex-shrink-0 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer"
+                          title="Add Carat Weight"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Carat Tags with Delete 'x' */}
+                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                        {centerDiamondCarats.map((ct) => (
+                          <span
+                            key={ct}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#8b6f4e] text-white text-xs font-semibold shadow-2xs"
+                          >
+                            <span>{ct} ct</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCarat(ct)}
+                              className="text-white/80 hover:text-white cursor-pointer leading-none text-xs"
+                              title={`Remove ${ct} ct`}
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Side Diamonds Box */}
-                  <div className="p-3 rounded-xl border border-stone-200/80 bg-[#fdfcfb] space-y-2.5 shadow-2xs">
-                    <div className="flex items-center gap-1.5">
-                      <IoSparklesOutline className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                      <h4 className="text-[11px] font-bold text-stone-900">Side Diamonds</h4>
-                      <span className="text-[9.5px] text-stone-400 font-normal">(Optional)</span>
+                  {/* Auto-Generated Combinations Table */}
+                  <div className="pt-3 space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
+                      <h5 className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                        AUTO-GENERATED COMBINATIONS ({centerDiamondCombinations.length})
+                      </h5>
                     </div>
 
-                    <div className="grid grid-cols-4 gap-1.5">
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-500 uppercase">Type</label>
+                    {centerDiamondCombinations.length === 0 ? (
+                      <div className="py-8 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200">
+                        <p className="text-xs text-stone-400">
+                          Select colors, clarities, and add carat weights to generate combinations.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-stone-200/80 bg-white">
+                        <table className="w-full text-left text-xs">
+                          <thead>
+                            <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                              <th className="py-2.5 px-4 font-bold">DIAMOND TYPE</th>
+                              <th className="py-2.5 px-3 font-bold">COLOR</th>
+                              <th className="py-2.5 px-3 font-bold">CLARITY</th>
+                              <th className="py-2.5 px-3 font-bold">CARAT (CT)</th>
+                              <th className="py-2.5 px-3 font-bold">RATE / CT (₹)</th>
+                              <th className="py-2.5 px-4 font-bold text-right">TOTAL PRICE (₹)</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-stone-100 font-sans">
+                            {centerDiamondCombinations.map((combo) => (
+                              <tr key={combo.id} className="hover:bg-stone-50/40 transition-colors">
+                                <td className="py-2.5 px-4 whitespace-nowrap">
+                                  <span className="inline-block px-2.5 py-0.5 rounded-md border border-stone-200 bg-stone-50 text-[11px] font-semibold text-stone-700">
+                                    {combo.diamondType}
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 font-semibold text-stone-800 whitespace-nowrap">
+                                  {combo.color}
+                                </td>
+                                <td className="py-2.5 px-3 font-semibold text-stone-800 whitespace-nowrap">
+                                  {combo.clarity}
+                                </td>
+                                <td className="py-2.5 px-3 font-semibold text-stone-800 whitespace-nowrap">
+                                  {combo.carat} ct
+                                </td>
+                                <td className="py-2.5 px-3 whitespace-nowrap">
+                                  <div className="flex items-center gap-1 font-semibold text-stone-800">
+                                    <span>₹</span>
+                                    <input
+                                      type="number"
+                                      value={combo.rate}
+                                      onChange={(e) => handleUpdateComboRate(combo.id, Number(e.target.value) || 0)}
+                                      className="w-24 h-6 px-1.5 text-xs font-semibold text-stone-800 bg-stone-50/50 border border-transparent hover:border-stone-200 focus:border-[#8b6f4e] focus:bg-white rounded transition-colors"
+                                    />
+                                  </div>
+                                </td>
+                                <td className="py-2.5 px-4 text-right font-bold text-stone-900 whitespace-nowrap">
+                                  ₹{(combo.carat * combo.rate).toLocaleString('en-IN', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── Side Diamond Configuration Card (Exact match to portal screenshot) ── */}
+                <div className="p-5 rounded-2xl border border-stone-200/90 bg-white space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                    <div className="flex items-center gap-2">
+                      <IoSparklesOutline className="w-4 h-4 text-[#8b6f4e]" />
+                      <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
+                        SIDE DIAMOND CONFIGURATION
+                      </h4>
+                      <span className="text-[10px] text-stone-400 font-normal uppercase tracking-wider">(Optional)</span>
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-700">
+                      <span>Enable Side Diamonds</span>
+                      <input
+                        type="checkbox"
+                        checked={sideDiamonds.enabled}
+                        onChange={(e) => setSideDiamonds((prev) => ({ ...prev, enabled: e.target.checked }))}
+                        className="w-4 h-4 accent-[#8b6f4e] rounded cursor-pointer"
+                      />
+                    </label>
+                  </div>
+
+                  <div className={`space-y-3 transition-opacity ${sideDiamonds.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Type</label>
                         <Dropdown
                           size="sm"
-                          value={sideDiamonds.type}
-                          onChange={(val) =>
-                            setSideDiamonds((prev) => ({ ...prev, type: val }))
-                          }
+                          value={sideDiamonds.type || 'Lab Grown'}
+                          onChange={(val) => setSideDiamonds((prev) => ({ ...prev, type: val }))}
                           options={diamondTypesList}
-                          buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
+                          buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200"
                         />
                       </div>
 
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-500 uppercase">Shape</label>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Shape</label>
                         <Dropdown
                           size="sm"
-                          value={sideDiamonds.shape}
-                          onChange={(val) =>
-                            setSideDiamonds((prev) => ({ ...prev, shape: val }))
-                          }
+                          value={sideDiamonds.shape || 'Round'}
+                          onChange={(val) => setSideDiamonds((prev) => ({ ...prev, shape: val }))}
                           options={diamondShapesList}
-                          buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
+                          buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200"
                         />
                       </div>
 
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-500 uppercase">Color</label>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Color</label>
                         <Dropdown
                           size="sm"
-                          value={sideDiamonds.color}
-                          onChange={(val) =>
-                            setSideDiamonds((prev) => ({ ...prev, color: val }))
-                          }
+                          value={sideDiamonds.color || 'F-G'}
+                          onChange={(val) => setSideDiamonds((prev) => ({ ...prev, color: val }))}
                           options={diamondColorsList}
-                          buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
+                          buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200"
                         />
                       </div>
 
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-500 uppercase">Clarity</label>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Clarity</label>
                         <Dropdown
                           size="sm"
-                          value={sideDiamonds.clarity}
-                          onChange={(val) =>
-                            setSideDiamonds((prev) => ({ ...prev, clarity: val }))
-                          }
+                          value={sideDiamonds.clarity || 'VS'}
+                          onChange={(val) => setSideDiamonds((prev) => ({ ...prev, clarity: val }))}
                           options={diamondClaritiesList}
-                          buttonClassName="h-7 px-1.5 text-[10.5px] rounded-lg bg-white border-stone-200"
+                          buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-1.5 pt-0.5">
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-700">Size From</label>
+                    <div className="grid grid-cols-3 gap-3 pt-1">
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-stone-700">Size From (Ct)</label>
                         <input
-                          type="text"
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g. 0.01"
                           value={sideDiamonds.sizeFrom}
-                          onChange={(e) =>
-                            setSideDiamonds((prev) => ({ ...prev, sizeFrom: e.target.value }))
-                          }
-                          className="w-full h-7 px-2 text-[11px] rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                          onChange={(e) => setSideDiamonds((prev) => ({ ...prev, sizeFrom: e.target.value }))}
+                          className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
                         />
                       </div>
 
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-700">Size To</label>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-stone-700">Size To (Ct)</label>
                         <input
-                          type="text"
+                          type="number"
+                          step="0.01"
+                          placeholder="e.g. 0.05"
                           value={sideDiamonds.sizeTo}
-                          onChange={(e) =>
-                            setSideDiamonds((prev) => ({ ...prev, sizeTo: e.target.value }))
-                          }
-                          className="w-full h-7 px-2 text-[11px] rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                          onChange={(e) => setSideDiamonds((prev) => ({ ...prev, sizeTo: e.target.value }))}
+                          className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
                         />
                       </div>
 
-                      <div className="space-y-0.5">
-                        <label className="text-[9.5px] font-bold text-stone-700">Pieces</label>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-stone-700">Total Pieces</label>
                         <input
-                          type="text"
+                          type="number"
+                          placeholder="e.g. 18"
                           value={sideDiamonds.pieces}
-                          onChange={(e) =>
-                            setSideDiamonds((prev) => ({ ...prev, pieces: e.target.value }))
-                          }
-                          className="w-full h-7 px-2 text-[11px] rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                          onChange={(e) => setSideDiamonds((prev) => ({ ...prev, pieces: e.target.value }))}
+                          className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
                         />
                       </div>
                     </div>

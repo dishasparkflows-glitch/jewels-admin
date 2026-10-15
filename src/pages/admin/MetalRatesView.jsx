@@ -309,7 +309,7 @@ export default function MetalRatesView() {
         title="Metal rates"
         subtitle="Formula-based pricing and real-time metal rates for all jewelry variants."
         onAdd={openEditModal}
-        addLabel="+ Update Metal rates"
+        addLabel="Update Metal rates"
         extraActions={
           <button
             type="button"

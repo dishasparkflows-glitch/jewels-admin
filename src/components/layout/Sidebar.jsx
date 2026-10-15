@@ -33,12 +33,13 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
       (childPath === '/metal-color' && (location.pathname === '/product-config/metal-color' || location.pathname === '/metal-color')) ||
       (childPath === '/sizes' && (location.pathname === '/product-config/sizes' || location.pathname === '/sizes')) ||
       (childPath === '/pricing-hub/metal-rates' && (location.pathname === '/pricing-hub/metal-rates' || location.pathname === '/metal-rates' || location.pathname === '/goldprice')) ||
+      (childPath === '/pricing-hub/diamond-rates' && (location.pathname === '/pricing-hub/diamond-rates' || location.pathname === '/pricing-hub/diamond-price' || location.pathname === '/diamondprice' || location.pathname === '/diamond-price' || location.pathname === '/diamond-rates')) ||
       (childPath === '/vto-masters' && (location.pathname === '/product-config/vto-masters' || location.pathname === '/vto-masters'))
     );
   };
 
   useEffect(() => {
-    // Automatically ensure ONLY the section of the current active path is opened (turn off others)
+    // Automatically ensure the section of the current active path is opened
     let activeParentId = null;
     navSections.forEach((section) => {
       section.items.forEach((item) => {
@@ -52,31 +53,23 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
     });
 
     if (activeParentId) {
-      setOpenSubmenus({ [activeParentId]: true });
+      setOpenSubmenus((prev) => ({
+        ...prev,
+        [activeParentId]: true,
+      }));
     }
   }, [location.pathname]);
 
   const toggleSubmenu = (id) => {
-    setOpenSubmenus((prev) => {
-      const wasOpen = !!prev[id];
-      // If was open, turn off. If was closed, open this and turn off others
-      return wasOpen ? {} : { [id]: true };
-    });
+    setOpenSubmenus((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
   };
 
   const handleParentClick = (item) => {
-    const isCurrentlyOpen = !!openSubmenus[item.id];
-
     if (item.children && item.children.length > 0) {
-      const isAlreadyOnChild = item.children.some((c) => checkIsChildActive(c.path));
-      if (!isAlreadyOnChild) {
-        // Auto-open this submenu and turn off others, navigate to first child
-        setOpenSubmenus({ [item.id]: true });
-        navigate(item.children[0].path);
-      } else {
-        // If already in this section, toggle open and off
-        setOpenSubmenus(isCurrentlyOpen ? {} : { [item.id]: true });
-      }
+      toggleSubmenu(item.id);
     }
   };
 
@@ -120,7 +113,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
             {section.items.map((item) => {
               const Icon = item.icon;
               const hasChildren = item.children && item.children.length > 0;
-              const isSubOpen = openSubmenus[item.id];
+              const isSubOpen = !!openSubmenus[item.id];
               const isGroupActive =
                 hasChildren &&
                 item.children.some((child) => checkIsChildActive(child.path));
@@ -180,7 +173,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
 
                     {/* Submenu links with left guideline line */}
                     {isOpen && isSubOpen && (
-                      <div className="ml-6 pl-4 border-l border-stone-200/90 py-1 space-y-0.5">
+                      <div className="ml-6 pl-4 border-l border-stone-200/90 py-1 space-y-0.5 animate-fadeIn">
                         {item.children.map((child) => {
                           const ChildIcon = child.icon || Icon;
                           const matchesAlternateRoute =

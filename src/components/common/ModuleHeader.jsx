@@ -33,7 +33,7 @@ export default function ModuleHeader({
             className="flex items-center gap-2 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] text-white rounded-lg text-xs sm:text-[13px] font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
           >
             <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-            <span>{addLabel || defaultAddLabel}</span>
+            <span>{(addLabel || defaultAddLabel)?.replace(/^\+\s*/, '')}</span>
           </button>
         )}
       </div>

@@ -27,6 +27,7 @@ export default function ConfirmModal({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   type = 'danger',
+  icon,
   onConfirm,
   onCancel,
   loading = false,
@@ -98,7 +99,7 @@ export default function ConfirmModal({
           <div
             className={`w-12 h-12 rounded-2xl border flex items-center justify-center shadow-xs ${typeConfig.badgeBg}`}
           >
-            {typeConfig.icon}
+            {icon || typeConfig.icon}
           </div>
 
           <button
