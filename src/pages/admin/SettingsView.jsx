@@ -196,7 +196,7 @@ export default function SettingsView() {
   const statCardsData = [
     {
       label: 'Business Entity',
-      value: businessForm.companyName || 'Neirah',
+      value: businessForm.companyName || 'Not configured',
       icon: HiOutlineOfficeBuilding,
       color: 'bronze',
     },
@@ -208,7 +208,7 @@ export default function SettingsView() {
     },
     {
       label: 'Return Period',
-      value: `${businessForm.returnPeriodDays || 10} Days`,
+      value: businessForm.returnPeriodDays !== '' ? `${businessForm.returnPeriodDays} Days` : 'Not configured',
       icon: HiOutlineRefresh,
       color: 'peach',
     },

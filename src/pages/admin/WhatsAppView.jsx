@@ -28,156 +28,6 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 
-// ─── Default Templates Matching Screenshot Exactly ─────────────────
-const INITIAL_TEMPLATES = [
-  {
-    _id: 'tmpl-001',
-    name: 'order_confirmation',
-    displayName: 'Order Confirmation',
-    body: 'Thank you for your order {{1}}. Your order has been placed successfully and is being prepared with utmost care.',
-    category: 'UTILITY',
-    language: 'English',
-    status: 'APPROVED',
-    updatedAt: '2026-10-08T10:24:00Z',
-    variables: [{ position: 1, key: 'orderId', label: 'Order ID', exampleValue: 'NJ-84920' }],
-  },
-  {
-    _id: 'tmpl-002',
-    name: 'order_shipped',
-    displayName: 'Order Shipped',
-    body: 'Your order {{1}} has been shipped. Track your order with {{2}}.',
-    category: 'UTILITY',
-    language: 'English',
-    status: 'APPROVED',
-    updatedAt: '2026-10-07T16:15:00Z',
-    variables: [
-      { position: 1, key: 'orderId', label: 'Order ID', exampleValue: 'NJ-84918' },
-      { position: 2, key: 'trackingNumber', label: 'Tracking URL', exampleValue: 'https://track.neirah.com/84918' },
-    ],
-  },
-  {
-    _id: 'tmpl-003',
-    name: 'welcome_offer',
-    displayName: 'Welcome Offer',
-    body: 'Welcome to Neirah Jewellers! Get {{1}} OFF on your first bespoke jewelry purchase.',
-    category: 'MARKETING',
-    language: 'English',
-    status: 'APPROVED',
-    updatedAt: '2026-10-05T11:42:00Z',
-    variables: [{ position: 1, key: 'discount', label: 'Discount', exampleValue: '15%' }],
-  },
-  {
-    _id: 'tmpl-004',
-    name: 'payment_reminder',
-    displayName: 'Payment Reminder',
-    body: 'This is a friendly reminder for your pending payment of {{1}} for order {{2}}.',
-    category: 'UTILITY',
-    language: 'English',
-    status: 'PENDING',
-    updatedAt: '2026-10-04T15:28:00Z',
-    variables: [
-      { position: 1, key: 'amount', label: 'Amount', exampleValue: '₹45,000' },
-      { position: 2, key: 'orderId', label: 'Order ID', exampleValue: 'NJ-84920' },
-    ],
-  },
-  {
-    _id: 'tmpl-005',
-    name: 'abandoned_cart',
-    displayName: 'Abandoned Cart',
-    body: 'Your favourite jewellery is waiting! Complete your order now and enjoy complimentary insured doorstep delivery.',
-    category: 'MARKETING',
-    language: 'English',
-    status: 'APPROVED',
-    updatedAt: '2026-10-01T09:10:00Z',
-    variables: [],
-  },
-  {
-    _id: 'tmpl-006',
-    name: 'festival_offer',
-    displayName: 'Festival Offer',
-    body: '✨ Special Diwali Offer! Get flat {{1}} OFF on handcrafted solitaire rings and necklaces.',
-    category: 'MARKETING',
-    language: 'English',
-    status: 'APPROVED',
-    updatedAt: '2026-09-28T18:50:00Z',
-    variables: [{ position: 1, key: 'discount', label: 'Discount', exampleValue: '20%' }],
-  },
-  {
-    _id: 'tmpl-007',
-    name: 'return_update',
-    displayName: 'Return Update',
-    body: 'Your return request {{1}} has been {{2}}. For more details, visit our customer care portal.',
-    category: 'UTILITY',
-    language: 'English',
-    status: 'APPROVED',
-    updatedAt: '2026-09-25T13:12:00Z',
-    variables: [
-      { position: 1, key: 'returnId', label: 'Return ID', exampleValue: 'RET-3021' },
-      { position: 2, key: 'status', label: 'Status', exampleValue: 'Approved' },
-    ],
-  },
-  {
-    _id: 'tmpl-008',
-    name: 'review_request',
-    displayName: 'Review Request',
-    body: 'How was your experience? Share your feedback and receive a complimentary jewelry care kit on your next visit.',
-    category: 'MARKETING',
-    language: 'English',
-    status: 'APPROVED',
-    updatedAt: '2026-09-20T11:05:00Z',
-    variables: [],
-  },
-];
-
-const INITIAL_MESSAGES = [
-  {
-    _id: 'msg-001',
-    to: '+91 98765 43210',
-    type: 'template',
-    templateName: 'order_confirmation',
-    renderedPreview: 'Thank you for your order NJ-84920. Your order has been placed successfully and is being prepared with utmost care.',
-    status: 'delivered',
-    createdAt: '2026-10-11T07:15:00Z',
-  },
-  {
-    _id: 'msg-002',
-    to: '+91 98250 11223',
-    type: 'template',
-    templateName: 'order_shipped',
-    renderedPreview: 'Your order NJ-84918 has been shipped. Track your order with https://track.neirah.com/84918.',
-    status: 'read',
-    createdAt: '2026-10-11T05:40:00Z',
-  },
-  {
-    _id: 'msg-003',
-    to: '+91 97123 45678',
-    type: 'template',
-    templateName: 'festival_offer',
-    renderedPreview: '✨ Special Diwali Offer! Get flat 20% OFF on handcrafted solitaire rings and necklaces.',
-    status: 'delivered',
-    createdAt: '2026-10-10T19:30:00Z',
-  },
-  {
-    _id: 'msg-004',
-    to: '+91 99099 88776',
-    type: 'text',
-    templateName: 'direct_chat',
-    renderedPreview: 'Hello, your appointment at Neirah Jewels Atelier is confirmed for 12 Oct at 3:00 PM.',
-    status: 'delivered',
-    createdAt: '2026-10-10T14:10:00Z',
-  },
-  {
-    _id: 'msg-005',
-    to: '+91 94260 00112',
-    type: 'template',
-    templateName: 'abandoned_cart',
-    renderedPreview: 'Your favourite jewellery is waiting! Complete your order now and enjoy complimentary insured doorstep delivery.',
-    status: 'failed',
-    failureReason: 'User phone number not registered on WhatsApp',
-    createdAt: '2026-10-10T11:00:00Z',
-  },
-];
-
 export default function WhatsAppView() {
   const confirm = useConfirm();
 
@@ -185,8 +35,8 @@ export default function WhatsAppView() {
   const [activeTab, setActiveTab] = useState('templates');
 
   // Templates & Messages
-  const [templates, setTemplates] = useState(INITIAL_TEMPLATES);
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  const [templates, setTemplates] = useState([]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
 
   // Filters for Templates
@@ -239,16 +89,18 @@ export default function WhatsAppView() {
         api.get('/whatsapp/messages?limit=100'),
       ]);
 
+      if (resTemplates.status === 'rejected' || resMessages.status === 'rejected') toast.error('Could not load WhatsApp data. Please retry.');
+
       if (resTemplates.status === 'fulfilled' && resTemplates.value.data?.data) {
         const backendItems = resTemplates.value.data.data.items || resTemplates.value.data.data;
-        if (Array.isArray(backendItems) && backendItems.length > 0) {
+        if (Array.isArray(backendItems)) {
           setTemplates(backendItems);
         }
       }
 
       if (resMessages.status === 'fulfilled' && resMessages.value.data?.data) {
         const backendMsgItems = resMessages.value.data.data.items || resMessages.value.data.data;
-        if (Array.isArray(backendMsgItems) && backendMsgItems.length > 0) {
+        if (Array.isArray(backendMsgItems)) {
           setMessages(backendMsgItems);
         }
       }
@@ -386,33 +238,8 @@ export default function WhatsAppView() {
         variables: [],
       };
 
-      try {
-        const res = await api.post('/whatsapp/templates', payload);
-        if (res.data?.data) {
-          setTemplates((prev) => [res.data.data, ...prev]);
-        } else {
-          setTemplates((prev) => [
-            {
-              _id: `tmpl-${Date.now()}`,
-              ...payload,
-              status: 'APPROVED',
-              updatedAt: new Date().toISOString(),
-            },
-            ...prev,
-          ]);
-        }
-      } catch (err) {
-        // Fallback local update if API requires external WhatsApp provider token
-        setTemplates((prev) => [
-          {
-            _id: `tmpl-${Date.now()}`,
-            ...payload,
-            status: 'APPROVED',
-            updatedAt: new Date().toISOString(),
-          },
-          ...prev,
-        ]);
-      }
+      await api.post('/whatsapp/templates', payload);
+      await fetchData();
 
       toast.success('Template submitted successfully!');
       setIsNewModalOpen(false);
@@ -436,7 +263,7 @@ export default function WhatsAppView() {
     if (!ok) return;
 
     try {
-      await api.delete(`/whatsapp/templates/${tmpl._id}`).catch(() => {});
+      await api.delete(`/whatsapp/templates/${tmpl._id}`);
       setTemplates((prev) => prev.filter((t) => t._id !== tmpl._id));
       toast.success('Template removed');
     } catch (err) {
@@ -454,30 +281,12 @@ export default function WhatsAppView() {
 
     try {
       setSendingTest(true);
-      const chosenTemplate = templates.find((t) => t.name === testSelectedTemplate) || templates[0];
-      const payload = {
-        to: testPhone.trim(),
-        templateName: chosenTemplate?.name || 'order_confirmation',
-        message: chosenTemplate?.body || 'Test message from Neirah Jewellers',
-      };
-
-      try {
-        await api.post('/whatsapp/messages/test', payload);
-      } catch (apiErr) {
-        // Local feedback fallback
-      }
-
-      // Add to sent messages history
-      const newMsg = {
-        _id: `msg-${Date.now()}`,
-        to: testPhone.trim(),
-        type: 'template',
-        templateName: chosenTemplate?.name || 'order_confirmation',
-        renderedPreview: (chosenTemplate?.body || 'Test message').replace(/\{\{1\}\}/g, 'NJ-84920'),
-        status: 'delivered',
-        createdAt: new Date().toISOString(),
-      };
-      setMessages((prev) => [newMsg, ...prev]);
+      const chosenTemplate = templates.find((t) => t.name === testSelectedTemplate);
+      if (!chosenTemplate) throw new Error('Select a template first.');
+      await api.post('/whatsapp/messages/test', {
+        to: testPhone.trim(), templateName: chosenTemplate.name, message: chosenTemplate.body,
+      });
+      await fetchData();
 
       toast.success(`Test WhatsApp message dispatched to ${testPhone}!`);
       setIsTestModalOpen(false);
@@ -496,20 +305,20 @@ export default function WhatsAppView() {
       color: 'green',
     },
     {
-      label: 'Messages Sent',
-      value: '1,284',
+      label: 'Loaded Messages',
+      value: messages.length,
       icon: HiOutlinePaperAirplane,
       color: 'bronze',
     },
     {
-      label: 'Delivered (92.9%)',
-      value: '1,192',
+      label: 'Delivered (loaded)',
+      value: messages.filter((message) => ['delivered', 'read'].includes(message.status?.toLowerCase())).length,
       icon: HiOutlineCheckCircle,
       color: 'blue',
     },
     {
-      label: 'Failed (1.4%)',
-      value: '18',
+      label: 'Failed (loaded)',
+      value: messages.filter((message) => message.status?.toLowerCase() === 'failed').length,
       icon: HiOutlineExclamationCircle,
       color: 'peach',
     },
@@ -1202,12 +1011,10 @@ export default function WhatsAppView() {
                   {previewTemplate.name}
                 </p>
                 <p className="text-xs text-stone-800 whitespace-pre-wrap leading-relaxed">
-                  {(previewTemplate.body || '')
-                    .replace(/\{\{1\}\}/g, 'NJ-84920')
-                    .replace(/\{\{2\}\}/g, 'Approved')}
+                  {previewTemplate.body || ''}
                 </p>
                 <div className="flex items-center justify-end gap-1 mt-1.5 text-[9px] text-stone-400">
-                  <span>10:24 AM</span>
+                  <span>Preview</span>
                   <IoCheckmarkDoneOutline className="w-3 h-3 text-[#34b7f1]" />
                 </div>
               </div>

@@ -25,7 +25,7 @@ export default function FooterSettingsView() {
   const [saving, setSaving] = useState(false);
 
   // Corporate Identity
-  const [copyright, setCopyright] = useState('© 2024 Neirah Jewellers. All rights reserved.');
+  const [copyright, setCopyright] = useState('');
 
   // Social Hub
   const [socialLinks, setSocialLinks] = useState([]);
@@ -44,7 +44,7 @@ export default function FooterSettingsView() {
       const footerRes = await api.get('/footer-settings/settings');
 
       const footerData = footerRes.data?.data || {};
-      if (footerData.copyright) setCopyright(footerData.copyright);
+      setCopyright(footerData.copyright || '');
       if (Array.isArray(footerData.socialLinks)) setSocialLinks(footerData.socialLinks);
       if (Array.isArray(footerData.shopItems)) setShopItems(footerData.shopItems);
     } catch (err) {

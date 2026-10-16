@@ -45,7 +45,6 @@ export const homeSectionsAPI = {
   toggleStatus: (id) => api.patch(`/home-sections/${id}/toggle-status`),
   reorder: (items) => api.put('/home-sections/reorder', { items }),
   bulkDelete: (ids) => api.post('/home-sections/bulk-delete', { ids }),
-  seedDefaults: () => api.post('/home-sections/seed'),
   getPublic: (params) => api.get('/home-sections/public', { params }),
 };
 

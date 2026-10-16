@@ -55,7 +55,7 @@ export const navSections = [
           { title: 'Silver Products', path: '/catalog/silver-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=Silver' },
           { title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoDiamondOutline, apiEndpoint: '/products?isOrnate=true' },
           { title: 'Categories', path: '/catalog/categories', icon: IoLayersOutline, apiEndpoint: '/categories' },
-          { title: 'Navigation Menus', path: '/catalog/navigation-menus', icon: IoMapOutline, apiEndpoint: '/navigation-menus' },
+          { title: 'Navigation Menus', path: '/catalog/navigation-menus', icon: IoMapOutline, apiEndpoint: '/categories' },
         ],
       },
 

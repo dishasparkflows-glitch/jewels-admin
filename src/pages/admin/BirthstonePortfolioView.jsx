@@ -67,7 +67,7 @@ export default function BirthstonePortfolioView() {
 
   // Form State
   const [formMonth, setFormMonth] = useState('January');
-  const [formStoneName, setFormStoneName] = useState('GARNET');
+  const [formStoneName, setFormStoneName] = useState('');
   const [formIsActive, setFormIsActive] = useState(true);
   const [formImageUrl, setFormImageUrl] = useState('');
 
@@ -101,7 +101,7 @@ export default function BirthstonePortfolioView() {
 
   // Combine 12 months with API records
   const allMonthsData = useMemo(() => {
-    return MONTHS.map((m) => {
+    return MONTHS.filter((m) => birthstonesMap[m.full.toLowerCase()]).map((m) => {
       const existing = birthstonesMap[m.full.toLowerCase()];
       const isCustomImage = Boolean(existing?.image?.url);
       const stoneName = existing?.stoneName ? existing.stoneName.toUpperCase() : m.defaultStone;
@@ -167,7 +167,7 @@ export default function BirthstonePortfolioView() {
 
   // Open Configure Modal
   const handleOpenConfigure = (monthItem = null) => {
-    const targetMonth = monthItem || allMonthsData[0];
+    const targetMonth = monthItem || { month: 'January', stoneName: '', isActive: true, imageUrl: '' };
     setEditingMonth(targetMonth);
     setFormMonth(targetMonth.month);
     setFormStoneName(targetMonth.stoneName);

@@ -217,7 +217,7 @@ export default function ReviewsView() {
 
   // Metrics
   const totalCount = reviews.length;
-  const avgRating = totalCount > 0 ? (reviews.reduce((sum, r) => sum + (Number(r.review?.rating) || 5), 0) / totalCount).toFixed(1) : '5.0';
+  const avgRating = totalCount > 0 ? (reviews.reduce((sum, r) => sum + (Number(r.review?.rating) || 0), 0) / totalCount).toFixed(1) : '—';
   const fiveStarsCount = reviews.filter((r) => Number(r.review?.rating) === 5).length || totalCount;
 
   // Filtered Reviews (NO active/deactive filter!)

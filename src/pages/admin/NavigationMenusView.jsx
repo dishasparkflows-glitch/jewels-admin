@@ -1,1245 +1,1846 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   HiOutlineFolder,
   HiOutlinePlus,
-  HiOutlineArrowLeft,
   HiOutlinePencil,
   HiOutlineTrash,
-  HiOutlineDotsVertical,
+  HiOutlineChevronRight,
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
+  HiOutlineSearch,
   HiOutlineExternalLink,
+  HiOutlineDesktopComputer,
+  HiOutlineX,
   HiOutlinePhotograph,
   HiOutlineCheck,
-  HiOutlineX,
-  HiOutlineSearch,
-  HiOutlineMenuAlt2,
   HiOutlineSparkles,
-  HiOutlineShieldCheck,
-  HiOutlineChevronDown,
-  HiOutlineChevronRight,
-  HiOutlineEye,
-  HiOutlineStar,
-  HiOutlineUpload,
+  HiDotsHorizontal,
 } from 'react-icons/hi';
-import {
-  IoDiamondOutline,
-  IoSparklesOutline,
-  IoBagOutline,
-  IoCubeOutline,
-  IoHeartOutline,
-  IoRibbonOutline,
-  IoColorPaletteOutline,
-  IoLayersOutline,
-} from 'react-icons/io5';
-import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import toast from 'react-hot-toast';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
-import useCategoryLookup from '../../hooks/useCategoryLookup';
 
-// Available Icons for Jewelry Navigation
-const AVAILABLE_ICONS = [
-  { id: 'diamond', label: 'Diamond', icon: IoDiamondOutline },
-  { id: 'ring', label: 'Ring Band', icon: IoSparklesOutline },
-  { id: 'gem', label: 'Cocktail Gem', icon: IoCubeOutline },
-  { id: 'star', label: 'Star / Featured', icon: HiOutlineStar },
-  { id: 'bag', label: 'Shopping Bag', icon: IoBagOutline },
-  { id: 'heart', label: 'Heart', icon: IoHeartOutline },
-  { id: 'ribbon', label: 'Ribbon', icon: IoRibbonOutline },
-  { id: 'palette', label: 'Color / Metal', icon: IoColorPaletteOutline },
-  { id: 'layers', label: 'Mega Menu', icon: IoLayersOutline },
-  { id: 'shield', label: 'Certified', icon: HiOutlineShieldCheck },
-];
+// Reusable micro-components
+function DragHandle({ className = '', ...props }) {
+  return (
+    <span
+      title="Drag to reorder"
+      className={`inline-flex items-center justify-center p-1 rounded hover:bg-stone-200/50 text-stone-400 hover:text-[#8b6b47] cursor-grab active:cursor-grabbing shrink-0 transition-colors ${className}`}
+      {...props}
+    >
+      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+        <circle cx="8" cy="5" r="1.8" />
+        <circle cx="16" cy="5" r="1.8" />
+        <circle cx="8" cy="12" r="1.8" />
+        <circle cx="16" cy="12" r="1.8" />
+        <circle cx="8" cy="19" r="1.8" />
+        <circle cx="16" cy="19" r="1.8" />
+      </svg>
+    </span>
+  );
+}
 
-const getIconComponent = (iconId, className = 'w-4 h-4') => {
-  const match = AVAILABLE_ICONS.find((i) => i.id === iconId);
-  const IconCmp = match ? match.icon : IoDiamondOutline;
-  return <IconCmp className={className} />;
-};
+// Fallback luxury icons for categories if no image is uploaded
+function CategoryGlyph({ name, className = 'w-5 h-5' }) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('ring')) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <circle cx="12" cy="14" r="7" />
+        <path d="M9 4l3-2 3 2-1.5 3h-3L9 4z" />
+      </svg>
+    );
+  }
+  if (n.includes('earring')) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <circle cx="8" cy="8" r="3" />
+        <path d="M8 11v4a3 3 0 006 0v-4" />
+        <circle cx="16" cy="8" r="3" />
+      </svg>
+    );
+  }
+  if (n.includes('pendant') || n.includes('neck')) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <path d="M4 6c4 8 12 8 16 0" />
+        <circle cx="12" cy="16" r="3" />
+        <path d="M12 11v2" />
+      </svg>
+    );
+  }
+  if (n.includes('bangle') || n.includes('bracelet')) {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <ellipse cx="12" cy="12" rx="9" ry="6" />
+        <circle cx="12" cy="6" r="1.5" fill="currentColor" />
+      </svg>
+    );
+  }
+  return <HiOutlineSparkles className={className} />;
+}
+
+// Item thumbnail or gem icon
+function ItemIcon({ iconUrl, title, className = 'w-7 h-7' }) {
+  if (iconUrl) {
+    return (
+      <img
+        src={iconUrl}
+        alt={title || ''}
+        className={`${className} rounded-lg object-cover border border-stone-100 bg-stone-50 shrink-0`}
+      />
+    );
+  }
+  return (
+    <div className={`${className} rounded-lg border border-stone-200 bg-stone-50 text-stone-500 flex items-center justify-center shrink-0`}>
+      <CategoryGlyph name={title} className="w-4 h-4 text-[#8b6b47]" />
+    </div>
+  );
+}
 
 export default function NavigationMenusView() {
   const confirm = useConfirm();
 
-  // Top Tabs: main, footer, utility, settings
-  const [activeTab, setActiveTab] = useState('main');
+  // State
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [categorySearch, setCategorySearch] = useState('');
+  const [loadingCategories, setLoadingCategories] = useState(true);
 
-  const { categories, categoryOptions } = useCategoryLookup();
-  const [menus, setMenus] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  // Sections & items for active category
+  const [sections, setSections] = useState([]);
+  const [itemsBySection, setItemsBySection] = useState({});
+  const [loadingContent, setLoadingContent] = useState(false);
+  const [expandedSections, setExpandedSections] = useState({});
+  const [activeTab, setActiveTab] = useState('sections'); // 'sections' | 'banners'
 
-  // Active View: 'list' (Screen 1) | 'detail' (Screen 2 & Screen 4)
-  const [currentView, setCurrentView] = useState('list');
-  const [selectedMenu, setSelectedMenu] = useState(null);
+  // Modals & Popups
+  const [sectionModal, setSectionModal] = useState({ open: false, mode: 'create', data: null });
+  const [itemModal, setItemModal] = useState({ open: false, mode: 'create', sectionId: null, data: null });
+  const [bannerModal, setBannerModal] = useState({ open: false, mode: 'create', index: null, data: null });
+  const [activeItemMenu, setActiveItemMenu] = useState(null); // ID of menu item with open popover
+  const [savingModal, setSavingModal] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
-  // Detail Sub-Tabs: 'sections' (Screen 2) | 'basic'
-  const [detailTab, setDetailTab] = useState('sections');
+  // Drag-and-drop & Reorder states
+  const [draggedSectionIdx, setDraggedSectionIdx] = useState(null);
+  const [dragOverSectionIdx, setDragOverSectionIdx] = useState(null);
+  const [draggedItemInfo, setDraggedItemInfo] = useState(null); // { sectionId, itemIdx }
+  const [dragOverItemInfo, setDragOverItemInfo] = useState(null); // { sectionId, itemIdx }
+  const [isSavingAll, setIsSavingAll] = useState(false);
 
-  // Modal States
-  const [isAddMenuModalOpen, setIsAddMenuModalOpen] = useState(false);
-  const [isEditMenuModalOpen, setIsEditMenuModalOpen] = useState(false);
-  const [menuModalTab, setMenuModalTab] = useState('details'); // 'details' | 'link' | 'display'
-  const [menuFormData, setMenuFormData] = useState({
-    title: '',
-    navType: 'main',
-    categoryId: '',
-    customUrl: '',
-    iconName: 'diamond',
-    openInNewTab: false,
-    isMegaMenu: true,
-    status: 'active',
-    parentSectionId: '',
-    advancedOpen: false,
-  });
-
-  // Section Modal (Screen 2)
-  const [isSectionModalOpen, setIsSectionModalOpen] = useState(false);
-  const [editingSectionId, setEditingSectionId] = useState(null);
-  const [sectionFormData, setSectionFormData] = useState({
-    title: '',
-    icon: 'star',
-    status: 'active',
-    order: 1,
-  });
-
-  // Action Menu Dropdown state (row ID)
-  const [openDropdownId, setOpenDropdownId] = useState(null);
-
-  // Icon selector modal
-  const [isIconPickerOpen, setIsIconPickerOpen] = useState(false);
-  const [iconPickerTarget, setIconPickerTarget] = useState('menu'); // 'menu' | 'section'
-
-
-
-  // ─── Fetch Menus ───────────────────────────────────────────
-  const fetchMenus = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await api.get(`/navigation-menus?navType=${activeTab}`);
-      const data = res.data?.data || [];
-      setMenus(Array.isArray(data) ? data : []);
-
-      // If viewing a detail menu, sync updated object
-      if (selectedMenu?._id) {
-        const found = (Array.isArray(data) ? data : []).find((m) => m._id === selectedMenu._id);
-        if (found) setSelectedMenu(found);
+  // Close popups on Escape key
+  useEffect(() => {
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') {
+        if (sectionModal.open) setSectionModal({ open: false, mode: 'create', data: null });
+        if (itemModal.open) setItemModal({ open: false, mode: 'create', sectionId: null, data: null });
+        if (bannerModal.open) setBannerModal({ open: false, mode: 'create', index: null, data: null });
+        if (activeItemMenu) setActiveItemMenu(null);
       }
-    } catch (err) {
-      toast.error('Failed to load navigation menus');
-      setMenus([]);
-    } finally {
-      setLoading(false);
     }
-  }, [activeTab, selectedMenu?._id]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [sectionModal.open, itemModal.open, bannerModal.open, activeItemMenu]);
 
-
-
+  // Close item 3-dots action menu on outside click
   useEffect(() => {
-    fetchMenus();
-  }, [fetchMenus]);
+    if (!activeItemMenu) return;
+    function handleGlobalClick() {
+      setActiveItemMenu(null);
+    }
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, [activeItemMenu]);
 
-  // Close actions dropdown on outside click
+  // Load all categories on mount
   useEffect(() => {
-    const handleWindowClick = () => setOpenDropdownId(null);
-    window.addEventListener('click', handleWindowClick);
-    return () => window.removeEventListener('click', handleWindowClick);
+    loadCategories();
   }, []);
 
-  // Filtered menus
-  const filteredMenus = useMemo(() => {
-    if (!search.trim()) return menus;
-    const q = search.toLowerCase();
-    return menus.filter((m) => m.title?.toLowerCase().includes(q));
-  }, [menus, search]);
-
-
-
-  // ─── Menu Toggle Status ────────────────────────────────────
-  const handleToggleMenuStatus = async (menu, e) => {
-    if (e) e.stopPropagation();
-    const newStatus = menu.status === 'active' ? 'inactive' : 'active';
+  async function loadCategories() {
+    setLoadingCategories(true);
     try {
-      await api.put(`/navigation-menus/${menu._id}`, { status: newStatus });
-      toast.success(`${menu.title} is now ${newStatus}`);
-      setMenus((prev) =>
-        prev.map((m) => (m._id === menu._id ? { ...m, status: newStatus } : m))
-      );
-      if (selectedMenu?._id === menu._id) {
-        setSelectedMenu((prev) => ({ ...prev, status: newStatus }));
+      const res = await api.get('/categories', { params: { limit: 100 } });
+      const rows = res.data?.data || [];
+      const list = Array.isArray(rows) ? rows : rows.items || [];
+      const sorted = [...list].sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+      setCategories(sorted);
+
+      // Select default category (e.g. Bangles & Bracelets if exists, or first)
+      if (sorted.length > 0) {
+        setSelectedCategory((prev) => {
+          if (prev) {
+            const found = sorted.find((c) => c._id === prev._id);
+            if (found) return found;
+          }
+          const defaultCat = sorted.find((c) => /bangle|bracelet/i.test(c.name)) || sorted[0];
+          return defaultCat;
+        });
       }
-    } catch {
-      toast.error('Could not update status');
-    }
-  };
-
-  // ─── Delete Menu Item ──────────────────────────────────────
-  const handleDeleteMenu = async (menu, e) => {
-    if (e) e.stopPropagation();
-    const ok = await confirm({
-      title: `Delete "${menu.title}" Menu`,
-      message: 'Are you sure you want to remove this navigation menu item? This cannot be undone.',
-      confirmText: 'Delete Menu',
-      cancelText: 'Cancel',
-    });
-    if (!ok) return;
-
-    try {
-      await api.delete(`/navigation-menus/${menu._id}`);
-      toast.success(`"${menu.title}" deleted`);
-      setMenus((prev) => prev.filter((m) => m._id !== menu._id));
-      if (selectedMenu?._id === menu._id) {
-        setCurrentView('list');
-        setSelectedMenu(null);
-      }
-    } catch {
-      toast.error('Failed to delete menu');
-    }
-  };
-
-  // ─── Open Menu in Detail View (Screen 2) ───────────────────
-  const handleOpenDetail = (menu) => {
-    setSelectedMenu(menu);
-    setDetailTab('sections');
-    setCurrentView('detail');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  // ─── Open Add Menu Item Modal (Screen 3) ───────────────────
-  const handleOpenAddModal = () => {
-    setMenuFormData({
-      title: '',
-      navType: activeTab === 'settings' ? 'main' : activeTab,
-      categoryId: categories[0]?._id || '',
-      customUrl: '',
-      iconName: 'diamond',
-      openInNewTab: false,
-      isMegaMenu: true,
-      status: 'active',
-      parentSectionId: '',
-      advancedOpen: false,
-    });
-    setMenuModalTab('details');
-    setIsEditMenuModalOpen(false);
-    setIsAddMenuModalOpen(true);
-  };
-
-  // ─── Save New / Edit Menu Item (Screen 3) ──────────────────
-  const handleSaveMenu = async (e) => {
-    e.preventDefault();
-    if (!menuFormData.title.trim()) {
-      toast.error('Please enter a menu title / label');
-      return;
-    }
-
-    try {
-      const payload = {
-        title: menuFormData.title.trim(),
-        navType: menuFormData.navType,
-        categoryId: menuFormData.categoryId || null,
-        customUrl: menuFormData.customUrl || '',
-        openInNewTab: Boolean(menuFormData.openInNewTab),
-        isMegaMenu: Boolean(menuFormData.isMegaMenu),
-        status: menuFormData.status,
-        icon: { name: menuFormData.iconName },
-        image: {
-          url: menuFormData.imageUrl || '',
-        },
-      };
-
-      if (isEditMenuModalOpen && selectedMenu?._id) {
-        const res = await api.put(`/navigation-menus/${selectedMenu._id}`, payload);
-        const updated = res.data?.data || payload;
-        toast.success(`"${payload.title}" updated successfully!`);
-        setSelectedMenu((prev) => ({ ...prev, ...updated }));
-      } else {
-        await api.post('/navigation-menus', payload);
-        toast.success(`"${payload.title}" created successfully!`);
-      }
-
-      setIsAddMenuModalOpen(false);
-      setIsEditMenuModalOpen(false);
-      fetchMenus();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save menu item');
+      toast.error(err.response?.data?.message || 'Failed to load categories');
+    } finally {
+      setLoadingCategories(false);
     }
-  };
+  }
 
-  // ─── Section CRUD (Screen 2) ───────────────────────────────
-  const handleOpenAddSection = () => {
-    setEditingSectionId(null);
-    setSectionFormData({
-      title: '',
-      icon: 'star',
-      status: 'active',
-      order: (selectedMenu?.sections?.length || 0) + 1,
-    });
-    setIsSectionModalOpen(true);
-  };
-
-  const handleOpenEditSection = (section) => {
-    setEditingSectionId(section._id);
-    setSectionFormData({
-      title: section.title,
-      icon: section.icon || 'star',
-      status: section.status || 'active',
-      order: section.order || 1,
-    });
-    setIsSectionModalOpen(true);
-  };
-
-  const handleSaveSection = async (e) => {
-    e.preventDefault();
-    if (!sectionFormData.title.trim()) {
-      toast.error('Please enter section title');
+  // Whenever selectedCategory changes, load its sections and their items
+  useEffect(() => {
+    if (!selectedCategory?._id) {
+      setSections([]);
+      setItemsBySection({});
       return;
     }
-    if (!selectedMenu?._id) return;
+    loadSectionsAndItems(selectedCategory._id);
+  }, [selectedCategory?._id]);
+
+  async function loadSectionsAndItems(catId) {
+    setLoadingContent(true);
+    try {
+      // 1. Fetch sections for this category
+      const secRes = await api.get('/menu-sections', { params: { categoryId: catId, limit: 100 } });
+      const secRows = secRes.data?.data || [];
+      const secList = Array.isArray(secRows) ? secRows : secRows.items || [];
+      const sortedSections = [...secList].sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+      setSections(sortedSections);
+
+      // Default all sections to expanded
+      const expandMap = {};
+      sortedSections.forEach((s) => {
+        expandMap[s._id] = true;
+      });
+      setExpandedSections((prev) => ({ ...expandMap, ...prev }));
+
+      // 2. Fetch items for each section in parallel
+      const itemMap = {};
+      await Promise.all(
+        sortedSections.map(async (sec) => {
+          try {
+            const itemRes = await api.get('/menu-items', { params: { menuSectionId: sec._id, limit: 100 } });
+            const itemRows = itemRes.data?.data || [];
+            const itemList = Array.isArray(itemRows) ? itemRows : itemRows.items || [];
+            itemMap[sec._id] = [...itemList].sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
+          } catch {
+            itemMap[sec._id] = [];
+          }
+        })
+      );
+      setItemsBySection(itemMap);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load sections');
+    } finally {
+      setLoadingContent(false);
+    }
+  }
+
+  // Toggle category active/inactive status
+  async function handleToggleCategoryStatus() {
+    if (!selectedCategory || statusUpdating) return;
+    const nextStatus = selectedCategory.status === 'active' ? 'inactive' : 'active';
+    setStatusUpdating(true);
+    try {
+      await api.put(`/categories/${selectedCategory._id}`, { status: nextStatus });
+      setSelectedCategory((prev) => ({ ...prev, status: nextStatus }));
+      setCategories((prev) =>
+        prev.map((c) => (c._id === selectedCategory._id ? { ...c, status: nextStatus } : c))
+      );
+      toast.success(`Category is now ${nextStatus === 'active' ? 'visible' : 'hidden'}`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update category status');
+    } finally {
+      setStatusUpdating(false);
+    }
+  }
+
+  // ─── Section Reordering (Move Up / Down & Drag & Drop) ───────────────
+  async function handleMoveSection(fromIdx, toIdx) {
+    if (toIdx < 0 || toIdx >= sections.length || fromIdx === toIdx) return;
+    const reordered = [...sections];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+
+    const updated = reordered.map((sec, idx) => ({ ...sec, order: idx + 1 }));
+    setSections(updated);
 
     try {
-      if (editingSectionId) {
-        const res = await api.put(
-          `/navigation-menus/${selectedMenu._id}/sections/${editingSectionId}`,
-          sectionFormData
-        );
-        toast.success('Section updated!');
-        setSelectedMenu(res.data?.data);
-      } else {
-        const res = await api.post(
-          `/navigation-menus/${selectedMenu._id}/sections`,
-          sectionFormData
-        );
-        toast.success('Section added!');
-        setSelectedMenu(res.data?.data);
+      await api.put('/menu-sections/reorder', {
+        items: updated.map((sec, idx) => ({ _id: sec._id, order: idx + 1 })),
+      });
+      toast.success('Section order updated', { id: 'section-reorder-toast' });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update section order');
+      loadSectionsAndItems(selectedCategory._id);
+    }
+  }
+
+  function handleSectionDragStart(e, idx) {
+    setDraggedSectionIdx(idx);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(idx));
+  }
+
+  function handleSectionDragOver(e, idx) {
+    e.preventDefault();
+    if (draggedSectionIdx === null) return;
+    if (dragOverSectionIdx !== idx) {
+      setDragOverSectionIdx(idx);
+    }
+  }
+
+  function handleSectionDrop(e, targetIdx) {
+    e.preventDefault();
+    if (draggedSectionIdx === null) return;
+    if (draggedSectionIdx !== targetIdx) {
+      handleMoveSection(draggedSectionIdx, targetIdx);
+    }
+    setDraggedSectionIdx(null);
+    setDragOverSectionIdx(null);
+  }
+
+  function handleSectionDragEnd() {
+    setDraggedSectionIdx(null);
+    setDragOverSectionIdx(null);
+  }
+
+  // ─── Menu Item Reordering (Move Up / Down & Drag & Drop) ──────────────
+  async function handleMoveItem(sectionId, fromIdx, toIdx) {
+    const currentItems = itemsBySection[sectionId] || [];
+    if (toIdx < 0 || toIdx >= currentItems.length || fromIdx === toIdx) return;
+
+    const reordered = [...currentItems];
+    const [moved] = reordered.splice(fromIdx, 1);
+    reordered.splice(toIdx, 0, moved);
+
+    const updated = reordered.map((item, idx) => ({ ...item, order: idx + 1 }));
+    setItemsBySection((prev) => ({
+      ...prev,
+      [sectionId]: updated,
+    }));
+
+    try {
+      await api.put('/menu-items/reorder', {
+        items: updated.map((it, idx) => ({ _id: it._id, order: idx + 1 })),
+      });
+      toast.success('Menu item order updated', { id: 'item-reorder-toast' });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update item order');
+      loadSectionsAndItems(selectedCategory._id);
+    }
+  }
+
+  function handleItemDragStart(e, sectionId, itemIdx) {
+    e.stopPropagation();
+    setDraggedItemInfo({ sectionId, itemIdx });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ sectionId, itemIdx }));
+  }
+
+  function handleItemDragOver(e, sectionId, itemIdx) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedItemInfo || draggedItemInfo.sectionId !== sectionId) return;
+    if (dragOverItemInfo?.itemIdx !== itemIdx) {
+      setDragOverItemInfo({ sectionId, itemIdx });
+    }
+  }
+
+  function handleItemDrop(e, sectionId, targetIdx) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!draggedItemInfo || draggedItemInfo.sectionId !== sectionId) return;
+    if (draggedItemInfo.itemIdx !== targetIdx) {
+      handleMoveItem(sectionId, draggedItemInfo.itemIdx, targetIdx);
+    }
+    setDraggedItemInfo(null);
+    setDragOverItemInfo(null);
+  }
+
+  function handleItemDragEnd(e) {
+    e.stopPropagation();
+    setDraggedItemInfo(null);
+    setDragOverItemInfo(null);
+  }
+
+  // ─── Save All Navigation Changes ─────────────────────────────────────
+  async function handleSaveAll() {
+    setIsSavingAll(true);
+    try {
+      if (sections.length > 0) {
+        await api.put('/menu-sections/reorder', {
+          items: sections.map((sec, idx) => ({ _id: sec._id, order: idx + 1 })),
+        });
       }
-      setIsSectionModalOpen(false);
-      fetchMenus();
+
+      const itemPromises = Object.entries(itemsBySection).map(([secId, items]) => {
+        if (items && items.length > 0) {
+          return api.put('/menu-items/reorder', {
+            items: items.map((it, idx) => ({ _id: it._id, order: idx + 1 })),
+          });
+        }
+        return Promise.resolve();
+      });
+      await Promise.all(itemPromises);
+
+      toast.success('All navigation structure and orders saved successfully!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save navigation changes');
+    } finally {
+      setIsSavingAll(false);
+    }
+  }
+
+  // Toggle section accordion
+  function toggleSectionExpand(sectionId) {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionId]: prev[sectionId] === false ? true : false,
+    }));
+  }
+
+  // Section CRUD
+  function openAddSectionModal() {
+    const nextOrder = (sections.length || 0) + 1;
+    setSectionModal({
+      open: true,
+      mode: 'create',
+      data: { title: '', order: nextOrder, status: 'active' },
+    });
+  }
+
+  function openEditSectionModal(section) {
+    setSectionModal({
+      open: true,
+      mode: 'edit',
+      data: { ...section },
+    });
+  }
+
+  async function handleSaveSection(e) {
+    e.preventDefault();
+    const { mode, data } = sectionModal;
+    if (!data.title?.trim()) {
+      return toast.error('Section title is required');
+    }
+    setSavingModal(true);
+    try {
+      if (mode === 'create') {
+        await api.post('/menu-sections', {
+          categoryId: selectedCategory._id,
+          title: data.title.trim(),
+          order: Number(data.order || 0),
+          status: data.status || 'active',
+        });
+        toast.success('Section created');
+      } else {
+        await api.put(`/menu-sections/${data._id}`, {
+          title: data.title.trim(),
+          order: Number(data.order || 0),
+          status: data.status || 'active',
+        });
+        toast.success('Section updated');
+      }
+      setSectionModal({ open: false, mode: 'create', data: null });
+      await loadSectionsAndItems(selectedCategory._id);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save section');
+    } finally {
+      setSavingModal(false);
     }
-  };
+  }
 
-  const handleDeleteSection = async (sectionId) => {
-    if (!selectedMenu?._id) return;
-    const ok = await confirm({
-      title: 'Delete Section',
-      message: 'Are you sure you want to delete this menu section and its sub-items?',
-      confirmText: 'Delete',
+  async function handleDeleteSection(section) {
+    const confirmed = await confirm({
+      title: `Delete "${section.title}"?`,
+      message: 'This section and all its menu items will be soft-deleted.',
+      confirmText: 'Delete Section',
       cancelText: 'Cancel',
     });
-    if (!ok) return;
+    if (!confirmed) return;
 
     try {
-      const res = await api.delete(
-        `/navigation-menus/${selectedMenu._id}/sections/${sectionId}`
-      );
+      await api.delete(`/menu-sections/${section._id}`);
       toast.success('Section deleted');
-      setSelectedMenu(res.data?.data);
-      fetchMenus();
-    } catch {
-      toast.error('Could not delete section');
+      await loadSectionsAndItems(selectedCategory._id);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete section');
     }
-  };
+  }
+
+  // Menu Item CRUD
+  function openAddMenuItemModal(sectionId) {
+    const currentItems = itemsBySection[sectionId] || [];
+    const nextOrder = (currentItems.length || 0) + 1;
+    setItemModal({
+      open: true,
+      mode: 'create',
+      sectionId,
+      data: {
+        title: '',
+        menuSectionId: sectionId,
+        iconUrl: '',
+        order: nextOrder,
+        status: 'active',
+      },
+    });
+  }
+
+  function openEditMenuItemModal(item) {
+    setItemModal({
+      open: true,
+      mode: 'edit',
+      sectionId: item.menuSectionId,
+      data: {
+        _id: item._id,
+        title: item.title || '',
+        menuSectionId: item.menuSectionId?._id || item.menuSectionId,
+        iconUrl: item.icon?.url || '',
+        order: item.order ?? 0,
+        status: item.status || 'active',
+      },
+    });
+  }
+
+  async function handleSaveMenuItem(e) {
+    e.preventDefault();
+    const { mode, data } = itemModal;
+    if (!data.title?.trim()) {
+      return toast.error('Menu item label is required');
+    }
+    if (!data.menuSectionId) {
+      return toast.error('Parent section is required');
+    }
+    setSavingModal(true);
+    try {
+      const payload = {
+        menuSectionId: data.menuSectionId,
+        title: data.title.trim(),
+        order: Number(data.order || 0),
+        status: data.status || 'active',
+        icon: { url: (data.iconUrl || '').trim() },
+      };
+
+      if (mode === 'create') {
+        await api.post('/menu-items', payload);
+        toast.success('Menu item added');
+      } else {
+        await api.put(`/menu-items/${data._id}`, payload);
+        toast.success('Menu item updated');
+      }
+      setItemModal({ open: false, mode: 'create', sectionId: null, data: null });
+      await loadSectionsAndItems(selectedCategory._id);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save menu item');
+    } finally {
+      setSavingModal(false);
+    }
+  }
+
+  async function handleDeleteMenuItem(item) {
+    setActiveItemMenu(null);
+    const confirmed = await confirm({
+      title: `Delete "${item.title}"?`,
+      message: 'This menu item will be removed from navigation.',
+      confirmText: 'Delete Item',
+      cancelText: 'Cancel',
+    });
+    if (!confirmed) return;
+
+    try {
+      await api.delete(`/menu-items/${item._id}`);
+      toast.success('Menu item deleted');
+      await loadSectionsAndItems(selectedCategory._id);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete menu item');
+    }
+  }
+
+  // Promo Banners for Active Category
+  const promoBanners = useMemo(() => {
+    return Array.isArray(selectedCategory?.promoBanners) ? selectedCategory.promoBanners : [];
+  }, [selectedCategory?.promoBanners]);
+
+  function openAddBannerModal() {
+    setBannerModal({
+      open: true,
+      mode: 'create',
+      index: null,
+      data: { title: '', subtitle: '', imageUrl: '', link: '', status: 'active', order: promoBanners.length + 1 },
+    });
+  }
+
+  function openEditBannerModal(banner, index) {
+    setBannerModal({
+      open: true,
+      mode: 'edit',
+      index,
+      data: {
+        title: banner.title || '',
+        subtitle: banner.subtitle || '',
+        imageUrl: banner.image?.url || (typeof banner.image === 'string' ? banner.image : ''),
+        link: banner.link || banner.url || '',
+        status: banner.status || 'active',
+        order: banner.order ?? index + 1,
+      },
+    });
+  }
+
+  async function handleSavePromoBanner(e) {
+    e.preventDefault();
+    const { mode, index, data } = bannerModal;
+    if (!data.title?.trim()) {
+      return toast.error('Banner title is required');
+    }
+    setSavingModal(true);
+    try {
+      const bannerItem = {
+        title: data.title.trim(),
+        subtitle: (data.subtitle || '').trim(),
+        image: { url: (data.imageUrl || '').trim(), key: '' },
+        link: (data.link || '').trim(),
+        url: (data.link || '').trim(),
+        status: data.status || 'active',
+        order: Number(data.order || 0),
+      };
+
+      let nextBanners = [...promoBanners];
+      if (mode === 'create') {
+        nextBanners.push(bannerItem);
+      } else {
+        nextBanners[index] = { ...nextBanners[index], ...bannerItem };
+      }
+
+      await api.put(`/categories/${selectedCategory._id}`, { promoBanners: nextBanners });
+      setSelectedCategory((prev) => ({ ...prev, promoBanners: nextBanners }));
+      toast.success(mode === 'create' ? 'Promo banner added' : 'Promo banner updated');
+      setBannerModal({ open: false, mode: 'create', index: null, data: null });
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save promo banner');
+    } finally {
+      setSavingModal(false);
+    }
+  }
+
+  async function handleDeletePromoBanner(index) {
+    const confirmed = await confirm({
+      title: 'Delete Promo Banner?',
+      message: 'This promotional banner will be removed from this category menu.',
+      confirmText: 'Delete Banner',
+      cancelText: 'Cancel',
+    });
+    if (!confirmed) return;
+
+    try {
+      const nextBanners = promoBanners.filter((_, idx) => idx !== index);
+      await api.put(`/categories/${selectedCategory._id}`, { promoBanners: nextBanners });
+      setSelectedCategory((prev) => ({ ...prev, promoBanners: nextBanners }));
+      toast.success('Promo banner removed');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to remove promo banner');
+    }
+  }
+
+  // Filtered categories for left sidebar
+  const filteredCategories = useMemo(() => {
+    if (!categorySearch.trim()) return categories;
+    return categories.filter((c) =>
+      (c.name || '').toLowerCase().includes(categorySearch.toLowerCase().trim())
+    );
+  }, [categories, categorySearch]);
+
+  // Total items count across active category
+  const totalCategoryItems = useMemo(() => {
+    return Object.values(itemsBySection).reduce((sum, arr) => sum + (arr?.length || 0), 0);
+  }, [itemsBySection]);
+
+  // Fallback demo luxury promo images for the Live Menu Preview
+  const previewPromoBanners = useMemo(() => {
+    if (promoBanners.length > 0) {
+      return promoBanners.filter((b) => b.status !== 'inactive').slice(0, 2);
+    }
+    return [
+      {
+        title: 'Tennis Bracelets',
+        image: {
+          url: 'https://images.unsplash.com/photo-1611591475806-2581f148417c?auto=format&fit=crop&w=600&q=80',
+        },
+      },
+      {
+        title: 'Mens Bracelets',
+        image: {
+          url: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80',
+        },
+      },
+    ];
+  }, [promoBanners]);
 
   return (
-    <div className="space-y-5 pb-10 font-sans text-stone-800 animate-fadeIn">
-      {/* ════════════════════════════════════════════════════════════
-          SCREEN 1: MAIN NAVIGATION MENUS LISTING
-      ════════════════════════════════════════════════════════════ */}
-      {currentView === 'list' && (
-        <div className="space-y-4">
-          {/* ─── Top Header (Icon + Title + Subtitle + Add Button) ── */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200/90 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#faf6f0] border border-[#e8dac7] text-[#8b6f4e] flex items-center justify-center font-bold text-lg shadow-2xs">
-                <HiOutlineFolder className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight leading-tight">
-                  Navigation Menus
-                </h1>
-                <p className="text-xs text-stone-400">
-                  Manage the main website navigation, mega menus and custom links.
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleOpenAddModal}
-              className="flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer"
-            >
-              <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-              <span>Add Menu Item</span>
-            </button>
+    <div className="space-y-5 pb-16 text-stone-800 font-sans">
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* 1. TOP HEADER CARD                                                    */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-2xl bg-[#8b6b47]/10 text-[#8b6b47] flex items-center justify-center shrink-0 border border-[#8b6b47]/20 shadow-2xs">
+            <HiOutlineFolder className="w-6 h-6" />
           </div>
-
-          {/* ─── Main Tabs Bar ─────────── */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-            {[
-              { id: 'main', label: 'Main Navigation' },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
-                    isActive
-                      ? 'bg-[#8b6f4e] text-white shadow-xs'
-                      : 'bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-50 border border-stone-200/90'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-stone-900">Navigation Menus</h1>
+            <p className="mt-0.5 text-xs text-stone-500">
+              Manage categories, sections, links and promotional banners in one place.
+            </p>
           </div>
+        </div>
 
-          {/* ─── Search & Quick Filter Bar ─────────────────────── */}
-          <div className="flex items-center justify-between gap-3 bg-white p-3 rounded-xl border border-stone-200/90 shadow-2xs">
-            <div className="relative flex-1 max-w-sm">
-              <HiOutlineSearch className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Search navigation items..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-              />
-            </div>
-            <span className="text-[11px] font-semibold text-stone-400">
-              {filteredMenus.length} items configured
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => {
+              const url = selectedCategory?.slug
+                ? `http://localhost:5174/shop?category=${selectedCategory.slug}`
+                : 'http://localhost:5174';
+              window.open(url, '_blank');
+            }}
+            className="inline-flex items-center gap-2 rounded-xl border border-stone-200/90 bg-white px-4 py-2.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 hover:border-stone-300 transition-all cursor-pointer"
+          >
+            <HiOutlineExternalLink className="w-4 h-4 text-stone-400" />
+            Preview Storefront
+          </button>
+
+          <button
+            type="button"
+            disabled={isSavingAll}
+            onClick={handleSaveAll}
+            className="inline-flex items-center gap-2 rounded-xl bg-[#8b6b47] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#745735] disabled:opacity-60 transition-all cursor-pointer"
+          >
+            <HiOutlineCheck className="w-4 h-4" />
+            {isSavingAll ? 'Saving Changes…' : 'Save Changes'}
+          </button>
+        </div>
+      </header>
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* 2. THREE-COLUMN WORKSPACE LAYOUT                                       */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        {/* ── LEFT COLUMN: CATEGORIES (3 of 12) ── */}
+        <aside className="lg:col-span-3 rounded-2xl border border-stone-200/90 bg-white p-4 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold tracking-tight text-stone-900">Categories</h2>
+            <span className="text-[11px] font-medium text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
+              {categories.length}
             </span>
           </div>
 
-          {/* ─── Table: Menu Items (Exact match with Screen 1) ─── */}
-          <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-stone-100 bg-stone-50/70 text-[10.5px] font-bold text-stone-400 uppercase tracking-wider">
-                    <th className="py-3 px-3 w-8 text-center">#</th>
-                    <th className="py-3 px-3 w-10 text-center">#</th>
-                    <th className="py-3 px-4">MENU ITEM</th>
-                    <th className="py-3 px-4">CATEGORY</th>
-                    <th className="py-3 px-4 text-center">STATUS</th>
-                    <th className="py-3 px-4 text-right">ACTIONS</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100 text-xs">
-                  {loading ? (
-                    <tr>
-                      <td colSpan="6" className="py-12 text-center text-stone-400">
-                        <div className="inline-block animate-spin w-5 h-5 border-2 border-[#8b6f4e] border-t-transparent rounded-full mb-2" />
-                        <p className="text-xs">Loading navigation menus...</p>
-                      </td>
-                    </tr>
-                  ) : filteredMenus.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="py-12 text-center text-stone-400">
-                        No menu items found for this navigation category.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredMenus.map((menu, idx) => {
-                      const sectionsCount = menu.sections?.length || 0;
-                      const isDropdownOpen = openDropdownId === menu._id;
-
-                      return (
-                        <tr
-                          key={menu._id}
-                          onClick={() => handleOpenDetail(menu)}
-                          className="hover:bg-[#faf9f7] transition-colors cursor-pointer group"
-                        >
-                          {/* Drag handle */}
-                          <td className="py-3 px-3 text-center text-stone-300 group-hover:text-stone-500 cursor-grab">
-                            <HiOutlineMenuAlt2 className="w-4 h-4 mx-auto" />
-                          </td>
-
-                          {/* Index */}
-                          <td className="py-3 px-3 text-center font-mono font-bold text-stone-600 text-xs">
-                            {idx + 1}
-                          </td>
-
-                          {/* Menu Item: Icon/Thumbnail + Title + Subtitle */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-9 h-9 rounded-xl bg-stone-50 border border-stone-200/80 overflow-hidden flex items-center justify-center flex-shrink-0 shadow-2xs">
-                                {menu.image?.url ? (
-                                  <img
-                                    src={menu.image.url}
-                                    alt={menu.title}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      e.target.style.display = 'none';
-                                    }}
-                                  />
-                                ) : (
-                                  getIconComponent(menu.icon?.name, 'w-4 h-4 text-[#8b6f4e]')
-                                )}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-bold text-stone-900 group-hover:text-[#8b6f4e] transition-colors leading-tight">
-                                  {menu.title}
-                                </p>
-                                <p className="text-[11px] text-stone-400 leading-tight">
-                                  {menu.isMegaMenu && sectionsCount > 0
-                                    ? `Mega Menu (${sectionsCount} sections)`
-                                    : 'Standard Menu Link'}
-                                </p>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Category Badge */}
-                          <td className="py-3 px-4">
-                            <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#e8dac7]">
-                              {menu.categoryId?.name || menu.title}
-                            </span>
-                          </td>
-
-                          {/* Status Switch Toggle */}
-                          <td
-                            className="py-3 px-4 text-center"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <button
-                              type="button"
-                              onClick={(e) => handleToggleMenuStatus(menu, e)}
-                              className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer focus:outline-none ${
-                                menu.status === 'active' ? 'bg-[#8b6f4e]' : 'bg-stone-300'
-                              }`}
-                            >
-                              <span
-                                className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-2xs transition-transform ${
-                                  menu.status === 'active' ? 'translate-x-4.5' : 'translate-x-1'
-                                }`}
-                              />
-                            </button>
-                          </td>
-
-                          {/* Actions: Edit + More options */}
-                          <td
-                            className="py-3 px-4 text-right"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="inline-flex items-center gap-1.5 relative">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenDetail(menu)}
-                                className="px-3 py-1 text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 rounded-lg hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer"
-                              >
-                                Edit
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenDropdownId(isDropdownOpen ? null : menu._id);
-                                }}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg border border-stone-200/90 text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer"
-                              >
-                                <HiOutlineDotsVertical className="w-3.5 h-3.5" />
-                              </button>
-
-                              {/* Dropdown Menu */}
-                              {isDropdownOpen && (
-                                <div className="absolute right-0 top-8 z-30 w-44 rounded-xl bg-white border border-stone-200 shadow-xl py-1 text-xs text-left animate-scaleUp">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenDetail(menu)}
-                                    className="w-full px-3.5 py-2 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium"
-                                  >
-                                    <HiOutlineEye className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                                    <span>Manage Sections</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setSelectedMenu(menu);
-                                      setMenuFormData({
-                                        title: menu.title,
-                                        navType: menu.navType || 'main',
-                                        categoryId: menu.categoryId?._id || menu.categoryId || '',
-                                        customUrl: menu.customUrl || '',
-                                        iconName: menu.icon?.name || 'diamond',
-                                        openInNewTab: Boolean(menu.openInNewTab),
-                                        isMegaMenu: Boolean(menu.isMegaMenu),
-                                        status: menu.status || 'active',
-                                        parentSectionId: '',
-                                        advancedOpen: false,
-                                      });
-                                      setIsEditMenuModalOpen(true);
-                                      setIsAddMenuModalOpen(true);
-                                    }}
-                                    className="w-full px-3.5 py-2 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium"
-                                  >
-                                    <HiOutlinePencil className="w-3.5 h-3.5 text-stone-400" />
-                                    <span>Edit Info</span>
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleToggleMenuStatus(menu, e)}
-                                    className="w-full px-3.5 py-2 text-left hover:bg-stone-50 flex items-center gap-2 text-stone-700 font-medium"
-                                  >
-                                    <HiOutlineCheck className="w-3.5 h-3.5 text-emerald-600" />
-                                    <span>Toggle Status</span>
-                                  </button>
-                                  <div className="my-1 border-t border-stone-100" />
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleDeleteMenu(menu, e)}
-                                    className="w-full px-3.5 py-2 text-left hover:bg-rose-50 flex items-center gap-2 text-rose-600 font-medium"
-                                  >
-                                    <HiOutlineTrash className="w-3.5 h-3.5 text-rose-500" />
-                                    <span>Delete Menu</span>
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            </div>
+          {/* Search Box */}
+          <div className="relative">
+            <HiOutlineSearch className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search categories.."
+              value={categorySearch}
+              onChange={(e) => setCategorySearch(e.target.value)}
+              className="w-full rounded-xl border border-stone-200 bg-stone-50/50 pl-9 pr-3 py-2 text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#8b6b47] focus:bg-white transition-all"
+            />
           </div>
-        </div>
-      )}
 
-      {/* ════════════════════════════════════════════════════════════
-          SCREEN 2: DETAILED MENU VIEW (Sections)
-      ════════════════════════════════════════════════════════════ */}
-      {currentView === 'detail' && selectedMenu && (
-        <div className="space-y-4 animate-fadeIn">
-          {/* ─── Detail Header (Back button + Thumbnail + Title + Add Button) ── */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-4 sm:p-5 rounded-2xl border border-stone-200/90 shadow-2xs">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setCurrentView('list')}
-                className="w-9 h-9 rounded-xl border border-stone-200/90 text-stone-600 hover:text-stone-900 hover:bg-stone-50 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
-                title="Back to Navigation Menus"
-              >
-                <HiOutlineArrowLeft className="w-4 h-4" />
-              </button>
+          {/* Categories List */}
+          <div className="space-y-1.5 max-h-[640px] overflow-y-auto pr-0.5">
+            {loadingCategories ? (
+              <div className="py-10 text-center text-xs text-stone-400">Loading categories…</div>
+            ) : filteredCategories.length === 0 ? (
+              <div className="py-8 text-center text-xs text-stone-400">No categories found.</div>
+            ) : (
+              filteredCategories.map((cat) => {
+                const isSelected = selectedCategory?._id === cat._id;
+                const iconSrc = cat.icon?.url || (cat.images && cat.images[0]?.url);
 
-              <div className="w-11 h-11 rounded-xl bg-stone-50 border border-stone-200/90 overflow-hidden flex items-center justify-center shadow-2xs">
-                {selectedMenu.image?.url ? (
-                  <img
-                    src={selectedMenu.image.url}
-                    alt={selectedMenu.title}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  getIconComponent(selectedMenu.icon?.name, 'w-5 h-5 text-[#8b6f4e]')
-                )}
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-bold text-stone-900 leading-tight">
-                    {selectedMenu.title}
-                  </h2>
-                  <span
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                      selectedMenu.status === 'active'
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                        : 'bg-stone-100 text-stone-500 border border-stone-200'
+                return (
+                  <button
+                    key={cat._id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      setActiveTab('sections');
+                    }}
+                    className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left text-xs transition-all cursor-pointer ${
+                      isSelected
+                        ? 'border border-[#8b6b47]/40 bg-[#8b6b47]/5 text-stone-900 font-bold shadow-2xs'
+                        : 'border border-transparent hover:bg-stone-50/80 text-stone-700 font-medium'
                     }`}
                   >
-                    <span
-                      className={`w-1.5 h-1.5 rounded-full ${
-                        selectedMenu.status === 'active' ? 'bg-emerald-500' : 'bg-stone-400'
-                      }`}
-                    />
-                    <span className="capitalize">{selectedMenu.status}</span>
-                  </span>
-                </div>
-                <p className="text-xs text-stone-400">
-                  {selectedMenu.categoryId?.name ? `${selectedMenu.categoryId.name} • ` : ''}
-                  {selectedMenu.isMegaMenu ? 'Mega Menu' : 'Standard Menu Link'}
-                </p>
-              </div>
-            </div>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border ${
+                          isSelected ? 'border-[#8b6b47]/30 bg-white' : 'border-stone-200/80 bg-stone-50'
+                        }`}
+                      >
+                        {iconSrc ? (
+                          <img src={iconSrc} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <CategoryGlyph name={cat.name} className="w-4 h-4 text-[#8b6b47]" />
+                        )}
+                      </div>
+                      <span className="truncate">{cat.name}</span>
+                    </div>
 
-            {/* Top Action Button according to active tab */}
-            <div className="flex items-center gap-2">
-              {detailTab === 'sections' && (
-                <button
-                  type="button"
-                  onClick={handleOpenAddSection}
-                  className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer"
-                >
-                  <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-                  <span>Add Section</span>
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* ─── Detail Sub-Tabs (Basic Info, Menu Sections (N)) ── */}
-          <div className="flex items-center gap-2 border-b border-stone-200/90 pb-2">
-            {[
-              { id: 'basic', label: 'Basic Info' },
-              {
-                id: 'sections',
-                label: `Menu Sections (${selectedMenu.sections?.length || 0})`,
-              },
-            ].map((tab) => {
-              const isActive = detailTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setDetailTab(tab.id)}
-                  className={`px-4 py-1.5 text-xs font-bold rounded-xl transition-all cursor-pointer ${
-                    isActive
-                      ? 'bg-[#8b6f4e] text-white shadow-xs'
-                      : 'bg-white text-stone-600 hover:text-stone-900 border border-stone-200/80'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* ─── SCREEN 2: MENU SECTIONS TAB ───────────────────── */}
-          {detailTab === 'sections' && (
-            <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden animate-fadeIn">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-stone-100 bg-stone-50/70 text-[10.5px] font-bold text-stone-400 uppercase tracking-wider">
-                      <th className="py-3 px-3 w-8 text-center">#</th>
-                      <th className="py-3 px-3 w-10 text-center">#</th>
-                      <th className="py-3 px-4">SECTION TITLE</th>
-                      <th className="py-3 px-4">ITEMS</th>
-                      <th className="py-3 px-4 text-right">ACTIONS</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100 text-xs">
-                    {(selectedMenu.sections?.length || 0) === 0 ? (
-                      <tr>
-                        <td colSpan="5" className="py-12 text-center text-stone-400">
-                          No sections created under this mega menu yet. Click "Add Section" above.
-                        </td>
-                      </tr>
-                    ) : (
-                      selectedMenu.sections.map((section, idx) => (
-                        <tr
-                          key={section._id || idx}
-                          className="hover:bg-[#faf9f7] transition-colors group"
-                        >
-                          {/* Drag handle */}
-                          <td className="py-3 px-3 text-center text-stone-300 group-hover:text-stone-500 cursor-grab">
-                            <HiOutlineMenuAlt2 className="w-4 h-4 mx-auto" />
-                          </td>
-
-                          {/* Index */}
-                          <td className="py-3 px-3 text-center font-mono font-bold text-stone-600">
-                            {idx + 1}
-                          </td>
-
-                          {/* Section Title with Icon */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-lg bg-[#faf5ee] border border-[#e8dac7] text-[#8b6f4e] flex items-center justify-center font-bold text-xs flex-shrink-0">
-                                {getIconComponent(section.icon, 'w-3.5 h-3.5')}
-                              </div>
-                              <span className="font-bold text-stone-900">{section.title}</span>
-                            </div>
-                          </td>
-
-                          {/* Items count */}
-                          <td className="py-3 px-4 text-stone-500 font-medium">
-                            <span className="bg-stone-50 px-2 py-0.5 rounded-md border border-stone-200/60 font-semibold text-[11px] text-stone-700">
-                              {section.items?.length || 0} items
-                            </span>
-                          </td>
-
-                          {/* Actions: Edit + Delete */}
-                          <td className="py-3 px-4 text-right">
-                            <div className="inline-flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenEditSection(section)}
-                                className="px-3 py-1 text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 rounded-lg hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer"
-                              >
-                                Edit
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteSection(section._id)}
-                                className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                                title="Delete Section"
-                              >
-                                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
+                    {isSelected && (
+                      <HiOutlineChevronRight className="w-4 h-4 text-[#8b6b47] shrink-0 ml-1.5" />
                     )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </aside>
 
-
-          {/* ─── BASIC INFO TAB ─────────────────────────────────── */}
-          {detailTab === 'basic' && (
-            <div className="bg-white rounded-2xl border border-stone-200/90 p-6 shadow-2xs space-y-4 max-w-xl animate-fadeIn">
-              <h3 className="text-sm font-bold text-stone-900">
-                Edit Menu Settings
-              </h3>
-              <div className="space-y-3 text-xs">
-                <div>
-                  <label className="font-bold text-stone-700 block mb-1">Menu Title *</label>
-                  <input
-                    type="text"
-                    value={selectedMenu.title}
-                    onChange={(e) =>
-                      setSelectedMenu((prev) => ({ ...prev, title: e.target.value }))
-                    }
-                    className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                  />
-                </div>
-
-                <div>
-                  <label className="font-bold text-stone-700 block mb-1">Target Category</label>
-                  <Dropdown
-                    size="sm"
-                    value={selectedMenu.categoryId?._id || selectedMenu.categoryId}
-                    onChange={(val) =>
-                      setSelectedMenu((prev) => ({ ...prev, categoryId: val }))
-                    }
-                    options={categoryOptions}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between pt-2">
-                  <div>
-                    <span className="font-bold text-stone-700 block">Mega Menu Behavior</span>
-                    <span className="text-[11px] text-stone-400">
-                      Show full width dropdown with sections
-                    </span>
+        {/* ── MIDDLE COLUMN: ACTIVE CATEGORY CONTENT & SECTIONS (5 of 12) ── */}
+        <main className="lg:col-span-5 space-y-4">
+          {selectedCategory ? (
+            <>
+              {/* Category Header Card with Status Switch */}
+              <div className="rounded-2xl border border-stone-200/90 bg-white p-4 shadow-xs flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-14 h-14 rounded-xl border border-stone-200/90 bg-stone-50 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                    {selectedCategory.icon?.url || selectedCategory.images?.[0]?.url ? (
+                      <img
+                        src={selectedCategory.icon?.url || selectedCategory.images?.[0]?.url}
+                        alt=""
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      <CategoryGlyph name={selectedCategory.name} className="w-7 h-7 text-[#8b6b47]" />
+                    )}
                   </div>
-                  <input
-                    type="checkbox"
-                    checked={selectedMenu.isMegaMenu}
-                    onChange={(e) =>
-                      setSelectedMenu((prev) => ({ ...prev, isMegaMenu: e.target.checked }))
-                    }
-                    className="w-4 h-4 rounded text-[#8b6f4e] accent-[#8b6f4e]"
-                  />
+                  <div className="min-w-0">
+                    <h2 className="text-base font-bold text-stone-900 tracking-tight truncate">
+                      {selectedCategory.name}
+                    </h2>
+                    <p className="mt-0.5 text-xs text-stone-400 truncate">
+                      Manage menu structure and promotional banners for this category.
+                    </p>
+                  </div>
                 </div>
 
-                <div className="pt-4 flex justify-end">
+                {/* Status Toggle Switch */}
+                <div className="flex flex-col items-end shrink-0 gap-1">
+                  <span className="text-[10px] font-semibold tracking-wider uppercase text-stone-400">
+                    Status
+                  </span>
                   <button
                     type="button"
-                    onClick={async () => {
-                      try {
-                        const res = await api.put(
-                          `/navigation-menus/${selectedMenu._id}`,
-                          selectedMenu
-                        );
-                        toast.success('Menu settings saved!');
-                        setSelectedMenu(res.data?.data || selectedMenu);
-                        fetchMenus();
-                      } catch {
-                        toast.error('Failed to save settings');
-                      }
-                    }}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl shadow-xs cursor-pointer"
+                    disabled={statusUpdating}
+                    onClick={handleToggleCategoryStatus}
+                    className="flex items-center gap-2 cursor-pointer group"
                   >
-                    Save Changes
+                    <div
+                      className={`w-11 h-6 rounded-full transition-colors p-0.5 relative ${
+                        selectedCategory.status === 'active' ? 'bg-[#8b6b47]' : 'bg-stone-300'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full bg-white shadow-xs transition-transform transform ${
+                          selectedCategory.status === 'active' ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                    <span className="text-xs font-semibold text-stone-700 w-12 text-left">
+                      {selectedCategory.status === 'active' ? 'Visible' : 'Hidden'}
+                    </span>
                   </button>
                 </div>
               </div>
-            </div>
-          )}
-        </div>
-      )}
 
-      {/* ════════════════════════════════════════════════════════════
-          SCREEN 3: ADD / EDIT MENU ITEM MODAL
-      ════════════════════════════════════════════════════════════ */}
-      {isAddMenuModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
-          onClick={() => setIsAddMenuModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-stone-200/90 space-y-5 animate-scaleUp max-h-[92vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Title & Close Button */}
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900">
-                {isEditMenuModalOpen ? 'Edit Menu Item' : 'Add Menu Item'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsAddMenuModalOpen(false)}
-                className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 cursor-pointer"
-              >
-                <HiOutlineX className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Tabs (Matches Screen 3: Menu Item Details, Link Configuration, Display Options) */}
-            <div className="flex items-center gap-2 border-b border-stone-100 pb-2">
-              {[
-                { id: 'details', label: 'Menu Item Details' },
-                { id: 'link', label: 'Link Configuration' },
-                { id: 'display', label: 'Display Options' },
-              ].map((tab) => {
-                const isActive = menuModalTab === tab.id;
-                return (
+              {/* Tab Navigation Header + Add Section Button */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-2">
+                <div className="flex items-center gap-6">
                   <button
-                    key={tab.id}
                     type="button"
-                    onClick={() => setMenuModalTab(tab.id)}
-                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-all cursor-pointer ${
-                      isActive
-                        ? 'text-[#8b6f4e] border-b-2 border-[#8b6f4e] rounded-b-none'
+                    onClick={() => setActiveTab('sections')}
+                    className={`text-xs font-semibold pb-2.5 relative transition-all cursor-pointer ${
+                      activeTab === 'sections'
+                        ? 'text-[#8b6b47] font-bold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#8b6b47]'
                         : 'text-stone-500 hover:text-stone-800'
                     }`}
                   >
-                    {tab.label}
+                    Sections & Links
                   </button>
-                );
-              })}
-            </div>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('banners')}
+                    className={`text-xs font-semibold pb-2.5 relative transition-all cursor-pointer ${
+                      activeTab === 'banners'
+                        ? 'text-[#8b6b47] font-bold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#8b6b47]'
+                        : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                  >
+                    Promo Banners ({promoBanners.length})
+                  </button>
+                </div>
 
-            {/* Form Fields: Two Columns (Exact match with Screen 3) */}
-            <form onSubmit={handleSaveMenu} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs">
-                {/* ─── LEFT COLUMN ─── */}
-                <div className="space-y-4">
-                  {/* Label * */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Label *</label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Solitaire Rings"
-                      value={menuFormData.title}
-                      onChange={(e) =>
-                        setMenuFormData((prev) => ({ ...prev, title: e.target.value }))
-                      }
-                      className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                    <p className="text-[10px] text-stone-400">
-                      This name will be shown in the navigation.
-                    </p>
-                  </div>
+                {activeTab === 'sections' && (
+                  <button
+                    type="button"
+                    onClick={openAddSectionModal}
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#8b6b47] px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#745735] transition-all cursor-pointer"
+                  >
+                    <HiOutlinePlus className="w-3.5 h-3.5" />
+                    Add Section
+                  </button>
+                )}
+              </div>
 
-                  {/* Icon (Optional) */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-700">Icon (Optional)</label>
-                    <div className="flex items-center gap-3">
-                      <div className="w-11 h-11 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center text-[#8b6f4e] shadow-2xs">
-                        {getIconComponent(menuFormData.iconName, 'w-5 h-5')}
-                      </div>
+              {/* ──────────────────────────────────────────────────────── */}
+              {/* TAB 1: SECTIONS & MENU ITEMS ACCORDION                   */}
+              {/* ──────────────────────────────────────────────────────── */}
+              {activeTab === 'sections' && (
+                <div className="space-y-3.5">
+                  {loadingContent ? (
+                    <div className="py-16 text-center text-xs text-stone-400 bg-white rounded-2xl border border-stone-200">
+                      Loading sections and links…
+                    </div>
+                  ) : sections.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center space-y-3">
+                      <p className="text-xs text-stone-500 font-medium">
+                        No sections created yet for {selectedCategory.name}.
+                      </p>
                       <button
                         type="button"
-                        onClick={() => {
-                          setIconPickerTarget('menu');
-                          setIsIconPickerOpen(true);
-                        }}
-                        className="px-3.5 py-2 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 text-xs font-semibold shadow-2xs cursor-pointer flex items-center gap-1.5"
+                        onClick={openAddSectionModal}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#8b6b47] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#745735]"
                       >
-                        <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                        <span>Change Icon</span>
+                        <HiOutlinePlus className="w-4 h-4" />
+                        Create First Section
                       </button>
                     </div>
-                    <p className="text-[10px] text-stone-400">Recommended size: 32×32px</p>
-                  </div>
+                  ) : (
+                    sections.map((section, secIdx) => {
+                      const isExpanded = expandedSections[section._id] !== false;
+                      const items = itemsBySection[section._id] || [];
+                      const isSecDragging = draggedSectionIdx === secIdx;
+                      const isSecDragOver = dragOverSectionIdx === secIdx;
 
-                  {/* Open in new tab Switch */}
-                  <div className="flex items-center gap-3 pt-1">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMenuFormData((prev) => ({
-                          ...prev,
-                          openInNewTab: !prev.openInNewTab,
-                        }))
-                      }
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer ${
-                        menuFormData.openInNewTab ? 'bg-[#8b6f4e]' : 'bg-stone-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform shadow-2xs ${
-                          menuFormData.openInNewTab ? 'translate-x-4.5' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
+                      return (
+                        <div
+                          key={section._id}
+                          onDragOver={(e) => handleSectionDragOver(e, secIdx)}
+                          onDrop={(e) => handleSectionDrop(e, secIdx)}
+                          className={`rounded-2xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
+                            isSecDragging
+                              ? 'opacity-40 border-[#8b6b47] scale-[0.99] ring-2 ring-[#8b6b47]/20 shadow-lg'
+                              : isSecDragOver
+                              ? 'border-[#8b6b47] ring-2 ring-[#8b6b47]/30 bg-[#8b6b47]/5'
+                              : 'border-stone-200/90 hover:border-stone-300'
+                          }`}
+                        >
+                          {/* Section Header Bar */}
+                          <div
+                            draggable
+                            onDragStart={(e) => handleSectionDragStart(e, secIdx)}
+                            onDragEnd={handleSectionDragEnd}
+                            className="flex items-center justify-between p-3.5 bg-stone-50/70 border-b border-stone-100 cursor-grab active:cursor-grabbing select-none hover:bg-stone-100/60 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <DragHandle />
+
+                              {/* Direct 1-Click Move Up / Down Buttons for Easy Reordering */}
+                              <div
+                                className="flex items-center bg-white border border-stone-200 rounded-lg overflow-hidden shadow-2xs shrink-0"
+                                onClick={(e) => e.stopPropagation()}
+                                onMouseDown={(e) => e.stopPropagation()}
+                              >
+                                <button
+                                  type="button"
+                                  disabled={secIdx === 0}
+                                  title="Move Section Up"
+                                  onClick={() => handleMoveSection(secIdx, secIdx - 1)}
+                                  className="p-1 text-stone-400 hover:text-[#8b6b47] hover:bg-stone-50 disabled:opacity-25 disabled:pointer-events-none transition-colors cursor-pointer"
+                                >
+                                  <HiOutlineChevronUp className="w-3.5 h-3.5" />
+                                </button>
+                                <div className="w-[1px] h-3 bg-stone-200" />
+                                <button
+                                  type="button"
+                                  disabled={secIdx === sections.length - 1}
+                                  title="Move Section Down"
+                                  onClick={() => handleMoveSection(secIdx, secIdx + 1)}
+                                  className="p-1 text-stone-400 hover:text-[#8b6b47] hover:bg-stone-50 disabled:opacity-25 disabled:pointer-events-none transition-colors cursor-pointer"
+                                >
+                                  <HiOutlineChevronDown className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+
+                              <span className="text-[10px] font-bold text-stone-400 bg-stone-200/70 px-1.5 py-0.5 rounded shrink-0">
+                                #{secIdx + 1}
+                              </span>
+
+                              <h3 className="text-xs font-bold text-stone-900 truncate">
+                                {section.title}
+                              </h3>
+                              <span className="text-[10px] font-semibold text-stone-500 bg-stone-200/60 px-2 py-0.5 rounded-full shrink-0">
+                                {items.length} items
+                              </span>
+                            </div>
+
+                            <div
+                              className="flex items-center gap-1 shrink-0"
+                              onClick={(e) => e.stopPropagation()}
+                              onMouseDown={(e) => e.stopPropagation()}
+                            >
+                              <button
+                                type="button"
+                                title="Edit Section"
+                                onClick={() => openEditSectionModal(section)}
+                                className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <HiOutlinePencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete Section"
+                                onClick={() => handleDeleteSection(section)}
+                                className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                title={isExpanded ? 'Collapse' : 'Expand'}
+                                onClick={() => toggleSectionExpand(section._id)}
+                                className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-lg transition-colors cursor-pointer ml-1"
+                              >
+                                {isExpanded ? (
+                                  <HiOutlineChevronUp className="w-4 h-4" />
+                                ) : (
+                                  <HiOutlineChevronDown className="w-4 h-4" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Section Content Area (Collapsible) */}
+                          {isExpanded && (
+                            <div className="p-3.5 space-y-3 bg-white">
+                              {/* 2-Column Grid of Menu Items */}
+                              {items.length === 0 ? (
+                                <p className="text-center py-4 text-xs text-stone-400 italic">
+                                  No menu items in this section yet.
+                                </p>
+                              ) : (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                  {items.map((item, itemIdx) => {
+                                    const isMenuOpen = activeItemMenu === item._id;
+                                    const isItemDragging =
+                                      draggedItemInfo?.sectionId === section._id &&
+                                      draggedItemInfo.itemIdx === itemIdx;
+                                    const isItemDragOver =
+                                      dragOverItemInfo?.sectionId === section._id &&
+                                      dragOverItemInfo.itemIdx === itemIdx;
+
+                                    return (
+                                      <div
+                                        key={item._id}
+                                        draggable
+                                        onDragStart={(e) => handleItemDragStart(e, section._id, itemIdx)}
+                                        onDragOver={(e) => handleItemDragOver(e, section._id, itemIdx)}
+                                        onDrop={(e) => handleItemDrop(e, section._id, itemIdx)}
+                                        onDragEnd={handleItemDragEnd}
+                                        className={`relative group rounded-xl border p-2.5 flex items-center justify-between gap-2 transition-all select-none cursor-grab active:cursor-grabbing ${
+                                          isItemDragging
+                                            ? 'opacity-40 border-[#8b6b47] scale-[0.98] ring-2 ring-[#8b6b47]/20 bg-stone-50 shadow'
+                                            : isItemDragOver
+                                            ? 'border-[#8b6b47] ring-2 ring-[#8b6b47]/30 bg-[#8b6b47]/5'
+                                            : 'border-stone-200/90 bg-white hover:border-stone-300 hover:shadow-2xs'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <DragHandle />
+
+                                          {/* Quick 1-click Up/Down for item */}
+                                          <div
+                                            className="flex flex-col -space-y-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseDown={(e) => e.stopPropagation()}
+                                          >
+                                            <button
+                                              type="button"
+                                              disabled={itemIdx === 0}
+                                              title="Move Up"
+                                              onClick={() =>
+                                                handleMoveItem(section._id, itemIdx, itemIdx - 1)
+                                              }
+                                              className="text-stone-400 hover:text-[#8b6b47] disabled:opacity-20 cursor-pointer"
+                                            >
+                                              <HiOutlineChevronUp className="w-3 h-3" />
+                                            </button>
+                                            <button
+                                              type="button"
+                                              disabled={itemIdx === items.length - 1}
+                                              title="Move Down"
+                                              onClick={() =>
+                                                handleMoveItem(section._id, itemIdx, itemIdx + 1)
+                                              }
+                                              className="text-stone-400 hover:text-[#8b6b47] disabled:opacity-20 cursor-pointer"
+                                            >
+                                              <HiOutlineChevronDown className="w-3 h-3" />
+                                            </button>
+                                          </div>
+
+                                          <span className="text-[10px] font-bold text-stone-400">
+                                            #{itemIdx + 1}
+                                          </span>
+                                          <ItemIcon iconUrl={item.icon?.url} title={item.title} />
+                                          <span className="text-xs font-semibold text-stone-800 truncate">
+                                            {item.title}
+                                          </span>
+                                        </div>
+
+                                        {/* Actions button & floating popover */}
+                                        <div
+                                          className="relative shrink-0"
+                                          onClick={(e) => e.stopPropagation()}
+                                          onMouseDown={(e) => e.stopPropagation()}
+                                        >
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              setActiveItemMenu((prev) =>
+                                                prev === item._id ? null : item._id
+                                              )
+                                            }
+                                            className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
+                                          >
+                                            <HiDotsHorizontal className="w-4 h-4" />
+                                          </button>
+
+                                          {isMenuOpen && (
+                                            <div className="absolute right-0 top-full mt-1 w-32 rounded-xl bg-white border border-stone-200 shadow-xl py-1 z-30 text-xs">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setActiveItemMenu(null);
+                                                  openEditMenuItemModal(item);
+                                                }}
+                                                className="w-full flex items-center gap-2 px-3 py-1.5 text-stone-700 hover:bg-stone-50 cursor-pointer text-left"
+                                              >
+                                                <HiOutlinePencil className="w-3.5 h-3.5 text-stone-400" />
+                                                Edit Link
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => handleDeleteMenuItem(item)}
+                                                className="w-full flex items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50 cursor-pointer text-left"
+                                              >
+                                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                                Delete
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* + Add Menu Item Button */}
+                              <button
+                                type="button"
+                                onClick={() => openAddMenuItemModal(section._id)}
+                                className="w-full py-2.5 rounded-xl border border-dashed border-stone-300 hover:border-[#8b6b47] hover:bg-[#8b6b47]/5 text-stone-600 hover:text-[#8b6b47] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                              >
+                                <HiOutlinePlus className="w-3.5 h-3.5" />
+                                Add Menu Item
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* ──────────────────────────────────────────────────────── */}
+              {/* TAB 2: PROMO BANNERS                                     */}
+              {/* ──────────────────────────────────────────────────────── */}
+              {activeTab === 'banners' && (
+                <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs space-y-4">
+                  <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-xs font-bold text-stone-700 block">Open in new tab</span>
-                      <span className="text-[10px] text-stone-400">
-                        Open link in new browser tab.
-                      </span>
+                      <h3 className="text-sm font-bold text-stone-900">
+                        Category Promotional Banners
+                      </h3>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        These image banners are showcased inside the mega-menu dropdown for{' '}
+                        {selectedCategory.name}.
+                      </p>
                     </div>
-                  </div>
-
-                  {/* Advanced Options Accordion */}
-                  <div className="pt-2 border-t border-stone-100">
                     <button
                       type="button"
-                      onClick={() =>
-                        setMenuFormData((prev) => ({
-                          ...prev,
-                          advancedOpen: !prev.advancedOpen,
-                        }))
-                      }
-                      className="text-xs font-bold text-stone-600 hover:text-stone-900 flex items-center gap-1.5 cursor-pointer"
+                      onClick={openAddBannerModal}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#8b6b47] px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#745735]"
                     >
-                      <HiOutlineChevronRight
-                        className={`w-3.5 h-3.5 transition-transform ${
-                          menuFormData.advancedOpen ? 'rotate-90' : ''
-                        }`}
-                      />
-                      <span>Advanced Options</span>
+                      <HiOutlinePlus className="w-3.5 h-3.5" />
+                      Add Banner
                     </button>
-                    {menuFormData.advancedOpen && (
-                      <div className="mt-2.5 p-3 rounded-xl bg-stone-50/70 border border-stone-200/70 space-y-2 animate-fadeIn text-[11px]">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={menuFormData.isMegaMenu}
-                            onChange={(e) =>
-                              setMenuFormData((prev) => ({
-                                ...prev,
-                                isMegaMenu: e.target.checked,
-                              }))
-                            }
-                            className="w-3.5 h-3.5 rounded text-[#8b6f4e] accent-[#8b6f4e]"
-                          />
-                          <span className="font-semibold text-stone-700">Enable Mega Menu dropdown</span>
-                        </label>
-                      </div>
-                    )}
                   </div>
+
+                  {promoBanners.length === 0 ? (
+                    <div className="text-center py-12 border border-dashed border-stone-200 rounded-xl space-y-2">
+                      <HiOutlinePhotograph className="w-8 h-8 text-stone-300 mx-auto" />
+                      <p className="text-xs text-stone-500 font-medium">No promo banners added yet.</p>
+                      <p className="text-[11px] text-stone-400">
+                        Add promotional visual cards to delight shoppers exploring this category menu.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      {promoBanners.map((banner, index) => {
+                        const img =
+                          banner.image?.url ||
+                          (typeof banner.image === 'string' ? banner.image : '');
+                        return (
+                          <div
+                            key={index}
+                            className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2.5 relative group overflow-hidden"
+                          >
+                            <div className="w-full h-28 rounded-lg bg-stone-200 overflow-hidden relative border border-stone-200">
+                              {img ? (
+                                <img src={img} alt="" className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-stone-400 text-xs">
+                                  No Image
+                                </div>
+                              )}
+                              <span
+                                className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                  banner.status === 'active'
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-stone-500 text-white'
+                                }`}
+                              >
+                                {banner.status === 'active' ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+
+                            <div>
+                              <h4 className="text-xs font-bold text-stone-900 truncate">
+                                {banner.title || 'Untitled Banner'}
+                              </h4>
+                              {banner.subtitle && (
+                                <p className="text-[11px] text-stone-500 truncate mt-0.5">
+                                  {banner.subtitle}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1 border-t border-stone-200/60">
+                              <button
+                                type="button"
+                                onClick={() => openEditBannerModal(banner, index)}
+                                className="text-xs text-[#8b6b47] hover:underline flex items-center gap-1 font-semibold"
+                              >
+                                <HiOutlinePencil className="w-3.5 h-3.5" />
+                                Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePromoBanner(index)}
+                                className="text-xs text-red-500 hover:underline flex items-center gap-1 font-semibold ml-2"
+                              >
+                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-
-                {/* ─── RIGHT COLUMN ─── */}
-                <div className="space-y-4">
-                  {/* Select Category * */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Select Category *</label>
-                    <Dropdown
-                      size="sm"
-                      value={menuFormData.categoryId || categories[0]?._id}
-                      onChange={(val) =>
-                        setMenuFormData((prev) => ({ ...prev, categoryId: val }))
-                      }
-                      options={categoryOptions}
-                      buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
-                    />
-                    <p className="text-[10px] text-stone-400">
-                      Select which category to open when clicked.
-                    </p>
-                  </div>
-
-                  {/* Parent Section * */}
-                  <div className="space-y-1">
-                    <label className="text-xs font-bold text-stone-700">Parent Section</label>
-                    <Dropdown
-                      size="sm"
-                      value={menuFormData.parentSectionId}
-                      onChange={(val) =>
-                        setMenuFormData((prev) => ({ ...prev, parentSectionId: val }))
-                      }
-                      options={[
-                        { value: '', label: 'Root Navigation Menu' },
-                        ...(selectedMenu?.sections || []).map((s) => ({
-                          value: s._id,
-                          label: s.title,
-                        })),
-                      ]}
-                      buttonClassName="h-9.5 px-3.5 text-xs rounded-xl bg-[#fdfcfb] border-stone-200"
-                    />
-                    <p className="text-[10px] text-stone-400">
-                      Choose the menu section where this item will appear.
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons (Cancel & Save Menu Item) */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddMenuModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-xs font-semibold tracking-wider text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl shadow-xs cursor-pointer"
-                >
-                  Save Menu Item
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─── ADD / EDIT SECTION MODAL ───────────────────────── */}
-      {isSectionModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
-          onClick={() => setIsSectionModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900">
-                {editingSectionId ? 'Edit Section' : 'Add Menu Section'}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsSectionModalOpen(false)}
-                className="w-8 h-8 rounded-lg border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700"
-              >
-                <HiOutlineX className="w-4 h-4" />
-              </button>
+              )}
+            </>
+          ) : (
+            <div className="py-24 text-center text-xs text-stone-400 bg-white rounded-2xl border border-stone-200">
+              Select a category on the left to manage its navigation menu.
             </div>
+          )}
+        </main>
 
-            <form onSubmit={handleSaveSection} className="space-y-3 text-xs">
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">Section Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Featured, Solitaire Rings, Wedding Bands"
-                  value={sectionFormData.title}
-                  onChange={(e) =>
-                    setSectionFormData((prev) => ({ ...prev, title: e.target.value }))
-                  }
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">Section Icon</label>
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center text-[#8b6f4e]">
-                    {getIconComponent(sectionFormData.icon, 'w-4 h-4')}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIconPickerTarget('section');
-                      setIsIconPickerOpen(true);
-                    }}
-                    className="px-3 py-1.5 rounded-xl border border-stone-200 text-stone-700 hover:bg-stone-50 font-semibold cursor-pointer"
-                  >
-                    Select Icon
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="font-bold text-stone-700 block mb-1">Sort Order</label>
-                <input
-                  type="number"
-                  value={sectionFormData.order}
-                  onChange={(e) =>
-                    setSectionFormData((prev) => ({
-                      ...prev,
-                      order: Number(e.target.value) || 1,
-                    }))
-                  }
-                  className="w-24 px-3 py-1.5 rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2.5 pt-3 border-t border-stone-100">
-                <button
-                  type="button"
-                  onClick={() => setIsSectionModalOpen(false)}
-                  className="px-4 py-2 text-stone-600 hover:bg-stone-50 rounded-xl font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl font-semibold shadow-xs"
-                >
-                  Save Section
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─── ICON PICKER MODAL ──────────────────────────────── */}
-      {isIconPickerOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
-          onClick={() => setIsIconPickerOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl max-w-sm w-full p-5 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-              <h4 className="text-sm font-bold text-stone-900">
-                Select Luxury Icon
-              </h4>
-              <button
-                type="button"
-                onClick={() => setIsIconPickerOpen(false)}
-                className="w-7 h-7 rounded-lg border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700"
-              >
-                <HiOutlineX className="w-4 h-4" />
-              </button>
+        {/* ── RIGHT COLUMN: LIVE MENU PREVIEW (4 of 12) ── */}
+        <section className="lg:col-span-4 rounded-2xl border border-stone-200/90 bg-white p-4 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
+            <div className="flex items-center gap-2">
+              <HiOutlineDesktopComputer className="w-5 h-5 text-stone-600" />
+              <h2 className="text-sm font-bold tracking-tight text-stone-900">
+                Live Menu Preview
+              </h2>
             </div>
+            <button
+              type="button"
+              title="Preview in new tab"
+              onClick={() => {
+                const url = selectedCategory?.slug
+                  ? `http://localhost:5174/shop?category=${selectedCategory.slug}`
+                  : 'http://localhost:5174';
+                window.open(url, '_blank');
+              }}
+              className="text-stone-400 hover:text-stone-700 cursor-pointer"
+            >
+              <HiOutlineExternalLink className="w-4 h-4" />
+            </button>
+          </div>
 
-            <div className="grid grid-cols-4 gap-2.5">
-              {AVAILABLE_ICONS.map((ico) => {
-                const IconComponent = ico.icon;
+          {/* Simulated Top Category Nav Bar */}
+          <div className="rounded-xl border border-stone-200/80 bg-[#22201e] px-2 py-2 overflow-x-auto shadow-inner">
+            <div className="flex items-center gap-3 text-[10px] tracking-widest font-semibold uppercase whitespace-nowrap">
+              {categories.slice(0, 6).map((c) => {
+                const isCurrent = selectedCategory?._id === c._id;
                 return (
                   <button
-                    key={ico.id}
+                    key={c._id}
                     type="button"
-                    onClick={() => {
-                      if (iconPickerTarget === 'menu') {
-                        setMenuFormData((prev) => ({ ...prev, iconName: ico.id }));
-                      } else {
-                        setSectionFormData((prev) => ({ ...prev, icon: ico.id }));
-                      }
-                      setIsIconPickerOpen(false);
-                    }}
-                    className="flex flex-col items-center justify-center p-2.5 rounded-xl border border-stone-200 hover:border-[#8b6f4e] hover:bg-[#faf5ee] transition-all cursor-pointer group"
+                    onClick={() => setSelectedCategory(c)}
+                    className={`px-2 py-1 transition-all cursor-pointer ${
+                      isCurrent
+                        ? 'text-amber-200 font-bold border-b border-amber-200'
+                        : 'text-stone-400 hover:text-white'
+                    }`}
                   >
-                    <IconComponent className="w-5 h-5 text-stone-600 group-hover:text-[#8b6f4e] mb-1" />
-                    <span className="text-[9.5px] font-medium text-stone-500 group-hover:text-stone-900 text-center truncate w-full">
-                      {ico.label}
-                    </span>
+                    {c.name}
                   </button>
                 );
               })}
             </div>
           </div>
-        </div>
-      )}
+
+          {/* Mega-Dropdown Simulated Content */}
+          <div className="rounded-xl border border-stone-200/90 bg-[#faf8f5] p-3.5 space-y-4 min-h-[480px]">
+            {sections.length === 0 ? (
+              <div className="text-center py-20 text-xs text-stone-400">
+                No sections configured yet. Add sections to see live mega-menu preview.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Column 1 & 2: Dynamic Sections & Items */}
+                <div className="space-y-4">
+                  {sections.slice(0, 3).map((sec) => {
+                    const secItems = itemsBySection[sec._id] || [];
+                    return (
+                      <div key={sec._id} className="space-y-1.5">
+                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-800 border-b border-stone-200/70 pb-1">
+                          {sec.title}
+                        </h4>
+                        <ul className="space-y-1 text-xs text-stone-600">
+                          {secItems.slice(0, 6).map((it) => (
+                            <li
+                              key={it._id}
+                              className="flex items-center gap-2 hover:text-[#8b6b47] cursor-pointer transition-colors py-0.5"
+                            >
+                              {it.icon?.url ? (
+                                <img
+                                  src={it.icon.url}
+                                  alt=""
+                                  className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
+                                />
+                              ) : (
+                                <span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" />
+                              )}
+                              <span className="truncate">{it.title}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {secItems.length > 6 && (
+                          <div className="text-[10px] font-semibold text-[#8b6b47] hover:underline cursor-pointer pt-0.5">
+                            Explore All &gt;
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Column 3: Filters & Promotional Showcase */}
+                <div className="space-y-3.5 border-l border-stone-200/60 pl-3">
+                  {/* Price & Purity Helper links */}
+                  <div className="space-y-1">
+                    <h5 className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
+                      Shop By Price
+                    </h5>
+                    <div className="text-[11px] text-stone-600 space-y-0.5">
+                      <div className="hover:text-[#8b6b47] cursor-pointer">₹50,000 - ₹1,00,000</div>
+                      <div className="hover:text-[#8b6b47] cursor-pointer">₹1,00,000 - ₹2,00,000</div>
+                      <div className="hover:text-[#8b6b47] cursor-pointer">Above ₹2,00,000</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h5 className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
+                      Shop By Metal
+                    </h5>
+                    <div className="text-[11px] text-stone-600 space-y-0.5">
+                      <div className="hover:text-[#8b6b47] cursor-pointer">14 KT Gold</div>
+                      <div className="hover:text-[#8b6b47] cursor-pointer">18 KT Gold</div>
+                      <div className="hover:text-[#8b6b47] cursor-pointer">925 Silver</div>
+                    </div>
+                  </div>
+
+                  {/* Promo Banner Cards with image overlays */}
+                  <div className="space-y-2 pt-1">
+                    {previewPromoBanners.map((promo, idx) => {
+                      const img =
+                        promo.image?.url ||
+                        (typeof promo.image === 'string' ? promo.image : '');
+                      return (
+                        <div
+                          key={idx}
+                          className="relative h-24 rounded-lg overflow-hidden border border-stone-200 shadow-2xs group cursor-pointer"
+                        >
+                          <img
+                            src={img}
+                            alt=""
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end p-2">
+                            <span className="text-[11px] font-bold text-white tracking-wide flex items-center gap-1">
+                              {promo.title} &gt;
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      </div>
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* SECTION MODAL DIALOG (CREATE / EDIT SECTION)                           */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {sectionModal.open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs cursor-pointer"
+            onClick={() => setSectionModal({ open: false, mode: 'create', data: null })}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl bg-white border border-stone-200 shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-150 cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <form onSubmit={handleSaveSection}>
+                <header className="flex items-center justify-between border-b border-stone-100 p-4 rounded-t-2xl">
+                  <h3 className="text-sm font-bold text-stone-900">
+                    {sectionModal.mode === 'create' ? 'Add Section' : 'Edit Section'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setSectionModal({ open: false, mode: 'create', data: null })
+                    }
+                    className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+                  >
+                    <HiOutlineX className="w-4 h-4" />
+                  </button>
+                </header>
+
+                <div className="p-4 space-y-3.5">
+                  <label className="block space-y-1 text-xs">
+                    <span className="font-semibold text-stone-700">Section Title *</span>
+                    <input
+                      autoFocus
+                      required
+                      type="text"
+                      placeholder="e.g. Featured, Classic Styles, Gemstone"
+                      value={sectionModal.data?.title || ''}
+                      onChange={(e) =>
+                        setSectionModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, title: e.target.value },
+                        }))
+                      }
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3 items-end">
+                    <label className="block space-y-1 text-xs">
+                      <span className="font-semibold text-stone-700">Display Order</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={sectionModal.data?.order ?? 0}
+                        onChange={(e) =>
+                          setSectionModal((prev) => ({
+                            ...prev,
+                            data: { ...prev.data, order: e.target.value },
+                          }))
+                        }
+                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                      />
+                    </label>
+
+                    <div>
+                      <Dropdown
+                        label="Visibility"
+                        value={sectionModal.data?.status || 'active'}
+                        onChange={(val) =>
+                          setSectionModal((prev) => ({
+                            ...prev,
+                            data: { ...prev.data, status: val },
+                          }))
+                        }
+                        options={[
+                          { value: 'active', label: 'Visible', dotColor: 'bg-emerald-500' },
+                          { value: 'inactive', label: 'Hidden', dotColor: 'bg-stone-400' },
+                        ]}
+                        showStatusDot
+                        size="field"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <footer className="flex items-center justify-end gap-2 border-t border-stone-100 p-4 bg-stone-50/50">
+                  <button
+                    type="button"
+                    disabled={savingModal}
+                    onClick={() =>
+                      setSectionModal({ open: false, mode: 'create', data: null })
+                    }
+                    className="px-3.5 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-200/50 rounded-xl transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingModal}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#8b6b47] hover:bg-[#745735] rounded-xl shadow-xs transition"
+                  >
+                    {savingModal ? 'Saving…' : 'Save Section'}
+                  </button>
+                </footer>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* MENU ITEM MODAL DIALOG (CREATE / EDIT ITEM)                            */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {itemModal.open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs cursor-pointer"
+            onClick={() =>
+              setItemModal({ open: false, mode: 'create', sectionId: null, data: null })
+            }
+          >
+            <div
+              className="w-full max-w-md rounded-2xl bg-white border border-stone-200 shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-150 cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <form onSubmit={handleSaveMenuItem}>
+                <header className="flex items-center justify-between border-b border-stone-100 p-4 rounded-t-2xl">
+                  <h3 className="text-sm font-bold text-stone-900">
+                    {itemModal.mode === 'create' ? 'Add Menu Item' : 'Edit Menu Item'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setItemModal({ open: false, mode: 'create', sectionId: null, data: null })
+                    }
+                    className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+                  >
+                    <HiOutlineX className="w-4 h-4" />
+                  </button>
+                </header>
+
+                <div className="p-4 space-y-3.5">
+                  <label className="block space-y-1 text-xs">
+                    <span className="font-semibold text-stone-700">Item Label *</span>
+                    <input
+                      autoFocus
+                      required
+                      type="text"
+                      placeholder="e.g. Bangles, Tennis Bracelets, Cuff Bangles"
+                      value={itemModal.data?.title || ''}
+                      onChange={(e) =>
+                        setItemModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, title: e.target.value },
+                        }))
+                      }
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                    />
+                  </label>
+
+                  <div>
+                    <Dropdown
+                      label="Parent Section"
+                      required
+                      value={itemModal.data?.menuSectionId || ''}
+                      onChange={(val) =>
+                        setItemModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, menuSectionId: val },
+                        }))
+                      }
+                      options={sections.map((sec) => ({
+                        value: sec._id,
+                        label: sec.title,
+                      }))}
+                      placeholder="Select parent section..."
+                      size="field"
+                    />
+                  </div>
+
+                  <label className="block space-y-1 text-xs">
+                    <span className="font-semibold text-stone-700">Icon Image CDN URL (optional)</span>
+                    <input
+                      type="url"
+                      placeholder="https://cdn.example.com/icons/bracelet.webp"
+                      value={itemModal.data?.iconUrl || ''}
+                      onChange={(e) =>
+                        setItemModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, iconUrl: e.target.value },
+                        }))
+                      }
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3 items-end">
+                    <label className="block space-y-1 text-xs">
+                      <span className="font-semibold text-stone-700">Display Order</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={itemModal.data?.order ?? 0}
+                        onChange={(e) =>
+                          setItemModal((prev) => ({
+                            ...prev,
+                            data: { ...prev.data, order: e.target.value },
+                          }))
+                        }
+                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                      />
+                    </label>
+
+                    <div>
+                      <Dropdown
+                        label="Visibility"
+                        value={itemModal.data?.status || 'active'}
+                        onChange={(val) =>
+                          setItemModal((prev) => ({
+                            ...prev,
+                            data: { ...prev.data, status: val },
+                          }))
+                        }
+                        options={[
+                          { value: 'active', label: 'Visible', dotColor: 'bg-emerald-500' },
+                          { value: 'inactive', label: 'Hidden', dotColor: 'bg-stone-400' },
+                        ]}
+                        showStatusDot
+                        size="field"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <footer className="flex items-center justify-end gap-2 border-t border-stone-100 p-4 bg-stone-50/50">
+                  <button
+                    type="button"
+                    disabled={savingModal}
+                    onClick={() =>
+                      setItemModal({ open: false, mode: 'create', sectionId: null, data: null })
+                    }
+                    className="px-3.5 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-200/50 rounded-xl transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingModal}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#8b6b47] hover:bg-[#745735] rounded-xl shadow-xs transition"
+                  >
+                    {savingModal ? 'Saving…' : 'Save Item'}
+                  </button>
+                </footer>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {/* PROMO BANNER MODAL DIALOG                                              */}
+      {/* ────────────────────────────────────────────────────────────────────── */}
+      {bannerModal.open &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-2xs cursor-pointer"
+            onClick={() =>
+              setBannerModal({ open: false, mode: 'create', index: null, data: null })
+            }
+          >
+            <div
+              className="w-full max-w-md rounded-2xl bg-white border border-stone-200 shadow-2xl overflow-visible animate-in fade-in zoom-in-95 duration-150 cursor-default"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <form onSubmit={handleSavePromoBanner}>
+                <header className="flex items-center justify-between border-b border-stone-100 p-4 rounded-t-2xl">
+                  <h3 className="text-sm font-bold text-stone-900">
+                    {bannerModal.mode === 'create' ? 'Add Promo Banner' : 'Edit Promo Banner'}
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setBannerModal({ open: false, mode: 'create', index: null, data: null })
+                    }
+                    className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+                  >
+                    <HiOutlineX className="w-4 h-4" />
+                  </button>
+                </header>
+
+                <div className="p-4 space-y-3.5">
+                  <label className="block space-y-1 text-xs">
+                    <span className="font-semibold text-stone-700">Banner Title *</span>
+                    <input
+                      autoFocus
+                      required
+                      type="text"
+                      placeholder="e.g. Tennis Bracelets Collection"
+                      value={bannerModal.data?.title || ''}
+                      onChange={(e) =>
+                        setBannerModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, title: e.target.value },
+                        }))
+                      }
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                    />
+                  </label>
+
+                  <label className="block space-y-1 text-xs">
+                    <span className="font-semibold text-stone-700">Subtitle (optional)</span>
+                    <input
+                      type="text"
+                      placeholder="e.g. Handcrafted in 18K Solid Gold"
+                      value={bannerModal.data?.subtitle || ''}
+                      onChange={(e) =>
+                        setBannerModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, subtitle: e.target.value },
+                        }))
+                      }
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                    />
+                  </label>
+
+                  <label className="block space-y-1 text-xs">
+                    <span className="font-semibold text-stone-700">Banner Image URL *</span>
+                    <input
+                      required
+                      type="url"
+                      placeholder="https://..."
+                      value={bannerModal.data?.imageUrl || ''}
+                      onChange={(e) =>
+                        setBannerModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, imageUrl: e.target.value },
+                        }))
+                      }
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                    />
+                  </label>
+
+                  <label className="block space-y-1 text-xs">
+                    <span className="font-semibold text-stone-700">Destination Link</span>
+                    <input
+                      type="text"
+                      placeholder="/shop?category=bangles-bracelets"
+                      value={bannerModal.data?.link || ''}
+                      onChange={(e) =>
+                        setBannerModal((prev) => ({
+                          ...prev,
+                          data: { ...prev.data, link: e.target.value },
+                        }))
+                      }
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3 items-end">
+                    <label className="block space-y-1 text-xs">
+                      <span className="font-semibold text-stone-700">Order</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={bannerModal.data?.order ?? 0}
+                        onChange={(e) =>
+                          setBannerModal((prev) => ({
+                            ...prev,
+                            data: { ...prev.data, order: e.target.value },
+                          }))
+                        }
+                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                      />
+                    </label>
+
+                    <div>
+                      <Dropdown
+                        label="Status"
+                        value={bannerModal.data?.status || 'active'}
+                        onChange={(val) =>
+                          setBannerModal((prev) => ({
+                            ...prev,
+                            data: { ...prev.data, status: val },
+                          }))
+                        }
+                        options={[
+                          { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
+                          { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
+                        ]}
+                        showStatusDot
+                        size="field"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <footer className="flex items-center justify-end gap-2 border-t border-stone-100 p-4 bg-stone-50/50">
+                  <button
+                    type="button"
+                    disabled={savingModal}
+                    onClick={() =>
+                      setBannerModal({ open: false, mode: 'create', index: null, data: null })
+                    }
+                    className="px-3.5 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-200/50 rounded-xl transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={savingModal}
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#8b6b47] hover:bg-[#745735] rounded-xl shadow-xs transition"
+                  >
+                    {savingModal ? 'Saving…' : 'Save Banner'}
+                  </button>
+                </footer>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import api from '../../api/axios';
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,6 +23,14 @@ const Header = ({ onMobileToggle }) => {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const [unreadCount, setUnreadCount] = useState(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    api.get('/notifications/unread-count', { signal: controller.signal })
+      .then((response) => setUnreadCount(response.data?.data?.count ?? null))
+      .catch(() => {});
+    return () => controller.abort();
+  }, []);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -89,15 +98,15 @@ const Header = ({ onMobileToggle }) => {
           <HiOutlineChevronDown className="w-3 h-3 text-stone-400 ml-0.5" />
         </div>
 
-        {/* Notifications with badge '2' */}
+        {/* Notifications */}
         <button
           className="relative p-2 text-stone-500 hover:text-stone-800 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-[#eee8df] cursor-pointer"
           aria-label="Notifications"
         >
           <HiOutlineBell className="w-4 h-4 sm:w-5 sm:h-5" />
-          <span className="absolute top-1 right-1 min-w-[15px] h-3.5 px-0.5 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
-            2
-          </span>
+          {unreadCount > 0 && <span className="absolute top-1 right-1 min-w-[15px] h-3.5 px-0.5 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+            {unreadCount}
+          </span>}
         </button>
 
         {/* Super Admin User info with Dropdown */}
