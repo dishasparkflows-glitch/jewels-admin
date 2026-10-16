@@ -15,6 +15,7 @@ import {
   HiOutlinePhotograph,
   HiOutlineSparkles,
   HiOutlineCheck,
+  HiOutlineExternalLink,
 } from 'react-icons/hi';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -241,6 +242,22 @@ const DynamicModuleView = () => {
   const [lookupData, setLookupData] = useState({}); // { fieldName: [{ value, label }] }
   const [uploadingField, setUploadingField] = useState(null);
 
+  const isCategoryPage = pathname === '/catalog/categories' || config.endpoint === '/categories';
+
+  // Promo Banner state for category modules
+  const [bannerFormOpen, setBannerFormOpen] = useState(false);
+  const [editingBannerIndex, setEditingBannerIndex] = useState(null);
+  const [bannerFormData, setBannerFormData] = useState({
+    title: '',
+    subtitle: '',
+    imageUrl: '',
+    key: '',
+    link: '',
+    status: 'active',
+    order: 0,
+  });
+  const [isUploadingBannerImage, setIsUploadingBannerImage] = useState(false);
+
   const handleOpenAdd = () => {
     if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
       navigate('/catalog/jewelry-products/add');
@@ -250,11 +267,13 @@ const DynamicModuleView = () => {
       navigate('/catalog/ornate-products/add');
     } else {
       setEditingRecord(null);
-      const defaults = {};
+      const defaults = isCategoryPage ? { promoBanners: [] } : {};
       (config.fields || []).forEach((f) => {
         if (f.default !== undefined) defaults[f.name] = f.default;
       });
       setFormData(defaults);
+      setBannerFormOpen(false);
+      setEditingBannerIndex(null);
       setIsModalOpen(true);
     }
   };
@@ -265,31 +284,181 @@ const DynamicModuleView = () => {
     if (config.fields) {
       config.fields.forEach((f) => {
         let val = row[f.name];
-        if (val && typeof val === 'object' && val.url) {
-          val = val.url;
+        if (val && typeof val === 'object' && val.url !== undefined) {
+          val = val.url || '';
         }
         initial[f.name] = val !== undefined ? val : (f.default || '');
       });
     }
     if (row.name && initial.name === undefined) initial.name = row.name;
     if (row.type && initial.type === undefined) initial.type = row.type;
-    if (row.icon !== undefined && initial.icon === undefined) {
-      initial.icon = typeof row.icon === 'object' ? row.icon.url : row.icon;
+    if (row.icon !== undefined) {
+      initial.icon = typeof row.icon === 'object' ? (row.icon?.url || '') : (row.icon || '');
     }
-    if (row.banner !== undefined && initial.banner === undefined) {
-      initial.banner = typeof row.banner === 'object' ? row.banner.url : row.banner;
+    if (row.banner !== undefined) {
+      initial.banner = typeof row.banner === 'object' ? (row.banner?.url || '') : (row.banner || '');
     }
+    if (Array.isArray(row.promoBanners)) {
+      initial.promoBanners = row.promoBanners.map((b, idx) => ({
+        _id: b._id,
+        title: b.title || '',
+        subtitle: b.subtitle || '',
+        image: typeof b.image === 'object' ? { url: b.image?.url || '', key: b.image?.key || '' } : { url: b.image || '', key: '' },
+        imageUrl: typeof b.image === 'object' ? (b.image?.url || '') : (b.image || ''),
+        link: b.link || b.url || '',
+        url: b.url || b.link || '',
+        status: b.status || 'active',
+        order: b.order ?? idx + 1,
+      }));
+    } else if (isCategoryPage) {
+      initial.promoBanners = [];
+    }
+    setBannerFormOpen(false);
+    setEditingBannerIndex(null);
     setFormData(initial);
     setIsModalOpen(true);
   };
 
+  const handleOpenBannerForm = (banner = null, index = null) => {
+    if (banner !== null && index !== null) {
+      setEditingBannerIndex(index);
+      setBannerFormData({
+        title: banner.title || '',
+        subtitle: banner.subtitle || '',
+        imageUrl: banner.image?.url || banner.imageUrl || (typeof banner.image === 'string' ? banner.image : '') || '',
+        key: banner.image?.key || banner.key || '',
+        link: banner.link || banner.url || '',
+        status: banner.status || 'active',
+        order: banner.order ?? index + 1,
+      });
+    } else {
+      setEditingBannerIndex(null);
+      setBannerFormData({
+        title: '',
+        subtitle: '',
+        imageUrl: '',
+        key: '',
+        link: '',
+        status: 'active',
+        order: (formData.promoBanners?.length || 0) + 1,
+      });
+    }
+    setBannerFormOpen(true);
+  };
+
+  const handleCloseBannerForm = () => {
+    setBannerFormOpen(false);
+    setEditingBannerIndex(null);
+    setBannerFormData({
+      title: '',
+      subtitle: '',
+      imageUrl: '',
+      key: '',
+      link: '',
+      status: 'active',
+      order: 0,
+    });
+  };
+
+  const handleUploadBannerImage = async (file) => {
+    if (!file) return;
+    const localPreview = URL.createObjectURL(file);
+    setBannerFormData((prev) => ({
+      ...prev,
+      imageUrl: localPreview,
+    }));
+    try {
+      setIsUploadingBannerImage(true);
+      toast.loading('Uploading banner image...', { id: 'promo-banner-upload' });
+      const { url, fileUrl, key } = await uploadWithPresignedUrl(file, 'categories');
+      const finalUrl = url || fileUrl;
+      setBannerFormData((prev) => ({
+        ...prev,
+        imageUrl: finalUrl,
+        key: key || '',
+      }));
+      toast.success('Promo banner image uploaded!', { id: 'promo-banner-upload' });
+    } catch (err) {
+      toast.error(`Image upload failed: ${err.message}`, { id: 'promo-banner-upload' });
+    } finally {
+      setIsUploadingBannerImage(false);
+    }
+  };
+
+  const handleSavePromoBannerItem = () => {
+    if (!bannerFormData.title?.trim()) {
+      return toast.error('Banner title is required');
+    }
+    const newItem = {
+      title: bannerFormData.title.trim(),
+      subtitle: (bannerFormData.subtitle || '').trim(),
+      image: {
+        url: (bannerFormData.imageUrl || '').trim(),
+        key: (bannerFormData.key || '').trim(),
+      },
+      imageUrl: (bannerFormData.imageUrl || '').trim(),
+      link: (bannerFormData.link || '').trim(),
+      url: (bannerFormData.link || '').trim(),
+      status: bannerFormData.status || 'active',
+      order: Number(bannerFormData.order || 0),
+    };
+
+    setFormData((prev) => {
+      const currentList = Array.isArray(prev.promoBanners) ? [...prev.promoBanners] : [];
+      if (editingBannerIndex !== null && editingBannerIndex >= 0) {
+        currentList[editingBannerIndex] = { ...currentList[editingBannerIndex], ...newItem };
+      } else {
+        currentList.push(newItem);
+      }
+      return { ...prev, promoBanners: currentList };
+    });
+
+    toast.success(editingBannerIndex !== null ? 'Promo banner updated' : 'Promo banner added');
+    handleCloseBannerForm();
+  };
+
+  const handleDeletePromoBannerItem = (index) => {
+    setFormData((prev) => {
+      const currentList = Array.isArray(prev.promoBanners) ? [...prev.promoBanners] : [];
+      return { ...prev, promoBanners: currentList.filter((_, i) => i !== index) };
+    });
+    toast.success('Promo banner removed');
+    if (editingBannerIndex === index) {
+      handleCloseBannerForm();
+    }
+  };
+
+  const handleTogglePromoBannerStatus = (index) => {
+    setFormData((prev) => {
+      const currentList = Array.isArray(prev.promoBanners) ? [...prev.promoBanners] : [];
+      if (currentList[index]) {
+        const nextStatus = currentList[index].status === 'inactive' ? 'active' : 'inactive';
+        currentList[index] = { ...currentList[index], status: nextStatus };
+      }
+      return { ...prev, promoBanners: currentList };
+    });
+  };
+
   const handleFileUpload = async (fieldName, file, folder = 'categories') => {
     if (!file) return;
+    const localPreview = URL.createObjectURL(file);
+    // Instant local preview so the admin sees the selected image immediately!
+    setFormData((prev) => ({
+      ...prev,
+      [fieldName]: localPreview,
+      [`${fieldName}Key`]: '',
+    }));
+
     try {
       setUploadingField(fieldName);
       toast.loading(`Uploading ${fieldName}...`, { id: `upload-${fieldName}` });
-      const { fileUrl } = await uploadWithPresignedUrl(file, folder);
-      setFormData((prev) => ({ ...prev, [fieldName]: fileUrl }));
+      const { fileUrl, key } = await uploadWithPresignedUrl(file, folder);
+      const finalUrl = fileUrl || '';
+      setFormData((prev) => ({
+        ...prev,
+        [fieldName]: finalUrl,
+        [`${fieldName}Key`]: key || '',
+      }));
       toast.success(`${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} uploaded!`, {
         id: `upload-${fieldName}`,
       });
@@ -423,11 +592,29 @@ const DynamicModuleView = () => {
 
       // Ensure proper structure for categories
       if (cleanEndpoint === '/categories') {
-        if (typeof payload.icon === 'string') {
-          payload.icon = { url: payload.icon.trim(), key: '' };
-        }
-        if (typeof payload.banner === 'string') {
-          payload.banner = { url: payload.banner.trim(), key: '' };
+        const iconVal = typeof payload.icon === 'object' ? (payload.icon?.url || '') : (payload.icon || '');
+        const iconKey = payload.iconKey || (typeof payload.icon === 'object' ? payload.icon?.key : '') || '';
+        payload.icon = { url: (iconVal || '').trim(), key: (iconKey || '').trim() };
+
+        const bannerVal = typeof payload.banner === 'object' ? (payload.banner?.url || '') : (payload.banner || '');
+        const bannerKey = payload.bannerKey || (typeof payload.banner === 'object' ? payload.banner?.key : '') || '';
+        payload.banner = { url: (bannerVal || '').trim(), key: (bannerKey || '').trim() };
+
+        delete payload.iconKey;
+        delete payload.bannerKey;
+        if (Array.isArray(payload.promoBanners)) {
+          payload.promoBanners = payload.promoBanners.map((b, idx) => ({
+            title: (b.title || '').trim(),
+            subtitle: (b.subtitle || '').trim(),
+            image: {
+              url: (typeof b.image === 'object' ? b.image?.url : b.image || b.imageUrl || '') || '',
+              key: (typeof b.image === 'object' ? b.image?.key : b.key || '') || '',
+            },
+            link: (b.link || b.url || '').trim(),
+            url: (b.url || b.link || '').trim(),
+            status: b.status || 'active',
+            order: Number(b.order ?? idx + 1),
+          }));
         }
       }
 
@@ -948,6 +1135,12 @@ const DynamicModuleView = () => {
                                 Icon ✓
                               </span>
                             )}
+                            {Array.isArray(row.promoBanners) && row.promoBanners.length > 0 && (
+                              <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200/60 text-[10px] font-medium flex items-center gap-1">
+                                <HiOutlineSparkles className="w-3 h-3 text-purple-500" />
+                                {row.promoBanners.length} Promo Banner{row.promoBanners.length > 1 ? 's' : ''}
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="py-2.5 px-3">
@@ -1007,7 +1200,7 @@ const DynamicModuleView = () => {
           }}
         >
           <div
-            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-stone-200 space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto"
+            className={`bg-white rounded-3xl ${isCategoryPage ? 'max-w-2xl' : 'max-w-lg'} w-full p-6 shadow-2xl border border-stone-200 space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
@@ -1036,156 +1229,186 @@ const DynamicModuleView = () => {
                 <div key={field.name} className="space-y-1">
                   {/* Category Banner Option */}
                   {field.type === 'banner' ? (
-                    <div className="space-y-2 p-3.5 bg-stone-50/80 rounded-2xl border border-stone-200/80">
-                      <div className="flex items-center gap-1.5">
-                        <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
-                        <span className="text-xs font-bold text-stone-900">
-                          {field.label}
-                        </span>
-                      </div>
+                    (() => {
+                      const bannerVal = formData[field.name];
+                      const bannerUrl = typeof bannerVal === 'object' ? (bannerVal?.url || '') : (bannerVal || '');
+                      const hasBanner = Boolean(bannerUrl && typeof bannerUrl === 'string' && bannerUrl.trim().length > 0);
 
-                      <div className="space-y-2 pt-1">
-                        {formData[field.name] ? (
-                          <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
-                            <img
-                              src={getMediaUrl(
-                                typeof formData[field.name] === 'object'
-                                  ? formData[field.name].url
-                                  : formData[field.name]
-                              )}
-                              alt="Banner preview"
-                              className="w-full h-28 object-cover"
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                              <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
-                                <HiOutlineUpload className="w-3.5 h-3.5" />
-                                <span>Change</span>
+                      return (
+                        <div className="space-y-2 p-3.5 bg-stone-50/80 rounded-2xl border border-stone-200/80">
+                          <div className="flex items-center gap-1.5">
+                            <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                            <span className="text-xs font-bold text-stone-900">
+                              {field.label}
+                            </span>
+                          </div>
+
+                          <div className="space-y-2 pt-1">
+                            {hasBanner ? (
+                              <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
+                                <img
+                                  key={bannerUrl}
+                                  src={getMediaUrl(bannerUrl)}
+                                  alt="Banner preview"
+                                  className="w-full h-28 object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                  onLoad={(e) => {
+                                    e.currentTarget.style.display = 'block';
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                  <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
+                                    <HiOutlineUpload className="w-3.5 h-3.5" />
+                                    <span>Change</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          handleFileUpload(field.name, file, 'categories');
+                                          e.target.value = '';
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setFormData((prev) => ({ ...prev, [field.name]: '' }))
+                                    }
+                                    className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
+                                  >
+                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                    <span>Remove</span>
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <label
+                                className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                                  uploadingField === field.name
+                                    ? 'border-[#8b6f4e] bg-[#faf5ed]'
+                                    : 'border-stone-200 bg-white hover:border-[#8b6f4e] hover:bg-[#fcfaf7]'
+                                }`}
+                              >
                                 <input
                                   type="file"
                                   accept="image/*"
                                   className="hidden"
+                                  disabled={uploadingField === field.name}
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
-                                    if (file) handleFileUpload(field.name, file, 'categories');
+                                    if (file) {
+                                      handleFileUpload(field.name, file, 'categories');
+                                      e.target.value = '';
+                                    }
                                   }}
                                 />
+                                {uploadingField === field.name ? (
+                                  <>
+                                    <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                    <span className="text-[11px] font-semibold text-[#8b6f4e]">
+                                      Uploading banner...
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <HiOutlineUpload className="w-5 h-5 text-stone-400 group-hover:text-[#8b6f4e]" />
+                                    <span className="text-xs font-semibold text-stone-700">
+                                      Click to upload category banner
+                                    </span>
+                                  </>
+                                )}
                               </label>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()
+                  ) : field.type === 'icon' ? (
+                    /* Category Icon Field with Instant Preview */
+                    (() => {
+                      const iconVal = formData[field.name];
+                      const iconUrl = typeof iconVal === 'object' ? (iconVal?.url || '') : (iconVal || '');
+                      const hasIcon = Boolean(iconUrl && typeof iconUrl === 'string' && iconUrl.trim().length > 0);
+
+                      return (
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                            <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                            <span>{field.label}</span>
+                          </label>
+
+                          <div className="flex items-center gap-3">
+                            {/* Visual Icon Preview Box */}
+                            <div className="w-12 h-12 rounded-xl border border-stone-200 bg-[#fdfcfb] flex items-center justify-center shrink-0 overflow-hidden shadow-2xs relative">
+                              {uploadingField === field.name ? (
+                                <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                              ) : hasIcon ? (
+                                <img
+                                  key={iconUrl}
+                                  src={getMediaUrl(iconUrl)}
+                                  alt="Category Icon"
+                                  className="w-full h-full object-contain p-1.5"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                  onLoad={(e) => {
+                                    e.currentTarget.style.display = 'block';
+                                  }}
+                                />
+                              ) : (
+                                <HiOutlineSparkles className="w-5 h-5 text-stone-300" />
+                              )}
+                            </div>
+
+                            {/* Upload button for icon */}
+                            <label className="flex-1 py-2.5 px-4 bg-stone-50 hover:bg-stone-100 border border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-xl text-stone-700 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs font-semibold shadow-2xs">
+                              {uploadingField === field.name ? (
+                                <>
+                                  <div className="w-3.5 h-3.5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                  <span className="text-[#8b6f4e]">Uploading icon...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <HiOutlineUpload className="w-4 h-4 text-stone-500" />
+                                  <span>{hasIcon ? 'Change Category Icon' : 'Upload Category Icon'}</span>
+                                </>
+                              )}
+                              <input
+                                type="file"
+                                accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                                className="hidden"
+                                disabled={uploadingField === field.name}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    handleFileUpload(field.name, file, 'categories');
+                                    e.target.value = '';
+                                  }
+                                }}
+                              />
+                            </label>
+
+                            {/* Clear Button */}
+                            {hasIcon && (
                               <button
                                 type="button"
-                                onClick={() =>
-                                  setFormData((prev) => ({ ...prev, [field.name]: '' }))
-                                }
-                                className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
+                                onClick={() => setFormData((prev) => ({ ...prev, [field.name]: '' }))}
+                                className="p-2.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-stone-200"
+                                title="Clear Icon"
                               >
-                                <HiOutlineTrash className="w-3.5 h-3.5" />
-                                <span>Remove</span>
+                                <HiOutlineX className="w-4 h-4" />
                               </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <label
-                            className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                              uploadingField === field.name
-                                ? 'border-[#8b6f4e] bg-[#faf5ed]'
-                                : 'border-stone-200 bg-white hover:border-[#8b6f4e] hover:bg-[#fcfaf7]'
-                            }`}
-                          >
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              disabled={uploadingField === field.name}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleFileUpload(field.name, file, 'categories');
-                              }}
-                            />
-                            {uploadingField === field.name ? (
-                              <>
-                                <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
-                                <span className="text-[11px] font-semibold text-[#8b6f4e]">
-                                  Uploading banner...
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <HiOutlineUpload className="w-5 h-5 text-stone-400 group-hover:text-[#8b6f4e]" />
-                                <span className="text-xs font-semibold text-stone-700">
-                                  Click to upload category banner
-                                </span>
-                              </>
                             )}
-                          </label>
-                        )}
-                      </div>
-                    </div>
-                  ) : field.type === 'icon' ? (
-                    /* Category Icon Field */
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                        <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                        <span>{field.label}</span>
-                      </label>
-
-                      <div className="flex items-center gap-3">
-                        {/* Visual Icon Preview Box */}
-                        <div className="w-11 h-11 rounded-xl border border-stone-200 bg-[#fdfcfb] flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
-                          {formData[field.name] ? (
-                            <img
-                              src={getMediaUrl(
-                                typeof formData[field.name] === 'object'
-                                  ? formData[field.name].url
-                                  : formData[field.name]
-                              )}
-                              alt="Icon"
-                              className="w-7 h-7 object-contain"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
-                          ) : (
-                            <HiOutlineSparkles className="w-4 h-4 text-stone-300" />
-                          )}
+                          </div>
                         </div>
-
-                        {/* Upload button for icon */}
-                        <label className="flex-1 py-2.5 px-4 bg-stone-50 hover:bg-stone-100 border border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-xl text-stone-700 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs font-semibold shadow-2xs">
-                          {uploadingField === field.name ? (
-                            <>
-                              <div className="w-3.5 h-3.5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
-                              <span className="text-[#8b6f4e]">Uploading icon...</span>
-                            </>
-                          ) : (
-                            <>
-                              <HiOutlineUpload className="w-4 h-4 text-stone-500" />
-                              <span>{formData[field.name] ? 'Change Category Icon' : 'Upload Category Icon'}</span>
-                            </>
-                          )}
-                          <input
-                            type="file"
-                            accept="image/png, image/jpeg, image/svg+xml, image/webp"
-                            className="hidden"
-                            disabled={uploadingField === field.name}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleFileUpload(field.name, file, 'categories');
-                            }}
-                          />
-                        </label>
-
-                        {/* Clear Button */}
-                        {formData[field.name] && (
-                          <button
-                            type="button"
-                            onClick={() => setFormData((prev) => ({ ...prev, [field.name]: '' }))}
-                            className="p-2.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-stone-200"
-                            title="Clear Icon"
-                          >
-                            <HiOutlineX className="w-4 h-4" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
+                      );
+                    })()
                   ) : (
                     <div className="space-y-1.5">
                       <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
@@ -1229,6 +1452,342 @@ const DynamicModuleView = () => {
                   )}
                 </div>
               ))}
+
+              {/* Category Promo Banners Section (Upload & Display) */}
+              {isCategoryPage && (
+                <div className="space-y-3 p-4 bg-gradient-to-br from-[#faf7f2]/90 to-[#fdfbf7] rounded-2xl border border-[#e8d8c0]/90 shadow-2xs">
+                  {/* Header */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-lg bg-[#8b6f4e]/10 flex items-center justify-center text-[#8b6f4e]">
+                        <HiOutlineSparkles className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <span className="text-xs font-bold text-stone-900 block leading-tight">
+                          Promo Banners
+                        </span>
+                        <span className="text-[10px] text-stone-500 block">
+                          Highlight offers & collections for this category
+                        </span>
+                      </div>
+                      <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#8b6f4e] border border-[#e8d8c0] shadow-2xs">
+                        {(formData.promoBanners || []).length}
+                      </span>
+                    </div>
+
+                    {!bannerFormOpen && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenBannerForm()}
+                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#faf5ed] border border-[#e8d8c0] text-[#8b6f4e] text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                      >
+                        <HiOutlinePlus className="w-3.5 h-3.5" />
+                        <span>Add Promo Banner</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Banner Add/Edit Form */}
+                  {bannerFormOpen && (
+                    <div className="bg-white rounded-xl border border-[#d6cfc2] p-4 shadow-sm space-y-3 animate-in fade-in duration-150">
+                      <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                        <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                          <HiOutlinePhotograph className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                          <span>{editingBannerIndex !== null ? 'Edit Promo Banner' : 'New Promo Banner'}</span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleCloseBannerForm}
+                          className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+                        >
+                          <HiOutlineX className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Image Upload Box */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-stone-700 block">
+                          Banner Image <span className="text-stone-400 font-normal">(R2 Presigned Upload)</span>
+                        </label>
+                        {bannerFormData.imageUrl ? (
+                          <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
+                            <img
+                              src={getMediaUrl(bannerFormData.imageUrl)}
+                              alt="Promo banner preview"
+                              className="w-full h-24 object-cover"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src =
+                                  'https://placehold.co/600x200/f5efe6/8b6f4e?text=Banner+Preview';
+                              }}
+                            />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                              <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
+                                <HiOutlineUpload className="w-3.5 h-3.5" />
+                                <span>Change Image</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={isUploadingBannerImage}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleUploadBannerImage(file);
+                                  }}
+                                />
+                              </label>
+                              <button
+                                type="button"
+                                onClick={() => setBannerFormData((prev) => ({ ...prev, imageUrl: '', key: '' }))}
+                                className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
+                              >
+                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                <span>Remove</span>
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label
+                            className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                              isUploadingBannerImage
+                                ? 'border-[#8b6f4e] bg-[#faf5ed]'
+                                : 'border-stone-200 bg-stone-50/50 hover:border-[#8b6f4e] hover:bg-white'
+                            }`}
+                          >
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              disabled={isUploadingBannerImage}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleUploadBannerImage(file);
+                              }}
+                            />
+                            {isUploadingBannerImage ? (
+                              <>
+                                <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                <span className="text-[11px] font-semibold text-[#8b6f4e]">
+                                  Uploading banner to Cloudflare R2...
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <HiOutlineUpload className="w-5 h-5 text-stone-400" />
+                                <span className="text-xs font-semibold text-stone-700">
+                                  Click to upload banner image
+                                </span>
+                                <span className="text-[10px] text-stone-400">
+                                  PNG, JPG, WEBP (stored in Cloudflare R2)
+                                </span>
+                              </>
+                            )}
+                          </label>
+                        )}
+                      </div>
+
+                      {/* Inputs Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-stone-700">
+                            Title <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Tennis Bracelets Collection"
+                            value={bannerFormData.title}
+                            onChange={(e) =>
+                              setBannerFormData((prev) => ({ ...prev, title: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-stone-700">
+                            Subtitle (optional)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Handcrafted in 18K Solid Gold"
+                            value={bannerFormData.subtitle}
+                            onChange={(e) =>
+                              setBannerFormData((prev) => ({ ...prev, subtitle: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-stone-700">
+                            Link / URL
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. /catalog/jewelry-products or https://..."
+                            value={bannerFormData.link}
+                            onChange={(e) =>
+                              setBannerFormData((prev) => ({ ...prev, link: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-stone-700">Status</label>
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setBannerFormData((prev) => ({ ...prev, status: 'active' }))
+                              }
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                bannerFormData.status === 'active'
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                              }`}
+                            >
+                              Active
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setBannerFormData((prev) => ({ ...prev, status: 'inactive' }))
+                              }
+                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                                bannerFormData.status === 'inactive'
+                                  ? 'bg-stone-700 text-white shadow-2xs'
+                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                              }`}
+                            >
+                              Inactive
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Banner Form Actions */}
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+                        <button
+                          type="button"
+                          onClick={handleCloseBannerForm}
+                          className="px-3 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleSavePromoBannerItem}
+                          disabled={isUploadingBannerImage}
+                          className="px-4 py-1.5 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
+                        >
+                          {editingBannerIndex !== null ? 'Update Banner' : 'Add to Category'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Existing Banners Display List */}
+                  {!(formData.promoBanners && formData.promoBanners.length > 0) ? (
+                    !bannerFormOpen && (
+                      <div className="p-4 rounded-xl border border-dashed border-stone-200/90 text-center space-y-1.5 bg-white/70">
+                        <HiOutlinePhotograph className="w-6 h-6 text-stone-300 mx-auto" />
+                        <p className="text-xs font-semibold text-stone-600">No promo banners yet</p>
+                        <p className="text-[11px] text-stone-400">
+                          Upload promo banner cards to delight shoppers exploring this category.
+                        </p>
+                      </div>
+                    )
+                  ) : (
+                    <div className="space-y-2">
+                      {formData.promoBanners.map((banner, index) => {
+                        const bannerImg =
+                          banner.image?.url ||
+                          banner.imageUrl ||
+                          (typeof banner.image === 'string' ? banner.image : '');
+                        return (
+                          <div
+                            key={index}
+                            className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-stone-200 bg-white hover:border-[#8b6f4e]/40 shadow-2xs transition-all group"
+                          >
+                            {/* Image Thumbnail */}
+                            <div className="w-16 h-11 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden relative shrink-0">
+                              {bannerImg ? (
+                                <img
+                                  src={getMediaUrl(bannerImg)}
+                                  alt={banner.title}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src =
+                                      'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-[10px] text-stone-400">
+                                  No Img
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Details */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <h4 className="text-xs font-bold text-stone-900 truncate">
+                                  {banner.title || 'Untitled Banner'}
+                                </h4>
+                                <button
+                                  type="button"
+                                  onClick={() => handleTogglePromoBannerStatus(index)}
+                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer transition-colors ${
+                                    banner.status === 'active'
+                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                      : 'bg-stone-100 text-stone-600 border border-stone-200 hover:bg-stone-200'
+                                  }`}
+                                  title="Click to toggle status"
+                                >
+                                  {banner.status === 'active' ? 'Active' : 'Inactive'}
+                                </button>
+                              </div>
+                              {banner.subtitle && (
+                                <p className="text-[11px] text-stone-500 truncate mt-0.5">
+                                  {banner.subtitle}
+                                </p>
+                              )}
+                              {(banner.link || banner.url) && (
+                                <p className="text-[10px] font-mono text-[#8b6f4e] truncate mt-0.5 flex items-center gap-1">
+                                  <HiOutlineExternalLink className="w-3 h-3 shrink-0" />
+                                  <span>{banner.link || banner.url}</span>
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenBannerForm(banner, index)}
+                                className="p-1.5 text-stone-500 hover:text-[#8b6f4e] hover:bg-[#faf5ed] rounded-lg transition-colors cursor-pointer"
+                                title="Edit banner"
+                              >
+                                <HiOutlinePencil className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeletePromoBannerItem(index)}
+                                className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                title="Delete banner"
+                              >
+                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-100">
                 <button
@@ -1429,11 +1988,55 @@ const DynamicModuleView = () => {
 
               {/* Promo Banners */}
               {(Array.isArray(viewingRecord.promoBanners) && viewingRecord.promoBanners.length > 0) && (
-                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
-                  <span className="text-stone-400 font-medium">Promo Banners</span>
-                  <span className="font-medium text-stone-800">
-                    {viewingRecord.promoBanners.map(p => p.title || 'Banner').join(', ')}
-                  </span>
+                <div className="space-y-2 py-3 border-b border-stone-200/50">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                      <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                      <span>Category Promo Banners</span>
+                    </span>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#faf5ed] text-[#8b6f4e] border border-[#e8d8c0]">
+                      {viewingRecord.promoBanners.length} Banner{viewingRecord.promoBanners.length > 1 ? 's' : ''}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2 pt-1">
+                    {viewingRecord.promoBanners.map((p, idx) => {
+                      const pImg = p.image?.url || p.url || (typeof p.image === 'string' ? p.image : '') || '';
+                      return (
+                        <div key={idx} className="flex items-center gap-3 p-2.5 rounded-xl border border-stone-200 bg-[#faf7f2]/70">
+                          {pImg ? (
+                            <img
+                              src={getMediaUrl(pImg)}
+                              alt={p.title}
+                              className="w-16 h-11 rounded-lg object-cover border border-stone-200 shrink-0"
+                              onError={(e) => {
+                                e.currentTarget.onerror = null;
+                                e.currentTarget.src = 'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-16 h-11 rounded-lg bg-stone-200 flex items-center justify-center text-stone-400 text-xs shrink-0">
+                              No Img
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-1">
+                              <p className="text-xs font-bold text-stone-900 truncate">{p.title || 'Untitled Banner'}</p>
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${p.status === 'active' ? 'bg-emerald-100 text-emerald-800' : 'bg-stone-200 text-stone-700'}`}>
+                                {p.status || 'active'}
+                              </span>
+                            </div>
+                            {p.subtitle && <p className="text-[11px] text-stone-500 truncate">{p.subtitle}</p>}
+                            {(p.link || p.url) && (
+                              <p className="text-[10px] font-mono text-[#8b6f4e] truncate mt-0.5 flex items-center gap-1">
+                                <HiOutlineExternalLink className="w-3 h-3 shrink-0" />
+                                <span>{p.link || p.url}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 

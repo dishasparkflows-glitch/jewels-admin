@@ -12,16 +12,18 @@ export function getMediaUrl(url) {
 
   const backendBase = (api.defaults?.baseURL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
 
+  const r2Base = 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev';
+
   // If it's a proxy streaming endpoint from Cloudflare R2 (e.g. /api/upload/file/<key> or https://api.neirah.in/api/upload/file/<key>)
   if (trimmed.includes('/api/upload/file/')) {
     const key = trimmed.split('/api/upload/file/')[1];
-    return `${backendBase}/api/upload/file/${key}`;
+    return `${r2Base}/${key}`;
   }
 
   // If it's a private Cloudflare R2 S3 API URL (e.g. https://telecrm...r2.cloudflarestorage.com/<key>)
   if (trimmed.includes('r2.cloudflarestorage.com/')) {
     const key = trimmed.split('r2.cloudflarestorage.com/')[1];
-    return `${backendBase}/api/upload/file/${key}`;
+    return `${r2Base}/${key}`;
   }
 
   // If it's a relative URL (/api/upload/... or /uploads/... or /featured/...)

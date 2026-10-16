@@ -1,3 +1,5 @@
+import MenuItemSelect from '../../components/common/MenuItemSelect';
+import { selectedMenuIds } from '../../utils/menuItems';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
@@ -109,6 +111,7 @@ export default function AddJewelryProduct() {
   // Active wizard step: 1 = Basic, 2 = Variants, 3 = Specifications & Pricing, 4 = Product Media.
   const [activeStep, setActiveStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [menuItemIds, setMenuItemIds] = useState([]);
 
   // ─── Live Master Lookup Lists from Backend API ──────────
   const [puritiesList, setPuritiesList] = useState([]);
@@ -977,8 +980,8 @@ export default function AddJewelryProduct() {
     const variantRecords = Array.isArray(productRecord.variants) ? productRecord.variants : [];
     const variantRows = variantRecords.map((variant, index) => {
       const parts = String(variant.combination || '').split('/').map((part) => part.trim());
-      const purity = resolveName(variant.metalPurity || variant.metalPurityId, puritiesList) || parts[0] || '';
-      const color = resolveName(variant.metalColor || variant.metalColorId, colorOptions) || parts[1] || '';
+      const purity = resolveName(variant.metalPurityId || variant.metalPurity, puritiesList) || parts[0] || '';
+      const color = resolveName(variant.metalColorId || variant.metalColor, colorOptions) || parts[1] || '';
       return {
         id: variant._id || index + 1,
         purity,
@@ -994,7 +997,7 @@ export default function AddJewelryProduct() {
     });
     const colorRows = Array.isArray(productRecord.colorImages) ? productRecord.colorImages : [];
     const colorNames = unique([
-      ...colorRows.map((row) => resolveName(row.metalColor || row.metalColorId, colorOptions)),
+      ...colorRows.map((row) => resolveName(row.metalColorId || row.metalColor, colorOptions)),
       ...(Array.isArray(productRecord.metalColors)
         ? productRecord.metalColors.map((color) => resolveName(color, colorOptions))
         : []),
@@ -1004,7 +1007,7 @@ export default function AddJewelryProduct() {
     const videosByColor = {};
     const vtoByColor = {};
     colorRows.forEach((row) => {
-      const colorName = resolveName(row.metalColor || row.metalColorId, colorOptions);
+      const colorName = resolveName(row.metalColorId || row.metalColor, colorOptions);
       if (!colorName) return;
       const rowImages = Array.isArray(row.images) ? row.images : [];
       imagesByColor[colorName] = rowImages
@@ -1067,6 +1070,7 @@ export default function AddJewelryProduct() {
       rate: row.pricePerCarat,
     }));
     const firstCenter = centerNames[0] || {};
+    setMenuItemIds(selectedMenuIds(productRecord));
     setBasicDetails({
       title: basicInfo.title || productRecord.title || '',
       sku: basicInfo.sku || productRecord.sku || '',
@@ -1453,7 +1457,7 @@ export default function AddJewelryProduct() {
           rotation: numberValue(vto.rotation),
         });
         return [{
-          ...(color?.id || color?._id ? { metalColor: color.id || color._id } : {}),
+          ...(color?.id || color?._id ? { metalColorId: color.id || color._id } : {}),
           ...(images.length || videos.length ? { images: [...images, ...videos] } : {}),
           ...(hasVto ? {
             vtoImage: {
@@ -1535,6 +1539,9 @@ export default function AddJewelryProduct() {
         inapp: Boolean(platformVisibility.showInApp),
         inweb: Boolean(platformVisibility.showOnWeb),
         ...(categoryId ? { category: [categoryId] } : {}),
+        menuItem: menuItemIds,
+        menuItemIds: menuItemIds,
+        menuItemId: menuItemIds,
         ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
         ...(Object.keys(pricingData).length ? { pricing: pricingData } : {}),
         ...(Object.keys(specificationData).length ? { specifications: specificationData } : {}),
@@ -1804,12 +1811,20 @@ export default function AddJewelryProduct() {
                     variant="input"
                     value={basicDetails.category}
                     onChange={(val) =>
-                      setBasicDetails((prev) => ({ ...prev, category: val }))
+                      {
+                        if (val !== basicDetails.category) setMenuItemIds([]);
+                        setBasicDetails((prev) => ({ ...prev, category: val }));
+                      }
                     }
                     placeholder="Select Category"
                     options={categoryOptions}
                     className="w-full"
                   />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">Menu Items</label>
+                  <MenuItemSelect key={basicDetails.category} categoryId={basicDetails.category} value={menuItemIds} onChange={setMenuItemIds} disabled={saving} />
                 </div>
 
                 <div className="space-y-1.5">
@@ -1826,6 +1841,7 @@ export default function AddJewelryProduct() {
                       { value: 'Female', label: 'Female' },
                       { value: 'Male', label: 'Male' },
                       { value: 'Unisex', label: 'Unisex' },
+                      { value: 'Kids', label: 'Kids' },
                     ]}
                     className="w-full"
                   />

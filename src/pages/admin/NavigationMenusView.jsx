@@ -10,24 +10,71 @@ import {
   HiOutlineChevronUp,
   HiOutlineSearch,
   HiOutlineExternalLink,
+  HiOutlineEye,
   HiOutlineDesktopComputer,
   HiOutlineX,
   HiOutlinePhotograph,
   HiOutlineCheck,
   HiOutlineSparkles,
+  HiOutlineUpload,
   HiDotsHorizontal,
 } from 'react-icons/hi';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
+import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+
+// Preset luxury jewelry icons for 1-click selection
+const PRESET_ICONS = [
+  {
+    id: 'ring',
+    name: 'Ring',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#85583f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="14" r="7"/><path d="M9 4l3-2 3 2-1.5 3h-3L9 4z"/></svg>`,
+  },
+  {
+    id: 'earrings',
+    name: 'Earrings',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#85583f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="3"/><path d="M8 11v4a3 3 0 006 0v-4"/><circle cx="16" cy="8" r="3"/></svg>`,
+  },
+  {
+    id: 'pendant',
+    name: 'Pendant',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#85583f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6c4 8 12 8 16 0"/><circle cx="12" cy="16" r="3"/><path d="M12 11v2"/></svg>`,
+  },
+  {
+    id: 'bangle',
+    name: 'Bangle',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#85583f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="12" rx="9" ry="6"/><circle cx="12" cy="6" r="1.5" fill="#85583f"/></svg>`,
+  },
+  {
+    id: 'gold-bar',
+    name: 'Gold Bar',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#85583f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l4-9h10l4 9H3z"/><path d="M7 8l2-4h6l2 4"/><line x1="8" y1="12" x2="16" y2="12"/></svg>`,
+  },
+  {
+    id: 'diamond',
+    name: 'Diamond',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#85583f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12l4 7-10 11L2 10l4-7z"/><path d="M2 10h20"/><path d="M12 21L8 10l4-7 4 7-4 11z"/></svg>`,
+  },
+  {
+    id: 'sparkle',
+    name: 'Sparkle',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#85583f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l2.4 5.6L20 10l-5.6 2.4L12 18l-2.4-5.6L4 10l5.6-2.4L12 2z"/><path d="M19 17l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z"/></svg>`,
+  },
+  {
+    id: 'necklace',
+    name: 'Necklace',
+    svg: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#85583f" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8c2 9 16 9 18 0"/><path d="M8 14l4 5 4-5"/><circle cx="12" cy="19" r="1.5" fill="#85583f"/></svg>`,
+  },
+];
 
 // Reusable micro-components
 function DragHandle({ className = '', ...props }) {
   return (
     <span
       title="Drag to reorder"
-      className={`inline-flex items-center justify-center p-1 rounded hover:bg-stone-200/50 text-stone-400 hover:text-[#8b6b47] cursor-grab active:cursor-grabbing shrink-0 transition-colors ${className}`}
+      className={`inline-flex items-center justify-center p-1 rounded hover:bg-stone-200/50 text-stone-400 hover:text-[#85583f] cursor-grab active:cursor-grabbing shrink-0 transition-colors ${className}`}
       {...props}
     >
       <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
@@ -95,7 +142,7 @@ function ItemIcon({ iconUrl, title, className = 'w-7 h-7' }) {
   }
   return (
     <div className={`${className} rounded-lg border border-stone-200 bg-stone-50 text-stone-500 flex items-center justify-center shrink-0`}>
-      <CategoryGlyph name={title} className="w-4 h-4 text-[#8b6b47]" />
+      <CategoryGlyph name={title} className="w-4 h-4 text-[#85583f]" />
     </div>
   );
 }
@@ -123,6 +170,51 @@ export default function NavigationMenusView() {
   const [activeItemMenu, setActiveItemMenu] = useState(null); // ID of menu item with open popover
   const [savingModal, setSavingModal] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [isUploadingItemIcon, setIsUploadingItemIcon] = useState(false);
+  const [isUploadingBanner, setIsUploadingBanner] = useState(false);
+  const [showManualUrlInput, setShowManualUrlInput] = useState(false);
+  const itemFileInputRef = useRef(null);
+  const bannerFileInputRef = useRef(null);
+
+  async function handleUploadItemIcon(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingItemIcon(true);
+    try {
+      const res = await uploadWithPresignedUrl(file, 'navigation-icons');
+      const uploadedUrl = res.fileUrl || res.url;
+      setItemModal((prev) => ({
+        ...prev,
+        data: { ...prev.data, iconUrl: uploadedUrl },
+      }));
+      toast.success('Icon uploaded successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload icon image');
+    } finally {
+      setIsUploadingItemIcon(false);
+      if (itemFileInputRef.current) itemFileInputRef.current.value = '';
+    }
+  }
+
+  async function handleUploadBannerImage(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingBanner(true);
+    try {
+      const res = await uploadWithPresignedUrl(file, 'promo-banners');
+      const uploadedUrl = res.fileUrl || res.url;
+      setBannerModal((prev) => ({
+        ...prev,
+        data: { ...prev.data, imageUrl: uploadedUrl },
+      }));
+      toast.success('Banner image uploaded successfully');
+    } catch (err) {
+      toast.error(err.message || 'Failed to upload banner image');
+    } finally {
+      setIsUploadingBanner(false);
+      if (bannerFileInputRef.current) bannerFileInputRef.current.value = '';
+    }
+  }
 
   // Drag-and-drop & Reorder states
   const [draggedSectionIdx, setDraggedSectionIdx] = useState(null);
@@ -471,6 +563,7 @@ export default function NavigationMenusView() {
 
   // Menu Item CRUD
   function openAddMenuItemModal(sectionId) {
+    setShowManualUrlInput(false);
     const currentItems = itemsBySection[sectionId] || [];
     const nextOrder = (currentItems.length || 0) + 1;
     setItemModal({
@@ -488,6 +581,7 @@ export default function NavigationMenusView() {
   }
 
   function openEditMenuItemModal(item) {
+    setShowManualUrlInput(false);
     setItemModal({
       open: true,
       mode: 'edit',
@@ -655,26 +749,6 @@ export default function NavigationMenusView() {
     return Object.values(itemsBySection).reduce((sum, arr) => sum + (arr?.length || 0), 0);
   }, [itemsBySection]);
 
-  // Fallback demo luxury promo images for the Live Menu Preview
-  const previewPromoBanners = useMemo(() => {
-    if (promoBanners.length > 0) {
-      return promoBanners.filter((b) => b.status !== 'inactive').slice(0, 2);
-    }
-    return [
-      {
-        title: 'Tennis Bracelets',
-        image: {
-          url: 'https://images.unsplash.com/photo-1611591475806-2581f148417c?auto=format&fit=crop&w=600&q=80',
-        },
-      },
-      {
-        title: 'Mens Bracelets',
-        image: {
-          url: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=600&q=80',
-        },
-      },
-    ];
-  }, [promoBanners]);
 
   return (
     <div className="space-y-5 pb-16 text-stone-800 font-sans">
@@ -683,8 +757,8 @@ export default function NavigationMenusView() {
       {/* ────────────────────────────────────────────────────────────────────── */}
       <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-[#8b6b47]/10 text-[#8b6b47] flex items-center justify-center shrink-0 border border-[#8b6b47]/20 shadow-2xs">
-            <HiOutlineFolder className="w-6 h-6" />
+          <div className="w-11 h-11 rounded-2xl bg-[#faf6f1] text-[#85583f] flex items-center justify-center shrink-0 border border-[#eadbcc] shadow-2xs">
+            <HiOutlineFolder className="w-5 h-5" />
           </div>
           <div>
             <h1 className="text-xl font-bold tracking-tight text-stone-900">Navigation Menus</h1>
@@ -705,7 +779,7 @@ export default function NavigationMenusView() {
             }}
             className="inline-flex items-center gap-2 rounded-xl border border-stone-200/90 bg-white px-4 py-2.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 hover:border-stone-300 transition-all cursor-pointer"
           >
-            <HiOutlineExternalLink className="w-4 h-4 text-stone-400" />
+            <HiOutlineEye className="w-4 h-4 text-stone-500" />
             Preview Storefront
           </button>
 
@@ -713,7 +787,7 @@ export default function NavigationMenusView() {
             type="button"
             disabled={isSavingAll}
             onClick={handleSaveAll}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#8b6b47] px-5 py-2.5 text-xs font-semibold text-white shadow-sm hover:bg-[#745735] disabled:opacity-60 transition-all cursor-pointer"
+            className="inline-flex items-center gap-2 rounded-xl bg-[#85583f] px-5 py-2.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#724a34] disabled:opacity-60 transition-all cursor-pointer"
           >
             <HiOutlineCheck className="w-4 h-4" />
             {isSavingAll ? 'Saving Changes…' : 'Save Changes'}
@@ -722,14 +796,14 @@ export default function NavigationMenusView() {
       </header>
 
       {/* ────────────────────────────────────────────────────────────────────── */}
-      {/* 2. THREE-COLUMN WORKSPACE LAYOUT                                       */}
+      {/* 2. TWO-COLUMN WORKSPACE LAYOUT (Matches reference design)               */}
       {/* ────────────────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* ── LEFT COLUMN: CATEGORIES (3 of 12) ── */}
-        <aside className="lg:col-span-3 rounded-2xl border border-stone-200/90 bg-white p-4 shadow-xs space-y-4">
+        <aside className="lg:col-span-4 xl:col-span-3 rounded-2xl border border-stone-200/90 bg-white p-4 shadow-xs space-y-3.5">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold tracking-tight text-stone-900">Categories</h2>
-            <span className="text-[11px] font-medium text-stone-400 bg-stone-100 px-2 py-0.5 rounded-full">
+            <span className="text-[11px] font-semibold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
               {categories.length}
             </span>
           </div>
@@ -739,15 +813,15 @@ export default function NavigationMenusView() {
             <HiOutlineSearch className="w-4 h-4 text-stone-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search categories.."
+              placeholder="Search categories..."
               value={categorySearch}
               onChange={(e) => setCategorySearch(e.target.value)}
-              className="w-full rounded-xl border border-stone-200 bg-stone-50/50 pl-9 pr-3 py-2 text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#8b6b47] focus:bg-white transition-all"
+              className="w-full rounded-xl border border-stone-200 bg-stone-50/60 pl-9 pr-3 py-2 text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#85583f] focus:bg-white transition-all"
             />
           </div>
 
           {/* Categories List */}
-          <div className="space-y-1.5 max-h-[640px] overflow-y-auto pr-0.5">
+          <div className="space-y-1.5 max-h-[680px] overflow-y-auto pr-0.5">
             {loadingCategories ? (
               <div className="py-10 text-center text-xs text-stone-400">Loading categories…</div>
             ) : filteredCategories.length === 0 ? (
@@ -767,28 +841,30 @@ export default function NavigationMenusView() {
                     }}
                     className={`w-full flex items-center justify-between p-2.5 rounded-xl text-left text-xs transition-all cursor-pointer ${
                       isSelected
-                        ? 'border border-[#8b6b47]/40 bg-[#8b6b47]/5 text-stone-900 font-bold shadow-2xs'
+                        ? 'border border-[#eadbcc] bg-[#faf6f1] text-stone-900 font-bold shadow-2xs'
                         : 'border border-transparent hover:bg-stone-50/80 text-stone-700 font-medium'
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border ${
-                          isSelected ? 'border-[#8b6b47]/30 bg-white' : 'border-stone-200/80 bg-stone-50'
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border ${
+                          isSelected ? 'border-[#eadbcc] bg-white' : 'border-stone-200/80 bg-stone-50'
                         }`}
                       >
                         {iconSrc ? (
                           <img src={iconSrc} alt="" className="w-full h-full object-cover" />
                         ) : (
-                          <CategoryGlyph name={cat.name} className="w-4 h-4 text-[#8b6b47]" />
+                          <CategoryGlyph name={cat.name} className="w-4.5 h-4.5 text-[#85583f]" />
                         )}
                       </div>
                       <span className="truncate">{cat.name}</span>
                     </div>
 
-                    {isSelected && (
-                      <HiOutlineChevronRight className="w-4 h-4 text-[#8b6b47] shrink-0 ml-1.5" />
-                    )}
+                    <HiOutlineChevronRight
+                      className={`w-4 h-4 shrink-0 ml-1.5 ${
+                        isSelected ? 'text-[#85583f]' : 'text-stone-300'
+                      }`}
+                    />
                   </button>
                 );
               })
@@ -796,14 +872,14 @@ export default function NavigationMenusView() {
           </div>
         </aside>
 
-        {/* ── MIDDLE COLUMN: ACTIVE CATEGORY CONTENT & SECTIONS (5 of 12) ── */}
-        <main className="lg:col-span-5 space-y-4">
+        {/* ── RIGHT COLUMN: ACTIVE CATEGORY CONTENT (9 of 12) ── */}
+        <main className="lg:col-span-8 xl:col-span-9 space-y-4">
           {selectedCategory ? (
             <>
               {/* Category Header Card with Status Switch */}
               <div className="rounded-2xl border border-stone-200/90 bg-white p-4 shadow-xs flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-14 h-14 rounded-xl border border-stone-200/90 bg-stone-50 p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                  <div className="w-14 h-14 rounded-xl border border-stone-200 bg-white p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                     {selectedCategory.icon?.url || selectedCategory.images?.[0]?.url ? (
                       <img
                         src={selectedCategory.icon?.url || selectedCategory.images?.[0]?.url}
@@ -811,14 +887,14 @@ export default function NavigationMenusView() {
                         className="w-full h-full object-cover rounded-lg"
                       />
                     ) : (
-                      <CategoryGlyph name={selectedCategory.name} className="w-7 h-7 text-[#8b6b47]" />
+                      <CategoryGlyph name={selectedCategory.name} className="w-7 h-7 text-[#85583f]" />
                     )}
                   </div>
                   <div className="min-w-0">
-                    <h2 className="text-base font-bold text-stone-900 tracking-tight truncate">
+                    <h2 className="text-lg font-bold text-stone-900 tracking-tight truncate">
                       {selectedCategory.name}
                     </h2>
-                    <p className="mt-0.5 text-xs text-stone-400 truncate">
+                    <p className="mt-0.5 text-xs text-stone-500 truncate">
                       Manage menu structure and promotional banners for this category.
                     </p>
                   </div>
@@ -837,7 +913,7 @@ export default function NavigationMenusView() {
                   >
                     <div
                       className={`w-11 h-6 rounded-full transition-colors p-0.5 relative ${
-                        selectedCategory.status === 'active' ? 'bg-[#8b6b47]' : 'bg-stone-300'
+                        selectedCategory.status === 'active' ? 'bg-[#85583f]' : 'bg-stone-300'
                       }`}
                     >
                       <div
@@ -854,29 +930,40 @@ export default function NavigationMenusView() {
               </div>
 
               {/* Tab Navigation Header + Add Section Button */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-2">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-stone-200 pb-0">
                 <div className="flex items-center gap-6">
                   <button
                     type="button"
                     onClick={() => setActiveTab('sections')}
-                    className={`text-xs font-semibold pb-2.5 relative transition-all cursor-pointer ${
+                    className={`text-xs pb-3 pt-1 transition-all cursor-pointer ${
                       activeTab === 'sections'
-                        ? 'text-[#8b6b47] font-bold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#8b6b47]'
-                        : 'text-stone-500 hover:text-stone-800'
+                        ? 'text-stone-900 font-bold border-b-2 border-[#85583f]'
+                        : 'text-stone-500 hover:text-stone-800 font-semibold border-b-2 border-transparent'
                     }`}
                   >
-                    Sections & Links
+                    Sections & Links ({sections.length})
                   </button>
                   <button
                     type="button"
                     onClick={() => setActiveTab('banners')}
-                    className={`text-xs font-semibold pb-2.5 relative transition-all cursor-pointer ${
+                    className={`text-xs pb-3 pt-1 transition-all cursor-pointer ${
                       activeTab === 'banners'
-                        ? 'text-[#8b6b47] font-bold after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-[#8b6b47]'
-                        : 'text-stone-500 hover:text-stone-800'
+                        ? 'text-stone-900 font-bold border-b-2 border-[#85583f]'
+                        : 'text-stone-500 hover:text-stone-800 font-semibold border-b-2 border-transparent'
                     }`}
                   >
                     Promo Banners ({promoBanners.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('settings')}
+                    className={`text-xs pb-3 pt-1 transition-all cursor-pointer ${
+                      activeTab === 'settings'
+                        ? 'text-stone-900 font-bold border-b-2 border-[#85583f]'
+                        : 'text-stone-500 hover:text-stone-800 font-semibold border-b-2 border-transparent'
+                    }`}
+                  >
+                    Category Settings
                   </button>
                 </div>
 
@@ -884,7 +971,7 @@ export default function NavigationMenusView() {
                   <button
                     type="button"
                     onClick={openAddSectionModal}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#8b6b47] px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#745735] transition-all cursor-pointer"
+                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#85583f] px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#724a34] transition-all cursor-pointer mb-2"
                   >
                     <HiOutlinePlus className="w-3.5 h-3.5" />
                     Add Section
@@ -896,7 +983,7 @@ export default function NavigationMenusView() {
               {/* TAB 1: SECTIONS & MENU ITEMS ACCORDION                   */}
               {/* ──────────────────────────────────────────────────────── */}
               {activeTab === 'sections' && (
-                <div className="space-y-3.5">
+                <div className="space-y-4">
                   {loadingContent ? (
                     <div className="py-16 text-center text-xs text-stone-400 bg-white rounded-2xl border border-stone-200">
                       Loading sections and links…
@@ -909,7 +996,7 @@ export default function NavigationMenusView() {
                       <button
                         type="button"
                         onClick={openAddSectionModal}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#8b6b47] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#745735]"
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-[#85583f] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#724a34]"
                       >
                         <HiOutlinePlus className="w-4 h-4" />
                         Create First Section
@@ -927,11 +1014,11 @@ export default function NavigationMenusView() {
                           key={section._id}
                           onDragOver={(e) => handleSectionDragOver(e, secIdx)}
                           onDrop={(e) => handleSectionDrop(e, secIdx)}
-                          className={`rounded-2xl border bg-white shadow-xs overflow-hidden transition-all duration-200 ${
+                          className={`rounded-2xl border bg-white shadow-xs p-4 space-y-3.5 transition-all duration-200 ${
                             isSecDragging
-                              ? 'opacity-40 border-[#8b6b47] scale-[0.99] ring-2 ring-[#8b6b47]/20 shadow-lg'
+                              ? 'opacity-40 border-[#85583f] scale-[0.99] ring-2 ring-[#85583f]/20 shadow-lg'
                               : isSecDragOver
-                              ? 'border-[#8b6b47] ring-2 ring-[#8b6b47]/30 bg-[#8b6b47]/5'
+                              ? 'border-[#85583f] ring-2 ring-[#85583f]/30 bg-[#85583f]/5'
                               : 'border-stone-200/90 hover:border-stone-300'
                           }`}
                         >
@@ -940,52 +1027,27 @@ export default function NavigationMenusView() {
                             draggable
                             onDragStart={(e) => handleSectionDragStart(e, secIdx)}
                             onDragEnd={handleSectionDragEnd}
-                            className="flex items-center justify-between p-3.5 bg-stone-50/70 border-b border-stone-100 cursor-grab active:cursor-grabbing select-none hover:bg-stone-100/60 transition-colors"
+                            className="flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
                           >
-                            <div className="flex items-center gap-2 min-w-0">
+                            <div className="flex items-center gap-3 min-w-0">
                               <DragHandle />
 
-                              {/* Direct 1-Click Move Up / Down Buttons for Easy Reordering */}
-                              <div
-                                className="flex items-center bg-white border border-stone-200 rounded-lg overflow-hidden shadow-2xs shrink-0"
-                                onClick={(e) => e.stopPropagation()}
-                                onMouseDown={(e) => e.stopPropagation()}
-                              >
-                                <button
-                                  type="button"
-                                  disabled={secIdx === 0}
-                                  title="Move Section Up"
-                                  onClick={() => handleMoveSection(secIdx, secIdx - 1)}
-                                  className="p-1 text-stone-400 hover:text-[#8b6b47] hover:bg-stone-50 disabled:opacity-25 disabled:pointer-events-none transition-colors cursor-pointer"
-                                >
-                                  <HiOutlineChevronUp className="w-3.5 h-3.5" />
-                                </button>
-                                <div className="w-[1px] h-3 bg-stone-200" />
-                                <button
-                                  type="button"
-                                  disabled={secIdx === sections.length - 1}
-                                  title="Move Section Down"
-                                  onClick={() => handleMoveSection(secIdx, secIdx + 1)}
-                                  className="p-1 text-stone-400 hover:text-[#8b6b47] hover:bg-stone-50 disabled:opacity-25 disabled:pointer-events-none transition-colors cursor-pointer"
-                                >
-                                  <HiOutlineChevronDown className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-
-                              <span className="text-[10px] font-bold text-stone-400 bg-stone-200/70 px-1.5 py-0.5 rounded shrink-0">
-                                #{secIdx + 1}
+                              {/* Number circle badge like in reference design */}
+                              <span className="w-6 h-6 rounded-full bg-[#85583f] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs">
+                                {secIdx + 1}
                               </span>
 
-                              <h3 className="text-xs font-bold text-stone-900 truncate">
+                              <h3 className="text-sm font-bold text-stone-900 truncate">
                                 {section.title}
                               </h3>
-                              <span className="text-[10px] font-semibold text-stone-500 bg-stone-200/60 px-2 py-0.5 rounded-full shrink-0">
+
+                              <span className="text-[11px] font-medium text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full shrink-0">
                                 {items.length} items
                               </span>
                             </div>
 
                             <div
-                              className="flex items-center gap-1 shrink-0"
+                              className="flex items-center gap-1.5 shrink-0"
                               onClick={(e) => e.stopPropagation()}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
@@ -993,23 +1055,23 @@ export default function NavigationMenusView() {
                                 type="button"
                                 title="Edit Section"
                                 onClick={() => openEditSectionModal(section)}
-                                className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-lg transition-colors cursor-pointer"
+                                className="p-1.5 text-stone-400 hover:text-[#85583f] rounded-lg transition-colors cursor-pointer"
                               >
-                                <HiOutlinePencil className="w-3.5 h-3.5" />
+                                <HiOutlinePencil className="w-4 h-4" />
                               </button>
                               <button
                                 type="button"
                                 title="Delete Section"
                                 onClick={() => handleDeleteSection(section)}
-                                className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                className="p-1.5 text-red-400 hover:text-red-600 rounded-lg transition-colors cursor-pointer"
                               >
-                                <HiOutlineTrash className="w-3.5 h-3.5" />
+                                <HiOutlineTrash className="w-4 h-4" />
                               </button>
                               <button
                                 type="button"
                                 title={isExpanded ? 'Collapse' : 'Expand'}
                                 onClick={() => toggleSectionExpand(section._id)}
-                                className="p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 rounded-lg transition-colors cursor-pointer ml-1"
+                                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg transition-colors cursor-pointer"
                               >
                                 {isExpanded ? (
                                   <HiOutlineChevronUp className="w-4 h-4" />
@@ -1022,14 +1084,14 @@ export default function NavigationMenusView() {
 
                           {/* Section Content Area (Collapsible) */}
                           {isExpanded && (
-                            <div className="p-3.5 space-y-3 bg-white">
-                              {/* 2-Column Grid of Menu Items */}
+                            <div className="space-y-3 pt-1">
+                              {/* Menu Items List - Clean full-width rows */}
                               {items.length === 0 ? (
                                 <p className="text-center py-4 text-xs text-stone-400 italic">
                                   No menu items in this section yet.
                                 </p>
                               ) : (
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                <div className="divide-y divide-stone-100 border-t border-b border-stone-100">
                                   {items.map((item, itemIdx) => {
                                     const isMenuOpen = activeItemMenu === item._id;
                                     const isItemDragging =
@@ -1047,97 +1109,85 @@ export default function NavigationMenusView() {
                                         onDragOver={(e) => handleItemDragOver(e, section._id, itemIdx)}
                                         onDrop={(e) => handleItemDrop(e, section._id, itemIdx)}
                                         onDragEnd={handleItemDragEnd}
-                                        className={`relative group rounded-xl border p-2.5 flex items-center justify-between gap-2 transition-all select-none cursor-grab active:cursor-grabbing ${
+                                        className={`group flex items-center justify-between py-3 px-1 transition-all select-none cursor-grab active:cursor-grabbing ${
                                           isItemDragging
-                                            ? 'opacity-40 border-[#8b6b47] scale-[0.98] ring-2 ring-[#8b6b47]/20 bg-stone-50 shadow'
+                                            ? 'opacity-40 bg-stone-50'
                                             : isItemDragOver
-                                            ? 'border-[#8b6b47] ring-2 ring-[#8b6b47]/30 bg-[#8b6b47]/5'
-                                            : 'border-stone-200/90 bg-white hover:border-stone-300 hover:shadow-2xs'
+                                            ? 'bg-[#85583f]/5'
+                                            : 'hover:bg-stone-50/70'
                                         }`}
                                       >
-                                        <div className="flex items-center gap-2 min-w-0">
+                                        <div className="flex items-center gap-3.5 min-w-0">
                                           <DragHandle />
-
-                                          {/* Quick 1-click Up/Down for item */}
-                                          <div
-                                            className="flex flex-col -space-y-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity"
-                                            onClick={(e) => e.stopPropagation()}
-                                            onMouseDown={(e) => e.stopPropagation()}
-                                          >
-                                            <button
-                                              type="button"
-                                              disabled={itemIdx === 0}
-                                              title="Move Up"
-                                              onClick={() =>
-                                                handleMoveItem(section._id, itemIdx, itemIdx - 1)
-                                              }
-                                              className="text-stone-400 hover:text-[#8b6b47] disabled:opacity-20 cursor-pointer"
-                                            >
-                                              <HiOutlineChevronUp className="w-3 h-3" />
-                                            </button>
-                                            <button
-                                              type="button"
-                                              disabled={itemIdx === items.length - 1}
-                                              title="Move Down"
-                                              onClick={() =>
-                                                handleMoveItem(section._id, itemIdx, itemIdx + 1)
-                                              }
-                                              className="text-stone-400 hover:text-[#8b6b47] disabled:opacity-20 cursor-pointer"
-                                            >
-                                              <HiOutlineChevronDown className="w-3 h-3" />
-                                            </button>
+                                          <div className="w-8 h-8 rounded-lg border border-stone-200/80 bg-white p-0.5 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                                            {item.icon?.url ? (
+                                              <img
+                                                src={item.icon.url}
+                                                alt=""
+                                                className="w-full h-full object-cover rounded"
+                                              />
+                                            ) : (
+                                              <CategoryGlyph name={item.title} className="w-4 h-4 text-[#85583f]" />
+                                            )}
                                           </div>
-
-                                          <span className="text-[10px] font-bold text-stone-400">
-                                            #{itemIdx + 1}
-                                          </span>
-                                          <ItemIcon iconUrl={item.icon?.url} title={item.title} />
-                                          <span className="text-xs font-semibold text-stone-800 truncate">
+                                          <span className="text-xs font-medium text-stone-800 truncate">
                                             {item.title}
                                           </span>
                                         </div>
 
-                                        {/* Actions button & floating popover */}
+                                        {/* Status badge & actions */}
                                         <div
-                                          className="relative shrink-0"
+                                          className="flex items-center gap-4 shrink-0"
                                           onClick={(e) => e.stopPropagation()}
                                           onMouseDown={(e) => e.stopPropagation()}
                                         >
-                                          <button
-                                            type="button"
-                                            onClick={() =>
-                                              setActiveItemMenu((prev) =>
-                                                prev === item._id ? null : item._id
-                                              )
-                                            }
-                                            className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
+                                          <span
+                                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+                                              item.status === 'active' || !item.status
+                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                                                : 'bg-stone-100 text-stone-500 border border-stone-200'
+                                            }`}
                                           >
-                                            <HiDotsHorizontal className="w-4 h-4" />
-                                          </button>
+                                            {item.status === 'active' || !item.status ? 'Active' : 'Hidden'}
+                                          </span>
 
-                                          {isMenuOpen && (
-                                            <div className="absolute right-0 top-full mt-1 w-32 rounded-xl bg-white border border-stone-200 shadow-xl py-1 z-30 text-xs">
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  setActiveItemMenu(null);
-                                                  openEditMenuItemModal(item);
-                                                }}
-                                                className="w-full flex items-center gap-2 px-3 py-1.5 text-stone-700 hover:bg-stone-50 cursor-pointer text-left"
-                                              >
-                                                <HiOutlinePencil className="w-3.5 h-3.5 text-stone-400" />
-                                                Edit Link
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => handleDeleteMenuItem(item)}
-                                                className="w-full flex items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50 cursor-pointer text-left"
-                                              >
-                                                <HiOutlineTrash className="w-3.5 h-3.5" />
-                                                Delete
-                                              </button>
-                                            </div>
-                                          )}
+                                          <div className="relative">
+                                            <button
+                                              type="button"
+                                              onClick={() =>
+                                                setActiveItemMenu((prev) =>
+                                                  prev === item._id ? null : item._id
+                                                )
+                                              }
+                                              className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
+                                            >
+                                              <HiDotsHorizontal className="w-4 h-4" />
+                                            </button>
+
+                                            {isMenuOpen && (
+                                              <div className="absolute right-0 top-full mt-1 w-32 rounded-xl bg-white border border-stone-200 shadow-xl py-1 z-30 text-xs">
+                                                <button
+                                                  type="button"
+                                                  onClick={() => {
+                                                    setActiveItemMenu(null);
+                                                    openEditMenuItemModal(item);
+                                                  }}
+                                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-stone-700 hover:bg-stone-50 cursor-pointer text-left"
+                                                >
+                                                  <HiOutlinePencil className="w-3.5 h-3.5 text-stone-400" />
+                                                  Edit Link
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => handleDeleteMenuItem(item)}
+                                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50 cursor-pointer text-left"
+                                                >
+                                                  <HiOutlineTrash className="w-3.5 h-3.5" />
+                                                  Delete
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
                                         </div>
                                       </div>
                                     );
@@ -1149,7 +1199,7 @@ export default function NavigationMenusView() {
                               <button
                                 type="button"
                                 onClick={() => openAddMenuItemModal(section._id)}
-                                className="w-full py-2.5 rounded-xl border border-dashed border-stone-300 hover:border-[#8b6b47] hover:bg-[#8b6b47]/5 text-stone-600 hover:text-[#8b6b47] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                                className="w-full py-2.5 rounded-xl border border-dashed border-stone-200 hover:border-[#85583f] hover:bg-[#85583f]/5 text-stone-600 hover:text-[#85583f] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                               >
                                 <HiOutlinePlus className="w-3.5 h-3.5" />
                                 Add Menu Item
@@ -1181,7 +1231,7 @@ export default function NavigationMenusView() {
                     <button
                       type="button"
                       onClick={openAddBannerModal}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#8b6b47] px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#745735]"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-[#85583f] px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#724a34] cursor-pointer"
                     >
                       <HiOutlinePlus className="w-3.5 h-3.5" />
                       Add Banner
@@ -1197,7 +1247,7 @@ export default function NavigationMenusView() {
                       </p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {promoBanners.map((banner, index) => {
                         const img =
                           banner.image?.url ||
@@ -1207,7 +1257,7 @@ export default function NavigationMenusView() {
                             key={index}
                             className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2.5 relative group overflow-hidden"
                           >
-                            <div className="w-full h-28 rounded-lg bg-stone-200 overflow-hidden relative border border-stone-200">
+                            <div className="w-full h-32 rounded-lg bg-stone-200 overflow-hidden relative border border-stone-200">
                               {img ? (
                                 <img src={img} alt="" className="w-full h-full object-cover" />
                               ) : (
@@ -1241,7 +1291,7 @@ export default function NavigationMenusView() {
                               <button
                                 type="button"
                                 onClick={() => openEditBannerModal(banner, index)}
-                                className="text-xs text-[#8b6b47] hover:underline flex items-center gap-1 font-semibold"
+                                className="text-xs text-[#85583f] hover:underline flex items-center gap-1 font-semibold cursor-pointer"
                               >
                                 <HiOutlinePencil className="w-3.5 h-3.5" />
                                 Edit
@@ -1249,7 +1299,7 @@ export default function NavigationMenusView() {
                               <button
                                 type="button"
                                 onClick={() => handleDeletePromoBanner(index)}
-                                className="text-xs text-red-500 hover:underline flex items-center gap-1 font-semibold ml-2"
+                                className="text-xs text-red-500 hover:underline flex items-center gap-1 font-semibold ml-2 cursor-pointer"
                               >
                                 <HiOutlineTrash className="w-3.5 h-3.5" />
                                 Delete
@@ -1262,6 +1312,49 @@ export default function NavigationMenusView() {
                   )}
                 </div>
               )}
+
+              {/* ──────────────────────────────────────────────────────── */}
+              {/* TAB 3: CATEGORY SETTINGS                                 */}
+              {/* ──────────────────────────────────────────────────────── */}
+              {activeTab === 'settings' && (
+                <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs space-y-4">
+                  <div className="border-b border-stone-100 pb-3">
+                    <h3 className="text-sm font-bold text-stone-900">Category Settings</h3>
+                    <p className="text-xs text-stone-400 mt-0.5">
+                      Basic configuration and status for {selectedCategory.name}.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                    <div className="space-y-1">
+                      <span className="font-semibold text-stone-600">Category Name:</span>
+                      <p className="font-bold text-stone-900 text-sm">{selectedCategory.name}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="font-semibold text-stone-600">Slug:</span>
+                      <p className="font-mono text-stone-700 bg-stone-50 px-2 py-1 rounded border border-stone-200 w-fit">
+                        {selectedCategory.slug || '—'}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="font-semibold text-stone-600">Order:</span>
+                      <p className="text-stone-800 font-semibold">{selectedCategory.order ?? 0}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="font-semibold text-stone-600">Current Status:</span>
+                      <span
+                        className={`inline-block px-2 py-0.5 rounded-full font-semibold ${
+                          selectedCategory.status === 'active'
+                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
+                            : 'bg-stone-100 text-stone-600'
+                        }`}
+                      >
+                        {selectedCategory.status === 'active' ? 'Visible in store' : 'Hidden from store'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="py-24 text-center text-xs text-stone-400 bg-white rounded-2xl border border-stone-200">
@@ -1269,155 +1362,6 @@ export default function NavigationMenusView() {
             </div>
           )}
         </main>
-
-        {/* ── RIGHT COLUMN: LIVE MENU PREVIEW (4 of 12) ── */}
-        <section className="lg:col-span-4 rounded-2xl border border-stone-200/90 bg-white p-4 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-stone-100 pb-3">
-            <div className="flex items-center gap-2">
-              <HiOutlineDesktopComputer className="w-5 h-5 text-stone-600" />
-              <h2 className="text-sm font-bold tracking-tight text-stone-900">
-                Live Menu Preview
-              </h2>
-            </div>
-            <button
-              type="button"
-              title="Preview in new tab"
-              onClick={() => {
-                const url = selectedCategory?.slug
-                  ? `http://localhost:5174/shop?category=${selectedCategory.slug}`
-                  : 'http://localhost:5174';
-                window.open(url, '_blank');
-              }}
-              className="text-stone-400 hover:text-stone-700 cursor-pointer"
-            >
-              <HiOutlineExternalLink className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Simulated Top Category Nav Bar */}
-          <div className="rounded-xl border border-stone-200/80 bg-[#22201e] px-2 py-2 overflow-x-auto shadow-inner">
-            <div className="flex items-center gap-3 text-[10px] tracking-widest font-semibold uppercase whitespace-nowrap">
-              {categories.slice(0, 6).map((c) => {
-                const isCurrent = selectedCategory?._id === c._id;
-                return (
-                  <button
-                    key={c._id}
-                    type="button"
-                    onClick={() => setSelectedCategory(c)}
-                    className={`px-2 py-1 transition-all cursor-pointer ${
-                      isCurrent
-                        ? 'text-amber-200 font-bold border-b border-amber-200'
-                        : 'text-stone-400 hover:text-white'
-                    }`}
-                  >
-                    {c.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Mega-Dropdown Simulated Content */}
-          <div className="rounded-xl border border-stone-200/90 bg-[#faf8f5] p-3.5 space-y-4 min-h-[480px]">
-            {sections.length === 0 ? (
-              <div className="text-center py-20 text-xs text-stone-400">
-                No sections configured yet. Add sections to see live mega-menu preview.
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Column 1 & 2: Dynamic Sections & Items */}
-                <div className="space-y-4">
-                  {sections.slice(0, 3).map((sec) => {
-                    const secItems = itemsBySection[sec._id] || [];
-                    return (
-                      <div key={sec._id} className="space-y-1.5">
-                        <h4 className="text-[10px] font-bold uppercase tracking-wider text-stone-800 border-b border-stone-200/70 pb-1">
-                          {sec.title}
-                        </h4>
-                        <ul className="space-y-1 text-xs text-stone-600">
-                          {secItems.slice(0, 6).map((it) => (
-                            <li
-                              key={it._id}
-                              className="flex items-center gap-2 hover:text-[#8b6b47] cursor-pointer transition-colors py-0.5"
-                            >
-                              {it.icon?.url ? (
-                                <img
-                                  src={it.icon.url}
-                                  alt=""
-                                  className="w-3.5 h-3.5 rounded-full object-cover shrink-0"
-                                />
-                              ) : (
-                                <span className="w-1.5 h-1.5 rounded-full bg-stone-300 shrink-0" />
-                              )}
-                              <span className="truncate">{it.title}</span>
-                            </li>
-                          ))}
-                        </ul>
-                        {secItems.length > 6 && (
-                          <div className="text-[10px] font-semibold text-[#8b6b47] hover:underline cursor-pointer pt-0.5">
-                            Explore All &gt;
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Column 3: Filters & Promotional Showcase */}
-                <div className="space-y-3.5 border-l border-stone-200/60 pl-3">
-                  {/* Price & Purity Helper links */}
-                  <div className="space-y-1">
-                    <h5 className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
-                      Shop By Price
-                    </h5>
-                    <div className="text-[11px] text-stone-600 space-y-0.5">
-                      <div className="hover:text-[#8b6b47] cursor-pointer">₹50,000 - ₹1,00,000</div>
-                      <div className="hover:text-[#8b6b47] cursor-pointer">₹1,00,000 - ₹2,00,000</div>
-                      <div className="hover:text-[#8b6b47] cursor-pointer">Above ₹2,00,000</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-1">
-                    <h5 className="text-[9px] font-bold uppercase tracking-wider text-stone-400">
-                      Shop By Metal
-                    </h5>
-                    <div className="text-[11px] text-stone-600 space-y-0.5">
-                      <div className="hover:text-[#8b6b47] cursor-pointer">14 KT Gold</div>
-                      <div className="hover:text-[#8b6b47] cursor-pointer">18 KT Gold</div>
-                      <div className="hover:text-[#8b6b47] cursor-pointer">925 Silver</div>
-                    </div>
-                  </div>
-
-                  {/* Promo Banner Cards with image overlays */}
-                  <div className="space-y-2 pt-1">
-                    {previewPromoBanners.map((promo, idx) => {
-                      const img =
-                        promo.image?.url ||
-                        (typeof promo.image === 'string' ? promo.image : '');
-                      return (
-                        <div
-                          key={idx}
-                          className="relative h-24 rounded-lg overflow-hidden border border-stone-200 shadow-2xs group cursor-pointer"
-                        >
-                          <img
-                            src={img}
-                            alt=""
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent flex items-end p-2">
-                            <span className="text-[11px] font-bold text-white tracking-wide flex items-center gap-1">
-                              {promo.title} &gt;
-                            </span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </section>
       </div>
 
       {/* ────────────────────────────────────────────────────────────────────── */}
@@ -1464,7 +1408,7 @@ export default function NavigationMenusView() {
                           data: { ...prev.data, title: e.target.value },
                         }))
                       }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
                     />
                   </label>
 
@@ -1481,7 +1425,7 @@ export default function NavigationMenusView() {
                             data: { ...prev.data, order: e.target.value },
                           }))
                         }
-                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
                       />
                     </label>
 
@@ -1520,7 +1464,7 @@ export default function NavigationMenusView() {
                   <button
                     type="submit"
                     disabled={savingModal}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#8b6b47] hover:bg-[#745735] rounded-xl shadow-xs transition"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#85583f] hover:bg-[#724a34] rounded-xl shadow-xs transition"
                   >
                     {savingModal ? 'Saving…' : 'Save Section'}
                   </button>
@@ -1577,7 +1521,7 @@ export default function NavigationMenusView() {
                           data: { ...prev.data, title: e.target.value },
                         }))
                       }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
                     />
                   </label>
 
@@ -1601,21 +1545,122 @@ export default function NavigationMenusView() {
                     />
                   </div>
 
-                  <label className="block space-y-1 text-xs">
-                    <span className="font-semibold text-stone-700">Icon Image CDN URL (optional)</span>
-                    <input
-                      type="url"
-                      placeholder="https://cdn.example.com/icons/bracelet.webp"
-                      value={itemModal.data?.iconUrl || ''}
-                      onChange={(e) =>
-                        setItemModal((prev) => ({
-                          ...prev,
-                          data: { ...prev.data, iconUrl: e.target.value },
-                        }))
-                      }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
-                    />
-                  </label>
+                  {/* Icon / Image Upload & Preset Picker */}
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-stone-700">Icon / Thumbnail (optional)</span>
+                      {itemModal.data?.iconUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setItemModal((prev) => ({ ...prev, data: { ...prev.data, iconUrl: '' } }))}
+                          className="text-[11px] text-red-500 hover:text-red-700 font-medium cursor-pointer"
+                        >
+                          Clear Icon
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-3">
+                      {/* Top Preview & Upload Button Row */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl border border-stone-200/90 bg-white p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                          {itemModal.data?.iconUrl ? (
+                            <img
+                              src={itemModal.data.iconUrl}
+                              alt=""
+                              className="w-full h-full object-contain rounded"
+                            />
+                          ) : (
+                            <CategoryGlyph name={itemModal.data?.title || ''} className="w-6 h-6 text-[#85583f]" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <input
+                            ref={itemFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleUploadItemIcon}
+                          />
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              disabled={isUploadingItemIcon}
+                              onClick={() => itemFileInputRef.current?.click()}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                            >
+                              <HiOutlineUpload className="w-3.5 h-3.5 text-[#85583f]" />
+                              {isUploadingItemIcon ? 'Uploading…' : itemModal.data?.iconUrl ? 'Upload New Image' : 'Upload Image / Icon'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => setShowManualUrlInput((prev) => !prev)}
+                              className="text-[11px] text-stone-400 hover:text-stone-700 underline cursor-pointer"
+                            >
+                              {showManualUrlInput ? 'Hide URL' : 'Paste URL'}
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-stone-400 mt-1">
+                            Upload custom image (PNG/WEBP/SVG) or pick a preset below
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Manual URL input toggle */}
+                      {showManualUrlInput && (
+                        <input
+                          type="url"
+                          placeholder="https://pub-...r2.dev/icons/bracelet.webp"
+                          value={itemModal.data?.iconUrl || ''}
+                          onChange={(e) =>
+                            setItemModal((prev) => ({
+                              ...prev,
+                              data: { ...prev.data, iconUrl: e.target.value },
+                            }))
+                          }
+                          className="w-full rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#85583f]"
+                        />
+                      )}
+
+                      {/* Curated Jewelry Preset Icons */}
+                      <div className="pt-2 border-t border-stone-200/60">
+                        <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider block mb-1.5">
+                          Or Pick a Preset Icon:
+                        </span>
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {PRESET_ICONS.map((preset) => {
+                            const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(preset.svg)}`;
+                            const isSelected = itemModal.data?.iconUrl === dataUrl;
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() =>
+                                  setItemModal((prev) => ({
+                                    ...prev,
+                                    data: { ...prev.data, iconUrl: dataUrl },
+                                  }))
+                                }
+                                className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border text-left transition-all cursor-pointer ${
+                                  isSelected
+                                    ? 'border-[#85583f] bg-[#85583f]/10 text-[#85583f] font-bold shadow-2xs'
+                                    : 'border-stone-200 bg-white hover:bg-stone-100/70 text-stone-600'
+                                }`}
+                              >
+                                <div
+                                  className="w-4 h-4 shrink-0 flex items-center justify-center"
+                                  dangerouslySetInnerHTML={{ __html: preset.svg }}
+                                />
+                                <span className="text-[11px] truncate">{preset.name}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
 
                   <div className="grid grid-cols-2 gap-3 items-end">
                     <label className="block space-y-1 text-xs">
@@ -1630,7 +1675,7 @@ export default function NavigationMenusView() {
                             data: { ...prev.data, order: e.target.value },
                           }))
                         }
-                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
                       />
                     </label>
 
@@ -1669,7 +1714,7 @@ export default function NavigationMenusView() {
                   <button
                     type="submit"
                     disabled={savingModal}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#8b6b47] hover:bg-[#745735] rounded-xl shadow-xs transition"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#85583f] hover:bg-[#724a34] rounded-xl shadow-xs transition"
                   >
                     {savingModal ? 'Saving…' : 'Save Item'}
                   </button>
@@ -1726,7 +1771,7 @@ export default function NavigationMenusView() {
                           data: { ...prev.data, title: e.target.value },
                         }))
                       }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
                     />
                   </label>
 
@@ -1742,26 +1787,73 @@ export default function NavigationMenusView() {
                           data: { ...prev.data, subtitle: e.target.value },
                         }))
                       }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
                     />
                   </label>
 
-                  <label className="block space-y-1 text-xs">
-                    <span className="font-semibold text-stone-700">Banner Image URL *</span>
-                    <input
-                      required
-                      type="url"
-                      placeholder="https://..."
-                      value={bannerModal.data?.imageUrl || ''}
-                      onChange={(e) =>
-                        setBannerModal((prev) => ({
-                          ...prev,
-                          data: { ...prev.data, imageUrl: e.target.value },
-                        }))
-                      }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
-                    />
-                  </label>
+                  {/* Banner Image Upload & Preview */}
+                  <div className="space-y-1.5 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold text-stone-700">Banner Image *</span>
+                      {bannerModal.data?.imageUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setBannerModal((prev) => ({ ...prev, data: { ...prev.data, imageUrl: '' } }))}
+                          className="text-[11px] text-red-500 hover:text-red-700 font-medium cursor-pointer"
+                        >
+                          Clear Image
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2.5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-16 h-12 rounded-lg border border-stone-200 bg-stone-100 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
+                          {bannerModal.data?.imageUrl ? (
+                            <img src={bannerModal.data.imageUrl} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <HiOutlinePhotograph className="w-6 h-6 text-stone-300" />
+                          )}
+                        </div>
+
+                        <div className="flex-1 min-w-0">
+                          <input
+                            ref={bannerFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleUploadBannerImage}
+                          />
+                          <button
+                            type="button"
+                            disabled={isUploadingBanner}
+                            onClick={() => bannerFileInputRef.current?.click()}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                          >
+                            <HiOutlineUpload className="w-3.5 h-3.5 text-[#85583f]" />
+                            {isUploadingBanner ? 'Uploading…' : bannerModal.data?.imageUrl ? 'Replace Image' : 'Upload Banner Image'}
+                          </button>
+                          <p className="text-[10px] text-stone-400 mt-1">
+                            PNG, JPG, WEBP (up to 5MB)
+                          </p>
+                        </div>
+                      </div>
+
+                      <input
+                        required
+                        type="url"
+                        placeholder="Or enter image URL (https://...)"
+                        value={bannerModal.data?.imageUrl || ''}
+                        onChange={(e) =>
+                          setBannerModal((prev) => ({
+                            ...prev,
+                            data: { ...prev.data, imageUrl: e.target.value },
+                          }))
+                        }
+                        className="w-full rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#85583f]"
+                      />
+                    </div>
+                  </div>
 
                   <label className="block space-y-1 text-xs">
                     <span className="font-semibold text-stone-700">Destination Link</span>
@@ -1775,7 +1867,7 @@ export default function NavigationMenusView() {
                           data: { ...prev.data, link: e.target.value },
                         }))
                       }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
                     />
                   </label>
 
@@ -1792,7 +1884,7 @@ export default function NavigationMenusView() {
                             data: { ...prev.data, order: e.target.value },
                           }))
                         }
-                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#8b6b47]"
+                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
                       />
                     </label>
 
@@ -1831,7 +1923,7 @@ export default function NavigationMenusView() {
                   <button
                     type="submit"
                     disabled={savingModal}
-                    className="px-4 py-2 text-xs font-semibold text-white bg-[#8b6b47] hover:bg-[#745735] rounded-xl shadow-xs transition"
+                    className="px-4 py-2 text-xs font-semibold text-white bg-[#85583f] hover:bg-[#724a34] rounded-xl shadow-xs transition"
                   >
                     {savingModal ? 'Saving…' : 'Save Banner'}
                   </button>

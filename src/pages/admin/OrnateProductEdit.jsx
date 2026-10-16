@@ -1,3 +1,5 @@
+import MenuItemSelect from '../../components/common/MenuItemSelect';
+import { selectedMenuIds } from '../../utils/menuItems';
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
@@ -94,14 +96,13 @@ export default function OrnateProductEdit() {
 
   // Dropdown options loaded from backend
   const { categoryOptions: categories } = useCategoryLookup();
-  const [menuItems, setMenuItems] = useState([]);
 
   // ─── 1. Base Information ───────────────────────────────────
   const [baseInfo, setBaseInfo] = useState({
     title: '',
     category: '',
     categoryTag: '',
-    menuItem: '',
+    menuItem: [],
     targetGender: '',
     gstPercentage: '',
     status: 'draft',
@@ -147,6 +148,9 @@ export default function OrnateProductEdit() {
     uniqueLabelId: '',
     barcodeNumber: '',
     labelNumber: '',
+    remark: '',
+    companyCode: '',
+    carat: '',
   });
 
   // ─── 6. Ornate Images ──────────────────────────────────────
@@ -169,24 +173,13 @@ export default function OrnateProductEdit() {
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        const [menuRes, colorRes] = await Promise.allSettled([
-          api.get('/menu-items?limit=100').catch(() => ({ data: { data: [] } })),
+        const [colorRes] = await Promise.allSettled([
           api.get('/metal-colors?limit=100').catch(() =>
             api.get('/diamonds/attributes').then((r) => ({
               data: { data: r.data?.data?.metalColors || [] },
             }))
           ),
         ]);
-
-        if (menuRes.status === 'fulfilled') {
-          const rawMenus = menuRes.value.data?.data?.items || menuRes.value.data?.data || [];
-          setMenuItems(
-            rawMenus.map((m) => ({
-              value: m._id || m.id,
-              label: m.title || m.name,
-            }))
-          );
-        }
 
         if (colorRes.status === 'fulfilled') {
           const rawColors = colorRes.value.data?.data?.items || colorRes.value.data?.data || [];
@@ -221,9 +214,7 @@ export default function OrnateProductEdit() {
               ? (product.category[0]?._id || product.category[0] || '')
               : (product.category?._id || product.category || ''),
             categoryTag: (Array.isArray(product.promoBanner) && product.promoBanner[0]) || product.categoryTag || '',
-            menuItem: Array.isArray(product.menuItem)
-              ? (product.menuItem[0]?._id || product.menuItem[0] || '')
-              : (product.menuItem?._id || product.menuItem || ''),
+            menuItem: selectedMenuIds(product),
             targetGender: (Array.isArray(product.gender) && product.gender[0]) || product.gender || '',
             gstPercentage: product.gstPer ?? product.gstPercentage ?? product.pricing?.gstPercentage ?? '',
             status: product.status || 'draft',
@@ -267,9 +258,11 @@ export default function OrnateProductEdit() {
             const mediaMap = {};
             product.colorImages.forEach((ci) => {
               let colorName =
+                ci.metalColorId?.name ||
                 ci.metalColor?.name ||
                 ci.metalColorName ||
                 ci.colorName ||
+                (typeof ci.metalColorId === 'string' ? ci.metalColorId : '') ||
                 (typeof ci.metalColor === 'string' ? ci.metalColor : '');
               if (colorName?.toUpperCase() === 'SILVER') colorName = 'Silver';
               if (colorName) {
@@ -298,18 +291,22 @@ export default function OrnateProductEdit() {
 
           // Populate Classification & ERP Details
           setErpDetails({
-            customGroupName: product.customGroupName || product.groupName || '',
+            customGroupName: product.ornate?.customGroupName || product.customGroupName || product.groupName || '',
             itemName: product.itemName || product.title || '',
-            groupName: product.groupName || '',
+            groupName: product.ornate?.groupName || product.groupName || '',
             varietyName: product.varietyName || '',
-            metalName: product.metalName || product.specifications?.metalName || '',
-            uniqueLabelId: product.uniqueLabelID || product.tagNo || '',
-            barcodeNumber: product.barcodeNo || product.barcode || '',
-            labelNumber: product.labelNo || product.tagNo || '',
+            metalName: product.ornate?.metalName || product.metalName || product.specifications?.metalName || '',
+            uniqueLabelId: product.ornate?.itemCode || product.uniqueLabelID || product.tagNo || '',
+            barcodeNumber: product.ornate?.barcode || product.barcodeNo || product.barcode || '',
+            labelNumber: product.ornate?.tagNo || product.labelNo || product.tagNo || '',
+            remark: product.ornate?.remark || product.remark || product.basicInfo?.remark || '',
+            companyCode: product.ornate?.companyCode || product.companyCode || '',
+            carat: product.ornate?.carat || product.carat || product.specifications?.caratCategory || '',
           });
 
           // Populate Images
           const imgs =
+            (Array.isArray(product.ornate?.ornateImages) && product.ornate.ornateImages.length > 0 && product.ornate.ornateImages) ||
             (Array.isArray(product.ornateImages) && product.ornateImages.length > 0 && product.ornateImages) ||
             (Array.isArray(product.images) && product.images.length > 0 && product.images) ||
             [];
@@ -814,7 +811,9 @@ export default function OrnateProductEdit() {
         description: baseInfo.description || '',
         category: baseInfo.category ? [baseInfo.category] : [],
         promoBanner: baseInfo.categoryTag ? [baseInfo.categoryTag] : [],
-        menuItem: baseInfo.menuItem ? [baseInfo.menuItem] : [],
+        menuItem: baseInfo.menuItem,
+        menuItemIds: baseInfo.menuItem,
+        menuItemId: baseInfo.menuItem,
         gender: baseInfo.targetGender ? [baseInfo.targetGender] : [],
         gstPercentage: Number(baseInfo.gstPercentage) || 0,
         gstPer: Number(baseInfo.gstPercentage) || 0,
@@ -898,7 +897,6 @@ export default function OrnateProductEdit() {
           const matched = colorOptions.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
           return {
             metalColorId: matched?.id || undefined,
-            metalColor: matched?.id || undefined,
             metalColorName: cName,
             variantIcon: vData.swatchIcon ? { url: vData.swatchIcon } : undefined,
             images: (vData.media || []).map((m) => ({
@@ -920,13 +918,30 @@ export default function OrnateProductEdit() {
           mrp: Number(pricing.mrp) || Number(pricing.salePrice) || 0,
           salePrice: Number(pricing.salePrice) || 0,
           costPrice: Number(pricing.costPrice) || 0,
-          displayPrice: Number(pricing.salePrice) || 0,
+          ornatePrice: Number(pricing.ornatePrice) || Number(pricing.mrp) || Number(pricing.salePrice) || 0,
           gstPercentage: Number(baseInfo.gstPercentage) || 0,
           markupPercentage: Number(pricing.markupPercentage) || 0,
+          mrpMarkupPercentage: Number(pricing.mrpMarkupPercentage) || 0,
         },
         specifications: {
           metalWeight: Number(weights.netWeight) || 0,
         },
+        ornate: {
+          tagNo: erpDetails.labelNumber || erpDetails.uniqueLabelId || '',
+          barcode: erpDetails.barcodeNumber || '',
+          itemCode: erpDetails.uniqueLabelId || '',
+          customGroupName: erpDetails.customGroupName || '',
+          companyCode: erpDetails.companyCode || '',
+          carat: erpDetails.carat || weights.caratCategory || '',
+          groupName: erpDetails.groupName || '',
+          metalName: erpDetails.metalName || '',
+          remark: erpDetails.remark || '',
+          ornateImages: ornateImages.map((img) => ({
+            url: img.url,
+            mediaType: 'image',
+          })),
+        },
+        remark: erpDetails.remark || '',
       };
 
       if (isEditMode) {
@@ -1138,7 +1153,7 @@ export default function OrnateProductEdit() {
                   </label>
                   <Dropdown
                     value={baseInfo.category}
-                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, category: val }))}
+                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, category: val, menuItem: val === prev.category ? prev.menuItem : [] }))}
                     options={categories}
                     placeholder="Select Category"
                     size="sm"
@@ -1167,13 +1182,11 @@ export default function OrnateProductEdit() {
                   <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
                     Menu Items
                   </label>
-                  <Dropdown
+                  <MenuItemSelect
+                    key={baseInfo.category}
+                    categoryId={baseInfo.category}
                     value={baseInfo.menuItem}
-                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, menuItem: val }))}
-                    options={menuItems}
-                    placeholder="Select"
-                    size="sm"
-                    buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
+                    onChange={(value) => setBaseInfo((previous) => ({ ...previous, menuItem: value }))}
                   />
                 </div>
 
@@ -1936,6 +1949,35 @@ export default function OrnateProductEdit() {
                       setErpDetails((prev) => ({ ...prev, labelNumber: e.target.value }))
                     }
                     className="w-full h-9 px-3 text-xs font-mono rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
+                    Company Code
+                  </label>
+                  <input
+                    type="text"
+                    value={erpDetails.companyCode}
+                    onChange={(e) =>
+                      setErpDetails((prev) => ({ ...prev, companyCode: e.target.value }))
+                    }
+                    className="w-full h-9 px-3 text-xs font-mono rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+                  />
+                </div>
+
+                <div className="space-y-1 sm:col-span-2 lg:col-span-4">
+                  <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
+                    ERP Remark / Notes
+                  </label>
+                  <input
+                    type="text"
+                    value={erpDetails.remark}
+                    onChange={(e) =>
+                      setErpDetails((prev) => ({ ...prev, remark: e.target.value }))
+                    }
+                    placeholder="Enter remark or ERP notes..."
+                    className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
                   />
                 </div>
               </div>
