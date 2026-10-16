@@ -391,7 +391,7 @@ export default function HomeSectionsView() {
       productId: it.productId,
       title: it.title,
       subtitle: it.subtitle,
-      thumbnail: it.imageUrl,
+      thumbnail: it.image?.url || it.imageUrl,
       sku: it.sku || '',
       price: it.price || 0,
       productType: it.productType || '',
@@ -415,7 +415,7 @@ export default function HomeSectionsView() {
       buttonText: sec.buttonText || '',
       buttonLink: sec.buttonLink || '',
       imageUrl: sec.image?.url || '',
-      imagePublicId: sec.image?.public_id || '',
+      imagePublicId: sec.image?.key || '',
       selectedProducts: loadedSelected,
       items: (sec.items || []).map((it) => ({ ...it })),
     });
@@ -531,7 +531,7 @@ export default function HomeSectionsView() {
       setFormData((prev) => ({
         ...prev,
         imageUrl: res.url,
-        imagePublicId: res.public_id || '',
+        imagePublicId: res.key || '',
       }));
       toast.success('Image uploaded successfully');
     } catch (err) {
@@ -560,7 +560,7 @@ export default function HomeSectionsView() {
         sku: p.sku || '',
         price: Number(p.price || 0),
         productType: p.productType || '',
-        imageUrl: p.thumbnail || p.imageUrl || '',
+        image: { url: p.thumbnail || p.imageUrl || '', key: '' },
         linkUrl: `/products/${p._id || p.id || p.productId}`,
         order: idx + 1,
         badge: p.badge || '',
@@ -585,7 +585,7 @@ export default function HomeSectionsView() {
         buttonLink: formData.buttonLink.trim(),
         image: {
           url: formData.imageUrl?.trim() || '',
-          public_id: formData.imagePublicId?.trim() || '',
+          key: formData.imagePublicId?.trim() || '',
         },
         items: mappedItems.length > 0 ? mappedItems : formData.items,
       };
@@ -897,9 +897,9 @@ export default function HomeSectionsView() {
                                   e.target.style.display = 'none';
                                 }}
                               />
-                            ) : sec.items?.[0]?.imageUrl ? (
+                            ) : sec.items?.[0]?.image?.url ? (
                               <img
-                                src={sec.items[0].imageUrl}
+                                src={sec.items[0].image.url}
                                 alt={sec.title}
                                 className="w-full h-full object-cover"
                                 onError={(e) => {
@@ -1680,9 +1680,9 @@ export default function HomeSectionsView() {
                         className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200/80 shadow-2xs"
                       >
                         <div className="w-12 h-12 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center p-1 shrink-0 overflow-hidden">
-                          {item.imageUrl ? (
+                          {item.image?.url ? (
                             <img
-                              src={item.imageUrl}
+                              src={item.image?.url}
                               alt={item.title}
                               className="w-full h-full object-contain"
                             />

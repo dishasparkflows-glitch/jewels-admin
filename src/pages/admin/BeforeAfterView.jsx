@@ -50,8 +50,8 @@ export default function BeforeAfterView() {
   const [status, setStatus] = useState('active');
 
   // Before & After Image States
-  const [beforeImage, setBeforeImage] = useState({ url: '', public_id: '' });
-  const [afterImage, setAfterImage] = useState({ url: '', public_id: '' });
+  const [beforeImage, setBeforeImage] = useState({ url: '', key: '' });
+  const [afterImage, setAfterImage] = useState({ url: '', key: '' });
   const [beforePreview, setBeforePreview] = useState('');
   const [afterPreview, setAfterPreview] = useState('');
   const [uploadingBefore, setUploadingBefore] = useState(false);
@@ -141,8 +141,8 @@ export default function BeforeAfterView() {
     setAltText('');
     setPosition(items.length + 1);
     setStatus('active');
-    setBeforeImage({ url: '', public_id: '' });
-    setAfterImage({ url: '', public_id: '' });
+    setBeforeImage({ url: '', key: '' });
+    setAfterImage({ url: '', key: '' });
     setBeforePreview('');
     setAfterPreview('');
     setIsModalOpen(true);
@@ -156,11 +156,11 @@ export default function BeforeAfterView() {
     setStatus(item.status || 'active');
     setBeforeImage({
       url: item.beforeImage?.url || '',
-      public_id: item.beforeImage?.public_id || '',
+      key: item.beforeImage?.key || '',
     });
     setAfterImage({
       url: item.afterImage?.url || '',
-      public_id: item.afterImage?.public_id || '',
+      key: item.afterImage?.key || '',
     });
     setBeforePreview(item.beforeImage?.url || '');
     setAfterPreview(item.afterImage?.url || '');
@@ -196,7 +196,7 @@ export default function BeforeAfterView() {
       const uploaded = await uploadWithPresignedUrl(file, 'before-after');
       const imgData = {
         url: uploaded.fileUrl,
-        public_id: uploaded.key || `before_after_${Date.now()}`,
+        key: uploaded.key || '',
       };
 
       if (type === 'before') {
@@ -209,19 +209,9 @@ export default function BeforeAfterView() {
 
       toast.success(`${type === 'before' ? 'Before' : 'After'} image uploaded`);
     } catch (err) {
-      console.warn('Direct R2 upload fallback to local reader:', err);
-      // Fallback: If backend upload failed, store object url for display
-      const fallbackUrl = URL.createObjectURL(file);
-      const fallbackData = {
-        url: fallbackUrl,
-        public_id: `local_${Date.now()}`,
-      };
-      if (type === 'before') {
-        setBeforeImage(fallbackData);
-      } else {
-        setAfterImage(fallbackData);
-      }
-      toast.success(`${type === 'before' ? 'Before' : 'After'} image selected`);
+      toast.error(err.message || 'Image upload failed. Please try again.');
+      if (type === 'before') setBeforePreview(beforeImage.url || '');
+      else setAfterPreview(afterImage.url || '');
     } finally {
       if (type === 'before') setUploadingBefore(false);
       else setUploadingAfter(false);
@@ -246,11 +236,11 @@ export default function BeforeAfterView() {
       const payload = {
         beforeImage: {
           url: beforeImage.url || beforePreview,
-          public_id: beforeImage.public_id || 'before_img',
+          key: beforeImage.key || '',
         },
         afterImage: {
           url: afterImage.url || afterPreview,
-          public_id: afterImage.public_id || 'after_img',
+          key: afterImage.key || '',
         },
         alt: altText.trim(),
         position: Number(position) || 0,

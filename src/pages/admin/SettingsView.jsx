@@ -161,9 +161,9 @@ export default function SettingsView() {
       const { fileUrl, key } = await uploadWithPresignedUrl(file, 'brand-logos');
       const current = settings?.[field] || {};
       const response = await api.put('/settings', {
-        [field]: { url: fileUrl, public_id: key || current.public_id || '' },
+        [field]: { url: fileUrl, key: key || current.key || '' },
       });
-      setSettings(response.data?.data || { ...settings, [field]: { url: fileUrl, public_id: key } });
+      setSettings(response.data?.data || { ...settings, [field]: { url: fileUrl, key: key } });
       toast.success(`${isMobile ? 'Mobile' : 'Website'} logo saved`);
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Logo upload failed');

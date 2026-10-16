@@ -277,7 +277,6 @@ export default function AddJewelryProduct() {
     title: '',
     sku: '',
     category: '',
-    subType: '',
     productType: isSilverProduct ? 'silver' : '',
     gender: '',
     description: '',
@@ -287,17 +286,6 @@ export default function AddJewelryProduct() {
   const selectedCategory = useMemo(
     () => categoryList.find((category) => String(category._id) === String(basicDetails.category)),
     [categoryList, basicDetails.category]
-  );
-  const subTypeOptions = useMemo(
-    () => (selectedCategory?.subTypes || []).map((subType) => ({
-      value: String(subType._id),
-      label: subType.name,
-    })),
-    [selectedCategory]
-  );
-  const selectedSubType = useMemo(
-    () => selectedCategory?.subTypes?.find((subType) => String(subType._id) === String(basicDetails.subType)),
-    [selectedCategory, basicDetails.subType]
   );
 
   // ─── Step 2: Metal Options ──────────────────────────────
@@ -557,7 +545,7 @@ export default function AddJewelryProduct() {
     for (const file of files) {
       try {
         toast.loading(`Uploading ${file.name}...`, { id: 'prod-media' });
-        const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products');
         setMediaImages((prev) => {
           const current = prev[colorName] || [];
           return {
@@ -567,6 +555,7 @@ export default function AddJewelryProduct() {
               {
                 id: `img-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                 url: fileUrl,
+                key,
                 isPrimary: current.length === 0,
                 name: file.name,
                 size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
@@ -591,7 +580,7 @@ export default function AddJewelryProduct() {
     for (const file of files) {
       try {
         toast.loading(`Uploading video ${file.name}...`, { id: 'prod-video' });
-        const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products');
         setMediaVideos((prev) => {
           const current = prev[colorName] || [];
           return {
@@ -601,6 +590,7 @@ export default function AddJewelryProduct() {
               {
                 id: `vid-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
                 url: fileUrl,
+                key,
                 title: file.name,
                 size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
                 uploadedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -623,11 +613,11 @@ export default function AddJewelryProduct() {
 
     try {
       toast.loading(`Uploading VTO overlay ${file.name}...`, { id: 'vto-upload' });
-      const { fileUrl, public_id } = await uploadWithPresignedUrl(file, 'vto');
+      const { fileUrl, key } = await uploadWithPresignedUrl(file, 'vto');
       setVtoForm((prev) => ({
         ...prev,
         overlayUrl: fileUrl,
-        overlayPublicId: public_id,
+        overlayPublicId: key,
         overlayName: file.name,
         overlaySize: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
         uploadedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
@@ -983,8 +973,6 @@ export default function AddJewelryProduct() {
     const productPricing = productRecord.pricing || {};
     const categoryRef = Array.isArray(productRecord.category) ? productRecord.category[0] : productRecord.category;
     const categoryId = categoryRef && typeof categoryRef === 'object' ? categoryRef._id : categoryRef;
-    const subtypeRef = productRecord.subType || productRecord.subTypeId;
-    const subtypeId = subtypeRef && typeof subtypeRef === 'object' ? subtypeRef._id : subtypeRef;
     const colorOptions = [...colorsList, ...(productRecord.metalColors || [])];
     const variantRecords = Array.isArray(productRecord.variants) ? productRecord.variants : [];
     const variantRows = variantRecords.map((variant, index) => {
@@ -1022,25 +1010,25 @@ export default function AddJewelryProduct() {
       imagesByColor[colorName] = rowImages
         .filter((item) => item?.url && item.mediaType !== 'video')
         .map((item, index) => ({
-          id: item.public_id || item._id || colorName + '-image-' + index,
+          id: item.key || item._id || colorName + '-image-' + index,
           url: item.url,
-          public_id: item.public_id,
+          key: item.key,
           name: item.name || '',
           isPrimary: index === 0,
         }));
       videosByColor[colorName] = rowImages
         .filter((item) => item?.url && item.mediaType === 'video')
         .map((item, index) => ({
-          id: item.public_id || item._id || colorName + '-video-' + index,
+          id: item.key || item._id || colorName + '-video-' + index,
           url: item.url,
-          public_id: item.public_id,
+          key: item.key,
           title: item.title || '',
         }));
       if (row.vtoImage?.url) {
         vtoByColor[colorName] = {
           isConfigured: true,
           overlayUrl: row.vtoImage.url,
-          overlayPublicId: row.vtoImage.public_id || '',
+          overlayPublicId: row.vtoImage.key || '',
           vtoCategory: row.vtoCategory || '',
           ...(row.vtoConfig || {}),
         };
@@ -1054,18 +1042,18 @@ export default function AddJewelryProduct() {
       imagesByColor[rootMediaColor] = rootImages
         .filter((item) => item.mediaType !== 'video')
         .map((item, index) => ({
-          id: item.public_id || item._id || 'image-' + index,
+          id: item.key || item._id || 'image-' + index,
           url: item.url,
-          public_id: item.public_id,
+          key: item.key,
           name: item.name || '',
           isPrimary: index === 0,
         }));
       videosByColor[rootMediaColor] = rootImages
         .filter((item) => item.mediaType === 'video')
         .map((item, index) => ({
-          id: item.public_id || item._id || 'video-' + index,
+          id: item.key || item._id || 'video-' + index,
           url: item.url,
-          public_id: item.public_id,
+          key: item.key,
           title: item.title || '',
         }));
     }
@@ -1083,7 +1071,6 @@ export default function AddJewelryProduct() {
       title: basicInfo.title || productRecord.title || '',
       sku: basicInfo.sku || productRecord.sku || '',
       category: categoryId ? String(categoryId) : '',
-      subType: subtypeId ? String(subtypeId) : '',
       productType: isSilverProduct ? 'silver' : (basicInfo.productType || productRecord.productType || ''),
       gender: Array.isArray(productRecord.gender) ? (productRecord.gender[0] || '') : (productRecord.gender || ''),
       description: basicInfo.description || productRecord.description || '',
@@ -1444,7 +1431,7 @@ export default function AddJewelryProduct() {
       };
       const mediaEntry = (item, mediaType) => ({
         url: item.url,
-        ...(item.id || item.public_id ? { public_id: item.id || item.public_id } : {}),
+        key: item.key || '',
         mediaType,
       });
       const mediaColorNames = productColors.length
@@ -1471,7 +1458,7 @@ export default function AddJewelryProduct() {
           ...(hasVto ? {
             vtoImage: {
               url: vto.overlayUrl,
-              ...(vto.overlayPublicId ? { public_id: vto.overlayPublicId } : {}),
+              ...(vto.overlayPublicId ? { key: vto.overlayPublicId } : {}),
             },
             ...(vto.vtoCategory ? { vtoCategory: vto.vtoCategory } : {}),
             ...(Object.keys(vtoConfig).length ? { vtoConfig } : {}),
@@ -1522,9 +1509,6 @@ export default function AddJewelryProduct() {
           key: specification.key?.trim(),
           value: specification.value?.trim(),
         }));
-      const subtypeId = selectedCategory?.subTypes?.find(
-        (subType) => String(subType._id) === String(basicDetails.subType)
-      )?._id;
       const pricingData = compactObject({
         mrp: mrpNum,
         salePrice: salePriceNum,
@@ -1551,7 +1535,6 @@ export default function AddJewelryProduct() {
         inapp: Boolean(platformVisibility.showInApp),
         inweb: Boolean(platformVisibility.showOnWeb),
         ...(categoryId ? { category: [categoryId] } : {}),
-        ...(subtypeId ? { subType: subtypeId } : {}),
         ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
         ...(Object.keys(pricingData).length ? { pricing: pricingData } : {}),
         ...(Object.keys(specificationData).length ? { specifications: specificationData } : {}),
@@ -1821,25 +1804,10 @@ export default function AddJewelryProduct() {
                     variant="input"
                     value={basicDetails.category}
                     onChange={(val) =>
-                      setBasicDetails((prev) => ({ ...prev, category: val, subType: '' }))
+                      setBasicDetails((prev) => ({ ...prev, category: val }))
                     }
                     placeholder="Select Category"
                     options={categoryOptions}
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900">
-                    Sub-Category / Collection
-                  </label>
-                  <Dropdown
-                    size="field"
-                    variant="input"
-                    value={basicDetails.subType}
-                    onChange={(value) => setBasicDetails((prev) => ({ ...prev, subType: value }))}
-                    placeholder={selectedCategory ? 'Select Sub-Category' : 'Select a category first'}
-                    options={subTypeOptions}
                     className="w-full"
                   />
                 </div>
@@ -4140,9 +4108,7 @@ export default function AddJewelryProduct() {
                     <div className="flex items-center gap-2 text-[11px] font-semibold text-[#8b6f4e] uppercase tracking-wider">
                       <span>Fine Jewelry</span>
                       <span>›</span>
-                      <span>{basicDetails.category}</span>
-                      <span>›</span>
-                      <span>{selectedSubType?.name || '—'}</span>
+                      <span>{basicDetails.category || 'Jewellery'}</span>
                     </div>
                     <h2 className="text-xl sm:text-2xl font-bold text-stone-900 leading-snug">
                       {basicDetails.title}

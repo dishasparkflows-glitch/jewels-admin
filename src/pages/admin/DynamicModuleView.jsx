@@ -155,7 +155,27 @@ const routeMap = {
   '/catalog/navigation-menus': {
     endpoint: '/menu-sections',
     title: 'Navigation Menus',
+    singularTitle: 'Menu Section',
     fields: [
+      { name: 'categoryId', label: 'Category', type: 'lookup', lookupEndpoint: '/categories/lookup', lookupFallback: '/categories?limit=100', required: true },
+      { name: 'title', label: 'Section Title', type: 'text', required: true },
+    ],
+  },
+  '/navigation-menus': {
+    endpoint: '/menu-sections',
+    title: 'Navigation Menus',
+    singularTitle: 'Menu Section',
+    fields: [
+      { name: 'categoryId', label: 'Category', type: 'lookup', lookupEndpoint: '/categories/lookup', lookupFallback: '/categories?limit=100', required: true },
+      { name: 'title', label: 'Section Title', type: 'text', required: true },
+    ],
+  },
+  '/menu-sections': {
+    endpoint: '/menu-sections',
+    title: 'Navigation Menus',
+    singularTitle: 'Menu Section',
+    fields: [
+      { name: 'categoryId', label: 'Category', type: 'lookup', lookupEndpoint: '/categories/lookup', lookupFallback: '/categories?limit=100', required: true },
       { name: 'title', label: 'Section Title', type: 'text', required: true },
     ],
   },
@@ -404,10 +424,10 @@ const DynamicModuleView = () => {
       // Ensure proper structure for categories
       if (cleanEndpoint === '/categories') {
         if (typeof payload.icon === 'string') {
-          payload.icon = { url: payload.icon.trim(), public_id: '' };
+          payload.icon = { url: payload.icon.trim(), key: '' };
         }
         if (typeof payload.banner === 'string') {
-          payload.banner = { url: payload.banner.trim(), public_id: '' };
+          payload.banner = { url: payload.banner.trim(), key: '' };
         }
       }
 
@@ -1339,29 +1359,6 @@ const DynamicModuleView = () => {
                 </div>
               )}
 
-              {/* Sub Types */}
-              {Array.isArray(viewingRecord.subTypes) && viewingRecord.subTypes.length > 0 && (
-                <div className="flex flex-col gap-1.5 pb-2 border-b border-stone-200/50">
-                  <span className="text-stone-400 font-medium">
-                    Sub Types ({viewingRecord.subTypes.length})
-                  </span>
-                  <div className="flex flex-wrap gap-1.5 pt-0.5">
-                    {viewingRecord.subTypes.map((st, i) => (
-                      <span
-                        key={st._id || st.code || i}
-                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-white border border-stone-200 text-stone-800 text-[11px] font-medium shadow-2xs"
-                      >
-                        <span>{st.name || st.title || st}</span>
-                        {st.code && (
-                          <span className="font-mono text-[9px] text-[#8b6f4e] font-bold">
-                            [{st.code}]
-                          </span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
 
               {/* Category Icon */}
               {viewingRecord.icon && (
@@ -1572,7 +1569,7 @@ const DynamicModuleView = () => {
               {(config.fields || []).map((f) => {
                 const renderedKeys = [
                   'name', 'title', 'slug', 'type', 'status', 'icon', 'banner', 'images',
-                  'subTypes', 'promoBanners', 'sizeChart', 'sku', 'price', 'mrp', 'salePrice',
+                  'promoBanners', 'sizeChart', 'sku', 'price', 'mrp', 'salePrice',
                   'carat', 'ratePerCarat', 'ratePerCaratUSD', 'sizeFrom', 'sizeTo', 'karat',
                   'metalType', 'metalColor', 'colorCode', 'colorCodeEnd', 'bodyPart', 'description'
                 ];

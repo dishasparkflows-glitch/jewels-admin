@@ -226,7 +226,7 @@ export default function CelebrateGiftsView() {
     setTitle(item.name || '');
     setPlacement(item.placement || 'Celebrate');
     setImageUrl(item.image?.url || '');
-    setImagePublicId(item.image?.public_id || '');
+    setImagePublicId(item.image?.key || '');
     setStatus(item.status || 'active');
     setSelectedProductIds(item.productIds || []);
     setProductSearch('');
@@ -288,7 +288,7 @@ export default function CelebrateGiftsView() {
         placement: placement || (placementFilter !== 'all' ? placementFilter : 'Celebrate'),
         image: imageUrl ? {
           url: imageUrl,
-          public_id: imagePublicId || `feat_${Date.now()}`,
+          key: imagePublicId || '',
         } : null,
         status,
         products: selectedProductIds,

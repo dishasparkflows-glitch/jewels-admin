@@ -37,6 +37,6 @@ export async function uploadWithPresignedUrl(file, folder = 'banners', onProgres
   });
 
   const finalUrl = proxyRes.data?.data?.fileUrl || proxyRes.data?.data?.url || fileUrl;
-  return { fileUrl: finalUrl, key };
+  return { url: finalUrl, fileUrl: finalUrl, key };
 }
 

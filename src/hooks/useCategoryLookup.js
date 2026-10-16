@@ -5,7 +5,7 @@ import api from '../api/axios';
  * Reusable hook that fetches the category lookup list from the backend.
  * Returns { categories, categoryOptions, loading }.
  *
- * - `categories`      — raw array of { _id, name, type, slug, subTypes, images }
+ * - `categories`      — raw array of { _id, name, type, slug, icon, status }
  * - `categoryOptions` — formatted for <Dropdown>: [{ value, label, sublabel }]
  * - `loading`         — true while the lookup request is in-flight
  *

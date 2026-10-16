@@ -94,9 +94,9 @@ export default function VtoMastersView() {
     setSelectedPart(partKey);
     setSelectedMaster(currentMaster || null);
     setLightUrl(currentMaster?.lightImage?.url || '');
-    setLightPublicId(currentMaster?.lightImage?.public_id || '');
+    setLightPublicId(currentMaster?.lightImage?.key || '');
     setDarkUrl(currentMaster?.darkImage?.url || '');
-    setDarkPublicId(currentMaster?.darkImage?.public_id || '');
+    setDarkPublicId(currentMaster?.darkImage?.key || '');
     setStatus(currentMaster?.status || 'active');
     setIsModalOpen(true);
   };
@@ -115,11 +115,11 @@ export default function VtoMastersView() {
       const payload = {
         bodyPart: partKey,
         lightImage: isLight
-          ? { url: res.fileUrl, public_id: res.key || `${partKey}_light` }
-          : (currentMaster?.lightImage || { url: '', public_id: '' }),
+          ? { url: res.fileUrl, key: res.key || '' }
+          : (currentMaster?.lightImage || { url: '', key: '' }),
         darkImage: !isLight
-          ? { url: res.fileUrl, public_id: res.key || `${partKey}_dark` }
-          : (currentMaster?.darkImage || { url: '', public_id: '' }),
+          ? { url: res.fileUrl, key: res.key || '' }
+          : (currentMaster?.darkImage || { url: '', key: '' }),
         status: currentMaster?.status || 'active',
       };
 
@@ -188,11 +188,11 @@ export default function VtoMastersView() {
         bodyPart: selectedPart,
         lightImage: {
           url: lightUrl,
-          public_id: lightPublicId || `${selectedPart}_light`,
+          key: lightPublicId || '',
         },
         darkImage: {
           url: darkUrl,
-          public_id: darkPublicId || `${selectedPart}_dark`,
+          key: darkPublicId || '',
         },
         status,
       };
