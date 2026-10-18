@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import DatePicker from '../common/DatePicker';
 import {
   HiOutlineBell,
   HiOutlineMenu,
@@ -24,6 +25,25 @@ const Header = ({ onMobileToggle }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [unreadCount, setUnreadCount] = useState(null);
+
+  const [selectedHeaderDate, setSelectedHeaderDate] = useState(() => {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  });
+
+  const headerDateFormatted = (() => {
+    const d = selectedHeaderDate ? new Date(selectedHeaderDate) : new Date();
+    const day = d.getDate();
+    const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+    const year = d.getFullYear();
+    const today = new Date();
+    const isToday =
+      d.getDate() === today.getDate() &&
+      d.getMonth() === today.getMonth() &&
+      d.getFullYear() === today.getFullYear();
+    return `${day} ${month} ${year}${isToday ? ' - TODAY' : ''}`;
+  })();
   useEffect(() => {
     const controller = new AbortController();
     api.get('/notifications/unread-count', { signal: controller.signal })
@@ -92,10 +112,19 @@ const Header = ({ onMobileToggle }) => {
       {/* Right: Date badge, notifications, Super Admin profile */}
       <div className="flex items-center gap-3 sm:gap-4 shrink-0">
         {/* Date pill badge from screenshot */}
-        <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#d6cfc2] text-xs font-semibold text-stone-700 shadow-2xs cursor-pointer hover:bg-stone-50 transition-colors">
-          <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8b6f4e]" />
-          <span>{todayFormatted}</span>
-          <HiOutlineChevronDown className="w-3 h-3 text-stone-400 ml-0.5" />
+        <div className="hidden md:block">
+          <DatePicker
+            value={selectedHeaderDate}
+            onChange={(val) => setSelectedHeaderDate(val)}
+            direction="down"
+            popupClassName="right-0 left-auto"
+          >
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] text-xs font-semibold text-stone-700 shadow-2xs cursor-pointer hover:bg-stone-50 transition-colors">
+              <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8b6f4e]" />
+              <span>{headerDateFormatted}</span>
+              <HiOutlineChevronDown className="w-3 h-3 text-stone-400 ml-0.5" />
+            </div>
+          </DatePicker>
         </div>
 
         {/* Notifications */}

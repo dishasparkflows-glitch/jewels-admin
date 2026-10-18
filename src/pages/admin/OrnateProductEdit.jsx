@@ -823,7 +823,7 @@ export default function OrnateProductEdit() {
         inapp: Boolean(baseInfo.showInApp),
         inweb: Boolean(baseInfo.showOnWeb),
         isOrnate: true,
-        productType: 'ornate',
+        productType: 'silver',
 
         // Pricing
         costPrice: Number(pricing.costPrice) || 0,
@@ -912,9 +912,11 @@ export default function OrnateProductEdit() {
           title: baseInfo.title.trim(),
           sku: erpDetails.labelNumber || erpDetails.uniqueLabelId || '',
           description: baseInfo.description,
-          productType: 'ornate',
+          productType: 'silver',
           isOrnate: true,
         },
+        productType: 'silver',
+        isOrnate: true,
         pricing: {
           mrp: Number(pricing.mrp) || Number(pricing.salePrice) || 0,
           salePrice: Number(pricing.salePrice) || 0,

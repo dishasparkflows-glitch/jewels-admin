@@ -645,9 +645,9 @@ const DynamicModuleView = () => {
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-+|-+$/g, '');
         const isOrnate = config.endpoint.includes('isOrnate=true') || Boolean(formData.isOrnate);
-        const productType = config.endpoint.includes('productType=Silver')
+        const productType = (config.endpoint.includes('productType=Silver') || isOrnate)
           ? 'silver'
-          : (isOrnate ? 'ornate' : (formData.productType || undefined));
+          : (formData.productType || undefined);
         const mrp = Number(formData.mrp || formData.price) || 0;
         const salePrice = Number(formData.salePrice || formData.price) || 0;
         const costPrice = Number(formData.costPrice) || 0;

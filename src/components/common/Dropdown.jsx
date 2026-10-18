@@ -146,7 +146,7 @@ export default function Dropdown({
     }
   }, [isOpen, selectedIndex]);
 
-  // Handle smart auto-flip (open upward if near screen bottom)
+  // Handle smart auto-flip (open upward if near screen bottom or container boundary)
   useEffect(() => {
     if (isForcedDown) {
       setDropUp(false);
@@ -159,8 +159,24 @@ export default function Dropdown({
     if (isOpen && buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       const estimatedMenuHeight = Math.min(normalizedOptions.length * 44 + 16, 260);
-      const spaceBelow = window.innerHeight - rect.bottom;
-      const spaceAbove = rect.top;
+      let spaceBelow = window.innerHeight - rect.bottom;
+      let spaceAbove = rect.top;
+
+      // Also inspect nearest scrollable parent container / modal boundary
+      let parent = containerRef.current?.parentElement;
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent);
+        const overflow = style.overflowY || style.overflow;
+        if (overflow === 'auto' || overflow === 'scroll' || overflow === 'hidden') {
+          const parentRect = parent.getBoundingClientRect();
+          const pBelow = parentRect.bottom - rect.bottom;
+          const pAbove = rect.top - parentRect.top;
+          if (pBelow < spaceBelow) spaceBelow = pBelow;
+          if (pAbove < spaceAbove) spaceAbove = pAbove;
+          break;
+        }
+        parent = parent.parentElement;
+      }
 
       if (spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow) {
         setDropUp(true);
@@ -472,6 +488,9 @@ export default function Dropdown({
       >
         <span className="flex items-center gap-2 truncate">
           {prefixIcon && <span className="shrink-0 text-stone-400">{prefixIcon}</span>}
+          {selectedOption?.icon && !prefixIcon && (
+            <span className="shrink-0 text-stone-500">{selectedOption.icon}</span>
+          )}
           {showStatusDot && value && renderStatusDot(value, selectedOption)}
           <span
             className={`truncate ${

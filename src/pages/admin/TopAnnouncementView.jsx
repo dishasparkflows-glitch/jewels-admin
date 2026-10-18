@@ -16,6 +16,7 @@ import toast from 'react-hot-toast';
 import { topAnnouncementsAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Modal from '../../components/common/Modal';
+import DatePicker from '../../components/common/DatePicker';
 
 // Helper to format dates matching the exact screenshot: "13 Oct 2026 - No end"
 const formatDate = (dateStr) => {
@@ -319,9 +320,6 @@ export default function TopAnnouncementView() {
           <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
             Top Announcement Bar (Header Banner)
           </h1>
-          <p className="text-[13px] text-stone-500 mt-1 max-w-2xl leading-relaxed">
-            Add short messages to show on the top header of your website. You can add multiple lines and set them active/inactive.
-          </p>
         </div>
 
         {/* Top Right Controls */}
@@ -342,14 +340,12 @@ export default function TopAnnouncementView() {
               aria-checked={settings.isEnabled}
               disabled={savingSettings}
               onClick={() => handleToggleGlobal(!settings.isEnabled)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                settings.isEnabled ? 'bg-emerald-500' : 'bg-stone-300'
-              }`}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${settings.isEnabled ? 'bg-emerald-500' : 'bg-stone-300'
+                }`}
             >
               <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                  settings.isEnabled ? 'translate-x-5' : 'translate-x-0'
-                }`}
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${settings.isEnabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
               />
             </button>
           </div>
@@ -409,11 +405,10 @@ export default function TopAnnouncementView() {
                     key={dotIdx}
                     type="button"
                     onClick={() => setPreviewIndex(dotIdx)}
-                    className={`rounded-full transition-all duration-300 ${
-                      dotIdx === previewIndex
+                    className={`rounded-full transition-all duration-300 ${dotIdx === previewIndex
                         ? 'w-2 h-2 bg-[#8b6f4e]'
                         : 'w-1.5 h-1.5 bg-[#dfcfbb] hover:bg-[#bfa78a]'
-                    }`}
+                      }`}
                     title={`Slide ${dotIdx + 1}`}
                   />
                 ))}
@@ -510,9 +505,8 @@ export default function TopAnnouncementView() {
                       onDragStart={(e) => handleDragStart(e, index)}
                       onDragOver={(e) => handleDragOver(e, index)}
                       onDragEnd={handleDragEnd}
-                      className={`group transition-all duration-200 ${
-                        isDragging ? 'opacity-40 scale-[0.99]' : 'opacity-100'
-                      }`}
+                      className={`group transition-all duration-200 ${isDragging ? 'opacity-40 scale-[0.99]' : 'opacity-100'
+                        }`}
                     >
                       {/* Drag Handle */}
                       <td className="pl-2 pr-1 align-middle">
@@ -556,15 +550,13 @@ export default function TopAnnouncementView() {
                           role="switch"
                           aria-checked={item.isActive}
                           onClick={() => handleToggleStatus(item)}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                            item.isActive ? 'bg-emerald-500' : 'bg-stone-300'
-                          }`}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${item.isActive ? 'bg-emerald-500' : 'bg-stone-300'
+                            }`}
                           title={`Click to set ${item.isActive ? 'Inactive' : 'Active'}`}
                         >
                           <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                              item.isActive ? 'translate-x-5' : 'translate-x-0'
-                            }`}
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${item.isActive ? 'translate-x-5' : 'translate-x-0'
+                              }`}
                           />
                         </button>
                       </td>
@@ -726,14 +718,12 @@ export default function TopAnnouncementView() {
               role="switch"
               aria-checked={formData.isActive}
               onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                formData.isActive ? 'bg-emerald-500' : 'bg-stone-300'
-              }`}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${formData.isActive ? 'bg-emerald-500' : 'bg-stone-300'
+                }`}
             >
               <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                  formData.isActive ? 'translate-x-5' : 'translate-x-0'
-                }`}
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${formData.isActive ? 'translate-x-5' : 'translate-x-0'
+                  }`}
               />
             </button>
           </div>
@@ -761,13 +751,11 @@ export default function TopAnnouncementView() {
                 <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Start Date
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                  onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer shadow-2xs"
+                  onChange={(val) => setFormData({ ...formData, startDate: val })}
+                  direction="up"
+                  placeholder="Select start date"
                 />
               </div>
 
@@ -775,14 +763,13 @@ export default function TopAnnouncementView() {
                 <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   End Date {formData.hasNoEndDate && <span className="text-stone-400 font-normal">(Disabled)</span>}
                 </label>
-                <input
-                  type="date"
+                <DatePicker
                   disabled={formData.hasNoEndDate}
                   value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                  onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all disabled:bg-stone-100 disabled:text-stone-400 cursor-pointer shadow-2xs"
+                  onChange={(val) => setFormData({ ...formData, endDate: val })}
+                  direction="up"
+                  minDate={formData.startDate}
+                  placeholder="Select end date"
                 />
               </div>
             </div>

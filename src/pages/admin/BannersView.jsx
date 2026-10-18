@@ -17,6 +17,7 @@ import {
   HiOutlineTag,
   HiOutlineGift,
   HiOutlineClock,
+  HiOutlineGlobeAlt,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -26,6 +27,7 @@ import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import Dropdown from '../../components/common/Dropdown';
+import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 const getMediaUrl = (url) => {
@@ -124,11 +126,11 @@ export default function BannersView() {
 
   // Form states matching screenshot
   const [formType, setFormType] = useState('herobanner');
-  const [isTypeDropdownOpen, setIsTypeDropdownOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [mediaType, setMediaType] = useState('image');
+  const [platform, setPlatform] = useState('web');
   const [destinationLink, setDestinationLink] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [status, setStatus] = useState('active');
@@ -243,6 +245,7 @@ export default function BannersView() {
     setEditingBanner(null);
     const initialType = activeTab !== 'all' && SECTION_TYPE_CONFIG[activeTab] ? activeTab : 'herobanner';
     setFormType(initialType);
+    setPlatform(initialType === 'mobileappbanner' ? 'mobile' : 'web');
     setTitle('');
     setSubtitle('');
     setImageUrl('');
@@ -253,7 +256,6 @@ export default function BannersView() {
     setOrder(banners.length + 1);
     setStartDate('');
     setEndDate('');
-    setIsTypeDropdownOpen(false);
     setIsDrawerOpen(true);
   };
 
@@ -266,6 +268,7 @@ export default function BannersView() {
     setSubtitle(banner.content?.subtitle || '');
     setImageUrl(banner.mediaType === 'video' ? banner.video?.url : banner.image?.url || '');
     setMediaType(banner.mediaType || 'image');
+    setPlatform(banner.display?.platform || 'web');
     setDestinationLink(banner.link || '');
 
     const catObj = banner.display?.categoryId || banner.display?.category;
@@ -276,14 +279,12 @@ export default function BannersView() {
     setOrder(banner.display?.order ?? 1);
     setStartDate(formatForInput(banner.startDate));
     setEndDate(formatForInput(banner.endDate));
-    setIsTypeDropdownOpen(false);
     setIsDrawerOpen(true);
   };
 
   // Close Drawer
   const handleCloseDrawer = () => {
     setIsDrawerOpen(false);
-    setIsTypeDropdownOpen(false);
     setEditingBanner(null);
   };
 
@@ -474,6 +475,7 @@ export default function BannersView() {
         display: {
           categoryId: selectedCategory || null,
           type: formType,
+          platform,
           order: Number(order) || 0,
           position: editingBanner?.display?.position || editingBanner?.position || 'none',
         },
@@ -859,48 +861,23 @@ export default function BannersView() {
                     1. Select Section Type <span className="text-red-500">*</span>
                   </label>
 
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setIsTypeDropdownOpen(!isTypeDropdownOpen)}
-                      className="w-full h-11 px-3.5 rounded-xl border border-stone-200 bg-white flex items-center justify-between text-xs sm:text-[13px] text-stone-800 hover:border-stone-300 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <SelectedTypeIcon className="w-4 h-4 text-stone-600" />
-                        <span className="font-medium">
-                          {SECTION_TYPE_CONFIG[formType]?.label || 'App Banner'}
-                        </span>
-                      </div>
-                      <HiOutlineChevronDown className="w-4 h-4 text-stone-400" />
-                    </button>
-
-                    {isTypeDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-1.5 bg-white border border-stone-200 rounded-xl shadow-lg z-20 py-1.5 overflow-hidden animate-scaleUp">
-                        {SECTION_TYPE_OPTIONS.map((opt) => {
-                          const Icon = opt.icon;
-                          const isSelected = formType === opt.value;
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => {
-                                setFormType(opt.value);
-                                setIsTypeDropdownOpen(false);
-                              }}
-                              className={`w-full px-3.5 py-2.5 flex items-center gap-2.5 text-xs text-left cursor-pointer transition-colors ${
-                                isSelected
-                                  ? 'bg-[#8a6d4b]/10 text-[#8a6d4b] font-semibold'
-                                  : 'text-stone-700 hover:bg-stone-50'
-                              }`}
-                            >
-                              <Icon className="w-4 h-4 text-stone-500" />
-                              <span>{opt.label}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                  <Dropdown
+                    value={formType}
+                    onChange={(val) => {
+                      setFormType(val);
+                      if (val === 'mobileappbanner') setPlatform('mobile');
+                    }}
+                    options={SECTION_TYPE_OPTIONS.map((opt) => {
+                      const Icon = opt.icon;
+                      return {
+                        value: opt.value,
+                        label: opt.label,
+                        icon: <Icon className="w-4 h-4 text-stone-500" />,
+                      };
+                    })}
+                    buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
+                    menuClassName="z-[60]"
+                  />
                 </div>
 
                 {/* ─── 2. Banner Image ─── */}
@@ -964,42 +941,35 @@ export default function BannersView() {
                     <span>{imageUrl ? 'Change Image' : 'Upload Image'}</span>
                   </button>
 
-                  <p className="text-[11px] text-stone-400 text-center leading-relaxed">
-                    Recommended size: 1920 × 600 (Desktop)
-                    <br />
-                    PNG, JPG, WEBP up to 5MB
-                  </p>
+                  <div>
+                    <label htmlFor="banner-platform" className="mb-1 block text-[11px] font-medium text-stone-600">
+                      Platform
+                    </label>
+                    <Dropdown
+                      id="banner-platform"
+                      value={platform}
+                      onChange={(val) => setPlatform(val)}
+                      options={[
+                        {
+                          value: 'web',
+                          label: 'Web',
+                          icon: <HiOutlineGlobeAlt className="w-4 h-4 text-stone-500" />,
+                        },
+                        {
+                          value: 'mobile',
+                          label: 'Mobile',
+                          icon: <HiOutlineDeviceMobile className="w-4 h-4 text-stone-500" />,
+                        },
+                      ]}
+                      buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
+                      menuClassName="z-[60]"
+                    />
+                  </div>
+
                 </div>
 
                 {/* ─── 3. Section Details & Category Settings ─── */}
                 <div className="space-y-3.5">
-                  <h3 className="text-xs font-semibold text-stone-700">
-                    3. Section & Category Settings
-                  </h3>
-
-                  {/* Title (Optional / Customizable for Hero, Category, Offer, etc.) */}
-                  <div>
-                    <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                      {formType === 'offerbanner' ? 'Offer Title' : 'Title / Heading'}{' '}
-                      <span className="text-stone-400 font-normal">(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder={
-                        formType === 'herobanner'
-                          ? 'e.g. Pure Elegance & Craftsmanship'
-                          : formType === 'offerbanner'
-                          ? 'e.g. Flat 20% Off on Diamond Rings'
-                          : formType === 'categorybanner'
-                          ? 'e.g. Rings & Bands Collection'
-                          : 'Enter title'
-                      }
-                      className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all bg-white"
-                    />
-                  </div>
-
                   {/* Offer Banner Active Time Window (Start & End Date with Cron Auto-Deletion) */}
                   {formType === 'offerbanner' && (
                     <div className="p-3.5 rounded-xl bg-[#fff8f2] border border-[#f5d7b5] space-y-3">
@@ -1018,11 +988,12 @@ export default function BannersView() {
                           <label className="block text-[11px] font-medium text-stone-700 mb-1">
                             Start Date & Time <span className="text-stone-400 font-normal">(Optional)</span>
                           </label>
-                          <input
-                            type="datetime-local"
+                          <DatePicker
+                            includeTime={true}
                             value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="w-full h-10 px-3 rounded-xl border border-[#e8c8a7] bg-white text-xs text-stone-800 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all cursor-pointer"
+                            onChange={(val) => setStartDate(val)}
+                            direction="up"
+                            placeholder="Select start date & time"
                           />
                         </div>
 
@@ -1030,11 +1001,13 @@ export default function BannersView() {
                           <label className="block text-[11px] font-medium text-stone-700 mb-1">
                             End Date & Time <span className="text-stone-400 font-normal">(Auto-Delete on pass)</span>
                           </label>
-                          <input
-                            type="datetime-local"
+                          <DatePicker
+                            includeTime={true}
                             value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="w-full h-10 px-3 rounded-xl border border-[#e8c8a7] bg-white text-xs text-stone-800 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all cursor-pointer"
+                            onChange={(val) => setEndDate(val)}
+                            direction="up"
+                            minDate={startDate}
+                            placeholder="Select end date & time"
                           />
                         </div>
                       </div>
@@ -1045,22 +1018,19 @@ export default function BannersView() {
                     </div>
                   )}
 
-                  {/* Category Selection Option (Supported for herobanner, categorybanner, collectionbanner, offerbanner) */}
+                  {/* Category selection is available for hero, category, collection, and offer banners. */}
                   {(formType === 'herobanner' ||
                     formType === 'categorybanner' ||
                     formType === 'collectionbanner' ||
                     formType === 'offerbanner') && (
                     <div>
                       <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                        Linked Category{' '}
-                        {formType === 'categorybanner' ? (
-                          <span className="text-red-500">*</span>
-                        ) : (
-                          <span className="text-stone-400 font-normal">(Optional)</span>
-                        )}
+                        Category {formType === 'categorybanner' && <span className="text-red-500">*</span>}
                       </label>
                       <Dropdown
                         value={selectedCategory}
+                        direction="up"
+                        openUpward={true}
                         onChange={(catId) => {
                           setSelectedCategory(catId);
                           const cat = categories.find((c) => c._id === catId);
@@ -1076,12 +1046,7 @@ export default function BannersView() {
                         options={[
                           {
                             value: '',
-                            label:
-                              formType === 'herobanner'
-                                ? 'Select Category (Optional - General Store)'
-                                : formType === 'offerbanner'
-                                ? 'Select Category (Optional - All Products)'
-                                : 'Select a Category',
+                            label: 'Select Category',
                           },
                           ...categories.map((cat) => ({
                             value: cat._id,
@@ -1092,28 +1057,9 @@ export default function BannersView() {
                         buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
                         menuClassName="z-[60]"
                       />
-                      {formType === 'herobanner' && (
-                        <p className="text-[11px] text-stone-400 mt-1">
-                          Linking a category connects this hero banner's "Shop Now" action directly to that collection.
-                        </p>
-                      )}
                     </div>
                   )}
 
-                  {/* Destination Link */}
-                  <div>
-                    <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                      Destination Link (URL){' '}
-                      <span className="text-stone-400 font-normal">(Optional)</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={destinationLink}
-                      onChange={(e) => setDestinationLink(e.target.value)}
-                      placeholder="e.g. /shop?category=bangles"
-                      className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all bg-white"
-                    />
-                  </div>
                 </div>
 
                 {/* ─── 4. Display Settings ─── */}

@@ -20,6 +20,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
+import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 const STATUS_TABS = [
@@ -718,13 +719,11 @@ export default function AppointmentsView() {
                   <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Date
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                    onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer shadow-2xs"
+                    onChange={(val) => setFormData({ ...formData, date: val })}
+                    direction="up"
+                    placeholder="Select appointment date"
                   />
                 </div>
                 <div>

@@ -299,12 +299,9 @@ export default function NavigationMenusView() {
       const sortedSections = [...secList].sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
       setSections(sortedSections);
 
-      // Default all sections to expanded
-      const expandMap = {};
-      sortedSections.forEach((s) => {
-        expandMap[s._id] = true;
-      });
-      setExpandedSections((prev) => ({ ...expandMap, ...prev }));
+      // Keep the list compact on initial load; users can expand records as needed.
+      const expandMap = Object.fromEntries(sortedSections.map((section) => [section._id, false]));
+      setExpandedSections(expandMap);
 
       // 2. Fetch items for each section in parallel
       const itemMap = {};
@@ -954,17 +951,6 @@ export default function NavigationMenusView() {
                   >
                     Promo Banners ({promoBanners.length})
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('settings')}
-                    className={`text-xs pb-3 pt-1 transition-all cursor-pointer ${
-                      activeTab === 'settings'
-                        ? 'text-stone-900 font-bold border-b-2 border-[#85583f]'
-                        : 'text-stone-500 hover:text-stone-800 font-semibold border-b-2 border-transparent'
-                    }`}
-                  >
-                    Category Settings
-                  </button>
                 </div>
 
                 {activeTab === 'sections' && (
@@ -1004,7 +990,7 @@ export default function NavigationMenusView() {
                     </div>
                   ) : (
                     sections.map((section, secIdx) => {
-                      const isExpanded = expandedSections[section._id] !== false;
+                      const isExpanded = expandedSections[section._id] === true;
                       const items = itemsBySection[section._id] || [];
                       const isSecDragging = draggedSectionIdx === secIdx;
                       const isSecDragOver = dragOverSectionIdx === secIdx;
@@ -1025,12 +1011,13 @@ export default function NavigationMenusView() {
                           {/* Section Header Bar */}
                           <div
                             draggable
+                            onClick={() => toggleSectionExpand(section._id)}
                             onDragStart={(e) => handleSectionDragStart(e, secIdx)}
                             onDragEnd={handleSectionDragEnd}
                             className="flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
                           >
                             <div className="flex items-center gap-3 min-w-0">
-                              <DragHandle />
+                              <DragHandle onClick={(event) => event.stopPropagation()} />
 
                               {/* Number circle badge like in reference design */}
                               <span className="w-6 h-6 rounded-full bg-[#85583f] text-white flex items-center justify-center text-xs font-bold shrink-0 shadow-2xs">
@@ -1313,48 +1300,6 @@ export default function NavigationMenusView() {
                 </div>
               )}
 
-              {/* ──────────────────────────────────────────────────────── */}
-              {/* TAB 3: CATEGORY SETTINGS                                 */}
-              {/* ──────────────────────────────────────────────────────── */}
-              {activeTab === 'settings' && (
-                <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs space-y-4">
-                  <div className="border-b border-stone-100 pb-3">
-                    <h3 className="text-sm font-bold text-stone-900">Category Settings</h3>
-                    <p className="text-xs text-stone-400 mt-0.5">
-                      Basic configuration and status for {selectedCategory.name}.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                    <div className="space-y-1">
-                      <span className="font-semibold text-stone-600">Category Name:</span>
-                      <p className="font-bold text-stone-900 text-sm">{selectedCategory.name}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="font-semibold text-stone-600">Slug:</span>
-                      <p className="font-mono text-stone-700 bg-stone-50 px-2 py-1 rounded border border-stone-200 w-fit">
-                        {selectedCategory.slug || '—'}
-                      </p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="font-semibold text-stone-600">Order:</span>
-                      <p className="text-stone-800 font-semibold">{selectedCategory.order ?? 0}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="font-semibold text-stone-600">Current Status:</span>
-                      <span
-                        className={`inline-block px-2 py-0.5 rounded-full font-semibold ${
-                          selectedCategory.status === 'active'
-                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-200'
-                            : 'bg-stone-100 text-stone-600'
-                        }`}
-                      >
-                        {selectedCategory.status === 'active' ? 'Visible in store' : 'Hidden from store'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
             </>
           ) : (
             <div className="py-24 text-center text-xs text-stone-400 bg-white rounded-2xl border border-stone-200">

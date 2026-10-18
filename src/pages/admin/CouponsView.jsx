@@ -18,6 +18,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function CouponsView() {
@@ -622,13 +623,11 @@ export default function CouponsView() {
                   <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Start Date
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                    onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer shadow-2xs"
+                    onChange={(val) => setStartDate(val)}
+                    direction="up"
+                    placeholder="Select start date"
                   />
                 </div>
 
@@ -636,13 +635,12 @@ export default function CouponsView() {
                   <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Expiry Date
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     value={expiryDate}
-                    onChange={(e) => setExpiryDate(e.target.value)}
-                    onFocus={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                    onClick={(e) => { try { e.target.showPicker?.(); } catch (err) {} }}
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer shadow-2xs"
+                    onChange={(val) => setExpiryDate(val)}
+                    direction="up"
+                    minDate={startDate}
+                    placeholder="Select expiry date"
                   />
                 </div>
               </div>
