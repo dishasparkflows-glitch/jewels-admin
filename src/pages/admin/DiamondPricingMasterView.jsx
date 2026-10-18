@@ -14,6 +14,7 @@ import api from '../../api/axios';
 import Dropdown from '../../components/common/Dropdown';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Pagination from '../../components/common/Pagination';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function DiamondPricingMasterView() {
   const [searchParams] = useSearchParams();
@@ -37,7 +38,7 @@ export default function DiamondPricingMasterView() {
   const [centerRows, setCenterRows] = useState([]);
   const [sideRows, setSideRows] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

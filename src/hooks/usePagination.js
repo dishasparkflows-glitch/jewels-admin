@@ -1,17 +1,55 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { getAdminPageSize, setAdminPageSize, DEFAULT_PAGE_SIZE } from "../utils/adminPagination";
 
 /**
  * Custom hook for client-side and server-side pagination
  *
  * @param {Array} items - List of items
- * @param {number} initialPageSize - Default rows per page (default: 10)
+ * @param {number|null} initialPageSize - Default rows per page (defaults to admin preference, fallback 10)
  * @param {number|null} serverTotal - Optional total count from server pagination
  * @returns {object} Pagination states, handlers and items for current page
  */
-export function usePagination(items = [], initialPageSize = 10, serverTotal = null) {
+export function usePagination(items = [], initialPageSize = null, serverTotal = null) {
   const safeItems = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(initialPageSize || 10);
+  const [pageSize, setPageSizeState] = useState(() => {
+    if (initialPageSize && initialPageSize !== DEFAULT_PAGE_SIZE) {
+      return initialPageSize;
+    }
+    return getAdminPageSize(DEFAULT_PAGE_SIZE);
+  });
+
+  // Sync with global admin page size changes
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key === 'admin_page_size' && e.newValue) {
+        const num = Number(e.newValue);
+        if (num > 0) setPageSizeState(num);
+      }
+    };
+
+    const handleCustomChange = (e) => {
+      if (e.detail && Number(e.detail) > 0) {
+        setPageSizeState(Number(e.detail));
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('admin_page_size_change', handleCustomChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('admin_page_size_change', handleCustomChange);
+    };
+  }, []);
+
+  const setPageSize = useCallback((newSize) => {
+    const num = Number(newSize);
+    if (num > 0) {
+      setAdminPageSize(num);
+      setPageSizeState(num);
+    }
+  }, []);
 
   const isServerSide = serverTotal != null && serverTotal !== undefined;
   const totalItems = isServerSide ? serverTotal : safeItems.length;

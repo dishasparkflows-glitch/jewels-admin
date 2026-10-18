@@ -18,6 +18,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 /**
  * Metal Swatch Badge matching User Screenshot 1
@@ -56,7 +57,7 @@ export default function MetalColorsView() {
 
   // Fetch all Metal Colors from API
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
 
   const fetchColors = async (page = currentPage, limit = pageSize) => {

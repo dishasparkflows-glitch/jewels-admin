@@ -19,6 +19,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function ReviewsView() {
   const confirm = useConfirm();
@@ -32,6 +33,10 @@ export default function ReviewsView() {
   const [submitting, setSubmitting] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
   const [filterActive, setFilterActive] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -47,12 +52,15 @@ export default function ReviewsView() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
 
-  const fetchReviews = async () => {
+  const fetchReviews = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/reviews?limit=50');
+      const res = await api.get(`/reviews?page=${page}&limit=${limit}`);
       const data = res.data?.data?.items || res.data?.data || [];
       setReviews(Array.isArray(data) ? data : []);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.warn('Could not load reviews:', err);
       setReviews([]);
@@ -63,8 +71,8 @@ export default function ReviewsView() {
   };
 
   useEffect(() => {
-    fetchReviews();
-  }, []);
+    fetchReviews(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   const handleOpenAddModal = () => {
     setEditingReview(null);
@@ -147,7 +155,7 @@ export default function ReviewsView() {
       }
 
       setShowAddModal(false);
-      fetchReviews();
+      fetchReviews(currentPage, pageSize);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not save review');
     } finally {
@@ -235,13 +243,9 @@ export default function ReviewsView() {
   }, [reviews, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(displayedReviews, 10);
+  } = usePagination(displayedReviews, pageSize, serverTotal);
 
   // Checkbox selection
   const handleSelectAll = (e) => {
@@ -487,10 +491,13 @@ export default function ReviewsView() {
         {/* ─── Pagination Footer ─── */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
           itemLabel="reviews"
         />
       </div>

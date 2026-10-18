@@ -1,9 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { HiOutlineEye, HiOutlineDotsVertical, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlineEye, HiOutlineDotsVertical, HiOutlinePencil, HiOutlineTrash, HiOutlineExternalLink } from 'react-icons/hi';
 
 export default function RowActions({
   onView,
   onPreview,
+  onOpenWebsite,
   onEdit,
   onDelete,
   viewTitle = 'View Details',
@@ -43,6 +44,18 @@ export default function RowActions({
           className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
         >
           <HiOutlineEye className="w-3.5 h-3.5 stroke-[2]" />
+        </button>
+      )}
+
+      {onOpenWebsite && (
+        <button
+          type="button"
+          onClick={onOpenWebsite}
+          title="View on website"
+          aria-label="View on website"
+          className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-white text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+        >
+          <HiOutlineExternalLink className="w-3.5 h-3.5 stroke-[2]" />
         </button>
       )}
 

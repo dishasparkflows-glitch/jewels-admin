@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 const STATUS_TABS = [
   { value: 'all', label: 'ALL' },
@@ -42,16 +43,20 @@ export default function CustomInquiriesView() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
 
   // Fetch inquiries from backend
-  const fetchInquiries = async () => {
+  const fetchInquiries = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/custom-inquiries?limit=100');
+      const res = await api.get(`/custom-inquiries?page=${page}&limit=${limit}`);
       const data = res.data?.data?.items || res.data?.data || [];
       if (Array.isArray(data)) {
         setInquiries(data);
+      }
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
       }
     } catch (err) {
       console.error('Failed to load inquiries:', err);
@@ -62,8 +67,8 @@ export default function CustomInquiriesView() {
   };
 
   useEffect(() => {
-    fetchInquiries();
-  }, []);
+    fetchInquiries(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Action: Confirm inquiry
   const handleConfirmInquiry = async () => {
@@ -549,10 +554,13 @@ export default function CustomInquiriesView() {
         {/* Luxury Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
           itemLabel="inquiries"
         />
       </div>

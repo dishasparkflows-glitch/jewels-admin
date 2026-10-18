@@ -17,6 +17,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function CodSequencesView() {
   const confirm = useConfirm();
@@ -30,18 +31,25 @@ export default function CodSequencesView() {
   const [submitting, setSubmitting] = useState(false);
   const [filterActive, setFilterActive] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
+
   const [formData, setFormData] = useState({
     uptoAmount: '',
     chargeType: '',
     chargeValue: '',
   });
 
-  const fetchItems = async () => {
+  const fetchItems = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/cod-sequences?limit=50');
+      const res = await api.get(`/cod-sequences?page=${page}&limit=${limit}`);
       const data = res.data?.data?.items || res.data?.data || [];
       setItems(Array.isArray(data) ? data : []);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.warn('Could not load COD tiers:', err);
       setItems([]);
@@ -52,8 +60,8 @@ export default function CodSequencesView() {
   };
 
   useEffect(() => {
-    fetchItems();
-  }, []);
+    fetchItems(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   const handleOpenAdd = () => {
     setEditingItem(null);
@@ -181,13 +189,9 @@ export default function CodSequencesView() {
   }, [items, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredItems, 10);
+  } = usePagination(filteredItems, pageSize, serverTotal);
 
   // Checkbox selection
   const handleSelectAll = (e) => {
@@ -408,10 +412,13 @@ export default function CodSequencesView() {
         {/* ─── Pagination Footer ─── */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
           itemLabel="tiers"
         />
       </div>

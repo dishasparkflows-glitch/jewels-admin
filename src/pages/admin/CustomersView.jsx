@@ -18,6 +18,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function CustomersView() {
   const confirm = useConfirm();
@@ -40,7 +41,7 @@ export default function CustomersView() {
   });
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
 
   const fetchUsers = async (page = currentPage, limit = pageSize) => {

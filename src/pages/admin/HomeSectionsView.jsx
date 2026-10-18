@@ -38,6 +38,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 // Type metadata mapping
 const SECTION_TYPES = [
@@ -143,13 +144,20 @@ export default function HomeSectionsView() {
   const [reorderingItems, setReorderingItems] = useState([]);
   const [savingReorder, setSavingReorder] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
+
   // Fetch sections
-  const fetchSections = async () => {
+  const fetchSections = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/home-sections?limit=100');
+      const res = await api.get(`/home-sections?page=${page}&limit=${limit}`);
       const items = res.data?.data?.items || res.data?.data || [];
       setSections(Array.isArray(items) ? items : []);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load home sections:', err);
       toast.error('Failed to load home sections');
@@ -159,8 +167,8 @@ export default function HomeSectionsView() {
   };
 
   useEffect(() => {
-    fetchSections();
-  }, []);
+    fetchSections(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Filter sections
   const filteredSections = useMemo(() => {
@@ -182,13 +190,9 @@ export default function HomeSectionsView() {
   // Pagination hook
   const {
     paginatedItems: paginatedSections = [],
-    currentPage,
-    setCurrentPage,
     totalPages,
-    pageSize,
     totalItems,
-    setPageSize,
-  } = usePagination(filteredSections, 10);
+  } = usePagination(filteredSections, pageSize, serverTotal);
 
   // Stats calculation
   const stats = useMemo(() => {
@@ -1008,7 +1012,7 @@ export default function HomeSectionsView() {
         {/* ─── Luxury Common Pagination ─── */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
           onPageSizeChange={(newSize) => {

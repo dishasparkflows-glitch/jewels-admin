@@ -25,6 +25,7 @@ import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function BeforeAfterView() {
   const confirm = useConfirm();
@@ -60,15 +61,22 @@ export default function BeforeAfterView() {
   const beforeFileRef = useRef(null);
   const afterFileRef = useRef(null);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
+
   // Fetch items from backend
-  const fetchItems = async () => {
+  const fetchItems = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/cust-jewellery-before-after?limit=100');
+      const res = await api.get(`/cust-jewellery-before-after?page=${page}&limit=${limit}`);
       const dataItems =
         res.data?.data?.items ||
         (Array.isArray(res.data?.data) ? res.data.data : []);
       setItems(dataItems);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load before/after showcase items:', err);
       toast.error('Failed to load before/after items');
@@ -78,8 +86,8 @@ export default function BeforeAfterView() {
   };
 
   useEffect(() => {
-    fetchItems();
-  }, []);
+    fetchItems(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Filtered items
   const filteredItems = useMemo(() => {
@@ -95,13 +103,9 @@ export default function BeforeAfterView() {
 
   // Pagination
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredItems, 8);
+  } = usePagination(filteredItems, pageSize, serverTotal);
 
   // Stat Cards Data
   const activeCount = useMemo(
@@ -583,9 +587,9 @@ export default function BeforeAfterView() {
           <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
             <Pagination
               currentPage={currentPage}
-              totalItems={totalItems}
+              totalItems={serverTotal ?? totalItems}
               pageSize={pageSize}
-              pageSizeOptions={[8, 16, 24, 32]}
+              pageSizeOptions={[10, 25, 50, 100]}
               onPageChange={setCurrentPage}
               onPageSizeChange={(newSize) => {
                 setPageSize(newSize);
@@ -730,9 +734,9 @@ export default function BeforeAfterView() {
           {/* Luxury Common Pagination */}
           <Pagination
             currentPage={currentPage}
-            totalItems={totalItems}
+            totalItems={serverTotal ?? totalItems}
             pageSize={pageSize}
-            pageSizeOptions={[8, 16, 24, 32]}
+            pageSizeOptions={[10, 25, 50, 100]}
             onPageChange={setCurrentPage}
             onPageSizeChange={(newSize) => {
               setPageSize(newSize);

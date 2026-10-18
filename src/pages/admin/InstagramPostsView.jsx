@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 // Helper to extract clean embed URL from Instagram URL
 const getEmbedUrl = (rawUrl) => {
@@ -46,10 +47,10 @@ const STATUS_OPTIONS = [
 ];
 
 const PAGE_SIZE_OPTIONS = [
-  { value: 5, label: '5' },
   { value: 10, label: '10' },
-  { value: 20, label: '20' },
+  { value: 25, label: '25' },
   { value: 50, label: '50' },
+  { value: 100, label: '100' },
 ];
 
 export default function InstagramPostsView() {
@@ -71,7 +72,8 @@ export default function InstagramPostsView() {
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -83,14 +85,17 @@ export default function InstagramPostsView() {
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch posts from API
-  const fetchPosts = async () => {
+  const fetchPosts = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/instagram-posts?limit=100');
+      const res = await api.get(`/instagram-posts?page=${page}&limit=${limit}`);
       const data = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
       setPosts(data);
       setOriginalPosts(data);
       setHasUnsavedOrder(false);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load Instagram posts:', err);
       toast.error('Failed to load Instagram posts');
@@ -100,8 +105,8 @@ export default function InstagramPostsView() {
   };
 
   useEffect(() => {
-    fetchPosts();
-  }, []);
+    fetchPosts(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Filtered posts based on Search and Status
   const filteredPosts = useMemo(() => {

@@ -19,6 +19,7 @@ import {
 } from 'react-icons/hi';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
+import { useAdminPageSize } from '../../utils/adminPagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
@@ -27,6 +28,7 @@ import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
+import { openProductPreview } from '../../utils/productPreview';
 
 const routeMap = {
   // ─── 1. Diamond Config ───────────────────────────
@@ -232,6 +234,9 @@ const DynamicModuleView = () => {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -505,26 +510,40 @@ const DynamicModuleView = () => {
     }
   };
 
-  const fetchItems = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await api.get(config.endpoint);
-      const data = res.data?.data?.items || res.data?.data || [];
-      setItems(Array.isArray(data) ? data : [data].filter(Boolean));
-    } catch (err) {
-      console.error('Failed to load records for', config.endpoint, err);
-      // Fallback empty array
-      setItems([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [config.endpoint]);
+  const fetchItems = useCallback(
+    async (page = currentPage, limit = pageSize, q = search) => {
+      try {
+        setLoading(true);
+        const params = { page, limit };
+        if (q && q.trim()) params.search = q.trim();
+        const res = await api.get(config.endpoint, { params });
+        const data = res.data?.data?.items || res.data?.data || [];
+        setItems(Array.isArray(data) ? data : [data].filter(Boolean));
+        if (res.data?.pagination?.totalDocs !== undefined) {
+          setServerTotal(res.data.pagination.totalDocs);
+        } else {
+          setServerTotal(null);
+        }
+      } catch (err) {
+        console.error('Failed to load records for', config.endpoint, err);
+        setItems([]);
+        setServerTotal(null);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [config.endpoint, currentPage, pageSize, search]
+  );
 
   useEffect(() => {
-    fetchItems();
+    setCurrentPage(1);
     setSearch('');
     setSelectedIds([]);
-  }, [fetchItems]);
+  }, [pathname]);
+
+  useEffect(() => {
+    fetchItems(currentPage, pageSize, search);
+  }, [fetchItems, currentPage, pageSize, search]);
 
   // Fetch lookup options when modal opens for fields with type: 'lookup'
   useEffect(() => {
@@ -786,6 +805,7 @@ const DynamicModuleView = () => {
   };
 
   const filteredItems = useMemo(() => {
+    if (serverTotal !== null) return items;
     if (!search.trim()) return items;
     const q = search.toLowerCase();
     return items.filter((row) => {
@@ -794,16 +814,12 @@ const DynamicModuleView = () => {
       const sku = typeof row.sku === 'string' ? row.sku.toLowerCase() : '';
       return label.includes(q) || id.includes(q) || sku.includes(q);
     });
-  }, [items, search]);
+  }, [items, search, serverTotal]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredItems, 10);
+  } = usePagination(filteredItems, pageSize, serverTotal);
 
   const inStockCount = useMemo(
     () => items.filter((p) => !p.isSold && (p.inStock ?? 1) > 0).length,
@@ -818,7 +834,7 @@ const DynamicModuleView = () => {
     ? [
         {
           label: 'Total Ornate Products',
-          value: items.length || 0,
+          value: serverTotal !== null ? serverTotal : (items.length || 0),
           icon: HiOutlineEye,
           color: 'bronze',
         },
@@ -844,13 +860,13 @@ const DynamicModuleView = () => {
     : [
         {
           label: `Total ${config.title}`,
-          value: items.length || 0,
+          value: serverTotal !== null ? serverTotal : (items.length || 0),
           icon: HiOutlineEye,
           color: 'bronze',
         },
         {
           label: 'Verified Records',
-          value: items.length || 0,
+          value: serverTotal !== null ? serverTotal : (items.length || 0),
           icon: HiOutlineRefresh,
           color: 'green',
         },
@@ -910,7 +926,10 @@ const DynamicModuleView = () => {
       {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
       <SearchFilterBar
         search={search}
-        onSearchChange={setSearch}
+        onSearchChange={(val) => {
+          setSearch(val);
+          setCurrentPage(1);
+        }}
         placeholder={`Search ${config.title.toLowerCase()}...`}
         extraActions={
           <button
@@ -1157,6 +1176,7 @@ const DynamicModuleView = () => {
                         <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                           <RowActions
                             onView={() => setViewingRecord(row)}
+                            onOpenWebsite={pathname === '/catalog/silver-products' ? () => openProductPreview(row) : undefined}
                             onEdit={() => {
                               if (isOrnatePage) {
                                 navigate(`/catalog/ornate-products/edit/${row._id || row.id}`);
@@ -1183,7 +1203,10 @@ const DynamicModuleView = () => {
                 totalItems={totalItems}
                 pageSize={pageSize}
                 onPageChange={setCurrentPage}
-                onPageSizeChange={setPageSize}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
               />
             </>
           )}

@@ -6,6 +6,7 @@ import {
   HiOutlineChevronDoubleRight,
 } from 'react-icons/hi';
 import Dropdown from './Dropdown';
+import { setAdminPageSize } from '../../utils/adminPagination';
 
 export default function Pagination({
   currentPage = 1,
@@ -95,7 +96,9 @@ export default function Pagination({
             <Dropdown
               value={Number(pageSize)}
               onChange={(val) => {
-                onPageSizeChange(Number(val));
+                const num = Number(val);
+                setAdminPageSize(num);
+                onPageSizeChange?.(num);
                 onPageChange?.(1);
               }}
               options={effectivePageSizeOptions.map((opt) => ({ value: opt, label: String(opt) }))}

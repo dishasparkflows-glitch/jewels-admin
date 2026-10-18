@@ -26,6 +26,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function CelebrateGiftsView() {
   const confirm = useConfirm();
@@ -85,13 +86,20 @@ export default function CelebrateGiftsView() {
     return `${day}/${month}/${year}`;
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
+
   // Fetch featured items
-  const fetchFeatured = async () => {
+  const fetchFeatured = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/featured?page=1&limit=10');
+      const res = await api.get(`/featured?page=${page}&limit=${limit}`);
       const items = res.data?.data?.items || res.data?.data || [];
       setFeaturedItems(Array.isArray(items) ? items : []);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load featured items:', err);
       toast.error('Failed to load showcase items');
@@ -99,6 +107,10 @@ export default function CelebrateGiftsView() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchFeatured(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Fetch products using lightweight lookup API with pagination & filtering
   const fetchProducts = useCallback(async (page = 1, searchQuery = '', filterType = 'all') => {
@@ -164,13 +176,9 @@ export default function CelebrateGiftsView() {
   }, [featuredItems, placementFilter, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredItems, 10);
+  } = usePagination(filteredItems, pageSize, serverTotal);
 
   // Quick stat cards
   const activeCount = useMemo(() => featuredItems.filter(i => i.status === 'active').length, [featuredItems]);
@@ -610,10 +618,13 @@ export default function CelebrateGiftsView() {
         {/* Luxury Common Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
         />
       </div>
 

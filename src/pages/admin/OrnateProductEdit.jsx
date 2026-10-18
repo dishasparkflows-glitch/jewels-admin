@@ -111,6 +111,7 @@ export default function OrnateProductEdit() {
     showOnWeb: false,
     description: '',
   });
+  const [autoOpenMenu, setAutoOpenMenu] = useState(false);
 
   // ─── 2. Pricing & Inventory ────────────────────────────────
   const [pricing, setPricing] = useState({
@@ -1153,7 +1154,10 @@ export default function OrnateProductEdit() {
                   </label>
                   <Dropdown
                     value={baseInfo.category}
-                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, category: val, menuItem: val === prev.category ? prev.menuItem : [] }))}
+                    onChange={(val) => {
+                      setBaseInfo((prev) => ({ ...prev, category: val, menuItem: val === prev.category ? prev.menuItem : [] }));
+                      if (val) setAutoOpenMenu(true);
+                    }}
                     options={categories}
                     placeholder="Select Category"
                     size="sm"
@@ -1187,6 +1191,10 @@ export default function OrnateProductEdit() {
                     categoryId={baseInfo.category}
                     value={baseInfo.menuItem}
                     onChange={(value) => setBaseInfo((previous) => ({ ...previous, menuItem: value }))}
+                    autoOpen={autoOpenMenu}
+                    onOpenChange={(isOpen) => {
+                      if (!isOpen) setAutoOpenMenu(false);
+                    }}
                   />
                 </div>
 

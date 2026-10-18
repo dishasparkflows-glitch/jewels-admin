@@ -20,6 +20,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 const STATUS_TABS = [
   { id: 'all', label: 'All Appointments' },
@@ -52,15 +53,18 @@ export default function AppointmentsView() {
   });
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/appointments?limit=100');
+      const res = await api.get(`/appointments?page=${page}&limit=${limit}`);
       const data = res.data?.data?.items || res.data?.data || [];
       setAppointments(Array.isArray(data) ? data : []);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.warn('Could not load appointments:', err);
       setAppointments([]);
@@ -71,8 +75,8 @@ export default function AppointmentsView() {
   };
 
   useEffect(() => {
-    fetchAppointments();
-  }, []);
+    fetchAppointments(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     // Optimistic update
@@ -632,10 +636,13 @@ export default function AppointmentsView() {
         {/* ─── Pagination Footer ─── */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
           itemLabel="appointments"
         />
       </div>

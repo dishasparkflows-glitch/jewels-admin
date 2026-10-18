@@ -20,6 +20,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function SizesView() {
   const confirm = useConfirm();
@@ -39,18 +40,21 @@ export default function SizesView() {
 
   // Fetch all Sizes and Categories from API
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(50);
+  const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
 
   const fetchData = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const sizesRes = await api.get('/sizes?limit=100');
+      const sizesRes = await api.get(`/sizes?page=${page}&limit=${limit}`);
 
       const sizeItems =
         sizesRes.data?.data?.items ||
         (Array.isArray(sizesRes.data?.data) ? sizesRes.data.data : []);
       setSizes(sizeItems);
+      if (sizesRes.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(sizesRes.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load sizes:', err);
       toast.error('Failed to load sizes');

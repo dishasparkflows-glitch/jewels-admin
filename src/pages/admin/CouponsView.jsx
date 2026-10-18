@@ -18,6 +18,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function CouponsView() {
   const confirm = useConfirm();
@@ -44,7 +45,7 @@ export default function CouponsView() {
 
   // Fetch all coupons
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
 
   const fetchCoupons = async (page = currentPage, limit = pageSize) => {

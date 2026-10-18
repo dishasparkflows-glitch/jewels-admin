@@ -15,6 +15,7 @@ import { diamondsAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Pagination from '../../components/common/Pagination';
 import Dropdown from '../../components/common/Dropdown';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function DiamondsView() {
   const navigate = useNavigate();
@@ -26,7 +27,8 @@ export default function DiamondsView() {
   const [typeFilter, setTypeFilter] = useState('all');
   const [shapeFilter, setShapeFilter] = useState('all');
   const [page, setPage] = useState(1);
-  const [pagination, setPagination] = useState({ totalPages: 1, totalDocs: 0, limit: 12 });
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [pagination, setPagination] = useState({ totalPages: 1, totalDocs: 0, limit: 10 });
 
   // Lookup options for filtering
   const [types, setTypes] = useState([]);
@@ -37,7 +39,7 @@ export default function DiamondsView() {
       setLoading(true);
       const params = {
         page,
-        limit: 15,
+        limit: pageSize,
         search: search.trim() || undefined,
       };
       if (typeFilter !== 'all') params.typeId = typeFilter;
@@ -59,7 +61,7 @@ export default function DiamondsView() {
 
   useEffect(() => {
     fetchData();
-  }, [page, typeFilter, shapeFilter]);
+  }, [page, pageSize, typeFilter, shapeFilter]);
 
   // Fetch filter lookups
   useEffect(() => {
@@ -333,29 +335,17 @@ export default function DiamondsView() {
         </div>
 
         {/* Pagination */}
-        {pagination.totalPages > 1 && (
-          <div className="p-4 border-t border-stone-100 flex items-center justify-between">
-            <span className="text-xs text-stone-500">
-              Showing page {page} of {pagination.totalPages}
-            </span>
-            <div className="flex items-center gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage((p) => Math.max(1, p - 1))}
-                className="px-3 py-1 text-xs font-medium border border-stone-200 rounded-lg disabled:opacity-40"
-              >
-                Previous
-              </button>
-              <button
-                disabled={page >= pagination.totalPages}
-                onClick={() => setPage((p) => p + 1)}
-                className="px-3 py-1 text-xs font-medium border border-stone-200 rounded-lg disabled:opacity-40"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-        )}
+        <Pagination
+          currentPage={page}
+          totalItems={pagination.totalDocs || diamonds.length}
+          pageSize={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          itemLabel="diamonds"
+        />
       </div>
     </div>
   );

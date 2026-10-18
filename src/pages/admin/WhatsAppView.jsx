@@ -27,6 +27,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function WhatsAppView() {
   const confirm = useConfirm();
@@ -80,13 +81,15 @@ export default function WhatsAppView() {
     return () => document.removeEventListener('click', handleOutsideClick);
   }, []);
 
+  const [pageSize, setPageSize] = useAdminPageSize();
+
   // Fetch Templates & Messages from backend
-  const fetchData = async () => {
+  const fetchData = async (limit = pageSize) => {
     try {
       setLoading(true);
       const [resTemplates, resMessages] = await Promise.allSettled([
-        api.get('/whatsapp/templates?limit=100'),
-        api.get('/whatsapp/messages?limit=100'),
+        api.get(`/whatsapp/templates?limit=${limit}`),
+        api.get(`/whatsapp/messages?limit=${limit}`),
       ]);
 
       if (resTemplates.status === 'rejected' || resMessages.status === 'rejected') toast.error('Could not load WhatsApp data. Please retry.');
@@ -112,8 +115,8 @@ export default function WhatsAppView() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(pageSize);
+  }, [pageSize]);
 
   // Filtered Templates
   const filteredTemplates = useMemo(() => {
@@ -157,12 +160,10 @@ export default function WhatsAppView() {
   const {
     currentPage,
     setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     totalPages,
     paginatedItems: paginatedTemplates = [],
-  } = usePagination(filteredTemplates, 10);
+  } = usePagination(filteredTemplates, pageSize);
 
   // Filtered Messages
   const filteredMessages = useMemo(() => {
@@ -192,7 +193,7 @@ export default function WhatsAppView() {
     totalItems: msgTotalItems,
     totalPages: msgTotalPages,
     paginatedItems: paginatedMessages = [],
-  } = usePagination(filteredMessages, 10);
+  } = usePagination(filteredMessages, pageSize);
 
   // Stats Counters
   const approvedCount = useMemo(() => {

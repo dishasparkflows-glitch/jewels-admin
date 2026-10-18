@@ -26,6 +26,7 @@ import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import Dropdown from '../../components/common/Dropdown';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 const getMediaUrl = (url) => {
   if (!url) return '';
@@ -140,13 +141,20 @@ export default function BannersView() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const fileInputRef = useRef(null);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
+
   // Fetch banners
-  const fetchData = async () => {
+  const fetchData = async (page = currentPage, limit = pageSize) => {
     try {
       setLoading(true);
-      const res = await api.get('/banners?limit=200');
+      const res = await api.get(`/banners?page=${page}&limit=${limit}`);
       const items = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
       setBanners(items);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (err) {
       console.error('Failed to load banners:', err);
       toast.error('Failed to load sections and banners');
@@ -156,8 +164,8 @@ export default function BannersView() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    fetchData(currentPage, pageSize);
+  }, [currentPage, pageSize]);
 
   // Counts for tabs
   const tabCounts = useMemo(() => {
@@ -219,13 +227,9 @@ export default function BannersView() {
   }, [banners, activeTab, search]);
 
   const {
-    currentPage,
-    setCurrentPage,
-    pageSize,
-    setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredBanners, 10);
+  } = usePagination(filteredBanners, pageSize, serverTotal);
 
   // Reset to page 1 on tab change
   const handleTabChange = (key) => {
@@ -809,10 +813,13 @@ export default function BannersView() {
         {/* Pagination */}
         <Pagination
           currentPage={currentPage}
-          totalItems={totalItems}
+          totalItems={serverTotal ?? totalItems}
           pageSize={pageSize}
           onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
         />
       </div>
 

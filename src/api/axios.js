@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getAdminPageSize } from '../utils/adminPagination';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
@@ -9,13 +10,30 @@ const api = axios.create({
   },
 });
 
-// Request interceptor - attach token
+// Request interceptor - attach token & default pagination limit
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Default pagination limit to admin's selected size if page is set without limit
+    if (config.method?.toLowerCase() === 'get') {
+      const adminLimit = getAdminPageSize(10);
+      if (config.params && config.params.page !== undefined && config.params.limit === undefined) {
+        config.params.limit = adminLimit;
+      }
+      if (typeof config.url === 'string') {
+        const hasPage = /[?&]page=\d+/.test(config.url);
+        const hasLimit = /[?&]limit=\d+/.test(config.url);
+        if (hasPage && !hasLimit) {
+          const sep = config.url.includes('?') ? '&' : '?';
+          config.url = `${config.url}${sep}limit=${adminLimit}`;
+        }
+      }
+    }
+
     return config;
   },
   (error) => Promise.reject(error)

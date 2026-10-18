@@ -21,6 +21,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 /**
  * Geometric Faceted Diamond Icon matching User Screenshot 2
@@ -108,7 +109,7 @@ export default function DiamondTypesView() {
   const fileInputRef = useRef(null);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
+  const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
 
   // Fetch Diamond Types from API with default page 1 and limit 10
