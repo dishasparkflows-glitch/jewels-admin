@@ -23,7 +23,7 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 
 // Preset luxury jewelry icons for 1-click selection
 const PRESET_ICONS = [
@@ -185,7 +185,7 @@ export default function NavigationMenusView() {
       const uploadedUrl = res.fileUrl || res.url;
       setItemModal((prev) => ({
         ...prev,
-        data: { ...prev.data, iconUrl: uploadedUrl },
+        data: { ...prev.data, iconUrl: uploadedUrl, iconKey: res.key || '' },
       }));
       toast.success('Icon uploaded successfully');
     } catch (err) {
@@ -205,7 +205,7 @@ export default function NavigationMenusView() {
       const uploadedUrl = res.fileUrl || res.url;
       setBannerModal((prev) => ({
         ...prev,
-        data: { ...prev.data, imageUrl: uploadedUrl },
+        data: { ...prev.data, imageUrl: uploadedUrl, imageKey: res.key || '' },
       }));
       toast.success('Banner image uploaded successfully');
     } catch (err) {
@@ -588,6 +588,7 @@ export default function NavigationMenusView() {
         title: item.title || '',
         menuSectionId: item.menuSectionId?._id || item.menuSectionId,
         iconUrl: item.icon?.url || '',
+        iconKey: item.icon?.key || '',
         order: item.order ?? 0,
         status: item.status || 'active',
       },
@@ -610,7 +611,7 @@ export default function NavigationMenusView() {
         title: data.title.trim(),
         order: Number(data.order || 0),
         status: data.status || 'active',
-        icon: { url: (data.iconUrl || '').trim() },
+      icon: { url: (data.iconUrl || '').trim(), key: data.iconKey || '' },
       };
 
       if (mode === 'create') {
@@ -671,6 +672,7 @@ export default function NavigationMenusView() {
         title: banner.title || '',
         subtitle: banner.subtitle || '',
         imageUrl: banner.image?.url || (typeof banner.image === 'string' ? banner.image : ''),
+        imageKey: banner.image?.key || '',
         link: banner.link || banner.url || '',
         status: banner.status || 'active',
         order: banner.order ?? index + 1,
@@ -689,7 +691,7 @@ export default function NavigationMenusView() {
       const bannerItem = {
         title: data.title.trim(),
         subtitle: (data.subtitle || '').trim(),
-        image: { url: (data.imageUrl || '').trim(), key: '' },
+        image: { url: (data.imageUrl || '').trim(), key: data.imageKey || '' },
         link: (data.link || '').trim(),
         url: (data.link || '').trim(),
         status: data.status || 'active',
@@ -1497,7 +1499,12 @@ export default function NavigationMenusView() {
                       {itemModal.data?.iconUrl && (
                         <button
                           type="button"
-                          onClick={() => setItemModal((prev) => ({ ...prev, data: { ...prev.data, iconUrl: '' } }))}
+                          onClick={async () => {
+                            try {
+                              await deleteUploadedFile({ key: itemModal.data.iconKey, url: itemModal.data.iconUrl });
+                              setItemModal((prev) => ({ ...prev, data: { ...prev.data, iconUrl: '', iconKey: '' } }));
+                            } catch (err) { toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage'); }
+                          }}
                           className="text-[11px] text-red-500 hover:text-red-700 font-medium cursor-pointer"
                         >
                           Clear Icon
@@ -1743,7 +1750,12 @@ export default function NavigationMenusView() {
                       {bannerModal.data?.imageUrl && (
                         <button
                           type="button"
-                          onClick={() => setBannerModal((prev) => ({ ...prev, data: { ...prev.data, imageUrl: '' } }))}
+                          onClick={async () => {
+                            try {
+                              await deleteUploadedFile({ key: bannerModal.data.imageKey, url: bannerModal.data.imageUrl });
+                              setBannerModal((prev) => ({ ...prev, data: { ...prev.data, imageUrl: '', imageKey: '' } }));
+                            } catch (err) { toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage'); }
+                          }}
                           className="text-[11px] text-red-500 hover:text-red-700 font-medium cursor-pointer"
                         >
                           Clear Image

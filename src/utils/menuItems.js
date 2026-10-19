@@ -1,6 +1,6 @@
 export const menuId = (value) => String(value?._id || value || '');
 export function selectedMenuIds(record = {}) {
-  const source = [record.menuItem, record.menuItemIds, record.menuItemId].find((value) => Array.isArray(value) ? value.length : Boolean(value)) || [];
+  const source = record.menuItemIds || [];
   return [...new Set((Array.isArray(source) ? source : [source]).map(menuId).filter(Boolean))];
 }
 export function groupMenuItems(categories, sections, items) {

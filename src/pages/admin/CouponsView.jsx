@@ -20,6 +20,7 @@ import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import useCategoryLookup from '../../hooks/useCategoryLookup';
 
 export default function CouponsView() {
   const confirm = useConfirm();
@@ -27,6 +28,7 @@ export default function CouponsView() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
+  const [validityTab, setValidityTab] = useState('active');
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -43,16 +45,20 @@ export default function CouponsView() {
   const [expiryDate, setExpiryDate] = useState('');
   const [totalUsageLimit, setTotalUsageLimit] = useState('');
   const [limitPerUser, setLimitPerUser] = useState('1');
+  const [categoryId, setCategoryId] = useState('');
+  const { categoryOptions, loading: categoriesLoading } = useCategoryLookup();
 
   // Fetch all coupons
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
 
-  const fetchCoupons = async (page = currentPage, limit = pageSize) => {
+  const fetchCoupons = async (page = currentPage, limit = pageSize, validity = validityTab) => {
     try {
       setLoading(true);
-      const res = await api.get(`/coupons?page=${page}&limit=${limit}`);
+      const res = await api.get('/coupons', {
+        params: { page, limit, validityStatus: validity },
+      });
       const items = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
       setCoupons(items);
       if (res.data?.pagination?.totalDocs !== undefined) {
@@ -67,8 +73,8 @@ export default function CouponsView() {
   };
 
   useEffect(() => {
-    fetchCoupons(currentPage, pageSize);
-  }, [currentPage, pageSize]);
+    fetchCoupons(currentPage, pageSize, validityTab);
+  }, [currentPage, pageSize, validityTab]);
 
   // Filter coupons by search query
   const filteredCoupons = useMemo(() => {
@@ -110,6 +116,7 @@ export default function CouponsView() {
     setExpiryDate('');
     setTotalUsageLimit('');
     setLimitPerUser('1');
+    setCategoryId('');
     setIsModalOpen(true);
   };
 
@@ -141,6 +148,7 @@ export default function CouponsView() {
         ? String(c.usage.perUserLimit)
         : '1'
     );
+    setCategoryId(typeof c.categoryId === 'object' ? c.categoryId?._id || '' : c.categoryId || '');
     setIsModalOpen(true);
   };
 
@@ -230,6 +238,10 @@ export default function CouponsView() {
       toast.error('Please enter a coupon code');
       return;
     }
+    if (!categoryId) {
+      toast.error('Please select a category');
+      return;
+    }
     if (discountValue === '' || isNaN(Number(discountValue)) || Number(discountValue) < 0) {
       toast.error('Please enter a valid discount value');
       return;
@@ -239,6 +251,7 @@ export default function CouponsView() {
       setSubmitting(true);
 
       const payload = {
+        categoryId: categoryId || null,
         coupon: {
           code: couponCode.trim().toUpperCase(),
           description: headline.trim(),
@@ -324,7 +337,32 @@ export default function CouponsView() {
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />
 
-      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
+      <div className="flex items-center gap-2 border-b border-stone-200">
+        {[
+          { value: 'active', label: 'Active Coupons' },
+          { value: 'expired', label: 'Expired Coupons' },
+        ].map((tab) => (
+          <button
+            key={tab.value}
+            type="button"
+            onClick={() => {
+              setValidityTab(tab.value);
+              setCurrentPage(1);
+              setSelectedIds([]);
+            }}
+            className={`-mb-px border-b-2 px-4 py-2 text-xs font-semibold transition-colors ${
+              validityTab === tab.value
+                ? 'border-[#8f6d43] text-[#8f6d43]'
+                : 'border-transparent text-stone-500 hover:text-stone-800'
+            }`}
+            aria-current={validityTab === tab.value ? 'page' : undefined}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ─── Search & Filter Bar ─── */}
       <SearchFilterBar
         search={search}
         onSearchChange={setSearch}
@@ -567,6 +605,21 @@ export default function CouponsView() {
                     className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
                   />
                 </div>
+              </div>
+
+              {/* Row 2: Discount Type & Discount Value */}
+              <div>
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Category <span className="text-rose-500 font-bold">*</span>
+                </label>
+                <Dropdown
+                  value={categoryId}
+                  onChange={(value) => setCategoryId(value)}
+                  options={categoryOptions}
+                  placeholder={categoriesLoading ? 'Loading categories…' : 'Select a category'}
+                  disabled={categoriesLoading || categoryOptions.length === 0}
+                  buttonClassName="h-10 w-full rounded-xl text-xs sm:text-[13px] font-medium border border-[#d6cfc2] hover:border-[#bdae99]"
+                />
               </div>
 
               {/* Row 2: Discount Type & Discount Value */}

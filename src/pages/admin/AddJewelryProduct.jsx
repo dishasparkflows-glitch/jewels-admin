@@ -1,10 +1,11 @@
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { createProductId, deleteUploadedFile, uploadWithPresignedUrl, uploadFilesWithPresignedUrls } from '../../utils/uploadWithPresignedUrl';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import Dropdown from '../../components/common/Dropdown';
 import { getMediaUrl } from '../../utils/imageUrl';
@@ -91,10 +92,99 @@ const VTO_ENV_OPTIONS = [
   { id: 'wrist', value: 'wrist', label: 'Wrist View (Bracelets & Bangles)' },
 ];
 
+const formatMediaSize = (bytes = 0) => {
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+const compressImageAsset = async (asset, quality, format = 'image/webp') => {
+  const key = asset.key || (() => {
+    try { return decodeURIComponent(new URL(asset.url).pathname.replace(/^\/+/, '')); } catch { return ''; }
+  })();
+  if (!key.startsWith('products/')) throw new Error('Could not identify this product image for compression');
+  const response = await api.get('/upload/file', { params: { key }, responseType: 'blob' });
+  const original = response.data;
+  const bitmap = await createImageBitmap(original);
+  const canvas = document.createElement('canvas');
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0);
+  bitmap.close();
+  const compressed = await new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Image compression failed')), format, quality);
+  });
+  const stem = (asset.name || 'product-image').replace(/\.[^.]+$/, '');
+  const extension = format === 'image/jpeg' ? 'jpg' : 'webp';
+  const file = new File([compressed], `${stem}.${extension}`, { type: format });
+  file.originalSize = original.size;
+  return file;
+};
+
+const compressVideoAsset = async (asset, quality) => {
+  if (!window.MediaRecorder || !HTMLVideoElement.prototype.captureStream) {
+    throw new Error('Video compression is not supported by this browser');
+  }
+  const key = asset.key || (() => {
+    try { return decodeURIComponent(new URL(asset.url).pathname.replace(/^\/+/, '')); } catch { return ''; }
+  })();
+  if (!key.startsWith('products/')) throw new Error('Could not identify this product video for compression');
+  const sourceResponse = await api.get('/upload/file', { params: { key }, responseType: 'blob' });
+  const sourceBlob = sourceResponse.data;
+  const sourceUrl = URL.createObjectURL(sourceBlob);
+  const video = document.createElement('video');
+  video.muted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.src = sourceUrl;
+  try {
+    await new Promise((resolve, reject) => {
+      video.onloadedmetadata = resolve;
+      video.onerror = () => reject(new Error('Could not load this video for compression'));
+    });
+  const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+    .find((type) => MediaRecorder.isTypeSupported(type));
+  if (!mimeType) throw new Error('This browser cannot encode compressed video');
+  const originalBitrate = sourceBlob.size * 8 / Math.max(video.duration, 1);
+  const recorder = new MediaRecorder(video.captureStream(), {
+    mimeType,
+    videoBitsPerSecond: Math.max(250_000, Math.min(originalBitrate, originalBitrate * quality)),
+  });
+  const chunks = [];
+  recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
+  const stopped = new Promise((resolve, reject) => {
+    recorder.onstop = resolve;
+    recorder.onerror = () => reject(new Error('Video compression failed'));
+  });
+  recorder.start();
+  try {
+    await video.play();
+    await new Promise((resolve, reject) => {
+      video.onended = resolve;
+      video.onerror = () => reject(new Error('Video playback failed during compression'));
+    });
+  } finally {
+    if (recorder.state !== 'inactive') recorder.stop();
+  }
+  await stopped;
+  video.pause();
+  video.removeAttribute('src');
+  video.load();
+  const blob = new Blob(chunks, { type: mimeType });
+  const stem = (asset.name || 'product-video').replace(/\.[^.]+$/, '');
+  URL.revokeObjectURL(sourceUrl);
+  return new File([blob], `${stem}.webm`, { type: mimeType });
+  } catch (error) {
+    URL.revokeObjectURL(sourceUrl);
+    throw error;
+  }
+};
+
 export default function AddJewelryProduct() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { id: productId } = useParams();
+  const [draftProductId] = useState(() => productId || createProductId());
+  const mediaProductId = productId || draftProductId;
   const isSilverProduct = pathname.includes('/catalog/silver-products');
   const productListPath = isSilverProduct ? '/catalog/silver-products' : '/catalog/jewelry-products';
   const [productRecord, setProductRecord] = useState(null);
@@ -120,6 +210,7 @@ export default function AddJewelryProduct() {
 
   // ─── Live Master Lookup Lists from Backend API ──────────
   const [puritiesList, setPuritiesList] = useState([]);
+  const [purityMasterList, setPurityMasterList] = useState([]);
   const [colorsList, setColorsList] = useState([]);
   const [diamondTypesList, setDiamondTypesList] = useState([]);
   const [diamondShapesList, setDiamondShapesList] = useState([]);
@@ -144,6 +235,7 @@ export default function AddJewelryProduct() {
 
         if (combinedData) {
           if (Array.isArray(combinedData.metalPurities)) {
+            setPurityMasterList(combinedData.metalPurities);
             setPuritiesList(combinedData.metalPurities.map((i) => (typeof i === 'string' ? i : i.name)));
           }
           if (Array.isArray(combinedData.metalColors)) {
@@ -196,6 +288,7 @@ export default function AddJewelryProduct() {
         if (resPurities.status === 'fulfilled' && resPurities.value.data?.data) {
           const items = resPurities.value.data.data;
           if (Array.isArray(items)) {
+            setPurityMasterList(items);
             setPuritiesList(items.map((i) => (typeof i === 'string' ? i : i.name)));
           }
         }
@@ -285,7 +378,6 @@ export default function AddJewelryProduct() {
     title: '',
     sku: '',
     category: '',
-    productType: isSilverProduct ? 'silver' : '',
     gender: '',
     description: '',
     isOrnate: false,
@@ -470,6 +562,47 @@ export default function AddJewelryProduct() {
 
   // 360 Spin & Product Videos Per Metal Color
   const [mediaVideos, setMediaVideos] = useState({});
+  const [showCompressionHub, setShowCompressionHub] = useState(false);
+  const [compressionTab, setCompressionTab] = useState('images');
+  const [compressionQuality, setCompressionQuality] = useState(0.7);
+  const [compressionFormat, setCompressionFormat] = useState('image/webp');
+  const [selectedCompressionIds, setSelectedCompressionIds] = useState([]);
+  const [compressionPreviews, setCompressionPreviews] = useState({});
+  const [previewingCompression, setPreviewingCompression] = useState(false);
+  const [compressingMedia, setCompressingMedia] = useState(false);
+  const [pendingCompressionDeletes, setPendingCompressionDeletes] = useState([]);
+
+  useEffect(() => {
+    if (!showCompressionHub || compressionTab !== 'images') return undefined;
+    const selected = (mediaImages[activeMediaColor] || []).filter((image) => selectedCompressionIds.includes(image.id));
+    if (!selected.length) {
+      setCompressionPreviews({});
+      setPreviewingCompression(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setPreviewingCompression(true);
+    const timer = window.setTimeout(async () => {
+      const entries = await Promise.all(selected.map(async (image) => {
+        try {
+          const file = await compressImageAsset(image, compressionQuality, compressionFormat);
+          return [image.id, { file, originalSize: file.originalSize, compressedSize: file.size }];
+        } catch {
+          return [image.id, null];
+        }
+      }));
+      if (!cancelled) {
+        setCompressionPreviews(Object.fromEntries(entries));
+        setPreviewingCompression(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [showCompressionHub, compressionTab, activeMediaColor, mediaImages, selectedCompressionIds, compressionQuality, compressionFormat]);
 
   // Virtual Try-On (VTO) Configuration Per Metal Color
   const [vtoConfigs, setVtoConfigs] = useState({});
@@ -558,7 +691,7 @@ export default function AddJewelryProduct() {
 
     try {
       setUploadingSilverSwatchColor(colorName);
-      const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+      const { fileUrl } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
       if (fileUrl) {
         setSilverVariantMedia((prev) => ({
           ...prev,
@@ -587,7 +720,7 @@ export default function AddJewelryProduct() {
       const uploadedList = [];
 
       for (const file of files) {
-        const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+      const { fileUrl } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
         if (fileUrl) {
           uploadedList.push({
             id: `vmed-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
@@ -616,7 +749,13 @@ export default function AddJewelryProduct() {
     }
   };
 
-  const handleRemoveSilverSwatchIcon = (colorName) => {
+  const handleRemoveSilverSwatchIcon = async (colorName) => {
+    try {
+      await deleteUploadedFile(silverVariantMedia[colorName]?.swatchIcon);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
+      return;
+    }
     setSilverVariantMedia((prev) => ({
       ...prev,
       [colorName]: {
@@ -627,7 +766,14 @@ export default function AddJewelryProduct() {
     toast.success(`Removed swatch icon for ${colorName}`);
   };
 
-  const handleRemoveSilverVariantMedia = (colorName, mediaId) => {
+  const handleRemoveSilverVariantMedia = async (colorName, mediaId) => {
+    const media = (silverVariantMedia[colorName]?.media || []).find((item) => item.id === mediaId);
+    try {
+      await deleteUploadedFile(media);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete media from storage');
+      return;
+    }
     setSilverVariantMedia((prev) => ({
       ...prev,
       [colorName]: {
@@ -716,7 +862,7 @@ export default function AddJewelryProduct() {
     for (const file of files) {
       try {
         toast.loading(`Uploading ${file.name}...`, { id: 'prod-media' });
-        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products');
+        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
         setMediaImages((prev) => {
           const current = prev[colorName] || [];
           return {
@@ -751,7 +897,7 @@ export default function AddJewelryProduct() {
     for (const file of files) {
       try {
         toast.loading(`Uploading video ${file.name}...`, { id: 'prod-video' });
-        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products');
+        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
         setMediaVideos((prev) => {
           const current = prev[colorName] || [];
           return {
@@ -777,6 +923,56 @@ export default function AddJewelryProduct() {
     if (e.target) e.target.value = '';
   };
 
+  const handleMixedMediaUpload = async (e, colorName = activeMediaColor) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const validFiles = files.filter((file) => {
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+      const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif)$/i.test(file.name);
+      if (!isVideo && !isImage) toast.error(`${file.name} is not a supported image or video`);
+      return isImage || isVideo;
+    });
+    if (!validFiles.length) {
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      toast.loading(`Preparing ${validFiles.length} media upload${validFiles.length === 1 ? '' : 's'}...`, { id: 'prod-media-batch' });
+      const uploadedAt = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+      let completedCount = 0;
+      await uploadFilesWithPresignedUrls(validFiles, 'products', null, {
+        productId: mediaProductId,
+        onFileUploaded: (uploaded, file, index) => {
+          const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+          const media = {
+            id: `${isVideo ? 'vid' : 'img'}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
+            url: uploaded.fileUrl,
+            key: uploaded.key,
+            name: file.name,
+            title: file.name,
+            size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+            uploadedAt,
+          };
+          if (isVideo) {
+            setMediaVideos((prev) => ({ ...prev, [colorName]: [...(prev[colorName] || []), media] }));
+          } else {
+            setMediaImages((prev) => {
+              const current = prev[colorName] || [];
+              return { ...prev, [colorName]: [...current, { ...media, isPrimary: current.length === 0 }] };
+            });
+          }
+          completedCount += 1;
+          toast.loading(`Uploaded ${completedCount} of ${validFiles.length} media files...`, { id: 'prod-media-batch' });
+        },
+      });
+      toast.success(`${completedCount} media file${completedCount === 1 ? '' : 's'} uploaded`, { id: 'prod-media-batch' });
+    } catch (err) {
+      toast.error(`Media upload failed: ${err.message}`, { id: 'prod-media-batch' });
+    }
+    e.target.value = '';
+  };
+
   // Handle VTO Overlay PNG Upload inside Studio Modal
   const handleVtoAssetUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -800,7 +996,14 @@ export default function AddJewelryProduct() {
     if (e.target) e.target.value = '';
   };
 
-  const handleRemoveMedia = (colorName, imageId) => {
+  const handleRemoveMedia = async (colorName, imageId) => {
+    const image = (mediaImages[colorName] || []).find((item) => item.id === imageId);
+    try {
+      await deleteUploadedFile(image);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
+      return;
+    }
     setMediaImages((prev) => {
       const currentList = prev[colorName] || [];
       const updatedList = currentList.filter((img) => img.id !== imageId);
@@ -815,7 +1018,14 @@ export default function AddJewelryProduct() {
     toast.success(`Removed image from ${colorName}`);
   };
 
-  const handleRemoveVideo = (colorName, videoId) => {
+  const handleRemoveVideo = async (colorName, videoId) => {
+    const video = (mediaVideos[colorName] || []).find((item) => item.id === videoId);
+    try {
+      await deleteUploadedFile(video);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete video from storage');
+      return;
+    }
     setMediaVideos((prev) => ({
       ...prev,
       [colorName]: (prev[colorName] || []).filter((v) => v.id !== videoId),
@@ -832,6 +1042,66 @@ export default function AddJewelryProduct() {
       })),
     }));
     toast.success(`Set primary image for ${colorName}`);
+  };
+
+  const handleApplyMediaCompression = async () => {
+    const mediaType = compressionTab === 'images' ? 'image' : 'video';
+    const assets = mediaType === 'image'
+      ? (mediaImages[activeMediaColor] || []).filter((image) => selectedCompressionIds.includes(image.id))
+      : (mediaVideos[activeMediaColor] || []);
+    if (!assets.length) return;
+
+    setCompressingMedia(true);
+    let compressedCount = 0;
+    try {
+      for (const asset of assets) {
+        const sizeMatch = String(asset.size || '').match(/[\d.]+/);
+        const originalSize = Number(asset.fileSize) || (sizeMatch
+          ? Number(sizeMatch[0]) * (String(asset.size).toLowerCase().includes('mb') ? 1024 * 1024 : 1024)
+          : 0);
+        const file = mediaType === 'image'
+          ? (compressionPreviews[asset.id]?.file || await compressImageAsset(asset, compressionQuality, compressionFormat))
+          : await compressVideoAsset({ ...asset, fileSize: originalSize }, compressionQuality);
+        const sourceSize = mediaType === 'image'
+          ? (compressionPreviews[asset.id]?.originalSize || file.originalSize || originalSize)
+          : originalSize;
+        if (sourceSize && file.size >= sourceSize) continue;
+
+        const uploaded = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId, subfolder: 'compressed' });
+        const replacement = {
+          ...asset,
+          url: uploaded.fileUrl,
+          key: uploaded.key,
+          name: file.name,
+          title: mediaType === 'video' ? file.name : asset.title,
+          fileSize: file.size,
+          size: formatMediaSize(file.size),
+        };
+        if (mediaType === 'image') {
+          setMediaImages((previous) => ({
+            ...previous,
+            [activeMediaColor]: (previous[activeMediaColor] || []).map((item) => item.id === asset.id ? replacement : item),
+          }));
+        } else {
+          setMediaVideos((previous) => ({
+            ...previous,
+            [activeMediaColor]: (previous[activeMediaColor] || []).map((item) => item.id === asset.id ? replacement : item),
+          }));
+        }
+        setPendingCompressionDeletes((previous) => [...previous, asset]);
+        compressedCount += 1;
+      }
+      if (compressedCount) {
+        toast.success(`${compressedCount} ${mediaType}${compressedCount === 1 ? '' : 's'} compressed and replaced`);
+      } else {
+        toast('Selected files are already smaller than the compressed versions', { icon: 'ℹ️' });
+      }
+      setShowCompressionHub(false);
+    } catch (error) {
+      toast.error(error.message || 'Could not compress media');
+    } finally {
+      setCompressingMedia(false);
+    }
   };
 
   // Open VTO Studio for a specific metal color
@@ -965,7 +1235,7 @@ export default function AddJewelryProduct() {
     metalWeight: '',
     baseLabourCharge: '',
     certificateCharge: '',
-    gstPercentage: '',
+    otherAmountPercentage: '',
   });
 
   // ─── Structured Pricing Block ───────────────────────────
@@ -974,7 +1244,6 @@ export default function AddJewelryProduct() {
     salePrice: '',
     costPrice: '',
     displayPrice: '',
-    gstPercentage: '',
     markupPercentage: '',
   });
 
@@ -997,12 +1266,6 @@ export default function AddJewelryProduct() {
     metaDescription: '',
     stockStatus: '',
     status: 'active',
-  });
-
-  // ─── Platform Visibility (App & Web) ───────────────────
-  const [platformVisibility, setPlatformVisibility] = useState({
-    showInApp: false,
-    showOnWeb: false,
   });
 
   // Right column active preview thumbnail selection
@@ -1102,7 +1365,7 @@ export default function AddJewelryProduct() {
             center: centerDetail,
             side: sideDetail,
           },
-          weight: specs.baseMetalWeight || specs.metalWeight || '0.00',
+          weight: specs.metalWeight || '0.00',
           sku: basicDetails.sku ? basicDetails.sku + '-' + suffix : '',
           price: calculatedPrice ? Number(calculatedPrice).toLocaleString('en-IN') : '0',
           priceRaw: calculatedPrice || 0,
@@ -1142,9 +1405,11 @@ export default function AddJewelryProduct() {
     const unique = (values) => [...new Set(values.filter(Boolean))];
     const basicInfo = productRecord.basicInfo || {};
     const productPricing = productRecord.pricing || {};
-    const categoryRef = Array.isArray(productRecord.category) ? productRecord.category[0] : productRecord.category;
+    const categoryValues = productRecord.categoryIds || productRecord.category || [];
+    const categoryRef = Array.isArray(categoryValues) ? categoryValues[0] : categoryValues;
     const categoryId = categoryRef && typeof categoryRef === 'object' ? categoryRef._id : categoryRef;
-    const colorOptions = [...colorsList, ...(productRecord.metalColors || [])];
+    const productMetalColors = productRecord.metalColorIds || productRecord.metalColors || [];
+    const colorOptions = [...colorsList, ...productMetalColors];
     const variantRecords = Array.isArray(productRecord.variants) ? productRecord.variants : [];
     const variantRows = variantRecords.map((variant, index) => {
       const parts = String(variant.combination || '').split('/').map((part) => part.trim());
@@ -1155,8 +1420,24 @@ export default function AddJewelryProduct() {
         purity,
         color,
         colorCode: colorOptions.find((item) => item.name === color)?.code || '',
-        diamondDetails: { center: '', side: '' },
+        diamondDetails: {
+          center: [
+            resolveName(variant.diamondTypeId || variant.diamondType, diamondMasters.types),
+            resolveName(variant.diamondShapeId || variant.diamondShape, diamondMasters.shapes),
+            resolveName(variant.diamondColorId || variant.diamondColor, diamondMasters.colors),
+            resolveName(variant.diamondClarityId || variant.diamondClarity, diamondMasters.clarities),
+            variant.caratWeight ? `${variant.caratWeight}ct` : '',
+          ].filter(Boolean).join(' · ') || '',
+          side: '',
+        },
+        diamondTypeId: variant.diamondTypeId?._id || variant.diamondTypeId || '',
+        diamondShapeId: variant.diamondShapeId?._id || variant.diamondShapeId || '',
+        diamondColorId: variant.diamondColorId?._id || variant.diamondColorId || '',
+        diamondClarityId: variant.diamondClarityId?._id || variant.diamondClarityId || '',
+        caratWeight: variant.caratWeight == null ? '' : String(variant.caratWeight),
         weight: variant.metalWeight == null ? '' : String(variant.metalWeight),
+        labourCharge: String(variant.labourCharge ?? variant.computedMakingCharge ?? ''),
+        otherAmount: String(variant.otherAmount ?? ''),
         sku: variant.sku || '',
         price: variant.price == null ? '' : Number(variant.price).toLocaleString('en-IN'),
         priceRaw: variant.price ?? '',
@@ -1166,8 +1447,8 @@ export default function AddJewelryProduct() {
     const colorRows = Array.isArray(productRecord.colorImages) ? productRecord.colorImages : [];
     const colorNames = unique([
       ...colorRows.map((row) => resolveName(row.metalColorId || row.metalColor, colorOptions)),
-      ...(Array.isArray(productRecord.metalColors)
-        ? productRecord.metalColors.map((color) => resolveName(color, colorOptions))
+      ...(Array.isArray(productMetalColors)
+        ? productMetalColors.map((color) => resolveName(color, colorOptions))
         : []),
       ...variantRows.map((variant) => variant.color),
     ]);
@@ -1205,29 +1486,8 @@ export default function AddJewelryProduct() {
         };
       }
     });
-    const rootImages = Array.isArray(productRecord.images) ? productRecord.images.filter((item) => item?.url) : [];
     const hasColorMedia = Object.values(imagesByColor).some((items) => items.length) ||
       Object.values(videosByColor).some((items) => items.length);
-    if (!hasColorMedia && rootImages.length) {
-      const rootMediaColor = colorNames[0] || '';
-      imagesByColor[rootMediaColor] = rootImages
-        .filter((item) => item.mediaType !== 'video')
-        .map((item, index) => ({
-          id: item.key || item._id || 'image-' + index,
-          url: item.url,
-          key: item.key,
-          name: item.name || '',
-          isPrimary: index === 0,
-        }));
-      videosByColor[rootMediaColor] = rootImages
-        .filter((item) => item.mediaType === 'video')
-        .map((item, index) => ({
-          id: item.key || item._id || 'video-' + index,
-          url: item.url,
-          key: item.key,
-          title: item.title || '',
-        }));
-    }
     const centerRows = Array.isArray(productRecord.centerDiamondRows) ? productRecord.centerDiamondRows : [];
     const centerNames = centerRows.map((row) => ({
       type: resolveName(row.diamondTypeId || row.diamondType, diamondMasters.types),
@@ -1240,16 +1500,18 @@ export default function AddJewelryProduct() {
     const firstCenter = centerNames[0] || {};
     setMenuItemIds(selectedMenuIds(productRecord));
     setBasicDetails({
-      title: basicInfo.title || productRecord.title || '',
-      sku: basicInfo.sku || productRecord.sku || '',
+      title: basicInfo.title || '',
+      sku: basicInfo.sku || '',
       category: categoryId ? String(categoryId) : '',
-      productType: isSilverProduct ? 'silver' : (basicInfo.productType || productRecord.productType || ''),
       gender: Array.isArray(productRecord.gender) ? (productRecord.gender[0] || '') : (productRecord.gender || ''),
-      description: basicInfo.description || productRecord.description || '',
-      isOrnate: Boolean(basicInfo.isOrnate ?? productRecord.isOrnate),
+      description: basicInfo.description || '',
+      isOrnate: Boolean(basicInfo.isOrnate || productRecord.isOrnate || productRecord.productType === 'ornate'),
     });
-    setSelectedPurities(unique(variantRows.map((variant) => variant.purity)));
-    setSelectedColors(unique(variantRows.map((variant) => variant.color)));
+    const savedPurities = Array.isArray(productRecord.metalPurityIds)
+      ? productRecord.metalPurityIds.map((purity) => resolveName(purity, puritiesList))
+      : [];
+    setSelectedPurities(unique([...savedPurities, ...variantRows.map((variant) => variant.purity)]));
+    setSelectedColors(unique([...colorNames, ...variantRows.map((variant) => variant.color)]));
     setVariants(variantRows);
     setCenterDiamondType(firstCenter.type || '');
     setCenterDiamondShape(firstCenter.shape || '');
@@ -1289,8 +1551,8 @@ export default function AddJewelryProduct() {
     if (isSilverProduct) {
       const sColors = [];
       const sMedia = {};
-      if (Array.isArray(productRecord.metalColors) && productRecord.metalColors.length > 0) {
-        productRecord.metalColors.forEach((mc) => {
+      if (Array.isArray(productMetalColors) && productMetalColors.length > 0) {
+        productMetalColors.forEach((mc) => {
           const cName = typeof mc === 'object' && mc !== null ? mc.name : resolveName(mc, colorOptions);
           if (cName) sColors.push(cName);
         });
@@ -1318,35 +1580,21 @@ export default function AddJewelryProduct() {
         const cName = resolveName(productRecord.color, colorOptions);
         if (cName) sColors.push(cName);
       }
-      if (!sColors.length && Array.isArray(productRecord.images) && productRecord.images.length > 0) {
-        const fallbackColor = 'Silver';
-        sColors.push(fallbackColor);
-        sMedia[fallbackColor] = {
-          swatchIcon: '',
-          media: productRecord.images.map((img, idx) => ({
-            id: img._id || img.key || `img-${idx}`,
-            url: typeof img === 'string' ? img : img.url,
-            key: img.key || '',
-            mediaType: img.mediaType || (img.url?.endsWith('.mp4') ? 'video' : 'image'),
-          })),
-        };
-      }
       setSilverColors(unique(sColors));
       setSilverVariantMedia(sMedia);
     }
     setSpecs({
-      metalWeight: String(productRecord.specifications?.metalWeight ?? productRecord.baseMetalWeight ?? ''),
-      baseLabourCharge: String(productRecord.baseLabourCharge ?? ''),
-      certificateCharge: String(productRecord.certificateCharge ?? ''),
-      gstPercentage: String(productRecord.gstPercentage ?? productPricing.gstPercentage ?? ''),
+      metalWeight: String(productRecord.specifications?.metalWeight ?? ''),
+      baseLabourCharge: String(productRecord.pricing?.baseLabourCharge ?? ''),
+      certificateCharge: String(productRecord.pricing?.certificateCharge ?? ''),
+      otherAmountPercentage: String(productRecord.pricing?.otherAmountPercentage ?? ''),
     });
     setPricing({
-      mrp: String(productPricing.mrp ?? productRecord.mrp ?? productRecord.price ?? ''),
-      salePrice: String(productPricing.salePrice ?? productRecord.salePrice ?? ''),
-      costPrice: String(productPricing.costPrice ?? productRecord.costPrice ?? ''),
-      displayPrice: String(productPricing.displayPrice ?? productRecord.displayPrice ?? ''),
-      gstPercentage: String(productPricing.gstPercentage ?? productRecord.gstPercentage ?? ''),
-      markupPercentage: String(productPricing.markupPercentage ?? productRecord.markupPercentage ?? ''),
+      mrp: String(productPricing.mrp ?? ''),
+      salePrice: String(productPricing.salePrice ?? ''),
+      costPrice: String(productPricing.costPrice ?? ''),
+      displayPrice: String(productPricing.salePrice ?? ''),
+      markupPercentage: String(productPricing.markupPercentage ?? ''),
     });
     setCareSections((productRecord.descriptionSections || []).map((section, index) => ({
       id: section._id || 'section-' + index,
@@ -1359,17 +1607,17 @@ export default function AddJewelryProduct() {
       value: specification.value || '',
     })));
     setSeo({
-      slug: productRecord.slug || basicInfo.slug || '',
+      slug: basicInfo.slug || '',
       metaTitle: productRecord.seo?.metaTitle || '',
       metaDescription: productRecord.seo?.metaDescription || '',
       stockStatus: productRecord.stockStatus || '',
       status: productRecord.status || 'active',
     });
-    setPlatformVisibility({
-      showInApp: Boolean(productRecord.inapp),
-      showOnWeb: Boolean(productRecord.inweb),
-    });
-    setPreviewImage(rootImages[0]?.url || '');
+    setPreviewImage(
+      productRecord.colorImages?.flatMap((color) => color.images || []).find((image) => image?.url)?.url ||
+      productRecord.ornate?.ornateImages?.[0]?.url ||
+      ''
+    );
     hydratedProductId.current = productId;
     setProductLoading(false);
   }, [productId, productRecord, mastersLoaded, colorsList, puritiesList, diamondMasters]);
@@ -1602,11 +1850,21 @@ export default function AddJewelryProduct() {
       const activeSlug = seo.slug?.trim() || undefined;
       const activeDesc = basicDetails.description || '';
       const numberValue = (value) => value === '' || value === null || value === undefined ? undefined : Number(value);
-      const mrpNum = numberValue(pricing.mrp);
-      const salePriceNum = numberValue(pricing.salePrice);
-      const costPriceNum = numberValue(pricing.costPrice);
-      const displayPriceNum = numberValue(pricing.displayPrice);
-      const gstNum = numberValue(pricing.gstPercentage || specs.gstPercentage);
+      if (!isSilverProduct) {
+        if (variants.some((variant) => !(Number(String(variant.price ?? '').replace(/,/g, '')) > 0))) {
+          setActiveStep(2);
+          toast.error('Enter a price for every jewelry variant before saving');
+          return;
+        }
+      }
+      const variantPrices = variants
+        .map((variant) => numberValue(String(variant.price ?? '').replace(/,/g, '')) ?? numberValue(variant.priceRaw))
+        .filter((price) => Number.isFinite(price) && price > 0);
+      const jewelryStartingPrice = variantPrices.length ? Math.min(...variantPrices) : undefined;
+      const mrpNum = isSilverProduct ? numberValue(pricing.mrp) : jewelryStartingPrice;
+      const salePriceNum = isSilverProduct ? numberValue(pricing.salePrice) : jewelryStartingPrice;
+      const costPriceNum = isSilverProduct ? numberValue(pricing.costPrice) : undefined;
+      const displayPriceNum = isSilverProduct ? numberValue(pricing.displayPrice) : jewelryStartingPrice;
       const markupNum = numberValue(pricing.markupPercentage);
 
       const metalWeightNum = numberValue(specs.metalWeight);
@@ -1685,20 +1943,29 @@ export default function AddJewelryProduct() {
           } : {}),
         }];
       });
-      const productImages = mediaColorNames.flatMap((colorName) => [
-        ...(mediaImages[colorName] || []).filter((item) => item?.url).map((item) => mediaEntry(item, 'image')),
-        ...(mediaVideos[colorName] || []).filter((item) => item?.url).map((item) => mediaEntry(item, 'video')),
-      ]);
       const metalColorIds = [...new Set(productColors.map((colorName) => {
         const color = colorsList.find((item) => item.name?.toLowerCase() === colorName.toLowerCase());
         return color?.id || color?._id;
       }).filter(Boolean))];
+      const metalPurityIds = [...new Set(selectedPurities.map((purityName) => {
+        const purity = purityMasterList.find((item) =>
+          (typeof item === 'string' ? item : item?.name)?.toLowerCase() === purityName.toLowerCase()
+        );
+        return typeof purity === 'object' && purity ? (purity._id || purity.id) : null;
+      }).filter(Boolean).map(String))];
       const variantRows = variants.map((variant) => compactObject({
         combination: [variant.purity, variant.color].filter(Boolean).join(' / '),
         sku: variant.sku,
         price: numberValue(String(variant.price ?? '').replace(/,/g, '')) ?? numberValue(variant.priceRaw),
         stock: numberValue(variant.stock),
         metalWeight: numberValue(variant.weight),
+        labourCharge: numberValue(variant.labourCharge),
+        otherAmount: numberValue(variant.otherAmount),
+        ...(variant.diamondTypeId ? { diamondTypeId: variant.diamondTypeId } : {}),
+        ...(variant.diamondShapeId ? { diamondShapeId: variant.diamondShapeId } : {}),
+        ...(variant.diamondColorId ? { diamondColorId: variant.diamondColorId } : {}),
+        ...(variant.diamondClarityId ? { diamondClarityId: variant.diamondClarityId } : {}),
+        caratWeight: numberValue(variant.caratWeight),
       })).filter((variant) => Object.keys(variant).length);
       const centerDiamondRows = centerDiamondCombinations.map((combination) => withDiamondIds({
         diamondType: combination.diamondType,
@@ -1730,12 +1997,15 @@ export default function AddJewelryProduct() {
           value: specification.value?.trim(),
         }));
       const pricingData = compactObject({
-        mrp: mrpNum,
-        salePrice: salePriceNum,
-        costPrice: costPriceNum,
-        displayPrice: displayPriceNum,
-        gstPercentage: gstNum,
+        ...(isSilverProduct ? {
+          mrp: mrpNum,
+          salePrice: salePriceNum,
+          costPrice: costPriceNum,
+        } : {}),
         markupPercentage: markupNum,
+        baseLabourCharge: numberValue(specs.baseLabourCharge),
+        certificateCharge: numberValue(specs.certificateCharge),
+        otherAmountPercentage: numberValue(specs.otherAmountPercentage),
       });
       const specificationData = compactObject({ metalWeight: metalWeightNum });
       const seoData = compactObject({
@@ -1748,7 +2018,6 @@ export default function AddJewelryProduct() {
             const matched = colorsList.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
             return {
               ...(matched?.id || matched?._id ? { metalColorId: matched.id || matched._id } : {}),
-              metalColorName: cName,
               ...(vData.swatchIcon ? { variantIcon: { url: vData.swatchIcon } } : {}),
               images: (vData.media || []).map((m) => ({
                 url: typeof m === 'string' ? m : m.url,
@@ -1764,52 +2033,31 @@ export default function AddJewelryProduct() {
             return matched?.id || matched?._id || cName;
           }).filter(Boolean)
         : [];
-      const silverAllImages = isSilverProduct
-        ? silverColors.flatMap((cName) => {
-            const vData = silverVariantMedia[cName] || {};
-            return (vData.media || []).map((m) => ({
-              url: typeof m === 'string' ? m : m.url,
-              key: m.key || '',
-              mediaType: m.mediaType || (m.url?.endsWith('.mp4') ? 'video' : 'image'),
-            }));
-          })
-        : [];
-
       const payload = {
+        ...(!productId ? { _id: draftProductId } : {}),
+        productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
+        isOrnate: Boolean(basicDetails.isOrnate),
         basicInfo: compactObject({
           title: activeTitle,
           sku: activeSku,
           slug: activeSlug,
           description: activeDesc,
-          productType: isSilverProduct ? 'silver' : (basicDetails.productType || undefined),
+          productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
+          ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
           isOrnate: basicDetails.isOrnate ? true : undefined,
         }),
         status: statusOverride,
-        inapp: Boolean(platformVisibility.showInApp),
-        inweb: Boolean(platformVisibility.showOnWeb),
-        ...(categoryId ? { category: [categoryId] } : {}),
-        menuItem: menuItemIds,
+        ...(categoryId ? { categoryIds: [categoryId] } : {}),
         menuItemIds: menuItemIds,
-        menuItemId: menuItemIds,
-        ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
-        color: isSilverProduct ? (silverColors[0] || undefined) : undefined,
         ...(Object.keys(pricingData).length ? { pricing: pricingData } : {}),
         ...(Object.keys(specificationData).length ? { specifications: specificationData } : {}),
-        ...(numberValue(specs.baseLabourCharge) !== undefined
-          ? { baseLabourCharge: numberValue(specs.baseLabourCharge) }
-          : {}),
-        ...(numberValue(specs.certificateCharge) !== undefined
-          ? { certificateCharge: numberValue(specs.certificateCharge) }
-          : {}),
         ...(isSilverProduct
-          ? (silverMetalColorIds.length ? { metalColors: silverMetalColorIds } : {})
-          : (metalColorIds.length ? { metalColors: metalColorIds } : {})),
+          ? (silverMetalColorIds.length ? { metalColorIds: silverMetalColorIds } : {})
+          : (metalColorIds.length ? { metalColorIds } : {})),
+        ...(!isSilverProduct && metalPurityIds.length ? { metalPurityIds } : {}),
         ...(isSilverProduct
           ? (silverColorImageRows.length ? { colorImages: silverColorImageRows } : {})
           : (colorImageRows.length ? { colorImages: colorImageRows } : {})),
-        ...(isSilverProduct
-          ? (silverAllImages.length ? { images: silverAllImages } : {})
-          : (productImages.length ? { images: productImages } : {})),
         ...(!isSilverProduct && variantRows.length ? { variants: variantRows } : {}),
         ...(!isSilverProduct && centerDiamondRows.length ? { centerDiamondRows } : {}),
         ...(!isSilverProduct && sideDiamondRows.length ? { sideDiamondRows } : {}),
@@ -1823,6 +2071,13 @@ export default function AddJewelryProduct() {
         await api.put('/products/' + productId, payload);
       } else {
         await api.post('/products', payload);
+      }
+      if (pendingCompressionDeletes.length) {
+        const deleteResults = await Promise.allSettled(pendingCompressionDeletes.map((asset) => deleteUploadedFile(asset)));
+        if (deleteResults.some((result) => result.status === 'rejected')) {
+          console.warn('Some replaced media originals could not be removed from storage.');
+        }
+        setPendingCompressionDeletes([]);
       }
       const productName = isSilverProduct ? 'Silver product' : 'Jewelry product';
       toast.success(productId
@@ -1843,7 +2098,7 @@ export default function AddJewelryProduct() {
   const steps = [
     { num: 1, title: 'Basic Details', subtitle: 'Name, category, description' },
     ...(!isSilverProduct ? [{ num: 2, title: 'Variant Configuration', subtitle: 'Metal, color, diamonds' }] : []),
-    { num: 3, title: 'Specifications & Pricing', subtitle: 'Weights, charges & margins' },
+    ...(isSilverProduct ? [{ num: 3, title: 'Specifications & Pricing', subtitle: 'Weights, charges & margins' }] : []),
     {
       num: 4,
       title: isSilverProduct ? 'Variant Configuration' : 'Product Media',
@@ -1922,7 +2177,7 @@ export default function AddJewelryProduct() {
 
         {/* Top Action Buttons */}
         <div className="flex items-center gap-2.5">
-          {productId && isSilverProduct && (
+          {productId && (
             <button
               type="button"
               onClick={() => openProductPreview(productRecord || { _id: productId })}
@@ -1967,7 +2222,7 @@ export default function AddJewelryProduct() {
 
       {/* ─── Stepper Wizard Bar (Matches Screenshot) ─────────── */}
       <div className="bg-white rounded-2xl border border-[#eee8df] p-2 sm:p-2.5 shadow-2xs">
-        <div className={`grid grid-cols-2 sm:grid-cols-4 ${isSilverProduct ? 'lg:grid-cols-5' : 'lg:grid-cols-6'} gap-1.5 sm:gap-2 items-center`}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-2 items-center">
           {steps.map((s, idx) => {
             const isActive = activeStep === s.num;
 
@@ -2126,73 +2381,6 @@ export default function AddJewelryProduct() {
                   />
                 </div>
 
-                {!isSilverProduct && (
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900">Product Type</label>
-                    <Dropdown
-                      size="field"
-                      variant="input"
-                      value={basicDetails.productType}
-                      onChange={(val) =>
-                        setBasicDetails((prev) => ({
-                          ...prev,
-                          productType: val,
-                          isOrnate: val === 'ornate' ? true : prev.isOrnate,
-                        }))
-                      }
-                      placeholder="Select Product Type"
-                      options={[
-                        { value: 'gold', label: 'gold' },
-                        { value: 'silver', label: 'silver' },
-                        { value: 'ornate', label: 'ornate' },
-                      ]}
-                      className="w-full"
-                    />
-                  </div>
-                )}
-
-                {/* ─── Platform Visibility (Moved Next to Product Type) ── */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900">
-                    Platform Visibility
-                  </label>
-                  <div className="h-10 px-4 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white flex items-center gap-6 shadow-2xs transition-colors">
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
-                      <input
-                        type="checkbox"
-                        checked={platformVisibility.showInApp}
-                        onChange={(e) =>
-                          setPlatformVisibility((prev) => ({
-                            ...prev,
-                            showInApp: e.target.checked,
-                          }))
-                        }
-                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-stone-300 transition cursor-pointer accent-blue-600"
-                      />
-                      <span className="text-xs sm:text-[13px] font-semibold text-stone-800 group-hover:text-stone-900 transition-colors">
-                        Show in App
-                      </span>
-                    </label>
-
-                    <label className="inline-flex items-center gap-2 cursor-pointer select-none group">
-                      <input
-                        type="checkbox"
-                        checked={platformVisibility.showOnWeb}
-                        onChange={(e) =>
-                          setPlatformVisibility((prev) => ({
-                            ...prev,
-                            showOnWeb: e.target.checked,
-                          }))
-                        }
-                        className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-stone-300 transition cursor-pointer accent-blue-600"
-                      />
-                      <span className="text-xs sm:text-[13px] font-semibold text-stone-800 group-hover:text-stone-900 transition-colors">
-                        Show on Web
-                      </span>
-                    </label>
-                  </div>
-                </div>
-
                 <div className="sm:col-span-2 space-y-1.5">
                   <label className="text-xs font-bold text-stone-900">Luxury Description</label>
                   <textarea
@@ -2302,11 +2490,38 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
-              {/* ─── Sub-Section 2: Center & Side Diamond Configuration ──── */}
-              <div className="space-y-4 pt-3 border-t border-stone-100">
+              {/* Metal weight and product charges are configured alongside the variants. */}
+              <div className="space-y-3 pt-3 border-t border-stone-100">
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
                     2
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-bold text-stone-900">Metal Specifications</h3>
+                    <p className="text-[10px] text-stone-400">Set the base metal weight and applicable charges for these variants.</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pl-7">
+                  <label className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-stone-700">Metal Weight (g)</span>
+                    <input type="number" min="0" step="0.001" value={specs.metalWeight} onChange={(e) => setSpecs((prev) => ({ ...prev, metalWeight: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-stone-700">Making Charge (₹/g)</span>
+                    <input type="number" min="0" value={specs.baseLabourCharge} onChange={(e) => setSpecs((prev) => ({ ...prev, baseLabourCharge: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-stone-700">Certificate Charge (₹)</span>
+                    <input type="number" min="0" value={specs.certificateCharge} onChange={(e) => setSpecs((prev) => ({ ...prev, certificateCharge: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
+                  </label>
+                </div>
+              </div>
+
+              {/* ─── Sub-Section 3: Center & Side Diamond Configuration ──── */}
+              <div className="space-y-4 pt-3 border-t border-stone-100">
+                <div className="flex items-center gap-2">
+                  <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
+                    3
                   </div>
                   <div>
                     <h3 className="text-xs font-bold text-stone-900">Diamond Configuration</h3>
@@ -2663,7 +2878,7 @@ export default function AddJewelryProduct() {
 
               {/* ─── Sub-Section 3: Preview Variants ───────── */}
               <div className="space-y-2.5 pt-3 border-t border-stone-100">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
                       3
@@ -2671,19 +2886,22 @@ export default function AddJewelryProduct() {
                     <div>
                       <h3 className="text-xs font-bold text-stone-900">Preview Variants</h3>
                       <p className="text-[10px] text-stone-400">
-                        Based on your selection, variants will be generated automatically.
+                        Review each metal and diamond combination, then set its final weight, labour charge and selling price.
                       </p>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleRegenerateVariants}
-                    className="flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-semibold text-stone-700 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 active:scale-95 transition-all shadow-2xs cursor-pointer"
-                  >
-                    <HiOutlineRefresh className="w-3 h-3 text-stone-500" />
-                    <span>Regenerate</span>
-                  </button>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <label className="flex items-center gap-2 text-[10px] font-semibold text-stone-500">
+                      Other amount markup %
+                      <input type="number" min="0" value={specs.otherAmountPercentage} onChange={(e) => setSpecs((prev) => ({ ...prev, otherAmountPercentage: e.target.value }))} className="w-16 px-2 py-1.5 text-xs text-stone-800 rounded-md border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]" />
+                    </label>
+                    <button type="button" onClick={handleRegenerateVariants} className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] border border-[#8b6f4e] rounded-lg hover:bg-[#765b3d] active:scale-[0.98] transition-all shadow-sm cursor-pointer">
+                      <HiOutlineRefresh className="w-4 h-4" />
+                      <span>{variants.length ? 'Recompute Variants' : 'Compute Variants'}</span>
+                    </button>
+                  </div>
+
                 </div>
 
                 {/* Variants Table */}
@@ -2692,78 +2910,76 @@ export default function AddJewelryProduct() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-[#faf9f7] border-b border-stone-200/80 text-[9.5px] font-bold text-stone-500 uppercase tracking-wider">
-                          <th className="py-2 pl-3 pr-1 text-center w-7">#</th>
-                          <th className="py-2 px-2.5">METAL PURITY</th>
-                          <th className="py-2 px-2.5">METAL COLOR</th>
-                          <th className="py-2 px-3 min-w-[190px]">DIAMOND DETAILS</th>
-                          <th className="py-2 px-2.5 w-20">WEIGHT (G)</th>
+                          <th className="py-2 pl-3 pr-2 min-w-[250px]">COMBINATION</th>
                           <th className="py-2 px-2.5 min-w-[120px]">SKU</th>
-                          <th className="py-2 px-2.5 w-24">PRICE (₹)</th>
+                          <th className="py-2 px-2.5 w-24">FINAL WEIGHT (G)</th>
+                          <th className="py-2 px-2.5 w-28">LABOUR CHARGE (₹)</th>
+                          <th className="py-2 px-2.5 w-28">FINAL PRICE (₹)</th>
+                          <th className="py-2 px-2.5 w-28">OTHER AMOUNT (₹)</th>
                           <th className="py-2 pr-3 pl-2 w-16">STOCK</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100 text-[11px]">
                         {variants.length === 0 ? (
                           <tr>
-                            <td colSpan={8} className="py-12 text-center">
+                            <td colSpan={7} className="py-12 text-center">
                               <div className="flex flex-col items-center justify-center space-y-1.5 text-stone-400">
                                 <span className="text-2xl">✨</span>
                                 <p className="font-semibold text-xs text-stone-700">No variants generated yet</p>
                                 <p className="text-[11px] text-stone-400 max-w-sm">
-                                  Select your metal options and diamond configuration above, then click &quot;Regenerate&quot; to build preview variants.
+                                  Select your metal options and diamond configuration above, then compute the variants. You can set each variant&apos;s weight, price and stock below.
                                 </p>
+                                <button
+                                  type="button"
+                                  onClick={handleRegenerateVariants}
+                                  className="mt-3 inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] rounded-lg hover:bg-[#765b3d] active:scale-[0.98] transition-all shadow-sm cursor-pointer"
+                                >
+                                  <HiOutlineRefresh className="w-4 h-4" />
+                                  Compute Variants
+                                </button>
                               </div>
                             </td>
                           </tr>
                         ) : (
                           variants.map((v) => (
                           <tr key={v.id} className="hover:bg-stone-50/70 transition-colors">
-                            <td className="py-2 pl-3 pr-1 text-center font-medium text-stone-400 text-[11px]">
-                              {v.id}
-                            </td>
-                            <td className="py-2 px-2.5 font-semibold text-stone-800">
-                              {v.purity}
-                            </td>
-                            <td className="py-2 px-2.5 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  className="w-2.5 h-2.5 rounded-full border border-black/15 flex-shrink-0"
-                                  style={{ backgroundColor: v.colorCode }}
-                                />
-                                <span className="font-medium text-stone-700">
-                                  {v.color}
-                                </span>
+                            <td className="py-2 pl-3 pr-2">
+                              <div className="flex flex-wrap gap-1.5">
+                                {[v.purity, v.color, v.diamondDetails.center].filter(Boolean).map((detail, index) => (
+                                  <span key={`${v.id}-${index}`} className="inline-flex px-2 py-1 text-[10px] font-semibold text-stone-700 bg-[#faf5ee] border border-[#e8d8c0] rounded-full">{detail}</span>
+                                ))}
+                                {v.diamondDetails.side && v.diamondDetails.side !== 'Side: None' && <span className="inline-flex px-2 py-1 text-[10px] text-stone-600 bg-stone-50 border border-stone-200 rounded-full">{v.diamondDetails.side}</span>}
                               </div>
-                            </td>
-                            <td className="py-2 px-3">
-                              <div className="space-y-0.5 text-[10.5px] leading-tight">
-                                <p className="text-stone-800 font-medium">{v.diamondDetails.center}</p>
-                                <p className="text-stone-500">{v.diamondDetails.side}</p>
-                              </div>
-                            </td>
-                            <td className="py-2 px-2.5">
-                              <input
-                                type="text"
-                                value={v.weight}
-                                onChange={(e) => handleVariantChange(v.id, 'weight', e.target.value)}
-                                className="w-14 px-1.5 py-0.5 text-[11px] text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
-                              />
                             </td>
                             <td className="py-2 px-2.5">
                               <input
                                 type="text"
                                 value={v.sku}
                                 onChange={(e) => handleVariantChange(v.id, 'sku', e.target.value)}
-                                className="w-24 px-1.5 py-0.5 text-[11px] font-mono text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                                className="w-28 px-1.5 py-1 text-[11px] font-mono text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
                               />
+                            </td>
+                            <td className="py-2 px-2.5">
+                              <input
+                                type="number"
+                                value={v.weight}
+                                onChange={(e) => handleVariantChange(v.id, 'weight', e.target.value)}
+                                className="w-20 px-1.5 py-1 text-[11px] text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                              />
+                            </td>
+                            <td className="py-2 px-2.5">
+                              <input type="number" value={v.labourCharge} onChange={(e) => handleVariantChange(v.id, 'labourCharge', e.target.value)} className="w-24 px-1.5 py-1 text-[11px] text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]" />
                             </td>
                             <td className="py-2 px-2.5">
                               <input
                                 type="text"
                                 value={v.price}
                                 onChange={(e) => handleVariantChange(v.id, 'price', e.target.value)}
-                                className="w-20 px-1.5 py-0.5 text-[11px] font-semibold text-stone-900 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                                className="w-24 px-1.5 py-1 text-[11px] font-semibold text-stone-900 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
                               />
+                            </td>
+                            <td className="py-2 pr-3 pl-2">
+                              <input type="number" value={v.otherAmount} onChange={(e) => handleVariantChange(v.id, 'otherAmount', e.target.value)} className="w-24 px-1.5 py-1 text-[11px] text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]" />
                             </td>
                             <td className="py-2 pr-3 pl-2">
                               <input
@@ -2815,6 +3031,24 @@ export default function AddJewelryProduct() {
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/50 shadow-2xs">
                     {silverColorOptions.length} colors available
                   </span>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-4 space-y-3">
+                <h4 className="text-xs font-bold text-stone-900">Metal Specifications</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <label className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-stone-700">Metal Weight (g)</span>
+                    <input type="number" min="0" step="0.001" value={specs.metalWeight} onChange={(e) => setSpecs((prev) => ({ ...prev, metalWeight: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-stone-700">Making Charge (₹/g)</span>
+                    <input type="number" min="0" value={specs.baseLabourCharge} onChange={(e) => setSpecs((prev) => ({ ...prev, baseLabourCharge: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
+                  </label>
+                  <label className="space-y-1.5">
+                    <span className="text-[11px] font-bold text-stone-700">Certificate Charge (₹)</span>
+                    <input type="number" min="0" value={specs.certificateCharge} onChange={(e) => setSpecs((prev) => ({ ...prev, certificateCharge: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
+                  </label>
                 </div>
               </div>
 
@@ -3253,7 +3487,7 @@ export default function AddJewelryProduct() {
                       }`}
                     >
                       <HiOutlinePhotograph className="w-4 h-4" />
-                      <span>Product Images ({(mediaImages[activeMediaColor] || []).length})</span>
+                      <span>Product Media ({(mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length})</span>
                     </button>
 
                     <button
@@ -3281,6 +3515,21 @@ export default function AddJewelryProduct() {
                       <HiOutlineCube className="w-4 h-4" />
                       <span>VTO Configuration ({vtoConfigs[activeMediaColor]?.isConfigured ? 1 : 0})</span>
                     </button>
+                    {!isSilverProduct && ((mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length > 0) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCompressionTab('images');
+                          setSelectedCompressionIds((mediaImages[activeMediaColor] || []).map((image) => image.id));
+                          setCompressionPreviews({});
+                          setShowCompressionHub(true);
+                        }}
+                        className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-[#d9c4a8] bg-white px-3 py-1.5 text-xs font-semibold text-[#785e40] transition hover:bg-[#faf5ee]"
+                      >
+                        <HiOutlineAdjustments className="h-4 w-4" />
+                        Compress Media
+                      </button>
+                    )}
                   </div>
 
                   {/* Product Images Tab Content (Horizontal Scroll Row) */}
@@ -3296,18 +3545,18 @@ export default function AddJewelryProduct() {
                             id="metal-color-upload-input"
                             type="file"
                             multiple
-                            accept="image/*"
-                            onChange={(e) => handleImageUpload(e, activeMediaColor)}
+                            accept="image/*,video/mp4,video/webm,video/quicktime"
+                            onChange={(e) => handleMixedMediaUpload(e, activeMediaColor)}
                             className="hidden"
                           />
                           <div className="w-8 h-8 rounded-full border border-stone-300 group-hover:border-[#8b6f4e] group-hover:bg-[#faf5ee] text-stone-400 group-hover:text-[#8b6f4e] flex items-center justify-center transition-all mb-1.5">
                             <HiOutlinePlus className="w-4 h-4" />
                           </div>
                           <span className="text-xs font-bold text-stone-800 group-hover:text-[#8b6f4e]">
-                            Upload Images
+                            Upload Media
                           </span>
                           <span className="text-[9.5px] text-stone-400 mt-0.5">
-                            PNG, JPG (Max 5MB each)
+                            Images and videos (MP4, WEBM, MOV)
                           </span>
                         </label>
 
@@ -3346,6 +3595,19 @@ export default function AddJewelryProduct() {
                               className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/50 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
                               title="Remove image"
                             >
+                              <HiOutlineX className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+
+                        {(mediaVideos[activeMediaColor] || []).map((vid, i) => (
+                          <div key={vid.id || `video-${i}`} className="relative w-48 h-32 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-900 shadow-2xs group flex flex-col justify-end p-2.5 text-white">
+                            <video src={vid.url} className="absolute inset-0 w-full h-full object-cover opacity-70" />
+                            <div className="relative z-10">
+                              <p className="text-xs font-bold truncate">{vid.title || vid.name || 'Product Video'}</p>
+                              <p className="text-[10px] text-stone-300">{vid.size || 'Video asset'}</p>
+                            </div>
+                            <button type="button" onClick={() => handleRemoveVideo(activeMediaColor, vid.id)} className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/60 hover:bg-black text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" title="Remove video">
                               <HiOutlineX className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -3409,16 +3671,14 @@ export default function AddJewelryProduct() {
                     </div>
                   )}
 
-                  {/* ─── Virtual Try-On (VTO) Dedicated Card (Matching Screenshot) ─── */}
+                  {/* VTO setup is available only from its dedicated tab. */}
+                  {activeMediaSubTab === 'vto' && (
                   <div className="space-y-2 pt-2 border-t border-stone-100">
                     <div>
                       <h4 className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
                         <span>Virtual Try-On (VTO)</span>
                         <HiOutlineInformationCircle className="w-3.5 h-3.5 text-stone-400" />
                       </h4>
-                      <p className="text-[11px] text-stone-500">
-                        Configure virtual try-on using the existing VTO master. This will use the 3D asset and try-on settings for this metal color.
-                      </p>
                     </div>
 
                     <div className="p-4 rounded-2xl bg-[#faf8f5] border border-stone-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-2xs">
@@ -3467,8 +3727,108 @@ export default function AddJewelryProduct() {
                       </button>
                     </div>
                   </div>
+                  )}
                 </div>
               </div>
+
+              {showCompressionHub && !isSilverProduct && createPortal(
+                <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-3 backdrop-blur-sm sm:p-6">
+                  <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl">
+                    <div className="flex items-center justify-between px-5 py-4 sm:px-7">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#a58054] text-white"><HiOutlinePhotograph className="h-5 w-5" /></span>
+                        <div>
+                          <h3 className="text-lg font-bold text-slate-900">Media Compression</h3>
+                          <p className="text-xs text-slate-500">Optimize images before publishing.</p>
+                        </div>
+                      </div>
+                      <button type="button" onClick={() => setShowCompressionHub(false)} disabled={compressingMedia} className="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 disabled:opacity-50" aria-label="Close compression hub"><HiOutlineX className="h-5 w-5" /></button>
+                    </div>
+
+                    <div className="grid grid-cols-2 border-b border-stone-200 bg-stone-50">
+                      {[
+                        { id: 'images', label: 'Images', count: (mediaImages[activeMediaColor] || []).length, Icon: HiOutlinePhotograph },
+                        { id: 'videos', label: 'Videos', count: (mediaVideos[activeMediaColor] || []).length, Icon: HiOutlineVideoCamera },
+                      ].map(({ id, label, count, Icon }) => (
+                        <button key={id} type="button" onClick={() => setCompressionTab(id)} className={`flex items-center justify-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wide ${compressionTab === id ? 'border-[#a58054] bg-white text-[#8b6f4e]' : 'border-transparent text-stone-400'}`}>
+                          <Icon className="h-4 w-4" /> {label} ({count})
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="space-y-4 overflow-y-auto bg-[#fffdfb] p-4 sm:p-6">
+                      {compressionTab === 'images' ? (
+                        <>
+                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                          {(mediaImages[activeMediaColor] || []).map((image, index) => {
+                            const isSelected = selectedCompressionIds.includes(image.id);
+                            const preview = compressionPreviews[image.id];
+                            const originalSize = preview?.originalSize || image.fileSize || 0;
+                            return <div key={image.id || index} className={`overflow-hidden rounded-2xl border bg-white p-2.5 ${isSelected ? 'border-[#d9c4a8] shadow-sm' : 'border-stone-200 opacity-70'}`}>
+                              <div className="relative aspect-[1.65] overflow-hidden rounded-xl bg-[#f8f5f2]">
+                                <img src={image.url} alt={image.name || `Product image ${index + 1}`} className="h-full w-full object-contain" />
+                                <button type="button" onClick={() => setSelectedCompressionIds((ids) => ids.includes(image.id) ? ids.filter((id) => id !== image.id) : [...ids, image.id])} className={`absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border text-xs ${isSelected ? 'border-[#a58054] bg-[#a58054] text-white' : 'border-stone-300 bg-white text-transparent'}`} aria-label={`${isSelected ? 'Deselect' : 'Select'} ${image.name || 'image'}`}><HiOutlineCheck className="h-4 w-4" /></button>
+                                <span className={`absolute right-2 top-2 rounded-full px-2.5 py-1 text-[10px] font-semibold ${preview ? 'bg-green-50 text-green-700' : 'bg-stone-100 text-stone-500'}`}>{preview ? 'Ready' : previewingCompression && isSelected ? 'Preparing…' : 'Ready'}</span>
+                              </div>
+                              <p className="mt-2 truncate text-[11px] font-medium text-slate-700">{image.name || `Image ${index + 1}`}</p>
+                              <div className="mt-2 grid grid-cols-2 rounded-xl bg-stone-50 px-2.5 py-2 text-[10px]">
+                                <div><span className="block text-slate-400">Original</span><strong className="text-slate-800">{originalSize ? formatMediaSize(originalSize) : image.size || '—'}</strong></div>
+                                <div className="border-l border-stone-200 pl-3"><span className="block text-slate-400">Compressed</span><strong className="text-green-700">{preview ? formatMediaSize(preview.compressedSize) : 'Calculating…'}</strong></div>
+                              </div>
+                            </div>
+                          })}
+                          {!(mediaImages[activeMediaColor] || []).length && <p className="col-span-full py-8 text-center text-xs text-stone-400">No images for this metal color.</p>}
+                        </div>
+                        {(() => {
+                          const selected = (mediaImages[activeMediaColor] || []).filter((image) => selectedCompressionIds.includes(image.id));
+                          const original = selected.reduce((sum, image) => sum + (compressionPreviews[image.id]?.originalSize || image.fileSize || 0), 0);
+                          const compressed = selected.reduce((sum, image) => sum + (compressionPreviews[image.id]?.compressedSize || 0), 0);
+                          const savings = original && compressed ? Math.max(0, Math.round((1 - compressed / original) * 100)) : 0;
+                          return <div className="grid grid-cols-2 gap-3 rounded-2xl border border-stone-200 bg-white p-4 sm:grid-cols-4">
+                            <div><span className="block text-[10px] text-slate-500">Images selected</span><strong className="text-sm text-slate-900">{selected.length} images</strong></div>
+                            <div><span className="block text-[10px] text-slate-500">Original size</span><strong className="text-sm text-slate-900">{original ? formatMediaSize(original) : '—'}</strong></div>
+                            <div><span className="block text-[10px] text-slate-500">Estimated size</span><strong className="text-sm text-green-700">{compressed ? formatMediaSize(compressed) : '—'}</strong></div>
+                            <div><span className="block text-[10px] text-slate-500">Estimated savings</span><strong className="text-sm text-green-700">{savings ? `~${savings}%` : '—'}</strong></div>
+                          </div>;
+                        })()}
+                        </>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                          {(mediaVideos[activeMediaColor] || []).map((video, index) => (
+                            <div key={video.id || index} className="overflow-hidden rounded-xl border border-stone-200 bg-slate-900 text-white">
+                              <video src={video.url} className="aspect-video w-full object-cover" muted playsInline preload="metadata" />
+                              <p className="truncate px-3 pt-2 text-[11px] font-semibold">{video.name || video.title || `Video ${index + 1}`}</p>
+                              <p className="px-3 pb-2 text-[10px] text-slate-300">{video.size || 'Ready to compress'}</p>
+                            </div>
+                          ))}
+                          {!(mediaVideos[activeMediaColor] || []).length && <p className="col-span-full py-8 text-center text-xs text-stone-400">No videos for this metal color.</p>}
+                        </div>
+                      )}
+
+                      <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
+                        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                          <div><h4 className="text-sm font-bold text-slate-900">Compression settings</h4><p className="text-[10px] text-slate-500">Adjust quality and format for the best balance between file size and clarity.</p></div>
+                          {compressionTab === 'images' && <label className="flex items-center gap-2 text-[10px] text-slate-600">Format<select value={compressionFormat} onChange={(event) => setCompressionFormat(event.target.value)} className="rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-[10px] font-semibold text-slate-800"><option value="image/webp">WebP (Recommended)</option><option value="image/jpeg">JPEG</option></select></label>}
+                        </div>
+                        <div className="grid gap-5 md:grid-cols-2">
+                          <div><div className="mb-3 flex justify-between text-xs"><span className="font-semibold text-slate-800">{compressionTab === 'images' ? 'Image' : 'Video'} quality: <b className="text-[#8b6f4e]">{Math.round(compressionQuality * 100)}%</b></span></div><input type="range" min="10" max="100" step="5" value={Math.round(compressionQuality * 100)} onChange={(event) => setCompressionQuality(Number(event.target.value) / 100)} className="w-full accent-[#a58054]" /><div className="mt-1 flex justify-between text-[10px] text-slate-400"><span>10% (Smaller files)</span><span>50%</span><span>100% (Best quality)</span></div></div>
+                          <div><p className="mb-2 text-[10px] font-semibold text-slate-700">Preset</p><div className="grid grid-cols-3 overflow-hidden rounded-lg border border-stone-200">{[{ label: 'Smaller files', quality: 0.5, detail: '~50% size' }, { label: 'Balanced', quality: 0.75, detail: '~70% quality' }, { label: 'Best quality', quality: 0.9, detail: '~90% quality' }].map((preset) => <button type="button" key={preset.label} onClick={() => setCompressionQuality(preset.quality)} className={`px-2 py-2 text-[10px] ${Math.round(compressionQuality * 100) === Math.round(preset.quality * 100) ? 'bg-[#f5eadc] font-bold text-[#704f2d]' : 'bg-white text-slate-700'}`}>{preset.label}<span className="block text-[9px] text-slate-400">{preset.detail}</span></button>)}</div><p className="mt-2 text-[10px] text-slate-500"><HiOutlineInformationCircle className="mr-1 inline h-3.5 w-3.5" />Higher quality improves clarity but increases file size.</p></div>
+                        </div>
+                        <p className="mt-3 text-[10px] text-stone-500">Compressed files are saved under this product’s compressed media folder. Image compression uses the selected format; video compression encodes WebM in your browser.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap justify-end gap-2 border-t border-stone-100 bg-stone-50 px-5 py-4 sm:px-7">
+                      <button type="button" onClick={() => setShowCompressionHub(false)} disabled={compressingMedia} className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 disabled:opacity-50">Cancel</button>
+                      <button type="button" onClick={handleApplyMediaCompression} disabled={compressingMedia || !(compressionTab === 'images' ? selectedCompressionIds.length : mediaVideos[activeMediaColor]?.length)} className="inline-flex items-center gap-2 rounded-xl bg-[#a58054] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#8b6f4e] disabled:cursor-not-allowed disabled:opacity-50">
+                        {compressingMedia ? <HiOutlineRefresh className="h-4 w-4 animate-spin" /> : <HiOutlineCheck className="h-4 w-4" />}
+                        {compressingMedia ? 'Compressing media…' : 'Compress & apply'}
+                      </button>
+                    </div>
+                  </div>
+                </div>,
+                document.body
+              )}
 
               {/* ─── Virtual Try-On (VTO) Studio Modal (Matches Screenshot) ─── */}
               {isVtoStudioOpen && (
@@ -3950,7 +4310,7 @@ export default function AddJewelryProduct() {
           {/* ═══════════════════════════════════════════════════
               STEP 3: SPECIFICATIONS & PRICING
           ════════════════════════════════════════════════════ */}
-          {activeStep === 3 && (
+          {isSilverProduct && activeStep === 3 && (
             <div className="bg-white rounded-2xl border border-[#eee8df] p-6 shadow-xs space-y-6 animate-fadeIn">
               {/* Step Header */}
               <div className="flex items-center gap-3.5 pb-4 border-b border-stone-100">
@@ -3967,61 +4327,7 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
-              {/* ─── Box 1: Metal Specifications ─── */}
-              <div className="rounded-2xl border border-[#eee8df] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-                <div className="flex items-center gap-2.5 pb-1">
-                  <div className="w-6 h-6 rounded-lg bg-[#faf5ee] border border-[#ecd9c2] flex items-center justify-center text-[#8b6f4e] shrink-0">
-                    <HiOutlineCube className="w-3.5 h-3.5 stroke-[2.2]" />
-                  </div>
-                  <h4 className="text-sm font-bold text-stone-900">
-                    Metal Specifications
-                  </h4>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-                  {/* Metal Weight (g) */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900">
-                      Metal Weight (g)
-                    </label>
-                    <input
-                      type="number"
-                      step="0.001"
-                      value={specs.metalWeight}
-                      onChange={(e) => setSpecs((prev) => ({ ...prev, metalWeight: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
-                    />
-                  </div>
-
-                  {/* Making Charge (₹/g) */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900">
-                      Making Charge (₹/g)
-                    </label>
-                    <input
-                      type="number"
-                      value={specs.baseLabourCharge}
-                      onChange={(e) => setSpecs((prev) => ({ ...prev, baseLabourCharge: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
-                    />
-                  </div>
-
-                  {/* Certificate Charge (₹) */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900">
-                      Certificate Charge (₹)
-                    </label>
-                    <input
-                      type="number"
-                      value={specs.certificateCharge}
-                      onChange={(e) => setSpecs((prev) => ({ ...prev, certificateCharge: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* ─── Box 2: Pricing & Commercial Margins ─── */}
+              {/* ─── Pricing & Commercial Margins (silver products only) ─── */}
               <div className="rounded-2xl border border-[#eee8df] bg-white p-5 sm:p-6 shadow-xs space-y-4">
                 <div className="flex items-center justify-between flex-wrap gap-2 pb-1">
                   <div className="flex items-center gap-2.5">
@@ -4112,31 +4418,6 @@ export default function AddJewelryProduct() {
                     />
                   </div>
 
-                  {/* GST Rate (%) */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900">
-                      GST Rate (%)
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={pricing.gstPercentage ?? 3}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setPricing((prev) => ({ ...prev, gstPercentage: val }));
-                          setSpecs((prev) => ({ ...prev, gstPercentage: val }));
-                        }}
-                        className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all appearance-none pr-8 cursor-pointer shadow-2xs"
-                      >
-                        <option value={0}>0</option>
-                        <option value={1.5}>1.5</option>
-                        <option value={3}>3</option>
-                        <option value={5}>5</option>
-                        <option value={12}>12</option>
-                        <option value={18}>18</option>
-                      </select>
-                      <HiOutlineChevronDown className="w-4 h-4 text-stone-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    </div>
-                  </div>
                 </div>
               </div>
 

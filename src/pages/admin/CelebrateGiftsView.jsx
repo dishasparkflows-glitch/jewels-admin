@@ -17,7 +17,7 @@ import {
 import { IoCubeOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -270,7 +270,7 @@ export default function CelebrateGiftsView() {
       setUploadProgress(0);
       const res = await uploadWithPresignedUrl(file, 'featured', setUploadProgress);
       setImageUrl(res.fileUrl);
-      setImagePublicId(res.key || file.name);
+      setImagePublicId(res.key || '');
       toast.success('Cover image uploaded');
     } catch (err) {
       console.error('Upload error:', err);
@@ -278,6 +278,16 @@ export default function CelebrateGiftsView() {
     } finally {
       setUploading(false);
       e.target.value = '';
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    try {
+      await deleteUploadedFile({ key: imagePublicId, url: imageUrl });
+      setImageUrl('');
+      setImagePublicId('');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
     }
   };
 
@@ -722,7 +732,7 @@ export default function CelebrateGiftsView() {
                         </label>
                         <button
                           type="button"
-                          onClick={() => setImageUrl('')}
+                          onClick={handleRemoveImage}
                           className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold shadow-sm"
                         >
                           Remove
@@ -799,8 +809,6 @@ export default function CelebrateGiftsView() {
                       const isSelected = selectedProductIds.includes(p._id);
                       const thumb =
                         p.thumbnail ||
-                        p.images?.[0]?.url ||
-                        (typeof p.images?.[0] === 'string' ? p.images[0] : null) ||
                         p.colorImages?.[0]?.images?.[0]?.url ||
                         null;
 

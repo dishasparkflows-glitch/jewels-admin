@@ -26,7 +26,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { openProductPreview } from '../../utils/productPreview';
 
@@ -422,7 +422,14 @@ const DynamicModuleView = () => {
     handleCloseBannerForm();
   };
 
-  const handleDeletePromoBannerItem = (index) => {
+  const handleDeletePromoBannerItem = async (index) => {
+    const bannerToRemove = (Array.isArray(formData.promoBanners) ? formData.promoBanners : [])[index];
+    try {
+      await deleteUploadedFile(bannerToRemove?.image || bannerToRemove?.imageUrl);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete banner image from storage');
+      return;
+    }
     setFormData((prev) => {
       const currentList = Array.isArray(prev.promoBanners) ? [...prev.promoBanners] : [];
       return { ...prev, promoBanners: currentList.filter((_, i) => i !== index) };
@@ -430,6 +437,24 @@ const DynamicModuleView = () => {
     toast.success('Promo banner removed');
     if (editingBannerIndex === index) {
       handleCloseBannerForm();
+    }
+  };
+
+  const handleClearImageField = async (fieldName) => {
+    try {
+      await deleteUploadedFile({ key: formData[`${fieldName}Key`], url: formData[fieldName] });
+      setFormData((prev) => ({ ...prev, [fieldName]: '', [`${fieldName}Key`]: '' }));
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
+    }
+  };
+
+  const handleClearPromoBannerImage = async () => {
+    try {
+      await deleteUploadedFile({ key: bannerFormData.key, url: bannerFormData.imageUrl });
+      setBannerFormData((prev) => ({ ...prev, imageUrl: '', key: '' }));
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
     }
   };
 
@@ -645,9 +670,7 @@ const DynamicModuleView = () => {
           .replace(/[^a-z0-9]+/g, '-')
           .replace(/^-+|-+$/g, '');
         const isOrnate = config.endpoint.includes('isOrnate=true') || Boolean(formData.isOrnate);
-        const productType = (config.endpoint.includes('productType=Silver') || isOrnate)
-          ? 'silver'
-          : (formData.productType || undefined);
+        const productType = (config.endpoint.includes('productType=Silver') || isOrnate) ? 'silver' : 'gold';
         const mrp = Number(formData.mrp || formData.price) || 0;
         const salePrice = Number(formData.salePrice || formData.price) || 0;
         const costPrice = Number(formData.costPrice) || 0;
@@ -658,13 +681,13 @@ const DynamicModuleView = () => {
         payload = {
           ...formData,
           basicInfo: {
+            ...(formData.basicInfo || {}),
             title,
             sku,
             slug,
             description: formData.description || '',
             productType,
             isOrnate,
-            ...(formData.basicInfo || {}),
           },
           pricing: {
             mrp,
@@ -1300,9 +1323,7 @@ const DynamicModuleView = () => {
                                   </label>
                                   <button
                                     type="button"
-                                    onClick={() =>
-                                      setFormData((prev) => ({ ...prev, [field.name]: '' }))
-                                    }
+                                    onClick={() => handleClearImageField(field.name)}
                                     className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
                                   >
                                     <HiOutlineTrash className="w-3.5 h-3.5" />
@@ -1421,7 +1442,7 @@ const DynamicModuleView = () => {
                             {hasIcon && (
                               <button
                                 type="button"
-                                onClick={() => setFormData((prev) => ({ ...prev, [field.name]: '' }))}
+                                onClick={() => handleClearImageField(field.name)}
                                 className="p-2.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-stone-200"
                                 title="Clear Icon"
                               >
@@ -1561,7 +1582,7 @@ const DynamicModuleView = () => {
                               </label>
                               <button
                                 type="button"
-                                onClick={() => setBannerFormData((prev) => ({ ...prev, imageUrl: '', key: '' }))}
+                                onClick={handleClearPromoBannerImage}
                                 className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
                               >
                                 <HiOutlineTrash className="w-3.5 h-3.5" />

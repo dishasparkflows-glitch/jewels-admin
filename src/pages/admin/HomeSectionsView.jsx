@@ -292,14 +292,14 @@ export default function HomeSectionsView() {
           _id: product._id,
           id: product._id,
           productId: product._id,
-          title: product.title,
-          subtitle: product.subtitle || product.metalName || '',
-          sku: product.sku || '',
-          price: product.price || product.salePrice || 0,
-          productType: product.productType || '',
-          metalName: product.metalName || '',
+          title: product.basicInfo?.title || '',
+          subtitle: product.subtitle || product.ornate?.metalName || '',
+          sku: product.basicInfo?.sku || '',
+          price: product.pricing?.salePrice || product.pricing?.mrp || product.cataloguePrice || 0,
+          productType: product.basicInfo?.productType || '',
+          metalName: product.ornate?.metalName || '',
           isOrnate: product.isOrnate,
-          thumbnail: product.thumbnail || product.images?.[0]?.url || product.images?.[0] || '',
+          thumbnail: product.thumbnail || product.colorImages?.[0]?.images?.[0]?.url || '',
         });
       }
       return next;
@@ -332,7 +332,7 @@ export default function HomeSectionsView() {
             productType: p.productType || '',
             metalName: p.metalName || '',
             isOrnate: p.isOrnate,
-            thumbnail: p.thumbnail || p.images?.[0]?.url || p.images?.[0] || '',
+            thumbnail: p.thumbnail || p.colorImages?.[0]?.images?.[0]?.url || '',
           });
         });
       }
@@ -1472,9 +1472,9 @@ export default function HomeSectionsView() {
 
                         {/* Product Image */}
                         <div className="h-28 flex items-center justify-center p-1.5 my-1 overflow-hidden">
-                          {prod.thumbnail || prod.images?.[0]?.url || prod.images?.[0] ? (
+                          {prod.thumbnail || prod.colorImages?.[0]?.images?.[0]?.url ? (
                             <img
-                              src={prod.thumbnail || prod.images?.[0]?.url || prod.images?.[0]}
+                              src={prod.thumbnail || prod.colorImages?.[0]?.images?.[0]?.url}
                               alt={prod.title}
                               className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-200"
                               loading="lazy"

@@ -24,6 +24,10 @@ export default function SettingsView() {
   // Separate editing states for the two cards
   const [isEditingBusiness, setIsEditingBusiness] = useState(false);
   const [isEditingMonetary, setIsEditingMonetary] = useState(false);
+  const [isEditingTrustBadges, setIsEditingTrustBadges] = useState(false);
+  const [trustBadges, setTrustBadges] = useState([]);
+  const [savingTrustBadges, setSavingTrustBadges] = useState(false);
+  const [uploadingBadgeIndex, setUploadingBadgeIndex] = useState(null);
 
   // Form states
   const [businessForm, setBusinessForm] = useState({
@@ -63,6 +67,7 @@ export default function SettingsView() {
       const res = await api.get('/settings');
       const data = res.data?.data || {};
       setSettings(data);
+      setTrustBadges(Array.isArray(data.trustBadges) ? data.trustBadges : []);
 
       setBusinessForm({
         companyName: data.companyName ?? '',
@@ -87,6 +92,45 @@ export default function SettingsView() {
       toast.error('Failed to load system settings');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleTrustBadgeImageUpload = async (event, index) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingBadgeIndex(index);
+      const { fileUrl, key } = await uploadWithPresignedUrl(file, 'trust-badges');
+      setTrustBadges((prev) => prev.map((badge, badgeIndex) => badgeIndex === index
+        ? { ...badge, image: { url: fileUrl, key: key || badge.image?.key || '' } }
+        : badge));
+      toast.success('Trust badge image uploaded');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Image upload failed');
+    } finally {
+      setUploadingBadgeIndex(null);
+      event.target.value = '';
+    }
+  };
+
+  const handleSaveTrustBadges = async () => {
+    try {
+      setSavingTrustBadges(true);
+      const payload = { trustBadges: trustBadges.map((badge, index) => ({
+        title: (badge.title || '').trim(),
+        image: { url: badge.image?.url || '', key: badge.image?.key || '' },
+        order: index + 1,
+      })) };
+      const response = await api.put('/settings', payload);
+      const data = response.data?.data || { ...settings, ...payload };
+      setSettings(data);
+      setTrustBadges(data.trustBadges || payload.trustBadges);
+      setIsEditingTrustBadges(false);
+      toast.success('Trust strip settings saved');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not save trust strip settings');
+    } finally {
+      setSavingTrustBadges(false);
     }
   };
 
@@ -256,6 +300,40 @@ export default function SettingsView() {
               <p className="mt-1.5 text-[10px] text-stone-400">{busy ? 'Saving logo…' : 'PNG, JPG, WebP or SVG'}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="rounded-lg border border-stone-200/90 bg-white p-3.5 shadow-2xs sm:p-4">
+        <div className="mb-3 flex items-center justify-between gap-3 border-b border-stone-100 pb-2">
+          <div>
+            <h2 className="text-sm font-bold text-stone-900">Trust Strip</h2>
+            <p className="mt-1 text-xs text-stone-500">Manage the text and optional image shown in the storefront assurance strip.</p>
+          </div>
+          {isEditingTrustBadges ? <div className="flex gap-2">
+            <button type="button" onClick={() => { setTrustBadges(settings?.trustBadges || []); setIsEditingTrustBadges(false); }} className="rounded-md border border-stone-200 px-3 py-1.5 text-xs font-semibold text-stone-600">Cancel</button>
+            <button type="button" onClick={handleSaveTrustBadges} disabled={savingTrustBadges || uploadingBadgeIndex !== null} className="rounded-md bg-[#8f6d43] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{savingTrustBadges ? 'Saving…' : 'Save Changes'}</button>
+          </div> : <button type="button" onClick={() => setIsEditingTrustBadges(true)} className="text-[10px] font-bold uppercase tracking-wider text-[#8f6d43]">Edit Configuration <HiOutlineChevronRight className="inline h-3 w-3" /></button>}
+        </div>
+        <div className="space-y-2">
+          {trustBadges.map((badge, index) => (
+            <div key={badge._id || index} className="grid grid-cols-1 gap-3 rounded-xl border border-stone-200 bg-[#fbfaf8] p-3 sm:grid-cols-[1fr_220px_auto] sm:items-end">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-stone-800">Text</label>
+                <input disabled={!isEditingTrustBadges} value={badge.title || ''} onChange={(event) => setTrustBadges((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))} placeholder="e.g. 100% Certified" className="h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-xs disabled:bg-stone-50 disabled:text-stone-700" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-stone-800">Image (optional)</label>
+                <label className={`flex h-9 items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-[#d8c8b2] bg-white px-2 text-xs ${isEditingTrustBadges ? 'cursor-pointer hover:border-[#8f6d43]' : 'cursor-default'}`}>
+                  {badge.image?.url ? <img src={getMediaUrl(badge.image.url)} alt="" className="h-6 w-6 object-contain" /> : <HiOutlineUpload className="h-4 w-4" />}
+                  {uploadingBadgeIndex === index ? 'Uploading…' : badge.image?.url ? 'Replace image' : 'Upload image'}
+                  {isEditingTrustBadges && <input type="file" accept="image/*" className="sr-only" disabled={uploadingBadgeIndex !== null} onChange={(event) => handleTrustBadgeImageUpload(event, index)} />}
+                </label>
+              </div>
+              {isEditingTrustBadges && <button type="button" onClick={() => setTrustBadges((prev) => prev.filter((_, itemIndex) => itemIndex !== index))} className="h-9 rounded-lg border border-stone-200 px-3 text-xs text-stone-500 hover:border-red-200 hover:text-red-600">Remove</button>}
+            </div>
+          ))}
+          {!trustBadges.length && <p className="py-4 text-center text-xs text-stone-400">No trust strip items configured.</p>}
+          {isEditingTrustBadges && <button type="button" onClick={() => setTrustBadges((prev) => [...prev, { title: '', image: { url: '', key: '' } }])} className="rounded-lg border border-dashed border-[#d8c8b2] px-3 py-2 text-xs font-semibold text-[#8f6d43]">+ Add item</button>}
         </div>
       </section>
 

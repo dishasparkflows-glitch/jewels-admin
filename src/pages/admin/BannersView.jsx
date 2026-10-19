@@ -21,7 +21,7 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -129,10 +129,14 @@ export default function BannersView() {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [collectionImages, setCollectionImages] = useState([]);
   const [mediaType, setMediaType] = useState('image');
   const [platform, setPlatform] = useState('web');
   const [destinationLink, setDestinationLink] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+  const [collectionGroup, setCollectionGroup] = useState('gold');
+  const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
+  const [navigationCategories, setNavigationCategories] = useState([]);
   const [status, setStatus] = useState('active');
   const [order, setOrder] = useState(1);
   const [startDate, setStartDate] = useState('');
@@ -168,6 +172,29 @@ export default function BannersView() {
   useEffect(() => {
     fetchData(currentPage, pageSize);
   }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get('/categories/navigation')
+      .then((res) => {
+        const rows = res.data?.data || [];
+        if (!cancelled) setNavigationCategories(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setNavigationCategories([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const selectedCategoryMenuItems = useMemo(() => {
+    const category = navigationCategories.find((item) => String(item._id) === String(selectedCategory));
+    return (category?.menuSections || []).flatMap((section) =>
+      (section.menuItems || []).map((menuItem) => ({
+        ...menuItem,
+        sectionName: section.name || section.title || 'Menu Items',
+      }))
+    );
+  }, [navigationCategories, selectedCategory]);
 
   // Counts for tabs
   const tabCounts = useMemo(() => {
@@ -249,9 +276,12 @@ export default function BannersView() {
     setTitle('');
     setSubtitle('');
     setImageUrl('');
+    setCollectionImages([]);
     setMediaType('image');
     setDestinationLink('');
     setSelectedCategory('');
+    setCollectionGroup('gold');
+    setSelectedMenuItemIds([]);
     setStatus('active');
     setOrder(banners.length + 1);
     setStartDate('');
@@ -267,6 +297,10 @@ export default function BannersView() {
     setTitle(banner.content?.title || '');
     setSubtitle(banner.content?.subtitle || '');
     setImageUrl(banner.mediaType === 'video' ? banner.video?.url : banner.image?.url || '');
+    setCollectionImages((banner.collectionImages || (banner.image?.url ? [banner.image] : [])).map((image) => ({
+      url: image.url,
+      key: image.key || '',
+    })));
     setMediaType(banner.mediaType || 'image');
     setPlatform(banner.display?.platform || 'web');
     setDestinationLink(banner.link || '');
@@ -274,6 +308,8 @@ export default function BannersView() {
     const catObj = banner.display?.categoryId || banner.display?.category;
     const catId = typeof catObj === 'object' ? catObj?._id : catObj || '';
     setSelectedCategory(catId);
+    setCollectionGroup(banner.display?.collectionGroup || 'gold');
+    setSelectedMenuItemIds((banner.display?.menuItemIds || []).map((item) => String(item?._id || item)));
 
     setStatus(banner.status || 'active');
     setOrder(banner.display?.order ?? 1);
@@ -320,8 +356,46 @@ export default function BannersView() {
     }
   };
 
+  const handleCollectionFilesSelect = async (e) => {
+    const files = Array.from(e.target.files || []).filter((file) => file.type.startsWith('image/'));
+    if (!files.length) return;
+    const slotsAvailable = 4 - collectionImages.length;
+    if (files.length > slotsAvailable) {
+      toast.error(`You can add ${slotsAvailable} more image${slotsAvailable === 1 ? '' : 's'} (4 per collection)`);
+      e.target.value = '';
+      return;
+    }
+    try {
+      setIsUploading(true);
+      const uploaded = await Promise.all(files.map((file) => uploadWithPresignedUrl(file, 'banners')));
+      setCollectionImages((current) => [...current, ...uploaded.map((item) => ({ url: item.fileUrl, key: item.key || '' }))]);
+      toast.success(`${uploaded.length} collection image${uploaded.length === 1 ? '' : 's'} uploaded`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Collection image upload failed');
+    } finally {
+      setIsUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleRemoveCollectionImage = async (index) => {
+    const image = collectionImages[index];
+    try {
+      await deleteUploadedFile(image);
+      setCollectionImages((current) => current.filter((_, currentIndex) => currentIndex !== index));
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
+    }
+  };
+
   // Remove Image
-  const handleRemoveImage = () => {
+  const handleRemoveImage = async () => {
+    try {
+      await deleteUploadedFile(imageUrl);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
+      return;
+    }
     setImageUrl('');
   };
 
@@ -451,8 +525,8 @@ export default function BannersView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!imageUrl) {
-      toast.error('Please upload a banner image');
+    if (formType === 'collectionbanner' ? collectionImages.length !== 4 : !imageUrl) {
+      toast.error(formType === 'collectionbanner' ? 'Upload exactly 4 images for this collection banner' : 'Please upload a banner image');
       return;
     }
 
@@ -474,6 +548,10 @@ export default function BannersView() {
         },
         display: {
           categoryId: selectedCategory || null,
+          ...(formType === 'collectionbanner' ? {
+            collectionGroup,
+            menuItemIds: selectedMenuItemIds,
+          } : {}),
           type: formType,
           platform,
           order: Number(order) || 0,
@@ -493,8 +571,9 @@ export default function BannersView() {
       }
 
       if (mediaType === 'image') {
-        payload.image = { url: imageUrl };
+        payload.image = formType === 'collectionbanner' ? collectionImages[0] : { url: imageUrl };
         payload.video = undefined;
+        if (formType === 'collectionbanner') payload.collectionImages = collectionImages;
       } else {
         payload.video = { url: imageUrl };
         payload.image = undefined;
@@ -890,13 +969,31 @@ export default function BannersView() {
                   <input
                     type="file"
                     ref={fileInputRef}
-                    onChange={handleFileSelect}
+                    onChange={formType === 'collectionbanner' ? handleCollectionFilesSelect : handleFileSelect}
                     accept="image/png, image/jpeg, image/webp"
+                    multiple={formType === 'collectionbanner'}
                     className="hidden"
                   />
 
                   {/* Image Preview with delete button */}
-                  {imageUrl ? (
+                  {formType === 'collectionbanner' ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      {collectionImages.map((image, index) => (
+                        <div key={`${image.key || image.url}-${index}`} className="relative h-28 overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
+                          <img src={getMediaUrl(image.url)} alt={`Collection image ${index + 1}`} className="h-full w-full object-cover" />
+                          <span className="absolute left-2 top-2 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">Image {index + 1}</span>
+                          <button type="button" onClick={() => handleRemoveCollectionImage(index)} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-red-500 shadow-sm hover:bg-white" title="Remove image">
+                            <HiOutlineTrash className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                      {Array.from({ length: Math.max(0, 4 - collectionImages.length) }).map((_, index) => (
+                        <div key={`empty-${index}`} className="flex h-28 items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 text-xs text-stone-400">
+                          Image {collectionImages.length + index + 1}
+                        </div>
+                      ))}
+                    </div>
+                  ) : imageUrl ? (
                     <div className="relative w-full h-36 rounded-xl overflow-hidden border border-stone-200/90 bg-stone-900 shadow-inner group">
                       <img
                         src={getMediaUrl(imageUrl)}
@@ -938,8 +1035,13 @@ export default function BannersView() {
                     className="w-full h-11 rounded-xl border border-stone-200 hover:border-stone-300 hover:bg-stone-50 text-xs font-medium text-stone-700 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
                   >
                     <HiOutlineUpload className="w-4 h-4 text-stone-500" />
-                    <span>{imageUrl ? 'Change Image' : 'Upload Image'}</span>
+                    <span>{formType === 'collectionbanner'
+                      ? `Upload ${4 - collectionImages.length} more image${4 - collectionImages.length === 1 ? '' : 's'}`
+                      : (imageUrl ? 'Change Image' : 'Upload Image')}</span>
                   </button>
+                  {formType === 'collectionbanner' && (
+                    <p className="text-[10px] text-stone-500">Add 4 images to one collection record. They are shown together in the storefront layout.</p>
+                  )}
 
                   <div>
                     <label htmlFor="banner-platform" className="mb-1 block text-[11px] font-medium text-stone-600">
@@ -1018,6 +1120,27 @@ export default function BannersView() {
                     </div>
                   )}
 
+                  {formType === 'collectionbanner' && (
+                    <div>
+                      <label className="block text-[11px] font-medium text-stone-600 mb-1">
+                        Collection Group <span className="text-red-500">*</span>
+                      </label>
+                      <Dropdown
+                        value={collectionGroup}
+                        direction="up"
+                        openUpward={true}
+                        onChange={setCollectionGroup}
+                        options={[
+                          { value: 'gold', label: 'Gold Collection' },
+                          { value: 'silver', label: 'Silver Collection' },
+                          { value: 'spiritual', label: 'Spiritual Collection' },
+                        ]}
+                        buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
+                        menuClassName="z-[60]"
+                      />
+                    </div>
+                  )}
+
                   {/* Category selection is available for hero, category, collection, and offer banners. */}
                   {(formType === 'herobanner' ||
                     formType === 'categorybanner' ||
@@ -1025,7 +1148,7 @@ export default function BannersView() {
                     formType === 'offerbanner') && (
                     <div>
                       <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                        Category {formType === 'categorybanner' && <span className="text-red-500">*</span>}
+                        Category {(formType === 'categorybanner' || formType === 'collectionbanner') && <span className="text-red-500">*</span>}
                       </label>
                       <Dropdown
                         value={selectedCategory}
@@ -1033,6 +1156,7 @@ export default function BannersView() {
                         openUpward={true}
                         onChange={(catId) => {
                           setSelectedCategory(catId);
+                          if (formType === 'collectionbanner') setSelectedMenuItemIds([]);
                           const cat = categories.find((c) => c._id === catId);
                           if (cat) {
                             if (!destinationLink || destinationLink.startsWith('/shop?category=') || destinationLink === '/shop') {
@@ -1057,6 +1181,35 @@ export default function BannersView() {
                         buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
                         menuClassName="z-[60]"
                       />
+                    </div>
+                  )}
+
+                  {formType === 'collectionbanner' && selectedCategory && (
+                    <div className="rounded-xl border border-stone-200 bg-white p-3.5 space-y-2">
+                      <div>
+                        <h4 className="text-xs font-semibold text-stone-800">Menu Items</h4>
+                        <p className="text-[11px] text-stone-500 mt-0.5">Choose the menu items shown for this collection banner.</p>
+                      </div>
+                      {selectedCategoryMenuItems.length ? (
+                        <div className="max-h-48 overflow-y-auto divide-y divide-stone-100">
+                          {selectedCategoryMenuItems.map((menuItem) => (
+                            <label key={menuItem._id} className="flex items-center gap-2.5 py-2 text-xs text-stone-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedMenuItemIds.includes(String(menuItem._id))}
+                                onChange={(event) => setSelectedMenuItemIds((current) => event.target.checked
+                                  ? [...new Set([...current, String(menuItem._id)])]
+                                  : current.filter((id) => id !== String(menuItem._id)))}
+                                className="accent-[#8a6d4b]"
+                              />
+                              <span className="flex-1">{menuItem.name || menuItem.title}</span>
+                              <span className="text-[10px] text-stone-400">{menuItem.sectionName}</span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="py-3 text-center text-xs text-stone-400">No active menu items for this category.</p>
+                      )}
                     </div>
                   )}
 

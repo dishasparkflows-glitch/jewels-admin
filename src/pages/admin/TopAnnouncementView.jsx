@@ -50,7 +50,7 @@ const toInputDate = (dateStr) => {
 export default function TopAnnouncementView() {
   const confirm = useConfirm();
   const [announcements, setAnnouncements] = useState([]);
-  const [settings, setSettings] = useState({ isEnabled: true, autoplayInterval: 4000 });
+  const [settings, setSettings] = useState({ isEnabled: true, autoplayInterval: 4000, displayDirection: 'horizontal' });
   const [loading, setLoading] = useState(true);
   const [savingSettings, setSavingSettings] = useState(false);
 
@@ -131,6 +131,23 @@ export default function TopAnnouncementView() {
       toast.error('Failed to update setting');
       // Revert on error
       setSettings((prev) => ({ ...prev, isEnabled: !nextVal }));
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleDisplayDirectionChange = async (displayDirection) => {
+    const previous = settings;
+    const updated = { ...settings, displayDirection };
+    setSettings(updated);
+    try {
+      setSavingSettings(true);
+      const response = await topAnnouncementsAPI.updateSettings(updated);
+      setSettings(response.data?.data || updated);
+      toast.success(`Announcement display set to ${displayDirection === 'horizontal' ? 'left to right' : 'top to bottom'}`);
+    } catch (err) {
+      setSettings(previous);
+      toast.error(err.response?.data?.message || 'Could not update display direction');
     } finally {
       setSavingSettings(false);
     }
@@ -324,6 +341,19 @@ export default function TopAnnouncementView() {
 
         {/* Top Right Controls */}
         <div className="flex items-center gap-4 flex-wrap sm:flex-nowrap">
+          <div className="rounded-2xl border border-stone-200/90 bg-white px-3 py-2 shadow-2xs">
+            <p className="mb-1 text-[11px] font-semibold text-stone-700">Display direction</p>
+            <div className="flex gap-1">
+              {[
+                { value: 'horizontal', label: 'Left to right' },
+                { value: 'vertical', label: 'Top to bottom' },
+              ].map((option) => (
+                <button key={option.value} type="button" disabled={savingSettings} onClick={() => handleDisplayDirectionChange(option.value)} className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${settings.displayDirection === option.value ? 'bg-[#8b6f4e] text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}>
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          </div>
           {/* Enable Announcement Bar Switch */}
           <div className="flex items-center gap-3 bg-white border border-stone-200/90 rounded-2xl px-4 py-2 shadow-2xs">
             <div className="flex flex-col text-right">

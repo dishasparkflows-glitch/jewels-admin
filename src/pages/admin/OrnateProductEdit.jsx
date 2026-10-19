@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { createProductId, deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import {
@@ -83,6 +83,8 @@ export default function OrnateProductEdit() {
   const { id } = useParams();
   const navigate = useNavigate();
   const isEditMode = Boolean(id && id !== 'add' && id !== 'new');
+  const [draftProductId] = useState(() => (isEditMode ? id : createProductId()));
+  const mediaProductId = isEditMode ? id : draftProductId;
 
   // Wizard tab state: 1 to 7
   const [activeStep, setActiveStep] = useState(1);
@@ -104,7 +106,6 @@ export default function OrnateProductEdit() {
     categoryTag: '',
     menuItem: [],
     targetGender: '',
-    gstPercentage: '',
     status: 'draft',
     stockStatus: '',
     showInApp: false,
@@ -121,6 +122,9 @@ export default function OrnateProductEdit() {
     salePrice: '',
     mrpMarkupPercentage: '',
     mrp: '',
+    baseLabourCharge: '',
+    certificateCharge: '',
+    otherAmountPercentage: '',
   });
 
   // ─── 3. Variant Configuration (Colors) ─────────────────────
@@ -210,35 +214,37 @@ export default function OrnateProductEdit() {
         if (product) {
           // Populate Base Information
           setBaseInfo({
-            title: product.title || product.basicInfo?.title || '',
-            category: Array.isArray(product.category)
-              ? (product.category[0]?._id || product.category[0] || '')
-              : (product.category?._id || product.category || ''),
+            title: product.basicInfo?.title || '',
+            category: Array.isArray(product.categoryIds)
+              ? (product.categoryIds[0]?._id || product.categoryIds[0] || '')
+              : (product.categoryIds?._id || product.categoryIds || ''),
             categoryTag: (Array.isArray(product.promoBanner) && product.promoBanner[0]) || product.categoryTag || '',
             menuItem: selectedMenuIds(product),
             targetGender: (Array.isArray(product.gender) && product.gender[0]) || product.gender || '',
-            gstPercentage: product.gstPer ?? product.gstPercentage ?? product.pricing?.gstPercentage ?? '',
             status: product.status || 'draft',
             stockStatus: product.stockStatus || '',
             showInApp: Boolean(product.inapp),
             showOnWeb: Boolean(product.inweb),
-            description: product.description || product.basicInfo?.description || '',
+            description: product.basicInfo?.description || '',
           });
 
           // Populate Pricing
-          const cost = Number(product.costPrice ?? product.pricing?.costPrice ?? 0);
-          const markup = Number(product.markupPercentage ?? product.pricing?.markupPercentage ?? 0);
+          const cost = Number(product.pricing?.costPrice ?? 0);
+          const markup = Number(product.pricing?.markupPercentage ?? 0);
           const calcPrice = Number(product.calculatedPrice ?? (cost > 0 ? cost + (cost * markup) / 100 : 0));
-          const sale = Number(product.salePrice ?? product.salesPrice ?? product.pricing?.salePrice ?? calcPrice);
-          const mrpVal = Number(product.mrp ?? product.price ?? product.pricing?.mrp ?? sale);
+          const sale = Number(product.pricing?.salePrice ?? calcPrice);
+          const mrpVal = Number(product.pricing?.mrp ?? sale);
 
           setPricing({
             costPrice: cost,
             markupPercentage: markup,
             calculatedPrice: calcPrice,
             salePrice: sale,
-            mrpMarkupPercentage: product.mrpMarkupPercentage || 0,
+            mrpMarkupPercentage: product.pricing?.mrpMarkupPercentage || 0,
             mrp: mrpVal,
+            baseLabourCharge: product.pricing?.baseLabourCharge || 0,
+            certificateCharge: product.pricing?.certificateCharge || 0,
+            otherAmountPercentage: product.pricing?.otherAmountPercentage || 0,
           });
 
           // Populate Colors
@@ -285,7 +291,7 @@ export default function OrnateProductEdit() {
           // Populate Weights & Purities
           setWeights({
             grossWeight: Number(product.grossWt ?? product.specifications?.grossWeight ?? 0),
-            netWeight: Number(product.netWt ?? product.specifications?.netWeight ?? 0),
+            netWeight: Number(product.specifications?.metalWeight ?? product.netWt ?? product.specifications?.netWeight ?? 0),
             purity: Number(product.purity ?? product.specifications?.metalPurity ?? 0),
             caratCategory: product.carat || product.specifications?.caratCategory || '',
           });
@@ -293,13 +299,13 @@ export default function OrnateProductEdit() {
           // Populate Classification & ERP Details
           setErpDetails({
             customGroupName: product.ornate?.customGroupName || product.customGroupName || product.groupName || '',
-            itemName: product.itemName || product.title || '',
+            itemName: product.ornate?.itemCode || product.basicInfo?.title || '',
             groupName: product.ornate?.groupName || product.groupName || '',
             varietyName: product.varietyName || '',
-            metalName: product.ornate?.metalName || product.metalName || product.specifications?.metalName || '',
-            uniqueLabelId: product.ornate?.itemCode || product.uniqueLabelID || product.tagNo || '',
+            metalName: product.ornate?.metalName || '',
+            uniqueLabelId: product.ornate?.itemCode || '',
             barcodeNumber: product.ornate?.barcode || product.barcodeNo || product.barcode || '',
-            labelNumber: product.ornate?.tagNo || product.labelNo || product.tagNo || '',
+            labelNumber: product.ornate?.tagNo || '',
             remark: product.ornate?.remark || product.remark || product.basicInfo?.remark || '',
             companyCode: product.ornate?.companyCode || product.companyCode || '',
             carat: product.ornate?.carat || product.carat || product.specifications?.caratCategory || '',
@@ -308,8 +314,6 @@ export default function OrnateProductEdit() {
           // Populate Images
           const imgs =
             (Array.isArray(product.ornate?.ornateImages) && product.ornate.ornateImages.length > 0 && product.ornate.ornateImages) ||
-            (Array.isArray(product.ornateImages) && product.ornateImages.length > 0 && product.ornateImages) ||
-            (Array.isArray(product.images) && product.images.length > 0 && product.images) ||
             [];
           setOrnateImages(
             imgs.map((img, i) => ({
@@ -344,9 +348,9 @@ export default function OrnateProductEdit() {
 
           // Populate SEO
           setSeo({
-            metaTitle: product.seo?.metaTitle || product.title || '',
+            metaTitle: product.seo?.metaTitle || product.basicInfo?.title || '',
             keywords: product.seo?.keywords || '',
-            metaDescription: product.seo?.metaDescription || product.description || '',
+            metaDescription: product.seo?.metaDescription || product.basicInfo?.description || '',
           });
         }
       } catch (err) {
@@ -436,13 +440,14 @@ export default function OrnateProductEdit() {
 
     try {
       setUploadingSwatchColor(colorName);
-      const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+      const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
       if (fileUrl) {
         setVariantMedia((prev) => ({
           ...prev,
           [colorName]: {
             ...prev[colorName],
             swatchIcon: fileUrl,
+            swatchIconKey: key,
           },
         }));
         toast.success(`${colorName} swatch icon uploaded!`);
@@ -466,11 +471,12 @@ export default function OrnateProductEdit() {
       const uploadedList = [];
 
       for (const file of files) {
-        const { fileUrl } = await uploadWithPresignedUrl(file, 'products');
+        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
         if (fileUrl) {
           uploadedList.push({
             id: `vmed-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
             url: fileUrl,
+            key,
             mediaType: file.type.startsWith('video') || file.name.endsWith('.mp4') ? 'video' : 'image',
           });
         }
@@ -495,7 +501,13 @@ export default function OrnateProductEdit() {
     }
   };
 
-  const handleRemoveSwatchIcon = (colorName) => {
+  const handleRemoveSwatchIcon = async (colorName) => {
+    try {
+      await deleteUploadedFile({ key: variantMedia[colorName]?.swatchIconKey, url: variantMedia[colorName]?.swatchIcon });
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
+      return;
+    }
     setVariantMedia((prev) => ({
       ...prev,
       [colorName]: {
@@ -506,7 +518,14 @@ export default function OrnateProductEdit() {
     toast.success(`Removed swatch icon for ${colorName}`);
   };
 
-  const handleRemoveVariantMedia = (colorName, mediaId) => {
+  const handleRemoveVariantMedia = async (colorName, mediaId) => {
+    const media = (variantMedia[colorName]?.media || []).find((item) => item.id === mediaId);
+    try {
+      await deleteUploadedFile(media);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete media from storage');
+      return;
+    }
     setVariantMedia((prev) => ({
       ...prev,
       [colorName]: {
@@ -536,7 +555,7 @@ export default function OrnateProductEdit() {
 
     try {
       setUploadingImage(true);
-      const { fileUrl } = await uploadWithPresignedUrl(files[0], 'products');
+      const { fileUrl, key } = await uploadWithPresignedUrl(files[0], 'products', null, { productId: mediaProductId });
 
       if (fileUrl) {
         setOrnateImages((prev) => [
@@ -544,6 +563,7 @@ export default function OrnateProductEdit() {
           {
             id: `img-${Date.now()}`,
             url: fileUrl,
+            key,
             isPrimary: prev.length === 0,
           },
         ]);
@@ -559,7 +579,14 @@ export default function OrnateProductEdit() {
   };
 
   // Remove Image
-  const handleRemoveImage = (imgId) => {
+  const handleRemoveImage = async (imgId) => {
+    const image = ornateImages.find((item) => item.id === imgId);
+    try {
+      await deleteUploadedFile(image);
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
+      return;
+    }
     setOrnateImages((prev) => {
       const filtered = prev.filter((img) => img.id !== imgId);
       if (filtered.length > 0 && !filtered.some((img) => img.isPrimary)) {
@@ -807,17 +834,12 @@ export default function OrnateProductEdit() {
       const activeStatus = statusOverride || baseInfo.status || 'draft';
 
       const payload = {
-        // Root fields
-        title: baseInfo.title.trim(),
-        description: baseInfo.description || '',
-        category: baseInfo.category ? [baseInfo.category] : [],
+        ...(!isEditMode ? { _id: draftProductId } : {}),
+        // Product identity and copy live in basicInfo.
+        categoryIds: baseInfo.category ? [baseInfo.category] : [],
         promoBanner: baseInfo.categoryTag ? [baseInfo.categoryTag] : [],
-        menuItem: baseInfo.menuItem,
         menuItemIds: baseInfo.menuItem,
-        menuItemId: baseInfo.menuItem,
         gender: baseInfo.targetGender ? [baseInfo.targetGender] : [],
-        gstPercentage: Number(baseInfo.gstPercentage) || 0,
-        gstPer: Number(baseInfo.gstPercentage) || 0,
         status: activeStatus,
         stockStatus: baseInfo.stockStatus || undefined,
         inapp: Boolean(baseInfo.showInApp),
@@ -825,19 +847,9 @@ export default function OrnateProductEdit() {
         isOrnate: true,
         productType: 'silver',
 
-        // Pricing
-        costPrice: Number(pricing.costPrice) || 0,
-        markupPercentage: Number(pricing.markupPercentage) || 0,
-        calculatedPrice: Number(pricing.calculatedPrice) || autoCalculatedPrice,
-        salePrice: Number(pricing.salePrice) || Number(pricing.calculatedPrice) || 0,
-        price: Number(pricing.mrp) || Number(pricing.salePrice) || 0,
-        mrp: Number(pricing.mrp) || Number(pricing.salePrice) || 0,
-        mrpMarkupPercentage: Number(pricing.mrpMarkupPercentage) || 0,
-
         // Weights
         grossWt: Number(weights.grossWeight) || 0,
         netWt: Number(weights.netWeight) || 0,
-        baseMetalWeight: Number(weights.netWeight) || 0,
         purity: Number(weights.purity) || 0,
         carat: weights.caratCategory || '',
 
@@ -846,19 +858,13 @@ export default function OrnateProductEdit() {
         itemName: erpDetails.itemName || baseInfo.title,
         groupName: erpDetails.groupName || '',
         varietyName: erpDetails.varietyName || '',
-        metalName: erpDetails.metalName || '',
         uniqueLabelID: erpDetails.uniqueLabelId || '',
         barcodeNo: erpDetails.barcodeNumber || '',
         barcode: erpDetails.barcodeNumber || '',
         labelNo: erpDetails.labelNumber || '',
-        sku: erpDetails.labelNumber || erpDetails.uniqueLabelId || `ORN-${Date.now()}`,
 
         // Images
         ornateImages: ornateImages.map((img) => ({
-          url: img.url,
-          mediaType: 'image',
-        })),
-        images: ornateImages.map((img) => ({
           url: img.url,
           mediaType: 'image',
         })),
@@ -889,7 +895,7 @@ export default function OrnateProductEdit() {
 
         // Color variants
         color: selectedColors[0] || undefined,
-        metalColors: selectedColors.map((cName) => {
+        metalColorIds: selectedColors.map((cName) => {
           const matched = colorOptions.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
           return matched?.id || cName;
         }),
@@ -911,24 +917,23 @@ export default function OrnateProductEdit() {
         basicInfo: {
           title: baseInfo.title.trim(),
           sku: erpDetails.labelNumber || erpDetails.uniqueLabelId || '',
+          slug: seo.slug || baseInfo.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
           description: baseInfo.description,
           productType: 'silver',
           isOrnate: true,
         },
-        productType: 'silver',
-        isOrnate: true,
         pricing: {
           mrp: Number(pricing.mrp) || Number(pricing.salePrice) || 0,
           salePrice: Number(pricing.salePrice) || 0,
           costPrice: Number(pricing.costPrice) || 0,
           ornatePrice: Number(pricing.ornatePrice) || Number(pricing.mrp) || Number(pricing.salePrice) || 0,
-          gstPercentage: Number(baseInfo.gstPercentage) || 0,
           markupPercentage: Number(pricing.markupPercentage) || 0,
           mrpMarkupPercentage: Number(pricing.mrpMarkupPercentage) || 0,
+          baseLabourCharge: Number(pricing.baseLabourCharge) || 0,
+          certificateCharge: Number(pricing.certificateCharge) || 0,
+          otherAmountPercentage: Number(pricing.otherAmountPercentage) || 0,
         },
-        specifications: {
-          metalWeight: Number(weights.netWeight) || 0,
-        },
+        specifications: { metalWeight: Number(weights.netWeight) || 0 },
         ornate: {
           tagNo: erpDetails.labelNumber || erpDetails.uniqueLabelId || '',
           barcode: erpDetails.barcodeNumber || '',
@@ -1211,20 +1216,6 @@ export default function OrnateProductEdit() {
                     placeholder="Select Gender"
                     size="sm"
                     buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
-                    GST (%)
-                  </label>
-                  <input
-                    type="number"
-                    value={baseInfo.gstPercentage}
-                    onChange={(e) =>
-                      setBaseInfo((prev) => ({ ...prev, gstPercentage: Number(e.target.value) || 0 }))
-                    }
-                    className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
                   />
                 </div>
 
