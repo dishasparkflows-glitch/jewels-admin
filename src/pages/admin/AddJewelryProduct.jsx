@@ -1,3 +1,4 @@
+import SideDiamondEditor from '../../components/common/SideDiamondEditor';
 import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
@@ -405,6 +406,11 @@ export default function AddJewelryProduct() {
   const [caratInput, setCaratInput] = useState('');
   const [customComboRates, setCustomComboRates] = useState({});
   const [apiCenterRates, setApiCenterRates] = useState([]);
+  const [sideRows, setSideRows] = useState([]);
+  const [automaticPricing, setAutomaticPricing] = useState(true);
+  const [baseCarat, setBaseCarat] = useState('1');
+  const [gstPercentage, setGstPercentage] = useState('3');
+  const [computingPrices, setComputingPrices] = useState(false);
 
   // Fetch live diamond pricing master from backend
   useEffect(() => {
@@ -435,6 +441,7 @@ export default function AddJewelryProduct() {
     if (apiCenterRates.length > 0) {
       const ctNum = Number(carat) || 1;
       const matched = apiCenterRates.find((r) => {
+        const t = String(r.diamondTypeId?.name || '').toUpperCase();
         const s = String(r.diamondShapeId?.name || r.diamondShape || '').toUpperCase();
         const c = String(r.diamondColorId?.name || r.diamondColor || '').toUpperCase();
         const cl = String(r.diamondClarityId?.name || r.diamondClarity || '').toUpperCase();
@@ -442,6 +449,7 @@ export default function AddJewelryProduct() {
         const to = Number(r.sizeTo ?? 999);
 
         return (
+          t === String(type).toUpperCase() &&
           (!shape || s === String(shape).toUpperCase()) &&
           (!color || c === String(color).toUpperCase()) &&
           (!clarity || cl === String(clarity).toUpperCase()) &&
@@ -488,6 +496,7 @@ export default function AddJewelryProduct() {
     centerDiamondClarities,
     centerDiamondCarats,
     customComboRates,
+    apiCenterRates,
   ]);
 
   const handleAddCarat = () => {
@@ -1470,77 +1479,43 @@ export default function AddJewelryProduct() {
     });
   };
 
-  // Regenerate variants dynamically
-  const handleRegenerateVariants = () => {
-    if (!selectedPurities || selectedPurities.length === 0) {
-      toast.error('Please select at least one metal purity above.');
-      return;
-    }
-    if (!selectedColors || selectedColors.length === 0) {
-      toast.error('Please select at least one metal color above.');
-      return;
-    }
-
-    const colorCodeMap = colorsList.reduce(
-      (acc, c) => {
-        acc[c.name] = c.code;
-        return acc;
-      },
-      {
-        Silver: '#9ca3af',
-        'Rose Gold': '#e89f8f',
-        'Yellow Gold': '#d4af37',
-        'White Gold': '#cbd5e1',
-      }
-    );
-
-    const colorSuffixMap = {
-      Silver: 'S',
-      'Rose Gold': 'RG',
-      'Yellow Gold': 'YG',
-      'White Gold': 'WG',
-    };
-
-    const newVariants = [];
-    let counter = 1;
-
-    selectedPurities.forEach((purity) => {
-      selectedColors.forEach((color, colorIdx) => {
-        const calculatedPrice = Number(pricing.salePrice) || 0;
-        const suffix = colorSuffixMap[color] || color.substring(0, 2).toUpperCase();
-
-        const centerDetail = centerDiamondCombinations.length > 0
-          ? `Center: ${centerDiamondCombinations.length} Combos (${centerDiamondShape}, ${centerDiamondType})`
-          : centerDiamond.caratWeight
-          ? `Center: ${centerDiamond.caratWeight}Ct (${centerDiamond.color || ''}, ${centerDiamond.clarity || ''})`
-          : centerDiamond.type
-          ? `Center: ${centerDiamond.type} Diamond`
-          : 'Center: Diamond';
-
-        const sideDetail = sideDiamonds.enabled && sideDiamonds.pieces
-          ? `Side: ${sideDiamonds.pieces} pcs (${sideDiamonds.sizeFrom || ''}-${sideDiamonds.sizeTo || ''}Ct, ${sideDiamonds.color || ''}, ${sideDiamonds.clarity || ''})`
-          : 'Side: None';
-
-        newVariants.push({
-          id: counter++,
-          purity,
-          color,
-          colorCode: colorCodeMap[color] || '#9ca3af',
-          diamondDetails: {
-            center: centerDetail,
-            side: sideDetail,
-          },
-          weight: specs.metalWeight || '0.00',
-          sku: basicDetails.sku ? basicDetails.sku + '-' + suffix : '',
-          price: calculatedPrice ? Number(calculatedPrice).toLocaleString('en-IN') : '0',
-          priceRaw: calculatedPrice || 0,
-          stock: '',
-        });
-      });
-    });
-
-    setVariants(newVariants);
-    toast.success(`Generated ${newVariants.length} product variants!`);
+  const masterId = (items, value) => {
+    if (value?._id) return value._id;
+    const match = items.find((item) => String(item.name).toLowerCase() === String(value).toLowerCase() || String(item._id || item.id) === String(value));
+    return match?._id || match?.id || '';
+  };
+  const pricingInput = () => ({
+    basicInfo: { sku: basicDetails.sku },
+    pricing: { calculationMode: 'automatic', baseCarat: Number(baseCarat), gstPercentage: Number(gstPercentage), baseLabourCharge: Number(specs.baseLabourCharge), certificateCharge: Number(specs.certificateCharge), otherAmountPercentage: Number(specs.otherAmountPercentage) },
+    specifications: { metalWeight: Number(specs.metalWeight) },
+    metalPurityIds: selectedPurities.map((name) => masterId(purityMasterList, name)),
+    metalColorIds: selectedColors.map((name) => masterId(colorsList, name)),
+    centerDiamondRows: centerDiamondCombinations.map((row) => ({
+      diamondTypeId: masterId(diamondMasters.types, row.diamondType), diamondShapeId: masterId(diamondMasters.shapes, row.shape),
+      diamondColorId: masterId(diamondMasters.colors, row.color), diamondClarityId: masterId(diamondMasters.clarities, row.clarity),
+      caratWeight: Number(row.carat), pricePerCarat: Number(row.rate), rateSource: customComboRates[row.id] !== undefined ? 'manual' : 'master',
+    })),
+    sideDiamondRows: sideRows.map((row) => ({ ...row, pieces: Number(row.pieces), caratWeight: Number(row.caratWeight), priceINR: Number(row.priceINR || 0) })),
+    variants: variants.map((row) => ({ ...row, _id: row._id, stock: Number(row.stock || 0) })),
+  });
+  const handleRegenerateVariants = async () => {
+    if (computingPrices) return;
+    setComputingPrices(true);
+    try {
+      const { data } = await api.post('/products/pricing-preview', pricingInput());
+      const result = data.data;
+      const name = (list, value) => list.find((item) => String(item._id || item.id) === String(value))?.name || '';
+      setVariants(result.variants.map((row, index) => ({ ...row,
+        id: row._id || row.pricingKey || index,
+        purity: name(purityMasterList, row.metalPurityId), color: name(colorsList, row.metalColorId),
+        diamondDetails: { center: [name(diamondMasters.types, row.diamondTypeId), name(diamondMasters.colors, row.diamondColorId), name(diamondMasters.clarities, row.diamondClarityId), row.caratWeight ? row.caratWeight + 'ct' : ''].filter(Boolean).join(' · '), side: row.sideDiamondWeight ? 'Side: ' + row.sideDiamondWeight + 'ct' : '' },
+        weight: String(row.metalWeight), price: String(row.price), priceRaw: row.price, stock: String(row.stock),
+      })));
+      setAutomaticPricing(true);
+      setPricing((previous) => ({ ...previous, salePrice: String(result.salePrice) }));
+      toast.success('Calculated ' + result.variants.length + ' variants using current rates');
+    } catch (error) { toast.error(error.response?.data?.message || 'Could not calculate variants'); }
+    finally { setComputingPrices(false); }
   };
 
   // Update a variant row field inline
@@ -1581,6 +1556,7 @@ export default function AddJewelryProduct() {
       const purity = resolveName(variant.metalPurityId || variant.metalPurity, puritiesList) || parts[0] || '';
       const color = resolveName(variant.metalColorId || variant.metalColor, colorOptions) || parts[1] || '';
       return {
+        ...variant,
         id: variant._id || index + 1,
         purity,
         color,
@@ -1663,6 +1639,7 @@ export default function AddJewelryProduct() {
       clarity: resolveName(row.diamondClarityId || row.diamondClarity, diamondMasters.clarities),
       carat: row.caratWeight,
       rate: row.pricePerCarat,
+      rateSource: row.rateSource,
     }));
     const firstCenter = centerNames[0] || {};
     setMenuItemIds(selectedMenuIds(productRecord));
@@ -1685,7 +1662,7 @@ export default function AddJewelryProduct() {
     setCenterDiamondColors(unique(centerNames.map((row) => row.color)));
     setCenterDiamondClarities(unique(centerNames.map((row) => row.clarity)));
     setCenterDiamondCarats(unique(centerNames.map((row) => Number(row.carat)).filter(Number.isFinite)));
-    setCustomComboRates(Object.fromEntries(centerNames.map((row) => [
+    setCustomComboRates(Object.fromEntries(centerNames.filter((row) => row.rateSource === 'manual' || (!row.rateSource && row.rate > 0)).map((row) => [
       [row.type, row.shape, row.color, row.clarity, row.carat].join('-'),
       row.rate,
     ])));
@@ -1696,6 +1673,10 @@ export default function AddJewelryProduct() {
       clarity: firstCenter.clarity || '',
       caratWeight: firstCenter.carat == null ? '' : String(firstCenter.carat),
     });
+    setAutomaticPricing(productRecord.pricing?.calculationMode === 'automatic');
+    setBaseCarat(String(productRecord.pricing?.baseCarat ?? 1));
+    setGstPercentage(String(productRecord.pricing?.gstPercentage ?? 3));
+    setSideRows((productRecord.sideDiamondRows || []).map((row) => ({ ...row, rateSource: row.rateSource || (row.priceINR ? 'manual' : 'master') })));
     const sideRow = (Array.isArray(productRecord.sideDiamondRows) ? productRecord.sideDiamondRows : [])[0];
     setSideDiamonds(sideRow ? {
       enabled: true,
@@ -2082,6 +2063,7 @@ export default function AddJewelryProduct() {
           ...compactObject({
             caratWeight: row.caratWeight,
             pricePerCarat: row.pricePerCarat,
+            rateSource: row.rateSource,
             sizeFrom: row.sizeFrom,
             sizeTo: row.sizeTo,
             pieces: row.pieces,
@@ -2140,6 +2122,10 @@ export default function AddJewelryProduct() {
         return typeof purity === 'object' && purity ? (purity._id || purity.id) : null;
       }).filter(Boolean).map(String))];
       const variantRows = variants.map((variant) => compactObject({
+        ...variant,
+        _id: variant._id,
+        metalPurityId: masterId(purityMasterList, variant.purity),
+        metalColorId: masterId(colorsList, variant.color),
         combination: [variant.purity, variant.color].filter(Boolean).join(' / '),
         sku: variant.sku,
         price: numberValue(String(variant.price ?? '').replace(/,/g, '')) ?? numberValue(variant.priceRaw),
@@ -2160,16 +2146,9 @@ export default function AddJewelryProduct() {
         diamondClarity: combination.clarity,
         caratWeight: numberValue(combination.carat),
         pricePerCarat: numberValue(combination.rate),
+        rateSource: customComboRates[combination.id] !== undefined ? 'manual' : 'master',
       }));
-      const sideDiamondRows = sideDiamonds.enabled ? [withDiamondIds({
-        diamondType: sideDiamonds.type,
-        diamondShape: sideDiamonds.shape,
-        diamondColor: sideDiamonds.color,
-        diamondClarity: sideDiamonds.clarity,
-        sizeFrom: numberValue(sideDiamonds.sizeFrom),
-        sizeTo: numberValue(sideDiamonds.sizeTo),
-        pieces: numberValue(sideDiamonds.pieces),
-      })] : [];
+      const sideDiamondRows = pricingInput().sideDiamondRows;
       const descriptionSections = careSections
         .filter((section) => section.header?.trim() || section.description?.trim())
         .map((section) => compactObject({
@@ -2195,6 +2174,9 @@ export default function AddJewelryProduct() {
           markupPercentage: markupNum,
         }),
         ...(!isSilverProduct ? {
+          calculationMode: automaticPricing ? 'automatic' : 'manual',
+          baseCarat: Number(baseCarat),
+          gstPercentage: Number(gstPercentage),
           baseLabourCharge: numberValue(specs.baseLabourCharge),
           certificateCharge: numberValue(specs.certificateCharge),
           otherAmountPercentage: numberValue(specs.otherAmountPercentage),
@@ -2260,8 +2242,8 @@ export default function AddJewelryProduct() {
           ? (silverColorImageRows.length ? { colorImages: silverColorImageRows } : {})
           : (colorImageRows.length ? { colorImages: colorImageRows } : {})),
         ...(!isSilverProduct && variantRows.length ? { variants: variantRows } : {}),
-        ...(!isSilverProduct && centerDiamondRows.length ? { centerDiamondRows } : {}),
-        ...(!isSilverProduct && sideDiamondRows.length ? { sideDiamondRows } : {}),
+        ...(!isSilverProduct ? { centerDiamondRows } : {}),
+        ...(!isSilverProduct ? { sideDiamondRows } : {}),
         ...(descriptionSections.length ? { descriptionSections } : {}),
         ...(productSpecifications.length ? { productSpecifications } : {}),
         ...(Object.keys(seoData).length ? { seo: seoData } : {}),
@@ -2718,6 +2700,15 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
+              <div className="rounded-xl border border-stone-200 p-4 space-y-3">
+                <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={automaticPricing} onChange={(event) => setAutomaticPricing(event.target.checked)} /> Calculate prices from live master rates</label>
+                <p className="text-xs text-stone-500">Base weight is at 14KT. Includes 5% casting allowance. Center stones adjust weight by 8% per carat difference; side-only quality options keep the same weight. Markup is applied after GST.</p>
+                <div className="flex gap-4">
+                  <label className="text-xs">Base center carat<input type="number" min="0" step="0.01" value={baseCarat} onChange={(event) => setBaseCarat(event.target.value)} className="ml-2 w-24 rounded border p-2" /></label>
+                  <label className="text-xs">GST %<input type="number" min="0" step="0.01" value={gstPercentage} onChange={(event) => setGstPercentage(event.target.value)} className="ml-2 w-20 rounded border p-2" /></label>
+                </div>
+              </div>
+
               {/* ─── Sub-Section 3: Center & Side Diamond Configuration ──── */}
               <div className="space-y-4 pt-3 border-t border-stone-100">
                 <div className="flex items-center gap-2">
@@ -2969,112 +2960,7 @@ export default function AddJewelryProduct() {
                   </div>
                 </div>
 
-                {/* ── Side Diamond Configuration Card (Exact match to portal screenshot) ── */}
-                <div className="p-5 rounded-2xl border border-stone-200/90 bg-white space-y-4 shadow-2xs">
-                  <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                    <div className="flex items-center gap-2">
-                      <IoSparklesOutline className="w-4 h-4 text-[#8b6f4e]" />
-                      <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
-                        SIDE DIAMOND CONFIGURATION
-                      </h4>
-                      <span className="text-[10px] text-stone-400 font-normal uppercase tracking-wider">(Optional)</span>
-                    </div>
-                    <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-700">
-                      <span>Enable Side Diamonds</span>
-                      <input
-                        type="checkbox"
-                        checked={sideDiamonds.enabled}
-                        onChange={(e) => setSideDiamonds((prev) => ({ ...prev, enabled: e.target.checked }))}
-                        className="w-4 h-4 accent-[#8b6f4e] rounded cursor-pointer"
-                      />
-                    </label>
-                  </div>
-
-                  <div className={`space-y-3 transition-opacity ${sideDiamonds.enabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Type</label>
-                        <Dropdown
-                          size="sm"
-                          value={sideDiamonds.type}
-                          onChange={(val) => setSideDiamonds((prev) => ({ ...prev, type: val }))}
-                          options={diamondTypesList}
-                          buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Shape</label>
-                        <Dropdown
-                          size="sm"
-                          value={sideDiamonds.shape}
-                          onChange={(val) => setSideDiamonds((prev) => ({ ...prev, shape: val }))}
-                          options={diamondShapesList}
-                          buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Color</label>
-                        <Dropdown
-                          size="sm"
-                          value={sideDiamonds.color}
-                          onChange={(val) => setSideDiamonds((prev) => ({ ...prev, color: val }))}
-                          options={diamondColorsList}
-                          buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">Clarity</label>
-                        <Dropdown
-                          size="sm"
-                          value={sideDiamonds.clarity}
-                          onChange={(val) => setSideDiamonds((prev) => ({ ...prev, clarity: val }))}
-                          options={diamondClaritiesList}
-                          buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-3 pt-1">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-stone-700">Size From (Ct)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g. 0.01"
-                          value={sideDiamonds.sizeFrom}
-                          onChange={(e) => setSideDiamonds((prev) => ({ ...prev, sizeFrom: e.target.value }))}
-                          className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-stone-700">Size To (Ct)</label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          placeholder="e.g. 0.05"
-                          value={sideDiamonds.sizeTo}
-                          onChange={(e) => setSideDiamonds((prev) => ({ ...prev, sizeTo: e.target.value }))}
-                          className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                      </div>
-
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-stone-700">Total Pieces</label>
-                        <input
-                          type="number"
-                          placeholder="e.g. 18"
-                          value={sideDiamonds.pieces}
-                          onChange={(e) => setSideDiamonds((prev) => ({ ...prev, pieces: e.target.value }))}
-                          className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <SideDiamondEditor rows={sideRows} onChange={setSideRows} masters={diamondMasters} />
               </div>
 
               {/* ─── Sub-Section 3: Preview Variants ───────── */}
@@ -3087,7 +2973,7 @@ export default function AddJewelryProduct() {
                     <div>
                       <h3 className="text-xs font-bold text-stone-900">Preview Variants</h3>
                       <p className="text-[10px] text-stone-400">
-                        Review each metal and diamond combination, then set its final weight, labour charge and selling price.
+                        Review calculated metal, diamond, making and tax costs. Hover over a price for its breakdown.
                       </p>
                     </div>
                   </div>
@@ -3097,7 +2983,7 @@ export default function AddJewelryProduct() {
                       Other amount markup %
                       <input type="number" min="0" value={specs.otherAmountPercentage} onChange={(e) => setSpecs((prev) => ({ ...prev, otherAmountPercentage: e.target.value }))} className="w-16 px-2 py-1.5 text-xs text-stone-800 rounded-md border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]" />
                     </label>
-                    <button type="button" onClick={handleRegenerateVariants} className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] border border-[#8b6f4e] rounded-lg hover:bg-[#765b3d] active:scale-[0.98] transition-all shadow-sm cursor-pointer">
+                    <button type="button" disabled={computingPrices} onClick={handleRegenerateVariants} className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] border border-[#8b6f4e] rounded-lg hover:bg-[#765b3d] active:scale-[0.98] transition-all shadow-sm cursor-pointer">
                       <HiOutlineRefresh className="w-4 h-4" />
                       <span>{variants.length ? 'Recompute Variants' : 'Compute Variants'}</span>
                     </button>
@@ -3111,13 +2997,16 @@ export default function AddJewelryProduct() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-[#faf9f7] border-b border-stone-200/80 text-[9.5px] font-bold text-stone-500 uppercase tracking-wider">
-                          <th className="py-2 pl-3 pr-2 min-w-[250px]">COMBINATION</th>
-                          <th className="py-2 px-2.5 min-w-[120px]">SKU</th>
-                          <th className="py-2 px-2.5 w-24">FINAL WEIGHT (G)</th>
-                          <th className="py-2 px-2.5 w-28">LABOUR CHARGE (₹)</th>
-                          <th className="py-2 px-2.5 w-28">FINAL PRICE (₹)</th>
-                          <th className="py-2 px-2.5 w-28">OTHER AMOUNT (₹)</th>
-                          <th className="py-2 pr-3 pl-2 w-16">STOCK</th>
+                          <th className="py-2.5 pl-3 pr-2 min-w-[260px]">COMBINATION</th>
+                          <th className="py-2.5 px-2.5 min-w-[140px]">SKU</th>
+                          <th className="py-2.5 px-2.5 w-28 text-center">FINAL WEIGHT (G)</th>
+                          <th className="py-2.5 px-2.5 w-32 text-center">LABOUR CHARGE (₹)</th>
+                          <th className="py-2.5 px-2.5 w-32 text-right">FINAL PRICE (₹)</th>
+                          <th className="py-2.5 px-2.5 w-32 text-right">
+                            <span>OTHER AMOUNT (₹)</span>
+                            <span className="block text-[8.5px] text-stone-400 font-normal">MARKUP %: {specs.otherAmountPercentage || 0}</span>
+                          </th>
+                          <th className="py-2.5 pr-3 pl-2 w-14 text-center">ACTIONS</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-stone-100 text-[11px]">
@@ -3142,56 +3031,100 @@ export default function AddJewelryProduct() {
                             </td>
                           </tr>
                         ) : (
-                          variants.map((v) => (
-                          <tr key={v.id} className="hover:bg-stone-50/70 transition-colors">
-                            <td className="py-2 pl-3 pr-2">
-                              <div className="flex flex-wrap gap-1.5">
-                                {[v.purity, v.color, v.diamondDetails.center].filter(Boolean).map((detail, index) => (
-                                  <span key={`${v.id}-${index}`} className="inline-flex px-2 py-1 text-[10px] font-semibold text-stone-700 bg-[#faf5ee] border border-[#e8d8c0] rounded-full">{detail}</span>
-                                ))}
-                                {v.diamondDetails.side && v.diamondDetails.side !== 'Side: None' && <span className="inline-flex px-2 py-1 text-[10px] text-stone-600 bg-stone-50 border border-stone-200 rounded-full">{v.diamondDetails.side}</span>}
-                              </div>
-                            </td>
-                            <td className="py-2 px-2.5">
-                              <input
-                                type="text"
-                                value={v.sku}
-                                onChange={(e) => handleVariantChange(v.id, 'sku', e.target.value)}
-                                className="w-28 px-1.5 py-1 text-[11px] font-mono text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
-                              />
-                            </td>
-                            <td className="py-2 px-2.5">
-                              <input
-                                type="number"
-                                value={v.weight}
-                                onChange={(e) => handleVariantChange(v.id, 'weight', e.target.value)}
-                                className="w-20 px-1.5 py-1 text-[11px] text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
-                              />
-                            </td>
-                            <td className="py-2 px-2.5">
-                              <input type="number" value={v.labourCharge} onChange={(e) => handleVariantChange(v.id, 'labourCharge', e.target.value)} className="w-24 px-1.5 py-1 text-[11px] text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]" />
-                            </td>
-                            <td className="py-2 px-2.5">
-                              <input
-                                type="text"
-                                value={v.price}
-                                onChange={(e) => handleVariantChange(v.id, 'price', e.target.value)}
-                                className="w-24 px-1.5 py-1 text-[11px] font-semibold text-stone-900 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
-                              />
-                            </td>
-                            <td className="py-2 pr-3 pl-2">
-                              <input type="number" value={v.otherAmount} onChange={(e) => handleVariantChange(v.id, 'otherAmount', e.target.value)} className="w-24 px-1.5 py-1 text-[11px] text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]" />
-                            </td>
-                            <td className="py-2 pr-3 pl-2">
-                              <input
-                                type="text"
-                                value={v.stock}
-                                onChange={(e) => handleVariantChange(v.id, 'stock', e.target.value)}
-                                className="w-10 px-1.5 py-0.5 text-[11px] text-center text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
-                              />
-                            </td>
-                          </tr>
-                        )))}
+                          variants.map((v) => {
+                            const detailsList = [
+                              v.diamondType || v.diamondDetails?.type || 'Lab Grown Diamond',
+                              v.diamondColor || v.diamondDetails?.color,
+                              v.diamondClarity || v.diamondDetails?.clarity,
+                              v.purity,
+                              (v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight) ? `${v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight}ct` : '',
+                            ].filter(Boolean);
+
+                            const breakdownText = `Metal: ₹${(v.metalCost || 0).toLocaleString('en-IN')} (${v.weight || v.metalWeight}g @ ₹${v.metalRate || 0}/g)\nDiamonds: ₹${(v.diamondCost || 0).toLocaleString('en-IN')}\nLabour: ₹${(v.labourCharge || 0).toLocaleString('en-IN')}\nGST (3%): ₹${(v.computedGst || 0).toLocaleString('en-IN')}${v.otherAmount ? `\nMarkup: ₹${v.otherAmount}` : ''}`;
+
+                            return (
+                              <tr key={v.id} className="hover:bg-stone-50/70 transition-colors">
+                                {/* Combinations Badges */}
+                                <td className="py-2.5 pl-3 pr-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {detailsList.map((tag, idx) => (
+                                      <span
+                                        key={idx}
+                                        className="inline-flex px-2 py-0.5 text-[9.5px] font-semibold text-stone-700 bg-[#faf5ee] border border-[#e8d8c0] rounded-md shadow-2xs"
+                                      >
+                                        {tag}
+                                      </span>
+                                    ))}
+                                    {v.color && (
+                                      <span className="inline-flex px-1.5 py-0.5 text-[9.5px] font-medium text-stone-500 bg-stone-50 border border-stone-200 rounded-md">
+                                        {v.color}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+
+                                {/* SKU */}
+                                <td className="py-2.5 px-2.5">
+                                  <input
+                                    type="text"
+                                    value={v.sku}
+                                    onChange={(e) => handleVariantChange(v.id, 'sku', e.target.value)}
+                                    className="w-full px-2 py-1 text-[11px] font-mono text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                                  />
+                                </td>
+
+                                {/* Final Weight */}
+                                <td className="py-2.5 px-2.5 text-center">
+                                  <input
+                                    type="number"
+                                    step="0.001"
+                                    readOnly={automaticPricing}
+                                    value={v.weight}
+                                    onChange={(e) => handleVariantChange(v.id, 'weight', e.target.value)}
+                                    className="w-20 px-1.5 py-1 text-center font-mono text-[11px] font-semibold text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                                  />
+                                </td>
+
+                                {/* Labour Charge */}
+                                <td className="py-2.5 px-2.5 text-center">
+                                  <input
+                                    type="number"
+                                    value={v.labourCharge}
+                                    onChange={(e) => handleVariantChange(v.id, 'labourCharge', e.target.value)}
+                                    className="w-20 px-1.5 py-1 text-center font-mono text-[11px] font-semibold text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                                  />
+                                </td>
+
+                                {/* Final Price */}
+                                <td className="py-2.5 px-2.5 text-right font-mono font-bold text-xs text-stone-900" title={breakdownText}>
+                                  <span>₹{Number(v.priceRaw || v.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                </td>
+
+                                {/* Other Amount */}
+                                <td className="py-2.5 px-2.5 text-right">
+                                  <input
+                                    type="number"
+                                    value={v.otherAmount}
+                                    onChange={(e) => handleVariantChange(v.id, 'otherAmount', e.target.value)}
+                                    className="w-24 px-2 py-1 text-right font-mono text-[11px] text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
+                                  />
+                                </td>
+
+                                {/* Actions */}
+                                <td className="py-2.5 pr-3 pl-2 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setVariants((prev) => prev.filter((item) => item.id !== v.id))}
+                                    className="p-1 rounded-md text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                    title="Delete variant"
+                                  >
+                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
                       </tbody>
                     </table>
                   </div>

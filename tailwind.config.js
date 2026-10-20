@@ -20,6 +20,8 @@ export default {
           800: '#523e2a',
           900: '#433324',
         },
+        'luxury-gold': '#8b6f4e',
+        'luxury-gold-dark': '#785e40',
         luxury: {
           bg: '#fbfaf8',
           card: '#ffffff',

@@ -27,6 +27,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import OrnateSyncModal from '../../components/common/OrnateSyncModal';
 import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { openProductPreview } from '../../utils/productPreview';
@@ -245,6 +246,7 @@ const DynamicModuleView = () => {
   const [formData, setFormData] = useState({});
   const [saving, setSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isOrnateSyncModalOpen, setIsOrnateSyncModalOpen] = useState(false);
   const [lookupData, setLookupData] = useState({}); // { fieldName: [{ value, label }] }
   const [uploadingField, setUploadingField] = useState(null);
 
@@ -502,6 +504,23 @@ const DynamicModuleView = () => {
   };
 
   const isOrnatePage = pathname.includes('ornate-products');
+  const isJewelryPage = pathname.includes('jewelry-products');
+  const isSilverPage = pathname.includes('silver-products');
+  const isProductCatalogPage = isOrnatePage || isJewelryPage || isSilverPage;
+
+  const handleEditProductRecord = (row) => {
+    const id = row?._id || row?.id;
+    if (!id) return;
+    if (isOrnatePage) {
+      navigate(`/catalog/ornate-products/edit/${id}`);
+    } else if (isSilverPage) {
+      navigate(`/catalog/silver-products/edit/${id}`);
+    } else if (isJewelryPage) {
+      navigate(`/catalog/jewelry-products/edit/${id}`);
+    } else {
+      handleOpenEdit(row);
+    }
+  };
 
   // Trigger Ornate ERP Sync & store data in DB
   const handleSyncOrnateProducts = async () => {
@@ -932,7 +951,7 @@ const DynamicModuleView = () => {
           isOrnatePage && (
             <button
               type="button"
-              onClick={handleSyncOrnateProducts}
+              onClick={() => setIsOrnateSyncModalOpen(true)}
               disabled={isSyncing}
               className="flex items-center gap-2 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] disabled:opacity-75 disabled:pointer-events-none text-white rounded-lg text-xs sm:text-[13px] font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
             >
@@ -1082,8 +1101,8 @@ const DynamicModuleView = () => {
                       <tr
                         key={row._id || row.id}
                         onClick={() => {
-                          if (isOrnatePage) {
-                            navigate(`/catalog/ornate-products/edit/${row._id || row.id}`);
+                          if (isProductCatalogPage) {
+                            handleEditProductRecord(row);
                           } else {
                             setViewingRecord(row);
                           }
@@ -1200,19 +1219,15 @@ const DynamicModuleView = () => {
                         </td>
                         <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                           <RowActions
-                            onView={() => setViewingRecord(row)}
-                            onOpenWebsite={pathname === '/catalog/silver-products' ? () => openProductPreview(row) : undefined}
-                            onEdit={() => {
-                              if (isOrnatePage) {
-                                navigate(`/catalog/ornate-products/edit/${row._id || row.id}`);
-                              } else if (pathname.includes('jewelry-products')) {
-                                navigate(`/catalog/jewelry-products/edit/${row._id || row.id}`);
-                              } else if (pathname.includes('silver-products')) {
-                                navigate(`/catalog/silver-products/edit/${row._id || row.id}`);
+                            onView={() => {
+                              if (isProductCatalogPage) {
+                                handleEditProductRecord(row);
                               } else {
-                                handleOpenEdit(row);
+                                setViewingRecord(row);
                               }
                             }}
+                            onOpenWebsite={pathname === '/catalog/silver-products' ? () => openProductPreview(row) : undefined}
+                            onEdit={() => handleEditProductRecord(row)}
                             onDelete={() => handleDelete(row._id || row.id)}
                           />
                         </td>
@@ -2290,6 +2305,28 @@ const DynamicModuleView = () => {
                 <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Edit Product (Tab-Wise Designer)</span>
               </button>
+            ) : isSilverPage ? (
+              <button
+                type="button"
+                onClick={() => {
+                  navigate(`/catalog/silver-products/edit/${viewingRecord._id || viewingRecord.id}`);
+                }}
+                className="w-full py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2 mb-2"
+              >
+                <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Edit Silver Product</span>
+              </button>
+            ) : isJewelryPage ? (
+              <button
+                type="button"
+                onClick={() => {
+                  navigate(`/catalog/jewelry-products/edit/${viewingRecord._id || viewingRecord.id}`);
+                }}
+                className="w-full py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2 mb-2"
+              >
+                <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Edit Jewelry Product</span>
+              </button>
             ) : (
               <button
                 type="button"
@@ -2314,6 +2351,17 @@ const DynamicModuleView = () => {
             </button>
           </div>
         </div>
+      )}
+
+      {/* ─── Ornate ERP Category Sync Modal ─── */}
+      {isOrnatePage && (
+        <OrnateSyncModal
+          isOpen={isOrnateSyncModalOpen}
+          onClose={() => setIsOrnateSyncModalOpen(false)}
+          onSyncComplete={() => {
+            fetchItems();
+          }}
+        />
       )}
     </div>
   );
