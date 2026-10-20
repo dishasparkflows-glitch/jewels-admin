@@ -1,6 +1,7 @@
+import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -13,6 +14,7 @@ import {
   HiOutlineCheck,
   HiOutlineTrash,
   HiOutlinePlus,
+  HiOutlineMinus,
   HiOutlinePhotograph,
   HiOutlineDocumentText,
   HiOutlineSparkles,
@@ -22,6 +24,7 @@ import {
   HiOutlineX,
   HiOutlineLink,
   HiOutlineChevronRight,
+  HiOutlineChevronLeft,
   HiOutlineChevronUp,
   HiOutlineChevronDown,
   HiOutlineQuestionMarkCircle,
@@ -92,6 +95,126 @@ export default function OrnateProductEdit() {
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewModalImage, setPreviewModalImage] = useState(null);
+  const [previewModalGallery, setPreviewModalGallery] = useState([]);
+  const [previewModalIndex, setPreviewModalIndex] = useState(0);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
+  const handleOpenImagePreview = (imageUrl, gallery = []) => {
+    if (!imageUrl) return;
+    const list = Array.isArray(gallery) && gallery.length > 0 ? gallery : [imageUrl];
+    const idx = list.indexOf(imageUrl);
+    setPreviewModalGallery(list);
+    setPreviewModalIndex(idx >= 0 ? idx : 0);
+    setPreviewModalImage(imageUrl);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handleCloseImagePreview = () => {
+    setPreviewModalImage(null);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+    setIsDragging(false);
+  };
+
+  const handleZoomIn = (e) => {
+    e?.stopPropagation?.();
+    setZoomScale((prev) => Math.min(Number((prev + 0.25).toFixed(2)), 4));
+  };
+
+  const handleZoomOut = (e) => {
+    e?.stopPropagation?.();
+    setZoomScale((prev) => {
+      const next = Math.max(Number((prev - 0.25).toFixed(2)), 0.5);
+      if (next <= 1) setPanPosition({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleResetZoom = (e) => {
+    e?.stopPropagation?.();
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handlePrevPreviewImage = (e) => {
+    e?.stopPropagation?.();
+    if (previewModalGallery.length <= 1) return;
+    const nextIdx = (previewModalIndex - 1 + previewModalGallery.length) % previewModalGallery.length;
+    setPreviewModalIndex(nextIdx);
+    setPreviewModalImage(previewModalGallery[nextIdx]);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handleNextPreviewImage = (e) => {
+    e?.stopPropagation?.();
+    if (previewModalGallery.length <= 1) return;
+    const nextIdx = (previewModalIndex + 1) % previewModalGallery.length;
+    setPreviewModalIndex(nextIdx);
+    setPreviewModalImage(previewModalGallery[nextIdx]);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  useEffect(() => {
+    if (!previewModalImage) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleCloseImagePreview();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrevPreviewImage();
+      } else if (e.key === 'ArrowRight') {
+        handleNextPreviewImage();
+      } else if (e.key === '+' || e.key === '=') {
+        handleZoomIn();
+      } else if (e.key === '-') {
+        handleZoomOut();
+      } else if (e.key === '0') {
+        handleResetZoom();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewModalImage, previewModalGallery, previewModalIndex]);
+
+  const handlePreviewMouseDown = (e) => {
+    if (zoomScale <= 1) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.clientX - panPosition.x,
+      y: e.clientY - panPosition.y,
+    };
+  };
+
+  const handlePreviewMouseMove = (e) => {
+    if (!isDragging || zoomScale <= 1) return;
+    setPanPosition({
+      x: e.clientX - dragStartRef.current.x,
+      y: e.clientY - dragStartRef.current.y,
+    });
+  };
+
+  const handlePreviewMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handlePreviewWheel = (e) => {
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      setZoomScale((prev) => Math.min(Number((prev + 0.2).toFixed(2)), 4));
+    } else {
+      setZoomScale((prev) => {
+        const next = Math.max(Number((prev - 0.2).toFixed(2)), 0.5);
+        if (next <= 1) setPanPosition({ x: 0, y: 0 });
+        return next;
+      });
+    }
+  };
   const [imageUrlInput, setImageUrlInput] = useState('');
   const [draggedCareIndex, setDraggedCareIndex] = useState(null);
   const [dragOverCareIndex, setDragOverCareIndex] = useState(null);
@@ -116,15 +239,13 @@ export default function OrnateProductEdit() {
 
   // ─── 2. Pricing & Inventory ────────────────────────────────
   const [pricing, setPricing] = useState({
+    ornatePrice: '',
     costPrice: '',
     markupPercentage: '',
     calculatedPrice: '',
     salePrice: '',
     mrpMarkupPercentage: '',
     mrp: '',
-    baseLabourCharge: '',
-    certificateCharge: '',
-    otherAmountPercentage: '',
   });
 
   // ─── 3. Variant Configuration (Colors) ─────────────────────
@@ -189,7 +310,9 @@ export default function OrnateProductEdit() {
         if (colorRes.status === 'fulfilled') {
           const rawColors = colorRes.value.data?.data?.items || colorRes.value.data?.data || [];
           if (Array.isArray(rawColors) && rawColors.length > 0) {
-            const built = rawColors.map(buildColorOption);
+            const built = rawColors
+              .filter((c) => c.name?.toLowerCase() !== 'general')
+              .map(buildColorOption);
             setColorOptions(built);
           }
         }
@@ -234,17 +357,16 @@ export default function OrnateProductEdit() {
           const calcPrice = Number(product.calculatedPrice ?? (cost > 0 ? cost + (cost * markup) / 100 : 0));
           const sale = Number(product.pricing?.salePrice ?? calcPrice);
           const mrpVal = Number(product.pricing?.mrp ?? sale);
+          const ornateVal = Number(product.pricing?.ornatePrice ?? product.ornatePrice ?? product.ornate?.price ?? product.ornate?.goldAmt ?? 0);
 
           setPricing({
-            costPrice: cost,
-            markupPercentage: markup,
-            calculatedPrice: calcPrice,
-            salePrice: sale,
-            mrpMarkupPercentage: product.pricing?.mrpMarkupPercentage || 0,
-            mrp: mrpVal,
-            baseLabourCharge: product.pricing?.baseLabourCharge || 0,
-            certificateCharge: product.pricing?.certificateCharge || 0,
-            otherAmountPercentage: product.pricing?.otherAmountPercentage || 0,
+            ornatePrice: ornateVal || '',
+            costPrice: cost || '',
+            markupPercentage: markup || '',
+            calculatedPrice: calcPrice || '',
+            salePrice: sale || '',
+            mrpMarkupPercentage: product.pricing?.mrpMarkupPercentage || '',
+            mrp: mrpVal || '',
           });
 
           // Populate Colors
@@ -263,6 +385,7 @@ export default function OrnateProductEdit() {
           // Populate Variant Media from colorImages if available
           if (Array.isArray(product.colorImages) && product.colorImages.length > 0) {
             const mediaMap = {};
+            const loadedColors = [];
             product.colorImages.forEach((ci) => {
               let colorName =
                 ci.metalColorId?.name ||
@@ -272,8 +395,13 @@ export default function OrnateProductEdit() {
                 (typeof ci.metalColorId === 'string' ? ci.metalColorId : '') ||
                 (typeof ci.metalColor === 'string' ? ci.metalColor : '');
               if (colorName?.toUpperCase() === 'SILVER') colorName = 'Silver';
+              if (!ci.metalColorId && (!colorName || colorName.toLowerCase() === 'general' || colorName.toLowerCase() === 'default' || colorName.toLowerCase() === 'standard')) {
+                colorName = 'General';
+              }
               if (colorName) {
+                loadedColors.push(colorName);
                 mediaMap[colorName] = {
+                  status: ci.status ?? 'active',
                   swatchIcon: ci.variantIcon?.url || ci.variantIcon || '',
                   media: Array.isArray(ci.images)
                     ? ci.images.map((img, idx) => ({
@@ -286,6 +414,9 @@ export default function OrnateProductEdit() {
               }
             });
             setVariantMedia((prev) => ({ ...prev, ...mediaMap }));
+            if (loadedColors.length > 0) {
+              setSelectedColors((prev) => Array.from(new Set([...prev, ...loadedColors])));
+            }
           }
 
           // Populate Weights & Purities
@@ -380,14 +511,17 @@ export default function OrnateProductEdit() {
   const handleCostOrMarkupChange = (field, value) => {
     const numVal = Number(value) || 0;
     setPricing((prev) => {
-      const next = { ...prev, [field]: numVal };
+      const next = { ...prev, [field]: value };
       const cost = field === 'costPrice' ? numVal : Number(next.costPrice) || 0;
       const markup = field === 'markupPercentage' ? numVal : Number(next.markupPercentage) || 0;
-      const calculated = cost + Math.round((cost * markup) / 100);
+      const calculated = cost > 0 ? cost + Math.round((cost * markup) / 100) : 0;
       next.calculatedPrice = calculated;
-      // If sale price is equal to previous calculated, keep in sync
-      if (!prev.salePrice || prev.salePrice === prev.calculatedPrice) {
+      // If sale price is equal to previous calculated or empty, keep in sync
+      if (!prev.salePrice || Number(prev.salePrice) === Number(prev.calculatedPrice)) {
         next.salePrice = calculated;
+        if (Number(prev.mrpMarkupPercentage) > 0) {
+          next.mrp = Math.round(calculated * (1 + Number(prev.mrpMarkupPercentage) / 100));
+        }
       }
       return next;
     });
@@ -405,10 +539,6 @@ export default function OrnateProductEdit() {
     setSelectedColors((prev) => {
       const exists = prev.some((c) => c?.toLowerCase() === colorName?.toLowerCase());
       if (exists) {
-        if (prev.length === 1) {
-          toast.info('At least one color variant must remain selected.');
-          return prev;
-        }
         return prev.filter((c) => c?.toLowerCase() !== colorName?.toLowerCase());
       }
       return [...prev, colorName];
@@ -426,10 +556,9 @@ export default function OrnateProductEdit() {
 
   // Toggle All Variants Accordion
   const handleToggleAllExpand = () => {
+    const allKeys = [...colorOptions.map((c) => c.name), 'General'];
     setExpandedColors((prev) =>
-      prev.length === colorOptions.length
-        ? []
-        : colorOptions.map((c) => c.name)
+      prev.length >= allKeys.length ? [] : allKeys
     );
   };
 
@@ -450,6 +579,7 @@ export default function OrnateProductEdit() {
             swatchIconKey: key,
           },
         }));
+        setSelectedColors((prev) => Array.from(new Set([...prev, colorName])));
         toast.success(`${colorName} swatch icon uploaded!`);
       }
     } catch (err) {
@@ -490,6 +620,7 @@ export default function OrnateProductEdit() {
             media: [...(prev[colorName]?.media || []), ...uploadedList],
           },
         }));
+        setSelectedColors((prev) => Array.from(new Set([...prev, colorName])));
         toast.success(`Uploaded ${uploadedList.length} media file(s) for ${colorName}!`);
       }
     } catch (err) {
@@ -894,24 +1025,30 @@ export default function OrnateProductEdit() {
         },
 
         // Color variants
-        color: selectedColors[0] || undefined,
-        metalColorIds: selectedColors.map((cName) => {
-          const matched = colorOptions.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
-          return matched?.id || cName;
-        }),
-        colorImages: selectedColors.map((cName) => {
+        color: selectedColors.find((c) => c !== 'General') || selectedColors[0] || undefined,
+        metalColorIds: selectedColors
+          .map((cName) => {
+            const matched = colorOptions.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
+            return matched?.id;
+          })
+          .filter(Boolean),
+        colorImages: Array.from(new Set([
+          ...selectedColors,
+          ...(variantMedia['General']?.media?.length > 0 || variantMedia['General']?.swatchIcon ? ['General'] : []),
+        ])).map((cName) => {
           const vData = variantMedia[cName] || {};
           const matched = colorOptions.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
           return {
+            status: vData.status ?? 'active',
             metalColorId: matched?.id || undefined,
-            metalColorName: cName,
+            metalColorName: matched ? cName : undefined,
             variantIcon: vData.swatchIcon ? { url: vData.swatchIcon } : undefined,
             images: (vData.media || []).map((m) => ({
               url: typeof m === 'string' ? m : m.url,
               mediaType: m.mediaType || (m.url?.endsWith('.mp4') ? 'video' : 'image'),
             })),
           };
-        }),
+        }).filter((item) => item.metalColorId || item.images?.length > 0 || item.variantIcon),
 
         // Structured blocks sync
         basicInfo: {
@@ -929,9 +1066,7 @@ export default function OrnateProductEdit() {
           ornatePrice: Number(pricing.ornatePrice) || Number(pricing.mrp) || Number(pricing.salePrice) || 0,
           markupPercentage: Number(pricing.markupPercentage) || 0,
           mrpMarkupPercentage: Number(pricing.mrpMarkupPercentage) || 0,
-          baseLabourCharge: Number(pricing.baseLabourCharge) || 0,
-          certificateCharge: Number(pricing.certificateCharge) || 0,
-          otherAmountPercentage: Number(pricing.otherAmountPercentage) || 0,
+          calculatedPrice: Number(pricing.calculatedPrice) || 0,
         },
         specifications: { metalWeight: Number(weights.netWeight) || 0 },
         ornate: {
@@ -1317,14 +1452,35 @@ export default function OrnateProductEdit() {
             </div>
 
             <div className="space-y-4">
-              {/* Row 1: Cost Price, Markup %, Calculated Price, Sale Price */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Row 1: Ornate Price, Cost Price, Markup %, Calculated Price, Sale Price */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {/* 1. ORNATE PRICE (₹) */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between h-5">
+                  <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
                     <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                      Cost Price (₹)
+                      ORNATE PRICE (₹)
                     </label>
-                    <span className="text-[10px] text-stone-400 font-medium">(Auto/Manual)</span>
+                    <span className="px-1.5 py-0.5 text-[9px] font-bold rounded border border-amber-300 text-amber-700 bg-amber-50 uppercase tracking-wider whitespace-nowrap">
+                      SYNCED (LOCKED)
+                    </span>
+                  </div>
+                  <input
+                    type="number"
+                    value={pricing.ornatePrice}
+                    readOnly
+                    disabled
+                    className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-stone-50/70 text-stone-700 cursor-not-allowed select-none"
+                  />
+                  <p className="text-[10px] text-stone-400 mt-1">Price from Ornate ERP (Read-only)</p>
+                </div>
+
+                {/* 2. COST PRICE (₹) */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                    <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                      COST PRICE (₹)
+                    </label>
+                    <span className="text-[10px] text-stone-400 font-medium tracking-wide">(HIDDEN)</span>
                   </div>
                   <input
                     type="number"
@@ -1334,10 +1490,11 @@ export default function OrnateProductEdit() {
                   />
                 </div>
 
+                {/* 3. MARKUP % */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between h-5">
+                  <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
                     <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                      Markup %
+                      MARKUP %
                     </label>
                   </div>
                   <input
@@ -1348,10 +1505,11 @@ export default function OrnateProductEdit() {
                   />
                 </div>
 
+                {/* 4. CALCULATED PRICE (₹) */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between h-5">
+                  <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
                     <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                      Calculated Price (₹)
+                      CALCULATED PRICE (₹)
                     </label>
                   </div>
                   <input
@@ -1362,26 +1520,29 @@ export default function OrnateProductEdit() {
                     }
                     className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-stone-50/70 text-stone-800 focus:outline-none focus:border-[#8b6f4e]"
                   />
-                  <p className="text-[10px] text-stone-400 font-mono">
-                    Markup: {markupAmount} ({pricing.costPrice} + {markupAmount} = {autoCalculatedPrice})
-                  </p>
                 </div>
 
+                {/* 5. SALE PRICE (₹) */}
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between h-5">
+                  <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
                     <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                      Sale Price (₹) *
+                      SALE PRICE (₹)
                     </label>
                   </div>
                   <input
                     type="number"
                     value={pricing.salePrice}
-                    onChange={(e) =>
-                      setPricing((prev) => ({ ...prev, salePrice: Number(e.target.value) || 0 }))
-                    }
+                    onChange={(e) => {
+                      const sp = Number(e.target.value) || 0;
+                      setPricing((prev) => ({
+                        ...prev,
+                        salePrice: e.target.value,
+                        mrp: Number(prev.mrpMarkupPercentage) > 0 ? Math.round(sp * (1 + Number(prev.mrpMarkupPercentage) / 100)) : prev.mrp,
+                      }));
+                    }}
                     className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-[#fdfcfb] text-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e]"
                   />
-                  <p className="text-[10px] text-stone-400">Actual selling price</p>
+                  <p className="text-[10px] text-stone-400 mt-1">Actual selling price</p>
                 </div>
               </div>
 
@@ -1453,7 +1614,7 @@ export default function OrnateProductEdit() {
                   onClick={handleToggleAllExpand}
                   className="px-2.5 py-1 text-xs font-semibold text-[#8b6f4e] hover:text-[#785e40] bg-[#faf5ee] hover:bg-[#f6eee2] border border-[#d9c4a8]/50 rounded-full transition-colors cursor-pointer shadow-2xs"
                 >
-                  {expandedColors.length === colorOptions.length ? 'Collapse all media' : 'Expand all media'}
+                  {expandedColors.length >= colorOptions.length + 1 ? 'Collapse all media' : 'Expand all media'}
                 </button>
                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/50 shadow-2xs">
                   {colorOptions.length} colors available
@@ -1522,6 +1683,7 @@ export default function OrnateProductEdit() {
                         )}
                       </div>
 
+                      <ColorStatusToggle name={col.name} disabled={!isSelected} status={variantMedia[col.name]?.status} onChange={(status) => setVariantMedia((previous) => ({ ...previous, [col.name]: { ...previous[col.name], status } }))} />
                       {/* Right side: Manage media button with chevron */}
                       <button
                         type="button"
@@ -1666,8 +1828,14 @@ export default function OrnateProductEdit() {
                                         <img
                                           src={m.url}
                                           alt={`${col.name} ${idx + 1}`}
-                                          className="w-full h-full object-cover cursor-pointer"
-                                          onClick={() => setPreviewModalImage(m.url)}
+                                          className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                          title="Click to zoom in"
+                                          onClick={() => {
+                                            const imageGallery = (vData.media || [])
+                                              .filter((item) => item.mediaType !== 'video' && !item.url?.endsWith('.mp4'))
+                                              .map((item) => item.url);
+                                            handleOpenImagePreview(m.url, imageGallery);
+                                          }}
                                         />
                                       )}
                                       <button
@@ -1736,6 +1904,294 @@ export default function OrnateProductEdit() {
                   </div>
                 );
               })}
+
+              {/* ── 4th Box: General Images (No Metal Color) ── */}
+              {(() => {
+                const colName = 'General';
+                const isSelected = isColorSelected(colName);
+                const isExpanded = expandedColors.includes(colName);
+                const vData = variantMedia[colName] || { swatchIcon: '', media: [] };
+                const mediaCount = vData.media?.length || 0;
+                const isUploadingSwatch = uploadingSwatchColor === colName;
+                const isUploadingMedia = uploadingVariantColor === colName;
+
+                return (
+                  <div
+                    key={colName}
+                    className={`rounded-2xl border transition-all duration-200 ${
+                      isExpanded
+                        ? 'border-[#cbb393] bg-[#fcf9f4] shadow-xs'
+                        : isSelected
+                        ? 'border-[#e4d7c8] bg-[#fdfbf7] hover:border-[#cbb393]'
+                        : 'border-stone-200 bg-white hover:border-stone-300'
+                    }`}
+                  >
+                    {/* Card Top Row */}
+                    <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                      {/* Left side: Checkbox + Swatch Sphere + Name + Selected Badge */}
+                      <div
+                        onClick={() => handleToggleColor(colName)}
+                        className="flex items-center gap-3 cursor-pointer select-none min-w-0"
+                      >
+                        {/* Checkbox */}
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0 ${
+                            isSelected
+                              ? 'bg-[#78532f] text-white shadow-2xs'
+                              : 'border-2 border-stone-300 bg-white hover:border-[#8b6f4e]'
+                          }`}
+                        >
+                          {isSelected && <HiOutlineCheck className="w-3.5 h-3.5 stroke-[3]" />}
+                        </div>
+
+                        {/* 3D Realistic Sphere Swatch (Neutral / Universal Platinum-Slate) */}
+                        <div
+                          className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shrink-0 transition-transform hover:scale-105"
+                          style={{
+                            background: 'radial-gradient(circle at 35% 35%, #ffffff 0%, #cbd5e1 55%, #64748b 100%)',
+                            boxShadow: 'inset -2px -2px 6px rgba(0,0,0,0.18), 1px 2px 4px rgba(0,0,0,0.12)',
+                          }}
+                        />
+
+                        {/* Color / Variant Name */}
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-sm font-bold text-stone-900 truncate">
+                            General Images
+                          </span>
+                          <span className="text-[10px] text-stone-400 font-medium">
+                            (No metal color)
+                          </span>
+                        </div>
+
+                        {/* Selected Pill Badge */}
+                        {isSelected && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#e8f7ee] text-[#1b7a43] border border-[#c4ebd1]/60 shrink-0">
+                            Selected
+                          </span>
+                        )}
+                      </div>
+
+                      <ColorStatusToggle name={colName} disabled={!isSelected} status={variantMedia[colName]?.status} onChange={(status) => setVariantMedia((previous) => ({ ...previous, [colName]: { ...previous[colName], status } }))} />
+                      {/* Right side: Manage media button with chevron */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleExpand(colName);
+                        }}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
+                      >
+                        <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                        <span>Manage media ({mediaCount})</span>
+                        {isExpanded ? (
+                          <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
+                        ) : (
+                          <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Accordion Expand Area */}
+                    {isExpanded && (
+                      <div className="px-3.5 pb-4 pt-3.5 border-t border-[#ebdccf]/80 animate-fadeIn">
+                        <div className="flex flex-col sm:flex-row gap-3.5 items-stretch">
+                          {/* ── Sub-card 1: Variant swatch icon ── */}
+                          <div className="w-full sm:w-[38%] shrink-0 flex flex-col space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-stone-800">
+                                Variant swatch icon
+                              </span>
+                              <span
+                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
+                                title="Upload a custom icon or texture for general / unassigned media"
+                              >
+                                ?
+                              </span>
+                            </div>
+
+                            <input
+                              id={`swatch-upload-${colName}`}
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                              className="hidden"
+                              onChange={(e) => handleSwatchUpload(colName, e)}
+                            />
+
+                            {vData.swatchIcon ? (
+                              <div className="border border-stone-200 bg-white rounded-xl p-2.5 flex items-center justify-between gap-2 min-h-[110px] h-full shadow-2xs">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <img
+                                    src={vData.swatchIcon}
+                                    alt="General Swatch"
+                                    className="w-12 h-12 object-cover rounded-lg border border-stone-100 shadow-2xs shrink-0"
+                                  />
+                                  <div className="min-w-0">
+                                    <p className="text-xs font-semibold text-stone-800 truncate">
+                                      Custom Swatch
+                                    </p>
+                                    <span className="text-[10px] text-stone-400">
+                                      Active icon
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      document.getElementById(`swatch-upload-${colName}`)?.click()
+                                    }
+                                    className="p-1.5 text-stone-500 hover:text-[#8b6f4e] rounded-lg hover:bg-stone-50 cursor-pointer"
+                                    title="Change icon"
+                                  >
+                                    <HiOutlineRefresh className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveSwatchIcon(colName)}
+                                    className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-red-50 cursor-pointer"
+                                    title="Remove icon"
+                                  >
+                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() =>
+                                  document.getElementById(`swatch-upload-${colName}`)?.click()
+                                }
+                                className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                                  isUploadingSwatch ? 'opacity-60 pointer-events-none' : ''
+                                }`}
+                              >
+                                {isUploadingSwatch ? (
+                                  <div className="w-5 h-5 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mb-1.5" />
+                                ) : (
+                                  <HiOutlineUpload className="w-5 h-5 text-[#8b6f4e] mb-1.5 group-hover:scale-110 transition-transform" />
+                                )}
+                                <span className="text-xs font-semibold text-stone-800">
+                                  {isUploadingSwatch ? 'Uploading...' : 'Upload icon'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* ── Sub-card 2: Product images & videos ── */}
+                          <div className="w-full sm:flex-1 flex flex-col space-y-1.5">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs font-bold text-stone-800">
+                                Product images &amp; videos
+                              </span>
+                              <span
+                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
+                                title="Upload product photos and MP4 videos for general view without assigning a metal color"
+                              >
+                                ?
+                              </span>
+                            </div>
+
+                            <input
+                              id={`media-upload-${colName}`}
+                              type="file"
+                              accept="image/*,video/mp4"
+                              multiple
+                              className="hidden"
+                              onChange={(e) => handleVariantMediaUpload(colName, e)}
+                            />
+
+                            {vData.media && vData.media.length > 0 ? (
+                              <div className="border border-stone-200 bg-white rounded-xl p-2.5 min-h-[110px] h-full flex flex-col justify-between shadow-2xs space-y-2">
+                                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
+                                  {vData.media.map((m, idx) => (
+                                    <div
+                                      key={m.id || idx}
+                                      className="relative group rounded-lg overflow-hidden border border-stone-200 aspect-square bg-stone-100"
+                                    >
+                                      {m.mediaType === 'video' || m.url?.endsWith('.mp4') ? (
+                                        <video
+                                          src={m.url}
+                                          className="w-full h-full object-cover"
+                                        />
+                                      ) : (
+                                        <img
+                                          src={m.url}
+                                          alt={`General ${idx + 1}`}
+                                          className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                          title="Click to zoom in"
+                                          onClick={() => {
+                                            const imageGallery = (vData.media || [])
+                                              .filter((item) => item.mediaType !== 'video' && !item.url?.endsWith('.mp4'))
+                                              .map((item) => item.url);
+                                            handleOpenImagePreview(m.url, imageGallery);
+                                          }}
+                                        />
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRemoveVariantMedia(colName, m.id);
+                                        }}
+                                        className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                        title="Delete media"
+                                      >
+                                        <HiOutlineTrash className="w-3 h-3" />
+                                      </button>
+                                    </div>
+                                  ))}
+
+                                  <div
+                                    onClick={() =>
+                                      document.getElementById(`media-upload-${colName}`)?.click()
+                                    }
+                                    className="border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors rounded-lg flex flex-col items-center justify-center text-center cursor-pointer aspect-square"
+                                  >
+                                    <HiOutlinePlus className="w-4 h-4 text-[#8b6f4e]" />
+                                    <span className="text-[10px] font-semibold text-stone-700 mt-0.5">
+                                      Add
+                                    </span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
+                                  <span>{vData.media.length} media item(s)</span>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      document.getElementById(`media-upload-${colName}`)?.click()
+                                    }
+                                    className="text-[#8b6f4e] hover:underline font-semibold cursor-pointer"
+                                  >
+                                    + Upload more
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                onClick={() =>
+                                  document.getElementById(`media-upload-${colName}`)?.click()
+                                }
+                                className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                                  isUploadingMedia ? 'opacity-60 pointer-events-none' : ''
+                                }`}
+                              >
+                                {isUploadingMedia ? (
+                                  <div className="w-5 h-5 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mb-1.5" />
+                                ) : (
+                                  <HiOutlineUpload className="w-5 h-5 text-[#8b6f4e] mb-1.5 group-hover:scale-110 transition-transform" />
+                                )}
+                                <span className="text-xs font-semibold text-stone-800">
+                                  {isUploadingMedia ? 'Uploading media...' : 'Upload images / videos'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         )}
@@ -2021,37 +2477,41 @@ export default function OrnateProductEdit() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
                 {ornateImages.map((img, idx) => (
-                  <div
-                    key={img.id}
-                    className="group relative rounded-xl overflow-hidden border border-stone-200/90 bg-stone-50 aspect-square shadow-2xs cursor-pointer"
-                    onClick={() => setPreviewModalImage(img.url)}
-                  >
-                    <img
-                      src={img.url}
-                      alt={`Ornate product ${idx + 1}`}
-                      className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                    />
+                    <div
+                      key={img.id}
+                      className="group relative rounded-xl overflow-hidden border border-stone-200/90 bg-stone-50 aspect-square shadow-2xs cursor-pointer"
+                      onClick={() => {
+                        const gallery = ornateImages.map((x) => x.url);
+                        handleOpenImagePreview(img.url, gallery);
+                      }}
+                    >
+                      <img
+                        src={img.url}
+                        alt={`Ornate product ${idx + 1}`}
+                        className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                      />
 
-                    {/* Primary Badge */}
-                    {img.isPrimary && (
-                      <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#8b6f4e] text-white shadow-xs">
-                        Primary
-                      </span>
-                    )}
+                      {/* Primary Badge */}
+                      {img.isPrimary && (
+                        <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-[#8b6f4e] text-white shadow-xs">
+                          Primary
+                        </span>
+                      )}
 
-                    {/* Hover Overlay Actions */}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-2">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPreviewModalImage(img.url);
-                        }}
-                        title="Preview Image"
-                        className="w-7 h-7 rounded-lg bg-white/90 text-stone-800 hover:bg-white flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
-                      >
-                        <HiOutlineEye className="w-3.5 h-3.5" />
-                      </button>
+                      {/* Hover Overlay Actions */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5 p-2">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const gallery = ornateImages.map((x) => x.url);
+                            handleOpenImagePreview(img.url, gallery);
+                          }}
+                          title="Preview Image"
+                          className="w-7 h-7 rounded-lg bg-white/90 text-stone-800 hover:bg-white flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
+                        >
+                          <HiOutlineEye className="w-3.5 h-3.5" />
+                        </button>
                       {!img.isPrimary && (
                         <button
                           type="button"
@@ -2572,28 +3032,146 @@ export default function OrnateProductEdit() {
         </div>
       </div>
 
-      {/* ─── Image Zoom Preview Modal ───────────────────────────────── */}
+      {/* ─── Image Zoom Preview Modal with - / + Controls ───────────── */}
       {previewModalImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn"
-          onClick={() => setPreviewModalImage(null)}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 bg-stone-950/85 backdrop-blur-md animate-fadeIn select-none"
+          onClick={handleCloseImagePreview}
         >
+          {/* Top Bar: Counter / Instructions & Close Button */}
           <div
-            className="relative max-w-2xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl p-2"
+            className="w-full max-w-5xl flex items-center justify-between pb-3 text-white z-20 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-white/10 border border-white/15 backdrop-blur-md text-stone-200">
+                {previewModalGallery.length > 1
+                  ? `Image ${previewModalIndex + 1} of ${previewModalGallery.length}`
+                  : 'Image Preview'}
+              </span>
+              <span className="text-xs text-stone-400 hidden sm:inline">
+                Scroll or use <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-stone-200 text-[11px]">-</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-stone-200 text-[11px]">+</kbd> to zoom &bull; Drag to pan
+              </span>
+            </div>
+
             <button
               type="button"
-              onClick={() => setPreviewModalImage(null)}
-              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black flex items-center justify-center cursor-pointer"
+              onClick={handleCloseImagePreview}
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-lg border border-white/15"
+              title="Close (Esc)"
             >
-              <HiOutlineX className="w-4 h-4" />
+              <HiOutlineX className="w-5 h-5" />
             </button>
-            <img
-              src={previewModalImage}
-              alt="Preview"
-              className="w-full max-h-[80vh] object-contain rounded-xl"
-            />
+          </div>
+
+          {/* Image Viewport / Canvas */}
+          <div
+            className="relative w-full max-w-5xl h-[72vh] sm:h-[78vh] flex items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xs shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={handlePreviewMouseDown}
+            onMouseMove={handlePreviewMouseMove}
+            onMouseUp={handlePreviewMouseUp}
+            onMouseLeave={handlePreviewMouseUp}
+            onWheel={handlePreviewWheel}
+          >
+            {/* Gallery Navigation: Previous */}
+            {previewModalGallery.length > 1 && (
+              <button
+                type="button"
+                onClick={handlePrevPreviewImage}
+                className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-stone-900/80 hover:bg-stone-900 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-xl border border-white/20 active:scale-95"
+                title="Previous image (Left Arrow)"
+              >
+                <HiOutlineChevronLeft className="w-6 h-6 stroke-[2.2]" />
+              </button>
+            )}
+
+            {/* Gallery Navigation: Next */}
+            {previewModalGallery.length > 1 && (
+              <button
+                type="button"
+                onClick={handleNextPreviewImage}
+                className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-stone-900/80 hover:bg-stone-900 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-xl border border-white/20 active:scale-95"
+                title="Next image (Right Arrow)"
+              >
+                <HiOutlineChevronRight className="w-6 h-6 stroke-[2.2]" />
+              </button>
+            )}
+
+            {/* Scaled & Panned Image */}
+            <div
+              style={{
+                transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomScale})`,
+                transition: isDragging ? 'none' : 'transform 0.15s cubic-bezier(0.2, 0, 0, 1)',
+                cursor: zoomScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (zoomScale > 1) {
+                  handleResetZoom();
+                } else {
+                  setZoomScale(2);
+                }
+              }}
+              className="flex items-center justify-center max-w-full max-h-full"
+            >
+              <img
+                src={previewModalImage}
+                alt="Product Preview"
+                draggable={false}
+                className="max-w-[85vw] max-h-[68vh] object-contain rounded-xl shadow-2xl pointer-events-none"
+              />
+            </div>
+
+            {/* Floating Zoom Bar with - and + buttons */}
+            <div
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-stone-900/90 border border-white/15 text-white shadow-2xl backdrop-blur-md"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Zoom Out Button (-) */}
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={zoomScale <= 0.5}
+                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Zoom Out (-)"
+              >
+                <HiOutlineMinus className="w-4 h-4 stroke-[2.5]" />
+              </button>
+
+              {/* Reset / Percentage Display */}
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="px-2.5 h-8 rounded-xl hover:bg-white/15 text-xs font-mono font-semibold text-stone-200 flex items-center justify-center cursor-pointer transition-colors"
+                title="Click to reset (100%)"
+              >
+                {Math.round(zoomScale * 100)}%
+              </button>
+
+              {/* Zoom In Button (+) */}
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={zoomScale >= 4}
+                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Zoom In (+)"
+              >
+                <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
+              </button>
+
+              <div className="w-[1px] h-4 bg-white/20 mx-1" />
+
+              {/* Reset to 1:1 Icon */}
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="p-1.5 rounded-xl hover:bg-white/15 text-stone-300 hover:text-white transition-colors cursor-pointer"
+                title="Reset zoom to 100% (0)"
+              >
+                <HiOutlineRefresh className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -15,12 +15,28 @@ import {
   HiOutlineLogout,
   HiOutlineCheck,
   HiOutlineSparkles,
+  HiOutlineSwitchHorizontal,
+  HiOutlineViewList,
 } from 'react-icons/hi';
 
 const Header = ({ onMobileToggle }) => {
   const { user, logout } = useAuth();
-  const { currentTheme, presets, selectTheme, isDefault } = useTheme();
+  const {
+    currentTheme,
+    presets,
+    selectTheme,
+    isDefault,
+    sidebarOpen,
+    toggleSidebar,
+    sidebarPosition,
+    toggleSidebarPosition,
+    setSidebarPosition,
+    isMobileViewport,
+    mobileSidebarOpen,
+    toggleMobileSidebar,
+  } = useTheme();
   const navigate = useNavigate();
+  const sidebarVisible = isMobileViewport ? mobileSidebarOpen : sidebarOpen;
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -87,12 +103,44 @@ const Header = ({ onMobileToggle }) => {
     <header className="sticky top-0 z-30 bg-[#fbfaf8]/95 backdrop-blur-md border-b border-[#eee8df] px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
       {/* Left: Mobile hamburger & Search bar */}
       <div className="flex items-center gap-3 flex-1 max-w-xl">
+        {/* Sidebar Toggle (On / Off) */}
         <button
-          onClick={onMobileToggle}
-          className="lg:hidden p-2 rounded-xl text-stone-500 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
-          aria-label="Toggle Navigation"
+          type="button"
+          onClick={() => {
+            if (isMobileViewport) {
+              if (onMobileToggle) onMobileToggle();
+              else toggleMobileSidebar();
+            } else {
+              toggleSidebar();
+            }
+          }}
+          className={`p-2 rounded-xl border text-stone-600 hover:text-stone-900 transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
+            !sidebarVisible
+              ? 'bg-[#faf5ee] border-[#e8d9c2] text-[#8b6f4e] hover:bg-[#f3ece0] shadow-2xs'
+              : 'border-stone-200/90 hover:border-stone-300 bg-white hover:bg-stone-50'
+          }`}
+          title={sidebarVisible ? 'Hide sidebar (Turn OFF)' : 'Show sidebar (Turn ON)'}
+          aria-label="Toggle Sidebar"
+          aria-controls="admin-sidebar"
+          aria-expanded={sidebarVisible}
         >
-          <HiOutlineMenu className="w-5 h-5" />
+          <HiOutlineMenu className="w-4 h-4" />
+          {!sidebarVisible && (
+            <span className="hidden sm:inline text-xs font-semibold text-[#8b6f4e]">
+              Menu
+            </span>
+          )}
+        </button>
+
+        {/* Sidebar Position Switcher: Left <-> Right */}
+        <button
+          type="button"
+          onClick={toggleSidebarPosition}
+          className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-stone-200/90 hover:border-stone-300 bg-white hover:bg-stone-50 text-xs font-semibold text-stone-700 transition-colors shadow-2xs shrink-0 cursor-pointer"
+          title={`Sidebar is on ${sidebarPosition}. Click to move to ${sidebarPosition === 'left' ? 'Right' : 'Left'} side.`}
+        >
+          <HiOutlineSwitchHorizontal className="w-3.5 h-3.5 text-[#8b6f4e]" />
+          <span>{sidebarPosition === 'left' ? 'Sidebar: Left' : 'Sidebar: Right'}</span>
         </button>
 
         {/* Global Search Bar (Matches User Screenshot) */}
@@ -254,6 +302,56 @@ const Header = ({ onMobileToggle }) => {
                     title="View All Theme Options"
                   >
                     More
+                  </button>
+                </div>
+              </div>
+
+              {/* Sidebar Configuration in Dropdown */}
+              <div className="px-4 py-2 border-b border-stone-100 bg-stone-50/40 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                    Sidebar Position
+                  </span>
+                  <div className="inline-flex rounded-lg border border-stone-200 bg-white p-0.5 text-[11px] font-semibold shadow-2xs">
+                    <button
+                      type="button"
+                      onClick={() => setSidebarPosition('left')}
+                      className={`px-2 py-0.5 rounded-md cursor-pointer transition-colors ${
+                        sidebarPosition === 'left'
+                          ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      Left
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSidebarPosition('right')}
+                      className={`px-2 py-0.5 rounded-md cursor-pointer transition-colors ${
+                        sidebarPosition === 'right'
+                          ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                          : 'text-stone-600 hover:text-stone-900'
+                      }`}
+                    >
+                      Right
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                    Sidebar State
+                  </span>
+                  <button
+                    type="button"
+                    onClick={toggleSidebar}
+                    className={`px-2 py-0.5 rounded-md text-[11px] font-semibold cursor-pointer border transition-colors ${
+                      sidebarOpen
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                        : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
+                    }`}
+                  >
+                    {sidebarOpen ? 'On (Visible)' : 'Off (Hidden)'}
                   </button>
                 </div>
               </div>

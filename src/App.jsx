@@ -39,6 +39,9 @@ import MetalRatesView from './pages/admin/MetalRatesView';
 import DiamondPricingMasterView from './pages/admin/DiamondPricingMasterView';
 import CurrenciesView from './pages/admin/CurrenciesView';
 import BeforeAfterView from './pages/admin/BeforeAfterView';
+import BlogsView from './pages/admin/BlogsView';
+import WriteBlogView from './pages/admin/WriteBlogView';
+import BlogCategoriesView from './pages/admin/BlogCategoriesView';
 import DynamicModuleView from './pages/admin/DynamicModuleView';
 import ProfileView from './pages/admin/ProfileView';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -128,6 +131,17 @@ function App() {
             <Route path="/home-sections" element={<HomeSectionsView />} />
             <Route path="/marketing/home-sections" element={<HomeSectionsView />} />
             <Route path="/marketing/sections" element={<HomeSectionsView />} />
+            {/* Luxury Blog Module, Editorial Studio & Categories */}
+            <Route path="/blogs" element={<BlogsView />} />
+            <Route path="/blogs/write" element={<WriteBlogView />} />
+            <Route path="/blogs/add" element={<WriteBlogView />} />
+            <Route path="/blogs/new" element={<WriteBlogView />} />
+            <Route path="/blogs/edit/:id" element={<WriteBlogView />} />
+            <Route path="/marketing/blogs" element={<BlogsView />} />
+            <Route path="/marketing/blogs/write" element={<WriteBlogView />} />
+            <Route path="/marketing/blogs/edit/:id" element={<WriteBlogView />} />
+            <Route path="/blog-categories" element={<BlogCategoriesView />} />
+            <Route path="/marketing/blog-categories" element={<BlogCategoriesView />} />
             {/* Dedicated Diamonds Module */}
             <Route path="/diamonds" element={<DiamondsView />} />
             <Route path="/diamonds/add" element={<AddDiamonds />} />
@@ -171,7 +185,6 @@ function App() {
             <Route path="/ornate-products/new" element={<OrnateProductEdit />} />
             {/* Luxury Navigation Menus Module (Matches Exact 4-Screen Design) */}
             <Route path="/catalog/navigation-menus" element={<NavigationMenusView />} />
-            <Route path="/navigation-menus" element={<NavigationMenusView />} />
 
             {/* Luxury WhatsApp Management (Matches Exact User Screenshot) */}
             <Route path="/system/whatsapp" element={<WhatsAppView />} />

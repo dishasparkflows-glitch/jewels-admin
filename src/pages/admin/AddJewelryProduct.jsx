@@ -1,3 +1,4 @@
+import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
 import { useState, useEffect, useMemo, useRef } from 'react';
@@ -19,6 +20,7 @@ import {
   HiOutlineUpload,
   HiOutlineTrash,
   HiOutlinePlus,
+  HiOutlineMinus,
   HiOutlineCheck,
   HiOutlineEye,
   HiOutlineShoppingBag,
@@ -555,6 +557,7 @@ export default function AddJewelryProduct() {
   // ─── Step 4: Product Media & VTO State ────────────────
   const [productColors, setProductColors] = useState([]);
   const [activeMediaColor, setActiveMediaColor] = useState('');
+  const [colorStatuses, setColorStatuses] = useState({});
   const [activeMediaSubTab, setActiveMediaSubTab] = useState('images'); // 'images' | 'videos' | 'vto'
 
   // High-Res Photography Per Metal Color
@@ -614,6 +617,129 @@ export default function AddJewelryProduct() {
   const [uploadingSilverVariantColor, setUploadingSilverVariantColor] = useState(null);
   const [uploadingSilverSwatchColor, setUploadingSilverSwatchColor] = useState(null);
   const [previewModalImage, setPreviewModalImage] = useState(null);
+  const [previewModalGallery, setPreviewModalGallery] = useState([]);
+  const [previewModalIndex, setPreviewModalIndex] = useState(0);
+  const [zoomScale, setZoomScale] = useState(1);
+  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0 });
+
+  const handleOpenImagePreview = (imageUrl, gallery = []) => {
+    if (!imageUrl) return;
+    const list = Array.isArray(gallery) && gallery.length > 0 ? gallery : [imageUrl];
+    const idx = list.indexOf(imageUrl);
+    setPreviewModalGallery(list);
+    setPreviewModalIndex(idx >= 0 ? idx : 0);
+    setPreviewModalImage(imageUrl);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handleCloseImagePreview = () => {
+    setPreviewModalImage(null);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+    setIsDragging(false);
+  };
+
+  const handleZoomIn = (e) => {
+    e?.stopPropagation?.();
+    setZoomScale((prev) => Math.min(Number((prev + 0.25).toFixed(2)), 4));
+  };
+
+  const handleZoomOut = (e) => {
+    e?.stopPropagation?.();
+    setZoomScale((prev) => {
+      const next = Math.max(Number((prev - 0.25).toFixed(2)), 0.5);
+      if (next <= 1) setPanPosition({ x: 0, y: 0 });
+      return next;
+    });
+  };
+
+  const handleResetZoom = (e) => {
+    e?.stopPropagation?.();
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handlePrevPreviewImage = (e) => {
+    e?.stopPropagation?.();
+    if (previewModalGallery.length <= 1) return;
+    const nextIdx = (previewModalIndex - 1 + previewModalGallery.length) % previewModalGallery.length;
+    setPreviewModalIndex(nextIdx);
+    setPreviewModalImage(previewModalGallery[nextIdx]);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  const handleNextPreviewImage = (e) => {
+    e?.stopPropagation?.();
+    if (previewModalGallery.length <= 1) return;
+    const nextIdx = (previewModalIndex + 1) % previewModalGallery.length;
+    setPreviewModalIndex(nextIdx);
+    setPreviewModalImage(previewModalGallery[nextIdx]);
+    setZoomScale(1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  // Keyboard navigation for zoom modal
+  useEffect(() => {
+    if (!previewModalImage) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleCloseImagePreview();
+      } else if (e.key === 'ArrowLeft') {
+        handlePrevPreviewImage();
+      } else if (e.key === 'ArrowRight') {
+        handleNextPreviewImage();
+      } else if (e.key === '+' || e.key === '=') {
+        handleZoomIn();
+      } else if (e.key === '-') {
+        handleZoomOut();
+      } else if (e.key === '0') {
+        handleResetZoom();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [previewModalImage, previewModalGallery, previewModalIndex]);
+
+  const handlePreviewMouseDown = (e) => {
+    if (zoomScale <= 1) return;
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.clientX - panPosition.x,
+      y: e.clientY - panPosition.y,
+    };
+  };
+
+  const handlePreviewMouseMove = (e) => {
+    if (!isDragging || zoomScale <= 1) return;
+    setPanPosition({
+      x: e.clientX - dragStartRef.current.x,
+      y: e.clientY - dragStartRef.current.y,
+    });
+  };
+
+  const handlePreviewMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  const handlePreviewWheel = (e) => {
+    e.preventDefault();
+    if (e.deltaY < 0) {
+      setZoomScale((prev) => Math.min(Number((prev + 0.2).toFixed(2)), 4));
+    } else {
+      setZoomScale((prev) => {
+        const next = Math.max(Number((prev - 0.2).toFixed(2)), 0.5);
+        if (next <= 1) setPanPosition({ x: 0, y: 0 });
+        return next;
+      });
+    }
+  };
 
   const silverColorOptions = useMemo(() => {
     const list = colorsList && colorsList.length > 0
@@ -635,7 +761,7 @@ export default function AddJewelryProduct() {
       });
     });
     silverColors.forEach((name) => {
-      if (name && !map.has(name.toLowerCase())) {
+      if (name && name.toLowerCase() !== 'general' && !map.has(name.toLowerCase())) {
         const sphere = getSphereStyle(name);
         map.set(name.toLowerCase(), {
           id: undefined,
@@ -659,10 +785,6 @@ export default function AddJewelryProduct() {
     setSilverColors((prev) => {
       const exists = prev.some((c) => c?.toLowerCase() === colorName?.toLowerCase());
       if (exists) {
-        if (prev.length === 1) {
-          toast('At least one color variant must remain selected.', { icon: 'ℹ️' });
-          return prev;
-        }
         return prev.filter((c) => c?.toLowerCase() !== colorName?.toLowerCase());
       }
       return [...prev, colorName];
@@ -678,10 +800,11 @@ export default function AddJewelryProduct() {
   };
 
   const handleToggleAllSilverExpand = () => {
+    const allKeys = [...silverColorOptions.map((c) => c.name), 'General'];
     setExpandedSilverColors((prev) =>
-      prev.length === silverColorOptions.length
+      prev.length >= allKeys.length
         ? []
-        : silverColorOptions.map((c) => c.name)
+        : allKeys
     );
   };
 
@@ -700,6 +823,7 @@ export default function AddJewelryProduct() {
             swatchIcon: fileUrl,
           },
         }));
+        setSilverColors((prev) => Array.from(new Set([...prev, colorName])));
         toast.success(`${colorName} swatch icon uploaded!`);
       }
     } catch (err) {
@@ -738,6 +862,7 @@ export default function AddJewelryProduct() {
             media: [...(prev[colorName]?.media || []), ...uploadedList],
           },
         }));
+        setSilverColors((prev) => Array.from(new Set([...prev, colorName])));
         toast.success(`Uploaded ${uploadedList.length} media file(s) for ${colorName}!`);
       }
     } catch (err) {
@@ -784,7 +909,6 @@ export default function AddJewelryProduct() {
   };
 
   // Modals state
-  const [isHowItWorksOpen, setIsHowItWorksOpen] = useState(false);
   const [isAddColorModalOpen, setIsAddColorModalOpen] = useState(false);
   const [customColorInput, setCustomColorInput] = useState({ name: '', code: '#1f2937' });
 
@@ -844,15 +968,14 @@ export default function AddJewelryProduct() {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         if (isVtoStudioOpen) setIsVtoStudioOpen(false);
-        if (isHowItWorksOpen) setIsHowItWorksOpen(false);
         if (isAddColorModalOpen) setIsAddColorModalOpen(false);
       }
     };
-    if (isVtoStudioOpen || isHowItWorksOpen || isAddColorModalOpen) {
+    if (isVtoStudioOpen || isAddColorModalOpen) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isVtoStudioOpen, isHowItWorksOpen, isAddColorModalOpen]);
+  }, [isVtoStudioOpen, isAddColorModalOpen]);
 
   // Handle Image Upload for Metal Color
   const handleImageUpload = async (e, colorName = activeMediaColor) => {
@@ -1240,12 +1363,54 @@ export default function AddJewelryProduct() {
 
   // ─── Structured Pricing Block ───────────────────────────
   const [pricing, setPricing] = useState({
-    mrp: '',
-    salePrice: '',
+    ornatePrice: '',
     costPrice: '',
-    displayPrice: '',
     markupPercentage: '',
+    calculatedPrice: '',
+    salePrice: '',
+    mrpMarkupPercentage: '',
+    mrp: '',
+    displayPrice: '',
   });
+
+  // Silver Pricing Handlers
+  const handleSilverCostOrMarkupChange = (field, value) => {
+    const numVal = Number(value) || 0;
+    setPricing((prev) => {
+      const next = { ...prev, [field]: value };
+      const cost = field === 'costPrice' ? numVal : Number(next.costPrice) || 0;
+      const markup = field === 'markupPercentage' ? numVal : Number(next.markupPercentage) || 0;
+      const calculated = cost > 0 ? cost + Math.round((cost * markup) / 100) : 0;
+      next.calculatedPrice = calculated;
+      if (!prev.salePrice || Number(prev.salePrice) === Number(prev.calculatedPrice)) {
+        next.salePrice = calculated;
+        next.displayPrice = calculated;
+        if (Number(prev.mrpMarkupPercentage) > 0) {
+          next.mrp = Math.round(calculated * (1 + Number(prev.mrpMarkupPercentage) / 100));
+        }
+      }
+      return next;
+    });
+  };
+
+  const handleSilverSalePriceChange = (value) => {
+    const sp = Number(value) || 0;
+    setPricing((prev) => ({
+      ...prev,
+      salePrice: value,
+      displayPrice: value,
+      mrp: Number(prev.mrpMarkupPercentage) > 0 ? Math.round(sp * (1 + Number(prev.mrpMarkupPercentage) / 100)) : prev.mrp,
+    }));
+  };
+
+  const handleSilverMrpMarkupChange = (value) => {
+    const markupVal = Number(value) || 0;
+    setPricing((prev) => ({
+      ...prev,
+      mrpMarkupPercentage: value,
+      mrp: markupVal > 0 ? Math.round((Number(prev.salePrice) || 0) * (1 + markupVal / 100)) : prev.mrp,
+    }));
+  };
 
   // ─── Default Ornate Values (Not exposed in Jewelry Products UI) ────────
   const [ornate] = useState({
@@ -1453,11 +1618,13 @@ export default function AddJewelryProduct() {
       ...variantRows.map((variant) => variant.color),
     ]);
     const imagesByColor = {};
+    const statusesByColor = {};
     const videosByColor = {};
     const vtoByColor = {};
     colorRows.forEach((row) => {
       const colorName = resolveName(row.metalColorId || row.metalColor, colorOptions);
       if (!colorName) return;
+      statusesByColor[colorName] = row.status ?? 'active';
       const rowImages = Array.isArray(row.images) ? row.images : [];
       imagesByColor[colorName] = rowImages
         .filter((item) => item?.url && item.mediaType !== 'video')
@@ -1546,6 +1713,7 @@ export default function AddJewelryProduct() {
     setActiveColorPill(colorNames[0] || '');
     setActiveMediaColor(colorNames[0] || '');
     setMediaImages(imagesByColor);
+    setColorStatuses(statusesByColor);
     setMediaVideos(videosByColor);
     setVtoConfigs(vtoByColor);
     if (isSilverProduct) {
@@ -1559,10 +1727,14 @@ export default function AddJewelryProduct() {
       }
       if (Array.isArray(productRecord.colorImages) && productRecord.colorImages.length > 0) {
         productRecord.colorImages.forEach((ci) => {
-          const cName = resolveName(ci.metalColorId || ci.metalColor, colorOptions) || ci.metalColorName || ci.colorName;
+          let cName = resolveName(ci.metalColorId || ci.metalColor, colorOptions) || ci.metalColorName || ci.colorName;
+          if (!ci.metalColorId && !ci.metalColor && (!cName || cName.toLowerCase() === 'general')) {
+            cName = 'General';
+          }
           if (cName) {
             if (!sColors.includes(cName)) sColors.push(cName);
             sMedia[cName] = {
+              status: ci.status ?? 'active',
               swatchIcon: ci.variantIcon?.url || ci.variantIcon || '',
               media: Array.isArray(ci.images)
                 ? ci.images.map((img, idx) => ({
@@ -1589,12 +1761,22 @@ export default function AddJewelryProduct() {
       certificateCharge: String(productRecord.pricing?.certificateCharge ?? ''),
       otherAmountPercentage: String(productRecord.pricing?.otherAmountPercentage ?? ''),
     });
+    const cost = Number(productPricing.costPrice ?? 0);
+    const markup = Number(productPricing.markupPercentage ?? 0);
+    const calcPrice = Number(productPricing.calculatedPrice ?? (cost > 0 ? cost + Math.round((cost * markup) / 100) : 0));
+    const sale = String(productPricing.salePrice ?? (calcPrice || ''));
+    const mrpVal = String(productPricing.mrp ?? sale);
+    const ornatePriceVal = String(productPricing.ornatePrice ?? productRecord.ornatePrice ?? productRecord.ornate?.price ?? productRecord.ornate?.goldAmt ?? (productPricing.costPrice || ''));
+
     setPricing({
-      mrp: String(productPricing.mrp ?? ''),
-      salePrice: String(productPricing.salePrice ?? ''),
+      ornatePrice: ornatePriceVal,
       costPrice: String(productPricing.costPrice ?? ''),
-      displayPrice: String(productPricing.salePrice ?? ''),
       markupPercentage: String(productPricing.markupPercentage ?? ''),
+      calculatedPrice: String(productPricing.calculatedPrice ?? (calcPrice || '')),
+      salePrice: sale,
+      mrpMarkupPercentage: String(productPricing.mrpMarkupPercentage ?? ''),
+      mrp: mrpVal,
+      displayPrice: sale,
     });
     setCareSections((productRecord.descriptionSections || []).map((section, index) => ({
       id: section._id || 'section-' + index,
@@ -1864,8 +2046,11 @@ export default function AddJewelryProduct() {
       const mrpNum = isSilverProduct ? numberValue(pricing.mrp) : jewelryStartingPrice;
       const salePriceNum = isSilverProduct ? numberValue(pricing.salePrice) : jewelryStartingPrice;
       const costPriceNum = isSilverProduct ? numberValue(pricing.costPrice) : undefined;
-      const displayPriceNum = isSilverProduct ? numberValue(pricing.displayPrice) : jewelryStartingPrice;
+      const displayPriceNum = isSilverProduct ? numberValue(pricing.salePrice) : jewelryStartingPrice;
+      const ornatePriceNum = isSilverProduct ? numberValue(pricing.ornatePrice) : undefined;
+      const calculatedPriceNum = isSilverProduct ? numberValue(pricing.calculatedPrice) : undefined;
       const markupNum = numberValue(pricing.markupPercentage);
+      const mrpMarkupNum = isSilverProduct ? numberValue(pricing.mrpMarkupPercentage) : undefined;
 
       const metalWeightNum = numberValue(specs.metalWeight);
       const categoryId = selectedCategory?._id ||
@@ -1921,7 +2106,7 @@ export default function AddJewelryProduct() {
         const videos = (mediaVideos[colorName] || []).filter((item) => item?.url).map((item) => mediaEntry(item, 'video'));
         const vto = vtoConfigs[colorName] || {};
         const hasVto = Boolean(vto.isConfigured && vto.overlayUrl);
-        if (!images.length && !videos.length && !hasVto) return [];
+        if (!color && !images.length && !videos.length && !hasVto) return [];
 
         const vtoConfig = compactObject({
           top: numberValue(vto.top),
@@ -1931,6 +2116,7 @@ export default function AddJewelryProduct() {
           rotation: numberValue(vto.rotation),
         });
         return [{
+          status: colorStatuses[colorName] ?? 'active',
           ...(color?.id || color?._id ? { metalColorId: color.id || color._id } : {}),
           ...(images.length || videos.length ? { images: [...images, ...videos] } : {}),
           ...(hasVto ? {
@@ -2001,22 +2187,35 @@ export default function AddJewelryProduct() {
           mrp: mrpNum,
           salePrice: salePriceNum,
           costPrice: costPriceNum,
+          ornatePrice: ornatePriceNum,
+          calculatedPrice: calculatedPriceNum,
+          markupPercentage: markupNum,
+          mrpMarkupPercentage: mrpMarkupNum,
+        } : {
+          markupPercentage: markupNum,
+        }),
+        ...(!isSilverProduct ? {
+          baseLabourCharge: numberValue(specs.baseLabourCharge),
+          certificateCharge: numberValue(specs.certificateCharge),
+          otherAmountPercentage: numberValue(specs.otherAmountPercentage),
         } : {}),
-        markupPercentage: markupNum,
-        baseLabourCharge: numberValue(specs.baseLabourCharge),
-        certificateCharge: numberValue(specs.certificateCharge),
-        otherAmountPercentage: numberValue(specs.otherAmountPercentage),
       });
-      const specificationData = compactObject({ metalWeight: metalWeightNum });
+      const specificationData = compactObject({
+        ...(!isSilverProduct ? { metalWeight: metalWeightNum } : {}),
+      });
       const seoData = compactObject({
         metaTitle: seo.metaTitle?.trim(),
         metaDescription: seo.metaDescription?.trim(),
       });
       const silverColorImageRows = isSilverProduct
-        ? silverColors.map((cName) => {
+        ? Array.from(new Set([
+            ...silverColors,
+            ...(silverVariantMedia['General']?.media?.length > 0 || silverVariantMedia['General']?.swatchIcon ? ['General'] : []),
+          ])).map((cName) => {
             const vData = silverVariantMedia[cName] || {};
             const matched = colorsList.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
             return {
+              status: vData.status ?? 'active',
               ...(matched?.id || matched?._id ? { metalColorId: matched.id || matched._id } : {}),
               ...(vData.swatchIcon ? { variantIcon: { url: vData.swatchIcon } } : {}),
               images: (vData.media || []).map((m) => ({
@@ -2025,13 +2224,15 @@ export default function AddJewelryProduct() {
                 mediaType: m.mediaType || (m.url?.endsWith('.mp4') ? 'video' : 'image'),
               })),
             };
-          })
+          }).filter((item) => item.metalColorId || item.images?.length > 0 || item.variantIcon)
         : [];
       const silverMetalColorIds = isSilverProduct
-        ? silverColors.map((cName) => {
-            const matched = colorsList.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
-            return matched?.id || matched?._id || cName;
-          }).filter(Boolean)
+        ? silverColors
+            .filter((cName) => cName !== 'General')
+            .map((cName) => {
+              const matched = colorsList.find((co) => co.name?.toLowerCase() === cName?.toLowerCase());
+              return matched?.id || matched?._id;
+            }).filter(Boolean)
         : [];
       const payload = {
         ...(!productId ? { _id: draftProductId } : {}),
@@ -2098,7 +2299,7 @@ export default function AddJewelryProduct() {
   const steps = [
     { num: 1, title: 'Basic Details', subtitle: 'Name, category, description' },
     ...(!isSilverProduct ? [{ num: 2, title: 'Variant Configuration', subtitle: 'Metal, color, diamonds' }] : []),
-    ...(isSilverProduct ? [{ num: 3, title: 'Specifications & Pricing', subtitle: 'Weights, charges & margins' }] : []),
+    ...(isSilverProduct ? [{ num: 3, title: 'Pricing & Costing', subtitle: 'MRP, sale price & margins' }] : []),
     {
       num: 4,
       title: isSilverProduct ? 'Variant Configuration' : 'Product Media',
@@ -3026,7 +3227,7 @@ export default function AddJewelryProduct() {
                     onClick={handleToggleAllSilverExpand}
                     className="px-2.5 py-1 text-xs font-semibold text-[#8b6f4e] hover:text-[#785e40] bg-[#faf5ee] hover:bg-[#f6eee2] border border-[#d9c4a8]/50 rounded-full transition-colors cursor-pointer shadow-2xs"
                   >
-                    {expandedSilverColors.length === silverColorOptions.length ? 'Collapse all media' : 'Expand all media'}
+                    {expandedSilverColors.length >= silverColorOptions.length + 1 ? 'Collapse all media' : 'Expand all media'}
                   </button>
                   <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/50 shadow-2xs">
                     {silverColorOptions.length} colors available
@@ -3034,23 +3235,7 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-4 space-y-3">
-                <h4 className="text-xs font-bold text-stone-900">Metal Specifications</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <label className="space-y-1.5">
-                    <span className="text-[11px] font-bold text-stone-700">Metal Weight (g)</span>
-                    <input type="number" min="0" step="0.001" value={specs.metalWeight} onChange={(e) => setSpecs((prev) => ({ ...prev, metalWeight: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
-                  </label>
-                  <label className="space-y-1.5">
-                    <span className="text-[11px] font-bold text-stone-700">Making Charge (₹/g)</span>
-                    <input type="number" min="0" value={specs.baseLabourCharge} onChange={(e) => setSpecs((prev) => ({ ...prev, baseLabourCharge: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
-                  </label>
-                  <label className="space-y-1.5">
-                    <span className="text-[11px] font-bold text-stone-700">Certificate Charge (₹)</span>
-                    <input type="number" min="0" value={specs.certificateCharge} onChange={(e) => setSpecs((prev) => ({ ...prev, certificateCharge: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
-                  </label>
-                </div>
-              </div>
+
 
               {/* 2-Column Grid of Variant Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
@@ -3113,7 +3298,8 @@ export default function AddJewelryProduct() {
                           )}
                         </div>
 
-                        {/* Right side: Manage media button with chevron */}
+                        <ColorStatusToggle name={col.name} disabled={!isSelected} status={silverVariantMedia[col.name]?.status} onChange={(status) => setSilverVariantMedia((previous) => ({ ...previous, [col.name]: { ...previous[col.name], status } }))} />
+                      {/* Right side: Manage media button with chevron */}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -3257,8 +3443,14 @@ export default function AddJewelryProduct() {
                                           <img
                                             src={m.url}
                                             alt={`${col.name} ${idx + 1}`}
-                                            className="w-full h-full object-cover cursor-pointer"
-                                            onClick={() => setPreviewModalImage(m.url)}
+                                            className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                            title="Click to zoom in"
+                                            onClick={() => {
+                                              const imageGallery = (vData.media || [])
+                                                .filter((item) => item.mediaType !== 'video' && !item.url?.endsWith('.mp4'))
+                                                .map((item) => item.url);
+                                              handleOpenImagePreview(m.url, imageGallery);
+                                            }}
                                           />
                                         )}
                                         <button
@@ -3327,6 +3519,294 @@ export default function AddJewelryProduct() {
                     </div>
                   );
                 })}
+
+                {/* ── 4th Box: General Images (No Metal Color) ── */}
+                {(() => {
+                  const colName = 'General';
+                  const isSelected = isSilverColorSelected(colName);
+                  const isExpanded = expandedSilverColors.includes(colName);
+                  const vData = silverVariantMedia[colName] || { swatchIcon: '', media: [] };
+                  const mediaCount = vData.media?.length || 0;
+                  const isUploadingSwatch = uploadingSilverSwatchColor === colName;
+                  const isUploadingMedia = uploadingSilverVariantColor === colName;
+
+                  return (
+                    <div
+                      key={colName}
+                      className={`rounded-2xl border transition-all duration-200 ${
+                        isExpanded
+                          ? 'border-[#cbb393] bg-[#fcf9f4] shadow-xs'
+                          : isSelected
+                          ? 'border-[#e4d7c8] bg-[#fdfbf7] hover:border-[#cbb393]'
+                          : 'border-stone-200 bg-white hover:border-stone-300'
+                      }`}
+                    >
+                      {/* Card Top Row */}
+                      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                        {/* Left side: Checkbox + Swatch Sphere + Name + Selected Badge */}
+                        <div
+                          onClick={() => handleToggleSilverColor(colName)}
+                          className="flex items-center gap-3 cursor-pointer select-none min-w-0"
+                        >
+                          {/* Checkbox */}
+                          <div
+                            className={`w-5 h-5 rounded-md flex items-center justify-center transition-all shrink-0 ${
+                              isSelected
+                                ? 'bg-[#78532f] text-white shadow-2xs'
+                                : 'border-2 border-stone-300 bg-white hover:border-[#8b6f4e]'
+                            }`}
+                          >
+                            {isSelected && <HiOutlineCheck className="w-3.5 h-3.5 stroke-[3]" />}
+                          </div>
+
+                          {/* 3D Realistic Sphere Swatch (Neutral / Universal Platinum-Slate) */}
+                          <div
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full shrink-0 transition-transform hover:scale-105"
+                            style={{
+                              background: 'radial-gradient(circle at 35% 35%, #ffffff 0%, #cbd5e1 55%, #64748b 100%)',
+                              boxShadow: 'inset -2px -2px 6px rgba(0,0,0,0.18), 1px 2px 4px rgba(0,0,0,0.12)',
+                            }}
+                          />
+
+                          {/* Color / Variant Name */}
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-sm font-bold text-stone-900 truncate">
+                              General Images
+                            </span>
+                            <span className="text-[10px] text-stone-400 font-medium">
+                              (No metal color)
+                            </span>
+                          </div>
+
+                          {/* Selected Pill Badge */}
+                          {isSelected && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#e8f7ee] text-[#1b7a43] border border-[#c4ebd1]/60 shrink-0">
+                              Selected
+                            </span>
+                          )}
+                        </div>
+
+                        <ColorStatusToggle name={colName} disabled={!isSelected} status={silverVariantMedia[colName]?.status} onChange={(status) => setSilverVariantMedia((previous) => ({ ...previous, [colName]: { ...previous[colName], status } }))} />
+                      {/* Right side: Manage media button with chevron */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleSilverExpand(colName);
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
+                        >
+                          <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                          <span>Manage media ({mediaCount})</span>
+                          {isExpanded ? (
+                            <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
+                          ) : (
+                            <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Accordion Expand Area */}
+                      {isExpanded && (
+                        <div className="px-3.5 pb-4 pt-3.5 border-t border-[#ebdccf]/80 animate-fadeIn">
+                          <div className="flex flex-col sm:flex-row gap-3.5 items-stretch">
+                            {/* ── Sub-card 1: Variant swatch icon ── */}
+                            <div className="w-full sm:w-[38%] shrink-0 flex flex-col space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-stone-800">
+                                  Variant swatch icon
+                                </span>
+                                <span
+                                  className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
+                                  title="Upload a custom icon or texture for general / unassigned media"
+                                >
+                                  ?
+                                </span>
+                              </div>
+
+                              <input
+                                id={`silver-swatch-upload-${colName}`}
+                                type="file"
+                                accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                                className="hidden"
+                                onChange={(e) => handleSilverSwatchUpload(colName, e)}
+                              />
+
+                              {vData.swatchIcon ? (
+                                <div className="border border-stone-200 bg-white rounded-xl p-2.5 flex items-center justify-between gap-2 min-h-[110px] h-full shadow-2xs">
+                                  <div className="flex items-center gap-2.5 min-w-0">
+                                    <img
+                                      src={vData.swatchIcon}
+                                      alt="General Swatch"
+                                      className="w-12 h-12 object-cover rounded-lg border border-stone-100 shadow-2xs shrink-0"
+                                    />
+                                    <div className="min-w-0">
+                                      <p className="text-xs font-semibold text-stone-800 truncate">
+                                        Custom Swatch
+                                      </p>
+                                      <span className="text-[10px] text-stone-400">
+                                        Active icon
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        document.getElementById(`silver-swatch-upload-${colName}`)?.click()
+                                      }
+                                      className="p-1.5 text-stone-500 hover:text-[#8b6f4e] rounded-lg hover:bg-stone-50 cursor-pointer"
+                                      title="Change icon"
+                                    >
+                                      <HiOutlineRefresh className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveSilverSwatchIcon(colName)}
+                                      className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-red-50 cursor-pointer"
+                                      title="Remove icon"
+                                    >
+                                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div
+                                  onClick={() =>
+                                    document.getElementById(`silver-swatch-upload-${colName}`)?.click()
+                                  }
+                                  className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                                    isUploadingSwatch ? 'opacity-60 pointer-events-none' : ''
+                                  }`}
+                                >
+                                  {isUploadingSwatch ? (
+                                    <div className="w-5 h-5 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mb-1.5" />
+                                  ) : (
+                                    <HiOutlineUpload className="w-5 h-5 text-[#8b6f4e] mb-1.5 group-hover:scale-110 transition-transform" />
+                                  )}
+                                  <span className="text-xs font-semibold text-stone-800">
+                                    {isUploadingSwatch ? 'Uploading...' : 'Upload icon'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* ── Sub-card 2: Product images & videos ── */}
+                            <div className="w-full sm:flex-1 flex flex-col space-y-1.5">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs font-bold text-stone-800">
+                                  Product images &amp; videos
+                                </span>
+                                <span
+                                  className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
+                                  title="Upload product photos and MP4 videos for general view without assigning a metal color"
+                                >
+                                  ?
+                                </span>
+                              </div>
+
+                              <input
+                                id={`silver-media-upload-${colName}`}
+                                type="file"
+                                accept="image/*,video/mp4"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => handleSilverVariantMediaUpload(colName, e)}
+                              />
+
+                              {vData.media && vData.media.length > 0 ? (
+                                <div className="border border-stone-200 bg-white rounded-xl p-2.5 min-h-[110px] h-full flex flex-col justify-between shadow-2xs space-y-2">
+                                  <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
+                                    {vData.media.map((m, idx) => (
+                                      <div
+                                        key={m.id || idx}
+                                        className="relative group rounded-lg overflow-hidden border border-stone-200 aspect-square bg-stone-100"
+                                      >
+                                        {m.mediaType === 'video' || m.url?.endsWith('.mp4') ? (
+                                          <video
+                                            src={m.url}
+                                            className="w-full h-full object-cover"
+                                          />
+                                        ) : (
+                                          <img
+                                            src={m.url}
+                                            alt={`General ${idx + 1}`}
+                                            className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                            title="Click to zoom in"
+                                            onClick={() => {
+                                              const imageGallery = (vData.media || [])
+                                                .filter((item) => item.mediaType !== 'video' && !item.url?.endsWith('.mp4'))
+                                                .map((item) => item.url);
+                                              handleOpenImagePreview(m.url, imageGallery);
+                                            }}
+                                          />
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveSilverVariantMedia(colName, m.id);
+                                          }}
+                                          className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                          title="Delete media"
+                                        >
+                                          <HiOutlineTrash className="w-3 h-3" />
+                                        </button>
+                                      </div>
+                                    ))}
+
+                                    <div
+                                      onClick={() =>
+                                        document.getElementById(`silver-media-upload-${colName}`)?.click()
+                                      }
+                                      className="border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors rounded-lg flex flex-col items-center justify-center text-center cursor-pointer aspect-square"
+                                    >
+                                      <HiOutlinePlus className="w-4 h-4 text-[#8b6f4e]" />
+                                      <span className="text-[10px] font-semibold text-stone-700 mt-0.5">
+                                        Add
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
+                                    <span>{vData.media.length} media item(s)</span>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        document.getElementById(`silver-media-upload-${colName}`)?.click()
+                                      }
+                                      className="text-[#8b6f4e] hover:underline font-semibold cursor-pointer"
+                                    >
+                                      + Upload more
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div
+                                  onClick={() =>
+                                    document.getElementById(`silver-media-upload-${colName}`)?.click()
+                                  }
+                                  className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                                    isUploadingMedia ? 'opacity-60 pointer-events-none' : ''
+                                  }`}
+                                >
+                                  {isUploadingMedia ? (
+                                    <div className="w-5 h-5 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mb-1.5" />
+                                  ) : (
+                                    <HiOutlineUpload className="w-5 h-5 text-[#8b6f4e] mb-1.5 group-hover:scale-110 transition-transform" />
+                                  )}
+                                  <span className="text-xs font-semibold text-stone-800">
+                                    {isUploadingMedia ? 'Uploading media...' : 'Upload images / videos'}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}
@@ -3351,15 +3831,6 @@ export default function AddJewelryProduct() {
                     </p>
                   </div>
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => setIsHowItWorksOpen(true)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 rounded-xl hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer self-start sm:self-auto shrink-0"
-                >
-                  <HiOutlineQuestionMarkCircle className="w-4 h-4 text-stone-400" />
-                  <span>How it works?</span>
-                </button>
               </div>
 
               {/* Two-Column Layout (Matching Screenshot) */}
@@ -3456,14 +3927,21 @@ export default function AddJewelryProduct() {
                           <h4 className="text-sm font-bold text-stone-900">
                             {isSilverProduct ? 'Silver Product' : activeMediaColor}
                           </h4>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#e8f7ee] text-[#1b7a43] border border-[#c4ebd1]/80">
-                            {isSilverProduct ? 'Media' : 'Active'}
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${!isSilverProduct && colorStatuses[activeMediaColor] === 'inactive' ? 'bg-stone-100 text-stone-500 border-stone-200' : 'bg-[#e8f7ee] text-[#1b7a43] border-[#c4ebd1]/80'}`}>
+                            {isSilverProduct ? 'Media' : colorStatuses[activeMediaColor] === 'inactive' ? 'Inactive' : 'Active'}
                           </span>
                         </div>
                       </div>
                     </div>
 
                     {!isSilverProduct && (
+                      <div className="flex items-center gap-3">
+                        <ColorStatusToggle
+                          name={activeMediaColor}
+                          status={colorStatuses[activeMediaColor]}
+                          disabled={!activeMediaColor}
+                          onChange={(status) => setColorStatuses((previous) => ({ ...previous, [activeMediaColor]: status }))}
+                        />
                       <button
                         type="button"
                         onClick={() => handleRemoveColor(activeMediaColor)}
@@ -3472,6 +3950,7 @@ export default function AddJewelryProduct() {
                         <HiOutlineTrash className="w-3.5 h-3.5" />
                         <span>Remove Color</span>
                       </button>
+                      </div>
                     )}
                   </div>
 
@@ -3561,44 +4040,64 @@ export default function AddJewelryProduct() {
                         </label>
 
                         {/* Uploaded Image Cards */}
-                        {(mediaImages[activeMediaColor] || []).map((img, i) => (
-                          <div
-                            key={img.id || i}
-                            className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-50 shadow-2xs group"
-                          >
-                            <img
-                              src={img.url}
-                              alt={`${activeMediaColor} ${i + 1}`}
-                              className="w-full h-full object-cover"
-                            />
+                        {(mediaImages[activeMediaColor] || []).map((img, i) => {
+                          const gallery = (mediaImages[activeMediaColor] || []).map((m) => m.url);
+                          return (
+                            <div
+                              key={img.id || i}
+                              onClick={() => handleOpenImagePreview(img.url, gallery)}
+                              className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-50 shadow-2xs group cursor-pointer transition-all hover:shadow-md hover:border-[#8b6f4e]"
+                              title="Click to zoom in / inspect"
+                            >
+                              <img
+                                src={img.url}
+                                alt={`${activeMediaColor} ${i + 1}`}
+                                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                              />
 
-                            {/* Top Left Badge or Set Primary */}
-                            {img.isPrimary ? (
-                              <span className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#8b6f4e] text-white shadow-xs">
-                                Primary
-                              </span>
-                            ) : (
+                              {/* Hover Zoom Hint Overlay */}
+                              <div className="absolute inset-0 bg-stone-900/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                <span className="p-2 rounded-full bg-white/90 text-stone-800 shadow-md transform scale-90 group-hover:scale-100 transition-transform">
+                                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                                  </svg>
+                                </span>
+                              </div>
+
+                              {/* Top Left Badge or Set Primary */}
+                              {img.isPrimary ? (
+                                <span className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#8b6f4e] text-white shadow-xs">
+                                  Primary
+                                </span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSetPrimaryMedia(activeMediaColor, img.id);
+                                  }}
+                                  className="absolute top-2 left-2 z-10 p-1 rounded-md bg-black/50 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                                  title="Set as Primary"
+                                >
+                                  <HiOutlineStar className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              {/* Top Right Close / Delete Button */}
                               <button
                                 type="button"
-                                onClick={() => handleSetPrimaryMedia(activeMediaColor, img.id)}
-                                className="absolute top-2 left-2 z-10 p-1 rounded-md bg-black/50 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
-                                title="Set as Primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveMedia(activeMediaColor, img.id);
+                                }}
+                                className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/50 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                                title="Remove image"
                               >
-                                <HiOutlineStar className="w-3.5 h-3.5" />
+                                <HiOutlineX className="w-3.5 h-3.5" />
                               </button>
-                            )}
-
-                            {/* Top Right Close / Delete Button */}
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveMedia(activeMediaColor, img.id)}
-                              className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/50 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
-                              title="Remove image"
-                            >
-                              <HiOutlineX className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        ))}
+                            </div>
+                          );
+                        })}
 
                         {(mediaVideos[activeMediaColor] || []).map((vid, i) => (
                           <div key={vid.id || `video-${i}`} className="relative w-48 h-32 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-900 shadow-2xs group flex flex-col justify-end p-2.5 text-white">
@@ -4192,60 +4691,6 @@ export default function AddJewelryProduct() {
                 </div>
               )}
 
-              {/* ─── "How it works?" Modal ─── */}
-              {isHowItWorksOpen && (
-                <div
-                  onClick={() => setIsHowItWorksOpen(false)}
-                  className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fadeIn cursor-pointer"
-                >
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-lg w-full p-6 space-y-5 cursor-default"
-                  >
-                    <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-xl bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-sm">
-                          ?
-                        </div>
-                        <h3 className="text-base font-bold text-stone-900">
-                          How Media & VTO Works
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setIsHowItWorksOpen(false)}
-                        className="w-8 h-8 rounded-xl border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-50"
-                      >
-                        <HiOutlineX className="w-4 h-4" />
-                      </button>
-                    </div>
-
-                    <div className="space-y-3.5 text-xs text-stone-600 leading-relaxed">
-                      <div className="p-3 rounded-xl bg-[#faf8f5] border border-stone-200/80">
-                        <strong className="block text-stone-900 mb-1">1. Color-Wise Photography:</strong>
-                        Upload dedicated photography for each metal color (Rose Gold, White Gold, etc.). When customers switch color pills in the storefront, photos change dynamically.
-                      </div>
-                      <div className="p-3 rounded-xl bg-[#faf8f5] border border-stone-200/80">
-                        <strong className="block text-stone-900 mb-1">2. 360 Spin & Videos:</strong>
-                        Attach high-frame video clips for 360-degree rotation view on mobile & web.
-                      </div>
-                      <div className="p-3 rounded-xl bg-[#faf8f5] border border-stone-200/80">
-                        <strong className="block text-stone-900 mb-1">3. Virtual Try-On (VTO):</strong>
-                        Provide a transparent cutout PNG. Adjust vertical/horizontal positioning and scale against the target model environment (neck, hand, ear, wrist) so customers can preview it live on their skin tone!
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsHowItWorksOpen(false)}
-                      className="w-full py-2.5 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-xs cursor-pointer"
-                    >
-                      Got it, thanks!
-                    </button>
-                  </div>
-                </div>
-              )}
-
               {/* ─── Add Metal Color Modal ─── */}
               {isAddColorModalOpen && (
                 <div
@@ -4319,105 +4764,144 @@ export default function AddJewelryProduct() {
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-stone-900">
-                    {isSilverProduct ? 'Silver' : 'Jewelry'} Specifications & Costing
+                    {isSilverProduct ? 'Silver Pricing & Costing' : 'Jewelry Specifications & Costing'}
                   </h3>
                   <p className="text-xs text-stone-500">
-                    Add product weight, charges and pricing.
+                    {isSilverProduct ? 'Configure product pricing and margins.' : 'Add product weight, charges and pricing.'}
                   </p>
                 </div>
               </div>
 
-              {/* ─── Pricing & Commercial Margins (silver products only) ─── */}
+              {/* ─── Pricing & Inventory (Silver products matching old admin panel) ─── */}
               <div className="rounded-2xl border border-[#eee8df] bg-white p-5 sm:p-6 shadow-xs space-y-4">
-                <div className="flex items-center justify-between flex-wrap gap-2 pb-1">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-6 h-6 rounded-lg bg-[#faf5ee] border border-[#ecd9c2] flex items-center justify-center text-[#8b6f4e] shrink-0">
-                      <HiOutlineCurrencyRupee className="w-3.5 h-3.5 stroke-[2.2]" />
-                    </div>
-                    <h4 className="text-sm font-bold text-stone-900">
-                      Pricing & Commercial Margins
-                    </h4>
+                <div className="flex items-center gap-2.5 pb-1">
+                  <div className="w-7 h-7 rounded-lg bg-[#faf5ee] border border-[#ecd9c2] flex items-center justify-center text-[#8b6f4e] shrink-0 font-bold text-xs sm:text-sm">
+                    ₹
                   </div>
-
-                  {/* Info callout badge from screenshot */}
-                  <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#fcf6ee] border border-[#ebdcc9] text-[11px] font-medium text-[#8b6f4e]">
-                    <HiOutlineInformationCircle className="w-4 h-4 text-[#8b6f4e] shrink-0" />
-                    <span>Enter accurate pricing and markup to calculate final selling price.</span>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900">
+                      Pricing & Inventory
+                    </h4>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
-                  {/* MRP (Original ₹) * */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
-                      MRP (Original ₹) <span className="text-rose-500 font-bold">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={pricing.mrp}
-                      onChange={(e) => setPricing((prev) => ({ ...prev, mrp: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
-                    />
+                <div className="space-y-4">
+                  {/* Row 1: Ornate Price, Cost Price, Markup %, Calculated Price, Sale Price */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                    {/* 1. ORNATE PRICE (₹) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                        <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                          ORNATE PRICE (₹)
+                        </label>
+                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded border border-amber-300 text-amber-700 bg-amber-50 uppercase tracking-wider whitespace-nowrap">
+                          SYNCED (LOCKED)
+                        </span>
+                      </div>
+                      <input
+                        type="number"
+                        value={pricing.ornatePrice}
+                        readOnly
+                        disabled
+                        className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-bold rounded-xl border border-stone-200 bg-stone-50/70 text-stone-700 cursor-not-allowed select-none"
+                      />
+                      <p className="text-[10px] text-stone-400 mt-1">Price from Ornate ERP (Read-only)</p>
+                    </div>
+
+                    {/* 2. COST PRICE (₹) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                        <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                          COST PRICE (₹)
+                        </label>
+                        <span className="text-[10px] text-stone-400 font-medium tracking-wide">(HIDDEN)</span>
+                      </div>
+                      <input
+                        type="number"
+                        value={pricing.costPrice}
+                        onChange={(e) => handleSilverCostOrMarkupChange('costPrice', e.target.value)}
+                        className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                      />
+                    </div>
+
+                    {/* 3. MARKUP % */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                        <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                          MARKUP %
+                        </label>
+                      </div>
+                      <input
+                        type="number"
+                        value={pricing.markupPercentage}
+                        onChange={(e) => handleSilverCostOrMarkupChange('markupPercentage', e.target.value)}
+                        className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                      />
+                    </div>
+
+                    {/* 4. CALCULATED PRICE (₹) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                        <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                          CALCULATED PRICE (₹)
+                        </label>
+                      </div>
+                      <input
+                        type="number"
+                        value={pricing.calculatedPrice}
+                        onChange={(e) => setPricing((prev) => ({ ...prev, calculatedPrice: e.target.value }))}
+                        className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-bold text-stone-900 bg-stone-50/70 border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                      />
+                    </div>
+
+                    {/* 5. SALE PRICE (₹) */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                        <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                          SALE PRICE (₹)
+                        </label>
+                      </div>
+                      <input
+                        type="number"
+                        value={pricing.salePrice}
+                        onChange={(e) => handleSilverSalePriceChange(e.target.value)}
+                        className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-bold text-[#8b6f4e] bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                      />
+                      <p className="text-[10px] text-stone-400 mt-1">Actual selling price</p>
+                    </div>
                   </div>
 
-                  {/* Sale Price (Selling ₹) * */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
-                      Sale Price (Selling ₹) <span className="text-rose-500 font-bold">*</span>
-                    </label>
-                    <input
-                      type="number"
-                      value={pricing.salePrice}
-                      onChange={(e) =>
-                        setPricing((prev) => ({
-                          ...prev,
-                          salePrice: e.target.value,
-                          displayPrice: e.target.value,
-                        }))
-                      }
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
-                    />
-                  </div>
+                  {/* Row 2: MRP Markup % and MRP Price */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                        <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                          MRP MARKUP %
+                        </label>
+                      </div>
+                      <input
+                        type="number"
+                        value={pricing.mrpMarkupPercentage}
+                        onChange={(e) => handleSilverMrpMarkupChange(e.target.value)}
+                        className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                      />
+                    </div>
 
-                  {/* Cost Price (Internal ₹) */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900">
-                      Cost Price (Internal ₹)
-                    </label>
-                    <input
-                      type="number"
-                      value={pricing.costPrice}
-                      onChange={(e) => setPricing((prev) => ({ ...prev, costPrice: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
-                    />
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                        <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                          MRP PRICE (₹)
+                        </label>
+                      </div>
+                      <input
+                        type="number"
+                        value={pricing.mrp}
+                        onChange={(e) => setPricing((prev) => ({ ...prev, mrp: e.target.value }))}
+                        className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                      />
+                      <p className="text-[10px] text-stone-400 mt-1">Customer list price (strikethrough)</p>
+                    </div>
                   </div>
-
-                  {/* Display Price (₹) */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900">
-                      Display Price (₹)
-                    </label>
-                    <input
-                      type="number"
-                      value={pricing.displayPrice}
-                      onChange={(e) => setPricing((prev) => ({ ...prev, displayPrice: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
-                    />
-                  </div>
-
-                  {/* Markup (%) */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-bold text-stone-900">
-                      Markup (%)
-                    </label>
-                    <input
-                      type="number"
-                      value={pricing.markupPercentage}
-                      onChange={(e) => setPricing((prev) => ({ ...prev, markupPercentage: e.target.value }))}
-                      className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
-                    />
-                  </div>
-
                 </div>
               </div>
 
@@ -4897,28 +5381,146 @@ export default function AddJewelryProduct() {
           </div>
         </div>
 
-      {/* ─── Image Zoom Preview Modal ───────────────────────────────── */}
+      {/* ─── Image Zoom Preview Modal with - / + Controls ───────────── */}
       {previewModalImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-fadeIn"
-          onClick={() => setPreviewModalImage(null)}
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 bg-stone-950/85 backdrop-blur-md animate-fadeIn select-none"
+          onClick={handleCloseImagePreview}
         >
+          {/* Top Bar: Counter / Instructions & Close Button */}
           <div
-            className="relative max-w-2xl w-full bg-white rounded-2xl overflow-hidden shadow-2xl p-2"
+            className="w-full max-w-5xl flex items-center justify-between pb-3 text-white z-20 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <span className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-white/10 border border-white/15 backdrop-blur-md text-stone-200">
+                {previewModalGallery.length > 1
+                  ? `Image ${previewModalIndex + 1} of ${previewModalGallery.length}`
+                  : 'Image Preview'}
+              </span>
+              <span className="text-xs text-stone-400 hidden sm:inline">
+                Scroll or use <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-stone-200 text-[11px]">-</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-stone-200 text-[11px]">+</kbd> to zoom &bull; Drag to pan
+              </span>
+            </div>
+
             <button
               type="button"
-              onClick={() => setPreviewModalImage(null)}
-              className="absolute top-4 right-4 z-10 w-8 h-8 rounded-full bg-black/60 text-white hover:bg-black flex items-center justify-center cursor-pointer"
+              onClick={handleCloseImagePreview}
+              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-lg border border-white/15"
+              title="Close (Esc)"
             >
-              <HiOutlineX className="w-4 h-4" />
+              <HiOutlineX className="w-5 h-5" />
             </button>
-            <img
-              src={previewModalImage}
-              alt="Preview"
-              className="w-full max-h-[80vh] object-contain rounded-xl"
-            />
+          </div>
+
+          {/* Image Viewport / Canvas */}
+          <div
+            className="relative w-full max-w-5xl h-[72vh] sm:h-[78vh] flex items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xs shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={handlePreviewMouseDown}
+            onMouseMove={handlePreviewMouseMove}
+            onMouseUp={handlePreviewMouseUp}
+            onMouseLeave={handlePreviewMouseUp}
+            onWheel={handlePreviewWheel}
+          >
+            {/* Gallery Navigation: Previous */}
+            {previewModalGallery.length > 1 && (
+              <button
+                type="button"
+                onClick={handlePrevPreviewImage}
+                className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-stone-900/80 hover:bg-stone-900 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-xl border border-white/20 active:scale-95"
+                title="Previous image (Left Arrow)"
+              >
+                <HiOutlineChevronLeft className="w-6 h-6 stroke-[2.2]" />
+              </button>
+            )}
+
+            {/* Gallery Navigation: Next */}
+            {previewModalGallery.length > 1 && (
+              <button
+                type="button"
+                onClick={handleNextPreviewImage}
+                className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-stone-900/80 hover:bg-stone-900 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-xl border border-white/20 active:scale-95"
+                title="Next image (Right Arrow)"
+              >
+                <HiOutlineChevronRight className="w-6 h-6 stroke-[2.2]" />
+              </button>
+            )}
+
+            {/* Scaled & Panned Image */}
+            <div
+              style={{
+                transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomScale})`,
+                transition: isDragging ? 'none' : 'transform 0.15s cubic-bezier(0.2, 0, 0, 1)',
+                cursor: zoomScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
+              }}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                if (zoomScale > 1) {
+                  handleResetZoom();
+                } else {
+                  setZoomScale(2);
+                }
+              }}
+              className="flex items-center justify-center max-w-full max-h-full"
+            >
+              <img
+                src={previewModalImage}
+                alt="Product Preview"
+                draggable={false}
+                className="max-w-[85vw] max-h-[68vh] object-contain rounded-xl shadow-2xl pointer-events-none"
+              />
+            </div>
+
+            {/* Floating Zoom Bar with - and + buttons */}
+            <div
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-stone-900/90 border border-white/15 text-white shadow-2xl backdrop-blur-md"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Zoom Out Button (-) */}
+              <button
+                type="button"
+                onClick={handleZoomOut}
+                disabled={zoomScale <= 0.5}
+                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Zoom Out (-)"
+              >
+                <HiOutlineMinus className="w-4 h-4 stroke-[2.5]" />
+              </button>
+
+              {/* Reset / Percentage Display */}
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="px-2.5 h-8 rounded-xl hover:bg-white/15 text-xs font-mono font-semibold text-stone-200 flex items-center justify-center cursor-pointer transition-colors"
+                title="Click to reset (100%)"
+              >
+                {Math.round(zoomScale * 100)}%
+              </button>
+
+              {/* Zoom In Button (+) */}
+              <button
+                type="button"
+                onClick={handleZoomIn}
+                disabled={zoomScale >= 4}
+                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+                title="Zoom In (+)"
+              >
+                <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
+              </button>
+
+              <div className="w-[1px] h-4 bg-white/20 mx-1" />
+
+              {/* Reset to 1:1 Icon */}
+              <button
+                type="button"
+                onClick={handleResetZoom}
+                className="p-1.5 rounded-xl hover:bg-white/15 text-stone-300 hover:text-white transition-colors cursor-pointer"
+                title="Reset zoom to 100% (0)"
+              >
+                <HiOutlineRefresh className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       )}

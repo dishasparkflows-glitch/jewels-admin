@@ -9,15 +9,33 @@ import {
   HiOutlineChevronRight,
   HiOutlineChevronDown,
   HiOutlineChevronUp,
+  HiOutlineChevronLeft,
   HiOutlineLogout,
   HiOutlineSparkles,
+  HiOutlineSwitchHorizontal,
+  HiOutlineX,
 } from 'react-icons/hi';
 
-const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
+const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose: propOnMobileClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { currentTheme } = useTheme();
+  const {
+    currentTheme,
+    sidebarOpen,
+    setSidebarOpen,
+    sidebarPosition,
+    toggleSidebarPosition,
+    isMobileViewport,
+    mobileSidebarOpen,
+    setMobileSidebarOpen,
+  } = useTheme();
+
+  const isOpen = propIsOpen !== undefined ? propIsOpen : sidebarOpen;
+  const mobileOpen = propMobileOpen !== undefined ? propMobileOpen : mobileSidebarOpen;
+  const onMobileClose = propOnMobileClose || (() => setMobileSidebarOpen(false));
+  const isRight = sidebarPosition === 'right';
+  const isVisible = isMobileViewport ? mobileOpen : isOpen;
   
   // Default submenus to collapsed so sidebar stays compact and small, auto-opening only active route
   const [openSubmenus, setOpenSubmenus] = useState({});
@@ -85,33 +103,61 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
 
   return (
     <aside
-      className={`fixed top-0 left-0 z-50 h-screen bg-white border-r border-[#eee8df] transition-all duration-300 flex flex-col justify-between shadow-xs
-        ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
-        lg:translate-x-0
-        ${isOpen ? 'w-64' : 'w-20'}
-      `}
+      id="admin-sidebar"
+      className={`fixed top-0 z-50 h-screen bg-white flex-col justify-between shadow-xs w-64 ${isVisible ? 'flex' : 'hidden'} ${
+        isRight ? 'right-0 border-l border-[#eee8df]' : 'left-0 border-r border-[#eee8df]'
+      }`}
     >
       {/* ─── Top Brand Header ───────────────────────────────── */}
-      <div className="h-14 flex items-center px-5 border-b border-stone-100 flex-shrink-0 bg-white">
-        <div className="flex items-center gap-3">
+      <div className="h-14 flex items-center justify-between px-3.5 border-b border-stone-100 flex-shrink-0 bg-white">
+        <div className="flex items-center gap-2.5 min-w-0">
           {brandLogo.desktop ? (
-            <picture className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+            <picture className="w-8 h-8 flex items-center justify-center flex-shrink-0">
               {brandLogo.mobile && <source media="(max-width: 640px)" srcSet={brandLogo.mobile} />}
               <img src={brandLogo.desktop} alt="Website logo" className="max-w-full max-h-full object-contain" />
             </picture>
           ) : (
-            <div className="w-9 h-9 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shadow-xs flex-shrink-0 font-bold text-xl">N</div>
+            <div className="w-8 h-8 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shadow-xs flex-shrink-0 font-bold text-base">N</div>
           )}
-          {isOpen && (
-            <div className="flex flex-col">
-              <span className="text-[13px] font-bold tracking-[0.18em] text-stone-900 uppercase font-sans">
-                NEIRAH JEWELLERS
-              </span>
-              <span className="text-[9px] tracking-[0.25em] text-[#8b6f4e] uppercase font-semibold -mt-0.5">
-                LUXURY PORTAL
-              </span>
-            </div>
-          )}
+          <div className="flex flex-col min-w-0">
+            <span className="text-[12px] font-bold tracking-[0.16em] text-stone-900 uppercase font-sans truncate">
+              NEIRAH JEWELLERS
+            </span>
+            <span className="text-[8.5px] tracking-[0.22em] text-[#8b6f4e] uppercase font-semibold -mt-0.5">
+              LUXURY PORTAL
+            </span>
+          </div>
+        </div>
+
+        {/* ─── Top Sidebar Controls: Switch Position & Hide ─── */}
+        <div className="flex items-center gap-1 shrink-0 ml-1">
+          {/* Move Sidebar to Right / Left */}
+          <button
+            type="button"
+            onClick={toggleSidebarPosition}
+            title={isRight ? 'Move sidebar to Left side' : 'Move sidebar to Right side'}
+            className="w-7 h-7 rounded-lg border border-stone-200 text-stone-500 hover:text-stone-900 hover:bg-stone-50 flex items-center justify-center transition-colors cursor-pointer"
+          >
+            <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Turn Off / Hide Sidebar Button */}
+          <button
+            type="button"
+            onClick={() => {
+              if (isMobileViewport) onMobileClose();
+              else setSidebarOpen(false);
+            }}
+            title="Hide Sidebar"
+            className="w-7 h-7 rounded-lg border border-stone-200 text-stone-500 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
+          >
+            {isRight ? (
+              <HiOutlineChevronRight className="w-4 h-4 hidden lg:block" />
+            ) : (
+              <HiOutlineChevronLeft className="w-4 h-4 hidden lg:block" />
+            )}
+            <HiOutlineX className="w-4 h-4 lg:hidden" />
+          </button>
         </div>
       </div>
 
@@ -119,7 +165,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
       <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin scrollbar-thumb-stone-200">
         {navSections.map((section) => (
           <div key={section.id} className="space-y-1">
-            {section.title && isOpen && (
+            {section.title && isVisible && (
               <p className="px-3 pt-3 pb-1 text-[10px] font-bold tracking-wider text-stone-400 uppercase">
                 {section.title}
               </p>
@@ -160,13 +206,13 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                     >
                       <div className="flex items-center gap-3">
                         <Icon className="w-5 h-5 text-[#8f6d43] flex-shrink-0" />
-                        {isOpen && (
+                        {isVisible && (
                           <span className="tracking-tight text-stone-800 font-semibold text-[13px]">
                             {item.title}
                           </span>
                         )}
                       </div>
-                      {isOpen && (
+                      {isVisible && (
                         <span
                           role="button"
                           tabIndex={0}
@@ -187,7 +233,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                     </button>
 
                     {/* Submenu links with left guideline line */}
-                    {isOpen && isSubOpen && (
+                    {isVisible && isSubOpen && (
                       <div className="ml-6 pl-4 border-l border-stone-200/90 py-1 space-y-0.5 animate-fadeIn">
                         {item.children.map((child) => {
                           const ChildIcon = child.icon || Icon;
@@ -259,10 +305,10 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
                         isActive ? 'text-[#8b6f4e]' : 'text-stone-400 group-hover:text-stone-600'
                       }`}
                     />
-                    {isOpen && <span>{item.title}</span>}
+                    {isVisible && <span>{item.title}</span>}
                   </div>
 
-                  {isActive && isOpen && (
+                  {isActive && isVisible && (
                     <HiOutlineChevronRight className="w-3.5 h-3.5 text-[#8b6f4e]" />
                   )}
                 </NavLink>
@@ -293,7 +339,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
             >
               {user?.firstName?.[0] || 'S'}
             </div>
-            {isOpen && (
+            {isVisible && (
               <div className="flex flex-col min-w-0 text-left">
                 <span className="text-xs font-bold text-stone-900 truncate group-hover:text-black">
                   {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
@@ -305,7 +351,7 @@ const Sidebar = ({ isOpen, mobileOpen, onMobileClose }) => {
             )}
           </div>
 
-          {isOpen && (
+          {isVisible && (
             <button
               type="button"
               onClick={(e) => {

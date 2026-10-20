@@ -77,3 +77,25 @@ export const diamondsAPI = {
   delete: (id) => api.delete(`/diamonds/${id}`),
 };
 
+// ─── Blog Categories ──────────────────────────────
+export const blogCategoriesAPI = {
+  getAll: (params) => api.get('/blog-categories', { params }),
+  getLookup: () => api.get('/blog-categories/lookup'),
+  getById: (id) => api.get(`/blog-categories/${id}`),
+  getBySlug: (slug) => api.get(`/blog-categories/slug/${slug}`),
+  create: (data) => api.post('/blog-categories', data),
+  update: (id, data) => api.put(`/blog-categories/${id}`, data),
+  delete: (id) => api.delete(`/blog-categories/${id}`),
+};
+
+// ─── Blogs ────────────────────────────────────────
+export const blogsAPI = {
+  getAll: (params) => api.get('/blogs', { params }),
+  getById: (id) => api.get(`/blogs/${id}`),
+  getBySlug: (slug) => api.get(`/blogs/slug/${slug}`),
+  getRecent: (limit = 4) => api.get(`/blogs/recent?limit=${limit}`),
+  create: (data) => api.post('/blogs', data),
+  update: (id, data) => api.put(`/blogs/${id}`, data),
+  delete: (id) => api.delete(`/blogs/${id}`),
+};
+

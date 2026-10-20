@@ -130,6 +130,7 @@ export default function BannersView() {
   const [subtitle, setSubtitle] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [collectionImages, setCollectionImages] = useState([]);
+  const collectionSlotRef = useRef(null);
   const [mediaType, setMediaType] = useState('image');
   const [platform, setPlatform] = useState('web');
   const [destinationLink, setDestinationLink] = useState('');
@@ -297,9 +298,10 @@ export default function BannersView() {
     setTitle(banner.content?.title || '');
     setSubtitle(banner.content?.subtitle || '');
     setImageUrl(banner.mediaType === 'video' ? banner.video?.url : banner.image?.url || '');
-    setCollectionImages((banner.collectionImages || (banner.image?.url ? [banner.image] : [])).map((image) => ({
+    setCollectionImages((banner.collectionImages?.length ? banner.collectionImages : (banner.image?.url ? [banner.image] : [])).map((image) => ({
       url: image.url,
       key: image.key || '',
+      categoryId: image.categoryId?._id || image.categoryId || banner.display?.categoryId?._id || banner.display?.categoryId || '',
     })));
     setMediaType(banner.mediaType || 'image');
     setPlatform(banner.display?.platform || 'web');
@@ -359,33 +361,36 @@ export default function BannersView() {
   const handleCollectionFilesSelect = async (e) => {
     const files = Array.from(e.target.files || []).filter((file) => file.type.startsWith('image/'));
     if (!files.length) return;
-    const slotsAvailable = 4 - collectionImages.length;
-    if (files.length > slotsAvailable) {
-      toast.error(`You can add ${slotsAvailable} more image${slotsAvailable === 1 ? '' : 's'} (4 per collection)`);
+    const target = collectionSlotRef.current;
+    const available = target !== null ? 1 : 4 - collectionImages.filter((image) => image?.url).length;
+    if (files.length > available) {
+      toast.error('Choose one image for each available slot');
       e.target.value = '';
       return;
     }
     try {
       setIsUploading(true);
       const uploaded = await Promise.all(files.map((file) => uploadWithPresignedUrl(file, 'banners')));
-      setCollectionImages((current) => [...current, ...uploaded.map((item) => ({ url: item.fileUrl, key: item.key || '' }))]);
-      toast.success(`${uploaded.length} collection image${uploaded.length === 1 ? '' : 's'} uploaded`);
+      setCollectionImages((current) => {
+        const next = Array.from({ length: 4 }, (_, index) => current[index] || {});
+        uploaded.forEach((item) => {
+          const index = target !== null ? target : next.findIndex((image) => !image.url);
+          next[index] = { ...next[index], url: item.fileUrl, key: item.key || '' };
+        });
+        return next;
+      });
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Collection image upload failed');
     } finally {
       setIsUploading(false);
       e.target.value = '';
+      collectionSlotRef.current = null;
     }
   };
 
-  const handleRemoveCollectionImage = async (index) => {
-    const image = collectionImages[index];
-    try {
-      await deleteUploadedFile(image);
-      setCollectionImages((current) => current.filter((_, currentIndex) => currentIndex !== index));
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
-    }
+  const handleRemoveCollectionImage = (index) => {
+    setCollectionImages((current) => Array.from({ length: 4 }, (_, i) =>
+      i === index ? { categoryId: current[i]?.categoryId || '' } : current[i] || {}));
   };
 
   // Remove Image
@@ -525,11 +530,15 @@ export default function BannersView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (formType === 'collectionbanner' ? collectionImages.length !== 4 : !imageUrl) {
+    if (formType === 'collectionbanner' ? collectionImages.filter((image) => image?.url).length !== 4 : !imageUrl) {
       toast.error(formType === 'collectionbanner' ? 'Upload exactly 4 images for this collection banner' : 'Please upload a banner image');
       return;
     }
 
+    if (formType === 'collectionbanner' && collectionImages.some((image) => !image.categoryId)) {
+      toast.error('Select a category for each collection image');
+      return;
+    }
     try {
       setSubmitting(true);
 
@@ -911,7 +920,7 @@ export default function BannersView() {
           onClick={handleCloseDrawer}
         >
           <div
-            className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-stone-200/90 flex flex-col max-h-[92vh] animate-scaleUp overflow-hidden"
+            className={`bg-white rounded-3xl ${formType === 'collectionbanner' ? 'max-w-6xl' : 'max-w-xl'} w-full p-6 sm:p-7 shadow-2xl border border-stone-200/90 flex flex-col max-h-[92vh] animate-scaleUp overflow-hidden`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -971,27 +980,41 @@ export default function BannersView() {
                     ref={fileInputRef}
                     onChange={formType === 'collectionbanner' ? handleCollectionFilesSelect : handleFileSelect}
                     accept="image/png, image/jpeg, image/webp"
-                    multiple={formType === 'collectionbanner'}
+                    multiple={false}
                     className="hidden"
                   />
 
                   {/* Image Preview with delete button */}
                   {formType === 'collectionbanner' ? (
-                    <div className="grid grid-cols-2 gap-2">
-                      {collectionImages.map((image, index) => (
-                        <div key={`${image.key || image.url}-${index}`} className="relative h-28 overflow-hidden rounded-xl border border-stone-200 bg-stone-100">
-                          <img src={getMediaUrl(image.url)} alt={`Collection image ${index + 1}`} className="h-full w-full object-cover" />
-                          <span className="absolute left-2 top-2 rounded bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white">Image {index + 1}</span>
-                          <button type="button" onClick={() => handleRemoveCollectionImage(index)} className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-lg bg-white/90 text-red-500 shadow-sm hover:bg-white" title="Remove image">
-                            <HiOutlineTrash className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                      {Array.from({ length: Math.max(0, 4 - collectionImages.length) }).map((_, index) => (
-                        <div key={`empty-${index}`} className="flex h-28 items-center justify-center rounded-xl border border-dashed border-stone-300 bg-stone-50 text-xs text-stone-400">
-                          Image {collectionImages.length + index + 1}
-                        </div>
-                      ))}
+                    <div className="space-y-3">
+                      <p className="text-xs text-stone-500">Four images, one collection. Choose a category for each tile.</p>
+                      <div className="grid grid-cols-4 grid-rows-2 gap-3 aspect-[2/1] min-h-[320px]">
+                        {[0, 1, 2, 3].map((index) => {
+                          const image = collectionImages[index] || {};
+                          const placement = ['col-start-1 row-start-1', 'col-start-2 row-start-1', 'col-start-1 col-span-2 row-start-2', 'col-start-3 col-span-2 row-start-1 row-span-2'][index];
+                          return (
+                            <div key={index} className={`relative min-w-0 rounded-2xl border border-stone-200 bg-stone-100 focus-within:z-20 ${placement}`}>
+                              {image.url && <img src={getMediaUrl(image.url)} alt={`Collection image ${index + 1}`} className="absolute inset-0 h-full w-full rounded-2xl object-cover" />}
+                              <div className="absolute left-2 right-2 top-2 z-10">
+                                <Dropdown
+                                  id={`collection-image-${index + 1}-category`}
+                                  value={image.categoryId || ''}
+                                  onChange={(categoryId) => setCollectionImages((current) => Array.from({ length: 4 }, (_, i) => i === index ? { ...current[i], categoryId } : current[i] || {}))}
+                                  options={categories.map((category) => ({ value: category._id, label: category.name }))}
+                                  placeholder="Select category"
+                                  size="sm"
+                                  buttonClassName="w-full rounded-lg border border-stone-200 bg-white/95 px-2 py-1.5 text-[11px] text-stone-800"
+                                  menuClassName="z-[60]"
+                                />
+                              </div>
+                              <div className="absolute inset-x-2 bottom-3 flex flex-wrap items-center justify-center gap-2">
+                                <button type="button" disabled={isUploading} onClick={() => { collectionSlotRef.current = index; fileInputRef.current?.click(); }} className="rounded-lg bg-white px-3 py-2 text-xs font-semibold shadow-sm disabled:opacity-50">{image.url ? 'Change' : `Upload image ${index + 1}`}</button>
+                                {image.url && <button type="button" disabled={isUploading} onClick={() => handleRemoveCollectionImage(index)} aria-label={`Remove image ${index + 1}`} className="rounded-lg bg-white p-2 text-red-500 shadow-sm"><HiOutlineTrash className="h-4 w-4" /></button>}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   ) : imageUrl ? (
                     <div className="relative w-full h-36 rounded-xl overflow-hidden border border-stone-200/90 bg-stone-900 shadow-inner group">
@@ -1028,7 +1051,7 @@ export default function BannersView() {
                   )}
 
                   {/* Change / Upload Button */}
-                  <button
+                  {formType !== 'collectionbanner' && <button
                     type="button"
                     disabled={isUploading}
                     onClick={() => fileInputRef.current?.click()}
@@ -1038,7 +1061,7 @@ export default function BannersView() {
                     <span>{formType === 'collectionbanner'
                       ? `Upload ${4 - collectionImages.length} more image${4 - collectionImages.length === 1 ? '' : 's'}`
                       : (imageUrl ? 'Change Image' : 'Upload Image')}</span>
-                  </button>
+                  </button>}
                   {formType === 'collectionbanner' && (
                     <p className="text-[10px] text-stone-500">Add 4 images to one collection record. They are shown together in the storefront layout.</p>
                   )}
@@ -1144,7 +1167,6 @@ export default function BannersView() {
                   {/* Category selection is available for hero, category, collection, and offer banners. */}
                   {(formType === 'herobanner' ||
                     formType === 'categorybanner' ||
-                    formType === 'collectionbanner' ||
                     formType === 'offerbanner') && (
                     <div>
                       <label className="block text-[11px] font-medium text-stone-600 mb-1">

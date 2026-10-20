@@ -16,6 +16,8 @@ export const useTheme = () => {
 };
 
 const STORAGE_KEY = 'neirah_admin_portal_theme';
+const SIDEBAR_POS_KEY = 'neirah_admin_sidebar_position';
+const SIDEBAR_OPEN_KEY = 'neirah_admin_sidebar_open';
 
 export const ThemeProvider = ({ children }) => {
   const [currentTheme, setCurrentTheme] = useState(() => {
@@ -35,6 +37,73 @@ export const ThemeProvider = ({ children }) => {
     }
     return DEFAULT_THEME;
   });
+
+  // Sidebar Position: 'left' | 'right'
+  const [sidebarPosition, setSidebarPositionState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_POS_KEY);
+      if (saved === 'right' || saved === 'left') return saved;
+    } catch (e) {}
+    return 'left';
+  });
+
+  // Sidebar Open (On/Off): boolean
+  const [sidebarOpen, setSidebarOpenState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_OPEN_KEY);
+      if (saved !== null) return saved === 'true';
+    } catch (e) {}
+    return true;
+  });
+
+  const [isMobileViewport, setIsMobileViewport] = useState(() => window.matchMedia('(max-width: 1023px)').matches);
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 1023px)');
+    const handleChange = () => {
+      setIsMobileViewport(query.matches);
+      setMobileSidebarOpen(false);
+    };
+    query.addEventListener('change', handleChange);
+    return () => query.removeEventListener('change', handleChange);
+  }, []);
+
+  // Mobile drawer state
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const setSidebarPosition = (pos) => {
+    setSidebarPositionState((previous) => {
+      const requested = typeof pos === 'function' ? pos(previous) : pos;
+      return requested === 'right' ? 'right' : 'left';
+    });
+  };
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SIDEBAR_POS_KEY, sidebarPosition);
+    } catch (e) {}
+  }, [sidebarPosition]);
+
+  const toggleSidebarPosition = () => {
+    setSidebarPosition((previous) => previous === 'left' ? 'right' : 'left');
+  };
+
+  const setSidebarOpen = (valueOrFn) => {
+    setSidebarOpenState((prev) => {
+      const next = typeof valueOrFn === 'function' ? valueOrFn(prev) : Boolean(valueOrFn);
+      try {
+        localStorage.setItem(SIDEBAR_OPEN_KEY, String(next));
+      } catch (e) {}
+      return next;
+    });
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen((prev) => !prev);
+  };
+
+  const toggleMobileSidebar = () => {
+    setMobileSidebarOpen((prev) => !prev);
+  };
 
   // Apply theme to CSS variables and dynamic overrides
   useEffect(() => {
@@ -200,6 +269,16 @@ export const ThemeProvider = ({ children }) => {
         selectCustomColor,
         resetToDefault,
         isDefault: currentTheme.isDefault,
+        sidebarPosition,
+        setSidebarPosition,
+        toggleSidebarPosition,
+        sidebarOpen,
+        setSidebarOpen,
+        toggleSidebar,
+        isMobileViewport,
+        mobileSidebarOpen,
+        setMobileSidebarOpen,
+        toggleMobileSidebar,
       }}
     >
       {children}

@@ -16,6 +16,8 @@ import {
   HiOutlineChatAlt2,
   HiOutlineCog,
   HiOutlineSpeakerphone,
+  HiOutlineBookOpen,
+  HiOutlineDocumentText,
 } from 'react-icons/hi';
 
 import {
@@ -126,6 +128,8 @@ export const navSections = [
       { id: 'before-after', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineEye, apiEndpoint: '/cust-jewellery-before-after' },
       { id: 'birthstones', title: 'Birthstones', path: '/birthstones', icon: IoDiamondOutline, apiEndpoint: '/birthstones' },
       { id: 'instagram', title: 'Instagram Posts', path: '/instagram-posts', icon: HiOutlineCamera, apiEndpoint: '/instagram-posts' },
+      { id: 'blogs', title: 'Blog Articles', path: '/blogs', icon: HiOutlineBookOpen, apiEndpoint: '/blogs' },
+      { id: 'blog-categories', title: 'Blog Categories', path: '/blog-categories', icon: HiOutlineTag, apiEndpoint: '/blog-categories' },
       { id: 'footer-management', title: 'Footer Management', path: '/footer-settings', icon: HiOutlineTemplate, apiEndpoint: '/footer-settings' },
     ],
   },

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -272,7 +273,7 @@ const DynamicModuleView = () => {
       navigate('/catalog/ornate-products/add');
     } else {
       setEditingRecord(null);
-      const defaults = isCategoryPage ? { promoBanners: [] } : {};
+      const defaults = isCategoryPage ? { promoBanners: [], status: 'active' } : {};
       (config.fields || []).forEach((f) => {
         if (f.default !== undefined) defaults[f.name] = f.default;
       });
@@ -286,6 +287,7 @@ const DynamicModuleView = () => {
   const handleOpenEdit = (row) => {
     setEditingRecord(row);
     const initial = {};
+    if (isCategoryPage) initial.status = row.status ?? 'active';
     if (config.fields) {
       config.fields.forEach((f) => {
         let val = row[f.name];
@@ -1496,6 +1498,18 @@ const DynamicModuleView = () => {
                   )}
                 </div>
               ))}
+
+              {isCategoryPage && (
+                <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3">
+                  <span className="text-sm font-semibold text-stone-900">Category Status</span>
+                  <ColorStatusToggle
+                    name="Category"
+                    status={formData.status}
+                    disabled={saving}
+                    onChange={(status) => setFormData((previous) => ({ ...previous, status }))}
+                  />
+                </div>
+              )}
 
               {/* Category Promo Banners Section (Upload & Display) */}
               {isCategoryPage && (

@@ -15,7 +15,6 @@ import {
   HiOutlineEyeOff,
   HiOutlineMail,
   HiOutlinePhone,
-  HiOutlineBadgeCheck,
 } from 'react-icons/hi';
 
 export default function ProfileView() {
@@ -28,6 +27,11 @@ export default function ProfileView() {
     selectCustomColor,
     resetToDefault,
     isDefault,
+    sidebarPosition,
+    setSidebarPosition,
+    sidebarOpen,
+    setSidebarOpen,
+    toggleSidebar,
   } = useTheme();
 
   const [activeTab, setActiveTab] = useState('theme'); // 'theme' | 'profile' | 'security'
@@ -538,11 +542,10 @@ export default function ProfileView() {
             </div>
           </div>
 
-          {/* Custom Hex Color Customizer & Live Preview */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Custom Hex Picker */}
-            <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-xs flex flex-col justify-between">
-              <div>
+          {/* Custom Hex Color Customizer */}
+          <div className="bg-white rounded-2xl border border-stone-200/80 p-5 sm:p-6 shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="max-w-xl">
                 <h3 className="text-sm sm:text-base font-bold text-stone-900">
                   Custom Hex Color Picker
                 </h3>
@@ -561,7 +564,7 @@ export default function ProfileView() {
                     />
                   </div>
 
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-[200px] sm:min-w-[260px]">
                     <label className="text-xs font-bold text-stone-900 block mb-1.5">
                       Hex Color Code
                     </label>
@@ -577,7 +580,7 @@ export default function ProfileView() {
                       <button
                         type="button"
                         onClick={handleApplyCustomColor}
-                        className="px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-xs hover:opacity-95 cursor-pointer whitespace-nowrap"
+                        className="px-4 py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow-xs hover:opacity-95 cursor-pointer whitespace-nowrap"
                         style={{ backgroundColor: customHex }}
                       >
                         Apply Color
@@ -587,97 +590,119 @@ export default function ProfileView() {
                 </div>
               </div>
 
-              <div className="mt-5 pt-4 border-t border-stone-100 flex items-center justify-between">
+              <div className="md:border-l md:border-stone-100 md:pl-8 flex flex-col justify-center">
                 <span className="text-[11px] text-stone-500">
                   Want the original design back?
                 </span>
                 <button
                   type="button"
                   onClick={handleResetDefault}
-                  className="text-xs font-bold text-stone-700 hover:text-stone-900 underline underline-offset-2 cursor-pointer flex items-center gap-1.5"
+                  className="mt-1 text-xs font-bold text-stone-700 hover:text-stone-900 underline underline-offset-2 cursor-pointer flex items-center gap-1.5"
                 >
                   <HiOutlineRefresh className="w-3.5 h-3.5 text-[#8b6f4e]" />
                   Revert to Default ({defaultTheme.primary})
                 </button>
               </div>
             </div>
+          </div>
 
-            {/* Live Interactive Component Preview */}
-            <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-bold text-stone-900">
-                  Live UI Preview
+          {/* Sidebar Layout & Placement Card */}
+          <div className="bg-white rounded-2xl border border-stone-200/80 p-5 sm:p-6 shadow-xs space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
+              <div>
+                <h3 className="text-sm sm:text-base font-bold text-stone-900">
+                  Sidebar Placement & Visibility
                 </h3>
-                <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded bg-stone-100 text-stone-600">
-                  {currentTheme.name} ({currentTheme.primary})
-                </span>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Configure whether the luxury navigation sidebar is docked on the left or right side of your screen, and control its visibility.
+                </p>
               </div>
 
-              <p className="text-xs text-stone-500 mb-4">
-                Here is a live simulation of portal buttons, badges, and sidebar items in the active theme:
-              </p>
+              {/* Quick Toggle On / Off */}
+              <button
+                type="button"
+                onClick={toggleSidebar}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer self-start sm:self-auto ${
+                  sidebarOpen
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
+                }`}
+              >
+                Sidebar State: {sidebarOpen ? 'Visible (ON)' : 'Hidden (OFF)'}
+              </button>
+            </div>
 
-              <div className="p-4 rounded-xl bg-stone-50 border border-stone-200/70 space-y-4">
-                {/* Button previews */}
-                <div className="flex flex-wrap items-center gap-2.5">
-                  <button
-                    type="button"
-                    className="px-3.5 py-2 rounded-lg text-xs font-bold text-white shadow-xs transition-opacity"
-                    style={{ backgroundColor: currentTheme.primary }}
-                  >
-                    Primary Button
-                  </button>
-
-                  <button
-                    type="button"
-                    className="px-3.5 py-2 rounded-lg text-xs font-bold border transition-colors"
-                    style={{
-                      borderColor: currentTheme.border,
-                      backgroundColor: currentTheme.soft,
-                      color: currentTheme.primary,
-                    }}
-                  >
-                    Subtle Action
-                  </button>
-
-                  <span
-                    className="px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase border inline-flex items-center gap-1"
-                    style={{
-                      backgroundColor: currentTheme.soft,
-                      borderColor: currentTheme.border,
-                      color: currentTheme.primary,
-                    }}
-                  >
-                    <HiOutlineBadgeCheck className="w-3.5 h-3.5" />
-                    STATUS BADGE
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+              {/* Left Side Option */}
+              <div
+                onClick={() => setSidebarPosition('left')}
+                className={`p-4 rounded-xl border-2 transition-all cursor-pointer space-y-3 ${
+                  sidebarPosition === 'left'
+                    ? 'border-[#8b6f4e] bg-[#faf8f5] shadow-xs ring-2 ring-[#8b6f4e]/15'
+                    : 'border-stone-200 bg-white hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-900">
+                    Left Side (Default)
                   </span>
-                </div>
-
-                {/* Simulated Sidebar item */}
-                <div className="p-2 bg-white rounded-xl border border-stone-200/80 flex items-center justify-between shadow-2xs">
-                  <div className="flex items-center gap-2.5">
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs"
-                      style={{
-                        backgroundColor: currentTheme.light,
-                        borderColor: currentTheme.border,
-                        color: currentTheme.primary,
-                      }}
-                    >
-                      N
-                    </div>
-                    <span className="text-xs font-bold text-stone-800">
-                      Active Navigation Item
+                  {sidebarPosition === 'left' && (
+                    <span className="w-5 h-5 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center text-[11px] font-bold">
+                      ✓
                     </span>
-                  </div>
-
-                  <span
-                    className="text-[10px] font-bold px-2 py-0.5 rounded-md text-white"
-                    style={{ backgroundColor: currentTheme.primary }}
-                  >
-                    Active
-                  </span>
+                  )}
                 </div>
+
+                {/* Visual miniature layout schematic */}
+                <div className="h-16 rounded-lg bg-stone-100 border border-stone-200 flex overflow-hidden p-1 gap-1">
+                  <div className="w-8 h-full bg-[#8b6f4e] rounded-sm shrink-0 flex items-center justify-center">
+                    <span className="text-[7px] text-white font-mono font-bold">MENU</span>
+                  </div>
+                  <div className="flex-1 h-full bg-white rounded-sm border border-stone-200/60 p-1 flex flex-col gap-1">
+                    <div className="h-1.5 w-1/3 bg-stone-300 rounded" />
+                    <div className="h-4 w-full bg-stone-100 rounded" />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-stone-500">
+                  Standard Western luxury navigation docked on the left-hand side.
+                </p>
+              </div>
+
+              {/* Right Side Option */}
+              <div
+                onClick={() => setSidebarPosition('right')}
+                className={`p-4 rounded-xl border-2 transition-all cursor-pointer space-y-3 ${
+                  sidebarPosition === 'right'
+                    ? 'border-[#8b6f4e] bg-[#faf8f5] shadow-xs ring-2 ring-[#8b6f4e]/15'
+                    : 'border-stone-200 bg-white hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-stone-900">
+                    Right Side (Alternative)
+                  </span>
+                  {sidebarPosition === 'right' && (
+                    <span className="w-5 h-5 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center text-[11px] font-bold">
+                      ✓
+                    </span>
+                  )}
+                </div>
+
+                {/* Visual miniature layout schematic */}
+                <div className="h-16 rounded-lg bg-stone-100 border border-stone-200 flex overflow-hidden p-1 gap-1">
+                  <div className="flex-1 h-full bg-white rounded-sm border border-stone-200/60 p-1 flex flex-col gap-1">
+                    <div className="h-1.5 w-1/3 bg-stone-300 rounded" />
+                    <div className="h-4 w-full bg-stone-100 rounded" />
+                  </div>
+                  <div className="w-8 h-full bg-[#8b6f4e] rounded-sm shrink-0 flex items-center justify-center">
+                    <span className="text-[7px] text-white font-mono font-bold">MENU</span>
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-stone-500">
+                  Docks navigation to the right edge, giving a clean and unique portal perspective.
+                </p>
               </div>
             </div>
           </div>

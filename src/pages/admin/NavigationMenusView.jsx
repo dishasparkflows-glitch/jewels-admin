@@ -170,6 +170,8 @@ export default function NavigationMenusView() {
   const [activeItemMenu, setActiveItemMenu] = useState(null); // ID of menu item with open popover
   const [savingModal, setSavingModal] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [togglingItemId, setTogglingItemId] = useState(null);
+  const [togglingSectionId, setTogglingSectionId] = useState(null);
   const [isUploadingItemIcon, setIsUploadingItemIcon] = useState(false);
   const [isUploadingBanner, setIsUploadingBanner] = useState(false);
   const [showManualUrlInput, setShowManualUrlInput] = useState(false);
@@ -341,6 +343,67 @@ export default function NavigationMenusView() {
       toast.error(err.response?.data?.message || 'Failed to update category status');
     } finally {
       setStatusUpdating(false);
+    }
+  }
+
+  // ─── Direct On/Off Toggle Handlers ───────────────────────────────────
+  // Toggle menu item active/inactive status directly
+  async function handleToggleMenuItemStatus(item, sectionId) {
+    if (!item || !item._id || togglingItemId === item._id) return;
+    const currentStatus = item.status || 'active';
+    const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
+
+    setTogglingItemId(item._id);
+
+    // Optimistic UI update
+    setItemsBySection((prev) => ({
+      ...prev,
+      [sectionId]: (prev[sectionId] || []).map((it) =>
+        it._id === item._id ? { ...it, status: nextStatus } : it
+      ),
+    }));
+
+    try {
+      await api.put(`/menu-items/${item._id}`, { status: nextStatus });
+      toast.success(`"${item.title}" is now ${nextStatus === 'active' ? 'Active' : 'Hidden'}`);
+    } catch (err) {
+      // Revert on error
+      setItemsBySection((prev) => ({
+        ...prev,
+        [sectionId]: (prev[sectionId] || []).map((it) =>
+          it._id === item._id ? { ...it, status: currentStatus } : it
+        ),
+      }));
+      toast.error(err.response?.data?.message || 'Failed to update menu item status');
+    } finally {
+      setTogglingItemId(null);
+    }
+  }
+
+  // Toggle section active/inactive status directly
+  async function handleToggleSectionStatus(section) {
+    if (!section || !section._id || togglingSectionId === section._id) return;
+    const currentStatus = section.status || 'active';
+    const nextStatus = currentStatus === 'active' ? 'inactive' : 'active';
+
+    setTogglingSectionId(section._id);
+
+    // Optimistic UI update
+    setSections((prev) =>
+      prev.map((s) => (s._id === section._id ? { ...s, status: nextStatus } : s))
+    );
+
+    try {
+      await api.put(`/menu-sections/${section._id}`, { status: nextStatus });
+      toast.success(`"${section.title}" is now ${nextStatus === 'active' ? 'Active' : 'Hidden'}`);
+    } catch (err) {
+      // Revert on error
+      setSections((prev) =>
+        prev.map((s) => (s._id === section._id ? { ...s, status: currentStatus } : s))
+      );
+      toast.error(err.response?.data?.message || 'Failed to update section status');
+    } finally {
+      setTogglingSectionId(null);
     }
   }
 
@@ -685,6 +748,9 @@ export default function NavigationMenusView() {
     const { mode, index, data } = bannerModal;
     if (!data.title?.trim()) {
       return toast.error('Banner title is required');
+    }
+    if (!data.imageUrl?.trim()) {
+      return toast.error('Please upload a banner image');
     }
     setSavingModal(true);
     try {
@@ -1036,10 +1102,38 @@ export default function NavigationMenusView() {
                             </div>
 
                             <div
-                              className="flex items-center gap-1.5 shrink-0"
+                              className="flex items-center gap-2 shrink-0"
                               onClick={(e) => e.stopPropagation()}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
+                              {/* Direct On/Off Toggle Button for Section */}
+                              <button
+                                type="button"
+                                disabled={togglingSectionId === section._id}
+                                onClick={() => handleToggleSectionStatus(section)}
+                                title={
+                                  section.status === 'active' || !section.status
+                                    ? 'Click to turn off section'
+                                    : 'Click to turn on section'
+                                }
+                                className="flex items-center gap-1.5 cursor-pointer group focus:outline-none mr-1"
+                              >
+                                <div
+                                  className={`w-8 h-4.5 rounded-full transition-colors p-0.5 relative ${
+                                    section.status === 'active' || !section.status
+                                      ? 'bg-[#85583f]'
+                                      : 'bg-stone-300'
+                                  } ${togglingSectionId === section._id ? 'opacity-60' : ''}`}
+                                >
+                                  <div
+                                    className={`w-3.5 h-3.5 rounded-full bg-white shadow-xs transition-transform transform ${
+                                      section.status === 'active' || !section.status
+                                        ? 'translate-x-3.5'
+                                        : 'translate-x-0'
+                                    }`}
+                                  />
+                                </div>
+                              </button>
                               <button
                                 type="button"
                                 title="Edit Section"
@@ -1124,58 +1218,59 @@ export default function NavigationMenusView() {
                                           </span>
                                         </div>
 
-                                        {/* Status badge & actions */}
+                                        {/* Status badge & direct on/off toggle & actions */}
                                         <div
-                                          className="flex items-center gap-4 shrink-0"
+                                          className="flex items-center gap-3.5 shrink-0"
                                           onClick={(e) => e.stopPropagation()}
                                           onMouseDown={(e) => e.stopPropagation()}
                                         >
-                                          <span
-                                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium ${
+                                          {/* Direct On/Off Toggle Button */}
+                                          <button
+                                            type="button"
+                                            disabled={togglingItemId === item._id}
+                                            onClick={() => handleToggleMenuItemStatus(item, section._id)}
+                                            title={
                                               item.status === 'active' || !item.status
-                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
-                                                : 'bg-stone-100 text-stone-500 border border-stone-200'
-                                            }`}
+                                                ? 'Click to turn off (Hide)'
+                                                : 'Click to turn on (Show)'
+                                            }
+                                            className="flex items-center gap-2 cursor-pointer group focus:outline-none"
                                           >
-                                            {item.status === 'active' || !item.status ? 'Active' : 'Hidden'}
-                                          </span>
+                                            <div
+                                              className={`w-9 h-5 rounded-full transition-colors p-0.5 relative ${
+                                                item.status === 'active' || !item.status
+                                                  ? 'bg-[#85583f]'
+                                                  : 'bg-stone-300'
+                                              } ${togglingItemId === item._id ? 'opacity-60' : ''}`}
+                                            >
+                                              <div
+                                                className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform transform ${
+                                                  item.status === 'active' || !item.status
+                                                    ? 'translate-x-4'
+                                                    : 'translate-x-0'
+                                                }`}
+                                              />
+                                            </div>
+                                          </button>
 
-                                          <div className="relative">
+                                          {/* Direct Edit & Delete Buttons */}
+                                          <div className="flex items-center gap-1">
                                             <button
                                               type="button"
-                                              onClick={() =>
-                                                setActiveItemMenu((prev) =>
-                                                  prev === item._id ? null : item._id
-                                                )
-                                              }
-                                              className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-md transition-colors cursor-pointer"
+                                              title="Edit Link"
+                                              onClick={() => openEditMenuItemModal(item)}
+                                              className="p-1.5 text-stone-400 hover:text-[#85583f] hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
                                             >
-                                              <HiDotsHorizontal className="w-4 h-4" />
+                                              <HiOutlinePencil className="w-4 h-4" />
                                             </button>
-
-                                            {isMenuOpen && (
-                                              <div className="absolute right-0 top-full mt-1 w-32 rounded-xl bg-white border border-stone-200 shadow-xl py-1 z-30 text-xs">
-                                                <button
-                                                  type="button"
-                                                  onClick={() => {
-                                                    setActiveItemMenu(null);
-                                                    openEditMenuItemModal(item);
-                                                  }}
-                                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-stone-700 hover:bg-stone-50 cursor-pointer text-left"
-                                                >
-                                                  <HiOutlinePencil className="w-3.5 h-3.5 text-stone-400" />
-                                                  Edit Link
-                                                </button>
-                                                <button
-                                                  type="button"
-                                                  onClick={() => handleDeleteMenuItem(item)}
-                                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-red-600 hover:bg-red-50 cursor-pointer text-left"
-                                                >
-                                                  <HiOutlineTrash className="w-3.5 h-3.5" />
-                                                  Delete
-                                                </button>
-                                              </div>
-                                            )}
+                                            <button
+                                              type="button"
+                                              title="Delete Link"
+                                              onClick={() => handleDeleteMenuItem(item)}
+                                              className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                            >
+                                              <HiOutlineTrash className="w-4 h-4" />
+                                            </button>
                                           </div>
                                         </div>
                                       </div>
@@ -1763,7 +1858,7 @@ export default function NavigationMenusView() {
                       )}
                     </div>
 
-                    <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2.5">
+                    <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3">
                       <div className="flex items-center gap-3">
                         <div className="w-16 h-12 rounded-lg border border-stone-200 bg-stone-100 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
                           {bannerModal.data?.imageUrl ? (
@@ -1790,25 +1885,8 @@ export default function NavigationMenusView() {
                             <HiOutlineUpload className="w-3.5 h-3.5 text-[#85583f]" />
                             {isUploadingBanner ? 'Uploading…' : bannerModal.data?.imageUrl ? 'Replace Image' : 'Upload Banner Image'}
                           </button>
-                          <p className="text-[10px] text-stone-400 mt-1">
-                            PNG, JPG, WEBP (up to 5MB)
-                          </p>
                         </div>
                       </div>
-
-                      <input
-                        required
-                        type="url"
-                        placeholder="Or enter image URL (https://...)"
-                        value={bannerModal.data?.imageUrl || ''}
-                        onChange={(e) =>
-                          setBannerModal((prev) => ({
-                            ...prev,
-                            data: { ...prev.data, imageUrl: e.target.value },
-                          }))
-                        }
-                        className="w-full rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#85583f]"
-                      />
                     </div>
                   </div>
 

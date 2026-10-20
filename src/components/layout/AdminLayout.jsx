@@ -1,12 +1,25 @@
-import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { useTheme } from '../../contexts/ThemeContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import ErrorBoundary from '../common/ErrorBoundary';
 
 const AdminLayout = () => {
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const {
+    sidebarOpen,
+    sidebarPosition,
+    mobileSidebarOpen,
+    setMobileSidebarOpen,
+  } = useTheme();
+
+  const desktopMarginClass =
+    sidebarPosition === 'right'
+      ? sidebarOpen
+        ? 'lg:mr-64 lg:ml-0'
+        : 'lg:mr-0 lg:ml-0'
+      : sidebarOpen
+      ? 'lg:ml-64 lg:mr-0'
+      : 'lg:ml-0 lg:mr-0';
 
   return (
     <div className="min-h-screen bg-[#fbfaf8] text-stone-900 selection:bg-[#8b6f4e] selection:text-white">
@@ -19,19 +32,13 @@ const AdminLayout = () => {
       )}
 
       {/* Sidebar */}
-      <Sidebar
-        isOpen={sidebarOpen}
-        mobileOpen={mobileSidebarOpen}
-        onMobileClose={() => setMobileSidebarOpen(false)}
-      />
+      <Sidebar />
 
       {/* Main Container */}
       <div
-        className={`transition-all duration-300 min-h-screen flex flex-col ${
-          sidebarOpen ? 'lg:ml-64' : 'lg:ml-20'
-        }`}
+        className={`min-h-screen flex flex-col ${desktopMarginClass}`}
       >
-        <Header onMobileToggle={() => setMobileSidebarOpen(true)} />
+        <Header />
 
         <main className="flex-1 px-3 sm:px-5 py-2 max-w-[1600px] w-full mx-auto">
           <ErrorBoundary>
