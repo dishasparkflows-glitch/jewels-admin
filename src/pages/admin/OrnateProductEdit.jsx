@@ -71,10 +71,8 @@ const GENDER_OPTIONS = [
 ];
 
 const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Draft (Hidden)' },
-  { value: 'active', label: 'Active' },
+  { value: 'draft', label: 'Draft' },
   { value: 'approved', label: 'Approved' },
-  { value: 'inactive', label: 'Inactive' },
 ];
 
 const STOCK_STATUS_OPTIONS = [
@@ -352,12 +350,24 @@ export default function OrnateProductEdit() {
           });
 
           // Populate Pricing
-          const cost = Number(product.pricing?.costPrice ?? 0);
+          const ornateVal = Number(
+            product.pricing?.ornatePrice ?? product.ornatePrice ?? product.ornate?.price ?? product.ornate?.goldAmt ?? 0
+          );
+          const rawCost = product.pricing?.costPrice;
+          const cost = Number(
+            rawCost !== undefined && rawCost !== null && rawCost !== '' && Number(rawCost) > 0
+              ? rawCost
+              : (product.isOrnate ? ornateVal : 0)
+          );
           const markup = Number(product.pricing?.markupPercentage ?? 0);
-          const calcPrice = Number(product.calculatedPrice ?? (cost > 0 ? cost + (cost * markup) / 100 : 0));
-          const sale = Number(product.pricing?.salePrice ?? calcPrice);
-          const mrpVal = Number(product.pricing?.mrp ?? sale);
-          const ornateVal = Number(product.pricing?.ornatePrice ?? product.ornatePrice ?? product.ornate?.price ?? product.ornate?.goldAmt ?? 0);
+          const rawCalc = product.pricing?.calculatedPrice ?? product.calculatedPrice;
+          const calcPrice = Number(
+            rawCalc !== undefined && rawCalc !== null && rawCalc !== '' && Number(rawCalc) > 0
+              ? rawCalc
+              : (cost > 0 ? cost + (cost * markup) / 100 : ornateVal)
+          );
+          const sale = Number(product.pricing?.salePrice ?? calcPrice ?? ornateVal);
+          const mrpVal = Number(product.pricing?.mrp ?? sale ?? ornateVal);
 
           setPricing({
             ornatePrice: ornateVal || '',
@@ -1056,8 +1066,6 @@ export default function OrnateProductEdit() {
           sku: erpDetails.labelNumber || erpDetails.uniqueLabelId || '',
           slug: seo.slug || baseInfo.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
           description: baseInfo.description,
-          productType: 'silver',
-          isOrnate: true,
         },
         pricing: {
           mrp: Number(pricing.mrp) || Number(pricing.salePrice) || 0,

@@ -17,6 +17,7 @@ import api from '../../api/axios';
 import { diamondsAPI } from '../../api/services';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
+import { DeleteActionButton } from '../../components/common/RowActions';
 
 
 
@@ -690,14 +691,10 @@ export default function AddDiamonds() {
 
                     {/* Action */}
                     <td className="text-right align-middle pr-2">
-                      <button
-                        type="button"
+                      <DeleteActionButton
                         onClick={() => handleRemoveVariant(v.id)}
-                        className="p-1.5 text-stone-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
                         title="Remove Variant"
-                      >
-                        <HiOutlineTrash className="w-4 h-4" />
-                      </button>
+                      />
                     </td>
                   </tr>
                 ))}

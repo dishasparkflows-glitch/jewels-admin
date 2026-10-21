@@ -1,745 +1,345 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
-import {
-  IoClose,
-  IoRefreshOutline,
-  IoCheckmark,
-  IoLayersOutline,
-  IoSearchOutline,
-  IoAlertCircleOutline,
-  IoRemove,
-  IoScaleOutline,
-  IoArrowForward,
-  IoCubeOutline,
-} from 'react-icons/io5';
+import { IoClose, IoRefreshOutline, IoCubeOutline, IoSearchOutline, IoGridOutline, IoListOutline, IoEyeOutline, IoChevronBack, IoChevronForward } from 'react-icons/io5';
+import Dropdown from './Dropdown';
 import api from '../../api/axios';
 
-const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(Number(amount) || 0);
-};
+const money = (value) => value == null || value === '' ? '—' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value));
+const valueOrDash = (value) => value == null || value === '' ? '—' : String(value);
+const weight = (value) => value == null || value === '' ? '—' : `${value} g`;
+// Only use image URLs supplied with the product; never substitute catalog photos.
+const imagesFor = (product) => [...new Set([product.imageUrl, product.image, ...(Array.isArray(product.images) ? product.images : [])]
+  .map((image) => typeof image === 'string' ? image : image?.url)
+  .filter((url) => typeof url === 'string' && /^(https?:\/\/|\/(?!\/))/.test(url)))];
+function ProductPhoto({ url, name, className = '' }) {
+  const [failed, setFailed] = useState(false);
+  useEffect(() => setFailed(false), [url]);
+  if (!url || failed) return null;
+  return <img src={url} alt={name || ''} loading="lazy" onError={() => setFailed(true)} className={className} />;
+}
+const button = 'rounded-xl border border-stone-200 px-4 py-3 text-[13px] font-semibold hover:bg-stone-50 disabled:opacity-40 disabled:cursor-not-allowed';
 
-const OrnateSyncModal = ({
-  isOpen,
-  onClose,
-  onSyncComplete,
-}) => {
-  const [erpCategories, setErpCategories] = useState([]);
-  const [erpCategoriesTotal, setErpCategoriesTotal] = useState(0);
+export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [error, setError] = useState('');
+  const [retry, setRetry] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [query, setQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [metal, setMetal] = useState('');
+  const [selectionFilter, setSelectionFilter] = useState('all');
+  const [view, setView] = useState('grid');
+  const [sort, setSort] = useState('erp');
+  const [page, setPage] = useState(1);
+  const [detailId, setDetailId] = useState(null);
+  const [imageIndex, setImageIndex] = useState(0);
 
-  const [selectedProductIds, setSelectedProductIds] = useState([]);
-  const [searchTerm, setSearchTerm] = useState('');
-
-  // Active category opened in the dedicated Pop-up Modal
-  const [activeCategory, setActiveCategory] = useState(null);
-  const [popupSearchTerm, setPopupSearchTerm] = useState('');
-  const [popupFilter, setPopupFilter] = useState('all'); // 'all' | 'selected' | 'unselected'
-
-  // Fetch categories & products from Ornate ERP
-  const fetchCategories = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      let res;
-      try {
-        res = await api.get('/ornate/categories', { timeout: 60000 });
-      } catch (catErr) {
-        // Fallback to /ornate/erp-categories if needed
-        res = await api.get('/ornate/erp-categories', { timeout: 60000 });
-      }
-
-      const data = res.data?.data || res.data || {};
-      const categories = data.categories || [];
-      const total = data.totalProducts ?? categories.reduce((sum, c) => sum + (c.count || c.products?.length || 0), 0);
-
-      setErpCategories(categories);
-      setErpCategoriesTotal(total);
-
-      // Pre-select all products once ERP data is loaded
-      const allIds = [];
-      categories.forEach((cat) => {
-        (cat.products || []).forEach((p) => {
-          if (p.uniqueLabelID) allIds.push(p.uniqueLabelID);
-        });
-      });
-      setSelectedProductIds(allIds);
-    } catch (err) {
-      console.error('Failed to load Ornate categories:', err);
-      const msg = err.response?.data?.message || err.message || 'Failed to connect to Ornate ERP';
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Fetch when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchCategories();
-    } else {
-      setActiveCategory(null);
-      setSearchTerm('');
-      setPopupSearchTerm('');
-      setPopupFilter('all');
-    }
-  }, [isOpen, fetchCategories]);
-
-  // Handle escape key (closes popup first if open, else closes main modal)
   useEffect(() => {
     if (!isOpen) return;
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && !isSyncing) {
-        if (activeCategory) {
-          setActiveCategory(null);
-        } else {
-          onClose?.();
-        }
-      }
+    let active = true;
+    setLoading(true); setError(''); setCategories([]); setSelected(new Set());
+    setQuery(''); setSelectedCategory(''); setMetal(''); setPage(1); setDetailId(null); setSelectionFilter('all');
+    const load = async () => {
+      try {
+        let response;
+        try { response = await api.get('/ornate/categories', { timeout: 60000 }); }
+        catch { response = await api.get('/ornate/erp-categories', { timeout: 60000 }); }
+        const data = response.data?.data || response.data || {};
+        if (response.data?.success === false) throw new Error(response.data.message || 'Could not load ERP products');
+        if (!active) return;
+        const items = Array.isArray(data.categories) ? data.categories : [];
+        setCategories(items);
+        setSelected(new Set(items.flatMap((c) => (c.products || []).filter((p) => p.uniqueLabelID != null && p.uniqueLabelID !== '').map((p) => String(p.uniqueLabelID)))));
+      } catch (err) { if (active) setError(err.response?.data?.message || err.message || 'Could not load ERP products'); }
+      finally { if (active) setLoading(false); }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, isSyncing, activeCategory, onClose]);
+    load();
+    return () => { active = false; };
+  }, [isOpen, retry]);
 
-  // Filter categories based on search term in main modal
-  const filteredCategories = useMemo(() => {
-    if (!searchTerm.trim()) return erpCategories;
-    const q = searchTerm.toLowerCase();
+  useEffect(() => {
+    if (!isOpen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const escape = (event) => { if (event.key === 'Escape' && !syncing) { if (detailId) setDetailId(null); else onClose?.(); } };
+    window.addEventListener('keydown', escape);
+    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', escape); };
+  }, [isOpen, syncing, detailId, onClose]);
 
-    return erpCategories
-      .map((cat) => {
-        const catMatches = cat.name?.toLowerCase().includes(q);
-        const matchingProducts = (cat.products || []).filter(
-          (p) =>
-            p.itemName?.toLowerCase().includes(q) ||
-            p.barcodeNo?.toLowerCase().includes(q) ||
-            p.labelNo?.toLowerCase().includes(q) ||
-            p.uniqueLabelID?.toLowerCase().includes(q) ||
-            (p.metalName && p.metalName.toLowerCase().includes(q))
-        );
+  const products = useMemo(() => {
+    const unique = new Map();
+    categories.forEach((c) => (c.products || []).forEach((p, index) => {
+      const id = p.uniqueLabelID == null || p.uniqueLabelID === '' ? '' : String(p.uniqueLabelID);
+      const key = id || `${c.name}-${index}`;
+      if (!unique.has(key)) unique.set(key, { ...p, groupName: p.groupName || c.name, id, key });
+    }));
+    return [...unique.values()];
+  }, [categories]);
+  const metals = useMemo(() => [...new Set(products.map((p) => p.metalName).filter(Boolean))], [products]);
 
-        return {
-          ...cat,
-          matchingProductCount: matchingProducts.length,
-          isSearchMatch: catMatches || matchingProducts.length > 0,
-        };
-      })
-      .filter((cat) => cat.isSearchMatch);
-  }, [erpCategories, searchTerm]);
-
-  // Toggle all products within a specific category
-  const handleToggleCategory = (category, e) => {
-    if (e) e.stopPropagation();
-    if (isSyncing) return;
-
-    const catProductIds = (category.products || []).map((p) => p.uniqueLabelID).filter(Boolean);
-    const allSelected =
-      catProductIds.length > 0 && catProductIds.every((id) => selectedProductIds.includes(id));
-
-    if (allSelected) {
-      // Deselect all products in this category
-      setSelectedProductIds((prev) => prev.filter((id) => !catProductIds.includes(id)));
-    } else {
-      // Select all products in this category
-      setSelectedProductIds((prev) => Array.from(new Set([...prev, ...catProductIds])));
-    }
-  };
-
-  // Toggle individual product selection
-  const handleToggleProduct = (productId) => {
-    if (isSyncing || !productId) return;
-    setSelectedProductIds((prev) =>
-      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+  const filtered = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    const result = products.filter((p) =>
+      (!selectedCategory || String(p.groupName || '').trim().toLowerCase() === selectedCategory.trim().toLowerCase()) &&
+      (!metal || p.metalName === metal) &&
+      (selectionFilter === 'all' || (selectionFilter === 'selected' ? selected.has(p.id) : !selected.has(p.id))) &&
+      (!term || [p.itemName, p.groupName, p.barcodeNo, p.labelNo, p.uniqueLabelID, p.metalName, p.carat].some((v) => String(v ?? '').toLowerCase().includes(term)))
     );
+    if (sort === 'name') result.sort((a, b) => String(a.itemName || '').localeCompare(String(b.itemName || '')));
+    if (sort === 'priceAsc') result.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
+    if (sort === 'priceDesc') result.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
+    return result;
+  }, [products, query, selectedCategory, metal, selectionFilter, selected, sort]);
+
+  useEffect(() => setPage(1), [query, selectedCategory, metal, selectionFilter, sort]);
+
+  const handleSelectCategory = (catName) => {
+    // Strictly single selection: if clicked again, toggle back to all; otherwise switch to the single selected category
+    const isAlreadySelected = Boolean(catName) && selectedCategory.trim().toLowerCase() === String(catName).trim().toLowerCase();
+    const nextCat = isAlreadySelected ? '' : catName;
+    setSelectedCategory(nextCat);
+    setPage(1);
+    const matched = products.filter((p) =>
+      p.id &&
+      (!nextCat || String(p.groupName || '').trim().toLowerCase() === nextCat.trim().toLowerCase()) &&
+      (!metal || p.metalName === metal)
+    );
+    setSelected(new Set(matched.map((p) => p.id)));
   };
 
-  // Select all products across all categories
-  const handleSelectAll = () => {
-    if (isSyncing) return;
-    const allIds = [];
-    erpCategories.forEach((cat) => {
-      (cat.products || []).forEach((p) => {
-        if (p.uniqueLabelID) allIds.push(p.uniqueLabelID);
-      });
+  const handleSelectMetal = (metalName) => {
+    // Strictly single selection: if clicked again, toggle back to all; otherwise switch to the single selected metal
+    const isAlreadySelected = Boolean(metalName) && metal === metalName;
+    const nextMetal = isAlreadySelected ? '' : metalName;
+    setMetal(nextMetal);
+    setPage(1);
+    const matched = products.filter((p) =>
+      p.id &&
+      (!nextMetal || p.metalName === nextMetal) &&
+      (!selectedCategory || String(p.groupName || '').trim().toLowerCase() === selectedCategory.trim().toLowerCase())
+    );
+    setSelected(new Set(matched.map((p) => p.id)));
+  };
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((p) => p.id && selected.has(p.id));
+  const handleToggleAllFiltered = () => {
+    if (syncing || !filtered.length) return;
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) {
+        filtered.forEach((p) => { if (p.id) next.delete(p.id); });
+      } else {
+        filtered.forEach((p) => { if (p.id) next.add(p.id); });
+      }
+      return next;
     });
-    setSelectedProductIds(allIds);
   };
 
-  // Deselect all products
-  const handleDeselectAll = () => {
-    if (isSyncing) return;
-    setSelectedProductIds([]);
-  };
-
-  // Trigger sync for selected products
-  const handleStartSync = async () => {
-    if (selectedProductIds.length === 0 || isSyncing) return;
+  const pageCount = Math.max(1, Math.ceil(filtered.length / 12));
+  const currentPage = Math.min(page, pageCount);
+  const visible = filtered.slice((currentPage - 1) * 12, currentPage * 12);
+  const detail = products.find((p) => p.key === detailId);
+  const photos = detail ? imagesFor(detail) : [];
+  const toggle = (id) => { if (!id || syncing) return; setSelected((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
+  const openDetails = (product) => { setDetailId(product.key); setImageIndex(0); };
+  const sync = async () => {
+    if (!selected.size || syncing) return;
+    setSyncing(true);
+    toast.loading(`Syncing ${selected.size} products...`, { id: 'ornate-modal-sync' });
     try {
-      setIsSyncing(true);
-      toast.loading(`Syncing ${selectedProductIds.length} products into catalog...`, {
-        id: 'ornate-modal-sync',
-      });
-
-      const res = await api.post(
-        '/ornate/sync-labels',
-        { productIds: selectedProductIds },
-        { timeout: 180000 }
-      );
-
-      const msg = res.data?.message || `Successfully synced ${selectedProductIds.length} products!`;
-      toast.success(msg, { id: 'ornate-modal-sync' });
-
-      onSyncComplete?.();
-      onClose?.();
-    } catch (err) {
-      console.error('Failed to sync selected Ornate products:', err);
-      const errMsg =
-        err.response?.data?.message || err.message || 'Failed to sync selected products';
-      toast.error(errMsg, { id: 'ornate-modal-sync' });
-    } finally {
-      setIsSyncing(false);
-    }
+      const response = await api.post('/ornate/sync-labels', { productIds: [...selected] }, { timeout: 180000 });
+      if (response.data?.success === false) throw new Error(response.data.message || 'Sync failed');
+      toast.success(response.data?.message || 'Selected products synced', { id: 'ornate-modal-sync' });
+      onSyncComplete?.(); onClose?.();
+    } catch (err) { toast.error(err.response?.data?.message || err.message || 'Sync failed', { id: 'ornate-modal-sync' }); }
+    finally { setSyncing(false); }
   };
-
-  // Open the product pop-up for a category
-  const handleOpenCategoryProducts = (category) => {
-    setActiveCategory(category);
-    setPopupSearchTerm('');
-    setPopupFilter('all');
-  };
-
   if (!isOpen) return null;
 
-  const totalPossibleProducts =
-    erpCategoriesTotal ||
-    erpCategories.reduce((sum, c) => sum + (c.products?.length || c.count || 0), 0);
-
-  // Products filtered inside the active category popup
-  const activeCategoryProducts = activeCategory?.products || [];
-  const selectedInActiveCat = activeCategoryProducts.filter((p) =>
-    selectedProductIds.includes(p.uniqueLabelID)
-  );
-  const unselectedInActiveCat = activeCategoryProducts.filter(
-    (p) => !selectedProductIds.includes(p.uniqueLabelID)
-  );
-
-  const filteredPopupProducts = activeCategoryProducts.filter((p) => {
-    // Filter tab
-    if (popupFilter === 'selected' && !selectedProductIds.includes(p.uniqueLabelID)) return false;
-    if (popupFilter === 'unselected' && selectedProductIds.includes(p.uniqueLabelID)) return false;
-
-    // Search query
-    if (popupSearchTerm.trim()) {
-      const q = popupSearchTerm.toLowerCase();
-      const match =
-        p.itemName?.toLowerCase().includes(q) ||
-        p.barcodeNo?.toLowerCase().includes(q) ||
-        p.labelNo?.toLowerCase().includes(q) ||
-        p.uniqueLabelID?.toLowerCase().includes(q) ||
-        (p.metalName && p.metalName.toLowerCase().includes(q));
-      if (!match) return false;
-    }
-    return true;
-  });
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6">
-      {/* Backdrop */}
-      <div
-        className="fixed inset-0 bg-gray-900/65 backdrop-blur-xs transition-opacity"
-        onClick={() => !isSyncing && onClose?.()}
-      />
-
-      {/* Main Modal Container */}
-      <div className="relative bg-white rounded-2xl max-w-5xl w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[90vh] z-10">
-        {/* Header */}
-        <div className="px-6 py-4.5 border-b border-gray-100 bg-linear-to-r from-stone-50 via-white to-amber-50/40 flex items-start justify-between">
-          <div className="flex items-center gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-[#8b6f4e]/10 border border-[#8b6f4e]/20 flex items-center justify-center text-[#8b6f4e] shrink-0 shadow-xs">
-              <IoCubeOutline className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2.5 flex-wrap">
-                <h2 className="text-base font-bold text-gray-900">
-                  Sync Products from Ornate ERP
-                </h2>
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-[#8b6f4e]/10 text-[#8b6f4e] border border-[#8b6f4e]/20">
-                  {totalPossibleProducts} Total Products
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600">
-                  {erpCategories.length} Categories
-                </span>
-              </div>
-              <p className="text-xs text-gray-500 mt-0.5">
-                Select category boxes to import in bulk, or open any category box to pick individual items.
-              </p>
-            </div>
-          </div>
-
-          <button
-            onClick={() => !isSyncing && onClose?.()}
-            disabled={isSyncing}
-            className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors disabled:opacity-40 cursor-pointer"
-            title="Close"
-          >
-            <IoClose size={20} />
-          </button>
+  return <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !syncing && onClose?.()} />
+    <section role="dialog" aria-modal="true" aria-labelledby="ornate-sync-title" className="relative w-full max-w-[1250px] max-h-[92dvh] flex flex-col rounded-[22px] bg-white shadow-2xl overflow-hidden">
+      <header className="flex items-center gap-4 border-b border-stone-100 px-6 py-5 shrink-0">
+        <div className="p-3 rounded-xl bg-[#f4ece0] text-[#8b6f4e]"><IoCubeOutline size={26} /></div>
+        <div className="flex-1"><h2 id="ornate-sync-title" className="text-[20px] font-bold">Sync Products from Ornate ERP</h2><p className="mt-1 text-[13px] text-stone-500">Select products to import in bulk, or open any product to view its ERP details.</p></div>
+        <button type="button" className={button} aria-label="Close sync dialog" disabled={syncing} onClick={onClose}><IoClose size={20} /></button>
+      </header>
+      <div className="px-6 py-4 border-b border-stone-100 space-y-3 shrink-0">
+        <div className="flex flex-wrap gap-3">
+          <div className="relative flex-1 min-w-[200px]"><IoSearchOutline className="absolute left-3 top-4 text-stone-400" size={18} /><input aria-label="Search ERP products" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search product name, label, barcode, metal, category..." className="h-[44px] w-full rounded-xl border border-stone-200 pl-10 pr-3 text-[13px]" /></div>
+          <Dropdown className="w-[150px]" value={sort} onChange={setSort} options={[{ value: 'erp', label: 'ERP order' }, { value: 'name', label: 'Name' }, { value: 'priceAsc', label: 'Price: Low to high' }, { value: 'priceDesc', label: 'Price: High to low' }]} />
         </div>
-
-        {/* Search & Global Actions Bar */}
-        <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-3">
-          <div className="relative flex-1 min-w-[240px]">
-            <IoSearchOutline className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
-            <input
-              type="text"
-              placeholder="Search category name, item name, barcode, metal..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              disabled={loading || isSyncing}
-              className="w-full pl-9 pr-3 py-2 bg-white border border-gray-200 rounded-xl text-xs outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/10 transition-all placeholder:text-gray-400 shadow-xs"
-            />
-          </div>
-
-          <div className="flex items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          {[{ name: '', label: `All (${products.length})` }, ...metals.map((name) => ({ name, label: `${name} (${products.filter((p) => p.metalName === name).length})` }))].map((tab) => <button type="button" key={tab.name} aria-pressed={metal === tab.name} onClick={() => handleSelectMetal(tab.name)} className={`rounded-full px-4 py-2 border text-[12px] cursor-pointer transition-colors ${metal === tab.name ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs' : 'border-stone-200 text-stone-600 hover:bg-stone-50'}`}>{tab.label}</button>)}
+          <div role="group" aria-label="Filter by categories" className="flex flex-wrap items-center gap-2 border-l border-stone-200 pl-3">
+            <span className="text-[12px] font-semibold text-stone-500">Categories</span>
             <button
               type="button"
-              onClick={handleSelectAll}
-              disabled={loading || isSyncing || selectedProductIds.length === totalPossibleProducts}
-              className="px-3 py-1.5 text-xs font-semibold text-[#8b6f4e] hover:text-[#785e40] bg-[#8b6f4e]/10 hover:bg-[#8b6f4e]/15 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
+              aria-pressed={!selectedCategory}
+              onClick={() => handleSelectCategory('')}
+              className={`rounded-full px-4 py-2 border text-[12px] font-medium transition-colors cursor-pointer ${
+                !selectedCategory
+                  ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs'
+                  : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+              }`}
             >
-              Select All ({totalPossibleProducts})
+              All categories
             </button>
-            <span className="text-gray-300">|</span>
-            <button
-              type="button"
-              onClick={handleDeselectAll}
-              disabled={loading || isSyncing || selectedProductIds.length === 0}
-              className="px-3 py-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer disabled:opacity-40"
-            >
-              Clear All
-            </button>
-          </div>
-        </div>
-
-        {/* Content Body: Responsive Grid of Category Boxes */}
-        <div className="p-5 sm:p-6 overflow-y-auto flex-1 bg-stone-50/40">
-          {loading ? (
-            <div className="py-20 flex flex-col items-center justify-center gap-3 text-center">
-              <IoRefreshOutline className="w-9 h-9 text-[#8b6f4e] animate-spin" />
-              <div>
-                <p className="text-sm font-bold text-gray-800">Connecting to Ornate ERP...</p>
-                <p className="text-xs text-gray-500 mt-1">Fetching catalogue categories and live item tags</p>
-              </div>
-            </div>
-          ) : error ? (
-            <div className="p-5 rounded-2xl bg-red-50 border border-red-200 text-red-700 flex items-start gap-3">
-              <IoAlertCircleOutline className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
-              <div className="flex-1 text-xs">
-                <p className="font-bold text-sm">Failed to load catalogue from ERP</p>
-                <p className="mt-1 text-red-600">{String(error)}</p>
+            {categories.map((item) => {
+              const active = selectedCategory.trim().toLowerCase() === item.name.trim().toLowerCase();
+              return (
                 <button
                   type="button"
-                  onClick={fetchCategories}
-                  className="mt-3 px-3.5 py-1.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition-colors text-xs cursor-pointer"
+                  key={item.name}
+                  aria-pressed={active}
+                  onClick={() => handleSelectCategory(item.name)}
+                  className={`rounded-full px-4 py-2 border text-[12px] text-left font-medium transition-colors cursor-pointer ${
+                    active
+                      ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs'
+                      : 'border-stone-200 text-stone-600 hover:bg-stone-50'
+                  }`}
                 >
-                  Retry Connection
+                  {item.name} ({item.count ?? item.products?.length ?? 0})
                 </button>
-              </div>
-            </div>
-          ) : filteredCategories.length === 0 ? (
-            <div className="py-16 text-center text-gray-400 text-xs">
-              <IoCubeOutline className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-              No categories or products found matching "{searchTerm}"
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredCategories.map((category) => {
-                const catProducts = category.products || [];
-                const selectedInCat = catProducts.filter((p) =>
-                  selectedProductIds.includes(p.uniqueLabelID)
-                );
-                const isAllSelected =
-                  catProducts.length > 0 && selectedInCat.length === catProducts.length;
-                const isPartiallySelected = selectedInCat.length > 0 && !isAllSelected;
-
-                return (
-                  <div
-                    key={category.name}
-                    onClick={() => handleOpenCategoryProducts(category)}
-                    className={`group relative rounded-2xl border transition-all duration-200 bg-white p-4.5 flex flex-col justify-between hover:shadow-md cursor-pointer select-none ${
-                      selectedInCat.length > 0
-                        ? 'border-[#8b6f4e]/50 ring-1 ring-[#8b6f4e]/15 bg-linear-to-b from-amber-50/20 via-white to-white'
-                        : 'border-gray-200/90 hover:border-[#8b6f4e]/40'
-                    }`}
-                  >
-                    {/* Top Row: Checkbox + Selection Status Badge */}
-                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-gray-100">
-                      {/* Checkbox */}
-                      <button
-                        type="button"
-                        onClick={(e) => handleToggleCategory(category, e)}
-                        className="flex items-center gap-2 text-left cursor-pointer group/btn"
-                        title={isAllSelected ? 'Deselect Category' : 'Select All in Category'}
-                      >
-                        <div
-                          className={`w-5 h-5 rounded-lg border flex items-center justify-center shrink-0 transition-all ${
-                            isAllSelected
-                              ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs'
-                              : isPartiallySelected
-                              ? 'bg-[#8b6f4e]/20 border-[#8b6f4e] text-[#8b6f4e]'
-                              : 'border-gray-300 bg-white group-hover/btn:border-[#8b6f4e]/60'
-                          }`}
-                        >
-                          {isAllSelected && <IoCheckmark size={14} className="stroke-[3]" />}
-                          {isPartiallySelected && <IoRemove size={14} className="stroke-[3]" />}
-                        </div>
-                        <span className="text-[11px] font-medium text-gray-500 group-hover/btn:text-gray-900 transition-colors">
-                          {isAllSelected ? 'Selected' : isPartiallySelected ? 'Partial' : 'Select all'}
-                        </span>
-                      </button>
-
-                      {/* Selected Count Badge */}
-                      <span
-                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0 transition-colors ${
-                          isAllSelected
-                            ? 'bg-[#8b6f4e] text-white shadow-xs'
-                            : isPartiallySelected
-                            ? 'bg-[#8b6f4e]/15 text-[#8b6f4e] font-bold'
-                            : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        {selectedInCat.length}/{catProducts.length} selected
-                      </span>
-                    </div>
-
-                    {/* Middle Section: Category Name, Total Products & Sample Types */}
-                    <div className="py-3.5 space-y-2 min-w-0">
-                      <div>
-                        <h4 className="text-sm font-bold text-gray-900 group-hover:text-[#8b6f4e] transition-colors truncate">
-                          {category.name}
-                        </h4>
-                        <p className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5">
-                          <IoCubeOutline size={12} className="text-gray-400" />
-                          <span>{catProducts.length} ERP Products</span>
-                          {category.matchingProductCount > 0 && searchTerm && (
-                            <span className="text-[#8b6f4e] font-semibold">
-                              • {category.matchingProductCount} matching search
-                            </span>
-                          )}
-                        </p>
-                      </div>
-
-                      {/* Sample Types / Sub-type Chips */}
-                      {category.itemTypes && category.itemTypes.length > 0 && (
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {category.itemTypes.slice(0, 3).map((type, idx) => (
-                            <span
-                              key={idx}
-                              className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-gray-100 text-gray-600 group-hover:bg-amber-50/70 group-hover:text-[#8b6f4e] transition-colors truncate max-w-[130px]"
-                            >
-                              {type}
-                            </span>
-                          ))}
-                          {category.itemTypes.length > 3 && (
-                            <span className="px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-gray-100 text-gray-400">
-                              +{category.itemTypes.length - 3} more
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Bottom Row: View Products Action Button */}
-                    <div className="pt-2">
-                      <div className="w-full py-2 px-3 rounded-xl bg-gray-50 group-hover:bg-[#8b6f4e]/10 text-gray-700 group-hover:text-[#8b6f4e] font-semibold text-xs flex items-center justify-between transition-all border border-gray-100 group-hover:border-[#8b6f4e]/20 shadow-xs">
-                        <span className="flex items-center gap-1.5">
-                          <IoLayersOutline size={13} className="text-[#8b6f4e] shrink-0" />
-                          <span>View Products ({catProducts.length})</span>
-                        </span>
-                        <IoArrowForward
-                          size={13}
-                          className="text-gray-400 group-hover:text-[#8b6f4e] group-hover:translate-x-0.5 transition-transform"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Selected Summary Info */}
-        {!loading && !error && (
-          <div className="px-6 py-3 bg-stone-50/80 border-t border-gray-100 flex items-center justify-between text-xs">
-            <div className="flex items-center gap-2 text-gray-600">
-              <span className="w-2 h-2 rounded-full bg-[#8b6f4e] animate-pulse" />
-              <span className="font-bold text-gray-900">
-                {selectedProductIds.length} of {totalPossibleProducts}
-              </span>
-              <span>products selected to import</span>
-            </div>
-            <div className="text-[#8b6f4e] font-bold">
-              {selectedProductIds.length === 0
-                ? 'No products selected'
-                : 'Ready to sync selected items'}
-            </div>
+              );
+            })}
           </div>
-        )}
-
-        {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isSyncing}
-            className="px-4.5 py-2.5 text-xs font-semibold text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded-xl transition-colors cursor-pointer disabled:opacity-50"
-          >
-            Cancel
-          </button>
-
-          <button
-            type="button"
-            onClick={handleStartSync}
-            disabled={selectedProductIds.length === 0 || loading || isSyncing}
-            className="px-6 py-2.5 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl shadow-md shadow-[#8b6f4e]/20 flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSyncing ? (
-              <>
-                <IoRefreshOutline size={15} className="animate-spin" />
-                <span>Syncing {selectedProductIds.length} Products...</span>
-              </>
-            ) : (
-              <>
-                <IoRefreshOutline size={15} />
-                <span>Sync Selected ({selectedProductIds.length} Products)</span>
-              </>
-            )}
-          </button>
+          <div className="ml-auto flex items-center gap-2"><Dropdown className="w-[145px]" size="sm" value={selectionFilter} onChange={setSelectionFilter} options={[{ value: 'all', label: 'All selections' }, { value: 'selected', label: 'Selected' }, { value: 'unselected', label: 'Unselected' }]} />
+            {[['grid', IoGridOutline], ['list', IoListOutline]].map(([mode, Icon]) => <button key={mode} type="button" aria-label={`${mode} view`} aria-pressed={view === mode} onClick={() => setView(mode)} className={`rounded-lg p-3 ${view === mode ? 'bg-[#8b6f4e] text-white' : 'bg-stone-100 text-stone-600'}`}><Icon size={18} /></button>)}
+          </div>
         </div>
       </div>
-
-      {/* ========================================================================= */}
-      {/* CATEGORY PRODUCTS POP-UP MODAL                                            */}
-      {/* ========================================================================= */}
-      {activeCategory && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-3 sm:p-4">
-          {/* Backdrop for the pop-up */}
-          <div
-            className="fixed inset-0 bg-gray-950/60 backdrop-blur-xs transition-opacity"
-            onClick={() => setActiveCategory(null)}
-          />
-
-          {/* Pop-up Container */}
-          <div className="relative bg-white rounded-2xl max-w-3xl w-full shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[85vh] z-10">
-            {/* Pop-up Header */}
-            <div className="px-6 py-4 border-b border-gray-100 bg-linear-to-r from-stone-50 via-white to-amber-50/40 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#8b6f4e]/10 border border-[#8b6f4e]/20 flex items-center justify-center text-[#8b6f4e] shrink-0">
-                  <IoLayersOutline className="w-4.5 h-4.5" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-sm font-bold text-gray-900">{activeCategory.name}</h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8b6f4e]/15 text-[#8b6f4e]">
-                      {selectedInActiveCat.length} of {activeCategoryProducts.length} selected
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        {loading ? <div className="p-20 text-center text-stone-500"><IoRefreshOutline size={30} className="animate-spin mx-auto mb-3" />Loading products from Ornate ERP...</div> : error ? <div className="p-8 text-red-700" role="alert">{error}<button type="button" className={`${button} ml-4`} onClick={() => setRetry((n) => n + 1)}>Retry</button></div> : <div className={`grid ${detail ? 'lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]' : ''}`}>
+          <div className="p-6 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-[13px]">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">
+                  Products ({filtered.length})
+                  {selectedCategory && (
+                    <span className="ml-1.5 text-xs font-normal text-stone-500">
+                      in <strong className="text-stone-800">{selectedCategory}</strong>
                     </span>
-                  </div>
-                  <p className="text-[11px] text-gray-500 mt-0.5">
-                    Select individual jewellery items to include in ERP sync.
-                  </p>
-                </div>
+                  )}
+                </span>
+                {filtered.length > 0 && (
+                  <span className="text-xs text-stone-400">
+                    ({(currentPage - 1) * 12 + 1}–{Math.min(currentPage * 12, filtered.length)})
+                  </span>
+                )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => setActiveCategory(null)}
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
-                title="Close Pop-up"
-              >
-                <IoClose size={18} />
-              </button>
-            </div>
-
-            {/* Pop-up Search & Filters Bar */}
-            <div className="px-6 py-3 border-b border-gray-100 bg-gray-50/60 flex flex-wrap items-center justify-between gap-3">
-              {/* Local Search Input */}
-              <div className="relative flex-1 min-w-[200px]">
-                <IoSearchOutline className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
-                <input
-                  type="text"
-                  placeholder={`Search within ${activeCategory.name}...`}
-                  value={popupSearchTerm}
-                  onChange={(e) => setPopupSearchTerm(e.target.value)}
-                  className="w-full pl-8.5 pr-3 py-1.5 bg-white border border-gray-200 rounded-lg text-xs outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/10 transition-all placeholder:text-gray-400 shadow-xs"
-                />
-              </div>
-
-              {/* Filter Tabs: All, Selected, Unselected */}
-              <div className="flex items-center bg-gray-200/70 p-0.5 rounded-lg text-[11px] font-medium">
-                <button
-                  type="button"
-                  onClick={() => setPopupFilter('all')}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                    popupFilter === 'all'
-                      ? 'bg-white text-gray-900 font-bold shadow-xs'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  All ({activeCategoryProducts.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPopupFilter('selected')}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                    popupFilter === 'selected'
-                      ? 'bg-white text-[#8b6f4e] font-bold shadow-xs'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Selected ({selectedInActiveCat.length})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPopupFilter('unselected')}
-                  className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                    popupFilter === 'unselected'
-                      ? 'bg-white text-gray-900 font-bold shadow-xs'
-                      : 'text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  Unselected ({unselectedInActiveCat.length})
-                </button>
-              </div>
-
-              {/* Select All / Deselect All for this category */}
-              <div className="flex items-center gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const catIds = activeCategoryProducts
-                      .map((p) => p.uniqueLabelID)
-                      .filter(Boolean);
-                    setSelectedProductIds((prev) => Array.from(new Set([...prev, ...catIds])));
-                  }}
-                  className="px-2 py-1 text-[11px] font-semibold text-[#8b6f4e] hover:text-[#785e40] hover:bg-[#8b6f4e]/10 rounded-md transition-colors cursor-pointer"
-                >
-                  Select All
-                </button>
-                <span className="text-gray-300">|</span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const catIds = activeCategoryProducts
-                      .map((p) => p.uniqueLabelID)
-                      .filter(Boolean);
-                    setSelectedProductIds((prev) => prev.filter((id) => !catIds.includes(id)));
-                  }}
-                  className="px-2 py-1 text-[11px] font-semibold text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-md transition-colors cursor-pointer"
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-
-            {/* Pop-up Products List */}
-            <div className="p-4 sm:p-5 overflow-y-auto flex-1 space-y-2 bg-stone-50/30">
-              {filteredPopupProducts.length === 0 ? (
-                <div className="py-12 text-center text-gray-400 text-xs">
-                  No products found matching "{popupSearchTerm}" in this category.
-                </div>
-              ) : (
-                filteredPopupProducts.map((product) => {
-                  const isProdSelected = selectedProductIds.includes(product.uniqueLabelID);
-
-                  return (
-                    <div
-                      key={product.uniqueLabelID}
-                      onClick={() => handleToggleProduct(product.uniqueLabelID)}
-                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 select-none ${
-                        isProdSelected
-                          ? 'bg-white border-[#8b6f4e]/50 shadow-xs ring-1 ring-[#8b6f4e]/10'
-                          : 'bg-white/90 border-gray-200 hover:border-gray-300 hover:bg-white'
-                      }`}
+              <div className="flex flex-wrap items-center gap-3">
+                {pageCount > 1 && (
+                  <div className="flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-xl px-2 py-1">
+                    <button
+                      type="button"
+                      aria-label="Previous page (top)"
+                      className="h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-white text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      disabled={currentPage === 1}
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
                     >
-                      {/* Product Checkbox + Name + Barcode / Metal */}
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <div
-                          className={`w-4.5 h-4.5 rounded-md border flex items-center justify-center shrink-0 transition-all ${
-                            isProdSelected
-                              ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs'
-                              : 'border-gray-300 bg-white'
-                          }`}
-                        >
-                          {isProdSelected && <IoCheckmark size={12} className="stroke-[3]" />}
-                        </div>
+                      <IoChevronBack size={15} />
+                    </button>
+                    <span className="text-[12px] font-semibold text-stone-700 px-2 select-none min-w-[50px] text-center">
+                      {currentPage} / {pageCount}
+                    </span>
+                    <button
+                      type="button"
+                      aria-label="Next page (top)"
+                      className="h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-white text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      disabled={currentPage === pageCount}
+                      onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                    >
+                      <IoChevronForward size={15} />
+                    </button>
+                  </div>
+                )}
 
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-xs font-bold text-gray-900 truncate">
-                              {product.itemName || 'Jewellery Item'}
-                            </p>
-                            {product.metalName && (
-                              <span className="px-1.5 py-0.2 rounded text-[10px] font-medium bg-amber-50 text-amber-800 border border-amber-200/60">
-                                {product.metalName}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center gap-2 mt-1 text-[10px] text-gray-500">
-                            <span className="font-mono text-gray-600 bg-gray-100 px-1.5 py-0.2 rounded border border-gray-200/60">
-                              {product.barcodeNo || product.uniqueLabelID}
-                            </span>
-                            {product.labelNo && (
-                              <span className="text-gray-500">Label: {product.labelNo}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Weight & Price */}
-                      <div className="text-right shrink-0">
-                        <p className="text-xs font-bold text-gray-900">
-                          {formatCurrency(product.price)}
-                        </p>
-                        <div className="flex items-center justify-end gap-1 text-[10px] text-gray-500 mt-0.5">
-                          <IoScaleOutline size={11} className="text-gray-400" />
-                          <span>Gross: {product.grossWt || 0}g</span>
-                          {product.netWt > 0 && product.netWt !== product.grossWt && (
-                            <span>• Net: {product.netWt}g</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-
-            {/* Pop-up Footer */}
-            <div className="px-6 py-3.5 border-t border-gray-100 bg-white flex items-center justify-between">
-              <div className="text-xs text-gray-600">
-                <span className="font-bold text-gray-900">{selectedInActiveCat.length}</span> of{' '}
-                {activeCategoryProducts.length} items selected in this category
+                <button
+                  type="button"
+                  className="text-[#8b6f4e] hover:text-[#785e40] font-semibold disabled:opacity-40 cursor-pointer whitespace-nowrap"
+                  disabled={syncing || !filtered.length}
+                  onClick={handleToggleAllFiltered}
+                >
+                  {allFilteredSelected
+                    ? `Deselect all ${filtered.length} results`
+                    : `Select all ${filtered.length} results`}
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setActiveCategory(null)}
-                className="px-5 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl shadow-xs transition-all cursor-pointer"
-              >
-                Done
-              </button>
             </div>
+            {!visible.length && <p className="py-16 text-center text-stone-500">No products match these filters.</p>}
+            <div className={view === 'grid' ? `grid grid-cols-1 sm:grid-cols-2 ${detail ? '' : 'lg:grid-cols-3 xl:grid-cols-4'} gap-3` : 'space-y-2'}>
+              {visible.map((product) => { const image = imagesFor(product)[0]; return <article key={product.key} className={`rounded-xl border overflow-hidden ${selected.has(product.id) ? 'border-[#b8946c] bg-[#faf6f0]' : 'border-stone-200 bg-white'} ${detailId === product.key ? 'ring-2 ring-[#8b6f4e]/30' : ''}`}>
+                <div className={`p-3 ${view === 'list' ? 'flex items-center gap-3' : ''}`}>
+                  <div className={`flex items-center justify-between gap-3 ${view === 'grid' ? 'mb-2' : ''}`}><input type="checkbox" aria-label={`Select ${product.itemName || product.labelNo}`} checked={selected.has(product.id)} disabled={syncing || !product.id} onChange={() => toggle(product.id)} className="w-[18px] h-[18px] accent-[#8b6f4e]" />{view === 'grid' && <button type="button" aria-label={`View ${product.itemName || 'product'} details`} onClick={() => openDetails(product)} className="rounded-full p-1.5 text-[#8b6f4e] hover:bg-[#f4ece0]"><IoEyeOutline size={18} /></button>}</div>
+                  {image && <ProductPhoto url={image} name={product.itemName} className={view === 'grid' ? 'w-full h-[130px] object-contain rounded-lg bg-stone-50 mb-3' : 'w-[56px] h-[56px] object-contain rounded-lg shrink-0'} />}
+                  <button type="button" onClick={() => openDetails(product)} className="text-left min-w-0 flex-1 w-full">
+                    <h3 className="text-[13px] leading-relaxed font-bold break-words">{product.itemName || 'Unnamed ERP product'}</h3>
+                    <p className="text-[12px] text-stone-500 mt-1 break-all">Label: {valueOrDash(product.labelNo)}</p>
+                    <div className="flex flex-wrap gap-1 mt-2">{[product.metalName, product.carat].filter(Boolean).map((tag, index) => <span key={index} className="rounded bg-[#f1e7da] text-[#785e40] px-2 py-0.5 text-[11px]">{tag}</span>)}</div>
+                    <p className="text-[11px] text-stone-500 mt-2">Gross: {weight(product.grossWt)} · Net: {weight(product.netWt)}</p>
+                    <p className="text-[11px] text-stone-500 mt-1 break-all">Barcode: {valueOrDash(product.barcodeNo)}</p>
+                    <p className="text-[14px] font-bold mt-3">{money(product.price)}</p>
+                  </button>
+                </div>
+              </article>; })}
+            </div>
+            <nav aria-label="Product pages" className="flex justify-between items-center gap-3 mt-5 text-[12px]">
+              <span className="text-stone-500">
+                {filtered.length ? `${(currentPage - 1) * 12 + 1}–${Math.min(currentPage * 12, filtered.length)} of ${filtered.length}` : '0 products'}
+              </span>
+              <div className="flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-xl px-2 py-1">
+                <button
+                  type="button"
+                  aria-label="Previous page (bottom)"
+                  className="h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-white text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  disabled={currentPage === 1}
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                >
+                  <IoChevronBack size={15} />
+                </button>
+                <span className="text-[12px] font-semibold text-stone-700 px-2 select-none min-w-[50px] text-center">
+                  {currentPage} / {pageCount}
+                </span>
+                <button
+                  type="button"
+                  aria-label="Next page (bottom)"
+                  className="h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-white text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                  disabled={currentPage === pageCount}
+                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+                >
+                  <IoChevronForward size={15} />
+                </button>
+              </div>
+            </nav>
           </div>
+          {detail && <aside className="border-t lg:border-t-0 lg:border-l border-stone-200 p-6 bg-stone-50/50 min-w-0">
+            <div className="flex items-center justify-between mb-4"><h3 className="text-[14px] font-bold">Product details</h3><button type="button" aria-label="Close product details" onClick={() => setDetailId(null)} className="p-2"><IoClose size={20} /></button></div>
+            {photos.length > 0 && <div className="mb-4"><ProductPhoto url={photos[imageIndex]} name={detail.itemName} className="w-full max-h-[240px] object-contain rounded-xl" />{photos.length > 1 && <div className="flex justify-between items-center mt-2"><button type="button" aria-label="Previous image" onClick={() => setImageIndex((imageIndex + photos.length - 1) % photos.length)}><IoChevronBack /></button><span>{imageIndex + 1} / {photos.length}</span><button type="button" aria-label="Next image" onClick={() => setImageIndex((imageIndex + 1) % photos.length)}><IoChevronForward /></button></div>}</div>}
+            <h4 className="text-[16px] font-bold leading-relaxed mb-4">{detail.itemName || 'Unnamed ERP product'}</h4>
+            <dl className="rounded-xl border border-stone-200 bg-white overflow-hidden text-[12px]">{[
+              ['Category', detail.groupName], ['Metal', detail.metalName], ['Carat / purity code', detail.carat], ['ERP unique label ID', detail.uniqueLabelID], ['Label number', detail.labelNo], ['Barcode', detail.barcodeNo], ['Gross weight', weight(detail.grossWt)], ['Net weight', weight(detail.netWt)], ['Price', money(detail.price)], ['Stock', detail.inStock == null ? null : Number(detail.inStock) === 1 ? 'In stock' : 'Out of stock'],
+            ].map(([label, value]) => <div key={label} className="grid grid-cols-2 gap-3 p-3 border-b last:border-0 border-stone-100"><dt className="text-stone-500">{label}</dt><dd className="font-medium break-words">{valueOrDash(value)}</dd></div>)}</dl>
+            <button type="button" disabled={syncing || !detail.id} onClick={() => toggle(detail.id)} className="w-full mt-4 bg-[#8b6f4e] text-white rounded-xl px-4 py-3 text-[13px] font-semibold disabled:opacity-40">{selected.has(detail.id) ? 'Remove from selection' : 'Add to selection'}</button>
+          </aside>}
+        </div>}
+      </div>
+      <footer className="px-6 py-4 border-t border-stone-200 shrink-0 bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3 text-[13px]">
+          <span>
+            <strong>{selected.size} of {products.length}</strong> products selected
+            {selectedCategory && (
+              <span className="ml-2 text-stone-500 font-normal">
+                (category: <strong className="text-stone-800">{selectedCategory}</strong>)
+              </span>
+            )}
+          </span>
         </div>
-      )}
-    </div>
-  );
-};
-
-export default OrnateSyncModal;
+        <div className="flex flex-wrap justify-end gap-3"><button type="button" className={`${button} mr-auto text-red-600`} disabled={syncing || !selected.size} onClick={() => setSelected(new Set())}>Clear All</button><button type="button" className={button} disabled={syncing} onClick={onClose}>Cancel</button><button type="button" disabled={loading || !!error || syncing || !selected.size} onClick={sync} className="flex items-center gap-2 rounded-xl px-6 py-3 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-[13px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"><IoRefreshOutline size={18} className={syncing ? 'animate-spin' : ''} />{syncing ? 'Syncing...' : `Sync Selected (${selected.size} Products)`}</button></div>
+      </footer>
+    </section>
+  </div>;
+}

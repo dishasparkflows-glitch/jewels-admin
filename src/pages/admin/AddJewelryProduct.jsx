@@ -182,6 +182,37 @@ const compressVideoAsset = async (asset, quality) => {
   }
 };
 
+const sortPurities = (list = []) => {
+  const getKaratNum = (item) => {
+    if (typeof item === 'object' && item?.karat !== undefined && item?.karat !== null && Number(item.karat) > 0) {
+      return Number(item.karat);
+    }
+    const name = typeof item === 'string' ? item : item?.name || '';
+    const match = name.match(/(\d+(?:\.\d+)?)/);
+    return match ? parseFloat(match[1]) : 999;
+  };
+
+  return [...list].sort((a, b) => {
+    const orderA = typeof a === 'object' && a?.order !== undefined && a?.order !== null ? Number(a.order) : 0;
+    const orderB = typeof b === 'object' && b?.order !== undefined && b?.order !== null ? Number(b.order) : 0;
+    if (orderA > 0 && orderB > 0 && orderA !== orderB) {
+      return orderA - orderB;
+    }
+    if (orderA > 0 && (!orderB || orderB === 0)) return -1;
+    if (orderB > 0 && (!orderA || orderA === 0)) return 1;
+
+    const karatA = getKaratNum(a);
+    const karatB = getKaratNum(b);
+    if (karatA !== karatB) {
+      return karatA - karatB;
+    }
+
+    const nameA = typeof a === 'string' ? a : a?.name || '';
+    const nameB = typeof b === 'string' ? b : b?.name || '';
+    return nameA.localeCompare(nameB, undefined, { numeric: true, sensitivity: 'base' });
+  });
+};
+
 export default function AddJewelryProduct() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
@@ -220,9 +251,14 @@ export default function AddJewelryProduct() {
   const [diamondColorsList, setDiamondColorsList] = useState([]);
   const [diamondClaritiesList, setDiamondClaritiesList] = useState([]);
   const [diamondMasters, setDiamondMasters] = useState({ types: [], shapes: [], colors: [], clarities: [] });
+  const mastersFetchedRef = useRef(false);
+  const centerRatesFetchedRef = useRef(false);
 
-  // Fetch Metal Purities, Metal Colors, and Diamond masters from backend using single combined API
+  // Lazy-load Metal Purities, Metal Colors, and Diamond masters ONLY when user enters Step 2 (Variant Configuration) or later
   useEffect(() => {
+    if (activeStep < 2 || mastersFetchedRef.current) return;
+    mastersFetchedRef.current = true;
+
     const fetchMasters = async () => {
       try {
         // Try single combined API endpoint first
@@ -238,8 +274,9 @@ export default function AddJewelryProduct() {
 
         if (combinedData) {
           if (Array.isArray(combinedData.metalPurities)) {
-            setPurityMasterList(combinedData.metalPurities);
-            setPuritiesList(combinedData.metalPurities.map((i) => (typeof i === 'string' ? i : i.name)));
+            const sorted = sortPurities(combinedData.metalPurities);
+            setPurityMasterList(sorted);
+            setPuritiesList(sorted.map((i) => (typeof i === 'string' ? i : i.name)));
           }
           if (Array.isArray(combinedData.metalColors)) {
             const mapped = combinedData.metalColors.map((c) => ({
@@ -291,8 +328,9 @@ export default function AddJewelryProduct() {
         if (resPurities.status === 'fulfilled' && resPurities.value.data?.data) {
           const items = resPurities.value.data.data;
           if (Array.isArray(items)) {
-            setPurityMasterList(items);
-            setPuritiesList(items.map((i) => (typeof i === 'string' ? i : i.name)));
+            const sorted = sortPurities(items);
+            setPurityMasterList(sorted);
+            setPuritiesList(sorted.map((i) => (typeof i === 'string' ? i : i.name)));
           }
         }
 
@@ -355,7 +393,7 @@ export default function AddJewelryProduct() {
     };
 
     fetchMasters();
-  }, []);
+  }, [activeStep]);
 
   useEffect(() => {
     if (!productId) return undefined;
@@ -365,7 +403,11 @@ export default function AddJewelryProduct() {
     setProductLoading(true);
     api.get('/products/' + productId)
       .then((response) => {
-        if (!cancelled) setProductRecord(response.data?.data?.product || response.data?.data);
+        if (!cancelled) {
+          const rec = response.data?.data?.product || response.data?.data;
+          setProductRecord(rec);
+          setProductLoading(false);
+        }
       })
       .catch((error) => {
         if (cancelled) return;
@@ -374,7 +416,7 @@ export default function AddJewelryProduct() {
         setProductLoading(false);
       });
     return () => { cancelled = true; };
-  }, [productId, navigate, productListPath]);
+  }, [productId, navigate, productListPath, isSilverProduct]);
 
   // ─── Step 1: Basic Details ──────────────────────────────
   const [basicDetails, setBasicDetails] = useState({
@@ -386,10 +428,38 @@ export default function AddJewelryProduct() {
     isOrnate: false,
   });
 
+  // Immediately hydrate Step 1 (Basic Details) as soon as productRecord is fetched without waiting for diamond masters
+  useEffect(() => {
+    if (!productRecord) return;
+    const basicInfo = productRecord.basicInfo || {};
+    const categoryValues = productRecord.categoryIds || productRecord.category || [];
+    const categoryRef = Array.isArray(categoryValues) ? categoryValues[0] : categoryValues;
+    const categoryId = categoryRef && typeof categoryRef === 'object' ? categoryRef._id : categoryRef;
+
+    setMenuItemIds(selectedMenuIds(productRecord));
+    setBasicDetails({
+      title: basicInfo.title || '',
+      sku: basicInfo.sku || '',
+      category: categoryId ? String(categoryId) : '',
+      gender: Array.isArray(productRecord.gender) ? (productRecord.gender[0] || '') : (productRecord.gender || ''),
+      description: basicInfo.description || '',
+      isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
+    });
+  }, [productRecord]);
+
   const selectedCategory = useMemo(
     () => categoryList.find((category) => String(category._id) === String(basicDetails.category)),
     [categoryList, basicDetails.category]
   );
+
+  const sortedDisplayPurities = useMemo(() => {
+    return sortPurities(
+      puritiesList.map((pName) => {
+        const matched = purityMasterList.find((pm) => (typeof pm === 'string' ? pm : pm?.name) === pName);
+        return matched || pName;
+      })
+    ).map((item) => (typeof item === 'string' ? item : item.name));
+  }, [puritiesList, purityMasterList]);
 
   // ─── Step 2: Metal Options ──────────────────────────────
   const [selectedPurities, setSelectedPurities] = useState([]);
@@ -412,21 +482,52 @@ export default function AddJewelryProduct() {
   const [gstPercentage, setGstPercentage] = useState('3');
   const [computingPrices, setComputingPrices] = useState(false);
 
-  // Fetch live diamond pricing master from backend
+  const centerTypeId = useMemo(() => {
+    if (!centerDiamondType) return '';
+    const match = (diamondMasters.types || []).find((t) =>
+      (t.name || t) === centerDiamondType || String(t._id || t.id) === String(centerDiamondType)
+    );
+    return match?._id || match?.id || (/^[a-f\d]{24}$/i.test(centerDiamondType) ? centerDiamondType : '');
+  }, [centerDiamondType, diamondMasters.types]);
+
+  const centerShapeId = useMemo(() => {
+    if (!centerDiamondShape) return '';
+    const match = (diamondMasters.shapes || []).find((s) =>
+      (s.name || s) === centerDiamondShape || String(s._id || s.id) === String(centerDiamondShape)
+    );
+    return match?._id || match?.id || (/^[a-f\d]{24}$/i.test(centerDiamondShape) ? centerDiamondShape : '');
+  }, [centerDiamondShape, diamondMasters.shapes]);
+
+  // Fetch live diamond pricing master from backend lookup API filtered by diamondTypeId and diamondShapeId
   useEffect(() => {
+    if (activeStep < 2) return;
+    if (!centerTypeId && !centerShapeId) {
+      setApiCenterRates([]);
+      return;
+    }
+
+    let active = true;
     const fetchLiveRates = async () => {
       try {
-        const res = await api.get('/center-diamond-prices?limit=500');
+        const params = new URLSearchParams();
+        if (centerTypeId) params.set('diamondTypeId', centerTypeId);
+        if (centerShapeId) params.set('diamondShapeId', centerShapeId);
+        const qs = params.toString();
+        const url = `/center-diamond-prices/lookup${qs ? `?${qs}` : ''}`;
+        const res = await api.get(url);
+        if (!active) return;
         const items = res.data?.data?.items || res.data?.data || [];
         if (Array.isArray(items)) {
           setApiCenterRates(items);
         }
       } catch (err) {
+        if (!active) return;
         console.warn('Center diamond prices live lookup notice:', err);
       }
     };
     fetchLiveRates();
-  }, []);
+    return () => { active = false; };
+  }, [activeStep, centerTypeId, centerShapeId]);
 
   const centerColorOptions = diamondColorsList;
   const centerClarityOptions = diamondClaritiesList;
@@ -441,18 +542,27 @@ export default function AddJewelryProduct() {
     if (apiCenterRates.length > 0) {
       const ctNum = Number(carat) || 1;
       const matched = apiCenterRates.find((r) => {
-        const t = String(r.diamondTypeId?.name || '').toUpperCase();
-        const s = String(r.diamondShapeId?.name || r.diamondShape || '').toUpperCase();
-        const c = String(r.diamondColorId?.name || r.diamondColor || '').toUpperCase();
-        const cl = String(r.diamondClarityId?.name || r.diamondClarity || '').toUpperCase();
+        const tName = String(r.diamondTypeId?.name || '').toUpperCase();
+        const tId = String(r.diamondTypeId?._id || r.diamondTypeId || '');
+        const sName = String(r.diamondShapeId?.name || r.diamondShape || '').toUpperCase();
+        const sId = String(r.diamondShapeId?._id || r.diamondShapeId || '');
+        const cName = String(r.diamondColorId?.name || r.diamondColor || '').toUpperCase();
+        const cId = String(r.diamondColorId?._id || r.diamondColorId || '');
+        const clName = String(r.diamondClarityId?.name || r.diamondClarity || '').toUpperCase();
+        const clId = String(r.diamondClarityId?._id || r.diamondClarityId || '');
         const from = Number(r.sizeFrom ?? 0);
         const to = Number(r.sizeTo ?? 999);
 
+        const typeMatch = !type || tName === String(type).toUpperCase() || tId === String(type);
+        const shapeMatch = !shape || sName === String(shape).toUpperCase() || sId === String(shape);
+        const colorMatch = !color || cName === String(color).toUpperCase() || cId === String(color);
+        const clarityMatch = !clarity || clName === String(clarity).toUpperCase() || clId === String(clarity);
+
         return (
-          t === String(type).toUpperCase() &&
-          (!shape || s === String(shape).toUpperCase()) &&
-          (!color || c === String(color).toUpperCase()) &&
-          (!clarity || cl === String(clarity).toUpperCase()) &&
+          typeMatch &&
+          shapeMatch &&
+          colorMatch &&
+          clarityMatch &&
           ctNum >= from &&
           ctNum <= to
         );
@@ -1649,7 +1759,7 @@ export default function AddJewelryProduct() {
       category: categoryId ? String(categoryId) : '',
       gender: Array.isArray(productRecord.gender) ? (productRecord.gender[0] || '') : (productRecord.gender || ''),
       description: basicInfo.description || '',
-      isOrnate: Boolean(basicInfo.isOrnate || productRecord.isOrnate || productRecord.productType === 'ornate'),
+      isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
     });
     const savedPurities = Array.isArray(productRecord.metalPurityIds)
       ? productRecord.metalPurityIds.map((purity) => resolveName(purity, puritiesList))
@@ -2004,16 +2114,21 @@ export default function AddJewelryProduct() {
   const handlePublish = async (statusOverride = seo.status || 'active') => {
     setSaving(true);
     try {
-      const activeTitle = basicDetails.title.trim();
-      const activeSku = basicDetails.sku.trim();
-      if (!activeTitle || !activeSku) {
-        toast.error('Product title and SKU are required to save this product');
+      const isDraft = statusOverride === 'draft';
+      const activeTitle = basicDetails.title?.trim() || '';
+      const activeSku = basicDetails.sku?.trim() || '';
+      if (!activeTitle) {
+        toast.error('Product title is required to save a draft');
+        return;
+      }
+      if (!isDraft && !activeSku) {
+        toast.error('Product title and SKU are required to publish this product');
         return;
       }
       const activeSlug = seo.slug?.trim() || undefined;
       const activeDesc = basicDetails.description || '';
       const numberValue = (value) => value === '' || value === null || value === undefined ? undefined : Number(value);
-      if (!isSilverProduct) {
+      if (!isDraft && !isSilverProduct) {
         if (variants.some((variant) => !(Number(String(variant.price ?? '').replace(/,/g, '')) > 0))) {
           setActiveStep(2);
           toast.error('Enter a price for every jewelry variant before saving');
@@ -2088,7 +2203,8 @@ export default function AddJewelryProduct() {
         const videos = (mediaVideos[colorName] || []).filter((item) => item?.url).map((item) => mediaEntry(item, 'video'));
         const vto = vtoConfigs[colorName] || {};
         const hasVto = Boolean(vto.isConfigured && vto.overlayUrl);
-        if (!color && !images.length && !videos.length && !hasVto) return [];
+        // Do not create empty dummy colorImage rows without media or VTO
+        if (!images.length && !videos.length && !hasVto) return [];
 
         const vtoConfig = compactObject({
           top: numberValue(vto.top),
@@ -2148,7 +2264,15 @@ export default function AddJewelryProduct() {
         pricePerCarat: numberValue(combination.rate),
         rateSource: customComboRates[combination.id] !== undefined ? 'manual' : 'master',
       }));
-      const sideDiamondRows = pricingInput().sideDiamondRows;
+      // Only include side diamonds that have actual attributes configured, avoid blank template rows
+      const validSideDiamondRows = (sideRows || [])
+        .filter((row) => row.diamondTypeId && (row.diamondShapeId || Number(row.caratWeight) > 0 || Number(row.pieces) > 0))
+        .map((row) => compactObject({
+          ...row,
+          pieces: numberValue(row.pieces),
+          caratWeight: numberValue(row.caratWeight),
+          priceINR: numberValue(row.priceINR),
+        }));
       const descriptionSections = careSections
         .filter((section) => section.header?.trim() || section.description?.trim())
         .map((section) => compactObject({
@@ -2174,16 +2298,22 @@ export default function AddJewelryProduct() {
           markupPercentage: markupNum,
         }),
         ...(!isSilverProduct ? {
-          calculationMode: automaticPricing ? 'automatic' : 'manual',
-          baseCarat: Number(baseCarat),
-          gstPercentage: Number(gstPercentage),
-          baseLabourCharge: numberValue(specs.baseLabourCharge),
-          certificateCharge: numberValue(specs.certificateCharge),
-          otherAmountPercentage: numberValue(specs.otherAmountPercentage),
+          ...(metalWeightNum ? {
+            calculationMode: automaticPricing ? 'automatic' : 'manual',
+            baseCarat: Number(baseCarat),
+            gstPercentage: Number(gstPercentage),
+            baseLabourCharge: numberValue(specs.baseLabourCharge),
+            certificateCharge: numberValue(specs.certificateCharge),
+            otherAmountPercentage: numberValue(specs.otherAmountPercentage),
+          } : (!isDraft ? {
+            calculationMode: automaticPricing ? 'automatic' : 'manual',
+            baseCarat: Number(baseCarat),
+            gstPercentage: Number(gstPercentage),
+          } : {})),
         } : {}),
       });
       const specificationData = compactObject({
-        ...(!isSilverProduct ? { metalWeight: metalWeightNum } : {}),
+        ...(!isSilverProduct && metalWeightNum ? { metalWeight: metalWeightNum } : {}),
       });
       const seoData = compactObject({
         metaTitle: seo.metaTitle?.trim(),
@@ -2222,28 +2352,26 @@ export default function AddJewelryProduct() {
         isOrnate: Boolean(basicDetails.isOrnate),
         basicInfo: compactObject({
           title: activeTitle,
-          sku: activeSku,
+          sku: activeSku || undefined,
           slug: activeSlug,
           description: activeDesc,
-          productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
           ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
-          isOrnate: basicDetails.isOrnate ? true : undefined,
         }),
         status: statusOverride,
         ...(categoryId ? { categoryIds: [categoryId] } : {}),
-        menuItemIds: menuItemIds,
+        ...(menuItemIds && menuItemIds.length ? { menuItemIds } : {}),
         ...(Object.keys(pricingData).length ? { pricing: pricingData } : {}),
         ...(Object.keys(specificationData).length ? { specifications: specificationData } : {}),
         ...(isSilverProduct
           ? (silverMetalColorIds.length ? { metalColorIds: silverMetalColorIds } : {})
-          : (metalColorIds.length ? { metalColorIds } : {})),
-        ...(!isSilverProduct && metalPurityIds.length ? { metalPurityIds } : {}),
+          : (metalColorIds.length && (!isDraft || variantRows.length) ? { metalColorIds } : {})),
+        ...(!isSilverProduct && metalPurityIds.length && (!isDraft || variantRows.length) ? { metalPurityIds } : {}),
         ...(isSilverProduct
           ? (silverColorImageRows.length ? { colorImages: silverColorImageRows } : {})
           : (colorImageRows.length ? { colorImages: colorImageRows } : {})),
         ...(!isSilverProduct && variantRows.length ? { variants: variantRows } : {}),
-        ...(!isSilverProduct ? { centerDiamondRows } : {}),
-        ...(!isSilverProduct ? { sideDiamondRows } : {}),
+        ...(!isSilverProduct && centerDiamondRows.length ? { centerDiamondRows } : {}),
+        ...(!isSilverProduct && validSideDiamondRows.length ? { sideDiamondRows: validSideDiamondRows } : {}),
         ...(descriptionSections.length ? { descriptionSections } : {}),
         ...(productSpecifications.length ? { productSpecifications } : {}),
         ...(Object.keys(seoData).length ? { seo: seoData } : {}),
@@ -2621,7 +2749,7 @@ export default function AddJewelryProduct() {
                       Metal Purity <span className="text-rose-500">*</span>
                     </label>
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {puritiesList.map((purity) => {
+                      {sortedDisplayPurities.map((purity) => {
                         const isSelected = selectedPurities.includes(purity);
                         return (
                           <button
@@ -2979,6 +3107,9 @@ export default function AddJewelryProduct() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
+                    <span aria-live="polite" className="rounded-full border border-[#e8d8c0] bg-[#faf5ee] px-3 py-1.5 text-xs font-semibold text-[#8b6f4e]">
+                      Total Variants: {variants.length}
+                    </span>
                     <label className="flex items-center gap-2 text-[10px] font-semibold text-stone-500">
                       Other amount markup %
                       <input type="number" min="0" value={specs.otherAmountPercentage} onChange={(e) => setSpecs((prev) => ({ ...prev, otherAmountPercentage: e.target.value }))} className="w-16 px-2 py-1.5 text-xs text-stone-800 rounded-md border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]" />
@@ -2997,6 +3128,7 @@ export default function AddJewelryProduct() {
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-[#faf9f7] border-b border-stone-200/80 text-[9.5px] font-bold text-stone-500 uppercase tracking-wider">
+                          <th scope="col" className="py-2.5 px-3 w-16 whitespace-nowrap text-center">Sr. No.</th>
                           <th className="py-2.5 pl-3 pr-2 min-w-[260px]">COMBINATION</th>
                           <th className="py-2.5 px-2.5 min-w-[140px]">SKU</th>
                           <th className="py-2.5 px-2.5 w-28 text-center">FINAL WEIGHT (G)</th>
@@ -3012,7 +3144,7 @@ export default function AddJewelryProduct() {
                       <tbody className="divide-y divide-stone-100 text-[11px]">
                         {variants.length === 0 ? (
                           <tr>
-                            <td colSpan={7} className="py-12 text-center">
+                            <td colSpan={8} className="py-12 text-center">
                               <div className="flex flex-col items-center justify-center space-y-1.5 text-stone-400">
                                 <span className="text-2xl">✨</span>
                                 <p className="font-semibold text-xs text-stone-700">No variants generated yet</p>
@@ -3031,19 +3163,20 @@ export default function AddJewelryProduct() {
                             </td>
                           </tr>
                         ) : (
-                          variants.map((v) => {
+                          variants.map((v, variantIndex) => {
                             const detailsList = [
-                              v.diamondType || v.diamondDetails?.type || 'Lab Grown Diamond',
-                              v.diamondColor || v.diamondDetails?.color,
-                              v.diamondClarity || v.diamondDetails?.clarity,
+                              v.diamondType || v.diamondDetails?.type || diamondMasters.types.find((item) => String(item._id) === String(v.diamondTypeId?._id || v.diamondTypeId))?.name,
+                              v.diamondColor || v.diamondDetails?.color || diamondMasters.colors.find((item) => String(item._id) === String(v.diamondColorId?._id || v.diamondColorId))?.name,
+                              v.diamondClarity || v.diamondDetails?.clarity || diamondMasters.clarities.find((item) => String(item._id) === String(v.diamondClarityId?._id || v.diamondClarityId))?.name,
                               v.purity,
                               (v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight) ? `${v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight}ct` : '',
                             ].filter(Boolean);
 
-                            const breakdownText = `Metal: ₹${(v.metalCost || 0).toLocaleString('en-IN')} (${v.weight || v.metalWeight}g @ ₹${v.metalRate || 0}/g)\nDiamonds: ₹${(v.diamondCost || 0).toLocaleString('en-IN')}\nLabour: ₹${(v.labourCharge || 0).toLocaleString('en-IN')}\nGST (3%): ₹${(v.computedGst || 0).toLocaleString('en-IN')}${v.otherAmount ? `\nMarkup: ₹${v.otherAmount}` : ''}`;
+                            const breakdownText = `Metal: ₹${(v.metalCost || 0).toLocaleString('en-IN')} (${v.weight || v.metalWeight}g @ ₹${v.metalRate || 0}/g)\nDiamonds: ₹${(v.diamondCost || 0).toLocaleString('en-IN')}\nLabour: ₹${(v.labourCharge || 0).toLocaleString('en-IN')}\nGST (${gstPercentage}%): ₹${(v.computedGst || 0).toLocaleString('en-IN')}${v.otherAmount ? `\nOther Amount: ₹${v.otherAmount}` : ''}`;
 
                             return (
                               <tr key={v.id} className="hover:bg-stone-50/70 transition-colors">
+                                <td className="py-2.5 px-3 text-center font-medium text-stone-500">{variantIndex + 1}</td>
                                 {/* Combinations Badges */}
                                 <td className="py-2.5 pl-3 pr-2">
                                   <div className="flex flex-wrap gap-1">
@@ -3067,6 +3200,7 @@ export default function AddJewelryProduct() {
                                 <td className="py-2.5 px-2.5">
                                   <input
                                     type="text"
+                                    readOnly={automaticPricing}
                                     value={v.sku}
                                     onChange={(e) => handleVariantChange(v.id, 'sku', e.target.value)}
                                     className="w-full px-2 py-1 text-[11px] font-mono text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
@@ -3089,6 +3223,7 @@ export default function AddJewelryProduct() {
                                 <td className="py-2.5 px-2.5 text-center">
                                   <input
                                     type="number"
+                                    readOnly={automaticPricing}
                                     value={v.labourCharge}
                                     onChange={(e) => handleVariantChange(v.id, 'labourCharge', e.target.value)}
                                     className="w-20 px-1.5 py-1 text-center font-mono text-[11px] font-semibold text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
@@ -3104,7 +3239,8 @@ export default function AddJewelryProduct() {
                                 <td className="py-2.5 px-2.5 text-right">
                                   <input
                                     type="number"
-                                    value={v.otherAmount}
+                                    readOnly={automaticPricing}
+                                    value={automaticPricing ? (Number(v.priceRaw || v.price || 0) * (1 + Number(specs.otherAmountPercentage || 0) / 100)).toFixed(2) : v.otherAmount}
                                     onChange={(e) => handleVariantChange(v.id, 'otherAmount', e.target.value)}
                                     className="w-24 px-2 py-1 text-right font-mono text-[11px] text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
                                   />

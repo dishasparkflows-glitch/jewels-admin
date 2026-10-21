@@ -15,6 +15,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
+import RowActions from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 // Helper to extract clean embed URL from Instagram URL
@@ -647,30 +648,18 @@ export default function InstagramPostsView() {
                   </div>
 
                   {/* Right: Actions */}
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenEditModal(post);
-                      }}
-                      className="w-7 h-7 rounded-lg border border-stone-200/90 text-stone-500 hover:text-stone-900 hover:bg-stone-50 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
-                      title="Edit Post"
-                    >
-                      <HiOutlinePencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(post._id);
-                      }}
-                      className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] active:scale-95 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                      title="Delete Post"
-                    >
-                      <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
-                    </button>
-                  </div>
+                  <RowActions
+                    onEdit={(e) => {
+                      e.stopPropagation();
+                      handleOpenEditModal(post);
+                    }}
+                    editTitle="Edit Post"
+                    onDelete={(e) => {
+                      e.stopPropagation();
+                      handleDelete(post._id);
+                    }}
+                    deleteTitle="Delete Post"
+                  />
                 </div>
               </div>
             );

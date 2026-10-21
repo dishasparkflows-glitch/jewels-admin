@@ -17,6 +17,7 @@ import { topAnnouncementsAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Modal from '../../components/common/Modal';
 import DatePicker from '../../components/common/DatePicker';
+import RowActions from '../../components/common/RowActions';
 
 // Helper to format dates matching the exact screenshot: "13 Oct 2026 - No end"
 const formatDate = (dateStr) => {
@@ -601,37 +602,21 @@ export default function TopAnnouncementView() {
 
                       {/* Actions */}
                       <td className="text-right align-middle pr-2 pl-2">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Edit */}
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(item)}
-                            className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-colors"
-                            title="Edit Announcement"
-                          >
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-
-                          {/* Duplicate */}
+                        <RowActions
+                          onEdit={() => handleOpenEdit(item)}
+                          editTitle="Edit Announcement"
+                          onDelete={() => handleDelete(item)}
+                          deleteTitle="Delete Announcement"
+                        >
                           <button
                             type="button"
                             onClick={() => handleDuplicate(item)}
-                            className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-colors"
+                            className="w-7 h-7 rounded-lg border border-stone-200/90 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                             title="Duplicate Announcement"
                           >
-                            <HiOutlineDuplicate className="w-4 h-4" />
+                            <HiOutlineDuplicate className="w-3.5 h-3.5" />
                           </button>
-
-                          {/* Delete */}
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(item)}
-                            className="w-8 h-8 rounded-xl bg-[#fdeeed] hover:bg-[#fadbd8] text-[#d93025] border border-[#fadbd8] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
-                            title="Delete Announcement"
-                          >
-                            <HiOutlineTrash className="w-4 h-4 stroke-2" />
-                          </button>
-                        </div>
+                        </RowActions>
                       </td>
                     </tr>
                   );

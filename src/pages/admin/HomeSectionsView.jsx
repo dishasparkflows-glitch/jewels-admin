@@ -296,7 +296,7 @@ export default function HomeSectionsView() {
           subtitle: product.subtitle || product.ornate?.metalName || '',
           sku: product.basicInfo?.sku || '',
           price: product.pricing?.salePrice || product.pricing?.mrp || product.cataloguePrice || 0,
-          productType: product.basicInfo?.productType || '',
+          productType: product.productType || '',
           metalName: product.ornate?.metalName || '',
           isOrnate: product.isOrnate,
           thumbnail: product.thumbnail || product.colorImages?.[0]?.images?.[0]?.url || '',

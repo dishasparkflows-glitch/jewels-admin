@@ -1,6 +1,72 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { HiOutlineEye, HiOutlineDotsVertical, HiOutlinePencil, HiOutlineTrash, HiOutlineExternalLink } from 'react-icons/hi';
 
+export function ViewActionButton({
+  onClick,
+  title = 'View Details',
+  className = '',
+  iconClassName = 'w-3.5 h-3.5 stroke-[2]',
+  disabled = false,
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className={`w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
+      {...props}
+    >
+      <HiOutlineEye className={iconClassName} />
+    </button>
+  );
+}
+
+export function EditActionButton({
+  onClick,
+  title = 'Edit',
+  className = '',
+  iconClassName = 'w-3.5 h-3.5 stroke-[2]',
+  disabled = false,
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className={`w-7 h-7 rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
+      {...props}
+    >
+      <HiOutlinePencil className={iconClassName} />
+    </button>
+  );
+}
+
+export function DeleteActionButton({
+  onClick,
+  title = 'Delete',
+  className = '',
+  iconClassName = 'w-3.5 h-3.5 stroke-[2]',
+  disabled = false,
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className={`w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
+      {...props}
+    >
+      <HiOutlineTrash className={iconClassName} />
+    </button>
+  );
+}
+
 export default function RowActions({
   onView,
   onPreview,
@@ -14,6 +80,8 @@ export default function RowActions({
   deleteTitle = 'Delete',
   deleteLabel,
   extraActions = [],
+  children,
+  className = '',
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
@@ -34,17 +102,10 @@ export default function RowActions({
   }, []);
 
   return (
-    <div className="inline-flex items-center gap-1.5 justify-end" onClick={(e) => e.stopPropagation()}>
+    <div className={`inline-flex items-center gap-1.5 justify-end ${className}`} onClick={(e) => e.stopPropagation()}>
       {/* View / Preview Action (Eye button) */}
       {handleView && (
-        <button
-          type="button"
-          onClick={handleView}
-          title={activeViewTitle}
-          className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-        >
-          <HiOutlineEye className="w-3.5 h-3.5 stroke-[2]" />
-        </button>
+        <ViewActionButton onClick={handleView} title={activeViewTitle} />
       )}
 
       {onOpenWebsite && (
@@ -53,7 +114,7 @@ export default function RowActions({
           onClick={onOpenWebsite}
           title="View on website"
           aria-label="View on website"
-          className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-white text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+          className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-white text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
         >
           <HiOutlineExternalLink className="w-3.5 h-3.5 stroke-[2]" />
         </button>
@@ -61,27 +122,16 @@ export default function RowActions({
 
       {/* Edit Action (Pencil button - Soft Blue tint with vivid blue icon) */}
       {onEdit && (
-        <button
-          type="button"
-          onClick={onEdit}
-          title={activeEditLabel}
-          className="w-7 h-7 rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-        >
-          <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2]" />
-        </button>
+        <EditActionButton onClick={onEdit} title={activeEditLabel} />
       )}
 
       {/* Delete Action (Trash button - Matching user screenshot: soft warm rose with vivid red icon) */}
       {onDelete && (
-        <button
-          type="button"
-          onClick={onDelete}
-          title={activeDeleteLabel}
-          className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-        >
-          <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2]" />
-        </button>
+        <DeleteActionButton onClick={onDelete} title={activeDeleteLabel} />
       )}
+
+      {/* Any inline children actions */}
+      {children}
 
       {/* Extra Actions (Three dots button) */}
       {extraActions && extraActions.length > 0 && (

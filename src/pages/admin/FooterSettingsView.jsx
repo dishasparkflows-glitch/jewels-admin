@@ -15,7 +15,7 @@ import api from '../../api/axios';
 import Dropdown from '../../components/common/Dropdown';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
-import RowActions from '../../components/common/RowActions';
+import RowActions, { DeleteActionButton } from '../../components/common/RowActions';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 
@@ -373,14 +373,11 @@ export default function FooterSettingsView() {
                         <HiOutlineExternalLink className="w-3 h-3 shrink-0" />
                       </a>
                     </div>
-                    <button
-                      type="button"
+                    <DeleteActionButton
                       onClick={() => handleRemoveSocialLink(index)}
-                      className="p-1.5 text-stone-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0 ml-2"
                       title="Remove Link"
-                    >
-                      <HiOutlineTrash className="w-4 h-4" />
-                    </button>
+                      className="shrink-0 ml-2"
+                    />
                   </div>
                 ))}
               </div>
@@ -492,14 +489,11 @@ export default function FooterSettingsView() {
                           </span>
                         </div>
                       </div>
-                      <button
-                        type="button"
+                      <DeleteActionButton
                         onClick={() => handleRemoveShopItem(index)}
                         title="Unlink Category"
-                        className="p-1.5 text-stone-400 hover:text-rose-600 transition-colors cursor-pointer shrink-0 ml-2"
-                      >
-                        <HiOutlineTrash className="w-4 h-4" />
-                      </button>
+                        className="shrink-0 ml-2"
+                      />
                     </div>
                   ))}
                 </div>

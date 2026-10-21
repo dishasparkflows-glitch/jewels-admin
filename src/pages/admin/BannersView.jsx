@@ -23,6 +23,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
+import RowActions from '../../components/common/RowActions';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
@@ -871,26 +872,14 @@ export default function BannersView() {
                         />
                       </td>
 
-                      {/* Actions (Pencil & Trash buttons matching screenshot) */}
+                      {/* Actions */}
                       <td className="py-3.5 pr-6 pl-4 whitespace-nowrap text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEdit(banner)}
-                            className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors cursor-pointer"
-                            title="Edit Section"
-                          >
-                            <HiOutlinePencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleDelete(banner, e)}
-                            className="w-8 h-8 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 flex items-center justify-center transition-colors cursor-pointer"
-                            title="Delete Section"
-                          >
-                            <HiOutlineTrash className="w-4 h-4" />
-                          </button>
-                        </div>
+                        <RowActions
+                          onEdit={() => handleOpenEdit(banner)}
+                          editTitle="Edit Section"
+                          onDelete={(e) => handleDelete(banner, e)}
+                          deleteTitle="Delete Section"
+                        />
                       </td>
                     </tr>
                   );

@@ -23,6 +23,7 @@ import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
+import { ViewActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
@@ -570,15 +571,11 @@ export default function WhatsAppView() {
 
                           {/* Actions */}
                           <td className="py-2 px-3.5 align-middle whitespace-nowrap text-right">
-                            <div className="inline-flex items-center gap-1 justify-end">
-                              <button
-                                type="button"
+                            <div className="inline-flex items-center gap-1.5 justify-end">
+                              <ViewActionButton
                                 onClick={() => setPreviewTemplate(tmpl)}
                                 title="Preview Template"
-                                className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                              >
-                                <HiOutlineEye className="w-3.5 h-3.5" />
-                              </button>
+                              />
                               <button
                                 type="button"
                                 onClick={() => {
@@ -590,14 +587,10 @@ export default function WhatsAppView() {
                               >
                                 <HiOutlinePaperAirplane className="w-3.5 h-3.5 rotate-45 transform" />
                               </button>
-                              <button
-                                type="button"
+                              <DeleteActionButton
                                 onClick={() => handleDeleteTemplate(tmpl)}
                                 title="Delete Template"
-                                className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                              >
-                                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
-                              </button>
+                              />
                             </div>
                           </td>
                         </tr>

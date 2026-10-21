@@ -15,6 +15,7 @@ import { diamondsAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Pagination from '../../components/common/Pagination';
 import Dropdown from '../../components/common/Dropdown';
+import RowActions from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function DiamondsView() {
@@ -318,14 +319,10 @@ export default function DiamondsView() {
 
                     {/* Actions */}
                     <td className="text-right align-middle pr-2">
-                      <button
-                        type="button"
-                        onClick={() => handleDelete(item)}
-                        className="w-8 h-8 rounded-xl border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                        title="Delete Diamond"
-                      >
-                        <HiOutlineTrash className="w-4 h-4 stroke-2" />
-                      </button>
+                      <RowActions
+                        onDelete={() => handleDelete(item)}
+                        deleteTitle="Delete Diamond"
+                      />
                     </td>
                   </tr>
                 ))}

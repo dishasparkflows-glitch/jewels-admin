@@ -92,7 +92,7 @@ export default function MetalRatesView() {
         karat: 24,
         purity: '99.9%',
         ratePerGram: b24,
-        formula: 'Base reference (24/24)',
+        formula: null,
         status: 'active',
         isBase: true,
       },
@@ -103,7 +103,7 @@ export default function MetalRatesView() {
         karat: 22,
         purity: '91.6%',
         ratePerGram: (22 / 24) * b24,
-        formula: `22/24 × ₹${formatINR(b24)}`,
+        formula: `(22/24) × ₹${formatINR(b24)}`,
         status: 'active',
         isBase: false,
       },
@@ -114,7 +114,7 @@ export default function MetalRatesView() {
         karat: 18,
         purity: '75.0%',
         ratePerGram: (18 / 24) * b24,
-        formula: `18/24 × ₹${formatINR(b24)}`,
+        formula: `(18/24) × ₹${formatINR(b24)}`,
         status: 'active',
         isBase: false,
       },
@@ -125,7 +125,7 @@ export default function MetalRatesView() {
         karat: 14,
         purity: '58.3%',
         ratePerGram: (14 / 24) * b24,
-        formula: `14/24 × ₹${formatINR(b24)}`,
+        formula: `(14/24) × ₹${formatINR(b24)}`,
         status: 'active',
         isBase: false,
       },
@@ -136,7 +136,7 @@ export default function MetalRatesView() {
         karat: 10,
         purity: '41.7%',
         ratePerGram: (10 / 24) * b24,
-        formula: `10/24 × ₹${formatINR(b24)}`,
+        formula: `(10/24) × ₹${formatINR(b24)}`,
         status: 'active',
         isBase: false,
       },
@@ -147,7 +147,7 @@ export default function MetalRatesView() {
         karat: 9,
         purity: '37.5%',
         ratePerGram: (9 / 24) * b24,
-        formula: `9/24 × ₹${formatINR(b24)}`,
+        formula: `(9/24) × ₹${formatINR(b24)}`,
         status: 'active',
         isBase: false,
       },
@@ -158,7 +158,7 @@ export default function MetalRatesView() {
         karat: null,
         purity: '95.0%',
         ratePerGram: pt,
-        formula: 'Fixed metal base rate',
+        formula: null,
         status: 'active',
         isBase: true,
       },
@@ -169,7 +169,7 @@ export default function MetalRatesView() {
         karat: null,
         purity: '92.5%',
         ratePerGram: ag,
-        formula: 'Fixed metal base rate',
+        formula: null,
         status: 'active',
         isBase: true,
       },
@@ -184,7 +184,8 @@ export default function MetalRatesView() {
       (m) =>
         m.name.toLowerCase().includes(q) ||
         m.category.toLowerCase().includes(q) ||
-        m.formula.toLowerCase().includes(q) ||
+        (m.formula && m.formula.toLowerCase().includes(q)) ||
+        m.purity.toLowerCase().includes(q) ||
         String(m.ratePerGram).includes(q)
     );
   }, [metalRecords, search]);
@@ -355,7 +356,9 @@ export default function MetalRatesView() {
                 </th>
                 <th className="py-2.5 px-2 w-12 text-center">SR NO</th>
                 <th className="py-2.5 px-3">ITEM / RECORD</th>
-                <th className="py-2.5 px-3">SPECIFICATIONS</th>
+                <th className="py-2.5 px-3">PURITY</th>
+                <th className="py-2.5 px-3">CALCULATION / FORMULA</th>
+                <th className="py-2.5 px-3 text-right">RATE (₹/g)</th>
                 <th className="py-2.5 px-3 text-center">STATUS</th>
                 <th className="py-2.5 pr-3 pl-2 text-right">ACTIONS</th>
               </tr>
@@ -363,7 +366,7 @@ export default function MetalRatesView() {
             <tbody className="divide-y divide-stone-100 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="py-12 text-center text-stone-400">
+                  <td colSpan={8} className="py-12 text-center text-stone-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-stone-300 border-t-[#8b6f4e] rounded-full animate-spin" />
                       <span className="text-[11px] font-bold tracking-wider uppercase text-stone-400">
@@ -374,7 +377,7 @@ export default function MetalRatesView() {
                 </tr>
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-stone-400 text-xs">
+                  <td colSpan={8} className="py-10 text-center text-stone-400 text-xs">
                     No matching metal rates found
                   </td>
                 </tr>
@@ -421,11 +424,28 @@ export default function MetalRatesView() {
                         </div>
                       </td>
 
-                      {/* Specifications */}
-                      <td className="py-2.5 px-3 text-stone-600 font-mono text-[11px] whitespace-nowrap">
-                        <span>
-                          {item.purity} • ₹{formatINR(item.ratePerGram)}/g ({item.formula})
+                      {/* Purity */}
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium font-mono bg-stone-100 text-stone-700 border border-stone-200/60">
+                          {item.purity}
                         </span>
+                      </td>
+
+                      {/* Calculation / Formula */}
+                      <td className="py-2.5 px-3 font-mono text-xs text-stone-600 whitespace-nowrap">
+                        {item.formula ? (
+                          <span className="bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d9c2] px-2 py-0.5 rounded-md text-[11px] font-semibold">
+                            {item.formula}
+                          </span>
+                        ) : (
+                          <span className="text-stone-300 font-sans text-xs pl-2">—</span>
+                        )}
+                      </td>
+
+                      {/* Rate (₹/g) */}
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono text-xs font-bold text-stone-900">
+                        ₹{formatINR(item.ratePerGram)}
+                        <span className="text-[10px] text-stone-400 font-normal ml-0.5 font-sans">/g</span>
                       </td>
 
                       {/* Status */}
@@ -653,7 +673,7 @@ export default function MetalRatesView() {
               </div>
               <div className="flex justify-between py-1 border-b border-stone-100">
                 <span className="text-stone-400 font-medium">Formula:</span>
-                <span className="font-mono text-stone-700">{viewingRecord.formula}</span>
+                <span className="font-mono text-stone-700">{viewingRecord.formula || '— (Base Rate)'}</span>
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-stone-400 font-medium">Status:</span>

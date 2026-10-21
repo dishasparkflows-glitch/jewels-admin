@@ -23,6 +23,7 @@ import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
+import RowActions, { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 
 // Preset luxury jewelry icons for 1-click selection
@@ -1134,22 +1135,14 @@ export default function NavigationMenusView() {
                                   />
                                 </div>
                               </button>
-                              <button
-                                type="button"
+                              <EditActionButton
                                 title="Edit Section"
                                 onClick={() => openEditSectionModal(section)}
-                                className="p-1.5 text-stone-400 hover:text-[#85583f] rounded-lg transition-colors cursor-pointer"
-                              >
-                                <HiOutlinePencil className="w-4 h-4" />
-                              </button>
-                              <button
-                                type="button"
+                              />
+                              <DeleteActionButton
                                 title="Delete Section"
                                 onClick={() => handleDeleteSection(section)}
-                                className="p-1.5 text-red-400 hover:text-red-600 rounded-lg transition-colors cursor-pointer"
-                              >
-                                <HiOutlineTrash className="w-4 h-4" />
-                              </button>
+                              />
                               <button
                                 type="button"
                                 title={isExpanded ? 'Collapse' : 'Expand'}
@@ -1254,23 +1247,15 @@ export default function NavigationMenusView() {
                                           </button>
 
                                           {/* Direct Edit & Delete Buttons */}
-                                          <div className="flex items-center gap-1">
-                                            <button
-                                              type="button"
+                                          <div className="flex items-center gap-1.5">
+                                            <EditActionButton
                                               title="Edit Link"
                                               onClick={() => openEditMenuItemModal(item)}
-                                              className="p-1.5 text-stone-400 hover:text-[#85583f] hover:bg-stone-100 rounded-lg transition-colors cursor-pointer"
-                                            >
-                                              <HiOutlinePencil className="w-4 h-4" />
-                                            </button>
-                                            <button
-                                              type="button"
+                                            />
+                                            <DeleteActionButton
                                               title="Delete Link"
                                               onClick={() => handleDeleteMenuItem(item)}
-                                              className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                                            >
-                                              <HiOutlineTrash className="w-4 h-4" />
-                                            </button>
+                                            />
                                           </div>
                                         </div>
                                       </div>
@@ -1371,23 +1356,15 @@ export default function NavigationMenusView() {
                               )}
                             </div>
 
-                            <div className="flex items-center justify-end gap-2 pt-1 border-t border-stone-200/60">
-                              <button
-                                type="button"
+                            <div className="flex items-center justify-end gap-1.5 pt-1.5 border-t border-stone-200/60">
+                              <EditActionButton
+                                title="Edit Banner"
                                 onClick={() => openEditBannerModal(banner, index)}
-                                className="text-xs text-[#85583f] hover:underline flex items-center gap-1 font-semibold cursor-pointer"
-                              >
-                                <HiOutlinePencil className="w-3.5 h-3.5" />
-                                Edit
-                              </button>
-                              <button
-                                type="button"
+                              />
+                              <DeleteActionButton
+                                title="Delete Banner"
                                 onClick={() => handleDeletePromoBanner(index)}
-                                className="text-xs text-red-500 hover:underline flex items-center gap-1 font-semibold ml-2 cursor-pointer"
-                              >
-                                <HiOutlineTrash className="w-3.5 h-3.5" />
-                                Delete
-                              </button>
+                              />
                             </div>
                           </div>
                         );

@@ -1,4 +1,7 @@
-import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useId, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+
+const MenuLayer = ({ enabled, children }) => enabled ? createPortal(children, document.body) : children;
 import { HiOutlineChevronDown, HiOutlineCheck } from 'react-icons/hi';
 
 /**
@@ -82,6 +85,8 @@ export default function Dropdown({
   showStatusDot = false,
   openUpward = false,
   openDownward = false,
+  portal = false,
+  animate = true,
   direction = 'auto',
   className = '',
   buttonClassName = '',
@@ -100,6 +105,7 @@ export default function Dropdown({
   const containerRef = useRef(null);
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
+  const [menuPosition, setMenuPosition] = useState({});
   const isPointerDownRef = useRef(false);
   const hasKeyboardNavigatedRef = useRef(false);
   const searchStringRef = useRef('');
@@ -132,7 +138,9 @@ export default function Dropdown({
 
   // Find currently selected option
   const selectedIndex = normalizedOptions.findIndex(
-    (opt) => String(opt.value) === String(value)
+    (opt) =>
+      String(opt.value) === String(value) ||
+      (value && String(opt.label).toLowerCase() === String(value).toLowerCase())
   );
   const selectedOption = selectedIndex >= 0 ? normalizedOptions[selectedIndex] : null;
 
@@ -162,20 +170,22 @@ export default function Dropdown({
       let spaceBelow = window.innerHeight - rect.bottom;
       let spaceAbove = rect.top;
 
-      // Also inspect nearest scrollable parent container / modal boundary
-      let parent = containerRef.current?.parentElement;
-      while (parent && parent !== document.body) {
-        const style = window.getComputedStyle(parent);
-        const overflow = style.overflowY || style.overflow;
-        if (overflow === 'auto' || overflow === 'scroll' || overflow === 'hidden') {
-          const parentRect = parent.getBoundingClientRect();
-          const pBelow = parentRect.bottom - rect.bottom;
-          const pAbove = rect.top - parentRect.top;
-          if (pBelow < spaceBelow) spaceBelow = pBelow;
-          if (pAbove < spaceAbove) spaceAbove = pAbove;
-          break;
+      // Only inspect parent boundary if not portaled and parent is vertically scrollable with overflow
+      if (!portal) {
+        let parent = containerRef.current?.parentElement;
+        while (parent && parent !== document.body) {
+          const style = window.getComputedStyle(parent);
+          const overflowY = style.overflowY;
+          if ((overflowY === 'auto' || overflowY === 'scroll') && parent.scrollHeight > parent.clientHeight + 5) {
+            const parentRect = parent.getBoundingClientRect();
+            const pBelow = parentRect.bottom - rect.bottom;
+            const pAbove = rect.top - parentRect.top;
+            if (pBelow < spaceBelow) spaceBelow = pBelow;
+            if (pAbove < spaceAbove) spaceAbove = pAbove;
+            break;
+          }
+          parent = parent.parentElement;
         }
-        parent = parent.parentElement;
       }
 
       if (spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow) {
@@ -184,14 +194,36 @@ export default function Dropdown({
         setDropUp(false);
       }
     }
-  }, [isOpen, isForcedDown, isForcedUp, normalizedOptions.length]);
+  }, [isOpen, isForcedDown, isForcedUp, normalizedOptions.length, portal]);
+
+  // Portal menus escape table overflow while staying anchored to their field.
+  useLayoutEffect(() => {
+    if (!isOpen || !portal) return;
+    const position = () => {
+      const rect = buttonRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      const below = isForcedDown || !dropUp;
+      setMenuPosition({ position: 'fixed', left: rect.left, width: rect.width,
+        top: below ? rect.bottom + 6 : 'auto', bottom: below ? 'auto' : window.innerHeight - rect.top + 6,
+        margin: 0, maxHeight: Math.max(40, Math.min(260, below ? window.innerHeight - rect.bottom - 14 : rect.top - 14)), zIndex: 1000 });
+    };
+    position();
+    window.addEventListener('resize', position);
+    window.addEventListener('scroll', position, true);
+    return () => { window.removeEventListener('resize', position); window.removeEventListener('scroll', position, true); };
+  }, [isOpen, portal, dropUp, isForcedDown]);
 
   // Auto-scroll highlighted option into view
   useEffect(() => {
     if (isOpen && menuRef.current && highlightedIndex >= 0) {
       const optionEl = menuRef.current.children[highlightedIndex];
       if (optionEl && typeof optionEl.scrollIntoView === 'function') {
-        optionEl.scrollIntoView({ block: 'nearest' });
+        // Scroll only the options list; opening a dropdown must not move the page.
+        const menu = menuRef.current;
+        const top = optionEl.offsetTop;
+        const bottom = top + optionEl.offsetHeight;
+        if (top < menu.scrollTop) menu.scrollTop = top;
+        else if (bottom > menu.scrollTop + menu.clientHeight) menu.scrollTop = bottom - menu.clientHeight;
       }
     }
   }, [highlightedIndex, isOpen]);
@@ -201,7 +233,7 @@ export default function Dropdown({
     if (!isOpen) return;
 
     const handlePointerDown = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+      if (containerRef.current && !containerRef.current.contains(e.target) && !menuRef.current?.contains(e.target)) {
         setIsOpen(false);
         setHighlightedIndex(-1);
         hasKeyboardNavigatedRef.current = false;
@@ -361,7 +393,7 @@ export default function Dropdown({
 
   // Blur handler: When focus leaves the dropdown container, cleanly close it
   const handleBlur = (e) => {
-    if (!containerRef.current?.contains(e.relatedTarget)) {
+    if (!containerRef.current?.contains(e.relatedTarget) && !menuRef.current?.contains(e.relatedTarget)) {
       setIsOpen(false);
       setHighlightedIndex(-1);
       hasKeyboardNavigatedRef.current = false;
@@ -480,7 +512,7 @@ export default function Dropdown({
         aria-activedescendant={
           isOpen && highlightedIndex >= 0 ? `${dropdownId}-opt-${highlightedIndex}` : undefined
         }
-        className={`w-full flex items-center justify-between text-left font-medium transition-all duration-150 outline-none cursor-pointer ${
+        className={`w-full flex items-center justify-between text-left font-medium ${animate ? 'transition-all duration-150' : ''} outline-none cursor-pointer ${
           sizeStyles.button
         } ${variantStyles} ${
           isOpen ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20' : ''
@@ -503,7 +535,7 @@ export default function Dropdown({
 
         {/* Animated Chevron Icon */}
         <HiOutlineChevronDown
-          className={`${sizeStyles.icon} text-stone-400 transition-transform duration-200 shrink-0 ml-2 ${
+          className={`${sizeStyles.icon} text-stone-400 ${animate ? 'transition-transform duration-200' : ''} shrink-0 ml-2 ${
             isOpen ? 'rotate-180 text-[#8b6f4e]' : ''
           }`}
         />
@@ -511,12 +543,14 @@ export default function Dropdown({
 
       {/* Floating Options Menu */}
       {isOpen && (
+        <MenuLayer enabled={portal}>
         <div
+          style={portal ? menuPosition : undefined}
           ref={menuRef}
           id={`${dropdownId}-menu`}
           role="listbox"
           tabIndex={-1}
-          className={`absolute left-0 w-full z-50 bg-white border border-stone-200/90 shadow-xl shadow-stone-900/10 backdrop-blur-md overflow-y-auto max-h-60 transition-all animate-fadeIn ${
+          className={`absolute left-0 w-full z-50 bg-white border border-stone-200/90 shadow-xl shadow-stone-900/10 backdrop-blur-md overflow-y-auto max-h-60 ${animate ? 'transition-all animate-fadeIn' : ''} ${
             sizeStyles.menu
           } ${
             dropUp
@@ -590,6 +624,7 @@ export default function Dropdown({
             })
           )}
         </div>
+        </MenuLayer>
       )}
     </div>
   );

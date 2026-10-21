@@ -36,6 +36,7 @@ export default function MetalPuritiesView() {
   const [metalType, setMetalType] = useState('');
   const [karatValue, setKaratValue] = useState('');
   const [purityName, setPurityName] = useState('');
+  const [orderValue, setOrderValue] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch all Metal Purities from API
@@ -74,6 +75,7 @@ export default function MetalPuritiesView() {
       (p) =>
         (p.name && p.name.toLowerCase().includes(q)) ||
         (p.karat !== undefined && String(p.karat).includes(q)) ||
+        (p.order !== undefined && String(p.order).includes(q)) ||
         (p.metalType && p.metalType.toLowerCase().includes(q))
     );
   }, [purities, search]);
@@ -123,6 +125,7 @@ export default function MetalPuritiesView() {
     setMetalType('');
     setKaratValue('');
     setPurityName('');
+    setOrderValue(String(purities.length + 1));
     setIsModalOpen(true);
   };
 
@@ -132,6 +135,7 @@ export default function MetalPuritiesView() {
     setMetalType(p.metalType || '');
     setKaratValue(p.karat !== undefined ? String(p.karat) : '');
     setPurityName(p.name || '');
+    setOrderValue(p.order !== undefined ? String(p.order) : '');
     setIsModalOpen(true);
   };
 
@@ -246,10 +250,12 @@ export default function MetalPuritiesView() {
     try {
       setSubmitting(true);
       const karatNum = karatValue ? Number(karatValue) : 0;
+      const orderNum = orderValue !== '' ? Number(orderValue) : 0;
       const payload = {
         name: purityName.trim(),
         metalType,
         karat: karatNum,
+        order: orderNum,
         status: 'active',
       };
 
@@ -334,6 +340,7 @@ export default function MetalPuritiesView() {
                 <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
                 <th className="py-2 px-3 whitespace-nowrap">NAME</th>
                 <th className="py-2 px-3 whitespace-nowrap">KARAT</th>
+                <th className="py-2 px-3 whitespace-nowrap text-center">ORDER</th>
                 <th className="py-2 px-3 whitespace-nowrap">METAL TYPE</th>
                 <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
@@ -341,13 +348,13 @@ export default function MetalPuritiesView() {
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     Loading purities...
                   </td>
                 </tr>
               ) : filteredPurities.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     No metal purities found.
                   </td>
                 </tr>
@@ -384,6 +391,13 @@ export default function MetalPuritiesView() {
                       <td className="py-2.5 px-3 whitespace-nowrap font-bold text-stone-800 text-xs tracking-wide">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
                           {karatDisplay}
+                        </span>
+                      </td>
+
+                      {/* Order */}
+                      <td className="py-2.5 px-3 whitespace-nowrap text-center font-bold text-stone-800 text-xs tracking-wide">
+                        <span className="inline-flex items-center justify-center min-w-6 px-1.5 py-0.5 rounded-full text-[11px] font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                          {p.order ?? 0}
                         </span>
                       </td>
 
@@ -489,6 +503,22 @@ export default function MetalPuritiesView() {
                 />
               </div>
 
+              {/* Display Order */}
+              <div>
+                <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                  Display Order
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={orderValue}
+                  onChange={(e) => setOrderValue(e.target.value)}
+                  placeholder="e.g. 1, 2, 3..."
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
+                />
+              </div>
+
               {/* Purity Name */}
               <div>
                 <label className="block text-xs font-bold text-stone-900 mb-1.5">
@@ -564,6 +594,10 @@ export default function MetalPuritiesView() {
               <div className="flex justify-between py-1.5 border-b border-stone-100">
                 <span className="text-stone-400">Karat:</span>
                 <span className="font-bold text-[#8f6d43]">{viewingPurity.karat}K</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-stone-100">
+                <span className="text-stone-400">Display Order:</span>
+                <span className="font-bold text-stone-800">{viewingPurity.order ?? 0}</span>
               </div>
               <div className="flex justify-between py-1.5">
                 <span className="text-stone-400">Status:</span>

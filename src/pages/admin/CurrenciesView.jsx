@@ -11,6 +11,7 @@ import { TbCurrencyDollar, TbCoins } from 'react-icons/tb';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import RowActions from '../../components/common/RowActions';
 
 export default function CurrenciesView() {
   const confirm = useConfirm();
@@ -428,34 +429,19 @@ export default function CurrenciesView() {
                               type="button"
                               onClick={() => handleSyncSingleRate(item)}
                               disabled={isSyncingThis}
-                              className="p-1 rounded-md text-stone-400 hover:text-[#8b6f4e] hover:bg-stone-50 transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50"
                               title="Sync live rate"
                             >
                               <HiOutlineRefresh className={`w-3.5 h-3.5 ${isSyncingThis ? 'animate-spin text-[#8b6f4e]' : ''}`} />
                             </button>
                           )}
 
-                          {/* Edit button */}
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(item)}
-                            className="p-1 rounded-md text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer"
-                            title="Edit currency"
-                          >
-                            <HiOutlinePencil className="w-3.5 h-3.5" />
-                          </button>
-
-                          {/* Delete button (forbidden for base) */}
-                          {!isBase && (
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteCurrency(item)}
-                              className="p-1 rounded-md text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
-                              title="Delete currency"
-                            >
-                              <HiOutlineTrash className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          <RowActions
+                            onEdit={() => openEditModal(item)}
+                            editTitle="Edit currency"
+                            onDelete={!isBase ? () => handleDeleteCurrency(item) : undefined}
+                            deleteTitle="Delete currency"
+                          />
                         </div>
                       </td>
                     </tr>

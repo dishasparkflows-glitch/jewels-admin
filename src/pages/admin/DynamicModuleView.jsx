@@ -25,7 +25,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
-import RowActions from '../../components/common/RowActions';
+import RowActions, { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import OrnateSyncModal from '../../components/common/OrnateSyncModal';
 import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
@@ -707,8 +707,6 @@ const DynamicModuleView = () => {
             sku,
             slug,
             description: formData.description || '',
-            productType,
-            isOrnate,
           },
           pricing: {
             mrp,
@@ -1836,23 +1834,15 @@ const DynamicModuleView = () => {
                             </div>
 
                             {/* Actions */}
-                            <div className="flex items-center gap-1 shrink-0">
-                              <button
-                                type="button"
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <EditActionButton
                                 onClick={() => handleOpenBannerForm(banner, index)}
-                                className="p-1.5 text-stone-500 hover:text-[#8b6f4e] hover:bg-[#faf5ed] rounded-lg transition-colors cursor-pointer"
                                 title="Edit banner"
-                              >
-                                <HiOutlinePencil className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                type="button"
+                              />
+                              <DeleteActionButton
                                 onClick={() => handleDeletePromoBannerItem(index)}
-                                className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
                                 title="Delete banner"
-                              >
-                                <HiOutlineTrash className="w-3.5 h-3.5" />
-                              </button>
+                              />
                             </div>
                           </div>
                         );

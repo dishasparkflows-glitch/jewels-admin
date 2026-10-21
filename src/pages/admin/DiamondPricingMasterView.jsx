@@ -14,6 +14,7 @@ import api from '../../api/axios';
 import Dropdown from '../../components/common/Dropdown';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Pagination from '../../components/common/Pagination';
+import { DeleteActionButton } from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function DiamondPricingMasterView() {
@@ -608,14 +609,10 @@ export default function DiamondPricingMasterView() {
 
                     {/* Delete Action */}
                     <td className="py-2.5 px-4 text-center whitespace-nowrap">
-                      <button
-                        type="button"
+                      <DeleteActionButton
                         onClick={() => handleDeleteRow(row.id, row.shape, row.color, row.clarity)}
-                        className="w-8 h-8 rounded-xl inline-flex items-center justify-center text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-colors cursor-pointer"
                         title="Delete Rate"
-                      >
-                        <HiOutlineTrash className="w-4 h-4 stroke-2" />
-                      </button>
+                      />
                     </td>
                   </tr>
                 ))

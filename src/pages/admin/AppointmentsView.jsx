@@ -21,6 +21,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import DatePicker from '../../components/common/DatePicker';
+import RowActions from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 const STATUS_TABS = [
@@ -605,25 +606,13 @@ export default function AppointmentsView() {
                             <HiOutlineXCircle className="w-4 h-4 stroke-2" />
                           </button>
 
-                          {/* 3. View Eye Icon Button */}
-                          <button
-                            type="button"
-                            onClick={() => setViewingApt({ ...apt, clientName, clientEmail, rawPhone, countryCode, service, displayId, prefTime, aptDate })}
-                            className="w-8 h-8 rounded-xl bg-[#f5eee6] hover:bg-[#eadbc9] text-[#8b6f4e] border border-[#eadbc9] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
-                            title="View Appointment Details"
-                          >
-                            <HiOutlineEye className="w-4 h-4 stroke-2" />
-                          </button>
-
-                          {/* 4. Delete Trash Icon Button */}
-                          <button
-                            type="button"
-                            onClick={() => handleDelete(id, clientName)}
-                            className="w-8 h-8 rounded-xl bg-[#fdeeed] hover:bg-[#fadbd8] text-[#d93025] border border-[#fadbd8] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
-                            title="Delete Appointment"
-                          >
-                            <HiOutlineTrash className="w-4 h-4 stroke-2" />
-                          </button>
+                          {/* View & Delete Actions */}
+                          <RowActions
+                            onView={() => setViewingApt({ ...apt, clientName, clientEmail, rawPhone, countryCode, service, displayId, prefTime, aptDate })}
+                            viewTitle="View Appointment Details"
+                            onDelete={() => handleDelete(id, clientName)}
+                            deleteTitle="Delete Appointment"
+                          />
                         </div>
                       </td>
                     </tr>

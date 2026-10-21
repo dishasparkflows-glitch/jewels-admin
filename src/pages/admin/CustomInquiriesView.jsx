@@ -18,6 +18,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { ViewActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 const STATUS_TABS = [
@@ -503,23 +504,19 @@ export default function CustomInquiriesView() {
                       <td className="py-3 pr-5 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           {/* 1. View Eye Button */}
-                          <button
-                            type="button"
+                          <ViewActionButton
                             onClick={() => setViewingInquiry(inq)}
                             title="View inquiry details"
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
-                          >
-                            <HiOutlineEye className="w-4 h-4" />
-                          </button>
+                          />
 
                           {/* 2. Confirm Blue Check Button (Triggers Confirm Modal) */}
                           <button
                             type="button"
                             onClick={() => setConfirmModalInquiry(inq)}
                             title="Confirm Inquiry"
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-blue-500 hover:text-blue-700 hover:bg-blue-50 transition-colors cursor-pointer"
+                            className="w-7 h-7 rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                           >
-                            <HiOutlineCheckCircle className="w-4 h-4" />
+                            <HiOutlineCheckCircle className="w-3.5 h-3.5 stroke-2" />
                           </button>
 
                           {/* 3. Cancel Ban Button */}
@@ -527,20 +524,16 @@ export default function CustomInquiriesView() {
                             type="button"
                             onClick={() => setCancelModalInquiry(inq)}
                             title="Cancel Inquiry"
-                            className="w-7 h-7 rounded-full flex items-center justify-center text-rose-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                            className="w-7 h-7 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                           >
-                            <HiOutlineBan className="w-4 h-4" />
+                            <HiOutlineBan className="w-3.5 h-3.5" />
                           </button>
 
                           {/* 4. Delete Trash Button */}
-                          <button
-                            type="button"
+                          <DeleteActionButton
                             onClick={() => handleDelete(id, clientName)}
                             title="Delete Inquiry"
-                            className="w-8 h-8 rounded-xl bg-[#fdeeed] hover:bg-[#fadbd8] text-[#d93025] border border-[#fadbd8] flex items-center justify-center transition-all shadow-2xs active:scale-95 cursor-pointer"
-                          >
-                            <HiOutlineTrash className="w-4 h-4 stroke-2" />
-                          </button>
+                          />
                         </div>
                       </td>
                     </tr>

@@ -32,6 +32,7 @@ import MetalColorsView from './pages/admin/MetalColorsView';
 import SizesView from './pages/admin/SizesView';
 import VtoMastersView from './pages/admin/VtoMastersView';
 import AddJewelryProduct from './pages/admin/AddJewelryProduct';
+import OrnateProductsView from './pages/admin/OrnateProductsView';
 import OrnateProductEdit from './pages/admin/OrnateProductEdit';
 import NavigationMenusView from './pages/admin/NavigationMenusView';
 import WhatsAppView from './pages/admin/WhatsAppView';
@@ -175,6 +176,10 @@ function App() {
             <Route path="/catalog/silver-products/new" element={<AddJewelryProduct />} />
             <Route path="/catalog/add-jewelry-product" element={<AddJewelryProduct />} />
             <Route path="/add-jewelry-product" element={<AddJewelryProduct />} />
+
+            {/* Luxury Ornate Products Catalog (Matches Target Mockup Design) */}
+            <Route path="/catalog/ornate-products" element={<OrnateProductsView />} />
+            <Route path="/ornate-products" element={<OrnateProductsView />} />
 
             {/* Luxury Tab-Wise Ornate Product Edit (Matches Exact User Screenshot) */}
             <Route path="/catalog/ornate-products/edit/:id" element={<OrnateProductEdit />} />
