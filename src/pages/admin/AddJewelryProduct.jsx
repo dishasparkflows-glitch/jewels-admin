@@ -242,6 +242,12 @@ export default function AddJewelryProduct() {
   const [menuItemIds, setMenuItemIds] = useState([]);
   const [autoOpenMenu, setAutoOpenMenu] = useState(false);
 
+  // Ensure document body scroll is always active and never locked
+  useEffect(() => {
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  }, [activeStep]);
+
   // ─── Live Master Lookup Lists from Backend API ──────────
   const [puritiesList, setPuritiesList] = useState([]);
   const [purityMasterList, setPurityMasterList] = useState([]);
@@ -1549,7 +1555,7 @@ export default function AddJewelryProduct() {
     metaTitle: '',
     metaDescription: '',
     stockStatus: '',
-    status: 'active',
+    status: 'approved',
   });
 
   // Right column active preview thumbnail selection
@@ -1884,7 +1890,7 @@ export default function AddJewelryProduct() {
       metaTitle: productRecord.seo?.metaTitle || '',
       metaDescription: productRecord.seo?.metaDescription || '',
       stockStatus: productRecord.stockStatus || '',
-      status: productRecord.status || 'active',
+      status: productRecord.status || 'approved',
     });
     setPreviewImage(
       productRecord.colorImages?.flatMap((color) => color.images || []).find((image) => image?.url)?.url ||
@@ -2111,7 +2117,7 @@ export default function AddJewelryProduct() {
   };
 
   // Final Publish Handler
-  const handlePublish = async (statusOverride = seo.status || 'active') => {
+  const handlePublish = async (statusOverride = seo.status || 'approved') => {
     setSaving(true);
     try {
       const isDraft = statusOverride === 'draft';
@@ -2357,7 +2363,7 @@ export default function AddJewelryProduct() {
           description: activeDesc,
           ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
         }),
-        status: statusOverride,
+        status: statusOverride === 'draft' ? 'draft' : 'approved',
         ...(categoryId ? { categoryIds: [categoryId] } : {}),
         ...(menuItemIds && menuItemIds.length ? { menuItemIds } : {}),
         ...(Object.keys(pricingData).length ? { pricing: pricingData } : {}),
@@ -2434,7 +2440,7 @@ export default function AddJewelryProduct() {
       setActiveStep(steps[activeStepIndex + 1].num);
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } else {
-      handlePublish();
+      handlePublish('approved');
     }
   };
 
@@ -2511,7 +2517,7 @@ export default function AddJewelryProduct() {
 
           <button
             type="button"
-            onClick={() => handlePublish('active')}
+            onClick={() => handlePublish('approved')}
             disabled={saving}
             className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
           >

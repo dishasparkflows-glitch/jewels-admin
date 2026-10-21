@@ -11,8 +11,9 @@ import {
   HiOutlineStar,
   HiOutlinePencil,
   HiOutlineTrash,
-  HiOutlineArrowRight,
-  HiOutlineCheck,
+  HiOutlineCheckCircle,
+  HiOutlineSwitchHorizontal,
+  HiOutlineExternalLink,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import Dropdown from '../Dropdown';
@@ -21,6 +22,7 @@ import SyncPreviewModal from './SyncPreviewModal';
 import MoveProductModal from './MoveProductModal';
 import api from '../../../api/axios';
 import { useConfirm } from '../../../contexts/ConfirmContext';
+import { openProductPreview } from '../../../utils/productPreview';
 
 const money = (val) => {
   if (val == null || val === '') return '₹ 0';
@@ -62,6 +64,68 @@ const getProductImage = (p) => {
   return null;
 };
 
+const renderStatusBadge = (p) => {
+  const status = (p.status || 'draft').toLowerCase();
+  if (status === 'approved') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 capitalize">
+        Approved
+      </span>
+    );
+  }
+  if (status === 'draft') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 capitalize">
+        Draft
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-600 border border-stone-200 capitalize">
+      {status}
+    </span>
+  );
+};
+
+const renderStockStatusBadge = (p) => {
+  const isSold = p.ornate?.isSold || p.stockStatus === 'Sold' || p.status === 'sold';
+  if (isSold) {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+        Sold
+      </span>
+    );
+  }
+
+  const stock = p.stockStatus || 'In Stock';
+  if (stock === 'In Stock') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+        In Stock
+      </span>
+    );
+  }
+  if (stock === 'Out of Stock') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
+        Out of Stock
+      </span>
+    );
+  }
+  if (stock === 'Made to Order') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+        Made to Order
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
+      {stock}
+    </span>
+  );
+};
+
 export default function ManageGroupDrawer({
   isOpen,
   onClose,
@@ -94,11 +158,47 @@ export default function ManageGroupDrawer({
   // Modals state
   const [syncModalOpen, setSyncModalOpen] = useState(false);
   const [moveModalOpen, setMoveModalOpen] = useState(false);
+  const [moveTargetProducts, setMoveTargetProducts] = useState([]);
   const [addProductsOpen, setAddProductsOpen] = useState(false);
   const [ungroupedPool, setUngroupedPool] = useState([]);
   const [selectedToAdd, setSelectedToAdd] = useState(new Set());
   const [searchAdd, setSearchAdd] = useState('');
   const [savingAdd, setSavingAdd] = useState(false);
+  const [approving, setApproving] = useState(false);
+
+  const handleOpenMoveSingle = (product) => {
+    setMoveTargetProducts([product]);
+    setMoveModalOpen(true);
+  };
+
+  const handleOpenMoveBulk = () => {
+    const selectedList = (group?.productIds || []).filter((p) => selectedProductIds.has(p._id));
+    setMoveTargetProducts(selectedList);
+    setMoveModalOpen(true);
+  };
+
+  const handleApproveGroup = async () => {
+    const isConfirmed = await confirm({
+      title: 'Approve Group Products',
+      message: `Change status to "Approved" for all in-stock products in "${group?.groupName || 'this group'}"?`,
+      confirmText: 'Approve In-Stock Products',
+      type: 'success',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      setApproving(true);
+      const res = await api.post(`/product-groups/${groupId}/approve`);
+      toast.success(res.data?.message || 'Products approved successfully');
+      fetchGroup();
+      onRefreshParent?.();
+    } catch (err) {
+      console.error('Failed to approve group products:', err);
+      toast.error(err.response?.data?.message || 'Failed to approve group products');
+    } finally {
+      setApproving(false);
+    }
+  };
 
   // Fetch Group Data
   const fetchGroup = async () => {
@@ -136,7 +236,6 @@ export default function ManageGroupDrawer({
   // Lock body scroll and handle ESC key
   useEffect(() => {
     if (!isOpen) return;
-    const origOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e) => {
@@ -146,8 +245,11 @@ export default function ManageGroupDrawer({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.body.style.overflow = origOverflow;
       window.removeEventListener('keydown', handleKeyDown);
+      const otherModals = document.querySelectorAll('[role="dialog"], [aria-modal="true"]');
+      if (otherModals.length <= 1) {
+        document.body.style.overflow = '';
+      }
     };
   }, [isOpen, syncModalOpen, moveModalOpen, addProductsOpen]);
 
@@ -341,11 +443,24 @@ export default function ManageGroupDrawer({
     }
   };
 
-  if (!isOpen) return null;
-
   const repProduct = group?.representative;
   const isAutoMode = group?.representativeMode === 'auto';
-  const hasFirstSync = Boolean(group?.sync?.firstSyncedAt);
+
+  // Identify highest priced product that is not sold
+  const highestPriceNotSold = useMemo(() => {
+    const notSoldList = (products || []).filter(
+      (p) => !p.ornate?.isSold && p.stockStatus !== 'Sold' && p.status !== 'sold'
+    );
+    if (!notSoldList.length) return repProduct || null;
+
+    return notSoldList.reduce((highest, curr) => {
+      const currPrice = Number(curr?.pricing?.salePrice || curr?.pricing?.mrp || 0);
+      const highPrice = Number(highest?.pricing?.salePrice || highest?.pricing?.mrp || 0);
+      return currPrice > highPrice ? curr : highest;
+    }, notSoldList[0]);
+  }, [products, repProduct]);
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-3 sm:p-5 lg:p-6 animate-fadeIn">
@@ -390,11 +505,18 @@ export default function ManageGroupDrawer({
                   >
                     {group?.status === 'active' ? 'Active' : 'Inactive'}
                   </span>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#8b6f4e]/10 text-[#8b6f4e] border border-[#8b6f4e]/20">
+                    {products.length || group?.productCount || 0} Products
+                  </span>
                 </div>
                 <div className="flex items-center gap-2 text-xs text-stone-500 mt-1">
                   <span>Code: <strong className="text-stone-700">{group?.groupCode}</strong></span>
-                  <span>•</span>
-                  <span>{group?.productCount || 0} Products ({group?.eligibleCount || 0} Eligible)</span>
+                  {group?.eligibleCount !== undefined && (
+                    <>
+                      <span>•</span>
+                      <span>{group?.eligibleCount || 0} Eligible</span>
+                    </>
+                  )}
                 </div>
                 <div className="flex items-center gap-3 text-xs mt-1">
                   <span className="font-bold text-[#8b6f4e]">
@@ -408,7 +530,7 @@ export default function ManageGroupDrawer({
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {selectedProductIds.size > 0 ? (
+              {selectedProductIds.size > 0 && (
                 <div className="flex items-center gap-2 animate-fadeIn">
                   <span className="inline-flex items-center gap-1.5 text-xs font-bold text-[#8b6f4e] bg-[#8b6f4e]/10 border border-[#8b6f4e]/20 px-2.5 py-2 rounded-xl">
                     <span>{selectedProductIds.size} selected</span>
@@ -423,31 +545,35 @@ export default function ManageGroupDrawer({
                   </span>
                   <button
                     type="button"
-                    onClick={() => setMoveModalOpen(true)}
+                    onClick={handleOpenMoveBulk}
                     className="px-3.5 py-2 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
                     title="Move selected products to another group"
                   >
                     <span>Move to Another Group</span>
                   </button>
-                  <button
-                    type="button"
-                    onClick={handleBulkRemove}
-                    className="px-3.5 py-2 text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 rounded-xl transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
-                    title="Remove selected products from group"
-                  >
-                    <span>Remove from Group</span>
-                  </button>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  disabled
-                  className="px-3.5 py-2 text-xs font-semibold text-stone-300 bg-stone-50 border border-stone-200 rounded-xl transition-all cursor-not-allowed hidden sm:flex items-center gap-1.5"
-                  title="Select products below to move to another group"
-                >
-                  <span>Move to Another Group</span>
-                </button>
               )}
+
+              <button
+                type="button"
+                onClick={handleApproveGroup}
+                disabled={approving || loading}
+                className="px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/90 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Approve all in-stock products in this group"
+              >
+                <HiOutlineCheckCircle className="w-3.5 h-3.5" />
+                <span>{approving ? 'Approving...' : 'Approve Group'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={openAddProducts}
+                className="px-3.5 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                title="Add products to this group"
+              >
+                <HiOutlinePlus className="w-3.5 h-3.5" />
+                <span>Add Products</span>
+              </button>
 
               <button
                 type="button"
@@ -469,59 +595,6 @@ export default function ManageGroupDrawer({
               </button>
             </div>
           </header>
-
-          {/* ─── 2. First-Sync & Latest-Sync Banner ─── */}
-          <div className="px-6 py-2.5 bg-stone-50 border-b border-stone-200 flex flex-wrap items-center justify-between text-[11px] text-stone-600 gap-2 shrink-0">
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-stone-700">Initial Sync:</span>
-              {hasFirstSync ? (
-                <span className="text-emerald-700 font-medium">
-                  {formatDate(group?.sync?.firstSyncedAt)} ({group?.sync?.firstSyncedFields?.join(', ') || 'fields'})
-                </span>
-              ) : (
-                <span className="text-amber-700 italic">Not synchronized yet</span>
-              )}
-            </div>
-            {group?.sync?.lastSyncedAt && (
-              <div className="text-stone-500">
-                Last synced: <strong className="text-stone-700">{formatDate(group.sync.lastSyncedAt)}</strong> (v{group.sync.syncVersion})
-              </div>
-            )}
-          </div>
-
-          {/* ─── 3. Navigation Tabs ─── */}
-          <div className="px-6 border-b border-stone-200 flex items-center justify-between bg-white shrink-0">
-            <div className="flex items-center gap-6">
-              {[
-                { key: 'products', label: `Group Products (${products.length})` },
-                { key: 'details', label: 'Group Details & Mode' },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key)}
-                  className={`py-3 text-xs font-semibold border-b-2 transition-all cursor-pointer ${
-                    activeTab === tab.key
-                      ? 'border-[#8b6f4e] text-[#8b6f4e]'
-                      : 'border-transparent text-stone-500 hover:text-stone-800'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {activeTab === 'products' && (
-              <button
-                type="button"
-                onClick={openAddProducts}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-lg transition-all shadow-2xs cursor-pointer"
-              >
-                <HiOutlinePlus className="w-3.5 h-3.5" />
-                <span>Add Products</span>
-              </button>
-            )}
-          </div>
 
           {/* ─── 4. Body Content ─── */}
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
@@ -612,7 +685,7 @@ export default function ManageGroupDrawer({
                             <th className="p-3">Tag / Barcode / SKU</th>
                             <th className="p-3">Weight</th>
                             <th className="p-3">Sale Price</th>
-                            <th className="p-3">Status</th>
+                            <th className="p-3">Status / Stock</th>
                             <th className="p-3 text-right">Actions</th>
                           </tr>
                         </thead>
@@ -628,6 +701,9 @@ export default function ManageGroupDrawer({
                               const isSelected = selectedProductIds.has(p._id);
                               const isPrimary = String(group.primaryProductId) === String(p._id);
                               const isRep = String(repProduct?._id) === String(p._id);
+                              const isTopAvailable = Boolean(
+                                highestPriceNotSold && String(highestPriceNotSold._id) === String(p._id)
+                              );
                               const img = getProductImage(p);
 
                               return (
@@ -685,18 +761,31 @@ export default function ManageGroupDrawer({
                                     {money(p.pricing?.salePrice || p.pricing?.mrp)}
                                   </td>
                                   <td className="p-3">
-                                    <span
-                                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                        p.ornate?.isSold || p.stockStatus === 'Sold'
-                                          ? 'bg-rose-50 text-rose-700'
-                                          : 'bg-emerald-50 text-emerald-700'
-                                      }`}
-                                    >
-                                      {p.ornate?.isSold || p.stockStatus === 'Sold' ? 'Sold' : 'In Stock'}
-                                    </span>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 flex-wrap">
+                                      {renderStatusBadge(p)}
+                                      {renderStockStatusBadge(p)}
+                                    </div>
                                   </td>
                                   <td className="p-3 text-right">
                                     <div className="flex items-center justify-end gap-1.5">
+                                      {isTopAvailable && (
+                                        <button
+                                          type="button"
+                                          onClick={() => openProductPreview(p)}
+                                          className="p-1.5 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] hover:border-[#8b6f4e]/40 transition-all cursor-pointer shadow-2xs"
+                                          title="Open product on website (storefront)"
+                                        >
+                                          <HiOutlineExternalLink className="w-4 h-4 stroke-[2]" />
+                                        </button>
+                                      )}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenMoveSingle(p)}
+                                        className="p-1.5 rounded-lg border border-stone-200 bg-white text-stone-600 hover:text-[#8b6f4e] hover:border-[#8b6f4e]/40 hover:bg-[#8b6f4e]/5 transition-all cursor-pointer"
+                                        title="Move to another group or create new group"
+                                      >
+                                        <HiOutlineSwitchHorizontal className="w-4 h-4" />
+                                      </button>
                                       <button
                                         type="button"
                                         onClick={() => handleSetRepresentative(p._id)}
@@ -755,6 +844,9 @@ export default function ManageGroupDrawer({
                       {displayedProducts.map((p) => {
                         const isSelected = selectedProductIds.has(p._id);
                         const isPrimary = String(group.primaryProductId) === String(p._id);
+                        const isTopAvailable = Boolean(
+                          highestPriceNotSold && String(highestPriceNotSold._id) === String(p._id)
+                        );
                         const img = getProductImage(p);
 
                         return (
@@ -765,17 +857,21 @@ export default function ManageGroupDrawer({
                             }`}
                           >
                             <div>
-                              <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center justify-between gap-1 mb-2">
                                 <input
                                   type="checkbox"
                                   checked={isSelected}
                                   onChange={() => toggleSelect(p._id)}
-                                  className="rounded text-[#8b6f4e] focus:ring-[#8b6f4e] w-4 h-4 cursor-pointer"
+                                  className="rounded text-[#8b6f4e] focus:ring-[#8b6f4e] w-4 h-4 cursor-pointer shrink-0"
                                 />
+                                <div className="flex items-center gap-1 flex-wrap">
+                                  {renderStatusBadge(p)}
+                                  {renderStockStatusBadge(p)}
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => handleSetRepresentative(p._id)}
-                                  className={`p-1 rounded-lg ${
+                                  className={`p-1 rounded-lg shrink-0 ${
                                     isPrimary ? 'text-amber-500' : 'text-stone-300 hover:text-amber-500'
                                   }`}
                                   title="Set as representative"
@@ -810,6 +906,24 @@ export default function ManageGroupDrawer({
                                 {money(p.pricing?.salePrice || p.pricing?.mrp)}
                               </span>
                               <div className="flex items-center gap-1">
+                                {isTopAvailable && (
+                                  <button
+                                    type="button"
+                                    onClick={() => openProductPreview(p)}
+                                    className="p-1 text-[#8b6f4e] hover:text-[#735839] transition-colors cursor-pointer"
+                                    title="Open product on website (storefront)"
+                                  >
+                                    <HiOutlineExternalLink className="w-3.5 h-3.5 stroke-[2]" />
+                                  </button>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenMoveSingle(p)}
+                                  className="p-1 text-stone-500 hover:text-[#8b6f4e] transition-colors cursor-pointer"
+                                  title="Move to another group or create new group"
+                                >
+                                  <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
+                                </button>
                                 <button
                                   type="button"
                                   onClick={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
@@ -950,11 +1064,24 @@ export default function ManageGroupDrawer({
       {/* Move Product Modal */}
       <MoveProductModal
         isOpen={moveModalOpen}
-        onClose={() => setMoveModalOpen(false)}
+        onClose={() => {
+          setMoveModalOpen(false);
+          setMoveTargetProducts([]);
+        }}
         sourceGroup={group}
-        productIds={Array.from(selectedProductIds)}
+        productIds={
+          moveTargetProducts.length > 0
+            ? moveTargetProducts.map((p) => p._id)
+            : Array.from(selectedProductIds)
+        }
+        products={
+          moveTargetProducts.length > 0
+            ? moveTargetProducts
+            : (group?.productIds || []).filter((p) => selectedProductIds.has(p._id))
+        }
         onSuccess={() => {
           setSelectedProductIds(new Set());
+          setMoveTargetProducts([]);
           fetchGroup();
           onRefreshParent?.();
         }}

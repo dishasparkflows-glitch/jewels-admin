@@ -1,126 +1,64 @@
-import React, { useState, useRef, useEffect } from 'react';
-import {
-  HiOutlineDotsVertical,
-  HiOutlinePencil,
-  HiOutlinePlus,
-  HiOutlineTrash,
-  HiOutlineEye,
-  HiOutlineCheckCircle,
-  HiOutlineXCircle,
-} from 'react-icons/hi';
+import React from 'react';
+import { HiOutlineEye } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
-
-const money = (val) => {
-  if (val == null || val === '') return '₹ 0';
-  return `₹ ${Number(val).toLocaleString('en-IN')}`;
-};
-
-const getProductImageUrl = (product) => {
-  if (!product) return null;
-  if (product.images && product.images[0]) {
-    const img = product.images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (product.ornate?.ornateImages && product.ornate.ornateImages[0]) {
-    const img = product.ornate.ornateImages[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (product.colorImages && product.colorImages[0]?.images?.[0]) {
-    const img = product.colorImages[0].images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  return null;
-};
 
 export default function GroupCard({
   group,
   viewMode = 'grid',
   onManage,
-  onEdit,
-  onAddProducts,
   onToggleStatus,
-  onDelete,
 }) {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const menuRef = useRef(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (menuRef.current && !menuRef.current.contains(e.target)) {
-        setMenuOpen(false);
-      }
-    };
-    if (menuOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [menuOpen]);
-
-  const imageUrl = getProductImageUrl(group.representative);
   const isActive = group.status === 'active';
-  const eligibleCount = group.eligibleCount ?? group.productCount ?? 0;
-  const repPrice = group.representativePrice || group.maxPrice || 0;
+  const productCount = group.productCount ?? 0;
 
   if (viewMode === 'list') {
     return (
-      <article className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col md:flex-row items-center gap-4">
-        {/* Thumbnail */}
-        <div className="relative w-24 h-24 shrink-0 bg-stone-50 rounded-xl overflow-hidden border border-stone-100 flex items-center justify-center">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={group.groupName}
-              className="w-full h-full object-contain p-1.5"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center text-stone-300">
-              <IoDiamondOutline className="w-6 h-6" />
-              <span className="text-[10px] text-stone-400 mt-1">No Image</span>
-            </div>
-          )}
-          <span className="absolute top-1 left-1 bg-stone-900/80 backdrop-blur-xs text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md">
-            {eligibleCount} {eligibleCount === 1 ? 'item' : 'items'}
-          </span>
+      <article className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex items-center gap-4">
+        {/* Group Icon */}
+        <div className="w-11 h-11 shrink-0 bg-[#8b6f4e]/8 rounded-xl flex items-center justify-center">
+          <IoDiamondOutline className="w-5 h-5 text-[#8b6f4e]" />
         </div>
 
         {/* Group Info */}
-        <div className="flex-1 min-w-0 space-y-1">
+        <div className="flex-1 min-w-0 space-y-0.5">
           <div className="flex items-center gap-2">
             <h3 className="font-bold text-sm text-stone-900 truncate">{group.groupName}</h3>
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                isActive
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-stone-100 text-stone-600 border-stone-200'
-              }`}
-            >
-              {isActive ? 'Active' : 'Inactive'}
-            </span>
           </div>
-          <div className="flex items-center gap-3 text-xs text-stone-500">
-            <span>Code: <strong className="text-stone-700">{group.groupCode}</strong></span>
-            <span>•</span>
-            <span>Mode: <strong className="capitalize text-stone-700">{group.representativeMode || 'auto'}</strong></span>
-          </div>
-          {group.sync?.firstSyncedAt && (
-            <p className="text-[11px] text-stone-400">
-              First synced: {new Date(group.sync.firstSyncedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-            </p>
-          )}
-        </div>
-
-        {/* Pricing */}
-        <div className="text-right shrink-0 pr-4">
-          <p className="text-[11px] text-stone-500">Representative Price</p>
-          <p className="text-base font-bold text-[#8b6f4e]">{money(repPrice)}</p>
-          <p className="text-xs text-stone-500 mt-0.5">
-            Range: {money(group.minPrice)} – {money(group.maxPrice)}
+          <p className="text-xs text-stone-500">
+            Code: <strong className="text-stone-700 font-mono">{group.groupCode}</strong>
           </p>
         </div>
 
+        {/* Product Count */}
+        <div className="text-center shrink-0 px-4">
+          <p className="text-[10px] text-stone-400 uppercase font-semibold">Total Products</p>
+          <p className="text-lg font-bold text-stone-900">{productCount}</p>
+        </div>
+
         {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-3 shrink-0">
+          {/* On/Off Switch */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isActive}
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleStatus?.(group);
+            }}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6f4e] ${
+              isActive ? 'bg-[#8b6f4e]' : 'bg-stone-300'
+            }`}
+            title={isActive ? 'Click to deactivate group' : 'Click to activate group'}
+          >
+            <span
+              aria-hidden="true"
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                isActive ? 'translate-x-4' : 'translate-x-0'
+              }`}
+            />
+          </button>
+
           <button
             type="button"
             onClick={() => onManage(group)}
@@ -128,76 +66,6 @@ export default function GroupCard({
           >
             Manage Group
           </button>
-
-          <div className="relative" ref={menuRef}>
-            <button
-              type="button"
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="p-2 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-lg transition-all"
-              title="More actions"
-            >
-              <HiOutlineDotsVertical className="w-4 h-4" />
-            </button>
-
-            {menuOpen && (
-              <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-stone-200 rounded-xl shadow-lg py-1 z-30 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onEdit?.(group);
-                  }}
-                  className="w-full text-left px-3 py-2 text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                >
-                  <HiOutlinePencil className="w-3.5 h-3.5 text-stone-500" />
-                  Edit Group Details
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onAddProducts?.(group);
-                  }}
-                  className="w-full text-left px-3 py-2 text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                >
-                  <HiOutlinePlus className="w-3.5 h-3.5 text-stone-500" />
-                  Add Products
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onToggleStatus?.(group);
-                  }}
-                  className="w-full text-left px-3 py-2 text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                >
-                  {isActive ? (
-                    <>
-                      <HiOutlineXCircle className="w-3.5 h-3.5 text-amber-500" />
-                      Deactivate Group
-                    </>
-                  ) : (
-                    <>
-                      <HiOutlineCheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                      Activate Group
-                    </>
-                  )}
-                </button>
-                <div className="border-t border-stone-100 my-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    onDelete?.(group);
-                  }}
-                  className="w-full text-left px-3 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2"
-                >
-                  <HiOutlineTrash className="w-3.5 h-3.5" />
-                  Delete Group
-                </button>
-              </div>
-            )}
-          </div>
         </div>
       </article>
     );
@@ -208,134 +76,48 @@ export default function GroupCard({
     <article className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between group">
       <div>
         {/* Top Header */}
-        <div className="flex items-center justify-between gap-2 mb-2">
+        <div className="flex items-center justify-between gap-2 mb-3">
           <span className="text-[11px] font-semibold text-stone-500 font-mono">
             {group.groupCode}
           </span>
-          <div className="flex items-center gap-1.5">
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                isActive
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                  : 'bg-stone-100 text-stone-600 border-stone-200'
+          <div className="flex items-center gap-2">
+            {/* On/Off Toggle Switch */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isActive}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleStatus?.(group);
+              }}
+              className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6f4e] ${
+                isActive ? 'bg-[#8b6f4e]' : 'bg-stone-300'
               }`}
+              title={isActive ? 'Click to deactivate group' : 'Click to activate group'}
             >
-              {isActive ? 'Active' : 'Inactive'}
-            </span>
-
-            <div className="relative" ref={menuRef}>
-              <button
-                type="button"
-                onClick={() => setMenuOpen(!menuOpen)}
-                className="p-1 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-lg transition-all"
-                title="More actions"
-              >
-                <HiOutlineDotsVertical className="w-4 h-4" />
-              </button>
-
-              {menuOpen && (
-                <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-stone-200 rounded-xl shadow-lg py-1 z-30 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onEdit?.(group);
-                    }}
-                    className="w-full text-left px-3 py-2 text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                  >
-                    <HiOutlinePencil className="w-3.5 h-3.5 text-stone-500" />
-                    Edit Group Details
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onAddProducts?.(group);
-                    }}
-                    className="w-full text-left px-3 py-2 text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                  >
-                    <HiOutlinePlus className="w-3.5 h-3.5 text-stone-500" />
-                    Add Products
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onToggleStatus?.(group);
-                    }}
-                    className="w-full text-left px-3 py-2 text-stone-700 hover:bg-stone-50 flex items-center gap-2"
-                  >
-                    {isActive ? (
-                      <>
-                        <HiOutlineXCircle className="w-3.5 h-3.5 text-amber-500" />
-                        Deactivate Group
-                      </>
-                    ) : (
-                      <>
-                        <HiOutlineCheckCircle className="w-3.5 h-3.5 text-emerald-500" />
-                        Activate Group
-                      </>
-                    )}
-                  </button>
-                  <div className="border-t border-stone-100 my-1" />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      onDelete?.(group);
-                    }}
-                    className="w-full text-left px-3 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2"
-                  >
-                    <HiOutlineTrash className="w-3.5 h-3.5" />
-                    Delete Group
-                  </button>
-                </div>
-              )}
-            </div>
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  isActive ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
         </div>
 
-        {/* Image Box */}
-        <div className="relative w-full h-44 bg-stone-50/70 rounded-xl overflow-hidden border border-stone-100 flex items-center justify-center mb-3">
-          {imageUrl ? (
-            <img
-              src={imageUrl}
-              alt={group.groupName}
-              className="w-full h-full object-contain p-2 group-hover:scale-102 transition-transform duration-300"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center text-stone-300">
-              <IoDiamondOutline className="w-8 h-8" />
-              <span className="text-[11px] text-stone-400 mt-1">No Image Available</span>
-            </div>
-          )}
-
-          <span className="absolute top-2 right-2 bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
-            {eligibleCount} {eligibleCount === 1 ? 'Variant' : 'Variants'}
+        {/* Group Icon & Product Count */}
+        <div className="relative w-full h-32 bg-stone-50/70 rounded-xl overflow-hidden border border-stone-100 flex flex-col items-center justify-center mb-3">
+          <IoDiamondOutline className="w-8 h-8 text-[#8b6f4e]/40 mb-1.5" />
+          <span className="text-2xl font-bold text-stone-800">{productCount}</span>
+          <span className="text-[10px] text-stone-400 uppercase font-semibold tracking-wide">
+            {productCount === 1 ? 'Product' : 'Products'}
           </span>
         </div>
 
         {/* Group Name */}
-        <h3 className="font-bold text-sm text-stone-900 tracking-tight line-clamp-1">
+        <h3 className="font-bold text-sm text-stone-900 tracking-tight line-clamp-2">
           {group.groupName}
         </h3>
-
-        {/* Price Info */}
-        <div className="mt-3 pt-3 border-t border-stone-100 grid grid-cols-2 gap-2 text-xs">
-          <div>
-            <p className="text-[10px] text-stone-400 uppercase font-semibold">Price Range</p>
-            <p className="font-semibold text-stone-800 text-[11px] truncate">
-              {money(group.minPrice)} – {money(group.maxPrice)}
-            </p>
-          </div>
-          <div className="text-right border-l border-stone-100 pl-2">
-            <p className="text-[10px] text-stone-400 uppercase font-semibold">Representative</p>
-            <p className="font-bold text-[#8b6f4e] text-xs truncate">
-              {money(repPrice)}
-            </p>
-          </div>
-        </div>
       </div>
 
       {/* Button */}

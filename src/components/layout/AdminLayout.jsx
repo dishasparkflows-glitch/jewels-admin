@@ -1,16 +1,24 @@
-import { Outlet } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, useLocation } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import ErrorBoundary from '../common/ErrorBoundary';
 
 const AdminLayout = () => {
+  const location = useLocation();
   const {
     sidebarOpen,
     sidebarPosition,
     mobileSidebarOpen,
     setMobileSidebarOpen,
   } = useTheme();
+
+  // Reset body and html overflow on route change to ensure page scroll is never stuck
+  useEffect(() => {
+    document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
+  }, [location.pathname]);
 
   const desktopMarginClass =
     sidebarPosition === 'right'

@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { HiOutlineTrash } from 'react-icons/hi';
 import Dropdown from './Dropdown';
 import api from '../../api/axios';
 
@@ -84,39 +85,6 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
     return changed ? updated : r;
   };
 
-  const getAvailableSizeRanges = (r) => {
-    if (!rates || rates.length === 0) return [];
-    const rTypeId = resolveEntityId(r.diamondTypeId, 'types');
-    const rShapeId = resolveEntityId(r.diamondShapeId, 'shapes');
-    const rColorId = resolveEntityId(r.diamondColorId, 'colors');
-    const rClarityId = resolveEntityId(r.diamondClarityId, 'clarities');
-
-    const matching = rates.filter((m) => {
-      const typeMatch = id(m.diamondTypeId) === rTypeId || String(m.diamondTypeId?.name || '').toLowerCase() === String(r.diamondTypeId).toLowerCase();
-      const shapeMatch = id(m.diamondShapeId) === rShapeId || String(m.diamondShapeId?.name || '').toLowerCase() === String(r.diamondShapeId).toLowerCase();
-      const colorMatch = !rColorId || id(m.diamondColorId) === rColorId || String(m.diamondColorId?.name || '').toLowerCase() === String(r.diamondColorId).toLowerCase();
-      const clarityMatch = !rClarityId || id(m.diamondClarityId) === rClarityId || String(m.diamondClarityId?.name || '').toLowerCase() === String(r.diamondClarityId).toLowerCase();
-      return typeMatch && shapeMatch && colorMatch && clarityMatch;
-    });
-
-    const seen = new Set();
-    const ranges = [];
-    matching.forEach((m) => {
-      const from = Number(m.sizeFrom ?? 0);
-      const to = Number(m.sizeTo ?? 0);
-      const key = `${from}:${to}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        ranges.push({
-          from,
-          to,
-          rate: Number(m.priceINR || 0),
-          label: `${from} - ${to} mm (${money(m.priceINR)}/ct)`,
-        });
-      }
-    });
-    return ranges;
-  };
 
   useEffect(() => {
     if (!enabledKey || !shapesKey) {
@@ -225,25 +193,6 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
     onChange(updated);
   };
 
-  const updateMultiple = (index, fields) => {
-    const position = positionOf(index);
-    const offsets = {};
-    const curType = resolveEntityId(rows[index].diamondTypeId, 'types') || id(rows[index].diamondTypeId);
-    onChange(
-      rows.map((r, i) => {
-        const type = resolveEntityId(r.diamondTypeId, 'types') || id(r.diamondTypeId);
-        const ordinal = offsets[type] || 0;
-        offsets[type] = ordinal + 1;
-        const isTarget = i === index;
-        const isSynced = type !== curType && ordinal === position;
-        if (!isTarget && !isSynced) return r;
-        return {
-          ...r,
-          ...fields,
-        };
-      })
-    );
-  };
 
   const remove = (index) => {
     const position = positionOf(index);
@@ -277,16 +226,20 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
       const colorMatch = mColorId === rColorId || String(m.diamondColorId?.name || '').toLowerCase() === String(r.diamondColorId).toLowerCase();
       const clarityMatch = mClarityId === rClarityId || String(m.diamondClarityId?.name || '').toLowerCase() === String(r.diamondClarityId).toLowerCase();
 
+      const hasSizeFilter = Number(r.sizeFrom) > 0 || Number(r.sizeTo) > 0;
+      const sizeMatch = hasSizeFilter
+        ? Number(m.sizeFrom) === Number(r.sizeFrom) && Number(m.sizeTo) === Number(r.sizeTo)
+        : true;
+
       return (
         typeMatch &&
         shapeMatch &&
         colorMatch &&
         clarityMatch &&
-        Number(m.sizeFrom) === Number(r.sizeFrom) &&
-        Number(m.sizeTo) === Number(r.sizeTo)
+        sizeMatch
       );
     });
-    return matches.length === 1 ? Number(matches[0].priceINR) : null;
+    return matches.length >= 1 ? Number(matches[0].priceINR) : null;
   };
 
   return (
@@ -337,8 +290,6 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
                     'Shape',
                     'Color',
                     'Clarity',
-                    'Sieve from (mm)',
-                    'Sieve to (mm)',
                     'Pieces',
                     'Carat (ct)',
                     'Rate/Ct',
@@ -355,7 +306,6 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
                 {rows.map((r, index) => {
                   if (resolveEntityId(r.diamondTypeId, 'types') !== type && id(r.diamondTypeId) !== type) return null;
                   const rate = rateFor(r);
-                  const ranges = getAvailableSizeRanges(r);
                   return (
                     <tr key={r._id || index} className="border-t">
                       {[
@@ -378,57 +328,6 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
                           />
                         </td>
                       ))}
-                      {/* Sieve from (mm) */}
-                      <td className="p-2">
-                        <input
-                          aria-label="sizeFrom"
-                          placeholder="0"
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={r.sizeFrom ?? ''}
-                          onChange={(e) => update(index, 'sizeFrom', e.target.value)}
-                          className="w-24 rounded border border-stone-200 p-2 text-xs font-mono"
-                        />
-                        {ranges.length > 0 && (
-                          <select
-                            aria-label="Preset Sieve Range"
-                            className="mt-1 block w-24 text-[10px] text-stone-600 bg-stone-50 border border-stone-200 rounded px-1 py-0.5 truncate cursor-pointer hover:border-stone-400"
-                            value={
-                              ranges.some((rg) => rg.from === Number(r.sizeFrom) && rg.to === Number(r.sizeTo))
-                                ? `${Number(r.sizeFrom)}:${Number(r.sizeTo)}`
-                                : ''
-                            }
-                            onChange={(e) => {
-                              const [f, t] = e.target.value.split(':');
-                              if (f !== undefined && t !== undefined) {
-                                updateMultiple(index, { sizeFrom: Number(f), sizeTo: Number(t) });
-                              }
-                            }}
-                            title="Select from master sieve size ranges"
-                          >
-                            <option value="" disabled>Preset...</option>
-                            {ranges.map((rg) => (
-                              <option key={`${rg.from}:${rg.to}`} value={`${rg.from}:${rg.to}`}>
-                                {rg.from} - {rg.to} mm
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </td>
-                      {/* Sieve to (mm) */}
-                      <td className="p-2">
-                        <input
-                          aria-label="sizeTo"
-                          placeholder="0.01"
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={r.sizeTo ?? ''}
-                          onChange={(e) => update(index, 'sizeTo', e.target.value)}
-                          className="w-24 rounded border border-stone-200 p-2 text-xs font-mono"
-                        />
-                      </td>
                       {/* Pieces */}
                       <td className="p-2">
                         <input
@@ -480,14 +379,15 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
                           </>
                         )}
                       </td>
-                      <td className="p-2">
+                      <td className="p-2 text-center">
                         <button
                           type="button"
-                          aria-label="Delete corresponding quality rows"
+                          aria-label="Delete row"
+                          title="Delete row"
                           onClick={() => remove(index)}
-                          className="text-stone-400 hover:text-rose-600 transition-colors"
+                          className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer inline-flex items-center justify-center"
                         >
-                          Remove
+                          <HiOutlineTrash className="w-4 h-4" />
                         </button>
                       </td>
                     </tr>

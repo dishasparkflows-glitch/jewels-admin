@@ -7,7 +7,6 @@ import {
   HiOutlinePlus,
   HiOutlineViewGrid,
   HiOutlineViewList,
-  HiOutlineAdjustments,
   HiOutlineX,
   HiOutlineTag,
 } from 'react-icons/hi';
@@ -83,7 +82,6 @@ export default function OrnateProductsView() {
   const [sortBy, setSortBy] = useState('latest');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => getAdminPageSize(10));
-  const [showFiltersPanel, setShowFiltersPanel] = useState(false);
 
   // Data State
   const [products, setProducts] = useState([]);
@@ -135,7 +133,7 @@ export default function OrnateProductsView() {
     try {
       setLoading(true);
 
-      // CASE 1: COMMON GROUPS TAB
+      // CASE 1: COMMON GROUPS TAB — lightweight summary API
       if (activeTab === 'common_group') {
         const params = new URLSearchParams({
           page: String(page),
@@ -145,7 +143,7 @@ export default function OrnateProductsView() {
         if (searchQuery.trim()) params.set('search', searchQuery.trim());
         if (sortBy) params.set('sort', sortBy);
 
-        const res = await api.get(`/product-groups?${params.toString()}`);
+        const res = await api.get(`/product-groups/summary?${params.toString()}`);
         const data = res.data?.data || [];
         const items = Array.isArray(data) ? data : data.items || [];
         setGroups(items);
@@ -348,7 +346,6 @@ export default function OrnateProductsView() {
             { key: 'approved', label: 'Approved', count: tabCounts.approved },
             { key: 'sold', label: 'Sold', count: tabCounts.sold },
             { key: 'common_group', label: 'Common Groups', count: tabCounts.common_group },
-            { key: 'ungrouped', label: 'Ungrouped', count: tabCounts.ungrouped },
           ].map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -451,59 +448,8 @@ export default function OrnateProductsView() {
               </button>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setShowFiltersPanel((prev) => !prev)}
-              className={`inline-flex items-center gap-1 px-3 py-2 text-xs font-semibold rounded-xl border transition-all cursor-pointer ${
-                showFiltersPanel
-                  ? 'bg-stone-900 text-white border-stone-900'
-                  : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300'
-              }`}
-            >
-              <HiOutlineAdjustments className="w-3.5 h-3.5" />
-              <span>Pagination</span>
-            </button>
           </div>
         </div>
-
-        {/* Collapsible Pagination Size Selector */}
-        {showFiltersPanel && (
-          <div className="pt-3 border-t border-stone-100 flex flex-wrap items-center justify-between gap-3 text-xs text-stone-600">
-            <div className="flex items-center gap-4 flex-wrap">
-              <span>
-                Total <strong>{totalDocs}</strong> {activeTab === 'common_group' ? 'groups' : 'products'}
-              </span>
-              {searchQuery && (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="text-[#8b6f4e] hover:underline font-semibold"
-                >
-                  Clear search
-                </button>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-stone-400">Items per page:</span>
-              {[10, 25, 50, 100].map((num) => (
-                <button
-                  key={num}
-                  type="button"
-                  onClick={() => {
-                    setPageSize(num);
-                    setAdminPageSize(num);
-                    setPage(1);
-                  }}
-                  className={`px-2 py-0.5 rounded text-xs cursor-pointer ${
-                    pageSize === num ? 'bg-[#8b6f4e] text-white font-bold' : 'bg-stone-100 text-stone-600'
-                  }`}
-                >
-                  {num}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ─── 4. Main Tab Content ─── */}
@@ -561,9 +507,8 @@ export default function OrnateProductsView() {
               ))}
             </div>
 
-            <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
-              <Pagination
-                className="border-t-0"
+            <Pagination
+                className="border border-stone-200 rounded-2xl bg-white shadow-2xs"
                 currentPage={page}
                 totalItems={totalDocs}
                 pageSize={pageSize}
@@ -575,7 +520,6 @@ export default function OrnateProductsView() {
                 }}
                 pageSizeOptions={[10, 25, 50, 100]}
               />
-            </div>
           </div>
         )
       ) : activeTab === 'ungrouped' ? (

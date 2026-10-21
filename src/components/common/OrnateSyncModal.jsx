@@ -65,7 +65,13 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     document.body.style.overflow = 'hidden';
     const escape = (event) => { if (event.key === 'Escape' && !syncing) { if (detailId) setDetailId(null); else onClose?.(); } };
     window.addEventListener('keydown', escape);
-    return () => { document.body.style.overflow = previous; window.removeEventListener('keydown', escape); };
+    return () => {
+      window.removeEventListener('keydown', escape);
+      const otherModals = document.querySelectorAll('[role="dialog"], [aria-modal="true"]');
+      if (otherModals.length <= 1) {
+        document.body.style.overflow = '';
+      }
+    };
   }, [isOpen, syncing, detailId, onClose]);
 
   const products = useMemo(() => {

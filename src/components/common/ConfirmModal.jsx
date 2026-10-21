@@ -36,7 +36,6 @@ export default function ConfirmModal({
   useEffect(() => {
     if (!isOpen) return;
 
-    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e) => {
@@ -48,8 +47,11 @@ export default function ConfirmModal({
     window.addEventListener('keydown', handleKeyDown);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
+      const otherModals = document.querySelectorAll('[role="dialog"], [aria-modal="true"]');
+      if (otherModals.length <= 1) {
+        document.body.style.overflow = '';
+      }
     };
   }, [isOpen, onCancel, loading]);
 
