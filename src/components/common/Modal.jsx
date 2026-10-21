@@ -26,6 +26,7 @@ export default function Modal({
   showClose = true,
   closeOnOverlayClick = true,
   className = '',
+  zIndex = 'z-50',
 }) {
   // Lock body scroll and listen for Escape key
   useEffect(() => {
@@ -54,7 +55,7 @@ export default function Modal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-stone-900/50 backdrop-blur-xs transition-opacity duration-200 animate-fadeIn"
+      className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 sm:p-6 bg-stone-900/50 backdrop-blur-xs transition-opacity duration-200 animate-fadeIn`}
       onClick={closeOnOverlayClick ? onClose : undefined}
     >
       <div

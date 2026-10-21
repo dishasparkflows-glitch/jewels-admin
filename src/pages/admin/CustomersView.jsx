@@ -423,11 +423,10 @@ export default function CustomersView() {
                         {joinedDate}
                       </td>
 
-                      {/* Actions: Eye & Three Dots */}
+                      {/* Actions */}
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                         <RowActions
                           onView={() => setViewingCustomer({ ...client, fullName, email, phone, orders, ltv, joinedDate, displayId })}
-                          onEdit={() => toast.success(`Edit customer ${fullName}`)}
                           onDelete={() => handleDelete(id, fullName)}
                           viewTitle="View customer profile"
                         />
