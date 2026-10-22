@@ -229,6 +229,7 @@ export default function ManageGroupDrawer({
       setActiveTab('products');
       setSelectedProductIds(new Set());
       setSearch('');
+      setSortBy('price_desc');
       setPage(1);
     }
   }, [isOpen, groupId]);

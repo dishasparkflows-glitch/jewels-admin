@@ -22,6 +22,7 @@ import {
 } from '../../components/common/productGroup';
 import { getAdminPageSize, setAdminPageSize } from '../../utils/adminPagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { openProductPreview } from '../../utils/productPreview';
 import api from '../../api/axios';
 
 const money = (val) => {
@@ -79,7 +80,7 @@ export default function OrnateProductsView() {
   const [activeTab, setActiveTab] = useState('all'); // all, draft, approved, sold, common_group, ungrouped
   const [viewMode, setViewMode] = useState('grid'); // grid, list
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('latest');
+  const [sortBy, setSortBy] = useState('price_desc');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => getAdminPageSize(10));
 
@@ -110,9 +111,9 @@ export default function OrnateProductsView() {
 
   // Sort Options
   const sortOptions = [
-    { value: 'latest', label: 'Sort by: Latest' },
-    { value: 'price_asc', label: 'Price: Low to High' },
     { value: 'price_desc', label: 'Price: High to Low' },
+    { value: 'price_asc', label: 'Price: Low to High' },
+    { value: 'latest', label: 'Sort by: Latest' },
     { value: 'name_asc', label: 'Name: A-Z' },
   ];
 
@@ -133,34 +134,17 @@ export default function OrnateProductsView() {
     try {
       setLoading(true);
 
-      // CASE 1: COMMON GROUPS TAB — lightweight summary API
-      if (activeTab === 'common_group') {
-        const params = new URLSearchParams({
-          page: String(page),
-          limit: String(pageSize),
-          status: 'all',
-        });
-        if (searchQuery.trim()) params.set('search', searchQuery.trim());
-        if (sortBy) params.set('sort', sortBy);
-
-        const res = await api.get(`/product-groups/summary?${params.toString()}`);
-        const data = res.data?.data || [];
-        const items = Array.isArray(data) ? data : data.items || [];
-        setGroups(items);
-        setTotalDocs(Number(res.data?.pagination?.totalDocs || items.length));
-        return;
-      }
-
-      // CASE 2: UNGROUPED PRODUCTS TAB
+      // CASE 1: UNGROUPED PRODUCTS TAB
       if (activeTab === 'ungrouped') {
         const params = new URLSearchParams({
+          isOrnate: 'true',
           page: String(page),
           limit: String(pageSize),
         });
         if (searchQuery.trim()) params.set('search', searchQuery.trim());
         if (sortBy) params.set('sort', sortBy);
 
-        const res = await api.get(`/product-groups/ungrouped-products?${params.toString()}`);
+        const res = await api.get(`/products?${params.toString()}`);
         const data = res.data?.data || [];
         const items = Array.isArray(data) ? data : data.items || [];
         setProducts(items);
@@ -168,23 +152,24 @@ export default function OrnateProductsView() {
         return;
       }
 
-      // CASE 3: ALL / DRAFT / APPROVED / SOLD PRODUCTS TABS
+      // CASE 2: ALL / DRAFT / APPROVED / SOLD / COMMON GROUPS TABS (PRODUCT GROUPS)
       const params = new URLSearchParams({
-        isOrnate: 'true',
         page: String(page),
         limit: String(pageSize),
       });
 
-      if (activeTab === 'draft') params.set('status', 'draft');
-      else if (activeTab === 'approved') params.set('status', 'approved');
-      else if (activeTab === 'sold') params.set('status', 'sold');
+      if (activeTab === 'draft') params.set('productStatus', 'draft');
+      else if (activeTab === 'approved') params.set('productStatus', 'approved');
+      else if (activeTab === 'sold') params.set('productStatus', 'sold');
+      else params.set('status', 'all');
 
       if (searchQuery.trim()) params.set('search', searchQuery.trim());
+      if (sortBy) params.set('sort', sortBy);
 
-      const res = await api.get(`/products?${params.toString()}`);
+      const res = await api.get(`/product-groups?${params.toString()}`);
       const data = res.data?.data || [];
       const items = Array.isArray(data) ? data : data.items || [];
-      setProducts(items);
+      setGroups(items);
       setTotalDocs(Number(res.data?.pagination?.totalDocs || items.length));
     } catch (err) {
       console.error('Failed to fetch data:', err);
@@ -212,7 +197,7 @@ export default function OrnateProductsView() {
   }, [activeTab, searchQuery, sortBy]);
 
   // Bulk Selection Handlers
-  const currentItems = activeTab === 'common_group' ? groups : products;
+  const currentItems = activeTab === 'ungrouped' ? products : groups;
 
   const toggleSelectAll = () => {
     if (selectedIds.size === currentItems.length && currentItems.length > 0) {
@@ -346,6 +331,7 @@ export default function OrnateProductsView() {
             { key: 'approved', label: 'Approved', count: tabCounts.approved },
             { key: 'sold', label: 'Sold', count: tabCounts.sold },
             { key: 'common_group', label: 'Common Groups', count: tabCounts.common_group },
+            { key: 'ungrouped', label: 'Ungrouped', count: tabCounts.ungrouped },
           ].map((tab) => {
             const isActive = activeTab === tab.key;
             return (
@@ -389,9 +375,9 @@ export default function OrnateProductsView() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={
-                activeTab === 'common_group'
-                  ? 'Search by group name or group code...'
-                  : 'Search by product name, SKU, barcode, tag...'
+                activeTab === 'ungrouped'
+                  ? 'Search by product name, SKU, barcode, tag...'
+                  : 'Search by group name, group code, SKU...'
               }
               className="w-full pl-9 pr-8 py-2 text-xs text-stone-800 placeholder-stone-400 bg-stone-50/60 border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:bg-white transition-all"
             />
@@ -464,16 +450,18 @@ export default function OrnateProductsView() {
             </div>
           ))}
         </div>
-      ) : activeTab === 'common_group' ? (
-        /* ─── A. COMMON GROUPS TAB ─── */
+      ) : activeTab !== 'ungrouped' ? (
+        /* ─── A. PRODUCT GROUPS (ALL, DRAFT, APPROVED, SOLD, COMMON GROUPS) ─── */
         groups.length === 0 ? (
           <div className="bg-white border border-stone-200 rounded-2xl p-12 text-center space-y-4 shadow-2xs">
             <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto text-stone-400">
               <IoDiamondOutline className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-bold text-stone-800">No Common Product Groups Found</h3>
+            <h3 className="text-sm font-bold text-stone-800">No Product Groups Found</h3>
             <p className="text-xs text-stone-500 max-w-sm mx-auto">
-              Create product groups to bundle duplicate-looking items into a single catalogue card.
+              {searchQuery
+                ? 'No product groups matched your active search criteria.'
+                : 'No product groups found in this status tab.'}
             </p>
             <button
               type="button"
@@ -522,16 +510,16 @@ export default function OrnateProductsView() {
               />
           </div>
         )
-      ) : activeTab === 'ungrouped' ? (
+      ) : (
         /* ─── B. UNGROUPED PRODUCTS TAB ─── */
         products.length === 0 ? (
           <div className="bg-white border border-stone-200 rounded-2xl p-12 text-center space-y-3 shadow-2xs">
             <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center mx-auto text-emerald-600">
               <IoDiamondOutline className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-bold text-stone-800">All Products are Grouped!</h3>
+            <h3 className="text-sm font-bold text-stone-800">No Ornate Products Found</h3>
             <p className="text-xs text-stone-500 max-w-sm mx-auto">
-              There are no ungrouped Ornate products currently pending assignment.
+              {searchQuery ? 'No ornate products matched your search.' : 'There are no ornate products available.'}
             </p>
           </div>
         ) : (
@@ -613,6 +601,7 @@ export default function OrnateProductsView() {
                       <div className="pt-2 mt-2 border-t border-stone-100 flex items-center justify-between">
                         <span className="text-xs font-extrabold text-stone-900">{money(price)}</span>
                         <RowActions
+                          onOpenWebsite={() => openProductPreview(p)}
                           onView={() => setViewingProduct(p)}
                           onEdit={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
                           onDelete={() => handleDeleteProduct(p._id, title)}
@@ -680,7 +669,8 @@ export default function OrnateProductsView() {
                           <td className="p-3">{renderStatusBadge(p)}</td>
                           <td className="p-3 text-right">
                             <RowActions
-                              onView={() => setViewingProduct(p)}
+                              onOpenWebsite={() => openProductPreview(p)}
+                          onView={() => setViewingProduct(p)}
                               onEdit={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
                               onDelete={() => handleDeleteProduct(p._id, title)}
                             />
@@ -710,235 +700,10 @@ export default function OrnateProductsView() {
             </div>
           </div>
         )
-      ) : (
-        /* ─── C. STANDARD PRODUCTS TABS (All, Draft, Approved, Sold) ─── */
-        products.length === 0 ? (
-          <div className="bg-white border border-stone-200 rounded-2xl p-12 text-center space-y-3 shadow-2xs">
-            <div className="w-12 h-12 rounded-full bg-stone-100 flex items-center justify-center mx-auto text-stone-400">
-              <IoDiamondOutline className="w-6 h-6" />
-            </div>
-            <h3 className="text-sm font-bold text-stone-800">No Products Found</h3>
-            <p className="text-xs text-stone-500 max-w-sm mx-auto">
-              {searchQuery
-                ? 'No products matched your active search criteria.'
-                : 'No products in this status tab.'}
-            </p>
-          </div>
-        ) : viewMode === 'grid' ? (
-          /* Grid View */
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-              {products.map((p) => {
-                const isSelected = selectedIds.has(p._id);
-                const imgUrl = getProductImage(p);
-                const title = p.basicInfo?.title || p.name || 'Ornate Jewellery';
-                const sku = p.basicInfo?.sku || p.ornate?.tagNo || p.ornate?.barcode || '—';
-                const weightVal = p.specifications?.metalWeight || p.ornate?.netWt || p.ornate?.grossWt || '—';
-                const price = p.pricing?.salePrice ?? 0;
-
-                return (
-                  <div
-                    key={p._id}
-                    className={`bg-white border rounded-2xl p-3.5 flex flex-col justify-between transition-all hover:shadow-md relative group ${
-                      isSelected ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]' : 'border-stone-200'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-1 mb-2">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelectOne(p._id)}
-                        className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer"
-                      />
-                      {renderStatusBadge(p)}
-                    </div>
-
-                    <div
-                      onClick={() => setViewingProduct(p)}
-                      className="h-36 w-full flex items-center justify-center p-2 rounded-xl bg-stone-50/60 my-1 cursor-pointer overflow-hidden"
-                    >
-                      {imgUrl ? (
-                        <img
-                          src={imgUrl}
-                          alt={title}
-                          loading="lazy"
-                          className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-stone-300">
-                          <IoDiamondOutline className="w-10 h-10 stroke-1 text-stone-300 group-hover:text-[#8b6f4e]/40 transition-colors" />
-                          <span className="text-[9px] uppercase tracking-wider text-stone-400 mt-1">No Photo</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="space-y-1 mt-2">
-                      <h4
-                        onClick={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
-                        className="text-xs font-bold text-stone-900 truncate cursor-pointer hover:text-[#8b6f4e]"
-                        title={title}
-                      >
-                        {title}
-                      </h4>
-                      <p className="text-[10px] font-mono text-stone-400">{sku}</p>
-                      {weightVal !== '—' && (
-                        <p className="text-[11px] font-medium text-stone-500 pt-0.5">
-                          {weightVal}g
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="pt-2 mt-2 border-t border-stone-100 flex items-center justify-between">
-                      <div className="flex items-baseline gap-1">
-                        {p.pricing?.mrp > (p.pricing?.salePrice ?? 0) && (
-                          <span className="text-[10px] text-stone-400 line-through font-medium">
-                            {money(p.pricing.mrp)}
-                          </span>
-                        )}
-                        <span className="text-xs sm:text-[13px] font-extrabold text-stone-900">
-                          {money(price)}
-                        </span>
-                      </div>
-                      <RowActions
-                        onView={() => setViewingProduct(p)}
-                        viewTitle="Quick View"
-                        onEdit={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
-                        editTitle="Edit Product"
-                        onDelete={() => handleDeleteProduct(p._id, title)}
-                        deleteTitle="Delete Product"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
-              <Pagination
-                className="border-t-0"
-                currentPage={page}
-                totalItems={totalDocs}
-                pageSize={pageSize}
-                onPageChange={setPage}
-                onPageSizeChange={(newSize) => {
-                  setPageSize(newSize);
-                  setAdminPageSize(newSize);
-                  setPage(1);
-                }}
-                pageSizeOptions={[10, 25, 50, 100]}
-              />
-            </div>
-          </div>
-        ) : (
-          /* List View */
-          <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left">
-                <thead className="bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[10px] border-b border-stone-200">
-                  <tr>
-                    <th className="p-3 w-10 text-center">
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.size === products.length && products.length > 0}
-                        onChange={toggleSelectAll}
-                        className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer"
-                      />
-                    </th>
-                    <th className="p-3 w-16">Image</th>
-                    <th className="p-3">Product Name</th>
-                    <th className="p-3">SKU / Code</th>
-                    <th className="p-3">Weight</th>
-                    <th className="p-3">Price</th>
-                    <th className="p-3">Status</th>
-                    <th className="p-3">Last Sync</th>
-                    <th className="p-3 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100">
-                  {products.map((p) => {
-                    const isSelected = selectedIds.has(p._id);
-                    const imgUrl = getProductImage(p);
-                    const title = p.basicInfo?.title || p.name || 'Ornate Jewellery';
-                    const sku = p.basicInfo?.sku || p.ornate?.tagNo || p.ornate?.barcode || '—';
-                    const weightVal = p.specifications?.metalWeight || p.ornate?.netWt || p.ornate?.grossWt || '—';
-                    const price = p.pricing?.salePrice ?? 0;
-                    const lastSync = p.meta?.updatedAt || p.updatedAt;
-
-                    return (
-                      <tr
-                        key={p._id}
-                        className={`hover:bg-stone-50/70 transition-colors ${isSelected ? 'bg-stone-50/90' : ''}`}
-                      >
-                        <td className="p-3 text-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => toggleSelectOne(p._id)}
-                            className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer"
-                          />
-                        </td>
-                        <td className="p-3">
-                          <div
-                            onClick={() => setViewingProduct(p)}
-                            className="w-10 h-10 rounded-lg bg-stone-50 border border-stone-100 p-1 flex items-center justify-center cursor-pointer overflow-hidden"
-                          >
-                            {imgUrl ? (
-                              <img src={imgUrl} alt={title} className="max-w-full max-h-full object-contain" />
-                            ) : (
-                              <IoDiamondOutline className="w-5 h-5 text-stone-300" />
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <button
-                            type="button"
-                            onClick={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
-                            className="font-bold text-stone-900 hover:text-[#8b6f4e] text-left truncate max-w-[200px] block"
-                            title={title}
-                          >
-                            {title}
-                          </button>
-                        </td>
-                        <td className="p-3 font-mono text-stone-500 text-[11px]">{sku}</td>
-                        <td className="p-3 text-stone-600">{weightVal !== '—' ? `${weightVal} g` : '—'}</td>
-                        <td className="p-3 font-bold text-stone-900">{money(price)}</td>
-                        <td className="p-3">{renderStatusBadge(p)}</td>
-                        <td className="p-3 text-stone-400 text-[11px] whitespace-nowrap">{formatDate(lastSync)}</td>
-                        <td className="p-3 text-right">
-                          <RowActions
-                            onView={() => setViewingProduct(p)}
-                            viewTitle="Quick View"
-                            onEdit={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
-                            editTitle="Edit Product"
-                            onDelete={() => handleDeleteProduct(p._id, title)}
-                            deleteTitle="Delete Product"
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            <Pagination
-              currentPage={page}
-              totalItems={totalDocs}
-              pageSize={pageSize}
-              onPageChange={setPage}
-              onPageSizeChange={(newSize) => {
-                setPageSize(newSize);
-                setAdminPageSize(newSize);
-                setPage(1);
-              }}
-              pageSizeOptions={[10, 25, 50, 100]}
-            />
-          </div>
-        )
       )}
 
-      {/* ─── 5. Floating Bulk Actions Bar (for products) ─── */}
-      {selectedIds.size > 0 && activeTab !== 'common_group' && (
+      {/* ─── 5. Floating Bulk Actions Bar (for ungrouped products) ─── */}
+      {selectedIds.size > 0 && activeTab === 'ungrouped' && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-stone-900 text-white rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-bottom-3 duration-200">
           <span className="text-xs font-semibold">
             {selectedIds.size} {selectedIds.size === 1 ? 'product' : 'products'} selected
