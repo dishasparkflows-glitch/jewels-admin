@@ -1,5 +1,18 @@
 import axios from 'axios';
 import api from '../api/axios.js';
+import {
+  compressImageFile,
+  isCompressibleImage,
+  COMPRESSION_PRESETS,
+  formatBytes,
+} from './imageCompression.js';
+
+export {
+  compressImageFile,
+  isCompressibleImage,
+  COMPRESSION_PRESETS,
+  formatBytes,
+};
 
 export function createProductId() {
   const bytes = new Uint8Array(12);
@@ -35,22 +48,49 @@ export async function deleteUploadedFile(asset) {
 }
 
 /**
- * Upload file using Cloudflare R2 / S3 Presigned URL
- * 1. Calls backend /api/upload/presigned-url to obtain a presigned PUT URL
- * 2. Uploads binary data directly to Cloudflare R2 via HTTP PUT
- * 3. Returns the public fileUrl
+ * Upload file using Cloudflare R2 / S3 Presigned URL with automatic upload-time image compression.
+ * 1. Automatically optimizes & compresses images client-side before upload
+ * 2. Calls backend /api/upload/presigned-url to obtain a presigned PUT URL
+ * 3. Uploads binary data directly to Cloudflare R2 via HTTP PUT
+ * 4. Returns the public fileUrl, key, and compression savings statistics
  */
 export async function uploadWithPresignedUrl(file, moduleName = 'banner', onProgress = null, options = {}) {
   if (!file) throw new Error('No file selected for upload');
 
-  // Infer safe content type
+  // Upload-time client-side image compression
+  let fileToUpload = file;
+  const shouldCompress = options.compress !== false && options.compression !== false;
+
+  if (shouldCompress && isCompressibleImage(file)) {
+    try {
+      const preset = COMPRESSION_PRESETS[moduleName] || COMPRESSION_PRESETS.general;
+      const compressionOpts = {
+        ...preset,
+        ...(options.compressionOptions || {}),
+      };
+      options.onCompressionStart?.(file);
+      fileToUpload = await compressImageFile(file, compressionOpts);
+      if (fileToUpload.wasCompressed) {
+        options.onCompressionDone?.({
+          originalSize: fileToUpload.originalSize,
+          compressedSize: fileToUpload.compressedSize,
+          savingsPercent: fileToUpload.savingsPercent,
+        }, fileToUpload, file);
+      }
+    } catch (compressErr) {
+      console.warn('[uploadWithPresignedUrl] Image compression skipped due to error:', compressErr);
+      fileToUpload = file;
+    }
+  }
+
+  // Infer safe content type from (possibly compressed) file
   const contentType =
-    file.type ||
-    (file.name.endsWith('.png')
+    fileToUpload.type ||
+    (fileToUpload.name.endsWith('.png')
       ? 'image/png'
-      : file.name.endsWith('.webp')
+      : fileToUpload.name.endsWith('.webp')
       ? 'image/webp'
-      : file.name.endsWith('.mp4')
+      : fileToUpload.name.endsWith('.mp4')
       ? 'video/mp4'
       : 'image/jpeg');
 
@@ -70,7 +110,7 @@ export async function uploadWithPresignedUrl(file, moduleName = 'banner', onProg
   const { uploadUrl, fileUrl, url, key, contentType: verifiedType } = uploadData;
 
   // Direct PUT upload to Cloudflare R2 using the presigned URL and exact Content-Type
-  await axios.put(uploadUrl, file, {
+  await axios.put(uploadUrl, fileToUpload, {
     headers: {
       'Content-Type': verifiedType || contentType,
     },
@@ -83,13 +123,45 @@ export async function uploadWithPresignedUrl(file, moduleName = 'banner', onProg
   });
 
   const finalUrl = fileUrl || url;
-  return { url: finalUrl, fileUrl: finalUrl, key };
+  return {
+    url: finalUrl,
+    fileUrl: finalUrl,
+    key,
+    size: fileToUpload.size,
+    originalSize: fileToUpload.originalSize || file.size,
+    compressedSize: fileToUpload.size,
+    wasCompressed: Boolean(fileToUpload.wasCompressed),
+    savingsPercent: fileToUpload.savingsPercent || 0,
+    name: fileToUpload.name,
+  };
 }
 
-/** Request upload URLs for a selection in one backend call, then PUT files to R2. */
+/** Request upload URLs for a selection in one backend call with parallel upload-time compression, then PUT files to R2. */
 export async function uploadFilesWithPresignedUrls(files, moduleName = 'products', onProgress = null, options = {}) {
-  const selectedFiles = Array.from(files || []);
-  if (!selectedFiles.length) return [];
+  const rawFiles = Array.from(files || []);
+  if (!rawFiles.length) return [];
+
+  const shouldCompress = options.compress !== false && options.compression !== false;
+  const preset = COMPRESSION_PRESETS[moduleName] || COMPRESSION_PRESETS.general;
+  const compressionOpts = {
+    ...preset,
+    ...(options.compressionOptions || {}),
+  };
+
+  // Parallel upload-time compression before requesting presigned URLs
+  const selectedFiles = await Promise.all(
+    rawFiles.map(async (file) => {
+      if (shouldCompress && isCompressibleImage(file)) {
+        try {
+          return await compressImageFile(file, compressionOpts);
+        } catch (err) {
+          console.warn('[uploadFilesWithPresignedUrls] Batch image compression error:', err);
+          return file;
+        }
+      }
+      return file;
+    })
+  );
 
   const fileContentType = (file) => file.type || (
     /\.png$/i.test(file.name) ? 'image/png'
@@ -123,9 +195,21 @@ export async function uploadFilesWithPresignedUrls(files, moduleName = 'products
       },
     });
     const finalUrl = upload.fileUrl || upload.url;
-    const result = { url: finalUrl, fileUrl: finalUrl, key: upload.key, name: file.name };
-    options.onFileUploaded?.(result, file, index);
+    const originalFile = rawFiles[index];
+    const result = {
+      url: finalUrl,
+      fileUrl: finalUrl,
+      key: upload.key,
+      name: file.name,
+      size: file.size,
+      originalSize: file.originalSize || originalFile?.size || file.size,
+      compressedSize: file.size,
+      wasCompressed: Boolean(file.wasCompressed),
+      savingsPercent: file.savingsPercent || 0,
+    };
+    options.onFileUploaded?.(result, file, index, originalFile);
     return result;
   }));
 }
+
 

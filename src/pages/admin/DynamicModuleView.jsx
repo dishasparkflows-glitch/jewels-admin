@@ -28,7 +28,7 @@ import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions, { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import OrnateSyncModal from '../../components/common/OrnateSyncModal';
-import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { openProductPreview } from '../../utils/productPreview';
 
@@ -121,7 +121,7 @@ const routeMap = {
 
   // ─── 4. Catalog ──────────────────────────────────
   '/catalog/jewelry-products': {
-    endpoint: '/products?productType=Jewelry',
+    endpoint: '/products?productType=gold',
     title: 'Jewelry Products',
     fields: [
       { name: 'title', label: 'Product Title', type: 'text', required: true },
@@ -485,15 +485,16 @@ const DynamicModuleView = () => {
 
     try {
       setUploadingField(fieldName);
-      toast.loading(`Uploading ${fieldName}...`, { id: `upload-${fieldName}` });
-      const { fileUrl, key } = await uploadWithPresignedUrl(file, folder);
-      const finalUrl = fileUrl || '';
+      toast.loading(`Optimizing & uploading ${fieldName}...`, { id: `upload-${fieldName}` });
+      const res = await uploadWithPresignedUrl(file, folder);
+      const finalUrl = res.fileUrl || '';
       setFormData((prev) => ({
         ...prev,
         [fieldName]: finalUrl,
-        [`${fieldName}Key`]: key || '',
+        [`${fieldName}Key`]: res.key || '',
       }));
-      toast.success(`${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} uploaded!`, {
+      const savings = res.wasCompressed ? ` (optimized ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)})` : '';
+      toast.success(`${fieldName.charAt(0).toUpperCase() + fieldName.slice(1)} uploaded${savings}!`, {
         id: `upload-${fieldName}`,
       });
     } catch (err) {

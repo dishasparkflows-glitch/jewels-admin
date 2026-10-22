@@ -5,7 +5,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { createProductId, deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { createProductId, deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import {
@@ -572,52 +572,57 @@ export default function OrnateProductEdit() {
     );
   };
 
-  // Upload variant swatch icon (No size limit)
+  // Upload variant swatch icon (with upload-time compression)
   const handleSwatchUpload = async (colorName, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       setUploadingSwatchColor(colorName);
-      const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-      if (fileUrl) {
+      toast.loading(`Optimizing & uploading swatch...`, { id: `swatch-${colorName}` });
+      const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+      if (res.fileUrl) {
         setVariantMedia((prev) => ({
           ...prev,
           [colorName]: {
             ...prev[colorName],
-            swatchIcon: fileUrl,
-            swatchIconKey: key,
+            swatchIcon: res.fileUrl,
+            swatchIconKey: res.key,
           },
         }));
         setSelectedColors((prev) => Array.from(new Set([...prev, colorName])));
-        toast.success(`${colorName} swatch icon uploaded!`);
+        const savingsText = res.wasCompressed ? ` (optimized ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)})` : '';
+        toast.success(`${colorName} swatch icon uploaded${savingsText}!`, { id: `swatch-${colorName}` });
       }
     } catch (err) {
       console.error('Swatch icon upload failed:', err);
-      toast.error(err.message || 'Failed to upload swatch icon');
+      toast.error(err.message || 'Failed to upload swatch icon', { id: `swatch-${colorName}` });
     } finally {
       setUploadingSwatchColor(null);
       e.target.value = '';
     }
   };
 
-  // Upload variant images & videos (No size limit)
+  // Upload variant images & videos (with upload-time compression)
   const handleVariantMediaUpload = async (colorName, e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
 
     try {
       setUploadingVariantColor(colorName);
+      toast.loading(`Optimizing & uploading ${files.length} media file(s)...`, { id: `vmed-${colorName}` });
       const uploadedList = [];
 
       for (const file of files) {
-        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-        if (fileUrl) {
+        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+        if (res.fileUrl) {
           uploadedList.push({
             id: `vmed-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-            url: fileUrl,
-            key,
+            url: res.fileUrl,
+            key: res.key,
             mediaType: file.type.startsWith('video') || file.name.endsWith('.mp4') ? 'video' : 'image',
+            name: res.name || file.name,
+            size: res.size ? formatBytes(res.size) : undefined,
           });
         }
       }
@@ -631,11 +636,11 @@ export default function OrnateProductEdit() {
           },
         }));
         setSelectedColors((prev) => Array.from(new Set([...prev, colorName])));
-        toast.success(`Uploaded ${uploadedList.length} media file(s) for ${colorName}!`);
+        toast.success(`Uploaded & optimized ${uploadedList.length} media file(s) for ${colorName}!`, { id: `vmed-${colorName}` });
       }
     } catch (err) {
       console.error('Variant media upload failed:', err);
-      toast.error(err.message || 'Failed to upload variant media');
+      toast.error(err.message || 'Failed to upload variant media', { id: `vmed-${colorName}` });
     } finally {
       setUploadingVariantColor(null);
       e.target.value = '';
@@ -689,30 +694,37 @@ export default function OrnateProductEdit() {
     toast.success('Image added to gallery!');
   };
 
-  // File upload for Images
+  // File upload for Images (supports multi-image upload & auto upload-time compression)
   const handleImageFileUpload = async (e) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
     try {
       setUploadingImage(true);
-      const { fileUrl, key } = await uploadWithPresignedUrl(files[0], 'products', null, { productId: mediaProductId });
+      toast.loading(`Optimizing & uploading ${files.length} image(s)...`, { id: 'ornate-img-upload' });
+      const newImages = [];
 
-      if (fileUrl) {
-        setOrnateImages((prev) => [
-          ...prev,
-          {
-            id: `img-${Date.now()}`,
-            url: fileUrl,
-            key,
-            isPrimary: prev.length === 0,
-          },
-        ]);
-        toast.success('Image uploaded successfully!');
+      for (const file of files) {
+        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+        if (res.fileUrl) {
+          newImages.push({
+            id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+            url: res.fileUrl,
+            key: res.key,
+            isPrimary: ornateImages.length === 0 && newImages.length === 0,
+            name: res.name || file.name,
+            size: res.size ? formatBytes(res.size) : undefined,
+          });
+        }
+      }
+
+      if (newImages.length > 0) {
+        setOrnateImages((prev) => [...prev, ...newImages]);
+        toast.success(`Uploaded & optimized ${newImages.length} image(s)!`, { id: 'ornate-img-upload' });
       }
     } catch (err) {
       console.error('Image upload failed:', err);
-      toast.error(err.response?.data?.message || err.message || 'Image upload failed. You can also paste an image URL directly.');
+      toast.error(err.response?.data?.message || err.message || 'Image upload failed. You can also paste an image URL directly.', { id: 'ornate-img-upload' });
     } finally {
       setUploadingImage(false);
       e.target.value = '';
@@ -2015,6 +2027,9 @@ export default function OrnateProductEdit() {
                               >
                                 ?
                               </span>
+                              <span className="text-[9.5px] text-emerald-600 font-medium ml-auto">
+                                Auto-compressed
+                              </span>
                             </div>
 
                             <input
@@ -2095,6 +2110,9 @@ export default function OrnateProductEdit() {
                                 title="Upload product photos and MP4 videos for general view without assigning a metal color"
                               >
                                 ?
+                              </span>
+                              <span className="text-[9.5px] text-emerald-600 font-medium ml-auto">
+                                Auto-compressed
                               </span>
                             </div>
 
@@ -2470,9 +2488,32 @@ export default function OrnateProductEdit() {
                 </div>
               </div>
 
-              <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-lg">
-                {ornateImages.length} Image{ornateImages.length === 1 ? '' : 's'}
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/70" title="All uploaded photos are automatically optimized to high-fidelity WebP at upload time">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Auto-Compression Active
+                </span>
+                <label
+                  htmlFor="ornate-gallery-upload-input"
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#faf5ee] text-[#8b6f4e] hover:bg-[#f3ebd9] border border-[#d9c4a8]/70 transition-all cursor-pointer ${
+                    uploadingImage ? 'opacity-60 pointer-events-none' : ''
+                  }`}
+                >
+                  <HiOutlineUpload className="w-3.5 h-3.5" />
+                  <span>{uploadingImage ? 'Optimizing & Uploading...' : 'Upload Images'}</span>
+                  <input
+                    id="ornate-gallery-upload-input"
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={handleImageFileUpload}
+                    className="hidden"
+                  />
+                </label>
+                <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-lg">
+                  {ornateImages.length} Image{ornateImages.length === 1 ? '' : 's'}
+                </span>
+              </div>
             </div>
 
             {/* Images Grid (Display-Only Synchronized Gallery) */}
@@ -2480,7 +2521,7 @@ export default function OrnateProductEdit() {
               <div className="p-8 text-center rounded-xl border border-dashed border-stone-200 bg-stone-50/60">
                 <HiOutlinePhotograph className="w-8 h-8 text-stone-300 mx-auto mb-2" />
                 <p className="text-xs font-semibold text-stone-600">No synchronized ERP gallery images found</p>
-                <p className="text-[11px] text-stone-400 mt-0.5">Images are automatically synchronized from the ERP FTP system.</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">Images are automatically synchronized from the ERP FTP system or uploaded above.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -2533,6 +2574,17 @@ export default function OrnateProductEdit() {
                           <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" />
                         </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveImage(img.id);
+                        }}
+                        title="Delete image"
+                        className="w-7 h-7 rounded-lg bg-red-600/90 text-white hover:bg-red-600 flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
+                      >
+                        <HiOutlineTrash className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
                 ))}

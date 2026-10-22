@@ -21,7 +21,7 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import RowActions from '../../components/common/RowActions';
 import usePagination from '../../hooks/usePagination';
@@ -341,15 +341,16 @@ export default function BannersView() {
       setIsUploading(true);
       setUploadProgress(10);
 
-      const { fileUrl } = await uploadWithPresignedUrl(
+      const res = await uploadWithPresignedUrl(
         file,
         'banners',
         (progress) => setUploadProgress(progress)
       );
 
-      setImageUrl(fileUrl);
+      setImageUrl(res.fileUrl);
       setMediaType('image');
-      toast.success('Banner image uploaded successfully');
+      const savings = res.wasCompressed ? ` (optimized ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)})` : '';
+      toast.success(`Banner image uploaded${savings}`);
     } catch (err) {
       console.error('Presigned upload failed:', err);
       toast.error(err.response?.data?.message || 'Image upload failed');
@@ -380,6 +381,7 @@ export default function BannersView() {
         });
         return next;
       });
+      toast.success(`Uploaded & optimized ${uploaded.length} collection image(s)`);
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Collection image upload failed');
     } finally {

@@ -939,17 +939,19 @@ export default function AddJewelryProduct() {
 
     try {
       setUploadingSilverSwatchColor(colorName);
-      const { fileUrl } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-      if (fileUrl) {
+      const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+      if (res.fileUrl) {
         setSilverVariantMedia((prev) => ({
           ...prev,
           [colorName]: {
             ...prev[colorName],
-            swatchIcon: fileUrl,
+            swatchIcon: res.fileUrl,
+            swatchIconKey: res.key,
           },
         }));
         setSilverColors((prev) => Array.from(new Set([...prev, colorName])));
-        toast.success(`${colorName} swatch icon uploaded!`);
+        const savingsText = res.wasCompressed ? ` (optimized ${formatMediaSize(res.originalSize)} → ${formatMediaSize(res.compressedSize)})` : '';
+        toast.success(`${colorName} swatch icon uploaded${savingsText}!`);
       }
     } catch (err) {
       console.error('Swatch icon upload failed:', err);
@@ -969,12 +971,15 @@ export default function AddJewelryProduct() {
       const uploadedList = [];
 
       for (const file of files) {
-      const { fileUrl } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-        if (fileUrl) {
+        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+        if (res.fileUrl) {
           uploadedList.push({
             id: `vmed-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-            url: fileUrl,
+            url: res.fileUrl,
+            key: res.key,
             mediaType: file.type.startsWith('video') || file.name.endsWith('.mp4') ? 'video' : 'image',
+            name: res.name || file.name,
+            size: res.size ? formatMediaSize(res.size) : undefined,
           });
         }
       }
@@ -988,10 +993,10 @@ export default function AddJewelryProduct() {
           },
         }));
         setSilverColors((prev) => Array.from(new Set([...prev, colorName])));
-        toast.success(`Uploaded ${uploadedList.length} media file(s) for ${colorName}!`);
+        toast.success(`Uploaded & optimized ${uploadedList.length} media file(s) for ${colorName}!`);
       }
     } catch (err) {
-      console.error('Variant media upload failed:', err);
+      console.error('Silver variant media upload failed:', err);
       toast.error(err.message || 'Failed to upload variant media');
     } finally {
       setUploadingSilverVariantColor(null);
@@ -1109,8 +1114,10 @@ export default function AddJewelryProduct() {
 
     for (const file of files) {
       try {
-        toast.loading(`Uploading ${file.name}...`, { id: 'prod-media' });
-        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+        toast.loading(`Optimizing & uploading ${file.name}...`, { id: 'prod-media' });
+        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+        const { fileUrl, key } = res;
+        const displaySize = res.size ? formatMediaSize(res.size) : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
         setMediaImages((prev) => {
           const current = prev[colorName] || [];
           return {
@@ -1122,14 +1129,19 @@ export default function AddJewelryProduct() {
                 url: fileUrl,
                 key,
                 isPrimary: current.length === 0,
-                name: file.name,
-                size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+                name: res.name || file.name,
+                size: displaySize,
+                fileSize: res.size || file.size,
                 uploadedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
               },
             ],
           };
         });
-        toast.success(`${file.name} uploaded!`, { id: 'prod-media' });
+        if (res.wasCompressed) {
+          toast.success(`${file.name} optimized & uploaded (${formatMediaSize(res.originalSize)} → ${formatMediaSize(res.compressedSize)})!`, { id: 'prod-media' });
+        } else {
+          toast.success(`${file.name} uploaded!`, { id: 'prod-media' });
+        }
       } catch (err) {
         toast.error(`Upload failed: ${err.message}`, { id: 'prod-media' });
       }
@@ -1145,7 +1157,8 @@ export default function AddJewelryProduct() {
     for (const file of files) {
       try {
         toast.loading(`Uploading video ${file.name}...`, { id: 'prod-video' });
-        const { fileUrl, key } = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+        const { fileUrl, key } = res;
         setMediaVideos((prev) => {
           const current = prev[colorName] || [];
           return {
@@ -1157,7 +1170,9 @@ export default function AddJewelryProduct() {
                 url: fileUrl,
                 key,
                 title: file.name,
+                name: file.name,
                 size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+                fileSize: file.size,
                 uploadedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
               },
             ],
@@ -1186,20 +1201,22 @@ export default function AddJewelryProduct() {
     }
 
     try {
-      toast.loading(`Preparing ${validFiles.length} media upload${validFiles.length === 1 ? '' : 's'}...`, { id: 'prod-media-batch' });
+      toast.loading(`Optimizing & uploading ${validFiles.length} media file${validFiles.length === 1 ? '' : 's'}...`, { id: 'prod-media-batch' });
       const uploadedAt = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
       let completedCount = 0;
       await uploadFilesWithPresignedUrls(validFiles, 'products', null, {
         productId: mediaProductId,
         onFileUploaded: (uploaded, file, index) => {
           const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+          const displaySize = uploaded.size ? formatMediaSize(uploaded.size) : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
           const media = {
             id: `${isVideo ? 'vid' : 'img'}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
             url: uploaded.fileUrl,
             key: uploaded.key,
-            name: file.name,
-            title: file.name,
-            size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+            name: uploaded.name || file.name,
+            title: uploaded.name || file.name,
+            size: displaySize,
+            fileSize: uploaded.size || file.size,
             uploadedAt,
           };
           if (isVideo) {
@@ -1214,7 +1231,7 @@ export default function AddJewelryProduct() {
           toast.loading(`Uploaded ${completedCount} of ${validFiles.length} media files...`, { id: 'prod-media-batch' });
         },
       });
-      toast.success(`${completedCount} media file${completedCount === 1 ? '' : 's'} uploaded`, { id: 'prod-media-batch' });
+      toast.success(`${completedCount} media file${completedCount === 1 ? '' : 's'} uploaded & optimized`, { id: 'prod-media-batch' });
     } catch (err) {
       toast.error(`Media upload failed: ${err.message}`, { id: 'prod-media-batch' });
     }
@@ -4069,21 +4086,27 @@ export default function AddJewelryProduct() {
                       <HiOutlineCube className="w-4 h-4" />
                       <span>VTO Configuration ({vtoConfigs[activeMediaColor]?.isConfigured ? 1 : 0})</span>
                     </button>
-                    {!isSilverProduct && ((mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length > 0) && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCompressionTab('images');
-                          setSelectedCompressionIds((mediaImages[activeMediaColor] || []).map((image) => image.id));
-                          setCompressionPreviews({});
-                          setShowCompressionHub(true);
-                        }}
-                        className="ml-auto inline-flex items-center gap-1.5 rounded-xl border border-[#d9c4a8] bg-white px-3 py-1.5 text-xs font-semibold text-[#785e40] transition hover:bg-[#faf5ee]"
-                      >
-                        <HiOutlineAdjustments className="h-4 w-4" />
-                        Compress Media
-                      </button>
-                    )}
+                    <div className="ml-auto flex items-center gap-2">
+                      <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/70" title="All uploaded photos are automatically optimized to high-fidelity WebP at upload time">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Auto-Compression Active
+                      </span>
+                      {!isSilverProduct && ((mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length > 0) && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCompressionTab('images');
+                            setSelectedCompressionIds((mediaImages[activeMediaColor] || []).map((image) => image.id));
+                            setCompressionPreviews({});
+                            setShowCompressionHub(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-[#d9c4a8] bg-white px-3 py-1.5 text-xs font-semibold text-[#785e40] transition hover:bg-[#faf5ee]"
+                        >
+                          <HiOutlineAdjustments className="h-4 w-4" />
+                          Manual Adjust
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Product Images Tab Content (Horizontal Scroll Row) */}
@@ -4109,8 +4132,8 @@ export default function AddJewelryProduct() {
                           <span className="text-xs font-bold text-stone-800 group-hover:text-[#8b6f4e]">
                             Upload Media
                           </span>
-                          <span className="text-[9.5px] text-stone-400 mt-0.5">
-                            Images and videos (MP4, WEBM, MOV)
+                          <span className="text-[9.5px] text-emerald-600 font-medium mt-0.5">
+                            Auto-compressed on upload
                           </span>
                         </label>
 
