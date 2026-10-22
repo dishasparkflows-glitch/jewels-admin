@@ -447,7 +447,14 @@ export default function AddJewelryProduct() {
       title: basicInfo.title || '',
       sku: basicInfo.sku || '',
       category: categoryId ? String(categoryId) : '',
-      gender: Array.isArray(productRecord.gender) ? (productRecord.gender[0] || '') : (productRecord.gender || ''),
+      gender: (() => {
+        const rawGender = basicInfo.gender ?? productRecord.gender ?? '';
+        const first = Array.isArray(rawGender) ? (rawGender[0] || '') : (rawGender || '');
+        const matched = ['Female', 'Male', 'Unisex', 'Kids'].find(
+          (opt) => opt.toLowerCase() === String(first).trim().toLowerCase()
+        );
+        return matched || first;
+      })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
     });
@@ -1780,7 +1787,14 @@ export default function AddJewelryProduct() {
       title: basicInfo.title || '',
       sku: basicInfo.sku || '',
       category: categoryId ? String(categoryId) : '',
-      gender: Array.isArray(productRecord.gender) ? (productRecord.gender[0] || '') : (productRecord.gender || ''),
+      gender: (() => {
+        const rawGender = basicInfo.gender ?? productRecord.gender ?? '';
+        const first = Array.isArray(rawGender) ? (rawGender[0] || '') : (rawGender || '');
+        const matched = ['Female', 'Male', 'Unisex', 'Kids'].find(
+          (opt) => opt.toLowerCase() === String(first).trim().toLowerCase()
+        );
+        return matched || first;
+      })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
     });
@@ -2373,6 +2387,7 @@ export default function AddJewelryProduct() {
         ...(!productId ? { _id: draftProductId } : {}),
         productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
         isOrnate: Boolean(basicDetails.isOrnate),
+        ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
         basicInfo: compactObject({
           title: activeTitle,
           sku: activeSku || undefined,

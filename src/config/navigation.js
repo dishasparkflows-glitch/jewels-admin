@@ -54,7 +54,7 @@ export const navSections = [
         icon: IoLayersOutline,
         children: [
           { title: 'Jewelry Products', path: '/catalog/jewelry-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=gold' },
-          { title: 'Silver Products', path: '/catalog/silver-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=Silver' },
+          { title: 'Silver Products', path: '/catalog/silver-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=silver' },
           { title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoDiamondOutline, apiEndpoint: '/products?isOrnate=true' },
           { title: 'Categories', path: '/catalog/categories', icon: IoLayersOutline, apiEndpoint: '/categories' },
           { title: 'Navigation Menus', path: '/catalog/navigation-menus', icon: IoMapOutline, apiEndpoint: '/categories' },

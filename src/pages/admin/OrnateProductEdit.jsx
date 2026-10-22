@@ -341,7 +341,14 @@ export default function OrnateProductEdit() {
               : (product.categoryIds?._id || product.categoryIds || ''),
             categoryTag: (Array.isArray(product.promoBanner) && product.promoBanner[0]) || product.categoryTag || '',
             menuItem: selectedMenuIds(product),
-            targetGender: (Array.isArray(product.gender) && product.gender[0]) || product.gender || '',
+            targetGender: (() => {
+              const raw = product.basicInfo?.gender ?? product.gender ?? '';
+              const first = (Array.isArray(raw) && raw[0]) || raw || '';
+              const matched = GENDER_OPTIONS.find(
+                (opt) => opt.value.toLowerCase() === String(first).trim().toLowerCase()
+              );
+              return matched ? matched.value : first;
+            })(),
             status: product.status || 'draft',
             stockStatus: product.stockStatus || '',
             showInApp: Boolean(product.inapp),
@@ -1078,6 +1085,7 @@ export default function OrnateProductEdit() {
           sku: erpDetails.labelNumber || erpDetails.uniqueLabelId || '',
           slug: seo.slug || baseInfo.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
           description: baseInfo.description,
+          ...(baseInfo.targetGender ? { gender: [baseInfo.targetGender] } : {}),
         },
         pricing: {
           mrp: Number(pricing.mrp) || Number(pricing.salePrice) || 0,

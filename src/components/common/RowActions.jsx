@@ -75,6 +75,7 @@ export default function RowActions({
   onDelete,
   viewTitle = 'View Details',
   previewTitle,
+  websiteTitle = 'View on store',
   editTitle = 'Edit',
   editLabel,
   deleteTitle = 'Delete',
@@ -103,21 +104,22 @@ export default function RowActions({
 
   return (
     <div className={`inline-flex items-center gap-1.5 justify-end ${className}`} onClick={(e) => e.stopPropagation()}>
-      {/* View / Preview Action (Eye button) */}
-      {handleView && (
-        <ViewActionButton onClick={handleView} title={activeViewTitle} />
-      )}
-
+      {/* View on Store / Website Action */}
       {onOpenWebsite && (
         <button
           type="button"
           onClick={onOpenWebsite}
-          title="View on website"
-          aria-label="View on website"
+          title={websiteTitle}
+          aria-label={websiteTitle}
           className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-white text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
         >
           <HiOutlineExternalLink className="w-3.5 h-3.5 stroke-[2]" />
         </button>
+      )}
+
+      {/* View / Preview Action (Eye button) */}
+      {handleView && (
+        <ViewActionButton onClick={handleView} title={activeViewTitle} />
       )}
 
       {/* Edit Action (Pencil button - Soft Blue tint with vivid blue icon) */}
