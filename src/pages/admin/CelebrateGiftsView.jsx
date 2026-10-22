@@ -27,6 +27,9 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import Dropdown from '../../components/common/Dropdown';
+import MenuItemSelect from '../../components/common/MenuItemSelect';
+import useCategoryLookup from '../../hooks/useCategoryLookup';
 
 export default function CelebrateGiftsView() {
   const confirm = useConfirm();
@@ -57,9 +60,14 @@ export default function CelebrateGiftsView() {
   const [viewingItem, setViewingItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
 
+  // Category and Menu Item lookup
+  const { categoryOptions } = useCategoryLookup();
+
   // Form State
   const [title, setTitle] = useState('');
   const [placement, setPlacement] = useState('Celebrate');
+  const [categoryId, setCategoryId] = useState('');
+  const [menuItemIds, setMenuItemIds] = useState([]);
   const [imageUrl, setImageUrl] = useState('');
   const [imagePublicId, setImagePublicId] = useState('');
   const [status, setStatus] = useState('active');
@@ -220,6 +228,8 @@ export default function CelebrateGiftsView() {
     setEditingItem(null);
     setTitle('');
     setPlacement(placementFilter === 'Gifts' ? 'Gifts' : 'Celebrate');
+    setCategoryId('');
+    setMenuItemIds([]);
     setImageUrl('');
     setImagePublicId('');
     setStatus('active');
@@ -233,6 +243,12 @@ export default function CelebrateGiftsView() {
     setEditingItem(item);
     setTitle(item.name || '');
     setPlacement(item.placement || 'Celebrate');
+    const catId = item.categoryId?._id || item.categoryId || '';
+    const mIds = Array.isArray(item.menuItemIds)
+      ? item.menuItemIds.map((m) => (typeof m === 'object' && m?._id ? m._id : m))
+      : [];
+    setCategoryId(catId);
+    setMenuItemIds(mIds);
     setImageUrl(item.image?.url || '');
     setImagePublicId(item.image?.key || '');
     setStatus(item.status || 'active');
@@ -304,6 +320,8 @@ export default function CelebrateGiftsView() {
       const payload = {
         name: title.trim(),
         placement: placement || (placementFilter !== 'all' ? placementFilter : 'Celebrate'),
+        categoryId: categoryId || null,
+        menuItemIds: Array.isArray(menuItemIds) ? menuItemIds : [],
         image: imageUrl ? {
           url: imageUrl,
           key: imagePublicId || '',
@@ -585,8 +603,19 @@ export default function CelebrateGiftsView() {
                     </td>
 
                     {/* Showcase Name */}
-                    <td className="py-2.5 px-3 font-bold text-stone-900 text-xs max-w-xs truncate">
-                      {item.name}
+                    <td className="py-2.5 px-3 font-bold text-stone-900 text-xs max-w-xs">
+                      <div className="truncate">{item.name}</div>
+                      {(item.categoryId?.name || (Array.isArray(item.menuItemIds) && item.menuItemIds.length > 0)) && (
+                        <div className="text-[10.5px] text-stone-400 font-normal truncate mt-0.5 flex items-center gap-1.5">
+                          {item.categoryId?.name && (
+                            <span className="text-[#8f6d43] font-medium">{item.categoryId.name}</span>
+                          )}
+                          {item.categoryId?.name && item.menuItemIds?.length > 0 && <span>•</span>}
+                          {item.menuItemIds?.length > 0 && (
+                            <span>{item.menuItemIds.length} Menu item{item.menuItemIds.length === 1 ? '' : 's'}</span>
+                          )}
+                        </div>
+                      )}
                     </td>
 
                     {/* Placement */}
@@ -704,6 +733,53 @@ export default function CelebrateGiftsView() {
                       {opt}
                     </button>
                   ))}
+                </div>
+              </div>
+
+              {/* CATEGORY & MENU ITEM LIST (OPTIONAL) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-0.5">
+                {/* CATEGORY DROPDOWN */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
+                      CATEGORY
+                    </label>
+                    <span className="text-[10px] text-stone-400 font-medium">Optional</span>
+                  </div>
+                  <Dropdown
+                    size="field"
+                    variant="input"
+                    value={categoryId}
+                    onChange={(val) => {
+                      if (val !== categoryId) {
+                        setMenuItemIds([]);
+                      }
+                      setCategoryId(val);
+                    }}
+                    placeholder="Select Category (Optional)"
+                    options={[
+                      { value: '', label: 'None (No Category)' },
+                      ...categoryOptions,
+                    ]}
+                    className="w-full"
+                  />
+                </div>
+
+                {/* MENU ITEM LIST DROPDOWN */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
+                      MENU ITEM LIST
+                    </label>
+                    <span className="text-[10px] text-stone-400 font-medium">Optional</span>
+                  </div>
+                  <MenuItemSelect
+                    key={categoryId || 'all'}
+                    categoryId={categoryId}
+                    value={menuItemIds}
+                    onChange={setMenuItemIds}
+                    placeholder="Select Menu Items (Optional)"
+                  />
                 </div>
               </div>
 
@@ -1041,8 +1117,14 @@ export default function CelebrateGiftsView() {
                   {viewingItem.status}
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-xs text-stone-500 mb-4">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-stone-500 mb-4">
                 <span>Placement: <strong>{viewingItem.placement}</strong></span>
+                {viewingItem.categoryId?.name && (
+                  <span>Category: <strong className="text-[#8f6d43]">{viewingItem.categoryId.name}</strong></span>
+                )}
+                {Array.isArray(viewingItem.menuItemIds) && viewingItem.menuItemIds.length > 0 && (
+                  <span>Menu Items: <strong>{viewingItem.menuItemIds.map((m) => m?.title || m?.name || m).join(', ')}</strong></span>
+                )}
                 <span>Products: <strong>{viewingItem.productCount || 0}</strong></span>
                 <span>Created: <strong>{formatDate(viewingItem.meta?.createdAt)}</strong></span>
               </div>

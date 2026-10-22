@@ -24,6 +24,7 @@ export default function MenuItemSelect({
   disabled = false,
   autoOpen = false,
   onOpenChange,
+  placeholder = 'Select menu items',
 }) {
   const [open, setOpen] = useState(Boolean(autoOpen && categoryId));
   const [groups, setGroups] = useState([]);
@@ -66,16 +67,22 @@ export default function MenuItemSelect({
   }, [categoryId]);
 
   useEffect(() => {
-    if (!open || loaded || !categoryId) return;
+    if (!open || loaded) return;
     const controller = new AbortController();
     setLoading(true);
     setError('');
     (async () => {
       try {
-        const categoryResponse = await api.get(`/categories/${categoryId}`, { signal: controller.signal });
-        const categories = [categoryResponse.data.data];
-        const sections = await allPages('/menu-sections', controller.signal, { categoryId });
-        const items = await allPages('/menu-items', controller.signal, { categoryId });
+        let categories = [];
+        if (categoryId) {
+          const categoryResponse = await api.get(`/categories/${categoryId}`, { signal: controller.signal });
+          categories = categoryResponse.data?.data ? [categoryResponse.data.data] : [];
+        } else {
+          const catRes = await api.get('/categories/lookup', { signal: controller.signal });
+          categories = catRes.data?.data || [];
+        }
+        const sections = await allPages('/menu-sections', controller.signal, categoryId ? { categoryId } : {});
+        const items = await allPages('/menu-items', controller.signal, categoryId ? { categoryId } : {});
         if (!controller.signal.aborted) {
           setGroups(groupMenuItems(categories, sections, items));
           setLoaded(true);
@@ -136,14 +143,14 @@ export default function MenuItemSelect({
       ? allItems.find((item) => item._id === value[0])?.title || '1 item selected'
       : value.length
       ? `${value.length} items selected`
-      : 'Select';
+      : placeholder;
 
   const toggle = (itemId) =>
     onChange(value.includes(itemId) ? value.filter((selected) => selected !== itemId) : [...value, itemId]);
 
   // Handle Space, Enter, ArrowDown, ArrowUp on trigger button
   const handleKeyDown = (e) => {
-    if (disabled || !categoryId) return;
+    if (disabled) return;
     if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       updateOpen(true);
@@ -152,7 +159,7 @@ export default function MenuItemSelect({
 
   // Auto-open on keyboard Tab focus (matches Dropdown.jsx behavior)
   const handleFocus = () => {
-    if (disabled || !categoryId) return;
+    if (disabled) return;
     if (isPointerDownRef.current) return;
     updateOpen(true);
   };
@@ -170,7 +177,7 @@ export default function MenuItemSelect({
       <button
         ref={trigger}
         type="button"
-        disabled={disabled || !categoryId}
+        disabled={disabled}
         aria-label="Select menu items"
         aria-expanded={open}
         aria-controls={id}
@@ -183,11 +190,13 @@ export default function MenuItemSelect({
         }}
         onFocus={handleFocus}
         onKeyDown={handleKeyDown}
-        className={`flex min-h-[38px] w-full items-center justify-between gap-2 rounded-xl border bg-[#fdfcfb] px-3 py-2 text-left text-xs disabled:opacity-50 cursor-pointer ${
-          open ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/10' : 'border-stone-200'
+        className={`flex min-h-[42px] w-full items-center justify-between gap-2 rounded-xl border bg-[#fdfcfb] px-3.5 py-2.5 text-left text-xs disabled:opacity-50 cursor-pointer ${
+          open ? 'border-[#8f6d43] ring-2 ring-[#8f6d43]/10' : 'border-stone-200 hover:border-stone-300'
         }`}
       >
-        <span className="truncate">{categoryId ? summary : 'Select a category first'}</span>
+        <span className={`truncate ${!value.length ? 'text-stone-400' : 'text-stone-800 font-medium'}`}>
+          {summary}
+        </span>
         <HiOutlineChevronDown
           className={`shrink-0 text-stone-400 transition-transform ${open ? 'rotate-180' : ''}`}
         />

@@ -12,7 +12,11 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import {
+  DEFAULT_UPLOAD_COMPRESSION_SETTINGS,
+  setUploadCompressionSettings,
+  uploadWithPresignedUrl,
+} from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
@@ -28,6 +32,8 @@ export default function SettingsView() {
   const [trustBadges, setTrustBadges] = useState([]);
   const [savingTrustBadges, setSavingTrustBadges] = useState(false);
   const [uploadingBadgeIndex, setUploadingBadgeIndex] = useState(null);
+  const [imageCompression, setImageCompression] = useState(DEFAULT_UPLOAD_COMPRESSION_SETTINGS);
+  const [savingCompression, setSavingCompression] = useState(false);
 
   // Form states
   const [businessForm, setBusinessForm] = useState({
@@ -68,6 +74,9 @@ export default function SettingsView() {
       const data = res.data?.data || {};
       setSettings(data);
       setTrustBadges(Array.isArray(data.trustBadges) ? data.trustBadges : []);
+      const compressionSettings = { ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(data.mediaCompression || {}) };
+      setImageCompression(compressionSettings);
+      setUploadCompressionSettings(compressionSettings);
 
       setBusinessForm({
         companyName: data.companyName ?? '',
@@ -131,6 +140,32 @@ export default function SettingsView() {
       toast.error(err.response?.data?.message || 'Could not save trust strip settings');
     } finally {
       setSavingTrustBadges(false);
+    }
+  };
+
+  const handleSaveImageCompression = async () => {
+    const payload = {
+      mediaCompression: {
+        enabled: Boolean(imageCompression.enabled),
+        quality: Number(imageCompression.quality),
+        maxDimension: Number(imageCompression.maxDimension),
+        format: imageCompression.format === 'image/jpeg' ? 'image/jpeg' : 'image/webp',
+      },
+    };
+
+    try {
+      setSavingCompression(true);
+      const response = await api.put('/settings', payload);
+      const data = response.data?.data || { ...settings, ...payload };
+      const savedCompression = { ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(data.mediaCompression || payload.mediaCompression) };
+      setSettings(data);
+      setImageCompression(savedCompression);
+      setUploadCompressionSettings(savedCompression);
+      toast.success('Global image compression settings saved');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not save image compression settings');
+    } finally {
+      setSavingCompression(false);
     }
   };
 
@@ -304,6 +339,50 @@ export default function SettingsView() {
       </section>
 
       <section className="rounded-lg border border-stone-200/90 bg-white p-3.5 shadow-2xs sm:p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-2">
+          <div>
+            <h2 className="text-sm font-bold text-stone-900">Global Image Compression</h2>
+            <p className="mt-1 text-xs text-stone-500">Set the default used automatically for image uploads across the admin.</p>
+          </div>
+          <button type="button" onClick={handleSaveImageCompression} disabled={savingCompression} className="rounded-md bg-[#8f6d43] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
+            {savingCompression ? 'Saving…' : 'Save Settings'}
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <label className="flex min-h-16 items-center justify-between rounded-xl border border-stone-200 bg-[#fbfaf8] px-3 py-2.5">
+            <span>
+              <span className="block text-xs font-semibold text-stone-800">Automatic compression</span>
+              <span className="block text-[10px] text-stone-500">Compress image uploads by default</span>
+            </span>
+            <input type="checkbox" checked={imageCompression.enabled} onChange={(event) => setImageCompression((prev) => ({ ...prev, enabled: event.target.checked }))} className="h-4 w-4 accent-[#8f6d43]" />
+          </label>
+
+          <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] px-3 py-2.5">
+            <span className="flex items-center justify-between text-xs font-semibold text-stone-800">Image quality <span className="text-[#8f6d43]">{imageCompression.quality}%</span></span>
+            <input type="range" min="50" max="100" step="1" value={imageCompression.quality} onChange={(event) => setImageCompression((prev) => ({ ...prev, quality: Number(event.target.value) }))} disabled={!imageCompression.enabled} className="mt-3 w-full accent-[#8f6d43] disabled:opacity-50" />
+            <span className="mt-1 flex justify-between text-[10px] text-stone-400"><span>Smaller files</span><span>Higher detail</span></span>
+          </label>
+
+          <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] px-3 py-2.5">
+            <span className="block text-xs font-semibold text-stone-800">Maximum image dimension</span>
+            <select value={imageCompression.maxDimension} onChange={(event) => setImageCompression((prev) => ({ ...prev, maxDimension: Number(event.target.value) }))} disabled={!imageCompression.enabled} className="mt-2 h-9 w-full rounded-lg border border-stone-200 bg-white px-2 text-xs text-stone-800 disabled:opacity-50">
+              {[1200, 1600, 1920, 2400, 2560, 3200, 4000].map((dimension) => <option key={dimension} value={dimension}>{dimension}px × {dimension}px</option>)}
+            </select>
+          </label>
+
+          <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] px-3 py-2.5">
+            <span className="block text-xs font-semibold text-stone-800">Output format</span>
+            <select value={imageCompression.format} onChange={(event) => setImageCompression((prev) => ({ ...prev, format: event.target.value }))} disabled={!imageCompression.enabled} className="mt-2 h-9 w-full rounded-lg border border-stone-200 bg-white px-2 text-xs text-stone-800 disabled:opacity-50">
+              <option value="image/webp">WebP (recommended)</option>
+              <option value="image/jpeg">JPEG</option>
+            </select>
+          </label>
+        </div>
+        <p className="mt-2.5 text-[10px] leading-relaxed text-stone-500">Quality is the encoder quality, not a guaranteed final file-size percentage. Large images are resized to the selected maximum; SVG, GIF, and images whose optimized copy would be larger keep their original file.</p>
+      </section>
+
+      <section className="rounded-lg border border-stone-200/90 bg-white p-3.5 shadow-2xs sm:p-4">
         <div className="mb-3 flex items-center justify-between gap-3 border-b border-stone-100 pb-2">
           <div>
             <h2 className="text-sm font-bold text-stone-900">Trust Strip</h2>
@@ -323,11 +402,23 @@ export default function SettingsView() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-semibold text-stone-800">Image (optional)</label>
-                <label className={`flex h-9 items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-[#d8c8b2] bg-white px-2 text-xs ${isEditingTrustBadges ? 'cursor-pointer hover:border-[#8f6d43]' : 'cursor-default'}`}>
-                  {badge.image?.url ? <img src={getMediaUrl(badge.image.url)} alt="" className="h-6 w-6 object-contain" /> : <HiOutlineUpload className="h-4 w-4" />}
-                  {uploadingBadgeIndex === index ? 'Uploading…' : badge.image?.url ? 'Replace image' : 'Upload image'}
-                  {isEditingTrustBadges && <input type="file" accept="image/*" className="sr-only" disabled={uploadingBadgeIndex !== null} onChange={(event) => handleTrustBadgeImageUpload(event, index)} />}
-                </label>
+                <div className="flex items-center gap-1.5">
+                  <label className={`flex h-9 flex-1 items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-[#d8c8b2] bg-white px-2 text-xs ${isEditingTrustBadges ? 'cursor-pointer hover:border-[#8f6d43]' : 'cursor-default'}`}>
+                    {badge.image?.url ? <img src={getMediaUrl(badge.image.url)} alt="" className="h-6 w-6 object-contain" /> : <HiOutlineUpload className="h-4 w-4" />}
+                    {uploadingBadgeIndex === index ? 'Uploading…' : badge.image?.url ? 'Replace image' : 'Upload image'}
+                    {isEditingTrustBadges && <input type="file" accept="image/*" className="sr-only" disabled={uploadingBadgeIndex !== null} onChange={(event) => handleTrustBadgeImageUpload(event, index)} />}
+                  </label>
+                  {isEditingTrustBadges && badge.image?.url && (
+                    <button
+                      type="button"
+                      title="Remove image"
+                      onClick={() => setTrustBadges((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, image: { url: '', key: '' } } : item))}
+                      className="h-9 px-2.5 rounded-lg border border-stone-200 bg-white text-xs text-stone-500 hover:border-red-200 hover:text-red-600 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
               </div>
               {isEditingTrustBadges && <button type="button" onClick={() => setTrustBadges((prev) => prev.filter((_, itemIndex) => itemIndex !== index))} className="h-9 rounded-lg border border-stone-200 px-3 text-xs text-stone-500 hover:border-red-200 hover:text-red-600">Remove</button>}
             </div>

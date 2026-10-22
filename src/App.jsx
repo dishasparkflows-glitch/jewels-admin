@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './contexts/AuthContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
@@ -46,6 +47,8 @@ import BlogCategoriesView from './pages/admin/BlogCategoriesView';
 import DynamicModuleView from './pages/admin/DynamicModuleView';
 import ProfileView from './pages/admin/ProfileView';
 import { ThemeProvider } from './contexts/ThemeContext';
+
+const WebsiteThemesView = lazy(() => import('./pages/admin/WebsiteThemesView'));
 
 function App() {
   return (
@@ -130,6 +133,7 @@ function App() {
             <Route path="/custjewellerybeforeafter" element={<BeforeAfterView />} />
             <Route path="/cust-jewellery-before-after" element={<BeforeAfterView />} />
             <Route path="/home-sections" element={<HomeSectionsView />} />
+            <Route path="/website/themes" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading theme management…</div>}><WebsiteThemesView /></Suspense>} />
             <Route path="/marketing/home-sections" element={<HomeSectionsView />} />
             <Route path="/marketing/sections" element={<HomeSectionsView />} />
             {/* Luxury Blog Module, Editorial Studio & Categories */}

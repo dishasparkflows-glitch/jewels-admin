@@ -31,7 +31,6 @@ import OrnateSyncModal from '../../components/common/OrnateSyncModal';
 import { deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { openProductPreview } from '../../utils/productPreview';
-import ImageCompressCompareModal from '../../components/common/ImageCompressCompareModal';
 
 const routeMap = {
   // ─── 1. Diamond Config ───────────────────────────
@@ -253,33 +252,6 @@ const DynamicModuleView = () => {
 
   const isCategoryPage = pathname === '/catalog/categories' || config.endpoint === '/categories';
 
-  // Image Compression & Comparison Modal state
-  const [compressionModal, setCompressionModal] = useState({
-    isOpen: false,
-    file: null,
-    fieldName: '',
-    moduleTitle: 'Category Image',
-    maxDimension: 1920,
-    isPromoBanner: false,
-  });
-  const [enableCompression, setEnableCompression] = useState(true);
-
-  const openImageCompression = (file, fieldName, moduleTitle = 'Image', maxDimension = 1920, isPromoBanner = false) => {
-    if (!file) return;
-    setCompressionModal({
-      isOpen: true,
-      file,
-      fieldName,
-      moduleTitle,
-      maxDimension,
-      isPromoBanner,
-    });
-  };
-
-  const closeImageCompression = () => {
-    setCompressionModal((prev) => ({ ...prev, isOpen: false, file: null }));
-  };
-
   // Promo Banner state for category modules
   const [bannerFormOpen, setBannerFormOpen] = useState(false);
   const [editingBannerIndex, setEditingBannerIndex] = useState(null);
@@ -397,7 +369,7 @@ const DynamicModuleView = () => {
     });
   };
 
-  const executeUploadBannerImage = async (file, isCompressed = false, stats = null) => {
+  const executeUploadBannerImage = async (file) => {
     if (!file) return;
     const localPreview = URL.createObjectURL(file);
     setBannerFormData((prev) => ({
@@ -407,15 +379,16 @@ const DynamicModuleView = () => {
     try {
       setIsUploadingBannerImage(true);
       toast.loading('Uploading banner image...', { id: 'promo-banner-upload' });
-      const { url, fileUrl, key } = await uploadWithPresignedUrl(file, 'categories');
+      const upload = await uploadWithPresignedUrl(file, 'banners');
+      const { url, fileUrl, key, wasCompressed, savingsPercent } = upload;
       const finalUrl = url || fileUrl;
       setBannerFormData((prev) => ({
         ...prev,
         imageUrl: finalUrl,
         key: key || '',
       }));
-      const successMsg = isCompressed && stats?.savingsPercent > 0
-        ? `Promo banner uploaded! (Compressed -${stats.savingsPercent}%)`
+      const successMsg = wasCompressed && savingsPercent > 0
+        ? `Promo banner uploaded! (Optimized -${savingsPercent}%)`
         : 'Promo banner image uploaded!';
       toast.success(successMsg, { id: 'promo-banner-upload' });
     } catch (err) {
@@ -427,11 +400,7 @@ const DynamicModuleView = () => {
 
   const handleUploadBannerImage = (file) => {
     if (!file) return;
-    if (isCategoryPage && enableCompression) {
-      openImageCompression(file, 'promoBanner', 'Promo Banner', 1920, true);
-    } else {
-      executeUploadBannerImage(file);
-    }
+    executeUploadBannerImage(file);
   };
 
   const handleSavePromoBannerItem = () => {
@@ -513,16 +482,7 @@ const DynamicModuleView = () => {
     });
   };
 
-  const handleConfirmCompression = async (chosenFile, isCompressed, stats) => {
-    const { fieldName, isPromoBanner } = compressionModal;
-    if (isPromoBanner) {
-      await executeUploadBannerImage(chosenFile, isCompressed, stats);
-    } else {
-      await executeFileUpload(fieldName, chosenFile, 'categories', isCompressed, stats);
-    }
-  };
-
-  const executeFileUpload = async (fieldName, file, folder = 'categories', isCompressed = false, stats = null) => {
+  const executeFileUpload = async (fieldName, file, folder = 'categories') => {
     if (!file) return;
     const localPreview = URL.createObjectURL(file);
     // Instant local preview so the admin sees the selected image immediately!
@@ -555,14 +515,7 @@ const DynamicModuleView = () => {
 
   const handleFileUpload = (fieldName, file, folder = 'categories') => {
     if (!file) return;
-    if (isCategoryPage && enableCompression) {
-      const isIcon = fieldName === 'icon' || fieldName.includes('icon');
-      const maxDim = isIcon ? 800 : 1920;
-      const title = isIcon ? 'Category Icon' : 'Category Banner';
-      openImageCompression(file, fieldName, title, maxDim, false);
-    } else {
-      executeFileUpload(fieldName, file, folder);
-    }
+    executeFileUpload(fieldName, file, folder);
   };
 
   const isOrnatePage = pathname.includes('ornate-products');
@@ -1348,36 +1301,6 @@ const DynamicModuleView = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              {isCategoryPage && (
-                <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-[#faf5ed] to-[#fdfbf7] border border-[#e8d8c0] text-xs shadow-2xs">
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-xl bg-[#8b6f4e] text-white flex items-center justify-center shadow-2xs">
-                      <HiOutlineSparkles className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <span className="font-bold text-stone-900 block leading-tight">
-                        Image Optimization & Compression
-                      </span>
-                      <span className="text-[11px] text-stone-500 block">
-                        Preview & compare original vs compressed size before upload
-                      </span>
-                    </div>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={enableCompression}
-                      onChange={(e) => setEnableCompression(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-9 h-5 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#8b6f4e]"></div>
-                    <span className="ml-2 text-[11px] font-bold text-[#8b6f4e]">
-                      {enableCompression ? 'Active' : 'Off'}
-                    </span>
-                  </label>
-                </div>
-              )}
-
               {config.fields?.map((field) => (
                 <div key={field.name} className="space-y-1">
                   {/* Category Banner Option */}
@@ -2457,15 +2380,6 @@ const DynamicModuleView = () => {
         />
       )}
 
-      {/* ─── Image Compression & Comparison Modal ─── */}
-      <ImageCompressCompareModal
-        isOpen={compressionModal.isOpen}
-        file={compressionModal.file}
-        moduleTitle={compressionModal.moduleTitle}
-        defaultMaxDimension={compressionModal.maxDimension}
-        onClose={closeImageCompression}
-        onConfirm={handleConfirmCompression}
-      />
     </div>
   );
 };

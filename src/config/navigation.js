@@ -17,7 +17,6 @@ import {
   HiOutlineCog,
   HiOutlineSpeakerphone,
   HiOutlineBookOpen,
-  HiOutlineDocumentText,
 } from 'react-icons/hi';
 
 import {
@@ -131,6 +130,13 @@ export const navSections = [
       { id: 'blogs', title: 'Blog Articles', path: '/blogs', icon: HiOutlineBookOpen, apiEndpoint: '/blogs' },
       { id: 'blog-categories', title: 'Blog Categories', path: '/blog-categories', icon: HiOutlineTag, apiEndpoint: '/blog-categories' },
       { id: 'footer-management', title: 'Footer Management', path: '/footer-settings', icon: HiOutlineTemplate, apiEndpoint: '/footer-settings' },
+    ],
+  },
+  {
+    id: 'website',
+    title: 'WEBSITE',
+    items: [
+      { id: 'website-themes', title: 'Themes', path: '/website/themes', icon: HiOutlineColorSwatch, apiEndpoint: '/website/themes' },
     ],
   },
   {

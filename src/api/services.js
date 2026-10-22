@@ -48,6 +48,20 @@ export const homeSectionsAPI = {
   getPublic: (params) => api.get('/home-sections/public', { params }),
 };
 
+// ─── Website theme management ─────────────────────────
+export const websiteThemesAPI = {
+  getAll: (params) => api.get('/website/themes', { params }),
+  getById: (id) => api.get(`/website/themes/${id}`),
+  create: (data) => api.post('/website/themes', data),
+  update: (id, data) => api.put(`/website/themes/${id}`, data),
+  duplicate: (id) => api.post(`/website/themes/${id}/duplicate`),
+  preview: (id) => api.get(`/website/themes/${id}/preview`),
+  publish: (id, data = {}) => api.post(`/website/themes/${id}/publish`, data),
+  rollback: (id) => api.post(`/website/themes/${id}/rollback`),
+  archive: (id) => api.post(`/website/themes/${id}/archive`),
+  getHistory: (themeId) => api.get('/website/themes/history', { params: themeId ? { themeId } : {} }),
+};
+
 // ─── Top Announcements ────────────────────────────
 export const topAnnouncementsAPI = {
   getAll: (params) => api.get('/top-announcements', { params }),

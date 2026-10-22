@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { createProductId, deleteUploadedFile, uploadWithPresignedUrl, uploadFilesWithPresignedUrls } from '../../utils/uploadWithPresignedUrl';
+import { createProductId, deleteUploadedFile, deleteUploadedFiles, getUploadCompressionSettings, uploadWithPresignedUrl, uploadFilesWithPresignedUrls, getUploadedObjectKey } from '../../utils/uploadWithPresignedUrl';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import Dropdown from '../../components/common/Dropdown';
 import { getMediaUrl } from '../../utils/imageUrl';
@@ -101,9 +101,7 @@ const formatMediaSize = (bytes = 0) => {
 };
 
 const compressImageAsset = async (asset, quality, format = 'image/webp') => {
-  const key = asset.key || (() => {
-    try { return decodeURIComponent(new URL(asset.url).pathname.replace(/^\/+/, '')); } catch { return ''; }
-  })();
+  const key = getUploadedObjectKey(asset);
   if (!key.startsWith('products/')) throw new Error('Could not identify this product image for compression');
   const response = await api.get('/upload/file', { params: { key }, responseType: 'blob' });
   const original = response.data;
@@ -127,58 +125,172 @@ const compressVideoAsset = async (asset, quality) => {
   if (!window.MediaRecorder || !HTMLVideoElement.prototype.captureStream) {
     throw new Error('Video compression is not supported by this browser');
   }
-  const key = asset.key || (() => {
-    try { return decodeURIComponent(new URL(asset.url).pathname.replace(/^\/+/, '')); } catch { return ''; }
-  })();
+  const key = getUploadedObjectKey(asset);
   if (!key.startsWith('products/')) throw new Error('Could not identify this product video for compression');
+
   const sourceResponse = await api.get('/upload/file', { params: { key }, responseType: 'blob' });
   const sourceBlob = sourceResponse.data;
   const sourceUrl = URL.createObjectURL(sourceBlob);
+
   const video = document.createElement('video');
   video.muted = true;
+  video.defaultMuted = true;
   video.playsInline = true;
   video.preload = 'auto';
+  video.style.position = 'fixed';
+  video.style.top = '-9999px';
+  video.style.left = '-9999px';
+  video.style.opacity = '0';
+  video.style.pointerEvents = 'none';
+  document.body.appendChild(video);
   video.src = sourceUrl;
+
   try {
-    await new Promise((resolve, reject) => {
-      video.onloadedmetadata = resolve;
-      video.onerror = () => reject(new Error('Could not load this video for compression'));
+    await Promise.race([
+      new Promise((resolve, reject) => {
+        video.onloadedmetadata = resolve;
+        video.onerror = () => reject(new Error('Could not load video metadata'));
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Video metadata timeout')), 8000)),
+    ]);
+
+    const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+      .find((type) => MediaRecorder.isTypeSupported(type));
+    if (!mimeType) throw new Error('This browser cannot encode compressed video');
+
+    const duration = Math.max(video.duration || 1, 1);
+    const originalBitrate = (sourceBlob.size * 8) / duration;
+    const recorder = new MediaRecorder(video.captureStream(), {
+      mimeType,
+      videoBitsPerSecond: Math.max(250_000, Math.min(originalBitrate, originalBitrate * quality)),
     });
-  const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
-    .find((type) => MediaRecorder.isTypeSupported(type));
-  if (!mimeType) throw new Error('This browser cannot encode compressed video');
-  const originalBitrate = sourceBlob.size * 8 / Math.max(video.duration, 1);
-  const recorder = new MediaRecorder(video.captureStream(), {
-    mimeType,
-    videoBitsPerSecond: Math.max(250_000, Math.min(originalBitrate, originalBitrate * quality)),
-  });
-  const chunks = [];
-  recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
-  const stopped = new Promise((resolve, reject) => {
-    recorder.onstop = resolve;
-    recorder.onerror = () => reject(new Error('Video compression failed'));
-  });
-  recorder.start();
-  try {
-    await video.play();
-    await new Promise((resolve, reject) => {
-      video.onended = resolve;
-      video.onerror = () => reject(new Error('Video playback failed during compression'));
+
+    const chunks = [];
+    recorder.ondataavailable = (event) => { if (event.data?.size) chunks.push(event.data); };
+    const stopped = new Promise((resolve, reject) => {
+      recorder.onstop = resolve;
+      recorder.onerror = () => reject(new Error('Video recording failed'));
     });
+
+    recorder.start();
+    try {
+      video.playbackRate = 2.0;
+      await video.play();
+      const maxWaitMs = Math.min(Math.max((duration / 2) * 1000 + 3000, 6000), 20000);
+      await Promise.race([
+        new Promise((resolve) => { video.onended = resolve; }),
+        new Promise((resolve) => setTimeout(resolve, maxWaitMs)),
+      ]);
+    } finally {
+      if (recorder.state !== 'inactive') recorder.stop();
+    }
+
+    await stopped;
+    video.pause();
+    const blob = new Blob(chunks, { type: mimeType });
+    if (!blob.size || blob.size >= sourceBlob.size) {
+      throw new Error('Compressed video was not smaller than original');
+    }
+    const stem = (asset.name || 'product-video').replace(/\.[^.]+$/, '');
+    return new File([blob], `${stem}.webm`, { type: mimeType });
   } finally {
-    if (recorder.state !== 'inactive') recorder.stop();
-  }
-  await stopped;
-  video.pause();
-  video.removeAttribute('src');
-  video.load();
-  const blob = new Blob(chunks, { type: mimeType });
-  const stem = (asset.name || 'product-video').replace(/\.[^.]+$/, '');
-  URL.revokeObjectURL(sourceUrl);
-  return new File([blob], `${stem}.webm`, { type: mimeType });
-  } catch (error) {
+    try {
+      video.removeAttribute('src');
+      video.load();
+      if (video.parentNode) video.parentNode.removeChild(video);
+    } catch {
+      // ignore cleanup errors
+    }
     URL.revokeObjectURL(sourceUrl);
-    throw error;
+  }
+};
+
+const compressLocalVideoFile = async (file, qualityRatio = 0.75) => {
+  if (typeof window === 'undefined' || !window.MediaRecorder || !HTMLVideoElement.prototype.captureStream) {
+    return file;
+  }
+  const sourceUrl = URL.createObjectURL(file);
+  const video = document.createElement('video');
+  video.muted = true;
+  video.defaultMuted = true;
+  video.playsInline = true;
+  video.preload = 'auto';
+  video.style.position = 'fixed';
+  video.style.top = '-9999px';
+  video.style.left = '-9999px';
+  video.style.opacity = '0';
+  video.style.pointerEvents = 'none';
+  document.body.appendChild(video);
+  video.src = sourceUrl;
+
+  try {
+    await Promise.race([
+      new Promise((resolve, reject) => {
+        video.onloadedmetadata = resolve;
+        video.onerror = () => reject(new Error('Could not load video metadata'));
+      }),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Video metadata timeout')), 8000)),
+    ]);
+
+    const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
+      .find((type) => MediaRecorder.isTypeSupported(type));
+    if (!mimeType) return file;
+
+    const duration = Math.max(video.duration || 1, 1);
+    const originalBitrate = (file.size * 8) / duration;
+    const recorder = new MediaRecorder(video.captureStream(), {
+      mimeType,
+      videoBitsPerSecond: Math.max(250_000, Math.min(originalBitrate, originalBitrate * qualityRatio)),
+    });
+
+    const chunks = [];
+    recorder.ondataavailable = (event) => {
+      if (event.data?.size) chunks.push(event.data);
+    };
+
+    const stopped = new Promise((resolve, reject) => {
+      recorder.onstop = resolve;
+      recorder.onerror = () => reject(new Error('Video recording failed'));
+    });
+
+    recorder.start();
+    try {
+      video.playbackRate = 2.0;
+      await video.play();
+      const maxWaitMs = Math.min(Math.max((duration / 2) * 1000 + 3000, 6000), 20000);
+      await Promise.race([
+        new Promise((resolve) => { video.onended = resolve; }),
+        new Promise((resolve) => setTimeout(resolve, maxWaitMs)),
+      ]);
+    } finally {
+      if (recorder.state !== 'inactive') recorder.stop();
+    }
+
+    await stopped;
+    video.pause();
+    const blob = new Blob(chunks, { type: mimeType });
+    if (!blob.size || blob.size >= file.size) {
+      return file;
+    }
+    const stem = (file.name || 'product-video').replace(/\.[^.]+$/, '');
+    const compressedFile = new File([blob], `${stem}.webm`, { type: mimeType });
+    compressedFile.originalSize = file.size;
+    compressedFile.compressedSize = blob.size;
+    compressedFile.wasCompressed = true;
+    compressedFile.savingsPercent = Math.max(0, Math.round((1 - blob.size / file.size) * 100));
+    return compressedFile;
+  } catch (err) {
+    console.warn('[compressLocalVideoFile] Video compression skipped:', err);
+    return file;
+  } finally {
+    try {
+      video.removeAttribute('src');
+      video.load();
+      if (video.parentNode) video.parentNode.removeChild(video);
+    } catch {
+      // ignore
+    }
+    URL.revokeObjectURL(sourceUrl);
   }
 };
 
@@ -690,7 +802,7 @@ export default function AddJewelryProduct() {
   const [productColors, setProductColors] = useState([]);
   const [activeMediaColor, setActiveMediaColor] = useState('');
   const [colorStatuses, setColorStatuses] = useState({});
-  const [activeMediaSubTab, setActiveMediaSubTab] = useState('images'); // 'images' | 'videos' | 'vto'
+  const [activeMediaSubTab, setActiveMediaSubTab] = useState('media'); // 'media' | 'vto'
 
   // High-Res Photography Per Metal Color
   const [mediaImages, setMediaImages] = useState({});
@@ -698,17 +810,44 @@ export default function AddJewelryProduct() {
   // 360 Spin & Product Videos Per Metal Color
   const [mediaVideos, setMediaVideos] = useState({});
   const [showCompressionHub, setShowCompressionHub] = useState(false);
-  const [compressionTab, setCompressionTab] = useState('images');
-  const [compressionQuality, setCompressionQuality] = useState(0.7);
+  const [compressionTab, setCompressionTab] = useState('all'); // 'all' | 'images' | 'videos'
+  const [compressionQuality, setCompressionQuality] = useState(0.82);
   const [compressionFormat, setCompressionFormat] = useState('image/webp');
   const [selectedCompressionIds, setSelectedCompressionIds] = useState([]);
   const [compressionPreviews, setCompressionPreviews] = useState({});
   const [previewingCompression, setPreviewingCompression] = useState(false);
   const [compressingMedia, setCompressingMedia] = useState(false);
   const [pendingCompressionDeletes, setPendingCompressionDeletes] = useState([]);
+  const [viewingCompressionMedia, setViewingCompressionMedia] = useState(null);
+
+  // Staged Upload Media (Local load -> Compression Confirmation -> Direct Cloudflare R2 Upload)
+  const [stagedUploadFiles, setStagedUploadFiles] = useState([]);
+  const [stagedUploadColor, setStagedUploadColor] = useState('');
+  const [stagedUploadType, setStagedUploadType] = useState('jewelry'); // 'jewelry' | 'silver'
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [imageUploadPolicy, setImageUploadPolicy] = useState({ enabled: true, quality: 82, maxDimension: 2400, format: 'image/webp' });
+  const [uploadCompressVideos, setUploadCompressVideos] = useState(true);
+  const [isProcessingUpload, setIsProcessingUpload] = useState(false);
+  const [uploadProcessingStep, setUploadProcessingStep] = useState('');
+  const [uploadProcessingPercent, setUploadProcessingPercent] = useState(0);
+
+  const totalStagedBytes = useMemo(() => {
+    return stagedUploadFiles.reduce((acc, item) => acc + (item.size || 0), 0);
+  }, [stagedUploadFiles]);
 
   useEffect(() => {
-    if (!showCompressionHub || compressionTab !== 'images') return undefined;
+    let cancelled = false;
+    getUploadCompressionSettings().then((settings) => {
+      if (cancelled) return;
+      setImageUploadPolicy(settings);
+      setCompressionQuality(settings.quality / 100);
+      setCompressionFormat(settings.format);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!showCompressionHub || (compressionTab !== 'images' && compressionTab !== 'all')) return undefined;
     const selected = (mediaImages[activeMediaColor] || []).filter((image) => selectedCompressionIds.includes(image.id));
     if (!selected.length) {
       setCompressionPreviews({});
@@ -969,46 +1108,43 @@ export default function AddJewelryProduct() {
     }
   };
 
-  const handleSilverVariantMediaUpload = async (colorName, e) => {
+  const handleSilverVariantMediaUpload = (colorName, e) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
-
-    try {
-      setUploadingSilverVariantColor(colorName);
-      const uploadedList = [];
-
-      for (const file of files) {
-        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-        if (res.fileUrl) {
-          uploadedList.push({
-            id: `vmed-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-            url: res.fileUrl,
-            key: res.key,
-            mediaType: file.type.startsWith('video') || file.name.endsWith('.mp4') ? 'video' : 'image',
-            name: res.name || file.name,
-            size: res.size ? formatMediaSize(res.size) : undefined,
-          });
-        }
-      }
-
-      if (uploadedList.length > 0) {
-        setSilverVariantMedia((prev) => ({
-          ...prev,
-          [colorName]: {
-            ...prev[colorName],
-            media: [...(prev[colorName]?.media || []), ...uploadedList],
-          },
-        }));
-        setSilverColors((prev) => Array.from(new Set([...prev, colorName])));
-        toast.success(`Uploaded & optimized ${uploadedList.length} media file(s) for ${colorName}!`);
-      }
-    } catch (err) {
-      console.error('Silver variant media upload failed:', err);
-      toast.error(err.message || 'Failed to upload variant media');
-    } finally {
-      setUploadingSilverVariantColor(null);
-      e.target.value = '';
+    const validFiles = files.filter((file) => {
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+      const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif)$/i.test(file.name);
+      if (!isVideo && !isImage) toast.error(`${file.name} is not a supported image or video`);
+      return isImage || isVideo;
+    });
+    if (!validFiles.length) {
+      if (e.target) e.target.value = '';
+      return;
     }
+
+    const staged = validFiles.map((file, idx) => {
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+      const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif)$/i.test(file.name);
+      return {
+        id: `staged-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
+        file,
+        name: file.name,
+        size: file.size,
+        formattedSize: formatMediaSize(file.size),
+        type: file.type || (isVideo ? 'video/mp4' : 'image/jpeg'),
+        previewUrl: URL.createObjectURL(file),
+        isVideo,
+        isImage,
+        status: 'ready',
+        error: null,
+      };
+    });
+
+    setStagedUploadFiles(staged);
+    setStagedUploadColor(colorName);
+    setStagedUploadType('silver');
+    setShowUploadModal(true);
+    if (e.target) e.target.value = '';
   };
 
   const handleRemoveSilverSwatchIcon = async (colorName) => {
@@ -1100,100 +1236,275 @@ export default function AddJewelryProduct() {
     fetchVtoMasters();
   }, [activeStep, isVtoStudioOpen]);
 
+  const handleCloseCompressionHub = () => {
+    setCompressingMedia(false);
+    setShowCompressionHub(false);
+  };
+
   // Close modals on Escape key press
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        if (isVtoStudioOpen) setIsVtoStudioOpen(false);
-        if (isAddColorModalOpen) setIsAddColorModalOpen(false);
+        if (viewingCompressionMedia) {
+          setViewingCompressionMedia(null);
+        } else if (showUploadModal && !isProcessingUpload) {
+          handleCloseUploadModal();
+        } else if (showCompressionHub) {
+          handleCloseCompressionHub();
+        } else if (isVtoStudioOpen) {
+          setIsVtoStudioOpen(false);
+        } else if (isAddColorModalOpen) {
+          setIsAddColorModalOpen(false);
+        }
       }
     };
-    if (isVtoStudioOpen || isAddColorModalOpen) {
+    if (isVtoStudioOpen || isAddColorModalOpen || showCompressionHub || viewingCompressionMedia || showUploadModal) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isVtoStudioOpen, isAddColorModalOpen]);
+  }, [isVtoStudioOpen, isAddColorModalOpen, showCompressionHub, viewingCompressionMedia, showUploadModal, isProcessingUpload]);
 
-  // Handle Image Upload for Metal Color
-  const handleImageUpload = async (e, colorName = activeMediaColor) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
+  // Synchronize colorImages to MongoDB when in edit mode
+  const syncColorImagesToDb = async (latestImages = mediaImages, latestVideos = mediaVideos) => {
+    if (!productId) return;
+    try {
+      const mediaColorNames = productColors.length
+        ? productColors
+        : (latestImages['']?.length || latestVideos['']?.length ? [''] : [activeMediaColor]);
+      const updatedColorImageRows = mediaColorNames.flatMap((colorName) => {
+        const color = colorsList.find((item) => item.name?.toLowerCase() === colorName.toLowerCase());
+        const images = (latestImages[colorName] || []).filter((item) => item?.url).map((item) => ({
+          url: item.url,
+          key: item.key || '',
+          mediaType: 'image',
+        }));
+        const videos = (latestVideos[colorName] || []).filter((item) => item?.url).map((item) => ({
+          url: item.url,
+          key: item.key || '',
+          mediaType: 'video',
+        }));
+        const vto = vtoConfigs[colorName] || {};
+        const hasVto = Boolean(vto.isConfigured && vto.overlayUrl);
+        if (!images.length && !videos.length && !hasVto) return [];
 
-    for (const file of files) {
-      try {
-        toast.loading(`Optimizing & uploading ${file.name}...`, { id: 'prod-media' });
-        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-        const { fileUrl, key } = res;
-        const displaySize = res.size ? formatMediaSize(res.size) : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-        setMediaImages((prev) => {
-          const current = prev[colorName] || [];
-          return {
-            ...prev,
-            [colorName]: [
-              ...current,
-              {
-                id: `img-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                url: fileUrl,
-                key,
-                isPrimary: current.length === 0,
-                name: res.name || file.name,
-                size: displaySize,
-                fileSize: res.size || file.size,
-                uploadedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-              },
-            ],
-          };
-        });
-        if (res.wasCompressed) {
-          toast.success(`${file.name} optimized & uploaded (${formatMediaSize(res.originalSize)} → ${formatMediaSize(res.compressedSize)})!`, { id: 'prod-media' });
-        } else {
-          toast.success(`${file.name} uploaded!`, { id: 'prod-media' });
+        return [{
+          status: colorStatuses[colorName] ?? 'active',
+          ...(color?.id || color?._id ? { metalColorId: color.id || color._id } : {}),
+          ...(images.length || videos.length ? { images: [...images, ...videos] } : {}),
+          ...(hasVto ? {
+            vtoImage: {
+              url: vto.overlayUrl,
+              ...(vto.overlayPublicId ? { key: vto.overlayPublicId } : {}),
+            },
+            ...(vto.vtoCategory ? { vtoCategory: vto.vtoCategory } : {}),
+            ...(vto.top !== undefined ? { vtoConfig: { top: vto.top, left: vto.left, scale: vto.scale } } : {}),
+          } : {}),
+        }];
+      });
+
+      if (updatedColorImageRows.length > 0) {
+        await api.put(`/products/${productId}`, { colorImages: updatedColorImageRows });
+      }
+    } catch (syncErr) {
+      console.warn('[syncColorImagesToDb] Auto-sync to DB notice:', syncErr?.message);
+    }
+  };
+
+  const handleCloseUploadModal = () => {
+    if (isProcessingUpload) {
+      toast.error('Upload in progress, please wait until finished');
+      return;
+    }
+    stagedUploadFiles.forEach((item) => {
+      if (item.previewUrl && item.previewUrl.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(item.previewUrl);
+        } catch {
+          // ignore revocation error
         }
-      } catch (err) {
-        toast.error(`Upload failed: ${err.message}`, { id: 'prod-media' });
       }
-    }
-    if (e.target) e.target.value = '';
+    });
+    setStagedUploadFiles([]);
+    setShowUploadModal(false);
   };
 
-  // Handle Video Upload for Metal Color
-  const handleVideoUpload = async (e, colorName = activeMediaColor) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
+  const handleRemoveStagedFile = (fileId) => {
+    if (isProcessingUpload) return;
+    setStagedUploadFiles((prev) => {
+      const target = prev.find((item) => item.id === fileId);
+      if (target?.previewUrl && target.previewUrl.startsWith('blob:')) {
+        try {
+          URL.revokeObjectURL(target.previewUrl);
+        } catch {
+          // ignore revocation error
+        }
+      }
+      const updated = prev.filter((item) => item.id !== fileId);
+      if (updated.length === 0) {
+        setShowUploadModal(false);
+      }
+      return updated;
+    });
+  };
 
-    for (const file of files) {
-      try {
-        toast.loading(`Uploading video ${file.name}...`, { id: 'prod-video' });
-        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-        const { fileUrl, key } = res;
-        setMediaVideos((prev) => {
-          const current = prev[colorName] || [];
-          return {
-            ...prev,
-            [colorName]: [
-              ...current,
-              {
-                id: `vid-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-                url: fileUrl,
-                key,
-                title: file.name,
-                name: file.name,
-                size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-                fileSize: file.size,
-                uploadedAt: new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-              },
-            ],
-          };
+  const handleConfirmStagedUpload = async () => {
+    if (!stagedUploadFiles.length) return;
+    setIsProcessingUpload(true);
+    setUploadProcessingPercent(0);
+
+    const uploadedAt = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    const targetColor = stagedUploadColor;
+    const isSilver = stagedUploadType === 'silver';
+
+    let totalOriginalBytes = 0;
+    let totalCompressedBytes = 0;
+    let successfulCount = 0;
+    const newMediaItems = [];
+
+    const toastId = 'staged-upload-toast';
+    toast.loading(`Starting upload for ${stagedUploadFiles.length} file(s)...`, { id: toastId });
+
+    try {
+      for (let i = 0; i < stagedUploadFiles.length; i++) {
+        const item = stagedUploadFiles[i];
+        totalOriginalBytes += item.size;
+
+        const currentPct = Math.round((i / stagedUploadFiles.length) * 100);
+        setUploadProcessingPercent(currentPct);
+
+        let fileToUpload = item.file;
+        let wasCompressed = false;
+
+        // Image uploads use the saved global compression policy in uploadWithPresignedUrl.
+        // Keep optional video encoding local to this upload batch.
+        if (item.isImage && imageUploadPolicy.enabled) {
+          setStagedUploadFiles((prev) =>
+            prev.map((f, idx) => (idx === i ? { ...f, status: 'compressing' } : f))
+          );
+          setUploadProcessingStep(`Optimizing image ${i + 1} of ${stagedUploadFiles.length}: ${item.name}`);
+          toast.loading(`Optimizing image (${i + 1}/${stagedUploadFiles.length}): ${item.name}...`, { id: toastId });
+        } else if (item.isVideo && uploadCompressVideos) {
+          setStagedUploadFiles((prev) =>
+            prev.map((f, idx) => (idx === i ? { ...f, status: 'compressing' } : f))
+          );
+          setUploadProcessingStep(`Encoding video ${i + 1} of ${stagedUploadFiles.length}: ${item.name}`);
+          try {
+            fileToUpload = await compressLocalVideoFile(item.file, 0.82);
+            wasCompressed = Boolean(fileToUpload.wasCompressed);
+          } catch (compErr) {
+            console.warn(`[handleConfirmStagedUpload] Video compression skipped for ${item.name}:`, compErr);
+            fileToUpload = item.file;
+          }
+        }
+
+        // --- STEP 2: Direct Upload to Cloudflare R2 ---
+        setStagedUploadFiles((prev) =>
+          prev.map((f, idx) => (idx === i ? { ...f, status: 'uploading' } : f))
+        );
+        setUploadProcessingStep(`Uploading to Cloudflare ${i + 1} of ${stagedUploadFiles.length}: ${fileToUpload.name}`);
+        toast.loading(`Uploading to Cloudflare (${i + 1}/${stagedUploadFiles.length}): ${fileToUpload.name}...`, { id: toastId });
+
+        const uploadRes = await uploadWithPresignedUrl(fileToUpload, 'products', null, {
+          productId: mediaProductId,
         });
-        toast.success(`Video uploaded!`, { id: 'prod-video' });
-      } catch (err) {
-        toast.error(`Video upload failed: ${err.message}`, { id: 'prod-video' });
+        totalCompressedBytes += uploadRes.size || fileToUpload.size;
+        wasCompressed = wasCompressed || uploadRes.wasCompressed;
+
+        const displaySize = formatMediaSize(uploadRes.size || fileToUpload.size);
+        const mediaRecord = {
+          id: `${item.isVideo ? 'vid' : 'img'}-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+          url: uploadRes.fileUrl,
+          key: uploadRes.key,
+          name: uploadRes.name || fileToUpload.name,
+          title: uploadRes.name || fileToUpload.name,
+          size: displaySize,
+          fileSize: uploadRes.size || fileToUpload.size,
+          uploadedAt,
+          mediaType: item.isVideo ? 'video' : 'image',
+          wasCompressed,
+        };
+
+        newMediaItems.push({ item, mediaRecord, isVideo: item.isVideo });
+
+        setStagedUploadFiles((prev) =>
+          prev.map((f, idx) => (idx === i ? { ...f, status: 'done' } : f))
+        );
+        successfulCount++;
       }
+
+      setUploadProcessingPercent(100);
+
+      // --- STEP 3: Update State & Sync DB ---
+      if (isSilver) {
+        setSilverVariantMedia((prev) => ({
+          ...prev,
+          [targetColor]: {
+            ...prev[targetColor],
+            media: [...(prev[targetColor]?.media || []), ...newMediaItems.map((n) => n.mediaRecord)],
+          },
+        }));
+        setSilverColors((prev) => Array.from(new Set([...prev, targetColor])));
+      } else {
+        const newImages = newMediaItems.filter((n) => !n.isVideo).map((n) => n.mediaRecord);
+        const newVideos = newMediaItems.filter((n) => n.isVideo).map((n) => n.mediaRecord);
+
+        let nextImagesMap = { ...mediaImages };
+        let nextVideosMap = { ...mediaVideos };
+
+        if (newImages.length > 0) {
+          const current = mediaImages[targetColor] || [];
+          const withPrimary = newImages.map((img, idx) => ({
+            ...img,
+            isPrimary: current.length === 0 && idx === 0,
+          }));
+          nextImagesMap[targetColor] = [...current, ...withPrimary];
+          setMediaImages(nextImagesMap);
+        }
+        if (newVideos.length > 0) {
+          nextVideosMap[targetColor] = [...(mediaVideos[targetColor] || []), ...newVideos];
+          setMediaVideos(nextVideosMap);
+        }
+
+        if (productId) {
+          await syncColorImagesToDb(nextImagesMap, nextVideosMap);
+        }
+      }
+
+      const savedBytes = Math.max(0, totalOriginalBytes - totalCompressedBytes);
+      const savedPercent = totalOriginalBytes > 0 ? Math.round((savedBytes / totalOriginalBytes) * 100) : 0;
+
+      if (savedBytes > 0) {
+        toast.success(
+          `Compressed & uploaded ${successfulCount} file(s)! Saved ${formatMediaSize(savedBytes)} (${savedPercent}%) direct to Cloudflare!`,
+          { id: toastId, duration: 5000 }
+        );
+      } else {
+        toast.success(`Uploaded ${successfulCount} file(s) direct to Cloudflare!`, { id: toastId });
+      }
+
+      stagedUploadFiles.forEach((item) => {
+        if (item.previewUrl && item.previewUrl.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(item.previewUrl);
+          } catch {
+            // ignore revocation error
+          }
+        }
+      });
+      setStagedUploadFiles([]);
+      setShowUploadModal(false);
+    } catch (err) {
+      console.error('[handleConfirmStagedUpload] Upload failed:', err);
+      toast.error(`Upload error: ${err.message}`, { id: toastId });
+    } finally {
+      setIsProcessingUpload(false);
+      setUploadProcessingStep('');
+      setUploadProcessingPercent(0);
     }
-    if (e.target) e.target.value = '';
   };
 
-  const handleMixedMediaUpload = async (e, colorName = activeMediaColor) => {
+  // Mixed Media Upload handler (Stages files locally and opens compression modal)
+  const handleMixedMediaUpload = (e, colorName = activeMediaColor) => {
     const files = Array.from(e.target.files || []);
     if (!files.length) return;
     const validFiles = files.filter((file) => {
@@ -1203,47 +1514,37 @@ export default function AddJewelryProduct() {
       return isImage || isVideo;
     });
     if (!validFiles.length) {
-      e.target.value = '';
+      if (e.target) e.target.value = '';
       return;
     }
 
-    try {
-      toast.loading(`Optimizing & uploading ${validFiles.length} media file${validFiles.length === 1 ? '' : 's'}...`, { id: 'prod-media-batch' });
-      const uploadedAt = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-      let completedCount = 0;
-      await uploadFilesWithPresignedUrls(validFiles, 'products', null, {
-        productId: mediaProductId,
-        onFileUploaded: (uploaded, file, index) => {
-          const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
-          const displaySize = uploaded.size ? formatMediaSize(uploaded.size) : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-          const media = {
-            id: `${isVideo ? 'vid' : 'img'}-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 7)}`,
-            url: uploaded.fileUrl,
-            key: uploaded.key,
-            name: uploaded.name || file.name,
-            title: uploaded.name || file.name,
-            size: displaySize,
-            fileSize: uploaded.size || file.size,
-            uploadedAt,
-          };
-          if (isVideo) {
-            setMediaVideos((prev) => ({ ...prev, [colorName]: [...(prev[colorName] || []), media] }));
-          } else {
-            setMediaImages((prev) => {
-              const current = prev[colorName] || [];
-              return { ...prev, [colorName]: [...current, { ...media, isPrimary: current.length === 0 }] };
-            });
-          }
-          completedCount += 1;
-          toast.loading(`Uploaded ${completedCount} of ${validFiles.length} media files...`, { id: 'prod-media-batch' });
-        },
-      });
-      toast.success(`${completedCount} media file${completedCount === 1 ? '' : 's'} uploaded & optimized`, { id: 'prod-media-batch' });
-    } catch (err) {
-      toast.error(`Media upload failed: ${err.message}`, { id: 'prod-media-batch' });
-    }
-    e.target.value = '';
+    const staged = validFiles.map((file, idx) => {
+      const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|mov|m4v)$/i.test(file.name);
+      const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif)$/i.test(file.name);
+      return {
+        id: `staged-${Date.now()}-${idx}-${Math.random().toString(36).slice(2, 7)}`,
+        file,
+        name: file.name,
+        size: file.size,
+        formattedSize: formatMediaSize(file.size),
+        type: file.type || (isVideo ? 'video/mp4' : 'image/jpeg'),
+        previewUrl: URL.createObjectURL(file),
+        isVideo,
+        isImage,
+        status: 'ready',
+        error: null,
+      };
+    });
+
+    setStagedUploadFiles(staged);
+    setStagedUploadColor(colorName || activeMediaColor);
+    setStagedUploadType('jewelry');
+    setShowUploadModal(true);
+    if (e.target) e.target.value = '';
   };
+
+  const handleImageUpload = (e, colorName = activeMediaColor) => handleMixedMediaUpload(e, colorName);
+  const handleVideoUpload = (e, colorName = activeMediaColor) => handleMixedMediaUpload(e, colorName);
 
   // Handle VTO Overlay PNG Upload inside Studio Modal
   const handleVtoAssetUpload = async (e) => {
@@ -1317,58 +1618,163 @@ export default function AddJewelryProduct() {
   };
 
   const handleApplyMediaCompression = async () => {
-    const mediaType = compressionTab === 'images' ? 'image' : 'video';
-    const assets = mediaType === 'image'
+    const isVideosOnly = compressionTab === 'videos';
+    const isImagesOnly = compressionTab === 'images';
+
+    const imagesToCompress = !isVideosOnly
       ? (mediaImages[activeMediaColor] || []).filter((image) => selectedCompressionIds.includes(image.id))
-      : (mediaVideos[activeMediaColor] || []);
-    if (!assets.length) return;
+      : [];
+    const videosToCompress = !isImagesOnly
+      ? (mediaVideos[activeMediaColor] || []).filter((video) => selectedCompressionIds.includes(video.id))
+      : [];
+
+    if (!imagesToCompress.length && !videosToCompress.length) return;
 
     setCompressingMedia(true);
     let compressedCount = 0;
-    try {
-      for (const asset of assets) {
-        const sizeMatch = String(asset.size || '').match(/[\d.]+/);
-        const originalSize = Number(asset.fileSize) || (sizeMatch
-          ? Number(sizeMatch[0]) * (String(asset.size).toLowerCase().includes('mb') ? 1024 * 1024 : 1024)
-          : 0);
-        const file = mediaType === 'image'
-          ? (compressionPreviews[asset.id]?.file || await compressImageAsset(asset, compressionQuality, compressionFormat))
-          : await compressVideoAsset({ ...asset, fileSize: originalSize }, compressionQuality);
-        const sourceSize = mediaType === 'image'
-          ? (compressionPreviews[asset.id]?.originalSize || file.originalSize || originalSize)
-          : originalSize;
-        if (sourceSize && file.size >= sourceSize) continue;
+    let deletedCount = 0;
+    let currentImages = { ...mediaImages };
+    let currentVideos = { ...mediaVideos };
 
-        const uploaded = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId, subfolder: 'compressed' });
-        const replacement = {
-          ...asset,
-          url: uploaded.fileUrl,
-          key: uploaded.key,
-          name: file.name,
-          title: mediaType === 'video' ? file.name : asset.title,
-          fileSize: file.size,
-          size: formatMediaSize(file.size),
-        };
-        if (mediaType === 'image') {
-          setMediaImages((previous) => ({
-            ...previous,
-            [activeMediaColor]: (previous[activeMediaColor] || []).map((item) => item.id === asset.id ? replacement : item),
-          }));
-        } else {
-          setMediaVideos((previous) => ({
-            ...previous,
-            [activeMediaColor]: (previous[activeMediaColor] || []).map((item) => item.id === asset.id ? replacement : item),
-          }));
+    try {
+      // Compress selected images
+      for (const asset of imagesToCompress) {
+        try {
+          const sizeMatch = String(asset.size || '').match(/[\d.]+/);
+          const originalSize = Number(asset.fileSize) || (sizeMatch
+            ? Number(sizeMatch[0]) * (String(asset.size).toLowerCase().includes('mb') ? 1024 * 1024 : 1024)
+            : 0);
+          const file = compressionPreviews[asset.id]?.file || await compressImageAsset(asset, compressionQuality, compressionFormat);
+          const sourceSize = compressionPreviews[asset.id]?.originalSize || file.originalSize || originalSize;
+          if (sourceSize && file.size >= sourceSize) continue;
+
+          // Upload compressed image directly into product directory
+          const uploaded = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId, compress: false });
+          const replacement = {
+            ...asset,
+            url: uploaded.fileUrl,
+            key: uploaded.key,
+            name: file.name,
+            title: asset.title || file.name,
+            fileSize: file.size,
+            size: formatMediaSize(file.size),
+          };
+          currentImages = {
+            ...currentImages,
+            [activeMediaColor]: (currentImages[activeMediaColor] || []).map((item) => item.id === asset.id ? replacement : item),
+          };
+          setMediaImages(currentImages);
+
+          // Immediately delete uncompressed original from Cloudflare R2 to prevent storage charges
+          const oldKey = getUploadedObjectKey(asset);
+          if (oldKey && oldKey !== uploaded.key) {
+            const deleted = await deleteUploadedFile(asset);
+            if (deleted) deletedCount += 1;
+          }
+
+          compressedCount += 1;
+        } catch (imgErr) {
+          console.warn('[handleApplyMediaCompression] Image compression error for', asset.id, imgErr?.message);
         }
-        setPendingCompressionDeletes((previous) => [...previous, asset]);
-        compressedCount += 1;
       }
-      if (compressedCount) {
-        toast.success(`${compressedCount} ${mediaType}${compressedCount === 1 ? '' : 's'} compressed and replaced`);
-      } else {
-        toast('Selected files are already smaller than the compressed versions', { icon: 'ℹ️' });
+
+      // Compress selected videos (if applicable)
+      for (const asset of videosToCompress) {
+        try {
+          const sizeMatch = String(asset.size || '').match(/[\d.]+/);
+          const originalSize = Number(asset.fileSize) || (sizeMatch
+            ? Number(sizeMatch[0]) * (String(asset.size).toLowerCase().includes('mb') ? 1024 * 1024 : 1024)
+            : 0);
+          const file = await compressVideoAsset({ ...asset, fileSize: originalSize }, compressionQuality);
+          if (originalSize && file.size >= originalSize) continue;
+
+          // Upload compressed video directly into product directory
+          const uploaded = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+          const replacement = {
+            ...asset,
+            url: uploaded.fileUrl,
+            key: uploaded.key,
+            name: file.name,
+            title: file.name,
+            fileSize: file.size,
+            size: formatMediaSize(file.size),
+          };
+          currentVideos = {
+            ...currentVideos,
+            [activeMediaColor]: (currentVideos[activeMediaColor] || []).map((item) => item.id === asset.id ? replacement : item),
+          };
+          setMediaVideos(currentVideos);
+
+          // Immediately delete uncompressed original video from Cloudflare R2 to prevent storage charges
+          const oldKey = getUploadedObjectKey(asset);
+          if (oldKey && oldKey !== uploaded.key) {
+            const deleted = await deleteUploadedFile(asset);
+            if (deleted) deletedCount += 1;
+          }
+
+          compressedCount += 1;
+        } catch (vidErr) {
+          console.warn('[handleApplyMediaCompression] Video compression skipped/failed for', asset.id, vidErr?.message);
+        }
       }
+
+      // If updating an existing product, immediately sync updated colorImages to DB
+      if (productId && compressedCount > 0) {
+        try {
+          const mediaColorNames = productColors.length
+            ? productColors
+            : (currentImages['']?.length || currentVideos['']?.length ? [''] : [activeMediaColor]);
+          const updatedColorImageRows = mediaColorNames.flatMap((colorName) => {
+            const color = colorsList.find((item) => item.name?.toLowerCase() === colorName.toLowerCase());
+            const images = (currentImages[colorName] || []).filter((item) => item?.url).map((item) => ({
+              url: item.url,
+              key: item.key || '',
+              mediaType: 'image',
+            }));
+            const videos = (currentVideos[colorName] || []).filter((item) => item?.url).map((item) => ({
+              url: item.url,
+              key: item.key || '',
+              mediaType: 'video',
+            }));
+            const vto = vtoConfigs[colorName] || {};
+            const hasVto = Boolean(vto.isConfigured && vto.overlayUrl);
+            if (!images.length && !videos.length && !hasVto) return [];
+
+            return [{
+              status: colorStatuses[colorName] ?? 'active',
+              ...(color?.id || color?._id ? { metalColorId: color.id || color._id } : {}),
+              ...(images.length || videos.length ? { images: [...images, ...videos] } : {}),
+              ...(hasVto ? {
+                vtoImage: {
+                  url: vto.overlayUrl,
+                  ...(vto.overlayPublicId ? { key: vto.overlayPublicId } : {}),
+                },
+                ...(vto.vtoCategory ? { vtoCategory: vto.vtoCategory } : {}),
+                ...(vto.top !== undefined ? { vtoConfig: { top: vto.top, left: vto.left, scale: vto.scale } } : {}),
+              } : {}),
+            }];
+          });
+
+          if (updatedColorImageRows.length > 0) {
+            await api.put(`/products/${productId}`, { colorImages: updatedColorImageRows });
+          }
+        } catch (syncErr) {
+          console.warn('[handleApplyMediaCompression] Sync to DB notice:', syncErr?.message);
+        }
+      }
+
+      setSelectedCompressionIds([]);
+      setCompressionPreviews({});
       setShowCompressionHub(false);
+
+      if (compressedCount) {
+        const msg = deletedCount > 0
+          ? `${compressedCount} media file${compressedCount === 1 ? '' : 's'} compressed. ${deletedCount} uncompressed original${deletedCount === 1 ? '' : 's'} deleted from Cloudflare R2.`
+          : `${compressedCount} media file${compressedCount === 1 ? '' : 's'} compressed and updated.`;
+        toast.success(msg);
+      } else {
+        toast('Selected media files are already at optimal compression', { icon: 'ℹ️' });
+      }
     } catch (error) {
       toast.error(error.message || 'Could not compress media');
     } finally {
@@ -2570,8 +2976,8 @@ export default function AddJewelryProduct() {
       </div>
 
       {/* ─── Stepper Wizard Bar (Matches Screenshot) ─────────── */}
-      <div className="bg-white rounded-2xl border border-[#eee8df] p-2 sm:p-2.5 shadow-2xs">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-2 items-center">
+      <div className="bg-white rounded-2xl border border-[#eee8df] p-2 sm:p-2.5 shadow-2xs overflow-x-auto scrollbar-none">
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-2 items-center min-w-[480px] sm:min-w-0">
           {steps.map((s, idx) => {
             const isActive = activeStep === s.num;
 
@@ -4049,86 +4455,70 @@ export default function AddJewelryProduct() {
                           disabled={!activeMediaColor}
                           onChange={(status) => setColorStatuses((previous) => ({ ...previous, [activeMediaColor]: status }))}
                         />
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveColor(activeMediaColor)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-white hover:bg-rose-50/70 border border-rose-200/80 rounded-xl transition-all shadow-2xs cursor-pointer self-start sm:self-auto"
-                      >
-                        <HiOutlineTrash className="w-3.5 h-3.5" />
-                        <span>Remove Color</span>
-                      </button>
                       </div>
                     )}
                   </div>
 
-                  {/* Sub-Tabs: Product Images, Videos, VTO Configuration */}
-                  <div className="flex items-center gap-2 border-b border-stone-100 pb-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setActiveMediaSubTab('images')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                        activeMediaSubTab === 'images'
-                          ? 'bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70 shadow-2xs'
-                          : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
-                      }`}
-                    >
-                      <HiOutlinePhotograph className="w-4 h-4" />
-                      <span>Product Media ({(mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length})</span>
-                    </button>
+                  {/* Sub-Tabs: Product Media (Images + Videos), VTO Configuration */}
+                  <div className="flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 border-b border-stone-100 pb-2.5">
+                    <div className="flex items-center gap-2 overflow-x-auto max-w-full pb-0.5 scrollbar-none">
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaSubTab('media')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                          activeMediaSubTab === 'media' || activeMediaSubTab === 'images'
+                            ? 'bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70 shadow-2xs'
+                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        }`}
+                      >
+                        <HiOutlinePhotograph className="w-4 h-4" />
+                        <span>Product Media ({(mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length})</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveMediaSubTab('videos')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                        activeMediaSubTab === 'videos'
-                          ? 'bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70 shadow-2xs'
-                          : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
-                      }`}
-                    >
-                      <HiOutlineVideoCamera className="w-4 h-4" />
-                      <span>Videos ({(mediaVideos[activeMediaColor] || []).length})</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveMediaSubTab('vto')}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer whitespace-nowrap ${
+                          activeMediaSubTab === 'vto'
+                            ? 'bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70 shadow-2xs'
+                            : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
+                        }`}
+                      >
+                        <HiOutlineCube className="w-4 h-4" />
+                        <span>VTO Configuration ({vtoConfigs[activeMediaColor]?.isConfigured ? 1 : 0})</span>
+                      </button>
+                    </div>
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveMediaSubTab('vto')}
-                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                        activeMediaSubTab === 'vto'
-                          ? 'bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70 shadow-2xs'
-                          : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
-                      }`}
-                    >
-                      <HiOutlineCube className="w-4 h-4" />
-                      <span>VTO Configuration ({vtoConfigs[activeMediaColor]?.isConfigured ? 1 : 0})</span>
-                    </button>
                     <div className="ml-auto flex items-center gap-2">
-                      <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/70" title="All uploaded photos are automatically optimized to high-fidelity WebP at upload time">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        Auto-Compression Active
-                      </span>
                       {!isSilverProduct && ((mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length > 0) && (
                         <button
                           type="button"
                           onClick={() => {
-                            setCompressionTab('images');
-                            setSelectedCompressionIds((mediaImages[activeMediaColor] || []).map((image) => image.id));
+                            setCompressionTab('all');
+                            const allIds = [
+                              ...(mediaImages[activeMediaColor] || []).map((img) => img.id),
+                              ...(mediaVideos[activeMediaColor] || []).map((vid) => vid.id),
+                            ];
+                            setSelectedCompressionIds(allIds);
                             setCompressionPreviews({});
                             setShowCompressionHub(true);
                           }}
-                          className="inline-flex items-center gap-1.5 rounded-xl border border-[#d9c4a8] bg-white px-3 py-1.5 text-xs font-semibold text-[#785e40] transition hover:bg-[#faf5ee]"
+                          className="inline-flex items-center gap-2 rounded-xl border border-[#d9c4a8] bg-[#faf5ee] hover:bg-[#f2e6d5] px-3.5 py-1.5 text-xs font-bold text-[#785e40] shadow-2xs hover:shadow-xs transition-all cursor-pointer whitespace-nowrap"
+                          title="Open Media Compression & Optimizer"
                         >
-                          <HiOutlineAdjustments className="h-4 w-4" />
-                          Manual Adjust
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                          <span>Media Compression</span>
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {/* Product Images Tab Content (Horizontal Scroll Row) */}
-                  {activeMediaSubTab === 'images' && (
+                  {/* Unified Product Media Content (Images & Videos Mixed) */}
+                  {(activeMediaSubTab === 'media' || activeMediaSubTab === 'images') && (
                     <div className="relative">
                       <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-thin">
-                        {/* Upload Images Button Card */}
+                        {/* Upload Media Button Card */}
                         <label
                           htmlFor="metal-color-upload-input"
                           className="w-32 h-32 sm:w-36 sm:h-36 shrink-0 rounded-2xl border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] bg-[#fdfcfb] hover:bg-[#faf7f2]/30 flex flex-col items-center justify-center p-3 text-center transition-all cursor-pointer group shadow-2xs"
@@ -4137,7 +4527,7 @@ export default function AddJewelryProduct() {
                             id="metal-color-upload-input"
                             type="file"
                             multiple
-                            accept="image/*,video/mp4,video/webm,video/quicktime"
+                            accept="image/*,video/mp4,video/webm,video/quicktime,video/*"
                             onChange={(e) => handleMixedMediaUpload(e, activeMediaColor)}
                             className="hidden"
                           />
@@ -4148,7 +4538,7 @@ export default function AddJewelryProduct() {
                             Upload Media
                           </span>
                           <span className="text-[9.5px] text-emerald-600 font-medium mt-0.5">
-                            Auto-compressed on upload
+                            Local preview &amp; compress
                           </span>
                         </label>
 
@@ -4163,8 +4553,16 @@ export default function AddJewelryProduct() {
                               title="Click to zoom in / inspect"
                             >
                               <img
-                                src={img.url}
+                                src={getMediaUrl(img.url) || img.url}
                                 alt={`${activeMediaColor} ${i + 1}`}
+                                onError={(e) => {
+                                  const key = img.key || getUploadedObjectKey(img.url);
+                                  if (key && !e.target.dataset.fallback) {
+                                    e.target.dataset.fallback = 'true';
+                                    const backendBase = (api.defaults?.baseURL || 'http://localhost:5001/api');
+                                    e.target.src = `${backendBase}/upload/file?key=${encodeURIComponent(key)}`;
+                                  }
+                                }}
                                 className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                               />
 
@@ -4212,74 +4610,58 @@ export default function AddJewelryProduct() {
                           );
                         })}
 
+                        {/* Uploaded Video Cards */}
                         {(mediaVideos[activeMediaColor] || []).map((vid, i) => (
-                          <div key={vid.id || `video-${i}`} className="relative w-48 h-32 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-900 shadow-2xs group flex flex-col justify-end p-2.5 text-white">
-                            <video src={vid.url} className="absolute inset-0 w-full h-full object-cover opacity-70" />
-                            <div className="relative z-10">
-                              <p className="text-xs font-bold truncate">{vid.title || vid.name || 'Product Video'}</p>
-                              <p className="text-[10px] text-stone-300">{vid.size || 'Video asset'}</p>
+                          <div
+                            key={vid.id || `video-${i}`}
+                            onClick={() => setViewingCompressionMedia({ ...vid, mediaType: 'video' })}
+                            className="relative w-36 h-32 sm:w-44 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-900 shadow-2xs group flex flex-col justify-end p-2.5 text-white cursor-pointer hover:shadow-md hover:border-[#8b6f4e] transition-all"
+                            title="Click to view & play video"
+                          >
+                            <video src={getMediaUrl(vid.url) || vid.url} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-85 transition-opacity" />
+
+                            {/* Video Badge */}
+                            <span className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold bg-black/75 text-amber-300 backdrop-blur-xs shadow-xs">
+                              <HiOutlineVideoCamera className="w-3 h-3" />
+                              Video
+                            </span>
+
+                            {/* Center Play Icon Overlay */}
+                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                              <div className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-md">
+                                <svg className="w-4 h-4 fill-white translate-x-0.5" viewBox="0 0 24 24">
+                                  <path d="M8 5v14l11-7z" />
+                                </svg>
+                              </div>
                             </div>
-                            <button type="button" onClick={() => handleRemoveVideo(activeMediaColor, vid.id)} className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/60 hover:bg-black text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" title="Remove video">
+
+                            <div className="relative z-10">
+                              <p className="text-xs font-bold truncate drop-shadow-sm">{vid.title || vid.name || 'Product Video'}</p>
+                              <p className="text-[10px] text-stone-300 drop-shadow-sm font-mono">{vid.size || 'Video asset'}</p>
+                            </div>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveVideo(activeMediaColor, vid.id);
+                              }}
+                              className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/60 hover:bg-black text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-xs"
+                              title="Remove video"
+                            >
                               <HiOutlineX className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))}
 
-                        {/* Next arrow hint if multiple images */}
-                        {(mediaImages[activeMediaColor] || []).length > 2 && (
+                        {/* Next arrow hint if multiple items */}
+                        {((mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length) > 2 && (
                           <div className="w-8 h-8 rounded-full bg-white border border-stone-200/90 shadow-2xs flex items-center justify-center text-stone-500 shrink-0">
                             <HiOutlineChevronRight className="w-4 h-4" />
                           </div>
                         )}
                       </div>
-                    </div>
-                  )}
-
-                  {/* Videos Tab Content */}
-                  {activeMediaSubTab === 'videos' && (
-                    <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-thin">
-                      <label
-                        htmlFor="metal-color-video-input"
-                        className="w-32 h-32 sm:w-36 sm:h-36 shrink-0 rounded-2xl border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] bg-[#fdfcfb] hover:bg-[#faf7f2]/30 flex flex-col items-center justify-center p-3 text-center transition-all cursor-pointer group shadow-2xs"
-                      >
-                        <input
-                          id="metal-color-video-input"
-                          type="file"
-                          multiple
-                          accept="video/*"
-                          onChange={(e) => handleVideoUpload(e, activeMediaColor)}
-                          className="hidden"
-                        />
-                        <div className="w-8 h-8 rounded-full border border-stone-300 group-hover:border-[#8b6f4e] group-hover:bg-[#faf5ee] text-stone-400 group-hover:text-[#8b6f4e] flex items-center justify-center transition-all mb-1.5">
-                          <HiOutlineVideoCamera className="w-4 h-4" />
-                        </div>
-                        <span className="text-xs font-bold text-stone-800 group-hover:text-[#8b6f4e]">
-                          Upload Video
-                        </span>
-                        <span className="text-[9.5px] text-stone-400 mt-0.5">
-                          MP4, WEBM (Max 50MB)
-                        </span>
-                      </label>
-
-                      {(mediaVideos[activeMediaColor] || []).map((vid, i) => (
-                        <div
-                          key={vid.id || i}
-                          className="relative w-48 h-32 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-900 shadow-2xs group flex flex-col justify-end p-2.5 text-white"
-                        >
-                          <video src={vid.url} className="absolute inset-0 w-full h-full object-cover opacity-70" />
-                          <div className="relative z-10">
-                            <p className="text-xs font-bold truncate">{vid.title || 'Product Video'}</p>
-                            <p className="text-[10px] text-stone-300">{vid.size || 'Video asset'}</p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveVideo(activeMediaColor, vid.id)}
-                            className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/60 hover:bg-black text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                          >
-                            <HiOutlineX className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
                     </div>
                   )}
 
@@ -4344,99 +4726,720 @@ export default function AddJewelryProduct() {
               </div>
 
               {showCompressionHub && !isSilverProduct && createPortal(
-                <div className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-3 backdrop-blur-sm sm:p-6">
-                  <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl">
-                    <div className="flex items-center justify-between px-5 py-4 sm:px-7">
+                <div
+                  className="fixed inset-0 z-[70] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-2 sm:p-4 md:p-6 backdrop-blur-sm cursor-pointer"
+                  onClick={handleCloseCompressionHub}
+                >
+                  <div
+                    className="flex max-h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl sm:rounded-3xl border border-stone-200 bg-white shadow-2xl cursor-default"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100">
                       <div className="flex items-center gap-3">
-                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#a58054] text-white"><HiOutlinePhotograph className="h-5 w-5" /></span>
+                        <span className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-[#a58054] text-white">
+                          <HiOutlinePhotograph className="h-5 w-5" />
+                        </span>
                         <div>
-                          <h3 className="text-lg font-bold text-slate-900">Media Compression</h3>
-                          <p className="text-xs text-slate-500">Optimize images before publishing.</p>
+                          <h3 className="text-base sm:text-lg font-bold text-slate-900">Media Compression</h3>
+                          <p className="text-[11px] sm:text-xs text-slate-500">Optimize photos and media before publishing.</p>
                         </div>
                       </div>
-                      <button type="button" onClick={() => setShowCompressionHub(false)} disabled={compressingMedia} className="flex h-10 w-10 items-center justify-center rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 disabled:opacity-50" aria-label="Close compression hub"><HiOutlineX className="h-5 w-5" /></button>
+                      <button
+                        type="button"
+                        onClick={handleCloseCompressionHub}
+                        className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition cursor-pointer"
+                        aria-label="Close compression hub"
+                      >
+                        <HiOutlineX className="h-4 w-4 sm:h-5 sm:w-5" />
+                      </button>
                     </div>
 
-                    <div className="grid grid-cols-2 border-b border-stone-200 bg-stone-50">
+                    {/* Modal Tabs: All Media (Mixed), Images, Videos */}
+                    <div className="grid grid-cols-3 border-b border-stone-200 bg-stone-50">
                       {[
+                        { id: 'all', label: 'All Media', count: (mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length, Icon: HiOutlinePhotograph },
                         { id: 'images', label: 'Images', count: (mediaImages[activeMediaColor] || []).length, Icon: HiOutlinePhotograph },
                         { id: 'videos', label: 'Videos', count: (mediaVideos[activeMediaColor] || []).length, Icon: HiOutlineVideoCamera },
                       ].map(({ id, label, count, Icon }) => (
-                        <button key={id} type="button" onClick={() => setCompressionTab(id)} className={`flex items-center justify-center gap-2 border-b-2 px-4 py-3 text-xs font-bold uppercase tracking-wide ${compressionTab === id ? 'border-[#a58054] bg-white text-[#8b6f4e]' : 'border-transparent text-stone-400'}`}>
-                          <Icon className="h-4 w-4" /> {label} ({count})
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setCompressionTab(id)}
+                          className={`flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 px-2 sm:px-4 py-2.5 sm:py-3 text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+                            compressionTab === id
+                              ? 'border-[#a58054] bg-white text-[#8b6f4e]'
+                              : 'border-transparent text-stone-400 hover:text-stone-600'
+                          }`}
+                        >
+                          <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                          <span className="truncate">{label} ({count})</span>
                         </button>
                       ))}
                     </div>
 
-                    <div className="space-y-4 overflow-y-auto bg-[#fffdfb] p-4 sm:p-6">
-                      {compressionTab === 'images' ? (
-                        <>
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                          {(mediaImages[activeMediaColor] || []).map((image, index) => {
-                            const isSelected = selectedCompressionIds.includes(image.id);
-                            const preview = compressionPreviews[image.id];
-                            const originalSize = preview?.originalSize || image.fileSize || 0;
-                            return <div key={image.id || index} className={`overflow-hidden rounded-2xl border bg-white p-2.5 ${isSelected ? 'border-[#d9c4a8] shadow-sm' : 'border-stone-200 opacity-70'}`}>
-                              <div className="relative aspect-[1.65] overflow-hidden rounded-xl bg-[#f8f5f2]">
-                                <img src={image.url} alt={image.name || `Product image ${index + 1}`} className="h-full w-full object-contain" />
-                                <button type="button" onClick={() => setSelectedCompressionIds((ids) => ids.includes(image.id) ? ids.filter((id) => id !== image.id) : [...ids, image.id])} className={`absolute left-2 top-2 flex h-6 w-6 items-center justify-center rounded-md border text-xs ${isSelected ? 'border-[#a58054] bg-[#a58054] text-white' : 'border-stone-300 bg-white text-transparent'}`} aria-label={`${isSelected ? 'Deselect' : 'Select'} ${image.name || 'image'}`}><HiOutlineCheck className="h-4 w-4" /></button>
-                                <span className={`absolute right-2 top-2 rounded-full px-2.5 py-1 text-[10px] font-semibold ${preview ? 'bg-green-50 text-green-700' : 'bg-stone-100 text-stone-500'}`}>{preview ? 'Ready' : previewingCompression && isSelected ? 'Preparing…' : 'Ready'}</span>
-                              </div>
-                              <p className="mt-2 truncate text-[11px] font-medium text-slate-700">{image.name || `Image ${index + 1}`}</p>
-                              <div className="mt-2 grid grid-cols-2 rounded-xl bg-stone-50 px-2.5 py-2 text-[10px]">
-                                <div><span className="block text-slate-400">Original</span><strong className="text-slate-800">{originalSize ? formatMediaSize(originalSize) : image.size || '—'}</strong></div>
-                                <div className="border-l border-stone-200 pl-3"><span className="block text-slate-400">Compressed</span><strong className="text-green-700">{preview ? formatMediaSize(preview.compressedSize) : 'Calculating…'}</strong></div>
-                              </div>
-                            </div>
-                          })}
-                          {!(mediaImages[activeMediaColor] || []).length && <p className="col-span-full py-8 text-center text-xs text-stone-400">No images for this metal color.</p>}
-                        </div>
-                        {(() => {
-                          const selected = (mediaImages[activeMediaColor] || []).filter((image) => selectedCompressionIds.includes(image.id));
-                          const original = selected.reduce((sum, image) => sum + (compressionPreviews[image.id]?.originalSize || image.fileSize || 0), 0);
-                          const compressed = selected.reduce((sum, image) => sum + (compressionPreviews[image.id]?.compressedSize || 0), 0);
-                          const savings = original && compressed ? Math.max(0, Math.round((1 - compressed / original) * 100)) : 0;
-                          return <div className="grid grid-cols-2 gap-3 rounded-2xl border border-stone-200 bg-white p-4 sm:grid-cols-4">
-                            <div><span className="block text-[10px] text-slate-500">Images selected</span><strong className="text-sm text-slate-900">{selected.length} images</strong></div>
-                            <div><span className="block text-[10px] text-slate-500">Original size</span><strong className="text-sm text-slate-900">{original ? formatMediaSize(original) : '—'}</strong></div>
-                            <div><span className="block text-[10px] text-slate-500">Estimated size</span><strong className="text-sm text-green-700">{compressed ? formatMediaSize(compressed) : '—'}</strong></div>
-                            <div><span className="block text-[10px] text-slate-500">Estimated savings</span><strong className="text-sm text-green-700">{savings ? `~${savings}%` : '—'}</strong></div>
-                          </div>;
-                        })()}
-                        </>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          {(mediaVideos[activeMediaColor] || []).map((video, index) => (
-                            <div key={video.id || index} className="overflow-hidden rounded-xl border border-stone-200 bg-slate-900 text-white">
-                              <video src={video.url} className="aspect-video w-full object-cover" muted playsInline preload="metadata" />
-                              <p className="truncate px-3 pt-2 text-[11px] font-semibold">{video.name || video.title || `Video ${index + 1}`}</p>
-                              <p className="px-3 pb-2 text-[10px] text-slate-300">{video.size || 'Ready to compress'}</p>
-                            </div>
-                          ))}
-                          {!(mediaVideos[activeMediaColor] || []).length && <p className="col-span-full py-8 text-center text-xs text-stone-400">No videos for this metal color.</p>}
-                        </div>
-                      )}
+                    {/* Modal Scrollable Body */}
+                    <div className="space-y-4 overflow-y-auto bg-[#fffdfb] p-3 sm:p-5 md:p-6">
+                      {(() => {
+                        const allMediaItems = [
+                          ...(mediaImages[activeMediaColor] || []).map((img) => ({ ...img, mediaType: 'image' })),
+                          ...(mediaVideos[activeMediaColor] || []).map((vid) => ({ ...vid, mediaType: 'video' })),
+                        ];
+                        const displayedMedia = compressionTab === 'images'
+                          ? allMediaItems.filter((m) => m.mediaType === 'image')
+                          : compressionTab === 'videos'
+                          ? allMediaItems.filter((m) => m.mediaType === 'video')
+                          : allMediaItems;
 
+                        const selectedItems = displayedMedia.filter((item) => selectedCompressionIds.includes(item.id));
+                        const original = selectedItems.reduce((sum, item) => {
+                          const preview = item.mediaType === 'image' ? compressionPreviews[item.id] : null;
+                          return sum + (preview?.originalSize || item.fileSize || 0);
+                        }, 0);
+                        const compressed = selectedItems.reduce((sum, item) => {
+                          const preview = item.mediaType === 'image' ? compressionPreviews[item.id] : null;
+                          return sum + (preview?.compressedSize || (item.mediaType === 'video' ? item.fileSize : 0));
+                        }, 0);
+                        const savings = original && compressed && original > compressed
+                          ? Math.max(0, Math.round((1 - compressed / original) * 100))
+                          : 0;
+
+                        return (
+                          <>
+                            {/* Compact Grid of Small Boxes (Mix Images & Videos) */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+                              {displayedMedia.map((item, index) => {
+                                const isImage = item.mediaType === 'image';
+                                const isSelected = selectedCompressionIds.includes(item.id);
+                                const preview = isImage ? compressionPreviews[item.id] : null;
+                                const originalSize = preview?.originalSize || item.fileSize || 0;
+
+                                return (
+                                  <div
+                                    key={item.id || index}
+                                    onClick={() => setViewingCompressionMedia(item)}
+                                    className={`group relative flex flex-col overflow-hidden rounded-xl border bg-white transition-all cursor-pointer hover:shadow-md ${
+                                      isSelected
+                                        ? 'border-[#a58054] ring-2 ring-[#a58054]/25 shadow-xs'
+                                        : 'border-stone-200 hover:border-stone-300'
+                                    }`}
+                                  >
+                                    {/* Thumbnail Media Box */}
+                                    <div className={`relative aspect-square w-full overflow-hidden flex items-center justify-center ${isImage ? 'bg-[#faf8f5] p-2' : 'bg-slate-900'}`}>
+                                      {isImage ? (
+                                        <img
+                                          src={item.url}
+                                          alt={item.name || `Product media ${index + 1}`}
+                                          className="h-full w-full object-contain transition-transform duration-200 group-hover:scale-105"
+                                        />
+                                      ) : (
+                                        <>
+                                          <video src={item.url} className="h-full w-full object-cover opacity-75" muted playsInline preload="metadata" />
+                                          <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-colors flex items-center justify-center">
+                                            <div className="w-7 h-7 rounded-full bg-white/90 text-stone-900 flex items-center justify-center shadow-md">
+                                              <HiOutlineVideoCamera className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                                            </div>
+                                          </div>
+                                        </>
+                                      )}
+
+                                      {/* Selection Checkbox */}
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedCompressionIds((ids) =>
+                                            ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id]
+                                          );
+                                        }}
+                                        className={`absolute left-1.5 top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-md border text-xs shadow-xs transition-all cursor-pointer ${
+                                          isSelected
+                                            ? 'border-[#a58054] bg-[#a58054] text-white'
+                                            : 'border-stone-300 bg-white/95 hover:bg-white text-transparent'
+                                        }`}
+                                        aria-label={`${isSelected ? 'Deselect' : 'Select'} ${item.name || 'media'}`}
+                                      >
+                                        <HiOutlineCheck className="h-3.5 w-3.5 stroke-[3]" />
+                                      </button>
+
+                                      {/* Status / Type Badge */}
+                                      <span
+                                        className={`absolute right-1.5 top-1.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold shadow-2xs ${
+                                          !isImage
+                                            ? 'bg-purple-50 text-purple-700 border border-purple-200/80'
+                                            : preview
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80'
+                                            : previewingCompression && isSelected
+                                            ? 'bg-amber-50 text-amber-700 border border-amber-200/80'
+                                            : 'bg-stone-100 text-stone-600 border border-stone-200/80'
+                                        }`}
+                                      >
+                                        {!isImage ? 'Video' : preview ? 'Ready' : previewingCompression && isSelected ? 'Prep…' : 'Ready'}
+                                      </span>
+
+                                      {/* Hover View Hint */}
+                                      <div className="absolute inset-0 bg-stone-900/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                                        <span className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/95 text-stone-800 text-[10px] font-semibold shadow-md transform scale-95 group-hover:scale-100 transition-transform">
+                                          <HiOutlineEye className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                                          View
+                                        </span>
+                                      </div>
+                                    </div>
+
+                                    {/* Compact Meta Bar */}
+                                    <div className="p-2 bg-white flex flex-col gap-0.5 border-t border-stone-100">
+                                      <p className="truncate text-[10.5px] font-semibold text-stone-800" title={item.name || item.title || `Media ${index + 1}`}>
+                                        {item.name || item.title || `Media ${index + 1}`}
+                                      </p>
+                                      <div className="flex items-center justify-between text-[9.5px]">
+                                        <span className="text-stone-400 font-mono">
+                                          {originalSize ? formatMediaSize(originalSize) : item.size || '—'}
+                                        </span>
+                                        {preview?.compressedSize && (
+                                          <span className="font-bold text-emerald-600 font-mono">
+                                            {formatMediaSize(preview.compressedSize)}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                              {!displayedMedia.length && (
+                                <p className="col-span-full py-8 text-center text-xs text-stone-400">
+                                  No media files found for this metal color.
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Summary Statistics Bar */}
+                            <div className="grid grid-cols-2 gap-3 rounded-2xl border border-stone-200 bg-white p-3.5 sm:p-4 sm:grid-cols-4">
+                              <div>
+                                <span className="block text-[10px] text-slate-500 font-medium">Media selected</span>
+                                <strong className="text-xs sm:text-sm text-slate-900 font-bold">{selectedItems.length} items</strong>
+                              </div>
+                              <div>
+                                <span className="block text-[10px] text-slate-500 font-medium">Original size</span>
+                                <strong className="text-xs sm:text-sm text-slate-900 font-bold">{original ? formatMediaSize(original) : '—'}</strong>
+                              </div>
+                              <div>
+                                <span className="block text-[10px] text-slate-500 font-medium">Estimated size</span>
+                                <strong className="text-xs sm:text-sm text-green-700 font-bold">{compressed ? formatMediaSize(compressed) : '—'}</strong>
+                              </div>
+                              <div>
+                                <span className="block text-[10px] text-slate-500 font-medium">Estimated savings</span>
+                                <strong className="text-xs sm:text-sm text-green-700 font-bold">{savings ? `~${savings}%` : 'Optimal'}</strong>
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
+
+                      {/* Compression Settings Section */}
                       <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
                         <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                          <div><h4 className="text-sm font-bold text-slate-900">Compression settings</h4><p className="text-[10px] text-slate-500">Adjust quality and format for the best balance between file size and clarity.</p></div>
-                          {compressionTab === 'images' && <label className="flex items-center gap-2 text-[10px] text-slate-600">Format<select value={compressionFormat} onChange={(event) => setCompressionFormat(event.target.value)} className="rounded-lg border border-stone-200 bg-white px-2.5 py-2 text-[10px] font-semibold text-slate-800"><option value="image/webp">WebP (Recommended)</option><option value="image/jpeg">JPEG</option></select></label>}
+                          <div>
+                            <h4 className="text-sm font-bold text-slate-900">Compression settings</h4>
+                            <p className="text-[10px] text-slate-500">Adjust quality and format for the optimal balance between file size and visual fidelity.</p>
+                          </div>
+                          {(compressionTab === 'images' || compressionTab === 'all') && (
+                            <label className="flex items-center gap-2 text-[10px] text-slate-600">
+                              Format
+                              <select
+                                value={compressionFormat}
+                                onChange={(event) => setCompressionFormat(event.target.value)}
+                                className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-slate-800"
+                              >
+                                <option value="image/webp">WebP (Recommended)</option>
+                                <option value="image/jpeg">JPEG</option>
+                              </select>
+                            </label>
+                          )}
                         </div>
                         <div className="grid gap-5 md:grid-cols-2">
-                          <div><div className="mb-3 flex justify-between text-xs"><span className="font-semibold text-slate-800">{compressionTab === 'images' ? 'Image' : 'Video'} quality: <b className="text-[#8b6f4e]">{Math.round(compressionQuality * 100)}%</b></span></div><input type="range" min="10" max="100" step="5" value={Math.round(compressionQuality * 100)} onChange={(event) => setCompressionQuality(Number(event.target.value) / 100)} className="w-full accent-[#a58054]" /><div className="mt-1 flex justify-between text-[10px] text-slate-400"><span>10% (Smaller files)</span><span>50%</span><span>100% (Best quality)</span></div></div>
-                          <div><p className="mb-2 text-[10px] font-semibold text-slate-700">Preset</p><div className="grid grid-cols-3 overflow-hidden rounded-lg border border-stone-200">{[{ label: 'Smaller files', quality: 0.5, detail: '~50% size' }, { label: 'Balanced', quality: 0.75, detail: '~70% quality' }, { label: 'Best quality', quality: 0.9, detail: '~90% quality' }].map((preset) => <button type="button" key={preset.label} onClick={() => setCompressionQuality(preset.quality)} className={`px-2 py-2 text-[10px] ${Math.round(compressionQuality * 100) === Math.round(preset.quality * 100) ? 'bg-[#f5eadc] font-bold text-[#704f2d]' : 'bg-white text-slate-700'}`}>{preset.label}<span className="block text-[9px] text-slate-400">{preset.detail}</span></button>)}</div><p className="mt-2 text-[10px] text-slate-500"><HiOutlineInformationCircle className="mr-1 inline h-3.5 w-3.5" />Higher quality improves clarity but increases file size.</p></div>
+                          <div>
+                            <div className="mb-3 flex justify-between text-xs">
+                              <span className="font-semibold text-slate-800">
+                                Target quality: <b className="text-[#8b6f4e]">{Math.round(compressionQuality * 100)}%</b>
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min="10"
+                              max="100"
+                              step="5"
+                              value={Math.round(compressionQuality * 100)}
+                              onChange={(event) => setCompressionQuality(Number(event.target.value) / 100)}
+                              className="w-full accent-[#a58054] cursor-pointer"
+                            />
+                            <div className="mt-1 flex justify-between text-[10px] text-slate-400">
+                              <span>10% (Smaller files)</span>
+                              <span>50%</span>
+                              <span>100% (Best quality)</span>
+                            </div>
+                          </div>
+                          <div>
+                            <p className="mb-2 text-[10px] font-semibold text-slate-700">Preset</p>
+                            <div className="grid grid-cols-3 overflow-hidden rounded-lg border border-stone-200">
+                              {[
+                                { label: 'Smaller files', quality: 0.5, detail: '~50% size' },
+                                { label: 'Balanced', quality: 0.75, detail: '~70% quality' },
+                                { label: 'Best quality', quality: 0.9, detail: '~90% quality' },
+                              ].map((preset) => (
+                                <button
+                                  type="button"
+                                  key={preset.label}
+                                  onClick={() => setCompressionQuality(preset.quality)}
+                                  className={`px-2 py-2 text-[10px] transition-colors cursor-pointer ${
+                                    Math.round(compressionQuality * 100) === Math.round(preset.quality * 100)
+                                      ? 'bg-[#f5eadc] font-bold text-[#704f2d]'
+                                      : 'bg-white text-slate-700 hover:bg-stone-50'
+                                  }`}
+                                >
+                                  {preset.label}
+                                  <span className="block text-[9px] text-slate-400">{preset.detail}</span>
+                                </button>
+                              ))}
+                            </div>
+                            <p className="mt-2 text-[10px] text-slate-500">
+                              <HiOutlineInformationCircle className="mr-1 inline h-3.5 w-3.5" />
+                              Higher quality preserves fine jewelry sparkle while optimizing mobile download speed.
+                            </p>
+                          </div>
                         </div>
-                        <p className="mt-3 text-[10px] text-stone-500">Compressed files are saved under this product’s compressed media folder. Image compression uses the selected format; video compression encodes WebM in your browser.</p>
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap justify-end gap-2 border-t border-stone-100 bg-stone-50 px-5 py-4 sm:px-7">
-                      <button type="button" onClick={() => setShowCompressionHub(false)} disabled={compressingMedia} className="rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 disabled:opacity-50">Cancel</button>
-                      <button type="button" onClick={handleApplyMediaCompression} disabled={compressingMedia || !(compressionTab === 'images' ? selectedCompressionIds.length : mediaVideos[activeMediaColor]?.length)} className="inline-flex items-center gap-2 rounded-xl bg-[#a58054] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#8b6f4e] disabled:cursor-not-allowed disabled:opacity-50">
+                    {/* Modal Footer Actions */}
+                    <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 border-t border-stone-100 bg-stone-50 px-4 py-3 sm:px-6 sm:py-4">
+                      <button
+                        type="button"
+                        onClick={handleCloseCompressionHub}
+                        className="w-full sm:w-auto rounded-xl border border-stone-300 bg-white px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-stone-50 transition cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleApplyMediaCompression}
+                        disabled={compressingMedia || !selectedCompressionIds.length}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-[#a58054] px-5 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-[#8b6f4e] disabled:cursor-not-allowed disabled:opacity-50 transition cursor-pointer"
+                      >
                         {compressingMedia ? <HiOutlineRefresh className="h-4 w-4 animate-spin" /> : <HiOutlineCheck className="h-4 w-4" />}
                         {compressingMedia ? 'Compressing media…' : 'Compress & apply'}
                       </button>
                     </div>
+                  </div>
+                </div>,
+                document.body
+              )}
+
+              {/* ─── Staged Media Upload & Compression Modal ───────────── */}
+              {showUploadModal && createPortal(
+                <div
+                  className="fixed inset-0 z-[75] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-2 sm:p-4 md:p-6 backdrop-blur-sm cursor-pointer"
+                  onClick={handleCloseUploadModal}
+                >
+                  <div
+                    className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl sm:rounded-3xl border border-stone-200 bg-white shadow-2xl cursor-default"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100 bg-[#fdfcfb]">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#b38e63] to-[#8b6f4e] text-white shadow-xs">
+                          <IoSparklesOutline className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                              Optimize &amp; Upload Media
+                            </h3>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#f6eee2] text-[#8b6f4e] border border-[#dfcfbd]">
+                              {stagedUploadColor || 'General'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] sm:text-xs text-slate-500">
+                            Images follow the global compression policy from System Settings.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleCloseUploadModal}
+                        disabled={isProcessingUpload}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition cursor-pointer disabled:opacity-40"
+                        aria-label="Close upload modal"
+                      >
+                        <HiOutlineX className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Progress Bar during processing */}
+                    {isProcessingUpload && (
+                      <div className="bg-[#faf5ee] border-b border-[#ebdccb] px-4 py-2.5 sm:px-6">
+                        <div className="flex items-center justify-between text-xs font-semibold text-stone-700 mb-1.5">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#8b6f4e] animate-ping" />
+                            {uploadProcessingStep || 'Processing upload...'}
+                          </span>
+                          <span className="text-[#8b6f4e] font-bold">{uploadProcessingPercent}%</span>
+                        </div>
+                        <div className="w-full bg-stone-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-[#b38e63] to-[#8b6f4e] h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProcessingPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Modal Body */}
+                    <div className="flex-1 overflow-y-auto max-h-[calc(92vh-190px)] p-4 sm:p-6 space-y-6">
+                      {/* Staged Files Preview Grid */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2.5">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600">
+                            Files Loaded in Memory ({stagedUploadFiles.length})
+                          </h4>
+                          <span className="text-xs font-semibold text-stone-500">
+                            Raw Total: {formatMediaSize(totalStagedBytes)}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {stagedUploadFiles.map((item) => (
+                            <div
+                              key={item.id}
+                              className="relative rounded-xl border border-stone-200 bg-stone-50 overflow-hidden group shadow-2xs flex flex-col"
+                            >
+                              {/* Media Preview */}
+                              <div className="h-28 w-full bg-stone-100 flex items-center justify-center overflow-hidden relative">
+                                {item.isVideo ? (
+                                  <video
+                                    src={item.previewUrl}
+                                    className="w-full h-full object-cover"
+                                    muted
+                                    playsInline
+                                  />
+                                ) : (
+                                  <img
+                                    src={item.previewUrl}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )}
+
+                                {/* Media Type Tag */}
+                                <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-black/60 text-white backdrop-blur-xs">
+                                  {item.isVideo ? 'Video' : 'Image'}
+                                </span>
+
+                                {/* Status Indicator */}
+                                {item.status === 'compressing' && (
+                                  <span className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[10px] font-semibold animate-pulse">
+                                    Compressing...
+                                  </span>
+                                )}
+                                {item.status === 'uploading' && (
+                                  <span className="absolute inset-0 bg-blue-900/50 flex items-center justify-center text-white text-[10px] font-semibold animate-pulse">
+                                    Uploading R2...
+                                  </span>
+                                )}
+                                {item.status === 'done' && (
+                                  <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white flex items-center gap-1 shadow-xs">
+                                    <HiOutlineCheck className="w-3 h-3" /> Done
+                                  </span>
+                                )}
+
+                                {!isProcessingUpload && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveStagedFile(item.id)}
+                                    className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/50 hover:bg-red-600 text-white opacity-80 hover:opacity-100 transition shadow-xs cursor-pointer"
+                                    title="Remove from upload batch"
+                                  >
+                                    <HiOutlineX className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* File Meta */}
+                              <div className="p-2 bg-white flex flex-col justify-between flex-1 border-t border-stone-100">
+                                <p className="text-[11px] font-medium text-stone-800 truncate" title={item.name}>
+                                  {item.name}
+                                </p>
+                                <div className="flex items-center justify-between text-[10px] text-stone-500 mt-1">
+                                  <span>{item.formattedSize}</span>
+                                  <span className="text-[9.5px] uppercase text-stone-400 font-mono">
+                                    {item.file.name.split('.').pop()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Global Image Compression Policy */}
+                      <div className="border border-[#ecd9c6] bg-[#fbf9f6] rounded-2xl p-4 sm:p-5 space-y-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">Automatic image compression</h4>
+                            <p className="mt-1 text-[11px] text-stone-600">
+                              {imageUploadPolicy.enabled
+                                ? `${imageUploadPolicy.format === 'image/webp' ? 'WebP' : 'JPEG'} at ${imageUploadPolicy.quality}% quality · maximum ${imageUploadPolicy.maxDimension}px`
+                                : 'Disabled in System Settings; images will upload at their original size.'}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+                            Set globally in Settings
+                          </span>
+                        </div>
+
+                        {stagedUploadFiles.some((f) => f.isVideo) && (
+                          <div className="flex items-center justify-between border-t border-[#ebdccb] pt-3">
+                            <div>
+                              <p className="text-xs font-bold text-stone-800">Encode videos to WebM VP9</p>
+                              <p className="text-[10.5px] text-stone-500">Compress videos in the browser before upload.</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={uploadCompressVideos}
+                                onChange={(e) => setUploadCompressVideos(e.target.checked)}
+                                disabled={isProcessingUpload}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8b6f4e]" />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Upload behavior */}
+                      <p className="text-[11px] text-stone-500 text-center italic">
+                        💡 Images use the saved global quality and dimension limit automatically. The original image is kept only when optimization would make it larger.
+                      </p>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-t border-stone-200 bg-stone-50">
+                      <button
+                        type="button"
+                        disabled={isProcessingUpload}
+                        onClick={handleCloseUploadModal}
+                        className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 rounded-xl transition cursor-pointer disabled:opacity-40"
+                      >
+                        Cancel &amp; Discard
+                      </button>
+
+                      <div className="w-full sm:w-auto flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={isProcessingUpload || stagedUploadFiles.length === 0}
+                          onClick={handleConfirmStagedUpload}
+                          className="flex-1 sm:flex-none px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-[#b38e63] to-[#8b6f4e] hover:from-[#a07c52] hover:to-[#7a6042] rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40"
+                        >
+                          <IoSparklesOutline className="w-4 h-4" />
+                          <span>
+                            {isProcessingUpload
+                              ? 'Optimizing & Uploading...'
+                              : `Upload to Cloudflare (${stagedUploadFiles.length})`}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>,
+                document.body
+              )}
+
+              {/* ─── Compression Media Detail Popup Modal ─────────────── */}
+              {viewingCompressionMedia && createPortal(
+                <div
+                  className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-6 animate-fadeIn"
+                  onClick={() => setViewingCompressionMedia(null)}
+                >
+                  <div
+                    className="relative flex flex-col max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Header */}
+                    {(() => {
+                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
+
+                      return (
+                        <div className="flex items-center justify-between border-b border-stone-100 px-5 py-3.5 sm:px-6">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center shrink-0">
+                              {isVideo ? <HiOutlineVideoCamera className="w-4 h-4" /> : <HiOutlinePhotograph className="w-4 h-4" />}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-bold text-stone-900 truncate">
+                                {viewingCompressionMedia.name || viewingCompressionMedia.title || (isVideo ? 'Product Video' : 'Product Image')}
+                              </h4>
+                              <p className="text-[10px] text-stone-400">
+                                {isVideo ? 'High-definition video inspection' : 'Compression details and high-resolution inspection'}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setViewingCompressionMedia(null)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 text-stone-500 hover:bg-stone-50 transition cursor-pointer"
+                            aria-label="Close"
+                          >
+                            <HiOutlineX className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Main Image / Video View Area */}
+                    <div className="relative flex-1 bg-[#fdfcfb] p-4 flex flex-col items-center justify-center min-h-[260px] max-h-[52vh] overflow-hidden">
+                      {(() => {
+                        const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
+
+                        return isVideo ? (
+                          <video
+                            src={viewingCompressionMedia.url}
+                            controls
+                            autoPlay
+                            muted
+                            className="max-h-[48vh] w-auto max-w-full rounded-xl shadow-xs"
+                          />
+                        ) : (
+                          <img
+                            src={viewingCompressionMedia.url}
+                            alt={viewingCompressionMedia.name || 'Preview'}
+                            className="max-h-[48vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
+                          />
+                        );
+                      })()}
+
+                      {/* Previous / Next Arrows to flip between media items */}
+                      {(() => {
+                        const allMediaItems = [
+                          ...(mediaImages[activeMediaColor] || []).map((img) => ({ ...img, mediaType: 'image' })),
+                          ...(mediaVideos[activeMediaColor] || []).map((vid) => ({ ...vid, mediaType: 'video' })),
+                        ];
+                        const list = compressionTab === 'images'
+                          ? allMediaItems.filter((m) => m.mediaType === 'image')
+                          : compressionTab === 'videos'
+                          ? allMediaItems.filter((m) => m.mediaType === 'video')
+                          : allMediaItems;
+
+                        const currentIndex = list.findIndex((item) => item.id === viewingCompressionMedia.id);
+                        const hasPrev = currentIndex > 0;
+                        const hasNext = currentIndex >= 0 && currentIndex < list.length - 1;
+
+                        return (
+                          <>
+                            {hasPrev && (
+                              <button
+                                type="button"
+                                onClick={() => setViewingCompressionMedia(list[currentIndex - 1])}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-md border border-stone-200 hover:bg-white transition cursor-pointer"
+                                title="Previous"
+                              >
+                                <HiOutlineChevronLeft className="w-4 h-4" />
+                              </button>
+                            )}
+                            {hasNext && (
+                              <button
+                                type="button"
+                                onClick={() => setViewingCompressionMedia(list[currentIndex + 1])}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-md border border-stone-200 hover:bg-white transition cursor-pointer"
+                                title="Next"
+                              >
+                                <HiOutlineChevronRight className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
+
+                    {/* Stats Breakdown and Actions */}
+                    {(() => {
+                      const preview = compressionPreviews[viewingCompressionMedia.id];
+                      const origSize = preview?.originalSize || viewingCompressionMedia.fileSize || 0;
+                      const compSize = preview?.compressedSize || 0;
+                      const savings = origSize && compSize ? Math.max(0, Math.round((1 - compSize / origSize) * 100)) : 0;
+                      const isSelected = selectedCompressionIds.includes(viewingCompressionMedia.id);
+                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
+
+                      return (
+                        <div className="border-t border-stone-100 bg-white p-4 sm:p-5 space-y-3">
+                          <div className="grid grid-cols-3 gap-2.5 rounded-2xl bg-stone-50 p-3 border border-stone-100 text-center">
+                            <div>
+                              <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Original Size</span>
+                              <strong className="text-xs sm:text-sm font-bold text-stone-800">
+                                {origSize ? formatMediaSize(origSize) : viewingCompressionMedia.size || '—'}
+                              </strong>
+                            </div>
+                            <div className="border-x border-stone-200 px-2">
+                              <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Compressed</span>
+                              <strong className="text-xs sm:text-sm font-bold text-emerald-600">
+                                {compSize ? formatMediaSize(compSize) : isVideo ? 'Direct asset' : previewingCompression ? 'Calculating…' : 'Ready'}
+                              </strong>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Savings</span>
+                              <strong className={`text-xs sm:text-sm font-bold ${savings > 0 ? 'text-emerald-600' : 'text-stone-600'}`}>
+                                {savings > 0 ? `~${savings}%` : 'Optimal'}
+                              </strong>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCompressionIds((ids) =>
+                                  ids.includes(viewingCompressionMedia.id)
+                                    ? ids.filter((id) => id !== viewingCompressionMedia.id)
+                                    : [...ids, viewingCompressionMedia.id]
+                                );
+                              }}
+                              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                                isSelected
+                                  ? 'border-[#a58054] bg-[#faf5ee] text-[#8b6f4e]'
+                                  : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                              }`}
+                            >
+                              <HiOutlineCheck className={`w-4 h-4 ${isSelected ? 'text-[#8b6f4e]' : 'text-stone-400'}`} />
+                              <span>{isSelected ? 'Selected for compression' : 'Include in compression'}</span>
+                            </button>
+
+                            <div className="flex items-center gap-2">
+                              {!isVideo && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const allUrls = (mediaImages[activeMediaColor] || []).map((img) => img.url);
+                                    handleOpenImagePreview(viewingCompressionMedia.url, allUrls);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 transition cursor-pointer"
+                                >
+                                  <HiOutlineEye className="w-3.5 h-3.5" />
+                                  <span>Full Zoom</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setViewingCompressionMedia(null)}
+                                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#a58054] hover:bg-[#8b6f4e] transition cursor-pointer"
+                              >
+                                Done
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>,
                 document.body

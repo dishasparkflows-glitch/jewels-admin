@@ -14,25 +14,119 @@ export {
   formatBytes,
 };
 
+export const DEFAULT_UPLOAD_COMPRESSION_SETTINGS = {
+  enabled: true,
+  quality: 82,
+  maxDimension: 2400,
+  format: 'image/webp',
+};
+
+let uploadCompressionSettingsCache = null;
+let uploadCompressionSettingsFetchedAt = 0;
+let uploadCompressionSettingsRequest = null;
+const UPLOAD_COMPRESSION_SETTINGS_TTL = 60_000;
+
+const normalizeUploadCompressionSettings = (settings = {}) => ({
+  enabled: settings.enabled !== false,
+  quality: Math.min(100, Math.max(50, Number(settings.quality) || DEFAULT_UPLOAD_COMPRESSION_SETTINGS.quality)),
+  maxDimension: Math.min(4000, Math.max(600, Number(settings.maxDimension) || DEFAULT_UPLOAD_COMPRESSION_SETTINGS.maxDimension)),
+  format: settings.format === 'image/jpeg' ? 'image/jpeg' : 'image/webp',
+});
+
+export function setUploadCompressionSettings(settings) {
+  uploadCompressionSettingsCache = normalizeUploadCompressionSettings(settings);
+  uploadCompressionSettingsFetchedAt = Date.now();
+  return uploadCompressionSettingsCache;
+}
+
+export async function getUploadCompressionSettings() {
+  if (uploadCompressionSettingsCache && Date.now() - uploadCompressionSettingsFetchedAt < UPLOAD_COMPRESSION_SETTINGS_TTL) {
+    return uploadCompressionSettingsCache;
+  }
+  if (!uploadCompressionSettingsRequest) {
+    uploadCompressionSettingsRequest = api.get('/settings')
+      .then((response) => setUploadCompressionSettings(response.data?.data?.mediaCompression))
+      .catch((error) => {
+        console.warn('[uploadWithPresignedUrl] Could not load global image compression settings; using defaults:', error?.message);
+        return setUploadCompressionSettings(DEFAULT_UPLOAD_COMPRESSION_SETTINGS);
+      })
+      .finally(() => {
+        uploadCompressionSettingsRequest = null;
+      });
+  }
+  return uploadCompressionSettingsRequest;
+}
+
+const getGlobalCompressionOptions = (preset, settings) => ({
+  ...preset,
+  quality: settings.quality / 100,
+  maxWidth: settings.maxDimension,
+  maxHeight: settings.maxDimension,
+  format: settings.format,
+});
+
 export function createProductId() {
   const bytes = new Uint8Array(12);
   globalThis.crypto.getRandomValues(bytes);
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
-function getUploadedObjectKey(asset) {
-  if (typeof asset === 'object' && asset?.key) return asset.key;
-  const value = typeof asset === 'string' ? asset : asset?.url;
-  if (!value || typeof value !== 'string') return '';
+export function getUploadedObjectKey(asset) {
+  const knownPrefixRegex = /(products|categories|users|banners|navigation|diamonds|reviews|vto|birthstones|celebrate-gifts|settings|website-themes|general|ornateproducts)\/.*$/i;
+
+  if (typeof asset === 'object' && asset !== null) {
+    if (asset.key && typeof asset.key === 'string') {
+      const rawKey = asset.key.replace(/^\/+/, '').split(/[?#]/)[0];
+      const match = rawKey.match(knownPrefixRegex);
+      return decodeURIComponent(match ? match[0] : rawKey);
+    }
+    if (asset.url && typeof asset.url === 'string') {
+      return getUploadedObjectKey(asset.url);
+    }
+    return '';
+  }
+
+  const value = typeof asset === 'string' ? asset : '';
+  if (!value) return '';
+
+  const cleanVal = value.trim();
+
+  // 1. Raw relative path containing a known R2 folder
+  const relMatch = cleanVal.replace(/^\/+/, '').split(/[?#]/)[0].match(knownPrefixRegex);
+  if (relMatch) {
+    return decodeURIComponent(relMatch[0]);
+  }
 
   try {
-    const parsed = new URL(value, window.location.origin);
+    const parsed = new URL(cleanVal, window.location.origin);
+
+    // 2. Query param '?key=products/...' or '?filepath=...'
+    const queryKey = parsed.searchParams.get('key') || parsed.searchParams.get('filepath');
+    if (queryKey) {
+      const qMatch = queryKey.replace(/^\/+/, '').split(/[?#]/)[0].match(knownPrefixRegex);
+      return decodeURIComponent(qMatch ? qMatch[0] : queryKey.replace(/^\/+/, '').split(/[?#]/)[0]);
+    }
+
+    // 3. Proxy prefix '/api/upload/file/'
     const proxyPrefix = '/api/upload/file/';
     if (parsed.pathname.includes(proxyPrefix)) {
-      return decodeURIComponent(parsed.pathname.split(proxyPrefix).pop());
+      const pKey = parsed.pathname.split(proxyPrefix).pop().replace(/^\/+/, '').split(/[?#]/)[0];
+      const pMatch = pKey.match(knownPrefixRegex);
+      return decodeURIComponent(pMatch ? pMatch[0] : pKey);
     }
-    if (parsed.hostname.endsWith('.r2.dev') || parsed.hostname.endsWith('.r2.cloudflarestorage.com')) {
-      return decodeURIComponent(parsed.pathname.replace(/^\/+/, ''));
+
+    // 4. Any hostname with a path matching a known R2 folder
+    const cleanPath = parsed.pathname.replace(/^\/+/, '').split(/[?#]/)[0];
+    const pathMatch = cleanPath.match(knownPrefixRegex);
+    if (pathMatch) {
+      return decodeURIComponent(pathMatch[0]);
+    }
+
+    if (
+      parsed.hostname.endsWith('.r2.dev') ||
+      parsed.hostname.endsWith('.r2.cloudflarestorage.com')
+    ) {
+      return decodeURIComponent(cleanPath);
     }
   } catch {
     return '';
@@ -43,8 +137,28 @@ function getUploadedObjectKey(asset) {
 export async function deleteUploadedFile(asset) {
   const key = getUploadedObjectKey(asset);
   if (!key) return false;
-  await api.delete('/upload', { data: { key } });
-  return true;
+  try {
+    await api.delete('/upload', { data: { key } });
+    console.log(`[deleteUploadedFile] Deleted original file from Cloudflare R2: ${key}`);
+    return true;
+  } catch (err) {
+    console.warn(`[deleteUploadedFile] Failed to delete ${key} from storage:`, err.response?.data?.message || err.message);
+    return false;
+  }
+}
+
+export async function deleteUploadedFiles(assets) {
+  if (!Array.isArray(assets) || !assets.length) return true;
+  const keys = assets.map((a) => getUploadedObjectKey(a)).filter(Boolean);
+  if (!keys.length) return true;
+  try {
+    await api.delete('/upload', { data: { keys } });
+    console.log(`[deleteUploadedFiles] Batch deleted ${keys.length} original files from Cloudflare R2`);
+    return true;
+  } catch (err) {
+    console.warn(`[deleteUploadedFiles] Failed to delete files from storage:`, err.response?.data?.message || err.message);
+    return false;
+  }
 }
 
 /**
@@ -59,13 +173,14 @@ export async function uploadWithPresignedUrl(file, moduleName = 'banner', onProg
 
   // Upload-time client-side image compression
   let fileToUpload = file;
-  const shouldCompress = options.compress !== false && options.compression !== false;
+  const uploadSettings = await getUploadCompressionSettings();
+  const shouldCompress = options.compress !== false && options.compression !== false && uploadSettings.enabled;
 
   if (shouldCompress && isCompressibleImage(file)) {
     try {
       const preset = COMPRESSION_PRESETS[moduleName] || COMPRESSION_PRESETS.general;
       const compressionOpts = {
-        ...preset,
+        ...getGlobalCompressionOptions(preset, uploadSettings),
         ...(options.compressionOptions || {}),
       };
       options.onCompressionStart?.(file);
@@ -86,12 +201,18 @@ export async function uploadWithPresignedUrl(file, moduleName = 'banner', onProg
   // Infer safe content type from (possibly compressed) file
   const contentType =
     fileToUpload.type ||
-    (fileToUpload.name.endsWith('.png')
+    (/\.png$/i.test(fileToUpload.name)
       ? 'image/png'
-      : fileToUpload.name.endsWith('.webp')
+      : /\.webp$/i.test(fileToUpload.name)
       ? 'image/webp'
-      : fileToUpload.name.endsWith('.mp4')
+      : /\.mp4$/i.test(fileToUpload.name)
       ? 'video/mp4'
+      : /\.webm$/i.test(fileToUpload.name)
+      ? 'video/webm'
+      : /\.(mov|m4v)$/i.test(fileToUpload.name)
+      ? 'video/quicktime'
+      : /\.avif$/i.test(fileToUpload.name)
+      ? 'image/avif'
       : 'image/jpeg');
 
   // Request Upload Key & uploadUrl from backend using logical module and contentType
@@ -141,10 +262,11 @@ export async function uploadFilesWithPresignedUrls(files, moduleName = 'products
   const rawFiles = Array.from(files || []);
   if (!rawFiles.length) return [];
 
-  const shouldCompress = options.compress !== false && options.compression !== false;
+  const uploadSettings = await getUploadCompressionSettings();
+  const shouldCompress = options.compress !== false && options.compression !== false && uploadSettings.enabled;
   const preset = COMPRESSION_PRESETS[moduleName] || COMPRESSION_PRESETS.general;
   const compressionOpts = {
-    ...preset,
+    ...getGlobalCompressionOptions(preset, uploadSettings),
     ...(options.compressionOptions || {}),
   };
 
