@@ -199,8 +199,9 @@ export async function uploadWithPresignedUrl(file, moduleName = 'banner', onProg
   }
 
   // Infer safe content type from (possibly compressed) file
+  const rawType = (fileToUpload.type || '').split(';')[0].trim().toLowerCase();
   const contentType =
-    fileToUpload.type ||
+    rawType ||
     (/\.png$/i.test(fileToUpload.name)
       ? 'image/png'
       : /\.webp$/i.test(fileToUpload.name)
@@ -285,14 +286,17 @@ export async function uploadFilesWithPresignedUrls(files, moduleName = 'products
     })
   );
 
-  const fileContentType = (file) => file.type || (
-    /\.png$/i.test(file.name) ? 'image/png'
-      : /\.webp$/i.test(file.name) ? 'image/webp'
-        : /\.mp4$/i.test(file.name) ? 'video/mp4'
-          : /\.webm$/i.test(file.name) ? 'video/webm'
-            : /\.(mov|m4v)$/i.test(file.name) ? 'video/quicktime'
-              : 'image/jpeg'
-  );
+  const fileContentType = (file) => {
+    const rawType = (file.type || '').split(';')[0].trim().toLowerCase();
+    return rawType || (
+      /\.png$/i.test(file.name) ? 'image/png'
+        : /\.webp$/i.test(file.name) ? 'image/webp'
+          : /\.mp4$/i.test(file.name) ? 'video/mp4'
+            : /\.webm$/i.test(file.name) ? 'video/webm'
+              : /\.(mov|m4v)$/i.test(file.name) ? 'video/quicktime'
+                : 'image/jpeg'
+    );
+  };
 
   const response = await api.post('/upload/presigned-url', {
     module: moduleName,

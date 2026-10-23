@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import ModuleHeader from '../../components/common/ModuleHeader';
+import GoogleAnalyticsSection from '../../components/analytics/GoogleAnalyticsSection';
 import api from '../../api/axios';
 
 const metrics = [
@@ -25,10 +26,15 @@ export default function Dashboard() {
       });
     return () => controller.abort();
   }, [revision]);
-  return <div className="space-y-5">
-    <ModuleHeader breadcrumbs={[{ label: 'Home', path: '/dashboard' }, { label: 'Dashboard' }]} title="Overview" subtitle="Current records from your store." />
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{metrics.map((metric) => <Link key={metric.label} to={metric.path} className="rounded-2xl border border-stone-200 bg-white p-5"><p className="text-sm text-stone-500">{metric.label}</p><p className="mt-3 text-2xl font-semibold">{loading ? 'Loading…' : counts[metric.label] == null ? 'Unavailable' : counts[metric.label].toLocaleString()}</p></Link>)}</div>
-    {!loading && Object.values(counts).some((count) => count == null) && <button onClick={() => setRevision((value) => value + 1)} className="text-sm text-[#8b6f4e] underline">Retry unavailable metrics</button>}
-    <div className="rounded-2xl border border-stone-200 bg-white p-6"><h2 className="font-semibold">Sales and order analytics</h2><p className="mt-2 text-sm text-stone-500">Order and revenue reporting is not connected yet.</p></div>
-  </div>;
+
+  return (
+    <div className="space-y-6">
+      <ModuleHeader breadcrumbs={[{ label: 'Home', path: '/dashboard' }, { label: 'Dashboard' }]} title="Overview" subtitle="Current records and live performance from your store." />
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">{metrics.map((metric) => <Link key={metric.label} to={metric.path} className="rounded-2xl border border-stone-200 bg-white p-5"><p className="text-sm text-stone-500">{metric.label}</p><p className="mt-3 text-2xl font-semibold">{loading ? 'Loading…' : counts[metric.label] == null ? 'Unavailable' : counts[metric.label].toLocaleString()}</p></Link>)}</div>
+      {!loading && Object.values(counts).some((count) => count == null) && <button onClick={() => setRevision((value) => value + 1)} className="text-sm text-[#8b6f4e] underline">Retry unavailable metrics</button>}
+      
+      {/* ─── Google Analytics 4 Performance & Reporting ─── */}
+      <GoogleAnalyticsSection />
+    </div>
+  );
 }

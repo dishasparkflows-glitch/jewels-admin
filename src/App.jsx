@@ -46,6 +46,7 @@ import WriteBlogView from './pages/admin/WriteBlogView';
 import BlogCategoriesView from './pages/admin/BlogCategoriesView';
 import DynamicModuleView from './pages/admin/DynamicModuleView';
 import ProfileView from './pages/admin/ProfileView';
+import AnalyticsView from './pages/admin/AnalyticsView';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 const WebsiteThemesView = lazy(() => import('./pages/admin/WebsiteThemesView'));
@@ -90,6 +91,7 @@ function App() {
             }
           >
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/analytics" element={<AnalyticsView />} />
 
             {/* Parent Route Auto-Redirects to First Submenu Page */}
             <Route path="/catalog" element={<Navigate to="/catalog/jewelry-products" replace />} />

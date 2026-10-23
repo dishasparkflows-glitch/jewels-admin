@@ -17,6 +17,7 @@ import {
   HiOutlineCog,
   HiOutlineSpeakerphone,
   HiOutlineBookOpen,
+  HiOutlineTrendingUp,
 } from 'react-icons/hi';
 
 import {
@@ -42,6 +43,7 @@ export const navSections = [
     title: null,
     items: [
       { id: 'dashboard', title: 'Dashboard', path: '/dashboard', icon: HiOutlineViewGrid },
+      { id: 'analytics', title: 'Google Analytics', path: '/analytics', icon: HiOutlineTrendingUp, apiEndpoint: '/analytics/overview' },
       { id: 'diamonds', title: 'Diamonds', path: '/diamonds', icon: IoDiamondOutline, apiEndpoint: '/diamonds' },
       { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
 
