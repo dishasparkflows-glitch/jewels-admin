@@ -9,6 +9,11 @@ import {
   HiOutlineOfficeBuilding,
   HiOutlineCash,
   HiOutlineRefresh,
+  HiOutlinePhotograph,
+  HiOutlineSparkles,
+  HiOutlineShieldCheck,
+  HiOutlineSearch,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -20,22 +25,26 @@ import {
 import { getMediaUrl } from '../../utils/imageUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
+import ImageCompressionDemo from '../../components/common/ImageCompressionDemo';
 
 export default function SettingsView() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Separate editing states for the two cards
-  const [isEditingBusiness, setIsEditingBusiness] = useState(false);
-  const [isEditingMonetary, setIsEditingMonetary] = useState(false);
-  const [isEditingTrustBadges, setIsEditingTrustBadges] = useState(false);
+  // Active modal: null | 'logos' | 'compression' | 'trust' | 'business' | 'monetary'
+  const [activeModal, setActiveModal] = useState(null);
+
+  // Trust Badges state
   const [trustBadges, setTrustBadges] = useState([]);
   const [savingTrustBadges, setSavingTrustBadges] = useState(false);
   const [uploadingBadgeIndex, setUploadingBadgeIndex] = useState(null);
+
+  // Image Compression state
   const [imageCompression, setImageCompression] = useState(DEFAULT_UPLOAD_COMPRESSION_SETTINGS);
   const [savingCompression, setSavingCompression] = useState(false);
 
-  // Form states
+  // Business & Identity Form
   const [businessForm, setBusinessForm] = useState({
     companyName: '',
     emailAddress: '',
@@ -49,6 +58,7 @@ export default function SettingsView() {
     certificateImageUrl: '',
   });
 
+  // Monetary Settlement Form
   const [monetaryForm, setMonetaryForm] = useState({
     bankName: '',
     bankAccountNumber: '',
@@ -104,126 +114,54 @@ export default function SettingsView() {
     }
   };
 
-  const handleTrustBadgeImageUpload = async (event, index) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    try {
-      setUploadingBadgeIndex(index);
-      const { fileUrl, key } = await uploadWithPresignedUrl(file, 'trust-badges');
-      setTrustBadges((prev) => prev.map((badge, badgeIndex) => badgeIndex === index
-        ? { ...badge, image: { url: fileUrl, key: key || badge.image?.key || '' } }
-        : badge));
-      toast.success('Trust badge image uploaded');
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Image upload failed');
-    } finally {
-      setUploadingBadgeIndex(null);
-      event.target.value = '';
-    }
-  };
-
-  const handleSaveTrustBadges = async () => {
-    try {
-      setSavingTrustBadges(true);
-      const payload = { trustBadges: trustBadges.map((badge, index) => ({
-        title: (badge.title || '').trim(),
-        image: { url: badge.image?.url || '', key: badge.image?.key || '' },
-        order: index + 1,
-      })) };
-      const response = await api.put('/settings', payload);
-      const data = response.data?.data || { ...settings, ...payload };
-      setSettings(data);
-      setTrustBadges(data.trustBadges || payload.trustBadges);
-      setIsEditingTrustBadges(false);
-      toast.success('Trust strip settings saved');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not save trust strip settings');
-    } finally {
-      setSavingTrustBadges(false);
-    }
-  };
-
-  const handleSaveImageCompression = async () => {
-    const payload = {
-      mediaCompression: {
-        enabled: Boolean(imageCompression.enabled),
-        quality: Number(imageCompression.quality),
-        maxDimension: Number(imageCompression.maxDimension),
-        format: imageCompression.format === 'image/jpeg' ? 'image/jpeg' : 'image/webp',
-      },
-    };
-
-    try {
-      setSavingCompression(true);
-      const response = await api.put('/settings', payload);
-      const data = response.data?.data || { ...settings, ...payload };
-      const savedCompression = { ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(data.mediaCompression || payload.mediaCompression) };
-      setSettings(data);
-      setImageCompression(savedCompression);
-      setUploadCompressionSettings(savedCompression);
-      toast.success('Global image compression settings saved');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not save image compression settings');
-    } finally {
-      setSavingCompression(false);
-    }
-  };
-
   useEffect(() => {
     fetchSettings();
   }, []);
 
-  // Save Business & Identity
-  const handleSaveBusiness = async () => {
-    try {
-      setSavingBusiness(true);
-      const payload = {
-        companyName: businessForm.companyName,
-        emailAddress: businessForm.emailAddress,
-        mobileNumber: businessForm.mobileNumber,
-        storeAddress: businessForm.storeAddress,
-        gstCode: businessForm.gstCode,
-        panCode: businessForm.panCode,
-        returnPeriodDays: businessForm.returnPeriodDays === '' ? undefined : Number(businessForm.returnPeriodDays),
-        returnPolicy: businessForm.returnPolicy,
-        shippingPolicy: businessForm.shippingPolicy,
-        certificateImage: {
-          url: businessForm.certificateImageUrl,
-        },
-      };
-
-      const res = await api.put('/settings', payload);
-      setSettings(res.data?.data || payload);
-      toast.success('Business configuration updated successfully');
-      setIsEditingBusiness(false);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Update failed');
-    } finally {
-      setSavingBusiness(false);
+  // Close modal on Escape
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    };
+    if (activeModal) {
+      window.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
     }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'unset';
+    };
+  }, [activeModal]);
+
+  const closeModal = () => {
+    // Reset forms to saved settings on cancel
+    if (settings) {
+      setBusinessForm({
+        companyName: settings.companyName ?? '',
+        emailAddress: settings.emailAddress ?? '',
+        mobileNumber: settings.mobileNumber ?? '',
+        storeAddress: settings.storeAddress ?? '',
+        gstCode: settings.gstCode ?? '',
+        panCode: settings.panCode ?? '',
+        returnPeriodDays: settings.returnPeriodDays ?? '',
+        returnPolicy: settings.returnPolicy ?? '',
+        shippingPolicy: settings.shippingPolicy ?? '',
+        certificateImageUrl: settings.certificateImage?.url ?? '',
+      });
+      setMonetaryForm({
+        bankName: settings.bankName ?? '',
+        bankAccountNumber: settings.bankAccountNumber ?? '',
+        ifscCode: settings.ifscCode ?? '',
+      });
+      setTrustBadges(Array.isArray(settings.trustBadges) ? settings.trustBadges : []);
+      setImageCompression({ ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(settings.mediaCompression || {}) });
+    }
+    setActiveModal(null);
   };
 
-  // Save Monetary Settlement
-  const handleSaveMonetary = async () => {
-    try {
-      setSavingMonetary(true);
-      const payload = {
-        bankName: monetaryForm.bankName,
-        bankAccountNumber: monetaryForm.bankAccountNumber,
-        ifscCode: monetaryForm.ifscCode,
-      };
-
-      const res = await api.put('/settings', payload);
-      setSettings(res.data?.data || payload);
-      toast.success('Monetary settlement details updated');
-      setIsEditingMonetary(false);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Update failed');
-    } finally {
-      setSavingMonetary(false);
-    }
-  };
-
+  // Upload Logo handler
   const handleLogoUpload = async (event, isMobile = false) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -252,11 +190,10 @@ export default function SettingsView() {
     }
   };
 
-  // Certificate image upload handler
+  // Upload Certificate handler
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     try {
       setUploadingImage(true);
       const { fileUrl } = await uploadWithPresignedUrl(file, 'certificates');
@@ -272,6 +209,133 @@ export default function SettingsView() {
     }
   };
 
+  // Upload Trust Badge handler
+  const handleTrustBadgeImageUpload = async (event, index) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setUploadingBadgeIndex(index);
+      const { fileUrl, key } = await uploadWithPresignedUrl(file, 'trust-badges');
+      setTrustBadges((prev) =>
+        prev.map((badge, badgeIndex) =>
+          badgeIndex === index
+            ? { ...badge, image: { url: fileUrl, key: key || badge.image?.key || '' } }
+            : badge
+        )
+      );
+      toast.success('Trust badge image uploaded');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Image upload failed');
+    } finally {
+      setUploadingBadgeIndex(null);
+      event.target.value = '';
+    }
+  };
+
+  // Save Trust Badges
+  const handleSaveTrustBadges = async () => {
+    try {
+      setSavingTrustBadges(true);
+      const payload = {
+        trustBadges: trustBadges.map((badge, index) => ({
+          title: (badge.title || '').trim(),
+          image: { url: badge.image?.url || '', key: badge.image?.key || '' },
+          order: index + 1,
+        })),
+      };
+      const response = await api.put('/settings', payload);
+      const data = response.data?.data || { ...settings, ...payload };
+      setSettings(data);
+      setTrustBadges(data.trustBadges || payload.trustBadges);
+      setActiveModal(null);
+      toast.success('Trust strip settings saved');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not save trust strip settings');
+    } finally {
+      setSavingTrustBadges(false);
+    }
+  };
+
+  // Save Image Compression
+  const handleSaveImageCompression = async () => {
+    const payload = {
+      mediaCompression: {
+        enabled: Boolean(imageCompression.enabled),
+        quality: Number(imageCompression.quality),
+        maxDimension: Number(imageCompression.maxDimension),
+        format: imageCompression.format === 'image/jpeg' ? 'image/jpeg' : 'image/webp',
+      },
+    };
+
+    try {
+      setSavingCompression(true);
+      const response = await api.put('/settings', payload);
+      const data = response.data?.data || { ...settings, ...payload };
+      const savedCompression = { ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(data.mediaCompression || payload.mediaCompression) };
+      setSettings(data);
+      setImageCompression(savedCompression);
+      setUploadCompressionSettings(savedCompression);
+      setActiveModal(null);
+      toast.success('Global image compression settings saved');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not save image compression settings');
+    } finally {
+      setSavingCompression(false);
+    }
+  };
+
+  // Save Business & Identity
+  const handleSaveBusiness = async () => {
+    try {
+      setSavingBusiness(true);
+      const payload = {
+        companyName: businessForm.companyName,
+        emailAddress: businessForm.emailAddress,
+        mobileNumber: businessForm.mobileNumber,
+        storeAddress: businessForm.storeAddress,
+        gstCode: businessForm.gstCode,
+        panCode: businessForm.panCode,
+        returnPeriodDays: businessForm.returnPeriodDays === '' ? undefined : Number(businessForm.returnPeriodDays),
+        returnPolicy: businessForm.returnPolicy,
+        shippingPolicy: businessForm.shippingPolicy,
+        certificateImage: {
+          url: businessForm.certificateImageUrl,
+        },
+      };
+
+      const res = await api.put('/settings', payload);
+      setSettings(res.data?.data || payload);
+      toast.success('Business configuration updated successfully');
+      setActiveModal(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Update failed');
+    } finally {
+      setSavingBusiness(false);
+    }
+  };
+
+  // Save Monetary Settlement
+  const handleSaveMonetary = async () => {
+    try {
+      setSavingMonetary(true);
+      const payload = {
+        bankName: monetaryForm.bankName,
+        bankAccountNumber: monetaryForm.bankAccountNumber,
+        ifscCode: monetaryForm.ifscCode,
+      };
+
+      const res = await api.put('/settings', payload);
+      setSettings(res.data?.data || payload);
+      toast.success('Monetary settlement details updated');
+      setActiveModal(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Update failed');
+    } finally {
+      setSavingMonetary(false);
+    }
+  };
+
+  // Quick stat cards
   const statCardsData = [
     {
       label: 'Business Entity',
@@ -299,518 +363,723 @@ export default function SettingsView() {
     },
   ];
 
+  // The 5 Setting Boxes
+  const settingBoxes = [
+    {
+      id: 'logos',
+      title: 'Website Logos',
+      subtitle: 'Manage your desktop and mobile brand logos and storefront icons.',
+      icon: HiOutlinePhotograph,
+      badgeText: settings?.logoImage?.url ? 'Desktop & Mobile logos active' : 'Tap to configure logos',
+      hasPreview: Boolean(settings?.logoImage?.url),
+      logoUrl: settings?.logoImage?.url,
+    },
+    {
+      id: 'compression',
+      title: 'Global Image Compression',
+      subtitle: 'Optimize product images automatically with WebP and quality presets.',
+      icon: HiOutlineSparkles,
+      badgeText: `${imageCompression.enabled ? 'Automatic' : 'Manual'} · ${
+        imageCompression.format === 'image/webp' ? 'WebP' : 'JPEG'
+      } · ${imageCompression.quality}% quality`,
+      hasPreview: false,
+    },
+    {
+      id: 'trust',
+      title: 'Trust Strip',
+      subtitle: 'Storefront assurance badges, authenticity stamps, and guarantees.',
+      icon: HiOutlineShieldCheck,
+      badgeText: `${trustBadges.length} assurance badges configured`,
+      hasPreview: false,
+    },
+    {
+      id: 'business',
+      title: 'Business & Identity',
+      subtitle: 'Store legal details, registered address, GST, PAN, and customer policies.',
+      icon: HiOutlineOfficeBuilding,
+      badgeText: `${businessForm.companyName || 'Neirah Jewellers'} · ${
+        businessForm.gstCode ? `GST: ${businessForm.gstCode}` : 'Identity active'
+      }`,
+      hasPreview: false,
+    },
+    {
+      id: 'monetary',
+      title: 'Monetary Settlement',
+      subtitle: 'Bank accounts, settlement routing, and payout credentials.',
+      icon: HiOutlineCash,
+      badgeText: `${monetaryForm.bankName || 'HDFC Bank'} · ${
+        monetaryForm.bankAccountNumber
+          ? `•••• ${monetaryForm.bankAccountNumber.slice(-4)}`
+          : 'Bank details linked'
+      }`,
+      hasPreview: false,
+    },
+  ];
+
+  const filteredBoxes = settingBoxes.filter(
+    (b) =>
+      b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      b.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
-    <div className="space-y-2">
-      {/* ─── Module Header (Breadcrumbs, Title, Export) ─── */}
-      <ModuleHeader
-        breadcrumbs={[
-          { label: 'Home', path: '/dashboard' },
-          { label: 'System' },
-          { label: 'Settings' },
-        ]}
-        title="Settings"
-        subtitle="Manage business identity, tax credentials, return policies, and monetary banking details."
-      />
-
-      {/* ─── 4 Stat Cards ─── */}
-      <StatCards cards={statCardsData} />
-
-      {/* Website branding uploads */}
-      <section className="bg-white rounded-lg border border-stone-200/90 shadow-2xs p-3.5 sm:p-4">
-        <div className="mb-3 border-b border-stone-100 pb-2">
-          <h2 className="text-sm font-bold text-stone-900">Website Logos</h2>
-          <p className="mt-1 text-xs text-stone-500">Upload transparent PNG, JPG, or WebP logos. The mobile logo is used on narrow screens when provided.</p>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {[
-            { label: 'Desktop logo', field: 'logoImage', inputRef: logoInputRef, busy: uploadingLogo, mobile: false },
-            { label: 'Mobile logo (optional)', field: 'mobileLogoImage', inputRef: mobileLogoInputRef, busy: uploadingMobileLogo, mobile: true },
-          ].map(({ label, field, inputRef, busy, mobile }) => (
-            <div key={field} className="rounded-xl border border-stone-200 bg-[#fbfaf8] p-3">
-              <p className="text-xs font-semibold text-stone-800 mb-2">{label}</p>
-              <input ref={inputRef} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(event) => handleLogoUpload(event, mobile)} className="sr-only" />
-              <button type="button" onClick={() => inputRef.current?.click()} disabled={busy} className="min-h-24 w-full flex items-center justify-center rounded-lg border border-dashed border-[#d8c8b2] bg-white px-3 py-2 hover:border-[#8f6d43] hover:bg-[#faf5ee] disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30">
-                {settings?.[field]?.url ? <img src={getMediaUrl(settings[field].url)} alt={`${label} preview`} className="max-h-16 max-w-full object-contain" /> : <span className="text-xs text-stone-500">{busy ? 'Uploading…' : 'Tap to choose an image'}</span>}
-              </button>
-              <p className="mt-1.5 text-[10px] text-stone-400">{busy ? 'Saving logo…' : 'PNG, JPG, WebP or SVG'}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="rounded-lg border border-stone-200/90 bg-white p-3.5 shadow-2xs sm:p-4">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 border-b border-stone-100 pb-2">
-          <div>
-            <h2 className="text-sm font-bold text-stone-900">Global Image Compression</h2>
-            <p className="mt-1 text-xs text-stone-500">Set the default used automatically for image uploads across the admin.</p>
-          </div>
-          <button type="button" onClick={handleSaveImageCompression} disabled={savingCompression} className="rounded-md bg-[#8f6d43] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
-            {savingCompression ? 'Saving…' : 'Save Settings'}
-          </button>
+    <div className="space-y-4">
+      {/* ─── Module Header (Breadcrumbs, Title, Search) ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-stone-200/80">
+        <div>
+          <nav className="flex items-center gap-1.5 text-xs text-stone-400 mb-1">
+            <span>Home</span>
+            <HiOutlineChevronRight className="w-3 h-3 text-stone-300" />
+            <span className="text-stone-800 font-medium">Settings</span>
+          </nav>
+          <h1 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">
+            Settings
+          </h1>
+          <p className="mt-0.5 text-xs sm:text-sm text-stone-500">
+            Manage your store configuration in one place.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <label className="flex min-h-16 items-center justify-between rounded-xl border border-stone-200 bg-[#fbfaf8] px-3 py-2.5">
-            <span>
-              <span className="block text-xs font-semibold text-stone-800">Automatic compression</span>
-              <span className="block text-[10px] text-stone-500">Compress image uploads by default</span>
-            </span>
-            <input type="checkbox" checked={imageCompression.enabled} onChange={(event) => setImageCompression((prev) => ({ ...prev, enabled: event.target.checked }))} className="h-4 w-4 accent-[#8f6d43]" />
-          </label>
-
-          <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] px-3 py-2.5">
-            <span className="flex items-center justify-between text-xs font-semibold text-stone-800">Image quality <span className="text-[#8f6d43]">{imageCompression.quality}%</span></span>
-            <input type="range" min="50" max="100" step="1" value={imageCompression.quality} onChange={(event) => setImageCompression((prev) => ({ ...prev, quality: Number(event.target.value) }))} disabled={!imageCompression.enabled} className="mt-3 w-full accent-[#8f6d43] disabled:opacity-50" />
-            <span className="mt-1 flex justify-between text-[10px] text-stone-400"><span>Smaller files</span><span>Higher detail</span></span>
-          </label>
-
-          <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] px-3 py-2.5">
-            <span className="block text-xs font-semibold text-stone-800">Maximum image dimension</span>
-            <select value={imageCompression.maxDimension} onChange={(event) => setImageCompression((prev) => ({ ...prev, maxDimension: Number(event.target.value) }))} disabled={!imageCompression.enabled} className="mt-2 h-9 w-full rounded-lg border border-stone-200 bg-white px-2 text-xs text-stone-800 disabled:opacity-50">
-              {[1200, 1600, 1920, 2400, 2560, 3200, 4000].map((dimension) => <option key={dimension} value={dimension}>{dimension}px × {dimension}px</option>)}
-            </select>
-          </label>
-
-          <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] px-3 py-2.5">
-            <span className="block text-xs font-semibold text-stone-800">Output format</span>
-            <select value={imageCompression.format} onChange={(event) => setImageCompression((prev) => ({ ...prev, format: event.target.value }))} disabled={!imageCompression.enabled} className="mt-2 h-9 w-full rounded-lg border border-stone-200 bg-white px-2 text-xs text-stone-800 disabled:opacity-50">
-              <option value="image/webp">WebP (recommended)</option>
-              <option value="image/jpeg">JPEG</option>
-            </select>
-          </label>
-        </div>
-        <p className="mt-2.5 text-[10px] leading-relaxed text-stone-500">Quality is the encoder quality, not a guaranteed final file-size percentage. Large images are resized to the selected maximum; SVG, GIF, and images whose optimized copy would be larger keep their original file.</p>
-      </section>
-
-      <section className="rounded-lg border border-stone-200/90 bg-white p-3.5 shadow-2xs sm:p-4">
-        <div className="mb-3 flex items-center justify-between gap-3 border-b border-stone-100 pb-2">
-          <div>
-            <h2 className="text-sm font-bold text-stone-900">Trust Strip</h2>
-            <p className="mt-1 text-xs text-stone-500">Manage the text and optional image shown in the storefront assurance strip.</p>
-          </div>
-          {isEditingTrustBadges ? <div className="flex gap-2">
-            <button type="button" onClick={() => { setTrustBadges(settings?.trustBadges || []); setIsEditingTrustBadges(false); }} className="rounded-md border border-stone-200 px-3 py-1.5 text-xs font-semibold text-stone-600">Cancel</button>
-            <button type="button" onClick={handleSaveTrustBadges} disabled={savingTrustBadges || uploadingBadgeIndex !== null} className="rounded-md bg-[#8f6d43] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{savingTrustBadges ? 'Saving…' : 'Save Changes'}</button>
-          </div> : <button type="button" onClick={() => setIsEditingTrustBadges(true)} className="text-[10px] font-bold uppercase tracking-wider text-[#8f6d43]">Edit Configuration <HiOutlineChevronRight className="inline h-3 w-3" /></button>}
-        </div>
-        <div className="space-y-2">
-          {trustBadges.map((badge, index) => (
-            <div key={badge._id || index} className="grid grid-cols-1 gap-3 rounded-xl border border-stone-200 bg-[#fbfaf8] p-3 sm:grid-cols-[1fr_220px_auto] sm:items-end">
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-stone-800">Text</label>
-                <input disabled={!isEditingTrustBadges} value={badge.title || ''} onChange={(event) => setTrustBadges((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))} placeholder="e.g. 100% Certified" className="h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-xs disabled:bg-stone-50 disabled:text-stone-700" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-semibold text-stone-800">Image (optional)</label>
-                <div className="flex items-center gap-1.5">
-                  <label className={`flex h-9 flex-1 items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-[#d8c8b2] bg-white px-2 text-xs ${isEditingTrustBadges ? 'cursor-pointer hover:border-[#8f6d43]' : 'cursor-default'}`}>
-                    {badge.image?.url ? <img src={getMediaUrl(badge.image.url)} alt="" className="h-6 w-6 object-contain" /> : <HiOutlineUpload className="h-4 w-4" />}
-                    {uploadingBadgeIndex === index ? 'Uploading…' : badge.image?.url ? 'Replace image' : 'Upload image'}
-                    {isEditingTrustBadges && <input type="file" accept="image/*" className="sr-only" disabled={uploadingBadgeIndex !== null} onChange={(event) => handleTrustBadgeImageUpload(event, index)} />}
-                  </label>
-                  {isEditingTrustBadges && badge.image?.url && (
-                    <button
-                      type="button"
-                      title="Remove image"
-                      onClick={() => setTrustBadges((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, image: { url: '', key: '' } } : item))}
-                      className="h-9 px-2.5 rounded-lg border border-stone-200 bg-white text-xs text-stone-500 hover:border-red-200 hover:text-red-600 transition-colors"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-              </div>
-              {isEditingTrustBadges && <button type="button" onClick={() => setTrustBadges((prev) => prev.filter((_, itemIndex) => itemIndex !== index))} className="h-9 rounded-lg border border-stone-200 px-3 text-xs text-stone-500 hover:border-red-200 hover:text-red-600">Remove</button>}
-            </div>
-          ))}
-          {!trustBadges.length && <p className="py-4 text-center text-xs text-stone-400">No trust strip items configured.</p>}
-          {isEditingTrustBadges && <button type="button" onClick={() => setTrustBadges((prev) => [...prev, { title: '', image: { url: '', key: '' } }])} className="rounded-lg border border-dashed border-[#d8c8b2] px-3 py-2 text-xs font-semibold text-[#8f6d43]">+ Add item</button>}
-        </div>
-      </section>
-
-      {/* ─── 1. Business & Identity Card ─── */}
-      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs p-3.5 sm:p-4 space-y-2.5">
-        <div className="flex items-center justify-between pb-1.5 border-b border-stone-100">
-          <h2 className="text-sm font-bold text-stone-900 font-sans tracking-tight">
-            Business & Identity
-          </h2>
-          {isEditingBusiness ? (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setIsEditingBusiness(false)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-semibold rounded-md transition-colors cursor-pointer"
-              >
-                <HiOutlineX className="w-3 h-3" />
-                <span>CANCEL</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveBusiness}
-                disabled={savingBusiness}
-                className="inline-flex items-center gap-1 px-3 py-1 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-semibold rounded-md transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
-              >
-                <HiOutlineCheck className="w-3 h-3" />
-                <span>{savingBusiness ? 'SAVING...' : 'SAVE CHANGES'}</span>
-              </button>
-            </div>
-          ) : (
+        {/* Search settings input */}
+        <div className="relative w-full sm:w-72">
+          <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 w-4 h-4 pointer-events-none" />
+          <input
+            type="text"
+            placeholder="Search settings..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-9 pl-9 pr-3 text-xs bg-white border border-stone-200 rounded-lg text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
+          />
+          {searchQuery && (
             <button
               type="button"
-              onClick={() => setIsEditingBusiness(true)}
-              className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#8f6d43] hover:text-[#735530] transition-colors cursor-pointer"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
             >
-              <span>EDIT CONFIGURATION</span>
-              <HiOutlineChevronRight className="w-3 h-3 stroke-[2.5]" />
+              <HiOutlineX className="w-3.5 h-3.5" />
             </button>
           )}
-        </div>
-
-        {/* Form Fields Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {/* Company Name */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Company Name <span className="text-rose-500 font-bold">*</span>
-            </label>
-            <input
-              type="text"
-              disabled={!isEditingBusiness}
-              value={businessForm.companyName}
-              onChange={(e) => setBusinessForm({ ...businessForm, companyName: e.target.value })}
-              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
-                isEditingBusiness
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
-
-          {/* Email Address */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Email Address
-            </label>
-            <input
-              type="email"
-              disabled={!isEditingBusiness}
-              value={businessForm.emailAddress}
-              onChange={(e) => setBusinessForm({ ...businessForm, emailAddress: e.target.value })}
-              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
-                isEditingBusiness
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
-
-          {/* Mobile Number with India Flag */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Mobile Number
-            </label>
-            <div className="relative flex items-center">
-              <span className="absolute left-2.5 text-xs select-none pointer-events-none">
-                🇮🇳
-              </span>
-              <input
-                type="text"
-                disabled={!isEditingBusiness}
-                value={businessForm.mobileNumber}
-                onChange={(e) => setBusinessForm({ ...businessForm, mobileNumber: e.target.value })}
-                className={`w-full h-9 pl-8 pr-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
-                  isEditingBusiness
-                    ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                    : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-                }`}
-              />
-            </div>
-          </div>
-
-          {/* Store Address */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Store Address
-            </label>
-            <input
-              type="text"
-              disabled={!isEditingBusiness}
-              value={businessForm.storeAddress}
-              title={businessForm.storeAddress}
-              onChange={(e) => setBusinessForm({ ...businessForm, storeAddress: e.target.value })}
-              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border truncate transition-all ${
-                isEditingBusiness
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
-
-          {/* GST Code */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              GST Code
-            </label>
-            <input
-              type="text"
-              disabled={!isEditingBusiness}
-              value={businessForm.gstCode}
-              onChange={(e) => setBusinessForm({ ...businessForm, gstCode: e.target.value })}
-              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
-                isEditingBusiness
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
-
-          {/* PAN Code */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              PAN Code
-            </label>
-            <input
-              type="text"
-              disabled={!isEditingBusiness}
-              value={businessForm.panCode}
-              onChange={(e) => setBusinessForm({ ...businessForm, panCode: e.target.value })}
-              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
-                isEditingBusiness
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
-
-          {/* Return Period */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Return Period (Days)
-            </label>
-            <input
-              type="number"
-              disabled={!isEditingBusiness}
-              value={businessForm.returnPeriodDays}
-              onChange={(e) => setBusinessForm({ ...businessForm, returnPeriodDays: e.target.value })}
-              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
-                isEditingBusiness
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
-
-          {/* Return Policy */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Return Policy
-            </label>
-            <input
-              type="text"
-              disabled={!isEditingBusiness}
-              value={businessForm.returnPolicy}
-              onChange={(e) => setBusinessForm({ ...businessForm, returnPolicy: e.target.value })}
-              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
-                isEditingBusiness
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
-        </div>
-
-        {/* Lower Row: Shipping Policy & Certificate of Authenticity */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 pt-1">
-          {/* Shipping Policy (Left Col - 7 cols) */}
-          <div className="lg:col-span-7">
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Shipping Policy
-            </label>
-            <textarea
-              rows={2}
-              disabled={!isEditingBusiness}
-              placeholder="Describe the platform shipping and delivery terms..."
-              value={businessForm.shippingPolicy}
-              onChange={(e) => setBusinessForm({ ...businessForm, shippingPolicy: e.target.value })}
-              className={`w-full p-2.5 text-xs rounded-xl border transition-all resize-none leading-relaxed ${
-                isEditingBusiness
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
-
-          {/* Certificate of Authenticity (Right Col - 5 cols) */}
-          <div className="lg:col-span-5">
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Certificate of Authenticity Image
-            </label>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleImageUpload}
-              accept="image/png, image/jpeg, image/webp"
-              className="hidden"
-            />
-            <div
-              onClick={() => isEditingBusiness && fileInputRef.current?.click()}
-              className={`h-[68px] rounded-lg border border-dashed flex flex-col items-center justify-center p-2 transition-all ${
-                isEditingBusiness
-                  ? 'border-stone-300 hover:border-[#8f6d43] hover:bg-stone-50/80 cursor-pointer'
-                  : 'border-stone-200 bg-stone-50/40 cursor-default'
-              }`}
-            >
-              {businessForm.certificateImageUrl ? (
-                <div className="flex items-center gap-2">
-                  <img
-                    src={businessForm.certificateImageUrl}
-                    alt="Certificate"
-                    className="w-10 h-10 object-cover rounded border border-stone-200"
-                  />
-                  <div className="text-left">
-                    <p className="text-[11px] font-bold text-stone-800 uppercase tracking-wider">
-                      CERTIFICATE ATTACHED
-                    </p>
-                    <p className="text-[9px] text-stone-400">
-                      {isEditingBusiness ? 'Click to change image' : 'Active authenticity stamp'}
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <HiOutlineUpload className="w-4 h-4 text-stone-400 mb-0.5 stroke-[1.8]" />
-                  <p className="text-[10px] font-bold tracking-wider text-stone-400 uppercase">
-                    {uploadingImage ? 'UPLOADING...' : 'UPLOAD CERTIFICATE'}
-                  </p>
-                  <p className="text-[8px] tracking-wider text-stone-400 uppercase font-medium">
-                    PNG, JPG OR WEBP
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* ─── 2. Monetary Settlement Card ─── */}
-      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs p-3.5 sm:p-4 space-y-2.5">
-        <div className="flex items-center justify-between pb-1.5 border-b border-stone-100">
-          <h2 className="text-sm font-bold text-stone-900 font-sans tracking-tight">
-            Monetary Settlement
-          </h2>
-          {isEditingMonetary ? (
-            <div className="flex items-center gap-2">
+      {/* ─── Quick Stat Cards ─── */}
+      <StatCards cards={statCardsData} />
+
+      {/* ─── Setting Boxes Grid ─── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+        {filteredBoxes.map((box) => {
+          const Icon = box.icon;
+          return (
+            <div
+              key={box.id}
+              onClick={() => setActiveModal(box.id)}
+              className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white p-4 shadow-2xs hover:border-[#8f6d43]/60 hover:shadow-md transition-all duration-200 cursor-pointer"
+            >
+              <div>
+                {/* Top Row: Icon + Right Chevron */}
+                <div className="flex items-start justify-between">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#faf6f0] border border-[#ebdcc8]/80 text-[#8f6d43] group-hover:bg-[#8f6d43] group-hover:text-white transition-colors duration-200">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <span className="text-stone-300 group-hover:text-[#8f6d43] group-hover:translate-x-0.5 transition-all duration-200">
+                    <HiOutlineChevronRight className="h-4 w-4" />
+                  </span>
+                </div>
+
+                {/* Title & Description */}
+                <h3 className="mt-3 text-sm font-bold text-stone-900 group-hover:text-[#8f6d43] transition-colors">
+                  {box.title}
+                </h3>
+                <p className="mt-1 text-xs text-stone-500 leading-relaxed">
+                  {box.subtitle}
+                </p>
+              </div>
+
+              {/* Bottom Row: Status Badge or Thumbnail */}
+              <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between">
+                {box.hasPreview && box.logoUrl ? (
+                  <div className="flex items-center gap-2">
+                    <img
+                      src={getMediaUrl(box.logoUrl)}
+                      alt="Logo thumbnail"
+                      className="h-6 max-w-[80px] object-contain rounded bg-stone-50 px-1 border border-stone-100"
+                    />
+                    <span className="text-[11px] font-semibold text-stone-600 truncate">
+                      {box.badgeText}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center rounded-md bg-[#faf6f0] border border-[#ebdcc8]/60 px-2 py-0.5 text-[11px] font-medium text-stone-700">
+                    {box.badgeText}
+                  </span>
+                )}
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#8f6d43] opacity-0 group-hover:opacity-100 transition-opacity">
+                  Configure →
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {filteredBoxes.length === 0 && (
+        <div className="py-12 text-center rounded-xl border border-dashed border-stone-200 bg-white">
+          <p className="text-sm font-medium text-stone-500">No settings matched your search "{searchQuery}"</p>
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            className="mt-2 text-xs font-semibold text-[#8f6d43] hover:underline"
+          >
+            Clear search
+          </button>
+        </div>
+      )}
+
+      {/* ─── POP-UP MODAL ─── */}
+      {activeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/40 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) closeModal();
+          }}
+        >
+          <div
+            className={`relative flex flex-col w-full my-auto rounded-2xl bg-white border border-stone-200 shadow-2xl overflow-hidden transition-all duration-200 ${
+              activeModal === 'compression'
+                ? 'max-w-4xl'
+                : activeModal === 'business'
+                ? 'max-w-3xl'
+                : 'max-w-2xl'
+            }`}
+          >
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 bg-[#fdfcfb]">
+              <div>
+                <h2 className="text-base font-bold text-stone-900 tracking-tight">
+                  {activeModal === 'logos' && 'Website Logos'}
+                  {activeModal === 'compression' && 'Global Image Compression'}
+                  {activeModal === 'trust' && 'Trust Strip Configuration'}
+                  {activeModal === 'business' && 'Business & Identity'}
+                  {activeModal === 'monetary' && 'Monetary Settlement Details'}
+                </h2>
+                <p className="mt-0.5 text-xs text-stone-500">
+                  {activeModal === 'logos' && 'Manage your desktop and mobile brand logos.'}
+                  {activeModal === 'compression' && 'Set automatic image optimization and quality presets.'}
+                  {activeModal === 'trust' && 'Manage trust badges shown in the storefront assurance strip.'}
+                  {activeModal === 'business' && 'Store name, credentials, address, and policies.'}
+                  {activeModal === 'monetary' && 'Bank settlement details and payout credentials.'}
+                </p>
+              </div>
               <button
                 type="button"
-                onClick={() => setIsEditingMonetary(false)}
-                className="inline-flex items-center gap-1 px-2.5 py-1 border border-stone-200 text-stone-600 hover:bg-stone-50 text-xs font-semibold rounded-md transition-colors cursor-pointer"
+                onClick={closeModal}
+                className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition-colors"
+                title="Close modal"
               >
-                <HiOutlineX className="w-3 h-3" />
-                <span>CANCEL</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveMonetary}
-                disabled={savingMonetary}
-                className="inline-flex items-center gap-1 px-3 py-1 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-semibold rounded-md transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
-              >
-                <HiOutlineCheck className="w-3 h-3" />
-                <span>{savingMonetary ? 'SAVING...' : 'SAVE CHANGES'}</span>
+                <HiOutlineX className="h-5 w-5" />
               </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setIsEditingMonetary(true)}
-              className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#8f6d43] hover:text-[#735530] transition-colors cursor-pointer"
-            >
-              <span>EDIT CONFIGURATION</span>
-              <HiOutlineChevronRight className="w-3 h-3 stroke-[2.5]" />
-            </button>
-          )}
-        </div>
 
-        {/* Monetary Fields Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Bank Name */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Bank Name
-            </label>
-            <input
-              type="text"
-              disabled={!isEditingMonetary}
-              value={monetaryForm.bankName}
-              onChange={(e) => setMonetaryForm({ ...monetaryForm, bankName: e.target.value })}
-              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
-                isEditingMonetary
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
+            {/* Modal Body */}
+            <div className="p-5 sm:p-6 overflow-y-auto max-h-[calc(85vh-130px)] space-y-4">
+              {/* 1. Website Logos Modal */}
+              {activeModal === 'logos' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {[
+                      {
+                        label: 'Desktop logo',
+                        field: 'logoImage',
+                        inputRef: logoInputRef,
+                        busy: uploadingLogo,
+                        mobile: false,
+                        desc: 'Main brand logo displayed on desktop headers.',
+                      },
+                      {
+                        label: 'Mobile logo (optional)',
+                        field: 'mobileLogoImage',
+                        inputRef: mobileLogoInputRef,
+                        busy: uploadingMobileLogo,
+                        mobile: true,
+                        desc: 'Optimized emblem for smaller mobile screens.',
+                      },
+                    ].map(({ label, field, inputRef, busy, mobile, desc }) => (
+                      <div key={field} className="rounded-xl border border-stone-200 bg-[#fbfaf8] p-4 flex flex-col justify-between">
+                        <div>
+                          <p className="text-xs font-bold text-stone-800">{label}</p>
+                          <p className="mt-0.5 text-[11px] text-stone-500">{desc}</p>
+                        </div>
+                        <input
+                          ref={inputRef}
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                          onChange={(event) => handleLogoUpload(event, mobile)}
+                          className="sr-only"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => inputRef.current?.click()}
+                          disabled={busy}
+                          className="mt-3 min-h-28 w-full flex flex-col items-center justify-center rounded-xl border border-dashed border-[#d8c8b2] bg-white p-3 hover:border-[#8f6d43] hover:bg-[#faf5ee] disabled:opacity-60 transition-all focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30"
+                        >
+                          {settings?.[field]?.url ? (
+                            <img
+                              src={getMediaUrl(settings[field].url)}
+                              alt={`${label} preview`}
+                              className="max-h-16 max-w-full object-contain"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center text-center">
+                              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#faf6f0] text-[#8f6d43] mb-1.5">
+                                <HiOutlinePhotograph className="h-5 w-5" />
+                              </span>
+                              <span className="text-xs font-semibold text-stone-700">Choose image</span>
+                              <span className="text-[10px] text-stone-400 mt-0.5">or drag and drop</span>
+                            </div>
+                          )}
+                        </button>
+                        <p className="mt-2 text-center text-[10px] text-stone-400">
+                          {busy ? 'Saving logo…' : 'PNG, JPG, WebP or SVG'}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
-          {/* Bank Account Number */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              Bank Account Number
-            </label>
-            <div className="relative flex items-center">
-              <input
-                type={showAccountRaw || isEditingMonetary ? 'text' : 'password'}
-                disabled={!isEditingMonetary}
-                value={
-                  !isEditingMonetary && !showAccountRaw
-                    ? '************'
-                    : monetaryForm.bankAccountNumber
-                }
-                onChange={(e) =>
-                  setMonetaryForm({ ...monetaryForm, bankAccountNumber: e.target.value })
-                }
-                className={`w-full h-9 pl-3 pr-8 text-xs sm:text-[13px] font-medium rounded-xl border transition-all ${
-                  isEditingMonetary
-                    ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                    : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-                }`}
-              />
-              {!isEditingMonetary && (
+              {/* 2. Global Image Compression Modal */}
+              {activeModal === 'compression' && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <label className="flex min-h-16 items-center justify-between rounded-xl border border-stone-200 bg-[#fbfaf8] p-3 cursor-pointer">
+                      <span>
+                        <span className="block text-xs font-bold text-stone-800">Automatic compression</span>
+                        <span className="block text-[10px] text-stone-500">Compress image uploads by default</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={imageCompression.enabled}
+                        onChange={(event) =>
+                          setImageCompression((prev) => ({ ...prev, enabled: event.target.checked }))
+                        }
+                        className="h-4 w-4 accent-[#8f6d43]"
+                      />
+                    </label>
+
+                    <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] p-3">
+                      <span className="flex items-center justify-between text-xs font-bold text-stone-800">
+                        Image quality <span className="text-[#8f6d43]">{imageCompression.quality}%</span>
+                      </span>
+                      <input
+                        type="range"
+                        min="50"
+                        max="100"
+                        step="1"
+                        value={imageCompression.quality}
+                        onChange={(event) =>
+                          setImageCompression((prev) => ({ ...prev, quality: Number(event.target.value) }))
+                        }
+                        disabled={!imageCompression.enabled}
+                        className="mt-2.5 w-full accent-[#8f6d43] disabled:opacity-50"
+                      />
+                      <span className="mt-1 flex justify-between text-[10px] text-stone-400">
+                        <span>Smaller files (60%)</span>
+                        <span>Higher detail (95%)</span>
+                      </span>
+                    </label>
+
+                    <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] p-3">
+                      <span className="block text-xs font-bold text-stone-800">Output format</span>
+                      <select
+                        value={imageCompression.format}
+                        onChange={(event) =>
+                          setImageCompression((prev) => ({ ...prev, format: event.target.value }))
+                        }
+                        disabled={!imageCompression.enabled}
+                        className="mt-2 h-9 w-full rounded-lg border border-stone-200 bg-white px-2 text-xs text-stone-800 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20"
+                      >
+                        <option value="image/webp">WebP (recommended)</option>
+                        <option value="image/jpeg">JPEG</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  {/* Side-by-Side Live Demo Image Preview */}
+                  <ImageCompressionDemo
+                    quality={imageCompression.quality}
+                    format={imageCompression.format}
+                    enabled={imageCompression.enabled}
+                    onQualityChange={(newQuality) =>
+                      setImageCompression((prev) => ({ ...prev, quality: newQuality }))
+                    }
+                  />
+                </div>
+              )}
+
+              {/* 3. Trust Strip Modal */}
+              {activeModal === 'trust' && (
+                <div className="space-y-3">
+                  {trustBadges.map((badge, index) => (
+                    <div
+                      key={badge._id || index}
+                      className="grid grid-cols-1 gap-3 rounded-xl border border-stone-200 bg-[#fbfaf8] p-3 sm:grid-cols-[1fr_200px_auto] sm:items-end"
+                    >
+                      <div>
+                        <label className="mb-1 block text-xs font-bold text-stone-800">Badge Text</label>
+                        <input
+                          value={badge.title || ''}
+                          onChange={(event) =>
+                            setTrustBadges((prev) =>
+                              prev.map((item, itemIndex) =>
+                                itemIndex === index ? { ...item, title: event.target.value } : item
+                              )
+                            )
+                          }
+                          placeholder="e.g. 100% Certified Jewellery"
+                          className="h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-1 block text-xs font-bold text-stone-800">Icon / Stamp</label>
+                        <div className="flex items-center gap-1.5">
+                          <label className="flex h-9 flex-1 items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-[#d8c8b2] bg-white px-2 text-xs cursor-pointer hover:border-[#8f6d43]">
+                            {badge.image?.url ? (
+                              <img
+                                src={getMediaUrl(badge.image.url)}
+                                alt=""
+                                className="h-6 w-6 object-contain"
+                              />
+                            ) : (
+                              <HiOutlineUpload className="h-4 w-4 text-stone-400" />
+                            )}
+                            <span className="truncate text-stone-600">
+                              {uploadingBadgeIndex === index
+                                ? 'Uploading…'
+                                : badge.image?.url
+                                ? 'Change'
+                                : 'Upload'}
+                            </span>
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              disabled={uploadingBadgeIndex !== null}
+                              onChange={(event) => handleTrustBadgeImageUpload(event, index)}
+                            />
+                          </label>
+                          {badge.image?.url && (
+                            <button
+                              type="button"
+                              title="Clear image"
+                              onClick={() =>
+                                setTrustBadges((prev) =>
+                                  prev.map((item, itemIndex) =>
+                                    itemIndex === index ? { ...item, image: { url: '', key: '' } } : item
+                                  )
+                                )
+                              }
+                              className="h-9 px-2 rounded-lg border border-stone-200 bg-white text-xs text-stone-400 hover:text-red-600 hover:border-red-200"
+                            >
+                              <HiOutlineX className="h-3.5 w-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setTrustBadges((prev) => prev.filter((_, itemIndex) => itemIndex !== index))
+                        }
+                        className="h-9 px-3 rounded-lg border border-stone-200 text-xs font-semibold text-stone-500 hover:border-red-200 hover:text-red-600 bg-white"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+
+                  {!trustBadges.length && (
+                    <p className="py-6 text-center text-xs text-stone-400 bg-stone-50 rounded-xl border border-dashed border-stone-200">
+                      No trust badges added yet.
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setTrustBadges((prev) => [...prev, { title: '', image: { url: '', key: '' } }])
+                    }
+                    className="w-full h-10 rounded-xl border border-dashed border-[#8f6d43]/50 bg-[#faf6f0]/50 text-xs font-semibold text-[#8f6d43] hover:bg-[#faf6f0] transition-colors"
+                  >
+                    + Add New Trust Badge
+                  </button>
+                </div>
+              )}
+
+              {/* 4. Business & Identity Modal */}
+              {activeModal === 'business' && (
+                <div className="space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">
+                        Company Name <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={businessForm.companyName}
+                        onChange={(e) => setBusinessForm({ ...businessForm, companyName: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">
+                        Email Address
+                      </label>
+                      <input
+                        type="email"
+                        value={businessForm.emailAddress}
+                        onChange={(e) => setBusinessForm({ ...businessForm, emailAddress: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">
+                        Mobile Number
+                      </label>
+                      <div className="relative flex items-center">
+                        <span className="absolute left-2.5 text-xs select-none pointer-events-none">
+                          🇮🇳
+                        </span>
+                        <input
+                          type="text"
+                          value={businessForm.mobileNumber}
+                          onChange={(e) => setBusinessForm({ ...businessForm, mobileNumber: e.target.value })}
+                          className="w-full h-9 pl-8 pr-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">
+                        Store Address
+                      </label>
+                      <input
+                        type="text"
+                        value={businessForm.storeAddress}
+                        onChange={(e) => setBusinessForm({ ...businessForm, storeAddress: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">GST Code</label>
+                      <input
+                        type="text"
+                        value={businessForm.gstCode}
+                        onChange={(e) => setBusinessForm({ ...businessForm, gstCode: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">PAN Code</label>
+                      <input
+                        type="text"
+                        value={businessForm.panCode}
+                        onChange={(e) => setBusinessForm({ ...businessForm, panCode: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">
+                        Return Period (Days)
+                      </label>
+                      <input
+                        type="number"
+                        value={businessForm.returnPeriodDays}
+                        onChange={(e) => setBusinessForm({ ...businessForm, returnPeriodDays: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">
+                        Return Policy Summary
+                      </label>
+                      <input
+                        type="text"
+                        value={businessForm.returnPolicy}
+                        onChange={(e) => setBusinessForm({ ...businessForm, returnPolicy: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Shipping Policy */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-900 mb-1">Shipping Policy</label>
+                    <textarea
+                      rows={3}
+                      placeholder="Describe your standard shipping and delivery timelines..."
+                      value={businessForm.shippingPolicy}
+                      onChange={(e) => setBusinessForm({ ...businessForm, shippingPolicy: e.target.value })}
+                      className="w-full p-2.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] resize-none"
+                    />
+                  </div>
+
+                  {/* Certificate of Authenticity */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-900 mb-1">
+                      Certificate of Authenticity Image
+                    </label>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleImageUpload}
+                      accept="image/png, image/jpeg, image/webp"
+                      className="hidden"
+                    />
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="h-16 rounded-xl border border-dashed border-stone-300 hover:border-[#8f6d43] hover:bg-[#faf5ee] bg-[#fafaf8] flex items-center justify-center p-3 cursor-pointer transition-all"
+                    >
+                      {businessForm.certificateImageUrl ? (
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={businessForm.certificateImageUrl}
+                            alt="Certificate"
+                            className="h-10 w-10 object-cover rounded-lg border border-stone-200"
+                          />
+                          <div className="text-left">
+                            <p className="text-xs font-bold text-stone-800">Certificate attached</p>
+                            <p className="text-[10px] text-stone-400">Click to replace certificate image</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-stone-500">
+                          <HiOutlineUpload className="h-4 w-4 text-[#8f6d43]" />
+                          <span className="text-xs font-medium">
+                            {uploadingImage ? 'Uploading…' : 'Upload authenticity stamp (PNG, JPG, WebP)'}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 5. Monetary Settlement Modal */}
+              {activeModal === 'monetary' && (
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-900 mb-1">Bank Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. HDFC Bank"
+                      value={monetaryForm.bankName}
+                      onChange={(e) => setMonetaryForm({ ...monetaryForm, bankName: e.target.value })}
+                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-900 mb-1">
+                      Bank Account Number
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type={showAccountRaw ? 'text' : 'password'}
+                        placeholder="Enter full account number"
+                        value={monetaryForm.bankAccountNumber}
+                        onChange={(e) =>
+                          setMonetaryForm({ ...monetaryForm, bankAccountNumber: e.target.value })
+                        }
+                        className="w-full h-9 pl-3 pr-9 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowAccountRaw(!showAccountRaw)}
+                        className="absolute right-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
+                        title={showAccountRaw ? 'Hide account number' : 'Show account number'}
+                      >
+                        {showAccountRaw ? (
+                          <HiOutlineEyeOff className="w-4 h-4" />
+                        ) : (
+                          <HiOutlineEye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-900 mb-1">IFSC Code</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. HDFC0001234"
+                      value={monetaryForm.ifscCode}
+                      onChange={(e) => setMonetaryForm({ ...monetaryForm, ifscCode: e.target.value })}
+                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-stone-100 bg-stone-50/70">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="rounded-lg border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 transition-colors"
+              >
+                {activeModal === 'logos' ? 'Close' : 'Cancel'}
+              </button>
+
+              {activeModal === 'compression' && (
                 <button
                   type="button"
-                  onClick={() => setShowAccountRaw(!showAccountRaw)}
-                  className="absolute right-2.5 text-stone-400 hover:text-stone-600 cursor-pointer"
+                  onClick={handleSaveImageCompression}
+                  disabled={savingCompression}
+                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
                 >
-                  {showAccountRaw ? (
-                    <HiOutlineEyeOff className="w-3.5 h-3.5" />
-                  ) : (
-                    <HiOutlineEye className="w-3.5 h-3.5" />
-                  )}
+                  {savingCompression ? 'Saving…' : 'Save Changes'}
+                </button>
+              )}
+
+              {activeModal === 'trust' && (
+                <button
+                  type="button"
+                  onClick={handleSaveTrustBadges}
+                  disabled={savingTrustBadges}
+                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
+                >
+                  {savingTrustBadges ? 'Saving…' : 'Save Changes'}
+                </button>
+              )}
+
+              {activeModal === 'business' && (
+                <button
+                  type="button"
+                  onClick={handleSaveBusiness}
+                  disabled={savingBusiness}
+                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
+                >
+                  {savingBusiness ? 'Saving…' : 'Save Changes'}
+                </button>
+              )}
+
+              {activeModal === 'monetary' && (
+                <button
+                  type="button"
+                  onClick={handleSaveMonetary}
+                  disabled={savingMonetary}
+                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
+                >
+                  {savingMonetary ? 'Saving…' : 'Save Changes'}
                 </button>
               )}
             </div>
           </div>
-
-          {/* IFSC Code */}
-          <div>
-            <label className="block text-xs font-bold text-stone-900 mb-1.5">
-              IFSC Code
-            </label>
-            <input
-              type="text"
-              disabled={!isEditingMonetary}
-              value={monetaryForm.ifscCode}
-              onChange={(e) => setMonetaryForm({ ...monetaryForm, ifscCode: e.target.value })}
-              className={`w-full h-9 px-3 text-xs sm:text-[13px] font-medium rounded-xl border transition-all uppercase ${
-                isEditingMonetary
-                  ? 'bg-white border-[#8b6f4e] text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20'
-                  : 'bg-stone-50/70 border-stone-200 text-stone-800 cursor-default'
-              }`}
-            />
-          </div>
         </div>
-      </div>
+      )}
 
       {/* ─── Footer ─── */}
-      <div className="pt-2 pb-1 text-center">
+      <div className="pt-4 pb-2 text-center">
         <p className="text-[9px] tracking-[0.2em] text-stone-400 uppercase font-semibold">
           NEIRAH JEWELLERS GLOBAL ADMIN V1.0.25
         </p>

@@ -1,3 +1,4 @@
+import ThemeImageField from '../../components/common/ThemeImageField';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
@@ -300,6 +301,7 @@ export default function BannersView() {
     setSubtitle(banner.content?.subtitle || '');
     setImageUrl(banner.mediaType === 'video' ? banner.video?.url : banner.image?.url || '');
     setCollectionImages((banner.collectionImages?.length ? banner.collectionImages : (banner.image?.url ? [banner.image] : [])).map((image) => ({
+      _id: image._id,
       url: image.url,
       key: image.key || '',
       categoryId: image.categoryId?._id || image.categoryId || banner.display?.categoryId?._id || banner.display?.categoryId || '',
@@ -393,7 +395,7 @@ export default function BannersView() {
 
   const handleRemoveCollectionImage = (index) => {
     setCollectionImages((current) => Array.from({ length: 4 }, (_, i) =>
-      i === index ? { categoryId: current[i]?.categoryId || '' } : current[i] || {}));
+      i === index ? { _id: current[i]?._id, categoryId: current[i]?.categoryId || '' } : current[i] || {}));
   };
 
   // Remove Image
@@ -975,6 +977,9 @@ export default function BannersView() {
                     className="hidden"
                   />
 
+                  <ThemeImageField key={editingBanner?._id || 'new'} module="banner" recordId={editingBanner?._id} slots={formType === 'collectionbanner'
+                    ? (editingBanner?.collectionImages || []).map((image, index) => ({ key: `collection:${image._id}`, label: `Collection tile ${index + 1}`, url: collectionImages[index]?.url || image.url }))
+                    : [{ key: 'image', label: 'Banner image', url: imageUrl }]}>
                   {/* Image Preview with delete button */}
                   {formType === 'collectionbanner' ? (
                     <div className="space-y-3">
@@ -1056,6 +1061,8 @@ export default function BannersView() {
                   {formType === 'collectionbanner' && (
                     <p className="text-[10px] text-stone-500">Add 4 images to one collection record. They are shown together in the storefront layout.</p>
                   )}
+
+                  </ThemeImageField>
 
                   <div>
                     <label htmlFor="banner-platform" className="mb-1 block text-[11px] font-medium text-stone-600">

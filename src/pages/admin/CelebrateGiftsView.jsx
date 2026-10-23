@@ -1,3 +1,4 @@
+import ThemeImageField from '../../components/common/ThemeImageField';
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   HiOutlinePlus,
@@ -788,6 +789,7 @@ export default function CelebrateGiftsView() {
                 <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
                   COVER IMAGE
                 </label>
+                <ThemeImageField key={editingItem?._id || 'new'} module="featured" recordId={editingItem?._id} slots={[{ key: 'image', label: 'Cover image', url: imageUrl }]}>
                 <div className="relative border-2 border-dashed border-stone-200 hover:border-stone-400 rounded-2xl p-4 flex flex-col items-center justify-center bg-[#fafafa] hover:bg-stone-50/50 transition-colors min-h-[140px] cursor-pointer">
                   {imageUrl ? (
                     <div className="relative w-full h-32 rounded-xl overflow-hidden group">
@@ -831,6 +833,7 @@ export default function CelebrateGiftsView() {
                     </label>
                   )}
                 </div>
+                </ThemeImageField>
               </div>
 
               {/* SELECT PRODUCTS (X SELECTED) */}

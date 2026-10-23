@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { HiOutlineArrowLeft, HiOutlineDuplicate, HiOutlineEye, HiOutlinePhotograph, HiOutlinePlus, HiOutlineSave, HiOutlineShieldCheck, HiOutlineUpload, HiOutlineX } from 'react-icons/hi';
+import ThemeImageField from '../../components/common/ThemeImageField';
+import ThemeMediaManager from '../../components/common/ThemeMediaManager';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { HiOutlineArrowLeft, HiOutlineDuplicate, HiOutlineEye, HiOutlinePhotograph, HiOutlinePlus, HiOutlineSave, HiOutlineShieldCheck, HiOutlineX } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { websiteThemesAPI } from '../../api/services';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 
 /* eslint-disable react/prop-types */
 
@@ -58,14 +59,20 @@ export default function WebsiteThemesView() {
   const [filter, setFilter] = useState('all');
   const [editing, setEditing] = useState(null);
   const [tab, setTab] = useState('general');
+  const [previewMedia, setPreviewMedia] = useState([]);
+  useEffect(() => {
+    let cancelled = false;
+    setPreviewMedia([]);
+    if (editing?._id) websiteThemesAPI.preview(editing._id).then((response) => {
+      if (!cancelled) setPreviewMedia(getData(response)?.config?.mediaOverrides || []);
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [editing?._id, tab]);
   const [previewMode, setPreviewMode] = useState('desktop');
   const [saving, setSaving] = useState(false);
-  const [uploadTarget, setUploadTarget] = useState(null);
-  const [uploading, setUploading] = useState(false);
   const [publishStart, setPublishStart] = useState('');
   const [publishEnd, setPublishEnd] = useState('');
   const [fallbackThemeId, setFallbackThemeId] = useState('');
-  const fileRef = useRef(null);
   const editorIsActive = editing?.status === 'active';
 
   const fetchThemes = useCallback(async () => {
@@ -175,29 +182,6 @@ export default function WebsiteThemesView() {
     return () => { current = false; };
   }, [tab, editing?._id]);
 
-  const requestCategoryUpload = (categoryIndex) => {
-    setUploadTarget({ categoryIndex });
-    fileRef.current?.click();
-  };
-
-  const uploadBannerImage = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file || !uploadTarget) return;
-    if (!file.type.startsWith('image/')) { toast.error('Choose an image file'); return; }
-    try {
-      setUploading(true);
-      const uploaded = await uploadWithPresignedUrl(file, 'website-themes');
-      updateConfig((config) => {
-        const asset = { url: uploaded.fileUrl, key: uploaded.key, alt: file.name };
-        const categoryAppearances = [...config.categoryAppearances];
-        categoryAppearances[uploadTarget.categoryIndex] = { ...categoryAppearances[uploadTarget.categoryIndex], icon: asset };
-        return { ...config, categoryAppearances };
-      });
-      toast.success('Category icon uploaded');
-    } catch (error) { toast.error(error.response?.data?.message || 'Image upload failed'); }
-    finally { setUploading(false); setUploadTarget(null); event.target.value = ''; }
-  };
-
   const addBannerSelection = () => updateConfig((config) => ({
     ...config,
     bannerSelections: [...(config.bannerSelections || []), { bannerId: null, type: 'herobanner', platform: 'web', order: (config.bannerSelections || []).length + 1, visible: true }],
@@ -233,12 +217,11 @@ export default function WebsiteThemesView() {
       .map((selection) => availableBanners.find((banner) => bannerIdOf(banner._id) === bannerIdOf(selection.bannerId)))
       .find(Boolean);
     const previewLegacyHero = config.banners?.find((banner) => banner.visible !== false && banner.placement === 'hero');
-    const previewHeroImage = selectedBannerForPreview?.image?.url || previewLegacyHero?.desktopImage?.url || '';
+    const previewHeroImage = previewMedia.find((row) => row.module === 'banner' && row.slot === 'image' && String(row.recordId) === String(selectedBannerForPreview?._id))?.asset?.url || selectedBannerForPreview?.image?.url || previewLegacyHero?.desktopImage?.url || '';
     const previewHeroTitle = selectedBannerForPreview ? bannerTitleOf(selectedBannerForPreview) : previewLegacyHero?.title;
-    const tabs = [['general', 'General'], ['style', 'Design & Style'], ['banners', 'Banners'], ['categories', 'Category Icons'], ['navigation', 'Navigation'], ['sections', 'Home Sections'], ['preview', 'Preview'], ['publish', 'Schedule & Publish'], ['history', 'History']];
+    const tabs = [['general', 'General'], ['style', 'Design & Style'], ['banners', 'Banners'], ['media', 'Theme Images'], ['categories', 'Category Icons'], ['navigation', 'Navigation'], ['sections', 'Home Sections'], ['preview', 'Preview'], ['publish', 'Schedule & Publish'], ['history', 'History']];
     return (
       <div className="mx-auto max-w-[1500px] space-y-5 p-4 md:p-7">
-        <input ref={fileRef} className="hidden" type="file" accept="image/*" onChange={uploadBannerImage} />
         <header className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <button type="button" onClick={() => setEditing(null)} className="rounded-xl border border-slate-200 bg-white p-2.5 text-slate-600 hover:bg-slate-50" aria-label="Back to themes"><HiOutlineArrowLeft /></button>
@@ -255,6 +238,8 @@ export default function WebsiteThemesView() {
         </nav>
 
         <fieldset disabled={editorIsActive && !['publish', 'preview', 'history'].includes(tab)} className="contents">
+        {(tab === 'media' || tab === 'preview') && <ThemeMediaManager themeId={editing._id} readOnly={tab === 'preview' || editing.status !== 'draft'} />}
+
         {tab === 'general' && <section className="grid gap-5 rounded-2xl border border-slate-200 bg-white p-5 md:grid-cols-2">
           <Field label="Theme name"><input className={inputClass} value={editing.name} onChange={(e) => setEditing({ ...editing, name: e.target.value, code: editing._id ? editing.code : slugify(e.target.value) })} placeholder="Diwali 2026" /></Field>
           <Field label="Theme code" hint="Used as a stable internal identifier."><input className={inputClass} value={editing.code || ''} onChange={(e) => setEditing({ ...editing, code: slugify(e.target.value) })} placeholder="diwali-2026" /></Field>
@@ -323,7 +308,7 @@ export default function WebsiteThemesView() {
           {config.categoryAppearances?.map((entry, index) => <div key={`${entry.categoryId}-${index}`} className="grid gap-3 rounded-xl border border-slate-200 p-4 md:grid-cols-4">
             <Field label="Existing category"><select className={inputClass} value={entry.categoryId?._id || entry.categoryId || ''} onChange={(e) => updateCategoryAppearance(index, 'categoryId', e.target.value)}><option value="">Choose category</option>{categories.map((category) => <option key={category._id} value={category._id}>{category.name}</option>)}</select></Field>
             <Field label="Display label"><input className={inputClass} value={entry.displayName || ''} onChange={(e) => updateCategoryAppearance(index, 'displayName', e.target.value)} placeholder="Optional override" /></Field>
-            <Field label="Category icon"><div className="space-y-2">{entry.icon?.url && <img src={entry.icon.url} alt="" className="h-12 w-12 rounded-full border border-slate-200 object-cover" />}<input className={inputClass} value={entry.icon?.url || ''} onChange={(e) => updateCategoryAppearance(index, 'icon', { ...entry.icon, url: e.target.value })} placeholder="Paste an image URL" /><button type="button" disabled={uploading} onClick={() => requestCategoryUpload(index)} className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"><HiOutlineUpload />{uploading && uploadTarget?.categoryIndex === index ? 'Uploading…' : 'Upload icon'}</button></div></Field>
+            <Field label="Category icon">{editing._id && entry.categoryId ? (editing.status === 'draft' ? <ThemeImageField key={`${editing._id}:${entry.categoryId?._id || entry.categoryId}`} themeId={editing._id} module="category" recordId={entry.categoryId?._id || entry.categoryId} slots={[{ key: 'icon', label: 'Category icon', url: entry.icon?.url || categories.find((category) => category._id === (entry.categoryId?._id || entry.categoryId))?.icon?.url }]} /> : <span className="text-xs">View published images in Preview. Duplicate this theme to edit.</span>) : <span className="text-xs">Save the theme and choose a category first.</span>}</Field>
             <div className="flex items-end justify-between gap-3"><Field label="Order"><input type="number" min="0" className={inputClass} value={entry.order ?? index + 1} onChange={(e) => updateCategoryAppearance(index, 'order', Number(e.target.value))} /></Field><label className="flex items-center gap-2 pb-3 text-xs"><input type="checkbox" checked={entry.visible !== false} onChange={(e) => updateCategoryAppearance(index, 'visible', e.target.checked)} />Visible</label><button type="button" onClick={() => updateConfig((value) => ({ ...value, categoryAppearances: value.categoryAppearances.filter((_, i) => i !== index) }))} className="pb-3 text-xs font-semibold text-rose-600">Remove</button></div>
           </div>)}
         </section>}

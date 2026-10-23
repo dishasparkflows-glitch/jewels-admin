@@ -1,3 +1,4 @@
+import ThemeImageField from '../../components/common/ThemeImageField';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -684,6 +685,7 @@ const DynamicModuleView = () => {
         delete payload.bannerKey;
         if (Array.isArray(payload.promoBanners)) {
           payload.promoBanners = payload.promoBanners.map((b, idx) => ({
+            _id: b._id,
             title: (b.title || '').trim(),
             subtitle: (b.subtitle || '').trim(),
             image: {
@@ -1319,6 +1321,7 @@ const DynamicModuleView = () => {
                             </span>
                           </div>
 
+                          <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} slots={[{ key: 'banner', label: 'Category banner', url: bannerUrl }]}>
                           <div className="space-y-2 pt-1">
                             {hasBanner ? (
                               <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
@@ -1400,6 +1403,7 @@ const DynamicModuleView = () => {
                               </label>
                             )}
                           </div>
+                          </ThemeImageField>
                         </div>
                       );
                     })()
@@ -1411,6 +1415,8 @@ const DynamicModuleView = () => {
                       const hasIcon = Boolean(iconUrl && typeof iconUrl === 'string' && iconUrl.trim().length > 0);
 
                       return (
+                        <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} slots={[{ key: 'icon', label: 'Category icon', url: iconUrl }]}>
+
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
                             <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
@@ -1481,6 +1487,7 @@ const DynamicModuleView = () => {
                             )}
                           </div>
                         </div>
+                        </ThemeImageField>
                       );
                     })()
                   ) : (
