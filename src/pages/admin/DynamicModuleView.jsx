@@ -1,4 +1,5 @@
 import ThemeImageField from '../../components/common/ThemeImageField';
+import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -245,6 +246,7 @@ const DynamicModuleView = () => {
   const [editingRecord, setEditingRecord] = useState(null);
   const [viewingRecord, setViewingRecord] = useState(null);
   const [formData, setFormData] = useState({});
+  const [pendingThemeImages, setPendingThemeImages] = useState({});
   const [saving, setSaving] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isOrnateSyncModalOpen, setIsOrnateSyncModalOpen] = useState(false);
@@ -276,7 +278,8 @@ const DynamicModuleView = () => {
       navigate('/catalog/ornate-products/add');
     } else {
       setEditingRecord(null);
-      const defaults = isCategoryPage ? { promoBanners: [], status: 'active' } : {};
+      const defaults = isCategoryPage ? { promoBanners: [], status: 'active', themeId: '' } : {};
+      setPendingThemeImages({});
       (config.fields || []).forEach((f) => {
         if (f.default !== undefined) defaults[f.name] = f.default;
       });
@@ -290,7 +293,10 @@ const DynamicModuleView = () => {
   const handleOpenEdit = (row) => {
     setEditingRecord(row);
     const initial = {};
-    if (isCategoryPage) initial.status = row.status ?? 'active';
+    if (isCategoryPage) {
+      initial.status = row.status ?? 'active';
+      initial.themeId = row.themeId?._id || row.themeId || '';
+    }
     if (config.fields) {
       config.fields.forEach((f) => {
         let val = row[f.name];
@@ -324,6 +330,7 @@ const DynamicModuleView = () => {
       initial.promoBanners = [];
     }
     setBannerFormOpen(false);
+    setPendingThemeImages({});
     setEditingBannerIndex(null);
     setFormData(initial);
     setIsModalOpen(true);
@@ -673,6 +680,7 @@ const DynamicModuleView = () => {
 
       // Ensure proper structure for categories
       if (cleanEndpoint === '/categories') {
+        payload.themeId = payload.themeId || null;
         const iconVal = typeof payload.icon === 'object' ? (payload.icon?.url || '') : (payload.icon || '');
         const iconKey = payload.iconKey || (typeof payload.icon === 'object' ? payload.icon?.key : '') || '';
         payload.icon = { url: (iconVal || '').trim(), key: (iconKey || '').trim() };
@@ -759,13 +767,20 @@ const DynamicModuleView = () => {
         };
       }
 
+      let saveResponse;
       if (editingRecord) {
-        await api.put(`${cleanEndpoint}/${editingRecord._id || editingRecord.id}`, payload);
+        saveResponse = await api.put(`${cleanEndpoint}/${editingRecord._id || editingRecord.id}`, payload);
         toast.success(`${singleName} updated successfully!`);
       } else {
-        await api.post(cleanEndpoint, payload);
+        saveResponse = await api.post(cleanEndpoint, payload);
+        if (isCategoryPage && saveResponse.data?.data) setEditingRecord(saveResponse.data.data);
         toast.success(`${singleName} created successfully!`);
       }
+      const savedId = saveResponse.data?.data?._id || editingRecord?._id || editingRecord?.id;
+      if (isCategoryPage && savedId && Object.keys(pendingThemeImages).length) {
+        await savePendingThemeMedia(formData.themeId, 'category', savedId, pendingThemeImages);
+      }
+      setPendingThemeImages({});
 
       setIsModalOpen(false);
       setEditingRecord(null);
@@ -1321,7 +1336,7 @@ const DynamicModuleView = () => {
                             </span>
                           </div>
 
-                          <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} slots={[{ key: 'banner', label: 'Category banner', url: bannerUrl }]}>
+                          <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} selectedThemeId={formData.themeId || ''} onThemeChange={(value) => { setFormData((previous) => ({ ...previous, themeId: value })); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={[{ key: 'banner', label: 'Category banner', url: bannerUrl }]}>
                           <div className="space-y-2 pt-1">
                             {hasBanner ? (
                               <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
@@ -1415,7 +1430,7 @@ const DynamicModuleView = () => {
                       const hasIcon = Boolean(iconUrl && typeof iconUrl === 'string' && iconUrl.trim().length > 0);
 
                       return (
-                        <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} slots={[{ key: 'icon', label: 'Category icon', url: iconUrl }]}>
+                        <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} selectedThemeId={formData.themeId || ''} onThemeChange={(value) => { setFormData((previous) => ({ ...previous, themeId: value })); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={[{ key: 'icon', label: 'Category icon', url: iconUrl }]}>
 
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">

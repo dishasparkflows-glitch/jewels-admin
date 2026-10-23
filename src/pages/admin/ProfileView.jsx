@@ -8,7 +8,6 @@ import {
   HiOutlineColorSwatch,
   HiOutlineLockClosed,
   HiOutlineCheck,
-  HiOutlineSparkles,
   HiOutlineRefresh,
   HiOutlineShieldCheck,
   HiOutlineEye,
@@ -27,11 +26,6 @@ export default function ProfileView() {
     selectCustomColor,
     resetToDefault,
     isDefault,
-    sidebarPosition,
-    setSidebarPosition,
-    sidebarOpen,
-    setSidebarOpen,
-    toggleSidebar,
   } = useTheme();
 
   const [activeTab, setActiveTab] = useState('theme'); // 'theme' | 'profile' | 'security'
@@ -352,98 +346,6 @@ export default function ProfileView() {
       {/* ─── TAB 1: THEME & APPEARANCE ────────────────────────── */}
       {activeTab === 'theme' && (
         <div className="space-y-6">
-          {/* Default Theme Card (Highlighted First) */}
-          <div
-            className={`rounded-2xl p-5 sm:p-6 transition-all duration-200 border-2 ${
-              isDefault
-                ? 'bg-white shadow-md ring-2 ring-stone-900/5'
-                : 'bg-white/80 border-stone-200/80 hover:border-stone-300'
-            }`}
-            style={{
-              borderColor: isDefault ? defaultTheme.primary : undefined,
-            }}
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-start gap-4">
-                <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center font-bold text-white shadow-sm flex-shrink-0"
-                  style={{ backgroundColor: defaultTheme.primary }}
-                >
-                  <HiOutlineSparkles className="w-6 h-6 text-[#f4ece0]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-stone-900">
-                      Default Luxury Bronze
-                    </h3>
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d9c2]">
-                      Original Brand
-                    </span>
-                    {isDefault && (
-                      <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
-                        <HiOutlineCheck className="w-3.5 h-3.5" /> Active Theme
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs sm:text-sm text-stone-500 mt-1 max-w-xl">
-                    Our current signature luxury bronze and warm beige palette crafted for fine jewellery. Selecting this restores the portal's original look.
-                  </p>
-
-                  {/* Swatches preview for default */}
-                  <div className="flex items-center gap-2 mt-3">
-                    <span className="text-[11px] font-semibold text-stone-400">Palette:</span>
-                    <div className="flex items-center gap-1.5">
-                      <div
-                        className="w-5 h-5 rounded-md border border-stone-200 shadow-2xs"
-                        style={{ backgroundColor: defaultTheme.primary }}
-                        title="Primary Bronze (#8b6f4e)"
-                      />
-                      <div
-                        className="w-5 h-5 rounded-md border border-stone-200 shadow-2xs"
-                        style={{ backgroundColor: defaultTheme.accent }}
-                        title="Accent Gold (#9c7849)"
-                      />
-                      <div
-                        className="w-5 h-5 rounded-md border border-stone-200 shadow-2xs"
-                        style={{ backgroundColor: defaultTheme.light }}
-                        title="Light Cream (#f4ece0)"
-                      />
-                      <div
-                        className="w-5 h-5 rounded-md border border-stone-200 shadow-2xs"
-                        style={{ backgroundColor: defaultTheme.soft }}
-                        title="Soft Warm Linen (#faf5ee)"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 self-start sm:self-center">
-                <button
-                  type="button"
-                  onClick={() => handleSelectPreset('default')}
-                  className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                    isDefault
-                      ? 'bg-stone-900 text-white cursor-default shadow-xs'
-                      : 'bg-white hover:bg-stone-50 text-stone-800 border border-stone-300 hover:border-stone-400 shadow-2xs'
-                  }`}
-                >
-                  {isDefault ? (
-                    <>
-                      <HiOutlineCheck className="w-4 h-4 text-emerald-400 stroke-2" />
-                      <span>Current Theme</span>
-                    </>
-                  ) : (
-                    <>
-                      <HiOutlineRefresh className="w-4 h-4 text-[#8b6f4e]" />
-                      <span>Restore Default Theme</span>
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-
           {/* Curated Theme Presets Grid */}
           <div className="bg-white rounded-2xl border border-stone-200/80 p-5 sm:p-6 shadow-xs">
             <div className="flex items-center justify-between mb-4">
@@ -606,106 +508,6 @@ export default function ProfileView() {
             </div>
           </div>
 
-          {/* Sidebar Layout & Placement Card */}
-          <div className="bg-white rounded-2xl border border-stone-200/80 p-5 sm:p-6 shadow-xs space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-stone-100 pb-3">
-              <div>
-                <h3 className="text-sm sm:text-base font-bold text-stone-900">
-                  Sidebar Placement & Visibility
-                </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Configure whether the luxury navigation sidebar is docked on the left or right side of your screen, and control its visibility.
-                </p>
-              </div>
-
-              {/* Quick Toggle On / Off */}
-              <button
-                type="button"
-                onClick={toggleSidebar}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer self-start sm:self-auto ${
-                  sidebarOpen
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                    : 'bg-stone-100 text-stone-600 border-stone-200 hover:bg-stone-200'
-                }`}
-              >
-                Sidebar State: {sidebarOpen ? 'Visible (ON)' : 'Hidden (OFF)'}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-              {/* Left Side Option */}
-              <div
-                onClick={() => setSidebarPosition('left')}
-                className={`p-4 rounded-xl border-2 transition-all cursor-pointer space-y-3 ${
-                  sidebarPosition === 'left'
-                    ? 'border-[#8b6f4e] bg-[#faf8f5] shadow-xs ring-2 ring-[#8b6f4e]/15'
-                    : 'border-stone-200 bg-white hover:border-stone-300'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-stone-900">
-                    Left Side (Default)
-                  </span>
-                  {sidebarPosition === 'left' && (
-                    <span className="w-5 h-5 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center text-[11px] font-bold">
-                      ✓
-                    </span>
-                  )}
-                </div>
-
-                {/* Visual miniature layout schematic */}
-                <div className="h-16 rounded-lg bg-stone-100 border border-stone-200 flex overflow-hidden p-1 gap-1">
-                  <div className="w-8 h-full bg-[#8b6f4e] rounded-sm shrink-0 flex items-center justify-center">
-                    <span className="text-[7px] text-white font-mono font-bold">MENU</span>
-                  </div>
-                  <div className="flex-1 h-full bg-white rounded-sm border border-stone-200/60 p-1 flex flex-col gap-1">
-                    <div className="h-1.5 w-1/3 bg-stone-300 rounded" />
-                    <div className="h-4 w-full bg-stone-100 rounded" />
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-stone-500">
-                  Standard Western luxury navigation docked on the left-hand side.
-                </p>
-              </div>
-
-              {/* Right Side Option */}
-              <div
-                onClick={() => setSidebarPosition('right')}
-                className={`p-4 rounded-xl border-2 transition-all cursor-pointer space-y-3 ${
-                  sidebarPosition === 'right'
-                    ? 'border-[#8b6f4e] bg-[#faf8f5] shadow-xs ring-2 ring-[#8b6f4e]/15'
-                    : 'border-stone-200 bg-white hover:border-stone-300'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-stone-900">
-                    Right Side (Alternative)
-                  </span>
-                  {sidebarPosition === 'right' && (
-                    <span className="w-5 h-5 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center text-[11px] font-bold">
-                      ✓
-                    </span>
-                  )}
-                </div>
-
-                {/* Visual miniature layout schematic */}
-                <div className="h-16 rounded-lg bg-stone-100 border border-stone-200 flex overflow-hidden p-1 gap-1">
-                  <div className="flex-1 h-full bg-white rounded-sm border border-stone-200/60 p-1 flex flex-col gap-1">
-                    <div className="h-1.5 w-1/3 bg-stone-300 rounded" />
-                    <div className="h-4 w-full bg-stone-100 rounded" />
-                  </div>
-                  <div className="w-8 h-full bg-[#8b6f4e] rounded-sm shrink-0 flex items-center justify-center">
-                    <span className="text-[7px] text-white font-mono font-bold">MENU</span>
-                  </div>
-                </div>
-
-                <p className="text-[11px] text-stone-500">
-                  Docks navigation to the right edge, giving a clean and unique portal perspective.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 

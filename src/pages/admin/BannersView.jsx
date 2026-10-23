@@ -31,6 +31,7 @@ import useCategoryLookup from '../../hooks/useCategoryLookup';
 import Dropdown from '../../components/common/Dropdown';
 import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 
 const getMediaUrl = (url) => {
   if (!url) return '';
@@ -144,6 +145,10 @@ export default function BannersView() {
   const [order, setOrder] = useState(1);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [themeId, setThemeId] = useState('');
+  const [pendingThemeImages, setPendingThemeImages] = useState({});
+  const [imageUploadStats, setImageUploadStats] = useState(null);
+  const [collectionUploadStats, setCollectionUploadStats] = useState({});
 
   // Upload state
   const [isUploading, setIsUploading] = useState(false);
@@ -289,6 +294,10 @@ export default function BannersView() {
     setOrder(banners.length + 1);
     setStartDate('');
     setEndDate('');
+    setThemeId('');
+    setPendingThemeImages({});
+    setImageUploadStats(null);
+    setCollectionUploadStats({});
     setIsDrawerOpen(true);
   };
 
@@ -320,6 +329,12 @@ export default function BannersView() {
     setOrder(banner.display?.order ?? 1);
     setStartDate(formatForInput(banner.startDate));
     setEndDate(formatForInput(banner.endDate));
+    setThemeId(banner.themeId?._id || banner.themeId || '');
+    setPendingThemeImages({});
+    setImageUploadStats(null);
+    setCollectionUploadStats({});
+    setImageUploadStats(null);
+    setCollectionUploadStats({});
     setIsDrawerOpen(true);
   };
 
@@ -351,8 +366,8 @@ export default function BannersView() {
 
       setImageUrl(res.fileUrl);
       setMediaType('image');
-      const savings = res.wasCompressed ? ` (optimized ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)})` : '';
-      toast.success(`Banner image uploaded${savings}`);
+      setImageUploadStats({ originalSize: res.originalSize, compressedSize: res.compressedSize, wasCompressed: res.wasCompressed });
+      toast.success(`Banner image uploaded · ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)}${res.wasCompressed ? ' compressed' : ''}`);
     } catch (err) {
       console.error('Presigned upload failed:', err);
       toast.error(err.response?.data?.message || 'Image upload failed');
@@ -375,15 +390,27 @@ export default function BannersView() {
     try {
       setIsUploading(true);
       const uploaded = await Promise.all(files.map((file) => uploadWithPresignedUrl(file, 'banners')));
+      const targetSlots = target !== null
+        ? [target]
+        : [0, 1, 2, 3].filter((index) => !collectionImages[index]?.url).slice(0, uploaded.length);
       setCollectionImages((current) => {
         const next = Array.from({ length: 4 }, (_, index) => current[index] || {});
-        uploaded.forEach((item) => {
-          const index = target !== null ? target : next.findIndex((image) => !image.url);
+        uploaded.forEach((item, uploadIndex) => {
+          const index = targetSlots[uploadIndex];
           next[index] = { ...next[index], url: item.fileUrl, key: item.key || '' };
         });
         return next;
       });
-      toast.success(`Uploaded & optimized ${uploaded.length} collection image(s)`);
+      setCollectionUploadStats((current) => ({
+        ...current,
+        ...Object.fromEntries(uploaded.map((item, uploadIndex) => [targetSlots[uploadIndex], {
+          originalSize: item.originalSize,
+          compressedSize: item.compressedSize,
+          wasCompressed: item.wasCompressed,
+        }]))
+      }));
+      const sizeSummary = uploaded.map((item) => `${formatBytes(item.originalSize)} → ${formatBytes(item.compressedSize)}`).join('; ');
+      toast.success(`Collection image uploaded · ${sizeSummary}`);
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Collection image upload failed');
     } finally {
@@ -394,6 +421,7 @@ export default function BannersView() {
   };
 
   const handleRemoveCollectionImage = (index) => {
+    setCollectionUploadStats((current) => ({ ...current, [index]: null }));
     setCollectionImages((current) => Array.from({ length: 4 }, (_, i) =>
       i === index ? { _id: current[i]?._id, categoryId: current[i]?.categoryId || '' } : current[i] || {}));
   };
@@ -407,6 +435,7 @@ export default function BannersView() {
       return;
     }
     setImageUrl('');
+    setImageUploadStats(null);
   };
 
   // Direct Toggle Status from Table Switch
@@ -535,14 +564,16 @@ export default function BannersView() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (formType === 'collectionbanner' ? collectionImages.filter((image) => image?.url).length !== 4 : !imageUrl) {
-      toast.error(formType === 'collectionbanner' ? 'Upload exactly 4 images for this collection banner' : 'Please upload a banner image');
-      return;
-    }
-
-    if (formType === 'collectionbanner' && collectionImages.some((image) => !image.categoryId)) {
-      toast.error('Select a category for each collection image');
-      return;
+    if (formType === 'collectionbanner') {
+      const validCollectionImages = collectionImages.filter((image) => image?.url);
+      if (validCollectionImages.length > 0 && validCollectionImages.length !== 4) {
+        toast.error('Upload exactly 4 images for this collection banner, or leave empty');
+        return;
+      }
+      if (validCollectionImages.length > 0 && validCollectionImages.some((image) => !image.categoryId)) {
+        toast.error('Select a category for each collection image');
+        return;
+      }
     }
     try {
       setSubmitting(true);
@@ -554,29 +585,62 @@ export default function BannersView() {
         SECTION_TYPE_CONFIG[formType]?.label ||
         'Section Banner';
 
+      const payloadContent = {
+        title: sectionTitle,
+      };
+      const effectiveSubtitle = subtitle.trim() || editingBanner?.content?.subtitle;
+      if (effectiveSubtitle) {
+        payloadContent.subtitle = effectiveSubtitle;
+      }
+      const effectiveDescription = editingBanner?.content?.description;
+      if (effectiveDescription) {
+        payloadContent.description = effectiveDescription;
+      }
+
+      const payloadDisplay = {
+        type: formType,
+        platform,
+        order: Number(order) || 0,
+        position: editingBanner?.display?.position || editingBanner?.position || 'none',
+      };
+      if (selectedCategory) {
+        payloadDisplay.categoryId = selectedCategory;
+      } else if (editingBanner?.display?.categoryId) {
+        payloadDisplay.categoryId = null; // explicit clear
+      }
+
+      if (formType === 'collectionbanner') {
+        if (collectionGroup) payloadDisplay.collectionGroup = collectionGroup;
+        if (selectedMenuItemIds && selectedMenuItemIds.length > 0) {
+          payloadDisplay.menuItemIds = selectedMenuItemIds;
+        }
+      }
+
       const payload = {
-        content: {
-          title: sectionTitle,
-          subtitle: subtitle.trim() || editingBanner?.content?.subtitle || '',
-          description: editingBanner?.content?.description || '',
-        },
-        display: {
-          categoryId: selectedCategory || null,
-          ...(formType === 'collectionbanner' ? {
-            collectionGroup,
-            menuItemIds: selectedMenuItemIds,
-          } : {}),
-          type: formType,
-          platform,
-          order: Number(order) || 0,
-          position: editingBanner?.display?.position || editingBanner?.position || 'none',
-        },
-        link: destinationLink.trim(),
+        content: payloadContent,
+        display: payloadDisplay,
         mediaType,
         status,
-        startDate: formType === 'offerbanner' && startDate ? new Date(startDate).toISOString() : null,
-        endDate: formType === 'offerbanner' && endDate ? new Date(endDate).toISOString() : null,
+        themeId: themeId || null,
       };
+
+      const trimmedLink = destinationLink.trim();
+      if (trimmedLink) {
+        payload.link = trimmedLink;
+      } else if (editingBanner?.link) {
+        payload.link = ''; // explicit clear
+      }
+
+      if (formType === 'offerbanner') {
+        if (startDate) payload.startDate = new Date(startDate).toISOString();
+        else if (editingBanner?.startDate) payload.startDate = null;
+
+        if (endDate) payload.endDate = new Date(endDate).toISOString();
+        else if (editingBanner?.endDate) payload.endDate = null;
+      } else if (editingBanner?.startDate || editingBanner?.endDate) {
+        payload.startDate = null;
+        payload.endDate = null;
+      }
 
       if (formType === 'offerbanner' && startDate && endDate && new Date(endDate) <= new Date(startDate)) {
         toast.error('Offer End Date & Time must be after Start Date & Time');
@@ -585,20 +649,47 @@ export default function BannersView() {
       }
 
       if (mediaType === 'image') {
-        payload.image = formType === 'collectionbanner' ? collectionImages[0] : { url: imageUrl };
-        payload.video = undefined;
-        if (formType === 'collectionbanner') payload.collectionImages = collectionImages;
+        if (formType === 'collectionbanner') {
+          const validImgs = collectionImages.filter((img) => img?.url);
+          if (validImgs.length > 0) {
+            payload.image = validImgs[0];
+            payload.collectionImages = validImgs;
+          } else if (editingBanner?.collectionImages?.length) {
+            payload.collectionImages = [];
+            payload.image = null;
+          }
+        } else if (imageUrl) {
+          payload.image = { url: imageUrl };
+        } else if (editingBanner?.image?.url) {
+          payload.image = null;
+        }
       } else {
-        payload.video = { url: imageUrl };
-        payload.image = undefined;
+        if (imageUrl) {
+          payload.video = { url: imageUrl };
+        } else if (editingBanner?.video?.url) {
+          payload.video = null;
+        }
       }
 
+      let saveResponse;
       if (editingBanner?._id) {
-        await api.put(`/banners/${editingBanner._id}`, payload);
+        saveResponse = await api.put(`/banners/${editingBanner._id}`, payload);
         toast.success('Section updated successfully');
       } else {
-        await api.post('/banners', payload);
+        saveResponse = await api.post('/banners', payload);
+        if (saveResponse.data?.data) setEditingBanner(saveResponse.data.data);
         toast.success('New section added successfully');
+      }
+      const savedId = saveResponse.data?.data?._id || editingBanner?._id;
+      if (savedId && Object.keys(pendingThemeImages).length) {
+        const savedCollectionImages = saveResponse.data?.data?.collectionImages || editingBanner?.collectionImages || [];
+        const mediaToSave = Object.fromEntries(Object.entries(pendingThemeImages).map(([slot, image]) => {
+          const pendingIndex = slot.match(/^collection:new:(\d+)$/);
+          return pendingIndex
+            ? [`collection:${savedCollectionImages[Number(pendingIndex[1])]?._id}`, image]
+            : [slot, image];
+        }).filter(([slot]) => !slot.endsWith(':undefined')));
+        await savePendingThemeMedia(themeId, 'banner', savedId, mediaToSave);
       }
 
       handleCloseDrawer();
@@ -964,8 +1055,9 @@ export default function BannersView() {
                 {/* ─── 2. Banner Image ─── */}
                 <div className="space-y-2.5">
                   <h3 className="text-xs font-semibold text-stone-700">
-                    2. Banner Image
+                    2. Banner Image <span className="font-normal text-stone-400">(Optional)</span>
                   </h3>
+
 
                   {/* Hidden file input */}
                   <input
@@ -977,8 +1069,8 @@ export default function BannersView() {
                     className="hidden"
                   />
 
-                  <ThemeImageField key={editingBanner?._id || 'new'} module="banner" recordId={editingBanner?._id} slots={formType === 'collectionbanner'
-                    ? (editingBanner?.collectionImages || []).map((image, index) => ({ key: `collection:${image._id}`, label: `Collection tile ${index + 1}`, url: collectionImages[index]?.url || image.url }))
+                  <ThemeImageField key={editingBanner?._id || 'new'} module="banner" recordId={editingBanner?._id} selectedThemeId={themeId} onThemeChange={(value) => { setThemeId(value); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={formType === 'collectionbanner'
+                    ? [0, 1, 2, 3].map((index) => ({ key: editingBanner?.collectionImages?.[index]?._id ? `collection:${editingBanner.collectionImages[index]._id}` : `collection:new:${index}`, label: `Collection tile ${index + 1}`, url: collectionImages[index]?.url || editingBanner?.collectionImages?.[index]?.url }))
                     : [{ key: 'image', label: 'Banner image', url: imageUrl }]}>
                   {/* Image Preview with delete button */}
                   {formType === 'collectionbanner' ? (
@@ -1003,6 +1095,12 @@ export default function BannersView() {
                                   menuClassName="z-[60]"
                                 />
                               </div>
+                              {collectionUploadStats[index] && (
+                                <div className="absolute inset-x-2 bottom-14 z-10 rounded-lg bg-white/95 px-2 py-1 text-center text-[10px] font-medium text-stone-700 shadow-sm">
+                                  {formatBytes(collectionUploadStats[index].originalSize)} → {formatBytes(collectionUploadStats[index].compressedSize)}
+                                  {collectionUploadStats[index].wasCompressed ? ' · compressed' : ' · original'}
+                                </div>
+                              )}
                               <div className="absolute inset-x-2 bottom-3 flex flex-wrap items-center justify-center gap-2">
                                 <button type="button" disabled={isUploading} onClick={() => { collectionSlotRef.current = index; fileInputRef.current?.click(); }} className="rounded-lg bg-white px-3 py-2 text-xs font-semibold shadow-sm disabled:opacity-50">{image.url ? 'Change' : `Upload image ${index + 1}`}</button>
                                 {image.url && <button type="button" disabled={isUploading} onClick={() => handleRemoveCollectionImage(index)} aria-label={`Remove image ${index + 1}`} className="rounded-lg bg-white p-2 text-red-500 shadow-sm"><HiOutlineTrash className="h-4 w-4" /></button>}
@@ -1029,6 +1127,12 @@ export default function BannersView() {
                       </button>
                     </div>
                   ) : null}
+
+                  {formType !== 'collectionbanner' && imageUploadStats && (
+                    <p className="text-[11px] text-emerald-700">
+                      Uploaded size: {formatBytes(imageUploadStats.originalSize)} → {formatBytes(imageUploadStats.compressedSize)}{imageUploadStats.wasCompressed ? ' after compression' : ' (compression not applied)'}
+                    </p>
+                  )}
 
                   {/* Upload Progress Bar if uploading */}
                   {isUploading && (

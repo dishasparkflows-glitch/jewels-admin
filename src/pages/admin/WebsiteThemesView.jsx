@@ -1,7 +1,7 @@
 import ThemeImageField from '../../components/common/ThemeImageField';
 import ThemeMediaManager from '../../components/common/ThemeMediaManager';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { HiOutlineArrowLeft, HiOutlineDuplicate, HiOutlineEye, HiOutlinePhotograph, HiOutlinePlus, HiOutlineSave, HiOutlineShieldCheck, HiOutlineX } from 'react-icons/hi';
+import { HiOutlineArrowLeft, HiOutlineCheck, HiOutlineDuplicate, HiOutlineEye, HiOutlinePhotograph, HiOutlinePlus, HiOutlineSave, HiOutlineShieldCheck, HiOutlineX } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { websiteThemesAPI } from '../../api/services';
@@ -149,6 +149,25 @@ export default function WebsiteThemesView() {
     catch (error) { toast.error(error.response?.data?.message || 'Could not archive theme'); }
   };
 
+  const [activatingId, setActivatingId] = useState(null);
+
+  const activateTheme = async (theme) => {
+    if (!theme?._id || activatingId) return;
+    setActivatingId(theme._id);
+    try {
+      const result = getData(await websiteThemesAPI.publish(theme._id, {}));
+      toast.success(`Theme “${theme.name}” is now active`);
+      await fetchThemes();
+      if (editing?._id === theme._id) {
+        setEditing(result?.theme || { ...theme, status: 'active' });
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Could not activate theme');
+    } finally {
+      setActivatingId(null);
+    }
+  };
+
   const publishTheme = async () => {
     if (!editing?._id) { toast.error('Save the theme before publishing'); return; }
     if (editorIsActive && publishStart && new Date(istDateToIso(publishStart)) > new Date()) {
@@ -230,6 +249,17 @@ export default function WebsiteThemesView() {
           <div className="flex items-center gap-2">
             {editing.status && <span className={`rounded-full px-3 py-1.5 text-xs font-semibold capitalize ring-1 ${statusClass[editing.status]}`}>{editing.status}</span>}
             <button type="button" onClick={saveTheme} disabled={saving || editorIsActive} className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"><HiOutlineSave />{saving ? 'Saving…' : 'Save draft'}</button>
+            {editing._id && !editorIsActive && (
+              <button
+                type="button"
+                onClick={() => activateTheme(editing)}
+                disabled={activatingId === editing._id}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-sm font-semibold text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
+              >
+                <HiOutlineCheck className="h-4 w-4" />
+                {activatingId === editing._id ? 'Activating…' : 'Active'}
+              </button>
+            )}
           </div>
         </header>
         {editorIsActive && <p className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">This theme is live. Duplicate it to make changes without changing the storefront.</p>}
@@ -349,7 +379,56 @@ export default function WebsiteThemesView() {
         const hero = theme.publishedSnapshot?.config?.banners?.find((banner) => banner.placement === 'hero') || theme.config?.banners?.find((banner) => banner.placement === 'hero');
         return <article key={theme._id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
           <div className="relative h-40 bg-gradient-to-br from-[#eadcc8] to-[#8b6c3a]" style={{ backgroundImage: hero?.desktopImage?.url ? `linear-gradient(0deg,rgba(20,16,12,.2),transparent),url("${hero.desktopImage.url}")` : undefined, backgroundSize: 'cover', backgroundPosition: 'center' }}><span className={`absolute left-4 top-4 rounded-full px-3 py-1 text-xs font-semibold capitalize ring-1 ${statusClass[theme.status]}`}>{theme.status}</span></div>
-          <div className="space-y-3 p-4"><div className="flex items-start justify-between gap-2"><div><h2 className="font-bold text-slate-900">{theme.name}</h2><p className="text-xs text-slate-500">{theme.code} · Updated {theme.meta?.updatedAt ? new Date(theme.meta.updatedAt).toLocaleDateString('en-IN') : '—'}</p></div>{theme.status === 'active' && <span className="text-xs font-semibold text-emerald-700">● Live</span>}</div><p className="min-h-10 text-sm text-slate-600">{theme.description || 'No campaign description.'}</p><div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3"><button onClick={() => openEditor(theme)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white">{theme.status === 'active' ? 'View live' : 'Edit'}</button><button onClick={() => duplicateTheme(theme)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700"><HiOutlineDuplicate />Duplicate</button>{theme.status !== 'archived' && theme.status !== 'active' && <button onClick={() => archiveTheme(theme)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600">Archive</button>}{theme.publishedSnapshot && theme.status !== 'active' && <button onClick={() => rollbackTheme(theme)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600">Restore version</button>}{theme.status === 'active' && <button onClick={() => openEditor(theme).then(() => setTab('publish'))} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600">Manage expiry</button>}</div></div>
+          <div className="space-y-3 p-4">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="font-bold text-slate-900">{theme.name}</h2>
+                <p className="text-xs text-slate-500">{theme.code} · Updated {theme.meta?.updatedAt ? new Date(theme.meta.updatedAt).toLocaleDateString('en-IN') : '—'}</p>
+              </div>
+              {theme.status === 'active' && <span className="text-xs font-semibold text-emerald-700">● Live</span>}
+            </div>
+            <p className="min-h-10 text-sm text-slate-600">{theme.description || 'No campaign description.'}</p>
+            <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+              <button onClick={() => openEditor(theme)} className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-semibold text-white">
+                {theme.status === 'active' ? 'View live' : 'Edit'}
+              </button>
+              <button onClick={() => duplicateTheme(theme)} className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">
+                <HiOutlineDuplicate />Duplicate
+              </button>
+              {theme.status !== 'archived' && theme.status !== 'active' && (
+                <button onClick={() => archiveTheme(theme)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600">
+                  Archive
+                </button>
+              )}
+              {theme.status !== 'archived' && theme.status !== 'active' && (
+                <button
+                  type="button"
+                  disabled={activatingId === theme._id}
+                  onClick={() => activateTheme(theme)}
+                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3 py-2 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
+                  title="Make this theme active"
+                >
+                  <HiOutlineCheck className="h-3.5 w-3.5" />
+                  {activatingId === theme._id ? 'Activating…' : 'Active'}
+                </button>
+              )}
+              {theme.status === 'active' && (
+                <span className="inline-flex items-center gap-1 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700">
+                  <HiOutlineCheck className="h-3.5 w-3.5" />Active
+                </span>
+              )}
+              {theme.publishedSnapshot && theme.status !== 'active' && (
+                <button onClick={() => rollbackTheme(theme)} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600">
+                  Restore version
+                </button>
+              )}
+              {theme.status === 'active' && (
+                <button onClick={() => openEditor(theme).then(() => setTab('publish'))} className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600">
+                  Manage expiry
+                </button>
+              )}
+            </div>
+          </div>
         </article>;
       })}</div> : <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-14 text-center"><HiOutlinePhotograph className="mx-auto h-9 w-9 text-slate-400" /><h2 className="mt-3 font-semibold text-slate-800">No themes found</h2><p className="mt-1 text-sm text-slate-500">Create a theme to start preparing your next storefront campaign.</p></div>}
     </div>

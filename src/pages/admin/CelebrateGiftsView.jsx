@@ -18,7 +18,7 @@ import {
 import { IoCubeOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { deleteUploadedFile, formatBytes, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -28,6 +28,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import Dropdown from '../../components/common/Dropdown';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
@@ -70,6 +71,8 @@ export default function CelebrateGiftsView() {
   const [categoryId, setCategoryId] = useState('');
   const [menuItemIds, setMenuItemIds] = useState([]);
   const [imageUrl, setImageUrl] = useState('');
+  const [themeId, setThemeId] = useState('');
+  const [pendingThemeImages, setPendingThemeImages] = useState({});
   const [imagePublicId, setImagePublicId] = useState('');
   const [status, setStatus] = useState('active');
   const [selectedProductIds, setSelectedProductIds] = useState([]);
@@ -232,6 +235,8 @@ export default function CelebrateGiftsView() {
     setCategoryId('');
     setMenuItemIds([]);
     setImageUrl('');
+    setThemeId('');
+    setPendingThemeImages({});
     setImagePublicId('');
     setStatus('active');
     setSelectedProductIds([]);
@@ -251,6 +256,8 @@ export default function CelebrateGiftsView() {
     setCategoryId(catId);
     setMenuItemIds(mIds);
     setImageUrl(item.image?.url || '');
+    setThemeId(item.themeId?._id || item.themeId || '');
+    setPendingThemeImages({});
     setImagePublicId(item.image?.key || '');
     setStatus(item.status || 'active');
     setSelectedProductIds(item.productIds || []);
@@ -288,7 +295,7 @@ export default function CelebrateGiftsView() {
       const res = await uploadWithPresignedUrl(file, 'featured', setUploadProgress);
       setImageUrl(res.fileUrl);
       setImagePublicId(res.key || '');
-      toast.success('Cover image uploaded');
+      toast.success(`Cover image uploaded · ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)}${res.wasCompressed ? ' compressed' : ''}`);
     } catch (err) {
       console.error('Upload error:', err);
       toast.error('Failed to upload image');
@@ -319,6 +326,7 @@ export default function CelebrateGiftsView() {
     try {
       setSubmitting(true);
       const payload = {
+        themeId: themeId || null,
         name: title.trim(),
         placement: placement || (placementFilter !== 'all' ? placementFilter : 'Celebrate'),
         categoryId: categoryId || null,
@@ -332,13 +340,20 @@ export default function CelebrateGiftsView() {
         productCount: selectedProductIds.length,
       };
 
+      let saveResponse;
       if (editingItem?._id) {
-        await api.put(`/featured/${editingItem._id}`, payload);
+        saveResponse = await api.put(`/featured/${editingItem._id}`, payload);
         toast.success('Campaign group updated successfully');
       } else {
-        await api.post('/featured', payload);
+        saveResponse = await api.post('/featured', payload);
+        if (saveResponse.data?.data) setEditingItem(saveResponse.data.data);
         toast.success('Campaign group created successfully');
       }
+      const savedId = saveResponse.data?.data?._id || editingItem?._id;
+      if (savedId && Object.keys(pendingThemeImages).length) {
+        await savePendingThemeMedia(themeId, 'featured', savedId, pendingThemeImages);
+      }
+      setPendingThemeImages({});
 
       setIsModalOpen(false);
       await fetchFeatured();
@@ -789,7 +804,7 @@ export default function CelebrateGiftsView() {
                 <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
                   COVER IMAGE
                 </label>
-                <ThemeImageField key={editingItem?._id || 'new'} module="featured" recordId={editingItem?._id} slots={[{ key: 'image', label: 'Cover image', url: imageUrl }]}>
+                <ThemeImageField key={editingItem?._id || 'new'} module="featured" recordId={editingItem?._id} selectedThemeId={themeId} onThemeChange={(value) => { setThemeId(value); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={[{ key: 'image', label: 'Cover image', url: imageUrl }]}>
                 <div className="relative border-2 border-dashed border-stone-200 hover:border-stone-400 rounded-2xl p-4 flex flex-col items-center justify-center bg-[#fafafa] hover:bg-stone-50/50 transition-colors min-h-[140px] cursor-pointer">
                   {imageUrl ? (
                     <div className="relative w-full h-32 rounded-xl overflow-hidden group">
@@ -888,8 +903,16 @@ export default function CelebrateGiftsView() {
                       const isSelected = selectedProductIds.includes(p._id);
                       const thumb =
                         p.thumbnail ||
+                        p.image ||
+                        p.firstPhoto ||
+                        p.colorImages?.[0]?.firstPhoto ||
                         p.colorImages?.[0]?.images?.[0]?.url ||
                         null;
+
+                      const title = p.title || p.basicInfo?.title || 'Untitled Product';
+                      const sku = p.sku || p.basicInfo?.sku || p.ornate?.tagNo || p.ornate?.itemCode || 'N/A';
+                      const price = Number(p.price || p.pricing?.salePrice || p.pricing?.mrp || p.cataloguePrice || 0);
+                      const categoryName = Array.isArray(p.category) && p.category[0]?.name ? p.category[0].name : '';
 
                       return (
                         <div
@@ -909,22 +932,25 @@ export default function CelebrateGiftsView() {
                             {thumb ? (
                               <img
                                 src={getMediaUrl(thumb)}
-                                alt={p.title}
+                                alt={title}
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                                }}
                                 className="w-full h-full object-cover"
                               />
-                            ) : (
-                              <IoCubeOutline className="w-4 h-4 text-stone-400" />
-                            )}
+                            ) : null}
+                            <IoCubeOutline className={`w-4 h-4 text-stone-400 ${thumb ? 'hidden' : ''}`} />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-stone-800 truncate">
-                              {p.title}
+                            <p className="text-xs font-semibold text-stone-800 truncate" title={title}>
+                              {title}
                             </p>
                             <p className="text-[10px] text-stone-400 font-mono truncate">
-                              {Array.isArray(p.category) && p.category[0]?.name ? (
-                                <span className="text-stone-500 font-sans mr-1">{p.category[0].name} •</span>
+                              {categoryName ? (
+                                <span className="text-stone-500 font-sans mr-1">{categoryName} •</span>
                               ) : null}
-                              SKU: {p.sku || 'N/A'} • ₹{p.price?.toLocaleString?.('en-IN') || p.price}
+                              SKU: {sku} • ₹{price > 0 ? price.toLocaleString('en-IN') : '0'}
                             </p>
                           </div>
                         </div>
