@@ -63,7 +63,7 @@ export default function CelebrateGiftsView() {
   const [editingItem, setEditingItem] = useState(null);
 
   // Category and Menu Item lookup
-  const { categoryOptions } = useCategoryLookup();
+  const { categories = [], categoryOptions = [] } = useCategoryLookup();
 
   // Form State
   const [title, setTitle] = useState('');
@@ -318,16 +318,14 @@ export default function CelebrateGiftsView() {
   // Save / Update Group
   const handleSaveGroup = async (e) => {
     e.preventDefault();
-    if (!title.trim()) {
-      toast.error('Please enter a group title');
-      return;
-    }
+    const selectedCat = (categories || []).find((c) => String(c._id) === String(categoryId));
+    const effectiveTitle = title.trim() || selectedCat?.name || '';
 
     try {
       setSubmitting(true);
       const payload = {
         themeId: themeId || null,
-        name: title.trim(),
+        name: effectiveTitle,
         placement: placement || (placementFilter !== 'all' ? placementFilter : 'Celebrate'),
         categoryId: categoryId || null,
         menuItemIds: Array.isArray(menuItemIds) ? menuItemIds : [],
@@ -620,7 +618,7 @@ export default function CelebrateGiftsView() {
 
                     {/* Showcase Name */}
                     <td className="py-2.5 px-3 font-bold text-stone-900 text-xs max-w-xs">
-                      <div className="truncate">{item.name}</div>
+                      <div className="truncate">{item.name || item.categoryId?.name || 'Untitled Group'}</div>
                       {(item.categoryId?.name || (Array.isArray(item.menuItemIds) && item.menuItemIds.length > 0)) && (
                         <div className="text-[10.5px] text-stone-400 font-normal truncate mt-0.5 flex items-center gap-1.5">
                           {item.categoryId?.name && (
@@ -716,15 +714,17 @@ export default function CelebrateGiftsView() {
             <form onSubmit={handleSaveGroup} className="p-6 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto">
               {/* GROUP TITLE */}
               <div>
-                <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
-                  GROUP TITLE
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
+                    GROUP TITLE
+                  </label>
+                  <span className="text-[10px] font-medium text-stone-400">Optional</span>
+                </div>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Wedding Bestsellers"
-                  required
                   className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
                 />
               </div>

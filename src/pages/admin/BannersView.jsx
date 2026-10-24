@@ -19,6 +19,7 @@ import {
   HiOutlineGift,
   HiOutlineClock,
   HiOutlineGlobeAlt,
+  HiOutlineColorSwatch,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -73,6 +74,11 @@ const SECTION_TYPE_CONFIG = {
     badgeClass: 'bg-[#fff1f2] text-[#e11d48] border border-[#fecdd3]/60',
     icon: HiOutlineGift,
   },
+  customizebanner: {
+    label: 'Customize Banner',
+    badgeClass: 'bg-[#fef3c7] text-[#b45309] border border-[#fde68a]/60',
+    icon: HiOutlineColorSwatch,
+  },
   mobileappbanner: {
     label: 'App Banner',
     badgeClass: 'bg-[#e6f7ed] text-[#137333] border border-[#a8dab5]/50',
@@ -95,6 +101,7 @@ const SECTION_TYPE_OPTIONS = [
   { value: 'collectionbanner', label: 'Collection Banner', icon: HiOutlineViewGrid },
   { value: 'categorybanner', label: 'Category Banner', icon: HiOutlineTag },
   { value: 'offerbanner', label: 'Offer Banner', icon: HiOutlineGift },
+  { value: 'customizebanner', label: 'Customize Banner', icon: HiOutlineColorSwatch },
   { value: 'mobileappbanner', label: 'App Banner', icon: HiOutlineDeviceMobile },
   { value: 'bookappointbanner', label: 'Appointment Banner', icon: HiOutlineCalendar },
   { value: 'websitebanner', label: 'Other Section', icon: HiOutlineSparkles },
@@ -106,6 +113,7 @@ const TABS = [
   { key: 'collectionbanner', label: 'Collection Banner' },
   { key: 'categorybanner', label: 'Category Banner' },
   { key: 'offerbanner', label: 'Offer Banner' },
+  { key: 'customizebanner', label: 'Customize Banner' },
   { key: 'mobileappbanner', label: 'App Banner' },
   { key: 'bookappointbanner', label: 'Appointment Banner' },
   { key: 'websitebanner', label: 'Other' },
@@ -212,6 +220,7 @@ export default function BannersView() {
       collectionbanner: 0,
       categorybanner: 0,
       offerbanner: 0,
+      customizebanner: 0,
       mobileappbanner: 0,
       bookappointbanner: 0,
       websitebanner: 0,
@@ -1242,6 +1251,48 @@ export default function BannersView() {
                       <p className="text-[11px] text-[#9c4221] leading-relaxed">
                         ⏳ When the <strong>End Date & Time</strong> passes, the scheduled backend cron job will automatically delete this expired offer banner from the website.
                       </p>
+                    </div>
+                  )}
+
+                  {/* Customize Banner heading, subtitle and action link */}
+                  {formType === 'customizebanner' && (
+                    <div className="space-y-3 p-3.5 rounded-xl bg-amber-50/40 border border-amber-200/60">
+                      <div>
+                        <label className="block text-[11px] font-medium text-stone-700 mb-1">
+                          Heading / Title
+                        </label>
+                        <input
+                          type="text"
+                          value={title}
+                          onChange={(e) => setTitle(e.target.value)}
+                          placeholder="e.g. Craft Your Dream Jewellery"
+                          className="w-full h-10 px-3 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-stone-700 mb-1">
+                          Subtitle / Description
+                        </label>
+                        <input
+                          type="text"
+                          value={subtitle}
+                          onChange={(e) => setSubtitle(e.target.value)}
+                          placeholder="e.g. From bespoke engagement rings to family heirlooms..."
+                          className="w-full h-10 px-3 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-medium text-stone-700 mb-1">
+                          Button Link / Action URL <span className="text-stone-400 font-normal">(Optional)</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={destinationLink}
+                          onChange={(e) => setDestinationLink(e.target.value)}
+                          placeholder="e.g. /custom-jewellery (leave empty for Appointment modal)"
+                          className="w-full h-10 px-3 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b]"
+                        />
+                      </div>
                     </div>
                   )}
 

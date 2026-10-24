@@ -59,7 +59,10 @@ export const websiteThemesAPI = {
   publish: (id, data = {}) => api.post(`/website/themes/${id}/publish`, data),
   rollback: (id) => api.post(`/website/themes/${id}/rollback`),
   archive: (id) => api.post(`/website/themes/${id}/archive`),
+  remove: (id) => api.delete(`/website/themes/${id}`),
   getHistory: (themeId) => api.get('/website/themes/history', { params: themeId ? { themeId } : {} }),
+  getMediaLibrary: (themeId) => api.get(`/website/themes/${themeId}/media-library`),
+  saveMedia: (themeId, data) => api.put(`/website/themes/${themeId}/media`, data),
 };
 
 // ─── Top Announcements ────────────────────────────
@@ -111,5 +114,30 @@ export const blogsAPI = {
   create: (data) => api.post('/blogs', data),
   update: (id, data) => api.put(`/blogs/${id}`, data),
   delete: (id) => api.delete(`/blogs/${id}`),
+};
+
+// ─── Banners & Sections ───────────────────────────
+export const bannersAPI = {
+  getAll: (params) => api.get('/banners', { params }),
+  getById: (id) => api.get(`/banners/${id}`),
+  create: (data) => api.post('/banners', data),
+  update: (id, data) => api.put(`/banners/${id}`, data),
+  delete: (id) => api.delete(`/banners/${id}`),
+};
+
+// ─── Featured (Celebrate & Gifts) ─────────────────
+export const featuredAPI = {
+  getAll: (params) => api.get('/featured', { params }),
+  getById: (id) => api.get(`/featured/${id}`),
+  create: (data) => api.post('/featured', data),
+  update: (id, data) => api.put(`/featured/${id}`, data),
+  delete: (id) => api.delete(`/featured/${id}`),
+};
+
+// ─── Categories ───────────────────────────────────
+export const categoriesAPI = {
+  getAll: (params) => api.get('/categories', { params }),
+  getLookup: (params) => api.get('/categories/lookup', { params }),
+  getById: (id) => api.get(`/categories/${id}`),
 };
 

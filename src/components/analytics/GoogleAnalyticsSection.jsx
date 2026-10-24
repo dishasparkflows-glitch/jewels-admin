@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import {
   HiOutlineTrendingUp,
   HiOutlineUsers,
@@ -9,11 +8,12 @@ import {
   HiOutlineRefresh,
   HiOutlineInformationCircle,
   HiOutlineShoppingBag,
-  HiOutlineExternalLink,
   HiOutlineChevronDown,
   HiOutlineSparkles,
 } from 'react-icons/hi';
 import api from '../../api/axios';
+import Pagination from '../common/Pagination';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 const DATE_RANGES = [
   { label: 'Last 7 Days', value: '7daysAgo' },
@@ -27,6 +27,12 @@ export default function GoogleAnalyticsSection({ isStandalone = false }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
   const [hoveredPoint, setHoveredPoint] = useState(null);
+  const [productPage, setProductPage] = useState(1);
+  const [productPageSize, setProductPageSize] = useAdminPageSize();
+
+  useEffect(() => {
+    setProductPage(1);
+  }, [range, productPageSize]);
 
   const fetchData = useCallback(async (selectedRange) => {
     setLoading(true);
@@ -51,6 +57,8 @@ export default function GoogleAnalyticsSection({ isStandalone = false }) {
   const summary = data?.summary || {};
   const timeline = data?.timeline || [];
   const topProducts = data?.topProducts || [];
+  const safeProductPage = Math.min(productPage, Math.max(1, Math.ceil(topProducts.length / productPageSize)));
+  const visibleProducts = topProducts.slice((safeProductPage - 1) * productPageSize, safeProductPage * productPageSize);
   const trafficSources = data?.trafficSources || [];
   const realtime = data?.realtime || {};
   const isConfigured = data?.configured;
@@ -355,13 +363,6 @@ export default function GoogleAnalyticsSection({ isStandalone = false }) {
             <h3 className="text-sm font-semibold text-stone-900">Most Viewed Products</h3>
             <p className="text-xs text-stone-500">Product detail page views mapped to catalog records</p>
           </div>
-          <Link
-            to="/catalog/jewelry-products"
-            className="text-xs font-semibold text-[#8b6f4e] hover:underline flex items-center gap-1"
-          >
-            <span>Manage Catalog</span>
-            <HiOutlineExternalLink className="w-3.5 h-3.5" />
-          </Link>
         </div>
 
         <div className="overflow-x-auto">
@@ -383,7 +384,7 @@ export default function GoogleAnalyticsSection({ isStandalone = false }) {
                   </td>
                 </tr>
               ) : (
-                topProducts.map((p, idx) => (
+                visibleProducts.map((p, idx) => (
                   <tr key={p.id || idx} className="hover:bg-stone-50/70 transition">
                     <td className="py-3 px-4">
                       <div className="flex items-center gap-3">
@@ -425,6 +426,14 @@ export default function GoogleAnalyticsSection({ isStandalone = false }) {
             </tbody>
           </table>
         </div>
+        <Pagination
+          currentPage={safeProductPage}
+          totalItems={topProducts.length}
+          pageSize={productPageSize}
+          onPageChange={setProductPage}
+          onPageSizeChange={setProductPageSize}
+          itemLabel="products"
+        />
       </div>
     </div>
   );
