@@ -579,7 +579,7 @@ export default function AddDiamonds() {
         </div>
 
         {/* Variants List or Empty State */}
-        <div className="p-6 pt-3 overflow-x-auto">
+        <div className="p-3 sm:p-6 pt-3 overflow-x-auto">
           {variants.length === 0 ? (
             <div className="py-16 text-center">
               <div className="w-12 h-12 bg-stone-100 text-stone-400 rounded-full flex items-center justify-center mx-auto mb-3">

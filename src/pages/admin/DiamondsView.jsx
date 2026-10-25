@@ -204,7 +204,7 @@ export default function DiamondsView() {
 
       {/* ─── Diamonds List Table ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="p-6 pt-4 overflow-x-auto">
+        <div className="p-3 sm:p-6 pt-3 sm:pt-4 overflow-x-auto">
           {loading ? (
             <div className="py-20 text-center">
               <div className="w-8 h-8 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mx-auto mb-3" />

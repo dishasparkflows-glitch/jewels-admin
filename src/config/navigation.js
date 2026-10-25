@@ -1,152 +1,127 @@
 import {
-  HiOutlineViewGrid,
+  HiOutlineHome,
+  HiOutlineChartBar,
+  HiOutlineTrendingUp,
+  HiOutlineDocumentReport,
   HiOutlineShoppingBag,
   HiOutlineRefresh,
-  HiOutlineCash,
   HiOutlineUserGroup,
   HiOutlineCalendar,
   HiOutlineSparkles,
   HiOutlineTag,
-  HiOutlinePhotograph,
-  HiOutlineEye,
-  HiOutlineTicket,
-  HiOutlineColorSwatch,
-  HiOutlineCamera,
-  HiOutlineTemplate,
-  HiOutlineChatAlt2,
-  HiOutlineCog,
+  HiOutlineCash,
   HiOutlineSpeakerphone,
-  HiOutlineBookOpen,
-  HiOutlineTrendingUp,
+  HiOutlineEye,
+  HiOutlineMail,
+  HiOutlineCamera,
+  HiOutlineDocumentText,
+  HiOutlinePhotograph,
+  HiOutlineTemplate,
+  HiOutlineFolder,
+  HiOutlineColorSwatch,
+  HiOutlineCog,
+  HiOutlineChatAlt2,
 } from 'react-icons/hi';
 
 import {
   IoDiamondOutline,
-  IoColorPaletteOutline,
-  IoSettingsOutline,
-  IoSparklesOutline,
   IoLayersOutline,
   IoCubeOutline,
-  IoMapOutline,
+  IoSettingsOutline,
+  IoSparklesOutline,
 } from 'react-icons/io5';
 
-import {
-  TbCoins,
-  TbRuler2,
-  TbCircleOff,
-  TbCurrencyDollar,
-} from 'react-icons/tb';
+import { TbCoins } from 'react-icons/tb';
 
 export const navSections = [
+  // ─── Top Single Item ──────────────────────────────────────────
   {
-    id: 'main',
-    title: null,
-    items: [
-      { id: 'dashboard', title: 'Dashboard', path: '/dashboard', icon: HiOutlineViewGrid },
-      { id: 'analytics', title: 'Google Analytics', path: '/analytics', icon: HiOutlineTrendingUp, apiEndpoint: '/analytics/overview' },
-      { id: 'diamonds', title: 'Diamonds', path: '/diamonds', icon: IoDiamondOutline, apiEndpoint: '/diamonds' },
-      { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
+    id: 'dashboard',
+    title: 'Dashboard',
+    path: '/dashboard',
+    icon: HiOutlineHome,
+  },
 
-      // ─── 1. Catalog (Matches User Screenshot) ───
-      {
-        id: 'catalog',
-        title: 'Catalog',
-        path: '/catalog',
-        icon: IoLayersOutline,
-        children: [
-          { title: 'Jewelry Products', path: '/catalog/jewelry-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=gold' },
-          { title: 'Silver Products', path: '/catalog/silver-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=silver' },
-          { title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoDiamondOutline, apiEndpoint: '/products?isOrnate=true' },
-          { title: 'Categories', path: '/catalog/categories', icon: IoLayersOutline, apiEndpoint: '/categories' },
-          { title: 'Navigation Menus', path: '/catalog/navigation-menus', icon: IoMapOutline, apiEndpoint: '/categories' },
-        ],
-      },
-
-      // ─── 2. Pricing Hub (Matches User Screenshot) ───
-      {
-        id: 'pricing-hub',
-        title: 'Pricing Hub',
-        path: '/pricing-hub',
-        icon: TbCoins,
-        children: [
-          { title: 'Metal Rates', path: '/pricing-hub/metal-rates', icon: TbCoins, apiEndpoint: '/goldprice' },
-          { title: 'Diamond rates', path: '/pricing-hub/diamond-rates', icon: IoDiamondOutline, apiEndpoint: '/diamond-prices' },
-          { title: 'Currencies', path: '/currencies', icon: TbCurrencyDollar, apiEndpoint: '/currencies' },
-        ],
-      },
-
-      // ─── 3. Product Config (Matches User Screenshot) ───
-      {
-        id: 'product-config',
-        title: 'Product Config',
-        path: '/product-config',
-        icon: IoSettingsOutline,
-        children: [
-          { title: 'Metal Purity', path: '/metal-purity', icon: IoSparklesOutline, apiEndpoint: '/metal-purities' },
-          { title: 'Metal Color', path: '/metal-color', icon: IoColorPaletteOutline, apiEndpoint: '/metal-colors' },
-          { title: 'Sizes', path: '/sizes', icon: TbRuler2, apiEndpoint: '/sizes' },
-          { title: 'VTO Masters', path: '/vto-masters', icon: IoSparklesOutline, apiEndpoint: '/vto-masters' },
-        ],
-      },
-
-      // ─── 4. Diamond Config (Matches User Screenshot) ───
-      {
-        id: 'diamond-config',
-        title: 'Diamond Config',
-        path: '/diamond-config',
-        icon: IoDiamondOutline,
-        children: [
-          { title: 'Diamond Types', path: '/diamond-types', icon: IoDiamondOutline, apiEndpoint: '/diamond-types' },
-          { title: 'Diamond Shapes', path: '/diamond-shapes', icon: TbCircleOff, apiEndpoint: '/diamond-shapes' },
-          { title: 'Diamond Color', path: '/diamond-color', icon: IoColorPaletteOutline, apiEndpoint: '/diamond-colors' },
-          { title: 'Diamond Clarity', path: '/diamond-clarity', icon: IoDiamondOutline, apiEndpoint: '/diamond-clarities' },
-          { title: 'Diamond Size', path: '/diamond-size', icon: IoDiamondOutline, apiEndpoint: '/diamond-sizes' },
-        ],
-      },
+  // ─── 1. ANALYTICS ─────────────────────────────────────────────
+  {
+    id: 'analytics',
+    title: 'ANALYTICS',
+    icon: HiOutlineChartBar,
+    children: [
+      { id: 'google-analytics', title: 'Google Analytics', path: '/analytics', icon: HiOutlineTrendingUp, apiEndpoint: '/analytics/overview' },
+      { id: 'reports', title: 'Reports', path: '/reports', icon: HiOutlineDocumentReport, apiEndpoint: '/analytics/overview' },
     ],
   },
+
+  // ─── 2. CATALOG ───────────────────────────────────────────────
   {
-    id: 'orders-sales',
+    id: 'catalog',
+    title: 'CATALOG',
+    icon: IoDiamondOutline,
+    children: [
+      { id: 'jewelry-products', title: 'Jewellery Products', path: '/catalog/jewelry-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=gold' },
+      { id: 'silver-products', title: 'Silver Products', path: '/catalog/silver-products', icon: IoSparklesOutline, apiEndpoint: '/products?productType=silver' },
+      { id: 'ornate-products', title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoLayersOutline, apiEndpoint: '/products?isOrnate=true' },
+      { id: 'categories', title: 'Categories', path: '/catalog/categories', icon: HiOutlineTag, apiEndpoint: '/categories' },
+      { id: 'pricing-hub', title: 'Pricing Hub', path: '/pricing-hub/metal-rates', icon: TbCoins, apiEndpoint: '/goldprice' },
+      { id: 'product-config', title: 'Product Config', path: '/metal-purity', icon: IoSettingsOutline, apiEndpoint: '/metal-purities' },
+      { id: 'diamond-config', title: 'Diamond Config', path: '/diamond-types', icon: IoDiamondOutline, apiEndpoint: '/diamond-types' },
+    ],
+  },
+
+  // ─── 3. SALES & ORDERS ────────────────────────────────────────
+  {
+    id: 'sales-orders',
     title: 'SALES & ORDERS',
-    items: [
-      { id: 'orders', title: 'Orders', path: '/orders', icon: HiOutlineShoppingBag },
-      { id: 'returns', title: 'Returns', path: '/returns', icon: HiOutlineRefresh },
-      { id: 'cod-sequence', title: 'COD Sequence', path: '/cod-sequences', icon: HiOutlineCash },
-      { id: 'customers', title: 'Customers', path: '/customers', icon: HiOutlineUserGroup },
-      { id: 'appointments', title: 'Appointments', path: '/appointments', icon: HiOutlineCalendar },
-      { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles },
+    icon: HiOutlineShoppingBag,
+    children: [
+      { id: 'orders', title: 'Orders', path: '/orders', icon: HiOutlineShoppingBag, apiEndpoint: '/orders' },
+      { id: 'returns', title: 'Returns', path: '/returns', icon: HiOutlineRefresh, apiEndpoint: '/returns' },
+      { id: 'customers', title: 'Customers', path: '/customers', icon: HiOutlineUserGroup, apiEndpoint: '/users' },
+      { id: 'appointments', title: 'Appointments', path: '/appointments', icon: HiOutlineCalendar, apiEndpoint: '/appointments' },
+      { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles, apiEndpoint: '/custom-inquiries' },
+      { id: 'cod-sequence', title: 'COD Sequence', path: '/cod-sequences', icon: HiOutlineCash, apiEndpoint: '/cod-sequences' },
     ],
   },
+
+  // ─── 4. MARKETING ─────────────────────────────────────────────
   {
     id: 'marketing',
     title: 'MARKETING',
-    items: [
-      { id: 'home-sections', title: 'Home Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
-      { id: 'celebrate-gifts', title: 'Celebrate & Gifts', path: '/celebrate-gifts', icon: IoDiamondOutline, apiEndpoint: '/featured' },
-      { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
-      { id: 'offers', title: 'Offers', path: '/coupons', icon: HiOutlineTicket, apiEndpoint: '/coupons' },
-      { id: 'top-announcement', title: 'Top Announcement', path: '/top-announcement', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
-      { id: 'before-after', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineEye, apiEndpoint: '/cust-jewellery-before-after' },
+    icon: HiOutlineSpeakerphone,
+    children: [
+      { id: 'celebrate-gifts', title: 'Celebrate & Gifts', path: '/celebrate-gifts', icon: HiOutlineSparkles, apiEndpoint: '/featured' },
+      { id: 'offers', title: 'Offers', path: '/coupons', icon: HiOutlineEye, apiEndpoint: '/coupons' },
+      { id: 'before-after', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineMail, apiEndpoint: '/cust-jewellery-before-after' },
       { id: 'birthstones', title: 'Birthstones', path: '/birthstones', icon: IoDiamondOutline, apiEndpoint: '/birthstones' },
       { id: 'instagram', title: 'Instagram Posts', path: '/instagram-posts', icon: HiOutlineCamera, apiEndpoint: '/instagram-posts' },
-      { id: 'blogs', title: 'Blog Articles', path: '/blogs', icon: HiOutlineBookOpen, apiEndpoint: '/blogs' },
-      { id: 'blog-categories', title: 'Blog Categories', path: '/blog-categories', icon: HiOutlineTag, apiEndpoint: '/blog-categories' },
+    ],
+  },
+
+  // ─── 5. WEBSITE CONTENT ───────────────────────────────────────
+  {
+    id: 'website-content',
+    title: 'WEBSITE CONTENT',
+    icon: HiOutlineDocumentText,
+    children: [
+      { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
+      { id: 'homepage-sections', title: 'Homepage Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
+      { id: 'announcements', title: 'Announcements', path: '/top-announcements', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
+      { id: 'blog-articles', title: 'Blog Articles', path: '/blogs', icon: HiOutlineDocumentText, apiEndpoint: '/blogs' },
+      { id: 'blog-categories', title: 'Blog Categories', path: '/blog-categories', icon: HiOutlineFolder, apiEndpoint: '/blog-categories' },
       { id: 'footer-management', title: 'Footer Management', path: '/footer-settings', icon: HiOutlineTemplate, apiEndpoint: '/footer-settings' },
+      { id: 'themes', title: 'Themes', path: '/website/themes', icon: HiOutlineColorSwatch, apiEndpoint: '/website/themes' },
     ],
   },
+
+  // ─── 6. SYSTEM & SETTINGS ─────────────────────────────────────
   {
-    id: 'website',
-    title: 'WEBSITE',
-    items: [
-      { id: 'website-themes', title: 'Themes', path: '/website/themes', icon: HiOutlineColorSwatch, apiEndpoint: '/website/themes' },
-    ],
-  },
-  {
-    id: 'system',
-    title: 'SYSTEM',
-    items: [
+    id: 'system-settings',
+    title: 'SYSTEM & SETTINGS',
+    icon: HiOutlineCog,
+    children: [
       { id: 'whatsapp', title: 'WhatsApp Connect', path: '/system/whatsapp', icon: HiOutlineChatAlt2 },
-      { id: 'profile', title: 'User Profile & Theme', path: '/profile', icon: HiOutlineColorSwatch },
+      { id: 'profile', title: 'User Profile & Theme', path: '/profile', icon: HiOutlineUserGroup },
       { id: 'settings', title: 'Settings', path: '/settings', icon: HiOutlineCog },
     ],
   },

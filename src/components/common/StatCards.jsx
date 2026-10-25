@@ -26,21 +26,39 @@ const colorStyles = {
     text: 'text-[#2563eb]',
     border: 'border-blue-200/50',
   },
+  rose: {
+    bg: 'bg-[#fff1f2]',
+    text: 'text-[#e11d48]',
+    border: 'border-rose-200/50',
+  },
+  purple: {
+    bg: 'bg-[#faf5ff]',
+    text: 'text-[#9333ea]',
+    border: 'border-purple-200/50',
+  },
 };
 
 export default function StatCards({ cards = [] }) {
   if (!cards || cards.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
       {cards.map((card, idx) => {
         const Icon = card.icon;
         const color = colorStyles[card.color || 'bronze'] || colorStyles.bronze;
+        const isClickable = Boolean(card.onClick);
 
         return (
           <div
             key={card.label || idx}
-            className="bg-white rounded-lg border border-stone-200/90 px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-shadow hover:shadow-xs"
+            onClick={card.onClick}
+            role={isClickable ? 'button' : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all ${
+              card.active
+                ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
+                : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
+            } ${isClickable ? 'cursor-pointer active:scale-[0.99]' : ''}`}
           >
             {Icon && (
               <div

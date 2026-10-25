@@ -28,6 +28,46 @@
   }
 }
 
+/* Keep the admin shell within the viewport; wide data tables scroll inside
+   their own containers on phones instead of widening the entire page. */
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  position: relative;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: clip;
+}
+
+main {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Ensure any container holding a table provides smooth touch horizontal scrolling */
+.overflow-x-auto,
+div:has(> table),
+main div:has(> table) {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+main table {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  main table:not(.table-compact):not(.table-fit) {
+    min-width: 580px;
+  }
+}
+
 /* Enforce Plus Jakarta Sans globally for any font-serif or typography classes across the entire admin panel */
 .font-serif,
 .font-sans,
@@ -35,6 +75,10 @@
 h1, h2, h3, h4, h5, h6,
 p, span, label, input, select, textarea, button, div {
   font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif !important;
+}
+
+.font-playfair {
+  font-family: 'Playfair Display', Georgia, Cambria, 'Times New Roman', serif !important;
 }
 
 /* Universal Form Label Luxury Typography Standard (matches AddJewelryProduct "Metal Name") */

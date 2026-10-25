@@ -124,7 +124,8 @@ const routeMap = {
   // ─── 4. Catalog ──────────────────────────────────
   '/catalog/jewelry-products': {
     endpoint: '/products?productType=gold',
-    title: 'Jewelry Products',
+    title: 'Jewellery Products',
+    singularTitle: 'Jewellery Product',
     fields: [
       { name: 'title', label: 'Product Title', type: 'text', required: true },
       { name: 'sku', label: 'SKU Code', type: 'text', required: true },
@@ -860,13 +861,21 @@ const DynamicModuleView = () => {
 
   // Helper to get row label/name
   const getRowLabel = (row) => {
+    if (!row) return 'Record';
     const val =
+      row.basicInfo?.title ||
+      row.basicInfo?.name ||
       row.title ||
       row.name ||
+      row.productName ||
+      row.itemName ||
       row.coupon?.code ||
       row.couponcode ||
       row.fullName ||
+      row.basicInfo?.sku ||
       row.sku ||
+      row.tagNo ||
+      row.ornate?.tagNo ||
       row.bodyPart ||
       row.url ||
       row.copyright ||
@@ -878,6 +887,167 @@ const DynamicModuleView = () => {
     return String(val ?? '');
   };
 
+  // Helper to resolve product and generic thumbnails
+  const getRowThumbnail = (row) => {
+    if (!row) return null;
+    // 1. Ornate product images
+    if (row.ornate?.ornateImages && row.ornate.ornateImages.length > 0) {
+      const first = row.ornate.ornateImages[0];
+      const u = typeof first === 'string' ? first : first?.url;
+      if (u) return u;
+    }
+    if (row.ornate?.firstPhoto) return row.ornate.firstPhoto;
+    if (Array.isArray(row.ornateImages) && row.ornateImages.length > 0) {
+      const first = row.ornateImages[0];
+      const u = typeof first === 'string' ? first : first?.url;
+      if (u) return u;
+    }
+    // 2. Color images (catalog products)
+    if (Array.isArray(row.colorImages) && row.colorImages.length > 0) {
+      for (const col of row.colorImages) {
+        if (Array.isArray(col?.images) && col.images.length > 0) {
+          const nonVid = col.images.find(
+            (img) => img?.mediaType !== 'video' && (img?.url || typeof img === 'string')
+          );
+          const target = nonVid || col.images[0];
+          const u = typeof target === 'string' ? target : target?.url;
+          if (u) return u;
+        }
+      }
+    }
+    // 3. metalColors
+    if (Array.isArray(row.metalColors) && row.metalColors.length > 0) {
+      for (const mc of row.metalColors) {
+        if (mc?.firstPhoto) return mc.firstPhoto;
+        if (Array.isArray(mc?.images) && mc.images.length > 0) {
+          const u = typeof mc.images[0] === 'string' ? mc.images[0] : mc.images[0]?.url;
+          if (u) return u;
+        }
+      }
+    }
+    // 4. images array
+    if (Array.isArray(row.images) && row.images.length > 0) {
+      const first = row.images[0];
+      const u = typeof first === 'string' ? first : first?.url;
+      if (u) return u;
+    }
+    // 5. media gallery
+    if (row.media?.gallery?.[0]?.url) return row.media.gallery[0].url;
+    // 6. standard fallbacks (image, banner, lightImage, icon)
+    if (row.image?.url) return row.image.url;
+    if (typeof row.image === 'string' && (row.image.startsWith('http') || row.image.startsWith('/'))) return row.image;
+    if (row.imageUrl) return row.imageUrl;
+    if (row.banner?.url) return row.banner.url;
+    if (typeof row.banner === 'string' && (row.banner.startsWith('http') || row.banner.startsWith('/'))) return row.banner;
+    if (row.lightImage?.url) return row.lightImage.url;
+    if (row.icon?.url) return row.icon.url;
+    if (typeof row.icon === 'string' && (row.icon.startsWith('http') || row.icon.startsWith('/'))) return row.icon;
+    return null;
+  };
+
+  const [updatingVisibilityId, setUpdatingVisibilityId] = useState(null);
+
+  // Toggle Web & App platform visibility
+  const handleToggleProductVisibility = async (row, platform, e) => {
+    if (e) e.stopPropagation();
+    const rowId = row._id || row.id;
+    if (!rowId) return;
+
+    const currentWeb = row.inweb !== false && row.visibility?.web !== false;
+    const currentApp = row.inapp !== false && row.visibility?.app !== false;
+
+    const nextWeb = platform === 'web' ? !currentWeb : currentWeb;
+    const nextApp = platform === 'app' ? !currentApp : currentApp;
+
+    // Optimistic UI update
+    setItems((prev) =>
+      prev.map((item) => {
+        const id = item._id || item.id;
+        if (id === rowId) {
+          return {
+            ...item,
+            inweb: nextWeb,
+            inapp: nextApp,
+            visibility: {
+              ...(item.visibility || {}),
+              web: nextWeb,
+              app: nextApp,
+            },
+          };
+        }
+        return item;
+      })
+    );
+
+    try {
+      setUpdatingVisibilityId(`${rowId}-${platform}`);
+      const payload =
+        platform === 'web'
+          ? { inweb: nextWeb, 'visibility.web': nextWeb }
+          : { inapp: nextApp, 'visibility.app': nextApp };
+
+      await api.put(`/products/${rowId}`, payload);
+      toast.success(
+        `${platform === 'web' ? 'Web' : 'App'} visibility ${
+          (platform === 'web' ? nextWeb : nextApp) ? 'enabled' : 'disabled'
+        }`
+      );
+    } catch (err) {
+      console.error('Failed to update product visibility:', err);
+      toast.error(`Failed to update ${platform} visibility`);
+      // Revert on error
+      setItems((prev) =>
+        prev.map((item) => {
+          const id = item._id || item.id;
+          if (id === rowId) {
+            return {
+              ...item,
+              inweb: currentWeb,
+              inapp: currentApp,
+              visibility: {
+                ...(item.visibility || {}),
+                web: currentWeb,
+                app: currentApp,
+              },
+            };
+          }
+          return item;
+        })
+      );
+    } finally {
+      setUpdatingVisibilityId(null);
+    }
+  };
+
+  // Toggle draft/approved status for products
+  const handleToggleProductStatus = async (row, e) => {
+    if (e) e.stopPropagation();
+    const rowId = row._id || row.id;
+    if (!rowId) return;
+
+    const currentStatus = row.status === 'approved' ? 'approved' : 'draft';
+    const nextStatus = currentStatus === 'approved' ? 'draft' : 'approved';
+
+    setItems((prev) =>
+      prev.map((item) =>
+        (item._id || item.id) === rowId ? { ...item, status: nextStatus } : item
+      )
+    );
+
+    try {
+      await api.put(`/products/${rowId}`, { status: nextStatus });
+      toast.success(`Status updated to ${nextStatus}`);
+    } catch (err) {
+      console.error('Failed to update product status:', err);
+      toast.error('Failed to update status');
+      setItems((prev) =>
+        prev.map((item) =>
+          (item._id || item.id) === rowId ? { ...item, status: currentStatus } : item
+        )
+      );
+    }
+  };
+
   const filteredItems = useMemo(() => {
     if (serverTotal !== null) return items;
     if (!search.trim()) return items;
@@ -885,7 +1055,7 @@ const DynamicModuleView = () => {
     return items.filter((row) => {
       const label = String(getRowLabel(row)).toLowerCase();
       const id = String(row._id || row.id || '').toLowerCase();
-      const sku = typeof row.sku === 'string' ? row.sku.toLowerCase() : '';
+      const sku = String(row.basicInfo?.sku || row.ornate?.tagNo || row.sku || '').toLowerCase();
       return label.includes(q) || id.includes(q) || sku.includes(q);
     });
   }, [items, search, serverTotal]);
@@ -972,7 +1142,9 @@ const DynamicModuleView = () => {
         onAdd={handleOpenAdd}
         addLabel={
           pathname.includes('jewelry-products')
-            ? 'Add Jewelry Product'
+            ? 'Add Jewellery Product'
+            : isSilverPage
+            ? 'Add Silver Product'
             : isOrnatePage
             ? 'Add Ornate Product'
             : `Add ${singleName}`
@@ -1044,7 +1216,7 @@ const DynamicModuleView = () => {
             </div>
           ) : (
             <>
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse min-w-[760px]">
                 <thead>
                   <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
                     <th className="py-2 pl-4 pr-1 w-8">
@@ -1058,9 +1230,16 @@ const DynamicModuleView = () => {
                         className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                       />
                     </th>
-                    <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
-                    <th className="py-2 px-3 whitespace-nowrap">ITEM / RECORD</th>
+                    <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                      SR NO
+                    </th>
+                    <th className="py-2 px-3 whitespace-nowrap">
+                      {isProductCatalogPage ? 'PRODUCT' : 'ITEM / RECORD'}
+                    </th>
                     <th className="py-2 px-3 whitespace-nowrap">SPECIFICATIONS</th>
+                    {isProductCatalogPage && (
+                      <th className="py-2 px-3 whitespace-nowrap text-center">VISIBILITY</th>
+                    )}
                     <th className="py-2 px-3 whitespace-nowrap">STATUS</th>
                     <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
                   </tr>
@@ -1074,23 +1253,21 @@ const DynamicModuleView = () => {
                       !row.icon.startsWith('http') &&
                       !row.icon.startsWith('/');
 
-                    const rawThumb =
-                      row.icon?.url ||
-                      (typeof row.icon === 'string' &&
-                      (row.icon.startsWith('http') || row.icon.startsWith('/'))
-                        ? row.icon
-                        : null) ||
-                      row.banner?.url ||
-                      (typeof row.banner === 'string' &&
-                      (row.banner.startsWith('http') || row.banner.startsWith('/'))
-                        ? row.banner
-                        : null) ||
-                      row.image?.url ||
-                      row.lightImage?.url ||
-                      (Array.isArray(row.images) && row.images[0]?.url) ||
-                      (Array.isArray(row.ornateImages) && row.ornateImages[0]?.url);
-
+                    const rawThumb = getRowThumbnail(row);
                     const thumbUrl = getMediaUrl(rawThumb);
+
+                    const isWebVisible = row.inweb !== false && row.visibility?.web !== false;
+                    const isAppVisible = row.inapp !== false && row.visibility?.app !== false;
+
+                    const skuCode =
+                      row.basicInfo?.sku ||
+                      row.ornate?.tagNo ||
+                      (typeof row.sku === 'string' ? row.sku : '');
+
+                    const displayPrice =
+                      row.pricing?.salePrice ??
+                      row.pricing?.calculatedPrice ??
+                      row.price;
 
                     const typeName =
                       typeof row.typeId === 'object' && row.typeId !== null
@@ -1150,103 +1327,212 @@ const DynamicModuleView = () => {
                         <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
                           {(currentPage - 1) * pageSize + idx + 1}
                         </td>
-                        <td className="py-2.5 px-3 text-stone-900 text-xs font-semibold flex items-center gap-2.5">
-                          {isEmoji ? (
-                            <span className="w-7 h-7 rounded-md bg-[#faf5ed] border border-[#e8d8c0] flex items-center justify-center text-sm shrink-0 shadow-2xs">
-                              {row.icon}
-                            </span>
-                          ) : thumbUrl ? (
-                            <img
-                              src={thumbUrl}
-                              alt=""
-                              className="w-7 h-7 rounded-md object-cover border border-stone-200 shrink-0"
-                            />
-                          ) : null}
-                          <span className="truncate max-w-xs">{rowLabel}</span>
-                        </td>
-                        <td className="py-2.5 px-3 text-stone-600 text-xs">
-                          <div className="flex flex-wrap items-center gap-1.5">
-                            {row.sku && typeof row.sku === 'string' && row.sku !== rowLabel && (
-                              <span className="font-mono text-[10px] bg-stone-100 text-stone-700 px-1 py-0.5 rounded border border-stone-200/50">
-                                {row.sku}
-                              </span>
-                            )}
-                            {row.carat !== undefined && row.carat !== null && (
-                              <span className="font-semibold text-stone-900">
-                                {row.carat} ct
-                              </span>
-                            )}
-                            {shapeName && (
-                              <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
-                                {shapeName}
-                              </span>
-                            )}
-                            {colorName && (
-                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px]">
-                                Color: {colorName}
-                              </span>
-                            )}
-                            {clarityName && (
-                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px]">
-                                {clarityName}
-                              </span>
-                            )}
-                            {row.karat ? <span>{row.karat}KT</span> : null}
-                            {row.colorCode && (
-                              <span className="flex items-center gap-1.5">
-                                <span
-                                  className="w-3.5 h-3.5 rounded-full border border-stone-300 shadow-2xs"
-                                  style={{
-                                    background: row.colorCodeEnd
-                                      ? `linear-gradient(135deg, ${row.colorCode}, ${row.colorCodeEnd})`
-                                      : row.colorCode,
+
+                        {/* PRODUCT / ITEM COLUMN */}
+                        <td className="py-2.5 px-3 text-stone-900 text-xs">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#8b6f4e]/40 transition-colors">
+                              {thumbUrl ? (
+                                <img
+                                  src={thumbUrl}
+                                  alt={rowLabel}
+                                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                                  loading="lazy"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                    if (e.currentTarget.parentElement) {
+                                      e.currentTarget.parentElement.innerHTML =
+                                        '<span class="text-[9px] text-stone-400 font-medium">No img</span>';
+                                    }
                                   }}
                                 />
-                                <span className="text-[11px] text-stone-500">{row.colorCode}</span>
+                              ) : isEmoji ? (
+                                <span className="text-base">{row.icon}</span>
+                              ) : (
+                                <div className="flex flex-col items-center justify-center text-stone-300">
+                                  <HiOutlinePhotograph className="w-5 h-5 stroke-1 text-stone-400" />
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 max-w-xs space-y-0.5">
+                              <span
+                                className="font-bold text-stone-900 text-xs block leading-tight truncate hover:text-[#8b6f4e] transition-colors"
+                                title={rowLabel}
+                              >
+                                {rowLabel}
                               </span>
-                            )}
-                            {row.sizeFrom !== undefined && `${row.sizeFrom} - ${row.sizeTo}ct`}
-                            {row.price !== undefined && row.price !== null && (
-                              <span className="font-semibold text-stone-900">
-                                ₹{Number(row.price).toLocaleString('en-IN')}
-                              </span>
-                            )}
-                            {row.ratePerCarat && `₹${Number(row.ratePerCarat).toLocaleString('en-IN')}/ct`}
-                            {row.rate && !row.ratePerCarat && `₹${Number(row.rate).toLocaleString('en-IN')}/ct`}
-                            {typeName && (
-                              <span className="capitalize px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 text-[10px]">
-                                {typeName}
-                              </span>
-                            )}
-                            {row.banner && (row.banner.url || (typeof row.banner === 'string' && row.banner)) && (
-                              <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[10px] font-medium">
-                                Banner ✓
-                              </span>
-                            )}
-                            {row.icon && (row.icon.url || (typeof row.icon === 'string' && row.icon)) && !isEmoji && (
-                              <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
-                                Icon ✓
-                              </span>
-                            )}
-                            {Array.isArray(row.promoBanners) && row.promoBanners.length > 0 && (
-                              <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200/60 text-[10px] font-medium flex items-center gap-1">
-                                <HiOutlineSparkles className="w-3 h-3 text-purple-500" />
-                                {row.promoBanners.length} Promo Banner{row.promoBanners.length > 1 ? 's' : ''}
-                              </span>
-                            )}
+                              {skuCode && skuCode !== rowLabel && (
+                                <span className="font-mono text-[10px] text-stone-400 block truncate">
+                                  {skuCode}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </td>
-                        <td className="py-2.5 px-3">
+
+                        {/* SPECIFICATIONS COLUMN */}
+                        <td className="py-2.5 px-3 text-stone-600 text-xs">
+                          {isProductCatalogPage ? (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {displayPrice !== undefined && displayPrice !== null && (
+                                <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded text-[11px]">
+                                  ₹{Number(displayPrice).toLocaleString('en-IN')}
+                                </span>
+                              )}
+                              {(row.specifications?.metalDetails?.purity || row.productType || row.ornate?.metalName) && (
+                                <span className="capitalize px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
+                                  {row.specifications?.metalDetails?.purity || (row.productType ? `${row.productType} Jewellery` : row.ornate?.metalName)}
+                                </span>
+                              )}
+                              {(row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt) && (
+                                <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-mono">
+                                  {row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt}g
+                                </span>
+                              )}
+                              {row.stockStatus && (
+                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                  row.stockStatus === 'In Stock'
+                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                                    : 'bg-stone-100 text-stone-600'
+                                }`}>
+                                  {row.stockStatus}
+                                </span>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {row.sku && typeof row.sku === 'string' && row.sku !== rowLabel && (
+                                <span className="font-mono text-[10px] bg-stone-100 text-stone-700 px-1 py-0.5 rounded border border-stone-200/50">
+                                  {row.sku}
+                                </span>
+                              )}
+                              {row.carat !== undefined && row.carat !== null && (
+                                <span className="font-semibold text-stone-900">
+                                  {row.carat} ct
+                                </span>
+                              )}
+                              {shapeName && (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
+                                  {shapeName}
+                                </span>
+                              )}
+                              {colorName && (
+                                <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px]">
+                                  Color: {colorName}
+                                </span>
+                              )}
+                              {clarityName && (
+                                <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px]">
+                                  {clarityName}
+                                </span>
+                              )}
+                              {row.karat ? <span>{row.karat}KT</span> : null}
+                              {row.colorCode && (
+                                <span className="flex items-center gap-1.5">
+                                  <span
+                                    className="w-3.5 h-3.5 rounded-full border border-stone-300 shadow-2xs"
+                                    style={{
+                                      background: row.colorCodeEnd
+                                        ? `linear-gradient(135deg, ${row.colorCode}, ${row.colorCodeEnd})`
+                                        : row.colorCode,
+                                    }}
+                                  />
+                                  <span className="text-[11px] text-stone-500">{row.colorCode}</span>
+                                </span>
+                              )}
+                              {row.sizeFrom !== undefined && `${row.sizeFrom} - ${row.sizeTo}ct`}
+                              {row.price !== undefined && row.price !== null && (
+                                <span className="font-semibold text-stone-900">
+                                  ₹{Number(row.price).toLocaleString('en-IN')}
+                                </span>
+                              )}
+                              {row.ratePerCarat && `₹${Number(row.ratePerCarat).toLocaleString('en-IN')}/ct`}
+                              {row.rate && !row.ratePerCarat && `₹${Number(row.rate).toLocaleString('en-IN')}/ct`}
+                              {typeName && (
+                                <span className="capitalize px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 text-[10px]">
+                                  {typeName}
+                                </span>
+                              )}
+                              {row.banner && (row.banner.url || (typeof row.banner === 'string' && row.banner)) && (
+                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200/60 text-[10px] font-medium">
+                                  Banner ✓
+                                </span>
+                              )}
+                              {row.icon && (row.icon.url || (typeof row.icon === 'string' && row.icon)) && !isEmoji && (
+                                <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
+                                  Icon ✓
+                                </span>
+                              )}
+                              {Array.isArray(row.promoBanners) && row.promoBanners.length > 0 && (
+                                <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200/60 text-[10px] font-medium flex items-center gap-1">
+                                  <HiOutlineSparkles className="w-3 h-3 text-purple-500" />
+                                  {row.promoBanners.length} Promo Banner{row.promoBanners.length > 1 ? 's' : ''}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* VISIBILITY COLUMN (Web & App) */}
+                        {isProductCatalogPage && (
+                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="inline-flex items-center gap-1.5 bg-stone-50/90 p-1 rounded-lg border border-stone-200/80 shadow-2xs">
+                              {/* Web Status Toggle */}
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleProductVisibility(row, 'web', e)}
+                                disabled={updatingVisibilityId === `${row._id || row.id}-web`}
+                                title={isWebVisible ? 'Web: Visible (Click to Hide)' : 'Web: Hidden (Click to Show)'}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                  isWebVisible
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100'
+                                    : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
+                                }`}
+                              >
+                                <span className="text-[10px]">🌐</span>
+                                <span>Web</span>
+                                <span className={`w-1.5 h-1.5 rounded-full ${isWebVisible ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+                              </button>
+
+                              {/* App Status Toggle */}
+                              <button
+                                type="button"
+                                onClick={(e) => handleToggleProductVisibility(row, 'app', e)}
+                                disabled={updatingVisibilityId === `${row._id || row.id}-app`}
+                                title={isAppVisible ? 'App: Visible (Click to Hide)' : 'App: Hidden (Click to Show)'}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                  isAppVisible
+                                    ? 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100'
+                                    : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
+                                }`}
+                              >
+                                <span className="text-[10px]">📱</span>
+                                <span>App</span>
+                                <span className={`w-1.5 h-1.5 rounded-full ${isAppVisible ? 'bg-sky-500' : 'bg-stone-300'}`} />
+                              </button>
+                            </div>
+                          </td>
+                        )}
+
+                        {/* STATUS COLUMN */}
+                        <td className="py-2.5 px-3" onClick={(e) => isProductCatalogPage && handleToggleProductStatus(row, e)}>
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize transition-all ${
+                              isProductCatalogPage ? 'cursor-pointer hover:scale-105 select-none' : ''
+                            } ${
                               isInactive
                                 ? 'bg-stone-100 text-stone-600 border-stone-200'
+                                : statusStr === 'approved'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                 : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
                             }`}
+                            title={isProductCatalogPage ? 'Click to toggle status (draft / approved)' : undefined}
                           >
                             {statusStr}
                           </span>
                         </td>
+
+                        {/* ACTIONS */}
                         <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                           <RowActions
                             onView={() => {
@@ -1258,7 +1544,7 @@ const DynamicModuleView = () => {
                             }}
                             onOpenWebsite={isProductCatalogPage ? () => openProductPreview(row) : undefined}
                             onEdit={() => handleEditProductRecord(row)}
-                            onDelete={() => handleDelete(row._id || row.id)}
+                            onDelete={() => handleDelete(row._id || row.id, rowLabel)}
                           />
                         </td>
                       </tr>
@@ -1286,14 +1572,14 @@ const DynamicModuleView = () => {
       {/* ─── Create / Edit Record Modal ────────────────────────────── */}
       {isModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-200"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => {
             setIsModalOpen(false);
             setEditingRecord(null);
           }}
         >
           <div
-            className={`bg-white rounded-3xl ${isCategoryPage ? 'max-w-2xl' : 'max-w-lg'} w-full p-6 shadow-2xl border border-stone-200 space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
+            className={`bg-white rounded-2xl sm:rounded-3xl ${isCategoryPage ? 'max-w-2xl' : 'max-w-lg'} w-full p-4 sm:p-6 shadow-2xl border border-stone-200 space-y-4 sm:space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
@@ -1922,11 +2208,11 @@ const DynamicModuleView = () => {
       {/* ─── View Record Details Modal ──────────────────────── */}
       {viewingRecord && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setViewingRecord(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
@@ -1951,13 +2237,8 @@ const DynamicModuleView = () => {
 
             {/* Media thumbnail if exists */}
             {(() => {
-              const mediaUrl = getMediaUrl(
-                viewingRecord.banner?.url ||
-                  (typeof viewingRecord.banner === 'string' ? viewingRecord.banner : null) ||
-                  viewingRecord.image?.url ||
-                  viewingRecord.lightImage?.url ||
-                  (Array.isArray(viewingRecord.images) && viewingRecord.images[0]?.url)
-              );
+              const rawMedia = getRowThumbnail(viewingRecord);
+              const mediaUrl = getMediaUrl(rawMedia);
               if (!mediaUrl) return null;
               return (
                 <div className="w-full h-44 rounded-xl overflow-hidden bg-stone-50 border border-stone-200/60 flex items-center justify-center image-preview-container">
@@ -1981,6 +2262,48 @@ const DynamicModuleView = () => {
                 <span className="text-stone-400 font-medium">Name / Title</span>
                 <span className="font-bold text-stone-900 text-right">{getRowLabel(viewingRecord)}</span>
               </div>
+
+              {/* SKU / Tag */}
+              {(viewingRecord.basicInfo?.sku || viewingRecord.ornate?.tagNo || viewingRecord.sku) && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">SKU / Tag</span>
+                  <span className="font-mono text-stone-800 bg-stone-100 px-2 py-0.5 rounded text-[11px]">
+                    {viewingRecord.basicInfo?.sku || viewingRecord.ornate?.tagNo || viewingRecord.sku}
+                  </span>
+                </div>
+              )}
+
+              {/* Web Visibility */}
+              {isProductCatalogPage && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">Web Visibility</span>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      viewingRecord.inweb !== false && viewingRecord.visibility?.web !== false
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-stone-100 text-stone-500 border-stone-200'
+                    }`}
+                  >
+                    🌐 {viewingRecord.inweb !== false && viewingRecord.visibility?.web !== false ? 'Visible on Web' : 'Hidden from Web'}
+                  </span>
+                </div>
+              )}
+
+              {/* App Visibility */}
+              {isProductCatalogPage && (
+                <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+                  <span className="text-stone-400 font-medium">App Visibility</span>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                      viewingRecord.inapp !== false && viewingRecord.visibility?.app !== false
+                        ? 'bg-sky-50 text-sky-700 border-sky-200'
+                        : 'bg-stone-100 text-stone-500 border-stone-200'
+                    }`}
+                  >
+                    📱 {viewingRecord.inapp !== false && viewingRecord.visibility?.app !== false ? 'Visible in App' : 'Hidden from App'}
+                  </span>
+                </div>
+              )}
 
               {/* Slug */}
               {viewingRecord.slug && (
@@ -2352,7 +2675,7 @@ const DynamicModuleView = () => {
                 className="w-full py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center justify-center gap-2 mb-2"
               >
                 <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Edit Jewelry Product</span>
+                <span>Edit Jewellery Product</span>
               </button>
             ) : (
               <button

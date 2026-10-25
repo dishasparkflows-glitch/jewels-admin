@@ -17,14 +17,14 @@ export default function SearchFilterBar({
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
       {/* Search Input Box */}
-      <div className="relative flex-1 max-w-md">
+      <div className="relative flex-1 w-full sm:max-w-md">
         <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 pointer-events-none" />
         <input
           type="text"
           value={activeSearch}
           onChange={(e) => onSearchChange?.(e.target.value)}
           placeholder={activePlaceholder}
-          className="w-full pl-8 pr-8 py-1 text-xs rounded-md bg-white border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
+          className="w-full pl-8 pr-8 py-1.5 sm:py-1 text-xs rounded-md bg-white border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
         />
         {activeSearch && (
           <button
@@ -38,8 +38,8 @@ export default function SearchFilterBar({
         )}
       </div>
 
-      {/* Right Controls: Filters button & optional extras (WITHOUT active/deactive filter) */}
-      <div className="flex items-center gap-2 self-end sm:self-auto">
+      {/* Right Controls: Filters button & optional extras */}
+      <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
         {extraActions}
 
         <button

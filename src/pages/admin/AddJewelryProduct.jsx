@@ -2938,7 +2938,7 @@ export default function AddJewelryProduct() {
         </div>
 
         {/* Top Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {productId && (
             <button
               type="button"
@@ -3599,9 +3599,6 @@ export default function AddJewelryProduct() {
                               <div className="flex flex-col items-center justify-center space-y-1.5 text-stone-400">
                                 <span className="text-2xl">✨</span>
                                 <p className="font-semibold text-xs text-stone-700">No variants generated yet</p>
-                                <p className="text-[11px] text-stone-400 max-w-sm">
-                                  Select your metal options and diamond configuration above, then compute the variants. You can set each variant&apos;s weight, price and stock below.
-                                </p>
                                 <button
                                   type="button"
                                   onClick={handleRegenerateVariants}

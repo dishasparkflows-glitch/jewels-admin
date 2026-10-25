@@ -213,7 +213,7 @@ export default function ProfileView() {
             </div>
 
             <div>
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold text-stone-900 leading-tight">
                   {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
                 </h1>

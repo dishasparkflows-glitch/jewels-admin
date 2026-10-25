@@ -160,7 +160,7 @@ export default function GoogleAnalyticsSection({ isStandalone = false }) {
       )}
 
       {/* ─── 4 Summary Cards ─── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Users */}
         <div className="bg-white p-4 rounded-2xl border border-stone-200 shadow-2xs">
           <div className="flex items-center justify-between text-stone-500">

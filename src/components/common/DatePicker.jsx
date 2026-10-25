@@ -501,7 +501,7 @@ export default function DatePicker({
       {isOpen && (
         <div
           ref={popupRef}
-          className={`absolute left-0 z-[70] w-[320px] sm:w-[330px] p-5 bg-white rounded-3xl border border-stone-200/90 shadow-2xl shadow-stone-900/15 backdrop-blur-md transition-all animate-scaleUp select-none ${
+          className={`absolute left-0 z-[70] w-[320px] sm:w-[330px] max-w-[calc(100vw-1.5rem)] p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-stone-200/90 shadow-2xl shadow-stone-900/15 backdrop-blur-md transition-all animate-scaleUp select-none ${
             dropUp
               ? 'bottom-full mb-2 origin-bottom'
               : 'top-full mt-2 origin-top'

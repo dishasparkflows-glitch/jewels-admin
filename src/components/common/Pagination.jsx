@@ -79,20 +79,20 @@ export default function Pagination({
 
   return (
     <div
-      className={`px-4 py-2.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-stone-200/80 bg-white select-none ${className}`}
+      className={`px-3 sm:px-4 py-2.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 border-t border-stone-200/80 bg-white select-none ${className}`}
     >
       {/* Left: Info text e.g. "Showing 1–7 of 30 reviews" */}
-      <div className="text-xs text-stone-500 font-normal">
+      <div className="text-xs text-stone-500 font-normal text-center sm:text-left">
         Showing <span className="font-semibold text-stone-800">{startIndex}</span>–
         <span className="font-semibold text-stone-800">{endIndex}</span> of{' '}
         <span className="font-semibold text-stone-800">{totalItems}</span> {itemText}
       </div>
 
       {/* Right: Rows per page + Prev / Numbers / Next */}
-      <div className="flex items-center gap-3 sm:gap-4">
+      <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2.5 sm:gap-4 w-full sm:w-auto">
         {showPageSize && onPageSizeChange && (
-          <div className="flex items-center gap-2 text-xs text-stone-600 font-medium">
-            <span>Rows per page</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-stone-600 font-medium shrink-0">
+            <span>Rows:</span>
             <Dropdown
               value={Number(pageSize)}
               onChange={(val) => {
@@ -105,14 +105,14 @@ export default function Pagination({
               placeholder={String(pageSize)}
               size="sm"
               openUpward
-              className="w-18"
-              buttonClassName="h-7 px-2 text-xs font-semibold rounded-md bg-white border-stone-200 shadow-2xs min-w-[54px]"
+              className="w-16 sm:w-18"
+              buttonClassName="h-7 px-2 text-xs font-semibold rounded-md bg-white border-stone-200 shadow-2xs min-w-[50px]"
             />
           </div>
         )}
 
         {/* Navigation Buttons: < 1 2 3 > */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           {/* Previous Page */}
           <button
             type="button"

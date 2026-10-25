@@ -1206,7 +1206,7 @@ export default function OrnateProductEdit() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 self-end md:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-end md:self-auto">
           <button
             type="button"
             onClick={() => handleSaveProduct('draft')}
@@ -3193,7 +3193,7 @@ export default function OrnateProductEdit() {
 
             {/* Floating Zoom Bar with - and + buttons */}
             <div
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-stone-900/90 border border-white/15 text-white shadow-2xl backdrop-blur-md"
+              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-stone-900/90 border border-white/15 text-white shadow-2xl backdrop-blur-md max-w-[calc(100vw-2rem)] overflow-x-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Zoom Out Button (-) */}

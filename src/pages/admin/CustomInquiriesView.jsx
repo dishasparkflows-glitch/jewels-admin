@@ -16,10 +16,10 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import Pagination from '../../components/common/Pagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { ViewActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import StatCards from '../../components/common/StatCards';
 
 const STATUS_TABS = [
   { value: 'all', label: 'ALL' },
@@ -247,67 +247,54 @@ export default function CustomInquiriesView() {
       </div>
 
       {/* ─── 4 Stat Cards Row ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Total Inquiries */}
-        <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
-              TOTAL INQUIRIES
-            </span>
-            <span className="text-2xl font-bold text-stone-900">
-              {totalInquiries}
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-[#faf5ee] border border-[#f0e4d2] flex items-center justify-center text-[#8f6d43]">
-            <HiOutlineSparkles className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Total Pending */}
-        <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
-              TOTAL PENDING
-            </span>
-            <span className="text-2xl font-bold text-stone-900">
-              {totalPending}
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-600">
-            <HiOutlineClock className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Total Completed */}
-        <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
-              TOTAL COMPLETED
-            </span>
-            <span className="text-2xl font-bold text-stone-900">
-              {totalCompleted}
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-emerald-50 border border-emerald-200/70 flex items-center justify-center text-emerald-600">
-            <HiOutlineCheckCircle className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Total Cancelled */}
-        <div className="bg-white rounded-2xl border border-stone-200/80 p-5 shadow-2xs flex items-center justify-between">
-          <div className="space-y-1">
-            <span className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase">
-              TOTAL CANCELLED
-            </span>
-            <span className="text-2xl font-bold text-stone-900">
-              {totalCancelled}
-            </span>
-          </div>
-          <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200/70 flex items-center justify-center text-rose-500">
-            <HiOutlineExclamation className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
+      <StatCards
+        cards={[
+          {
+            label: 'Total Inquiries',
+            value: totalInquiries,
+            icon: HiOutlineSparkles,
+            color: 'bronze',
+            onClick: () => {
+              setStatusFilter('all');
+              setCurrentPage(1);
+            },
+            active: statusFilter === 'all',
+          },
+          {
+            label: 'Total Pending',
+            value: totalPending,
+            icon: HiOutlineClock,
+            color: 'peach',
+            onClick: () => {
+              setStatusFilter('pending');
+              setCurrentPage(1);
+            },
+            active: statusFilter === 'pending',
+          },
+          {
+            label: 'Total Completed',
+            value: totalCompleted,
+            icon: HiOutlineCheckCircle,
+            color: 'green',
+            onClick: () => {
+              setStatusFilter('completed');
+              setCurrentPage(1);
+            },
+            active: statusFilter === 'completed',
+          },
+          {
+            label: 'Total Cancelled',
+            value: totalCancelled,
+            icon: HiOutlineExclamation,
+            color: 'rose',
+            onClick: () => {
+              setStatusFilter('cancelled');
+              setCurrentPage(1);
+            },
+            active: statusFilter === 'cancelled',
+          },
+        ]}
+      />
 
       {/* ─── Status Filter Tabs & Search Bar Row ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">

@@ -497,7 +497,7 @@ export default function TopAnnouncementView() {
         </div>
 
         {/* Table / Rows */}
-        <div className="p-6 pt-3 overflow-x-auto">
+        <div className="p-3 sm:p-6 pt-3 overflow-x-auto">
           {loading ? (
             <div className="py-16 text-center text-stone-400">
               <div className="w-8 h-8 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mx-auto mb-3" />

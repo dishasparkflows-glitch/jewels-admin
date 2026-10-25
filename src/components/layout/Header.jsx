@@ -41,6 +41,8 @@ const Header = ({ onMobileToggle }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [unreadCount, setUnreadCount] = useState(null);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [selectedHeaderDate, setSelectedHeaderDate] = useState(() => {
     const d = new Date();
@@ -100,9 +102,9 @@ const Header = ({ onMobileToggle }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-[#fbfaf8]/95 backdrop-blur-md border-b border-[#eee8df] px-4 sm:px-6 h-14 flex items-center justify-between gap-4">
+    <header className="sticky top-0 z-30 bg-[#fbfaf8]/95 backdrop-blur-md border-b border-[#eee8df] px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
       {/* Left: Mobile hamburger & Search bar */}
-      <div className="flex items-center gap-3 flex-1 max-w-xl">
+      <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xl min-w-0">
         {/* Sidebar Toggle (On / Off) */}
         <button
           type="button"
@@ -143,11 +145,13 @@ const Header = ({ onMobileToggle }) => {
           <span>{sidebarPosition === 'left' ? 'Sidebar: Left' : 'Sidebar: Right'}</span>
         </button>
 
-        {/* Global Search Bar (Matches User Screenshot) */}
+        {/* Desktop Global Search Bar */}
         <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus-within:border-[#8b6f4e] focus-within:ring-2 focus-within:ring-[#8b6f4e]/20 transition-all shadow-2xs w-full max-w-md">
           <HiOutlineSearch className="w-4 h-4 text-stone-400 shrink-0" />
           <input
             type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search products, orders, customers..."
             className="w-full bg-transparent border-none outline-none text-xs text-stone-900 placeholder:text-stone-400 font-medium"
           />
@@ -155,22 +159,37 @@ const Header = ({ onMobileToggle }) => {
             Ctrl + K
           </kbd>
         </div>
+
+        {/* Mobile Search Toggle Icon */}
+        <button
+          type="button"
+          onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+          className="sm:hidden p-2 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 transition-colors cursor-pointer"
+          aria-label="Toggle mobile search"
+        >
+          <HiOutlineSearch className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Right: Date badge, notifications, Super Admin profile */}
-      <div className="flex items-center gap-3 sm:gap-4 shrink-0">
-        {/* Date pill badge from screenshot */}
-        <div className="hidden md:block">
+      <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+        {/* Date pill badge */}
+        <div>
           <DatePicker
             value={selectedHeaderDate}
             onChange={(val) => setSelectedHeaderDate(val)}
             direction="down"
             popupClassName="right-0 left-auto"
           >
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] text-xs font-semibold text-stone-700 shadow-2xs cursor-pointer hover:bg-stone-50 transition-colors">
+            {/* Desktop full date pill */}
+            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] text-xs font-semibold text-stone-700 shadow-2xs cursor-pointer hover:bg-stone-50 transition-colors">
               <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8b6f4e]" />
               <span>{headerDateFormatted}</span>
               <HiOutlineChevronDown className="w-3 h-3 text-stone-400 ml-0.5" />
+            </div>
+            {/* Mobile / Tablet compact calendar icon */}
+            <div className="md:hidden p-2 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 shadow-2xs cursor-pointer transition-colors" title={headerDateFormatted}>
+              <HiOutlineCalendar className="w-4 h-4 text-[#8b6f4e]" />
             </div>
           </DatePicker>
         </div>
@@ -191,7 +210,7 @@ const Header = ({ onMobileToggle }) => {
           <button
             type="button"
             onClick={() => setDropdownOpen((prev) => !prev)}
-            className="flex items-center gap-2 pl-2 sm:border-l sm:border-[#eee8df] cursor-pointer focus:outline-none group text-left"
+            className="flex items-center gap-2 pl-1.5 sm:pl-2 sm:border-l sm:border-[#eee8df] cursor-pointer focus:outline-none group text-left"
             aria-expanded={dropdownOpen}
             aria-haspopup="true"
           >
@@ -224,7 +243,8 @@ const Header = ({ onMobileToggle }) => {
 
           {/* Interactive Dropdown Menu */}
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-stone-200/90 py-2.5 z-50 animate-scaleUp">
+            <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-xl border border-stone-200/90 py-2.5 z-50 animate-scaleUp">
+
               {/* Header profile info */}
               <div className="px-4 py-2 border-b border-stone-100">
                 <div className="flex items-center gap-3">
@@ -398,6 +418,37 @@ const Header = ({ onMobileToggle }) => {
           )}
         </div>
       </div>
+
+      {/* Expandable Mobile Search Row */}
+      {mobileSearchOpen && (
+        <div className="absolute top-14 left-0 right-0 p-2.5 bg-white border-b border-[#eee8df] shadow-md sm:hidden flex items-center gap-2 animate-fadeIn z-30">
+          <HiOutlineSearch className="w-4 h-4 text-stone-400 shrink-0 ml-1" />
+          <input
+            type="text"
+            autoFocus
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search products, orders, customers..."
+            className="flex-1 text-xs text-stone-900 placeholder:text-stone-400 bg-transparent outline-none py-1"
+          />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="text-stone-400 hover:text-stone-700 p-1"
+            >
+              <HiOutlineX className="w-3.5 h-3.5" />
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen(false)}
+            className="px-2 py-1 text-xs font-semibold text-stone-600 hover:text-stone-900 rounded-lg hover:bg-stone-100"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
     </header>
   );
 };

@@ -57,11 +57,11 @@ export default function Modal({
     <div
       role="dialog"
       aria-modal="true"
-      className={`fixed inset-0 ${zIndex} flex items-center justify-center p-4 sm:p-6 bg-stone-900/50 backdrop-blur-xs transition-opacity duration-200 animate-fadeIn`}
+      className={`fixed inset-0 ${zIndex} flex items-center justify-center p-3 sm:p-6 bg-stone-900/50 backdrop-blur-xs transition-opacity duration-200 animate-fadeIn`}
       onClick={closeOnOverlayClick ? onClose : undefined}
     >
       <div
-        className={`relative w-full ${maxWidth} bg-white rounded-3xl border border-stone-200/90 shadow-2xl p-6 sm:p-8 space-y-6 transition-all transform duration-200 animate-scaleUp overflow-hidden max-h-[90vh] flex flex-col ${className}`}
+        className={`relative w-full ${maxWidth} bg-white rounded-2xl sm:rounded-3xl border border-stone-200/90 shadow-2xl p-4 sm:p-6 md:p-8 space-y-4 sm:space-y-6 transition-all transform duration-200 animate-scaleUp overflow-hidden max-h-[92vh] sm:max-h-[90vh] flex flex-col ${className}`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
@@ -69,12 +69,12 @@ export default function Modal({
           <div className="flex items-start justify-between pb-3 border-b border-stone-100/90 shrink-0">
             <div>
               {title && (
-                <h3 className="font-bold text-lg sm:text-xl text-stone-900 tracking-tight">
+                <h3 className="font-bold text-base sm:text-xl text-stone-900 tracking-tight">
                   {title}
                 </h3>
               )}
               {subtitle && (
-                <p className="mt-1 text-xs text-stone-500 font-medium">
+                <p className="mt-0.5 sm:mt-1 text-xs text-stone-500 font-medium">
                   {subtitle}
                 </p>
               )}
@@ -85,7 +85,7 @@ export default function Modal({
                 type="button"
                 onClick={onClose}
                 title="Close"
-                className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer shrink-0 ml-4"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer shrink-0 ml-3"
               >
                 <HiOutlineX className="w-4 h-4 stroke-[2]" />
               </button>
@@ -100,7 +100,7 @@ export default function Modal({
 
         {/* Modal Footer */}
         {footer && (
-          <div className="pt-4 border-t border-stone-100 shrink-0 flex items-center justify-end gap-3">
+          <div className="pt-3 sm:pt-4 border-t border-stone-100 shrink-0 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3">
             {footer}
           </div>
         )}

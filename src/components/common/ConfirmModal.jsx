@@ -89,17 +89,17 @@ export default function ConfirmModal({
     <div
       role="alertdialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-stone-900/50 backdrop-blur-xs transition-opacity duration-200 animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-900/50 backdrop-blur-xs transition-opacity duration-200 animate-fadeIn"
       onClick={!loading ? onCancel : undefined}
     >
       <div
-        className="relative w-full max-w-md bg-white rounded-3xl border border-stone-200/90 shadow-2xl p-6 sm:p-7 space-y-5 transition-all transform duration-200 animate-scaleUp overflow-hidden"
+        className="relative w-full max-w-md bg-white rounded-2xl sm:rounded-3xl border border-stone-200/90 shadow-2xl p-4 sm:p-7 space-y-4 sm:space-y-5 transition-all transform duration-200 animate-scaleUp overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top bar with Icon and Close Button */}
         <div className="flex items-start justify-between">
           <div
-            className={`w-12 h-12 rounded-2xl border flex items-center justify-center shadow-xs ${typeConfig.badgeBg}`}
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-2xl border flex items-center justify-center shadow-xs ${typeConfig.badgeBg}`}
           >
             {icon || typeConfig.icon}
           </div>
@@ -116,8 +116,8 @@ export default function ConfirmModal({
         </div>
 
         {/* Content Section */}
-        <div className="space-y-2">
-          <h3 className="font-bold text-lg text-stone-900 tracking-tight">
+        <div className="space-y-1.5 sm:space-y-2">
+          <h3 className="font-bold text-base sm:text-lg text-stone-900 tracking-tight">
             {title}
           </h3>
           <p className="text-xs sm:text-sm text-stone-500 font-sans leading-relaxed">
@@ -126,12 +126,12 @@ export default function ConfirmModal({
         </div>
 
         {/* Action Buttons */}
-        <div className="pt-2 flex items-center justify-end gap-3 font-sans">
+        <div className="pt-2 flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 sm:gap-3 font-sans">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="px-5 py-2.5 rounded-xl border border-stone-200 text-xs font-bold tracking-wider uppercase text-stone-700 hover:bg-stone-50 hover:border-stone-300 transition-all cursor-pointer disabled:opacity-40"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-stone-200 text-xs font-bold tracking-wider uppercase text-stone-700 hover:bg-stone-50 hover:border-stone-300 transition-all cursor-pointer disabled:opacity-40 text-center"
           >
             {cancelText}
           </button>
@@ -140,7 +140,7 @@ export default function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center gap-2 ${typeConfig.confirmBtn}`}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 ${typeConfig.confirmBtn}`}
           >
             {loading && (
               <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />

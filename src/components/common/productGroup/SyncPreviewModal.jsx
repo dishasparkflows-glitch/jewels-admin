@@ -272,8 +272,8 @@ export default function SyncPreviewModal({
             </button>
           </div>
 
-          <div className="border border-stone-200 rounded-xl overflow-hidden max-h-72 overflow-y-auto text-xs">
-            <table className="w-full text-left divide-y divide-stone-100">
+          <div className="border border-stone-200 rounded-xl overflow-hidden max-h-72 overflow-x-auto overflow-y-auto text-xs">
+            <table className="w-full text-left divide-y divide-stone-100 min-w-[360px]">
               <thead className="bg-stone-50 font-semibold text-stone-600 sticky top-0">
                 <tr>
                   <th className="p-2.5">Product</th>

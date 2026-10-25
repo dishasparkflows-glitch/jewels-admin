@@ -20,11 +20,13 @@ import {
   HiOutlineCalendar,
   HiOutlineClock,
   HiOutlineDesktopComputer,
+  HiOutlineCheckCircle,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { websiteThemesAPI, bannersAPI, featuredAPI, categoriesAPI } from '../../api/services';
 import ConfirmModal from '../../components/common/ConfirmModal';
+import StatCards from '../../components/common/StatCards';
 import ThemeStorefrontPreview from './ThemeStorefrontPreview';
 import ThemeMediaLibraryTab from './ThemeMediaLibraryTab';
 import ThemeHomeSectionsEditor from './ThemeHomeSectionsEditor';
@@ -1200,19 +1202,42 @@ export default function WebsiteThemesView() {
       </header>
 
       {/* 2. Stats Cards */}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ['active', 'Live Themes', counts.active || 0, 'bg-emerald-50 text-emerald-800 border-emerald-200'],
-          ['scheduled', 'Scheduled', counts.scheduled || 0, 'bg-blue-50 text-blue-800 border-blue-200'],
-          ['draft', 'Drafts', counts.draft || 0, 'bg-amber-50 text-amber-800 border-amber-200'],
-          ['archived', 'Archived', counts.archived || 0, 'bg-stone-50 text-stone-700 border-stone-200'],
-        ].map(([key, label, count, colorStyle]) => (
-          <div key={key} className="rounded-2xl border border-stone-200 bg-white p-4 shadow-xs">
-            <span className="text-xs font-bold uppercase tracking-wider text-stone-500">{label}</span>
-            <p className="mt-2 text-2xl font-bold text-stone-900">{count}</p>
-          </div>
-        ))}
-      </div>
+      <StatCards
+        cards={[
+          {
+            label: 'Live Themes',
+            value: counts.active || 0,
+            icon: HiOutlineCheckCircle,
+            color: 'green',
+            onClick: () => setFilter(filter === 'active' ? 'all' : 'active'),
+            active: filter === 'active',
+          },
+          {
+            label: 'Scheduled',
+            value: counts.scheduled || 0,
+            icon: HiOutlineClock,
+            color: 'blue',
+            onClick: () => setFilter(filter === 'scheduled' ? 'all' : 'scheduled'),
+            active: filter === 'scheduled',
+          },
+          {
+            label: 'Drafts',
+            value: counts.draft || 0,
+            icon: HiOutlineColorSwatch,
+            color: 'gold',
+            onClick: () => setFilter(filter === 'draft' ? 'all' : 'draft'),
+            active: filter === 'draft',
+          },
+          {
+            label: 'Archived',
+            value: counts.archived || 0,
+            icon: HiOutlineShieldCheck,
+            color: 'bronze',
+            onClick: () => setFilter(filter === 'archived' ? 'all' : 'archived'),
+            active: filter === 'archived',
+          },
+        ]}
+      />
 
       {/* 3. Search and Status Filters */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3 shadow-xs">

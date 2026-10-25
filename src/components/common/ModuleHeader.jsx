@@ -22,7 +22,7 @@ export default function ModuleHeader({
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-2 self-start sm:self-auto">
+      <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-start sm:justify-end">
         {extraActions}
 
         {/* Add / Create Button - Properly sized luxury action button */}

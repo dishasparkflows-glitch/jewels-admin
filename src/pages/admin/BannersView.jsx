@@ -1,5 +1,5 @@
-import ThemeImageField from '../../components/common/ThemeImageField';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   HiOutlinePlus,
   HiOutlinePencil,
@@ -12,6 +12,7 @@ import {
   HiOutlineCalendar,
   HiOutlineSparkles,
   HiOutlineChevronDown,
+  HiOutlineChevronRight,
   HiOutlineExternalLink,
   HiOutlineFilm,
   HiOutlineSearch,
@@ -20,18 +21,25 @@ import {
   HiOutlineClock,
   HiOutlineGlobeAlt,
   HiOutlineColorSwatch,
+  HiOutlineCode,
+  HiOutlineDotsHorizontal,
+  HiOutlineCheck,
+  HiOutlineArrowLeft,
+  HiOutlineDesktopComputer,
+  HiOutlineDuplicate,
+  HiOutlineCloudUpload,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
-import RowActions from '../../components/common/RowActions';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import Dropdown from '../../components/common/Dropdown';
 import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import ThemeImageField from '../../components/common/ThemeImageField';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 
 const getMediaUrl = (url) => {
@@ -53,125 +61,182 @@ const formatForInput = (dateStr) => {
   }
 };
 
-const SECTION_TYPE_CONFIG = {
-  herobanner: {
-    label: 'Hero Banner',
-    badgeClass: 'bg-[#fff2e8] text-[#d46b08] border border-[#ffd591]/50',
-    icon: HiOutlinePhotograph,
-  },
-  collectionbanner: {
-    label: 'Collection Banner',
-    badgeClass: 'bg-[#e6f4ff] text-[#0958d9] border border-[#91caff]/50',
-    icon: HiOutlineViewGrid,
-  },
-  categorybanner: {
-    label: 'Category Banner',
-    badgeClass: 'bg-[#e6f7f0] text-[#047857] border border-[#a7f3d0]/60',
-    icon: HiOutlineTag,
-  },
-  offerbanner: {
-    label: 'Offer Banner',
-    badgeClass: 'bg-[#fff1f2] text-[#e11d48] border border-[#fecdd3]/60',
-    icon: HiOutlineGift,
-  },
-  customizebanner: {
-    label: 'Customize Banner',
-    badgeClass: 'bg-[#fef3c7] text-[#b45309] border border-[#fde68a]/60',
-    icon: HiOutlineColorSwatch,
-  },
-  mobileappbanner: {
-    label: 'App Banner',
-    badgeClass: 'bg-[#e6f7ed] text-[#137333] border border-[#a8dab5]/50',
-    icon: HiOutlineDeviceMobile,
-  },
-  bookappointbanner: {
-    label: 'Appointment Banner',
-    badgeClass: 'bg-[#f0ebf8] text-[#5e35b1] border border-[#d3bdf0]/50',
-    icon: HiOutlineCalendar,
-  },
-  websitebanner: {
-    label: 'Other Section',
-    badgeClass: 'bg-[#f5f5f5] text-[#595959] border border-stone-200/60',
-    icon: HiOutlineSparkles,
-  },
+const formatDateDisplay = (dateStr) => {
+  if (!dateStr) return { date: '—', time: '' };
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return { date: '—', time: '' };
+    const day = d.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const padHours = String(hours).padStart(2, '0');
+    return {
+      date: `${day} ${month} ${year}`,
+      time: `${padHours}:${minutes} ${ampm}`,
+    };
+  } catch {
+    return { date: '—', time: '' };
+  }
 };
 
-const SECTION_TYPE_OPTIONS = [
-  { value: 'herobanner', label: 'Hero Banner', icon: HiOutlinePhotograph },
-  { value: 'collectionbanner', label: 'Collection Banner', icon: HiOutlineViewGrid },
-  { value: 'categorybanner', label: 'Category Banner', icon: HiOutlineTag },
-  { value: 'offerbanner', label: 'Offer Banner', icon: HiOutlineGift },
-  { value: 'customizebanner', label: 'Customize Banner', icon: HiOutlineColorSwatch },
-  { value: 'mobileappbanner', label: 'App Banner', icon: HiOutlineDeviceMobile },
-  { value: 'bookappointbanner', label: 'Appointment Banner', icon: HiOutlineCalendar },
-  { value: 'websitebanner', label: 'Other Section', icon: HiOutlineSparkles },
+const BANNER_TYPES = [
+  {
+    key: 'herobanner',
+    label: 'Hero Banner',
+    icon: HiOutlinePhotograph,
+    desc: 'Main homepage slider banner for top section.',
+    placement: 'Homepage hero',
+    placementBadge: 'bg-[#fcf3e8] text-[#9a6435] border border-[#f5e3cc]/70',
+  },
+  {
+    key: 'collectionbanner',
+    label: 'Collection Banner',
+    icon: HiOutlineTag,
+    desc: 'Banners for collection pages and featured collections.',
+    placement: 'Collection page',
+    placementBadge: 'bg-[#faebee] text-[#b84d4d] border border-[#f7d5dc]/70',
+  },
+  {
+    key: 'categorybanner',
+    label: 'Category Banner',
+    icon: HiOutlineViewGrid,
+    desc: 'Banners for category pages and category highlights.',
+    placement: 'Category page',
+    placementBadge: 'bg-[#eaf5ef] text-[#2b7a4b] border border-[#cbe8d6]/70',
+  },
+  {
+    key: 'offerbanner',
+    label: 'Offer Banner',
+    icon: HiOutlineGift,
+    desc: 'Banners for offers, promotions and special deals.',
+    placement: 'Offers & deals',
+    placementBadge: 'bg-[#f4eefc] text-[#6b3ba7] border border-[#e2d5f5]/70',
+  },
+  {
+    key: 'mobileappbanner',
+    label: 'App Banner',
+    icon: HiOutlineDeviceMobile,
+    desc: 'Banners for app download promotion.',
+    placement: 'App download',
+    placementBadge: 'bg-[#edf5fc] text-[#20639b] border border-[#d2e5f8]/70',
+  },
+  {
+    key: 'bookappointbanner',
+    label: 'Appointment Banner',
+    icon: HiOutlineCalendar,
+    desc: 'Banners for appointment booking section.',
+    placement: 'Appointment page',
+    placementBadge: 'bg-[#eef8f8] text-[#1c7878] border border-[#cfeeee]/70',
+  },
+  {
+    key: 'customizebanner',
+    label: 'Custom Banner',
+    icon: HiOutlineCode,
+    desc: 'Custom banners for special pages or campaigns.',
+    placement: 'Custom page',
+    placementBadge: 'bg-[#fdf7e7] text-[#9c6a15] border border-[#fae8b8]/70',
+  },
+  {
+    key: 'websitebanner',
+    label: 'Other',
+    icon: HiOutlineDotsHorizontal,
+    desc: 'Other banners and miscellaneous placements.',
+    placement: 'Other section',
+    placementBadge: 'bg-stone-100 text-stone-600 border border-stone-200/70',
+  },
 ];
 
-const TABS = [
-  { key: 'all', label: 'All Sections' },
-  { key: 'herobanner', label: 'Hero Banner' },
-  { key: 'collectionbanner', label: 'Collection Banner' },
-  { key: 'categorybanner', label: 'Category Banner' },
-  { key: 'offerbanner', label: 'Offer Banner' },
-  { key: 'customizebanner', label: 'Customize Banner' },
-  { key: 'mobileappbanner', label: 'App Banner' },
-  { key: 'bookappointbanner', label: 'Appointment Banner' },
-  { key: 'websitebanner', label: 'Other' },
-];
 
 export default function BannersView() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { typeKey, bannerId } = useParams();
   const confirm = useConfirm();
   const { categories } = useCategoryLookup();
+
+  // Determine base path (/banners or /marketing/banners)
+  const basePath = useMemo(() => {
+    return location.pathname.startsWith('/marketing/banners') ? '/marketing/banners' : '/banners';
+  }, [location.pathname]);
+
+  // Determine current screen view mode: 'grid' (Screen 1) | 'list' (Screen 2) | 'form' (Screen 3)
+  const viewMode = useMemo(() => {
+    if (location.pathname.endsWith('/new') || location.pathname.includes('/edit/')) {
+      return 'form';
+    }
+    if (typeKey && BANNER_TYPES.some((t) => t.key === typeKey)) {
+      return 'list';
+    }
+    return 'grid';
+  }, [location.pathname, typeKey]);
+
+  // Current active banner type configuration
+  const currentBannerType = useMemo(() => {
+    const key = typeKey || 'herobanner';
+    return BANNER_TYPES.find((t) => t.key === key) || BANNER_TYPES[0];
+  }, [typeKey]);
 
   // Data states
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
-  const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
-
-  // Drawer state
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [editingBanner, setEditingBanner] = useState(null);
-  const [submitting, setSubmitting] = useState(false);
-
-  // Form states matching screenshot
-  const [formType, setFormType] = useState('herobanner');
-  const [title, setTitle] = useState('');
-  const [subtitle, setSubtitle] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [collectionImages, setCollectionImages] = useState([]);
-  const collectionSlotRef = useRef(null);
-  const [mediaType, setMediaType] = useState('image');
-  const [platform, setPlatform] = useState('web');
-  const [destinationLink, setDestinationLink] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [collectionGroup, setCollectionGroup] = useState('gold');
-  const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
-  const [navigationCategories, setNavigationCategories] = useState([]);
-  const [status, setStatus] = useState('active');
-  const [order, setOrder] = useState(1);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [themeId, setThemeId] = useState('');
-  const [pendingThemeImages, setPendingThemeImages] = useState({});
-  const [imageUploadStats, setImageUploadStats] = useState(null);
-  const [collectionUploadStats, setCollectionUploadStats] = useState({});
-
-  // Upload state
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const fileInputRef = useRef(null);
-
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
 
-  // Fetch banners
-  const fetchData = async (page = currentPage, limit = pageSize) => {
+  // Screen 2 Filter States
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [deviceFilter, setDeviceFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+
+  // Screen 3 Form States
+  const [editingBanner, setEditingBanner] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [destinationLink, setDestinationLink] = useState('');
+  const [linkTarget, setLinkTarget] = useState('_self');
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageKey, setImageKey] = useState('');
+  const [mobileImageUrl, setMobileImageUrl] = useState('');
+  const [mobileImageKey, setMobileImageKey] = useState('');
+  const [formStatus, setFormStatus] = useState('active');
+  const [order, setOrder] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [collectionImages, setCollectionImages] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [collectionGroup, setCollectionGroup] = useState('gold');
+  const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
+  const [navigationCategories, setNavigationCategories] = useState([]);
+  const [themeId, setThemeId] = useState('');
+  const [pendingThemeImages, setPendingThemeImages] = useState({});
+
+  // Image Upload States
+  const [isUploadingDesktop, setIsUploadingDesktop] = useState(false);
+  const [desktopUploadStats, setDesktopUploadStats] = useState(null);
+  const [isUploadingMobile, setIsUploadingMobile] = useState(false);
+  const [mobileUploadStats, setMobileUploadStats] = useState(null);
+  const desktopInputRef = useRef(null);
+  const mobileInputRef = useRef(null);
+  const collectionSlotRef = useRef(null);
+  const [collectionUploadStats, setCollectionUploadStats] = useState({});
+
+  // Screen 3 Live Preview State
+  const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' | 'mobile'
+
+  // Fetch all banners
+  const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/banners?page=${page}&limit=${limit}`);
+      const res = await api.get(`/banners?limit=200`);
       const items = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
       setBanners(items);
       if (res.data?.pagination?.totalDocs !== undefined) {
@@ -179,16 +244,17 @@ export default function BannersView() {
       }
     } catch (err) {
       console.error('Failed to load banners:', err);
-      toast.error('Failed to load sections and banners');
+      toast.error('Failed to load banners');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchData(currentPage, pageSize);
-  }, [currentPage, pageSize]);
+    fetchData();
+  }, []);
 
+  // Fetch navigation categories for collection banner links
   useEffect(() => {
     let cancelled = false;
     api.get('/categories/navigation')
@@ -202,356 +268,384 @@ export default function BannersView() {
     return () => { cancelled = true; };
   }, []);
 
-  const selectedCategoryMenuItems = useMemo(() => {
-    const category = navigationCategories.find((item) => String(item._id) === String(selectedCategory));
-    return (category?.menuSections || []).flatMap((section) =>
-      (section.menuItems || []).map((menuItem) => ({
-        ...menuItem,
-        sectionName: section.name || section.title || 'Menu Items',
-      }))
-    );
-  }, [navigationCategories, selectedCategory]);
-
-  // Counts for tabs
-  const tabCounts = useMemo(() => {
-    const counts = {
-      all: banners.length,
-      herobanner: 0,
-      collectionbanner: 0,
-      categorybanner: 0,
-      offerbanner: 0,
-      customizebanner: 0,
-      mobileappbanner: 0,
-      bookappointbanner: 0,
-      websitebanner: 0,
-    };
+  // Counts for each banner type on Screen 1
+  const bannerCounts = useMemo(() => {
+    const counts = {};
+    BANNER_TYPES.forEach((t) => { counts[t.key] = 0; });
     banners.forEach((b) => {
       const type = (b.display?.type || 'herobanner').toLowerCase();
       if (counts[type] !== undefined) {
         counts[type] += 1;
       } else {
-        counts.websitebanner += 1;
+        counts.websitebanner = (counts.websitebanner || 0) + 1;
       }
     });
     return counts;
   }, [banners]);
 
-  // Filtered banners
-  const filteredBanners = useMemo(() => {
-    let list = [...banners];
-
-    if (activeTab !== 'all') {
-      list = list.filter((b) => {
-        const type = (b.display?.type || 'herobanner').toLowerCase();
-        return type === activeTab;
-      });
+  // Synchronize form when entering Edit mode via URL or state
+  useEffect(() => {
+    if (viewMode === 'form') {
+      if (bannerId) {
+        const existing = banners.find((b) => b._id === bannerId);
+        if (existing) {
+          populateFormWithBanner(existing);
+        } else if (!loading && banners.length > 0) {
+          // Attempt direct fetch
+          api.get(`/banners/${bannerId}`)
+            .then((res) => {
+              const b = res.data?.data;
+              if (b) populateFormWithBanner(b);
+            })
+            .catch(() => {
+              toast.error('Banner not found');
+              navigate(`${basePath}/${typeKey || 'herobanner'}`);
+            });
+        }
+      } else if (!editingBanner) {
+        // Fresh Add New form
+        resetForm();
+      }
     }
+  }, [viewMode, bannerId, banners, loading]);
 
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((b) => {
-        const t = (b.content?.title || '').toLowerCase();
-        const sub = (b.content?.subtitle || '').toLowerCase();
-        const type = (b.display?.type || '').toLowerCase();
-        const catObj = b.display?.categoryId || b.display?.category;
-        const cat =
-          (typeof catObj === 'object' ? catObj?.name : '') ||
-          categories.find((c) => c._id === (catObj?._id || catObj))?.name ||
-          '';
-        return t.includes(q) || sub.includes(q) || type.includes(q) || cat.toLowerCase().includes(q);
-      });
-    }
-
-    // Sort by order ascending
-    list.sort((a, b) => {
-      const orderA = a.display?.order ?? 0;
-      const orderB = b.display?.order ?? 0;
-      return orderA - orderB;
-    });
-
-    return list;
-  }, [banners, activeTab, search]);
-
-  const {
-    totalItems,
-    paginatedItems,
-  } = usePagination(filteredBanners, pageSize, serverTotal);
-
-  // Reset to page 1 on tab change
-  const handleTabChange = (key) => {
-    setActiveTab(key);
-    setCurrentPage(1);
-    setSelectedIds([]);
-  };
-
-  // Open Add Drawer
-  const handleOpenAdd = () => {
-    setEditingBanner(null);
-    const initialType = activeTab !== 'all' && SECTION_TYPE_CONFIG[activeTab] ? activeTab : 'herobanner';
-    setFormType(initialType);
-    setPlatform(initialType === 'mobileappbanner' ? 'mobile' : 'web');
-    setTitle('');
-    setSubtitle('');
-    setImageUrl('');
-    setCollectionImages([]);
-    setMediaType('image');
-    setDestinationLink('');
-    setSelectedCategory('');
-    setCollectionGroup('gold');
-    setSelectedMenuItemIds([]);
-    setStatus('active');
-    setOrder(banners.length + 1);
-    setStartDate('');
-    setEndDate('');
-    setThemeId('');
-    setPendingThemeImages({});
-    setImageUploadStats(null);
-    setCollectionUploadStats({});
-    setIsDrawerOpen(true);
-  };
-
-  // Open Edit Drawer
-  const handleOpenEdit = (banner) => {
+  const populateFormWithBanner = (banner) => {
     setEditingBanner(banner);
-    const bType = banner.display?.type || 'herobanner';
-    setFormType(bType);
-    setTitle(banner.content?.title || '');
-    setSubtitle(banner.content?.subtitle || '');
-    setImageUrl(banner.mediaType === 'video' ? banner.video?.url : banner.image?.url || '');
-    setCollectionImages((banner.collectionImages?.length ? banner.collectionImages : (banner.image?.url ? [banner.image] : [])).map((image) => ({
-      _id: image._id,
-      url: image.url,
-      key: image.key || '',
-      categoryId: image.categoryId?._id || image.categoryId || banner.display?.categoryId?._id || banner.display?.categoryId || '',
-    })));
-    setMediaType(banner.mediaType || 'image');
-    setPlatform(banner.display?.platform || 'web');
+    setTitle(banner.content?.title || banner.title || '');
+    setDescription(banner.content?.description || banner.content?.subtitle || banner.subtitle || '');
     setDestinationLink(banner.link || '');
-
-    const catObj = banner.display?.categoryId || banner.display?.category;
-    const catId = typeof catObj === 'object' ? catObj?._id : catObj || '';
-    setSelectedCategory(catId);
-    setCollectionGroup(banner.display?.collectionGroup || 'gold');
-    setSelectedMenuItemIds((banner.display?.menuItemIds || []).map((item) => String(item?._id || item)));
-
-    setStatus(banner.status || 'active');
+    setLinkTarget(banner.linkTarget || '_self');
+    setImageUrl(banner.image?.url || (banner.mediaType !== 'video' ? banner.image?.url : '') || '');
+    setImageKey(banner.image?.key || '');
+    setMobileImageUrl(banner.mobileImage?.url || '');
+    setMobileImageKey(banner.mobileImage?.key || '');
+    setFormStatus(banner.status || 'active');
     setOrder(banner.display?.order ?? 1);
     setStartDate(formatForInput(banner.startDate));
     setEndDate(formatForInput(banner.endDate));
+
+    const catObj = banner.display?.categoryId || banner.display?.category;
+    setSelectedCategory(typeof catObj === 'object' ? catObj?._id : catObj || '');
+    setCollectionGroup(banner.display?.collectionGroup || 'gold');
+    setSelectedMenuItemIds((banner.display?.menuItemIds || []).map((i) => String(i?._id || i)));
+
+    setCollectionImages((banner.collectionImages?.length ? banner.collectionImages : (banner.image?.url ? [banner.image] : [])).map((img) => ({
+      _id: img._id,
+      url: img.url,
+      key: img.key || '',
+      categoryId: img.categoryId?._id || img.categoryId || banner.display?.categoryId?._id || banner.display?.categoryId || '',
+    })));
+
     setThemeId(banner.themeId?._id || banner.themeId || '');
     setPendingThemeImages({});
-    setImageUploadStats(null);
-    setCollectionUploadStats({});
-    setImageUploadStats(null);
-    setCollectionUploadStats({});
-    setIsDrawerOpen(true);
+    setDesktopUploadStats(null);
+    setMobileUploadStats(null);
   };
 
-  // Close Drawer
-  const handleCloseDrawer = () => {
-    setIsDrawerOpen(false);
+  const resetForm = () => {
     setEditingBanner(null);
-  };
-
-  // Handle Image Upload via Presigned URL
-  const handleFileSelect = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file (.jpg, .png, .webp)');
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      setUploadProgress(10);
-
-      const res = await uploadWithPresignedUrl(
-        file,
-        'banners',
-        (progress) => setUploadProgress(progress)
-      );
-
-      setImageUrl(res.fileUrl);
-      setMediaType('image');
-      setImageUploadStats({ originalSize: res.originalSize, compressedSize: res.compressedSize, wasCompressed: res.wasCompressed });
-      toast.success(`Banner image uploaded · ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)}${res.wasCompressed ? ' compressed' : ''}`);
-    } catch (err) {
-      console.error('Presigned upload failed:', err);
-      toast.error(err.response?.data?.message || 'Image upload failed');
-    } finally {
-      setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    }
-  };
-
-  const handleCollectionFilesSelect = async (e) => {
-    const files = Array.from(e.target.files || []).filter((file) => file.type.startsWith('image/'));
-    if (!files.length) return;
-    const target = collectionSlotRef.current;
-    const available = target !== null ? 1 : 4 - collectionImages.filter((image) => image?.url).length;
-    if (files.length > available) {
-      toast.error('Choose one image for each available slot');
-      e.target.value = '';
-      return;
-    }
-    try {
-      setIsUploading(true);
-      const uploaded = await Promise.all(files.map((file) => uploadWithPresignedUrl(file, 'banners')));
-      const targetSlots = target !== null
-        ? [target]
-        : [0, 1, 2, 3].filter((index) => !collectionImages[index]?.url).slice(0, uploaded.length);
-      setCollectionImages((current) => {
-        const next = Array.from({ length: 4 }, (_, index) => current[index] || {});
-        uploaded.forEach((item, uploadIndex) => {
-          const index = targetSlots[uploadIndex];
-          next[index] = { ...next[index], url: item.fileUrl, key: item.key || '' };
-        });
-        return next;
-      });
-      setCollectionUploadStats((current) => ({
-        ...current,
-        ...Object.fromEntries(uploaded.map((item, uploadIndex) => [targetSlots[uploadIndex], {
-          originalSize: item.originalSize,
-          compressedSize: item.compressedSize,
-          wasCompressed: item.wasCompressed,
-        }]))
-      }));
-      const sizeSummary = uploaded.map((item) => `${formatBytes(item.originalSize)} → ${formatBytes(item.compressedSize)}`).join('; ');
-      toast.success(`Collection image uploaded · ${sizeSummary}`);
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Collection image upload failed');
-    } finally {
-      setIsUploading(false);
-      e.target.value = '';
-      collectionSlotRef.current = null;
-    }
-  };
-
-  const handleRemoveCollectionImage = (index) => {
-    setCollectionUploadStats((current) => ({ ...current, [index]: null }));
-    setCollectionImages((current) => Array.from({ length: 4 }, (_, i) =>
-      i === index ? { _id: current[i]?._id, categoryId: current[i]?.categoryId || '' } : current[i] || {}));
-  };
-
-  // Remove Image
-  const handleRemoveImage = async () => {
-    try {
-      await deleteUploadedFile(imageUrl);
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
-      return;
-    }
+    setTitle('');
+    setDescription('');
+    setDestinationLink('');
+    setLinkTarget('_self');
     setImageUrl('');
-    setImageUploadStats(null);
+    setImageKey('');
+    setMobileImageUrl('');
+    setMobileImageKey('');
+    setFormStatus('active');
+    const existingTypeBanners = banners.filter((b) => (b.display?.type || 'herobanner').toLowerCase() === (typeKey || 'herobanner'));
+    setOrder(existingTypeBanners.length + 1);
+    setStartDate('');
+    setEndDate('');
+    setCollectionImages([]);
+    setSelectedCategory('');
+    setCollectionGroup('gold');
+    setSelectedMenuItemIds([]);
+    setThemeId('');
+    setPendingThemeImages({});
+    setDesktopUploadStats(null);
+    setMobileUploadStats(null);
   };
 
-  // Direct Toggle Status from Table Switch
-  const handleToggleStatus = async (banner, e) => {
-    e.stopPropagation();
-    const newStatus = banner.status === 'active' ? 'inactive' : 'active';
+  // Screen 2 Filtered List
+  const filteredBanners = useMemo(() => {
+    if (viewMode !== 'list') return [];
 
-    // Optimistic UI update
-    setBanners((prev) =>
-      prev.map((b) => (b._id === banner._id ? { ...b, status: newStatus } : b))
-    );
+    let list = banners.filter((b) => {
+      const bType = (b.display?.type || 'herobanner').toLowerCase();
+      return bType === (typeKey || 'herobanner');
+    });
+
+    // Search filter
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((b) => {
+        const t = (b.content?.title || b.title || '').toLowerCase();
+        const d = (b.content?.description || b.content?.subtitle || b.subtitle || '').toLowerCase();
+        const l = (b.link || '').toLowerCase();
+        return t.includes(q) || d.includes(q) || l.includes(q);
+      });
+    }
+
+    // Status filter
+    if (statusFilter !== 'all') {
+      list = list.filter((b) => {
+        const isScheduled = b.status === 'scheduled' || (b.startDate && new Date(b.startDate) > new Date());
+        if (statusFilter === 'published') return b.status === 'active' && !isScheduled;
+        if (statusFilter === 'scheduled') return isScheduled;
+        if (statusFilter === 'draft') return b.status === 'inactive';
+        return true;
+      });
+    }
+
+    // Device filter
+    if (deviceFilter !== 'all') {
+      list = list.filter((b) => {
+        const hasDesktop = Boolean(b.image?.url) || b.display?.platform !== 'mobile';
+        const hasMobile = Boolean(b.mobileImage?.url) || b.display?.platform === 'mobile';
+        if (deviceFilter === 'desktop') return hasDesktop;
+        if (deviceFilter === 'mobile') return hasMobile;
+        return true;
+      });
+    }
+
+    // Sort
+    list.sort((a, b) => {
+      if (sortBy === 'order_asc') {
+        return (a.display?.order ?? 0) - (b.display?.order ?? 0);
+      }
+      if (sortBy === 'order_desc') {
+        return (b.display?.order ?? 0) - (a.display?.order ?? 0);
+      }
+      if (sortBy === 'oldest') {
+        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+      }
+      // default newest first
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+
+    return list;
+  }, [banners, viewMode, typeKey, search, statusFilter, deviceFilter, sortBy]);
+
+  // Paginated items for Screen 2
+  const { totalItems, paginatedItems } = usePagination(filteredBanners, pageSize, serverTotal);
+
+  // Upload handler for Desktop or Mobile
+  const handleFileUpload = async (file, targetDevice) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (JPG, PNG, WebP)');
+      return;
+    }
+
+    const isDesktop = targetDevice === 'desktop';
+    if (isDesktop) setIsUploadingDesktop(true);
+    else setIsUploadingMobile(true);
 
     try {
-      await api.put(`/banners/${banner._id}`, {
-        status: newStatus,
-      });
-      toast.success(`Section status changed to ${newStatus}`);
+      const res = await uploadWithPresignedUrl(file, 'banners');
+      if (isDesktop) {
+        setImageUrl(res.fileUrl);
+        setImageKey(res.key || '');
+        setDesktopUploadStats({
+          originalSize: res.originalSize,
+          compressedSize: res.compressedSize,
+          wasCompressed: res.wasCompressed,
+        });
+        toast.success(`Desktop banner uploaded · ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)}`);
+      } else {
+        setMobileImageUrl(res.fileUrl);
+        setMobileImageKey(res.key || '');
+        setMobileUploadStats({
+          originalSize: res.originalSize,
+          compressedSize: res.compressedSize,
+          wasCompressed: res.wasCompressed,
+        });
+        toast.success(`Mobile banner uploaded · ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)}`);
+      }
     } catch (err) {
-      console.error('Failed to toggle status:', err);
-      toast.error('Failed to update status');
-      // Revert on failure
-      setBanners((prev) =>
-        prev.map((b) => (b._id === banner._id ? { ...b, status: banner.status } : b))
-      );
+      console.error('Upload failed:', err);
+      toast.error(err.response?.data?.message || err.message || 'Image upload failed');
+    } finally {
+      if (isDesktop) {
+        setIsUploadingDesktop(false);
+        if (desktopInputRef.current) desktopInputRef.current.value = '';
+      } else {
+        setIsUploadingMobile(false);
+        if (mobileInputRef.current) mobileInputRef.current.value = '';
+      }
     }
   };
 
-  // Direct Update Order from Table
-  const handleOrderChange = async (banner, newOrder) => {
-    const num = Number(newOrder);
-    if (isNaN(num)) return;
+  // Remove uploaded image
+  const handleRemoveUploadedImage = async (device) => {
+    if (device === 'desktop') {
+      if (imageUrl) {
+        try { await deleteUploadedFile(imageUrl); } catch (_) {}
+      }
+      setImageUrl('');
+      setImageKey('');
+      setDesktopUploadStats(null);
+    } else {
+      if (mobileImageUrl) {
+        try { await deleteUploadedFile(mobileImageUrl); } catch (_) {}
+      }
+      setMobileImageUrl('');
+      setMobileImageKey('');
+      setMobileUploadStats(null);
+    }
+  };
 
-    // Optimistic UI update
-    setBanners((prev) =>
-      prev.map((b) =>
-        b._id === banner._id
-          ? {
-              ...b,
-              display: { ...(b.display || {}), order: num },
-            }
-          : b
-      )
-    );
+  // Submit banner from Screen 3
+  const handleSaveBanner = async (saveStatus = 'active') => {
+    if (!title.trim()) {
+      toast.error('Please enter a banner title');
+      return;
+    }
 
     try {
-      await api.put(`/banners/${banner._id}`, {
+      setSubmitting(true);
+      const effectiveType = typeKey || editingBanner?.display?.type || 'herobanner';
+
+      const payloadContent = {
+        title: title.trim(),
+      };
+      if (description.trim()) {
+        payloadContent.description = description.trim();
+        payloadContent.subtitle = description.trim();
+      }
+
+      const payloadDisplay = {
+        type: effectiveType,
+        order: Number(order) || 1,
+        platform: 'web',
+      };
+
+      if (selectedCategory) {
+        payloadDisplay.categoryId = selectedCategory;
+      }
+      if (effectiveType === 'collectionbanner') {
+        if (collectionGroup) payloadDisplay.collectionGroup = collectionGroup;
+        if (selectedMenuItemIds?.length > 0) payloadDisplay.menuItemIds = selectedMenuItemIds;
+      }
+
+      const payload = {
+        content: payloadContent,
+        display: payloadDisplay,
+        mediaType: 'image',
+        status: saveStatus,
+        link: destinationLink.trim() || undefined,
+        themeId: themeId || undefined,
+      };
+
+      if (imageUrl) {
+        payload.image = { url: imageUrl, key: imageKey || undefined };
+      } else if (editingBanner?.image?.url) {
+        payload.image = null;
+      }
+
+      if (mobileImageUrl) {
+        payload.mobileImage = { url: mobileImageUrl, key: mobileImageKey || undefined };
+      } else if (editingBanner?.mobileImage?.url) {
+        payload.mobileImage = null;
+      }
+
+      if (startDate) payload.startDate = new Date(startDate).toISOString();
+      if (endDate) payload.endDate = new Date(endDate).toISOString();
+
+      let savedBanner;
+      if (editingBanner?._id) {
+        const res = await api.put(`/banners/${editingBanner._id}`, payload);
+        savedBanner = res.data?.data || editingBanner;
+        toast.success(`Banner ${saveStatus === 'active' ? 'published' : 'saved as draft'} successfully`);
+      } else {
+        const res = await api.post('/banners', payload);
+        savedBanner = res.data?.data;
+        toast.success(`Banner ${saveStatus === 'active' ? 'published' : 'saved as draft'} successfully`);
+      }
+
+      // Handle theme overrides if present
+      if (savedBanner?._id && Object.keys(pendingThemeImages).length && themeId) {
+        await savePendingThemeMedia(themeId, 'banner', savedBanner._id, pendingThemeImages);
+      }
+
+      await fetchData();
+      navigate(`${basePath}/${effectiveType}`);
+    } catch (err) {
+      console.error('Error saving banner:', err);
+      toast.error(err.response?.data?.message || 'Failed to save banner');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Duplicate a banner
+  const handleDuplicate = async (banner, e) => {
+    e?.stopPropagation();
+    try {
+      const origTitle = banner.content?.title || banner.title || 'Banner';
+      const payload = {
+        content: {
+          ...(banner.content || {}),
+          title: `${origTitle} (Copy)`,
+        },
         display: {
           ...(banner.display || {}),
-          order: num,
+          order: (banner.display?.order ?? 0) + 1,
         },
-      });
+        image: banner.image?.url ? { url: banner.image.url, key: banner.image.key } : undefined,
+        mobileImage: banner.mobileImage?.url ? { url: banner.mobileImage.url, key: banner.mobileImage.key } : undefined,
+        collectionImages: banner.collectionImages?.length ? banner.collectionImages : undefined,
+        mediaType: banner.mediaType || 'image',
+        link: banner.link || '',
+        status: 'inactive', // Draft
+        startDate: banner.startDate || undefined,
+        endDate: banner.endDate || undefined,
+        themeId: banner.themeId?._id || banner.themeId || undefined,
+      };
+
+      await api.post('/banners', payload);
+      toast.success(`"${origTitle}" duplicated as draft`);
+      fetchData();
     } catch (err) {
-      console.error('Failed to update order:', err);
-      toast.error('Failed to update order');
+      console.error('Failed to duplicate:', err);
+      toast.error('Failed to duplicate banner');
     }
   };
 
-  // Delete Banner
+  // Delete a banner
   const handleDelete = async (banner, e) => {
     e?.stopPropagation();
-    const bannerTitle = banner.content?.title || banner.title || 'Untitled Section';
-
+    const bannerTitle = banner.content?.title || banner.title || 'Banner';
     const isConfirmed = await confirm({
-      title: 'Delete Website Section',
-      message: `Are you sure you want to delete "${bannerTitle}"? This will immediately remove it from the homepage.`,
-      confirmText: 'Delete Section',
+      title: 'Delete Banner',
+      message: `Are you sure you want to delete "${bannerTitle}"? This cannot be undone.`,
+      confirmText: 'Delete Banner',
       cancelText: 'Cancel',
       type: 'danger',
     });
-
     if (!isConfirmed) return;
 
     try {
       await api.delete(`/banners/${banner._id}`);
-      toast.success('Section deleted successfully');
+      toast.success('Banner deleted');
       setBanners((prev) => prev.filter((b) => b._id !== banner._id));
       setSelectedIds((prev) => prev.filter((id) => id !== banner._id));
     } catch (err) {
       console.error('Delete failed:', err);
-      toast.error(err.response?.data?.message || 'Failed to delete section');
+      toast.error(err.response?.data?.message || 'Failed to delete banner');
     }
   };
 
-  // Selection handlers
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(paginatedItems.map((b) => b._id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelectItem = (id, e) => {
-    e.stopPropagation();
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
-  // Bulk Delete
+  // Bulk delete
   const handleBulkDelete = async () => {
     const count = selectedIds.length;
     if (count === 0) return;
-
     const isConfirmed = await confirm({
-      title: 'Delete Selected Sections',
-      message: `Are you sure you want to delete ${count} selected section${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      title: 'Delete Selected Banners',
+      message: `Are you sure you want to delete ${count} selected banner${count > 1 ? 's' : ''}?`,
       confirmText: `Delete (${count})`,
       cancelText: 'Cancel',
       type: 'danger',
@@ -562,899 +656,1003 @@ export default function BannersView() {
       await Promise.allSettled(selectedIds.map((id) => api.delete(`/banners/${id}`)));
       setBanners((prev) => prev.filter((b) => !selectedIds.includes(b._id)));
       setSelectedIds([]);
-      toast.success(`${count} section${count > 1 ? 's' : ''} deleted successfully`);
+      toast.success(`${count} banner${count > 1 ? 's' : ''} deleted`);
     } catch (err) {
       console.error('Bulk delete failed:', err);
-      toast.error('Failed to delete some sections');
+      toast.error('Failed to delete some banners');
     }
   };
 
-  // Submit Drawer Form
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  // =========================================================================
+  // RENDER SCREEN 1: BANNER MANAGEMENT OVERVIEW (8 Boxes Grid)
+  // =========================================================================
+  if (viewMode === 'grid') {
+    return (
+      <div className="space-y-7 pb-14 animate-fadeIn">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-xs font-medium text-stone-500">
+          <span>Website Content</span>
+          <HiOutlineChevronRight className="w-3.5 h-3.5 text-stone-400" />
+          <span className="text-stone-900 font-semibold">Banners</span>
+        </div>
 
-    if (formType === 'collectionbanner') {
-      const validCollectionImages = collectionImages.filter((image) => image?.url);
-      if (validCollectionImages.length > 0 && validCollectionImages.length !== 4) {
-        toast.error('Upload exactly 4 images for this collection banner, or leave empty');
-        return;
-      }
-      if (validCollectionImages.length > 0 && validCollectionImages.some((image) => !image.categoryId)) {
-        toast.error('Select a category for each collection image');
-        return;
-      }
-    }
-    try {
-      setSubmitting(true);
-
-      const sectionTitle =
-        title.trim() ||
-        editingBanner?.content?.title ||
-        editingBanner?.title ||
-        SECTION_TYPE_CONFIG[formType]?.label ||
-        'Section Banner';
-
-      const payloadContent = {
-        title: sectionTitle,
-      };
-      const effectiveSubtitle = subtitle.trim() || editingBanner?.content?.subtitle;
-      if (effectiveSubtitle) {
-        payloadContent.subtitle = effectiveSubtitle;
-      }
-      const effectiveDescription = editingBanner?.content?.description;
-      if (effectiveDescription) {
-        payloadContent.description = effectiveDescription;
-      }
-
-      const payloadDisplay = {
-        type: formType,
-        platform,
-        order: Number(order) || 0,
-        position: editingBanner?.display?.position || editingBanner?.position || 'none',
-      };
-      if (selectedCategory) {
-        payloadDisplay.categoryId = selectedCategory;
-      } else if (editingBanner?.display?.categoryId) {
-        payloadDisplay.categoryId = null; // explicit clear
-      }
-
-      if (formType === 'collectionbanner') {
-        if (collectionGroup) payloadDisplay.collectionGroup = collectionGroup;
-        if (selectedMenuItemIds && selectedMenuItemIds.length > 0) {
-          payloadDisplay.menuItemIds = selectedMenuItemIds;
-        }
-      }
-
-      const payload = {
-        content: payloadContent,
-        display: payloadDisplay,
-        mediaType,
-        status,
-        themeId: themeId || null,
-      };
-
-      const trimmedLink = destinationLink.trim();
-      if (trimmedLink) {
-        payload.link = trimmedLink;
-      } else if (editingBanner?.link) {
-        payload.link = ''; // explicit clear
-      }
-
-      if (formType === 'offerbanner') {
-        if (startDate) payload.startDate = new Date(startDate).toISOString();
-        else if (editingBanner?.startDate) payload.startDate = null;
-
-        if (endDate) payload.endDate = new Date(endDate).toISOString();
-        else if (editingBanner?.endDate) payload.endDate = null;
-      } else if (editingBanner?.startDate || editingBanner?.endDate) {
-        payload.startDate = null;
-        payload.endDate = null;
-      }
-
-      if (formType === 'offerbanner' && startDate && endDate && new Date(endDate) <= new Date(startDate)) {
-        toast.error('Offer End Date & Time must be after Start Date & Time');
-        setSubmitting(false);
-        return;
-      }
-
-      if (mediaType === 'image') {
-        if (formType === 'collectionbanner') {
-          const validImgs = collectionImages.filter((img) => img?.url);
-          if (validImgs.length > 0) {
-            payload.image = validImgs[0];
-            payload.collectionImages = validImgs;
-          } else if (editingBanner?.collectionImages?.length) {
-            payload.collectionImages = [];
-            payload.image = null;
-          }
-        } else if (imageUrl) {
-          payload.image = { url: imageUrl };
-        } else if (editingBanner?.image?.url) {
-          payload.image = null;
-        }
-      } else {
-        if (imageUrl) {
-          payload.video = { url: imageUrl };
-        } else if (editingBanner?.video?.url) {
-          payload.video = null;
-        }
-      }
-
-      let saveResponse;
-      if (editingBanner?._id) {
-        saveResponse = await api.put(`/banners/${editingBanner._id}`, payload);
-        toast.success('Section updated successfully');
-      } else {
-        saveResponse = await api.post('/banners', payload);
-        if (saveResponse.data?.data) setEditingBanner(saveResponse.data.data);
-        toast.success('New section added successfully');
-      }
-      const savedId = saveResponse.data?.data?._id || editingBanner?._id;
-      if (savedId && Object.keys(pendingThemeImages).length) {
-        const savedCollectionImages = saveResponse.data?.data?.collectionImages || editingBanner?.collectionImages || [];
-        const mediaToSave = Object.fromEntries(Object.entries(pendingThemeImages).map(([slot, image]) => {
-          const pendingIndex = slot.match(/^collection:new:(\d+)$/);
-          return pendingIndex
-            ? [`collection:${savedCollectionImages[Number(pendingIndex[1])]?._id}`, image]
-            : [slot, image];
-        }).filter(([slot]) => !slot.endsWith(':undefined')));
-        await savePendingThemeMedia(themeId, 'banner', savedId, mediaToSave);
-      }
-
-      handleCloseDrawer();
-      fetchData();
-    } catch (err) {
-      console.error('Error saving banner section:', err);
-      toast.error(err.response?.data?.message || 'Failed to save section');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const SelectedTypeIcon =
-    SECTION_TYPE_CONFIG[formType]?.icon || HiOutlinePhotograph;
-
-  return (
-    <div className="space-y-6 pb-12">
-      {/* ─── Page Header Matching Screenshot ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        {/* Page Heading */}
         <div>
-          <h1 className="text-2xl sm:text-3xl text-stone-900 font-bold tracking-tight">
-            Website Sections
+          <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight font-playfair">
+            Banner Management
           </h1>
           <p className="text-xs sm:text-sm text-stone-500 font-normal mt-1">
-            Manage all homepage sections, banners and promotional blocks.
+            Choose a banner type to manage its banners.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {selectedIds.length > 0 && (
+        {/* Banner Types Compact Small Box Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4.5">
+          {BANNER_TYPES.map((card) => {
+            const CardIcon = card.icon;
+            const count = bannerCounts[card.key] || 0;
+
+            return (
+              <div
+                key={card.key}
+                onClick={() => navigate(`${basePath}/${card.key}`)}
+                className="bg-white rounded-xl sm:rounded-2xl border border-stone-200/90 p-4 sm:p-5 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between hover:border-[#8a6d4b] hover:shadow-lg hover:shadow-stone-200/50 hover:bg-[#faf8f5]/40 hover:-translate-y-0.5"
+              >
+                <div>
+                  {/* Top row: Icon and Count Badge */}
+                  <div className="flex items-center justify-between gap-2 mb-3">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#fbf5ed] border border-[#f5e3cc]/70 flex items-center justify-center text-[#8a6d4b] shrink-0 group-hover:scale-105 group-hover:bg-[#f6ebd9] transition-all">
+                      <CardIcon className="w-5 h-5 stroke-[1.8]" />
+                    </div>
+
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold tracking-wide ${
+                        count > 0
+                          ? 'bg-[#fbf5ed] text-[#8a6d4b] border border-[#f5e3cc]'
+                          : 'bg-stone-50 text-stone-400 border border-stone-200/60'
+                      }`}
+                    >
+                      {count} {count === 1 ? 'banner' : 'banners'}
+                    </span>
+                  </div>
+
+                  {/* Title */}
+                  <h3 className="text-sm sm:text-base font-bold text-stone-900 group-hover:text-[#8a6d4b] transition-colors leading-snug">
+                    {card.label}
+                  </h3>
+
+                  {/* Description */}
+                  <p className="text-[11px] text-stone-500 mt-1.5 line-clamp-2 leading-relaxed">
+                    {card.desc}
+                  </p>
+                </div>
+
+                {/* Bottom link */}
+                <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-[11px] font-semibold text-stone-400 group-hover:text-[#8a6d4b] transition-colors">
+                  <span>Manage</span>
+                  <HiOutlineChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // RENDER SCREEN 2: BANNER TYPE LIST VIEW (Table with filters & + Add Button)
+  // =========================================================================
+  if (viewMode === 'list') {
+    const TypeIcon = currentBannerType.icon;
+
+    return (
+      <div className="space-y-6 pb-14 animate-fadeIn">
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-2 text-xs font-medium text-stone-500">
+          <span>Website Content</span>
+          <HiOutlineChevronRight className="w-3.5 h-3.5 text-stone-400" />
+          <button
+            type="button"
+            onClick={() => navigate(basePath)}
+            className="hover:text-stone-900 transition-colors cursor-pointer"
+          >
+            Banners
+          </button>
+          <HiOutlineChevronRight className="w-3.5 h-3.5 text-stone-400" />
+          <span className="text-stone-900 font-semibold">{currentBannerType.label}</span>
+        </div>
+
+        {/* Back to Banner Types Button */}
+        <div>
+          <button
+            type="button"
+            onClick={() => navigate(basePath)}
+            className="inline-flex items-center gap-2 text-xs font-semibold text-stone-600 hover:text-stone-900 transition-colors py-1 cursor-pointer group"
+          >
+            <HiOutlineArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            <span>Back to Banner Types</span>
+          </button>
+        </div>
+
+        {/* Header: Icon + Title + Description & + Add Button */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-[#fbf5ed] border border-[#f5e3cc]/60 flex items-center justify-center text-[#8a6d4b] shrink-0">
+              <TypeIcon className="w-6 h-6 stroke-[1.8]" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold text-stone-900 tracking-tight font-playfair">
+                {currentBannerType.label}
+              </h1>
+              <p className="text-xs sm:text-sm text-stone-500 font-normal mt-0.5">
+                {currentBannerType.desc}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer shadow-2xs"
+              >
+                <HiOutlineTrash className="w-4 h-4" />
+                <span>Delete Selected ({selectedIds.length})</span>
+              </button>
+            )}
+
             <button
               type="button"
-              onClick={handleBulkDelete}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 transition-colors cursor-pointer shadow-2xs"
+              onClick={() => {
+                resetForm();
+                navigate(`${basePath}/${currentBannerType.key}/new`);
+              }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#8a6d4b] hover:bg-[#785b3a] text-white shadow-xs transition-all cursor-pointer active:scale-98"
             >
-              <HiOutlineTrash className="w-4 h-4" />
-              <span>Delete Selected ({selectedIds.length})</span>
+              <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
+              <span>+ Add {currentBannerType.label}</span>
             </button>
-          )}
+          </div>
+        </div>
+
+        {/* Filter Bar matching screenshot */}
+        <div className="bg-white rounded-2xl border border-stone-200/80 p-3.5 sm:p-4 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Search Input */}
+          <div className="relative w-full md:w-80">
+            <HiOutlineSearch className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search banners..."
+              className="w-full pl-10 pr-4 py-2 rounded-xl border border-stone-200 text-xs sm:text-[13px] bg-stone-50/50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+            />
+          </div>
+
+          {/* Right Filter Dropdowns */}
+          <div className="flex items-center gap-2.5 w-full md:w-auto justify-end overflow-x-auto">
+            {/* Status Filter */}
+            <Dropdown
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'published', label: 'Published' },
+                { value: 'scheduled', label: 'Scheduled' },
+                { value: 'draft', label: 'Draft' },
+              ]}
+              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
+              menuClassName="z-30"
+            />
+
+            {/* Devices Filter */}
+            <Dropdown
+              value={deviceFilter}
+              onChange={setDeviceFilter}
+              options={[
+                { value: 'all', label: 'All Devices' },
+                { value: 'desktop', label: 'Desktop' },
+                { value: 'mobile', label: 'Mobile' },
+              ]}
+              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
+              menuClassName="z-30"
+            />
+
+            {/* Sort Dropdown */}
+            <Dropdown
+              value={sortBy}
+              onChange={setSortBy}
+              options={[
+                { value: 'newest', label: 'Newest first' },
+                { value: 'oldest', label: 'Oldest first' },
+                { value: 'order_asc', label: 'Order: Low to High' },
+                { value: 'order_desc', label: 'Order: High to Low' },
+              ]}
+              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
+              menuClassName="z-30"
+            />
+          </div>
+        </div>
+
+        {/* Data Table Matching Screenshot */}
+        <div className="bg-white rounded-2xl border border-stone-200/80 shadow-xs overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-stone-150 bg-[#faf9f7] text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
+                  <th className="py-3.5 px-4 w-10">
+                    <input
+                      type="checkbox"
+                      checked={paginatedItems.length > 0 && paginatedItems.every((b) => selectedIds.includes(b._id))}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedIds(paginatedItems.map((b) => b._id));
+                        } else {
+                          setSelectedIds([]);
+                        }
+                      }}
+                      className="rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b] cursor-pointer"
+                    />
+                  </th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">PREVIEW</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">TITLE</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">STATUS</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">DEVICES</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">ORDER</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">DATE</th>
+                  <th className="py-3.5 pr-6 pl-4 whitespace-nowrap text-right">ACTIONS</th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-stone-100 text-xs sm:text-[13px] text-stone-700">
+                {loading ? (
+                  <tr>
+                    <td colSpan="8" className="py-16 text-center text-stone-400">
+                      <div className="w-7 h-7 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
+                      <span>Loading banners...</span>
+                    </td>
+                  </tr>
+                ) : filteredBanners.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" className="py-16 text-center text-stone-400">
+                      <HiOutlinePhotograph className="w-10 h-10 mx-auto text-stone-300 mb-2 stroke-1" />
+                      <p className="text-sm font-medium text-stone-600">No {currentBannerType.label}s found</p>
+                      <p className="text-xs text-stone-400 mt-1">
+                        Click "+ Add {currentBannerType.label}" to create one.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems.map((banner) => {
+                    const bTitle = banner.content?.title || banner.title || 'Untitled Banner';
+                    const bDesc = banner.content?.description || banner.content?.subtitle || banner.subtitle || '';
+                    const assetUrl = banner.image?.url || (banner.collectionImages?.[0]?.url);
+                    const isScheduled = banner.status === 'scheduled' || (banner.startDate && new Date(banner.startDate) > new Date());
+                    const isPublished = banner.status === 'active' && !isScheduled;
+                    const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);
+                    const isSelected = selectedIds.includes(banner._id);
+
+                    return (
+                      <tr
+                        key={banner._id}
+                        className={`hover:bg-[#faf8f5]/60 transition-colors ${isSelected ? 'bg-[#fcfaf7]' : ''}`}
+                      >
+                        {/* Checkbox */}
+                        <td className="py-3.5 px-4">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              setSelectedIds((prev) =>
+                                prev.includes(banner._id)
+                                  ? prev.filter((id) => id !== banner._id)
+                                  : [...prev, banner._id]
+                              );
+                            }}
+                            className="rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b] cursor-pointer"
+                          />
+                        </td>
+
+                        {/* PREVIEW */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div
+                            onClick={() => navigate(`${basePath}/${currentBannerType.key}/edit/${banner._id}`)}
+                            className="w-28 sm:w-32 h-14 rounded-xl border border-stone-200/90 overflow-hidden bg-stone-900 relative shadow-2xs cursor-pointer group flex items-center justify-center shrink-0"
+                          >
+                            {assetUrl ? (
+                              <img
+                                src={getMediaUrl(assetUrl)}
+                                alt={bTitle}
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            ) : (
+                              <div className="w-full h-full bg-[#2a241e] flex items-center justify-center text-stone-500">
+                                <HiOutlinePhotograph className="w-5 h-5 text-[#8a6d4b]/60" />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* TITLE */}
+                        <td className="py-3.5 px-4 font-medium text-stone-900">
+                          <div
+                            onClick={() => navigate(`${basePath}/${currentBannerType.key}/edit/${banner._id}`)}
+                            className="font-bold text-stone-900 text-sm max-w-[260px] truncate cursor-pointer hover:text-[#8a6d4b] transition-colors"
+                            title={bTitle}
+                          >
+                            {bTitle}
+                          </div>
+                          {bDesc && (
+                            <div className="text-xs text-stone-400 font-normal max-w-[240px] truncate mt-0.5" title={bDesc}>
+                              {bDesc}
+                            </div>
+                          )}
+                        </td>
+
+                        {/* STATUS */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          {isPublished ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf7ee] text-[#137333]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#137333]" />
+                              <span>Published</span>
+                            </span>
+                          ) : isScheduled ? (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#fff7e6] text-[#d46b08]">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#fa8c16]" />
+                              <span>Scheduled</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-500">
+                              <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                              <span>Draft</span>
+                            </span>
+                          )}
+                        </td>
+
+                        {/* DEVICES */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="flex items-center gap-1.5 text-stone-500">
+                            <span
+                              title="Desktop View"
+                              className={`p-1 rounded-md ${banner.image?.url ? 'text-stone-700 bg-stone-100' : 'text-stone-400'}`}
+                            >
+                              <HiOutlineDesktopComputer className="w-4 h-4" />
+                            </span>
+                            <span
+                              title="Mobile View"
+                              className={`p-1 rounded-md ${banner.mobileImage?.url ? 'text-stone-700 bg-stone-100' : 'text-stone-400'}`}
+                            >
+                              <HiOutlineDeviceMobile className="w-4 h-4" />
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* ORDER */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg border border-stone-200 text-xs font-bold text-stone-700 bg-stone-50">
+                            {banner.display?.order ?? 1}
+                          </span>
+                        </td>
+
+                        {/* DATE */}
+                        <td className="py-3.5 px-4 whitespace-nowrap">
+                          <div className="text-xs font-medium text-stone-700">
+                            {dateInfo.date}
+                          </div>
+                          <div className="text-[11px] text-stone-400 font-normal mt-0.5">
+                            {dateInfo.time}
+                          </div>
+                        </td>
+
+                        {/* ACTIONS */}
+                        <td className="py-3.5 pr-6 pl-4 whitespace-nowrap text-right">
+                          <div className="inline-flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                            {/* Edit Pencil */}
+                            <button
+                              type="button"
+                              onClick={() => navigate(`${basePath}/${currentBannerType.key}/edit/${banner._id}`)}
+                              title="Edit banner"
+                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                            >
+                              <HiOutlinePencil className="w-3.5 h-3.5 stroke-[1.8]" />
+                            </button>
+
+                            {/* Duplicate */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleDuplicate(banner, e)}
+                              title="Duplicate banner"
+                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                            >
+                              <HiOutlineDuplicate className="w-3.5 h-3.5 stroke-[1.8]" />
+                            </button>
+
+                            {/* Delete Trash */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleDelete(banner, e)}
+                              title="Delete banner"
+                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-rose-50 text-stone-600 hover:text-rose-600 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                            >
+                              <HiOutlineTrash className="w-3.5 h-3.5 stroke-[1.8]" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="px-5 py-4 border-t border-stone-150 flex flex-col sm:flex-row items-center justify-between gap-3 bg-stone-50/50">
+            <span className="text-xs text-stone-500 font-medium">
+              Showing {filteredBanners.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
+              {Math.min(currentPage * pageSize, filteredBanners.length)} of {filteredBanners.length} banners
+            </span>
+
+            <Pagination
+              currentPage={currentPage}
+              totalItems={serverTotal ?? totalItems}
+              pageSize={pageSize}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // RENDER SCREEN 3: ADD / EDIT BANNER FORM WITH LIVE PREVIEW
+  // =========================================================================
+  const isEditing = Boolean(editingBanner?._id);
+  const activeType = currentBannerType;
+
+  return (
+    <div className="space-y-6 pb-20 animate-fadeIn">
+      {/* Hidden File Inputs for Presigned Upload */}
+      <input
+        type="file"
+        ref={desktopInputRef}
+        onChange={(e) => handleFileUpload(e.target.files?.[0], 'desktop')}
+        accept="image/png, image/jpeg, image/webp"
+        className="hidden"
+      />
+      <input
+        type="file"
+        ref={mobileInputRef}
+        onChange={(e) => handleFileUpload(e.target.files?.[0], 'mobile')}
+        accept="image/png, image/jpeg, image/webp"
+        className="hidden"
+      />
+
+      {/* Breadcrumb matching screenshot */}
+      <div className="flex items-center gap-2 text-xs font-medium text-stone-500">
+        <span>Website Content</span>
+        <HiOutlineChevronRight className="w-3.5 h-3.5 text-stone-400" />
+        <button
+          type="button"
+          onClick={() => navigate(basePath)}
+          className="hover:text-stone-900 transition-colors cursor-pointer"
+        >
+          Banners
+        </button>
+        <HiOutlineChevronRight className="w-3.5 h-3.5 text-stone-400" />
+        <button
+          type="button"
+          onClick={() => navigate(`${basePath}/${activeType.key}`)}
+          className="hover:text-stone-900 transition-colors cursor-pointer"
+        >
+          {activeType.label}
+        </button>
+        <HiOutlineChevronRight className="w-3.5 h-3.5 text-stone-400" />
+        <span className="text-stone-900 font-semibold">{isEditing ? 'Edit Banner' : 'Add Banner'}</span>
+      </div>
+
+      {/* Header with Back button and Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate(`${basePath}/${activeType.key}`)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+          >
+            <HiOutlineArrowLeft className="w-3.5 h-3.5" />
+            <span>Back</span>
+          </button>
+          <div>
+            <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-playfair">
+              {isEditing ? `Edit ${activeType.label}` : `Add ${activeType.label}`}
+            </h1>
+            <p className="text-xs text-stone-500 font-normal mt-0.5">
+              Upload banner images and set details for {activeType.label.toLowerCase()}.
+            </p>
+          </div>
+        </div>
+
+        {/* Save Actions */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+          <button
+            type="button"
+            disabled={submitting}
+            onClick={() => handleSaveBanner('inactive')}
+            className="px-4 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs sm:text-sm font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
+          >
+            Save as Draft
+          </button>
 
           <button
             type="button"
-            onClick={handleOpenAdd}
-            className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#8a6d4b] hover:bg-[#785b3a] text-white shadow-xs transition-all cursor-pointer active:scale-98"
+            disabled={submitting}
+            onClick={() => handleSaveBanner('active')}
+            className="px-5 py-2.5 rounded-xl bg-[#8a6d4b] hover:bg-[#785b3a] text-white text-xs sm:text-sm font-semibold transition-all cursor-pointer shadow-xs active:scale-98 disabled:opacity-50 flex items-center gap-2"
           >
-            <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-            <span>Add Section</span>
+            {submitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+            <span>Publish Banner</span>
           </button>
         </div>
       </div>
 
-      {/* ─── Type Filter Tabs Matching Screenshot ─── */}
-      <div className="flex items-center gap-6 border-b border-stone-200/90 overflow-x-auto scrollbar-none">
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.key;
-          const count = tabCounts[tab.key] || 0;
+      {/* Two Column Layout matching screenshot */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* Left Column (Forms & Details) - 7 cols */}
+        <div className="lg:col-span-7 space-y-6">
+          {/* Card 1: Banner Details */}
+          <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+            <h2 className="text-sm font-bold text-stone-900">
+              Banner Details
+            </h2>
 
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => handleTabChange(tab.key)}
-              className={`pb-3.5 text-xs sm:text-sm font-medium transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 border-b-2 ${
-                isActive
-                  ? 'border-[#8a6d4b] text-[#8a6d4b] font-semibold -mb-[1px]'
-                  : 'border-transparent text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span
-                className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[11px] font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-[#8a6d4b]/10 text-[#8a6d4b]'
-                    : 'bg-stone-100 text-stone-500'
-                }`}
-              >
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ─── Table Card Matching Screenshot ─── */}
-      <div className="bg-white rounded-2xl border border-stone-200/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-stone-150 bg-stone-50/40 text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
-                <th className="py-3.5 pl-5 pr-2 w-10">
-                  <input
-                    type="checkbox"
-                    checked={
-                      paginatedItems.length > 0 &&
-                      paginatedItems.every((b) => selectedIds.includes(b._id))
-                    }
-                    onChange={handleSelectAll}
-                    className="w-4 h-4 rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b]/30 cursor-pointer"
-                  />
-                </th>
-                <th className="py-3.5 px-4 whitespace-nowrap">PREVIEW</th>
-                <th className="py-3.5 px-4 whitespace-nowrap">TITLE</th>
-                <th className="py-3.5 px-4 whitespace-nowrap">TYPE</th>
-                <th className="py-3.5 px-4 whitespace-nowrap">STATUS</th>
-                <th className="py-3.5 px-4 whitespace-nowrap text-center">ORDER</th>
-                <th className="py-3.5 pr-6 pl-4 whitespace-nowrap text-right">ACTIONS</th>
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-stone-100 text-xs sm:text-[13px] text-stone-700">
-              {loading ? (
-                <tr>
-                  <td colSpan="7" className="py-16 text-center text-stone-400">
-                    <div className="w-7 h-7 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
-                    <span>Loading website sections...</span>
-                  </td>
-                </tr>
-              ) : filteredBanners.length === 0 ? (
-                <tr>
-                  <td colSpan="7" className="py-16 text-center text-stone-400">
-                    <HiOutlinePhotograph className="w-10 h-10 mx-auto text-stone-300 mb-2 stroke-1" />
-                    <p className="text-sm font-medium text-stone-600">No sections found</p>
-                    <p className="text-xs text-stone-400 mt-1">
-                      {activeTab === 'all'
-                        ? 'Click "+ Add Section" to create your first homepage banner.'
-                        : `No sections created under ${TABS.find((t) => t.key === activeTab)?.label || 'this tab'}.`}
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                paginatedItems.map((banner) => {
-                  const bType = (banner.display?.type || 'herobanner').toLowerCase();
-                  const typeConfig = SECTION_TYPE_CONFIG[bType] || SECTION_TYPE_CONFIG.websitebanner;
-                  const bTitle = banner.content?.title || typeConfig.label || 'Website Section';
-                  const assetUrl =
-                    banner.mediaType === 'video' ? banner.video?.url : banner.image?.url;
-                  const isActive = banner.status === 'active';
-                  const bOrder = banner.display?.order ?? 1;
-
-                  return (
-                    <tr
-                      key={banner._id}
-                      className="hover:bg-[#faf8f5]/60 transition-colors"
-                    >
-                      {/* Checkbox */}
-                      <td className="py-3.5 pl-5 pr-2">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(banner._id)}
-                          onChange={(e) => handleSelectItem(banner._id, e)}
-                          className="w-4 h-4 rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b]/30 cursor-pointer"
-                        />
-                      </td>
-
-                      {/* Preview Image (Landscape 1920x600 ratio aspect) */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div
-                          onClick={() => handleOpenEdit(banner)}
-                          className="w-36 sm:w-44 h-14 sm:h-16 rounded-xl border border-stone-200/90 overflow-hidden bg-stone-900 relative shadow-2xs cursor-pointer group flex items-center justify-center shrink-0"
-                        >
-                          {banner.mediaType === 'video' ? (
-                            <div className="w-full h-full bg-stone-900 flex items-center justify-center text-white">
-                              <HiOutlineFilm className="w-5 h-5 text-stone-300" />
-                            </div>
-                          ) : assetUrl ? (
-                            <img
-                              src={getMediaUrl(assetUrl)}
-                              alt={bTitle}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                          ) : (
-                            <HiOutlinePhotograph className="w-5 h-5 text-stone-500" />
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Title */}
-                      <td className="py-3.5 px-4 font-medium text-stone-900 whitespace-nowrap">
-                        <div className="max-w-[240px] truncate" title={bTitle}>
-                          {bTitle}
-                        </div>
-                        {banner.content?.subtitle && (
-                          <div className="text-[11px] text-stone-400 font-normal truncate max-w-[220px]">
-                            {banner.content.subtitle}
-                          </div>
-                        )}
-                        {(() => {
-                          const catObj = banner.display?.categoryId || banner.display?.category;
-                          const catName =
-                            typeof catObj === 'object' && catObj?.name
-                              ? catObj.name
-                              : categories.find((c) => c._id === (catObj?._id || catObj))?.name || '';
-                          if (!catName) return null;
-                          return (
-                            <div className="mt-1">
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 text-[10px] font-medium border border-stone-200/60">
-                                <HiOutlineTag className="w-3 h-3 text-[#8a6d4b]" />
-                                {catName}
-                              </span>
-                            </div>
-                          );
-                        })()}
-
-                        {/* Offer Validity and Expiry Status for offer banners */}
-                        {bType === 'offerbanner' && (banner.startDate || banner.endDate) && (
-                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                            {banner.endDate && (() => {
-                              const isPast = new Date(banner.endDate) < new Date();
-                              return (
-                                <span
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium border ${
-                                    isPast
-                                      ? 'bg-rose-50 text-rose-700 border-rose-200'
-                                      : 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  }`}
-                                  title={`Ends: ${new Date(banner.endDate).toLocaleString()}`}
-                                >
-                                  <HiOutlineClock className="w-3 h-3" />
-                                  {isPast
-                                    ? 'Expired'
-                                    : `Ends: ${new Date(banner.endDate).toLocaleDateString(undefined, {
-                                        month: 'short',
-                                        day: 'numeric',
-                                        hour: '2-digit',
-                                        minute: '2-digit',
-                                      })}`}
-                                </span>
-                              );
-                            })()}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Type Badge */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex items-center px-3 py-1 rounded-lg text-xs font-medium ${typeConfig.badgeClass}`}
-                        >
-                          {typeConfig.label}
-                        </span>
-                      </td>
-
-                      {/* Status Toggle Switch */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => handleToggleStatus(banner, e)}
-                          className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer focus:outline-none ${
-                            isActive ? 'bg-[#8a6d4b]' : 'bg-stone-300'
-                          }`}
-                          title={`Click to ${isActive ? 'deactivate' : 'activate'}`}
-                        >
-                          <div
-                            className={`bg-white w-4 h-4 rounded-full shadow-xs transform transition-transform duration-200 ${
-                              isActive ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
-                      </td>
-
-                      {/* Order Input */}
-                      <td className="py-3.5 px-4 whitespace-nowrap text-center">
-                        <input
-                          type="number"
-                          defaultValue={bOrder}
-                          key={bOrder}
-                          onBlur={(e) => handleOrderChange(banner, e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') {
-                              handleOrderChange(banner, e.currentTarget.value);
-                              e.currentTarget.blur();
-                            }
-                          }}
-                          className="w-12 h-9 rounded-lg border border-stone-200 text-center font-medium text-xs text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20"
-                        />
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3.5 pr-6 pl-4 whitespace-nowrap text-right">
-                        <RowActions
-                          onEdit={() => handleOpenEdit(banner)}
-                          editTitle="Edit Section"
-                          onDelete={(e) => handleDelete(banner, e)}
-                          deleteTitle="Delete Section"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={serverTotal ?? totalItems}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
-            setCurrentPage(1);
-          }}
-        />
-      </div>
-
-      {/* ─── Centered Modal Pop-up (Replaces Sidebar Drawer) ─── */}
-      {isDrawerOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
-          onClick={handleCloseDrawer}
-        >
-          <div
-            className={`bg-white rounded-3xl ${formType === 'collectionbanner' ? 'max-w-6xl' : 'max-w-xl'} w-full p-6 sm:p-7 shadow-2xl border border-stone-200/90 flex flex-col max-h-[92vh] animate-scaleUp overflow-hidden`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-stone-100 shrink-0">
-              <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
-                {editingBanner ? 'Edit Section' : 'Add Section'}
-              </h2>
-              <button
-                type="button"
-                onClick={handleCloseDrawer}
-                className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
-              >
-                <HiOutlineX className="w-4 h-4 stroke-[2]" />
-              </button>
+            {/* Title */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-stone-700">
+                Title <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Enter banner title"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+              />
             </div>
 
-            {/* Modal Form Body */}
-            <form
-              id="bannerDrawerForm"
-              onSubmit={handleSubmit}
-              className="flex-1 overflow-y-auto py-4 px-1 space-y-5 scrollbar-thin scrollbar-thumb-stone-200"
-            >
-                {/* ─── 1. Select Section Type ─── */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-stone-700">
-                    1. Select Section Type <span className="text-red-500">*</span>
-                  </label>
+            {/* Description */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-stone-700">
+                Description
+              </label>
+              <input
+                type="text"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Enter short description (optional)"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+              />
+            </div>
 
-                  <Dropdown
-                    value={formType}
-                    onChange={(val) => {
-                      setFormType(val);
-                      if (val === 'mobileappbanner') setPlatform('mobile');
-                    }}
-                    options={SECTION_TYPE_OPTIONS.map((opt) => {
-                      const Icon = opt.icon;
-                      return {
-                        value: opt.value,
-                        label: opt.label,
-                        icon: <Icon className="w-4 h-4 text-stone-500" />,
-                      };
-                    })}
-                    buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
-                    menuClassName="z-[60]"
-                  />
-                </div>
+            {/* Link / URL */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold text-stone-700">
+                Link / URL
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={destinationLink}
+                  onChange={(e) => setDestinationLink(e.target.value)}
+                  placeholder="https://"
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+                />
+                <Dropdown
+                  value={linkTarget}
+                  onChange={setLinkTarget}
+                  options={[
+                    { value: '_self', label: 'Open in same tab' },
+                    { value: '_blank', label: 'Open in new tab' },
+                  ]}
+                  buttonClassName="h-10 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white whitespace-nowrap"
+                  menuClassName="z-30"
+                />
+              </div>
+            </div>
 
-                {/* ─── 2. Banner Image ─── */}
-                <div className="space-y-2.5">
-                  <h3 className="text-xs font-semibold text-stone-700">
-                    2. Banner Image <span className="font-normal text-stone-400">(Optional)</span>
-                  </h3>
-
-
-                  {/* Hidden file input */}
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={formType === 'collectionbanner' ? handleCollectionFilesSelect : handleFileSelect}
-                    accept="image/png, image/jpeg, image/webp"
-                    multiple={false}
-                    className="hidden"
-                  />
-
-                  <ThemeImageField key={editingBanner?._id || 'new'} module="banner" recordId={editingBanner?._id} selectedThemeId={themeId} onThemeChange={(value) => { setThemeId(value); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={formType === 'collectionbanner'
-                    ? [0, 1, 2, 3].map((index) => ({ key: editingBanner?.collectionImages?.[index]?._id ? `collection:${editingBanner.collectionImages[index]._id}` : `collection:new:${index}`, label: `Collection tile ${index + 1}`, url: collectionImages[index]?.url || editingBanner?.collectionImages?.[index]?.url }))
-                    : [{ key: 'image', label: 'Banner image', url: imageUrl }]}>
-                  {/* Image Preview with delete button */}
-                  {formType === 'collectionbanner' ? (
-                    <div className="space-y-3">
-                      <p className="text-xs text-stone-500">Four images, one collection. Choose a category for each tile.</p>
-                      <div className="grid grid-cols-4 grid-rows-2 gap-3 aspect-[2/1] min-h-[320px]">
-                        {[0, 1, 2, 3].map((index) => {
-                          const image = collectionImages[index] || {};
-                          const placement = ['col-start-1 row-start-1', 'col-start-2 row-start-1', 'col-start-1 col-span-2 row-start-2', 'col-start-3 col-span-2 row-start-1 row-span-2'][index];
-                          return (
-                            <div key={index} className={`relative min-w-0 rounded-2xl border border-stone-200 bg-stone-100 focus-within:z-20 ${placement}`}>
-                              {image.url && <img src={getMediaUrl(image.url)} alt={`Collection image ${index + 1}`} className="absolute inset-0 h-full w-full rounded-2xl object-cover" />}
-                              <div className="absolute left-2 right-2 top-2 z-10">
-                                <Dropdown
-                                  id={`collection-image-${index + 1}-category`}
-                                  value={image.categoryId || ''}
-                                  onChange={(categoryId) => setCollectionImages((current) => Array.from({ length: 4 }, (_, i) => i === index ? { ...current[i], categoryId } : current[i] || {}))}
-                                  options={categories.map((category) => ({ value: category._id, label: category.name }))}
-                                  placeholder="Select category"
-                                  size="sm"
-                                  buttonClassName="w-full rounded-lg border border-stone-200 bg-white/95 px-2 py-1.5 text-[11px] text-stone-800"
-                                  menuClassName="z-[60]"
-                                />
-                              </div>
-                              {collectionUploadStats[index] && (
-                                <div className="absolute inset-x-2 bottom-14 z-10 rounded-lg bg-white/95 px-2 py-1 text-center text-[10px] font-medium text-stone-700 shadow-sm">
-                                  {formatBytes(collectionUploadStats[index].originalSize)} → {formatBytes(collectionUploadStats[index].compressedSize)}
-                                  {collectionUploadStats[index].wasCompressed ? ' · compressed' : ' · original'}
-                                </div>
-                              )}
-                              <div className="absolute inset-x-2 bottom-3 flex flex-wrap items-center justify-center gap-2">
-                                <button type="button" disabled={isUploading} onClick={() => { collectionSlotRef.current = index; fileInputRef.current?.click(); }} className="rounded-lg bg-white px-3 py-2 text-xs font-semibold shadow-sm disabled:opacity-50">{image.url ? 'Change' : `Upload image ${index + 1}`}</button>
-                                {image.url && <button type="button" disabled={isUploading} onClick={() => handleRemoveCollectionImage(index)} aria-label={`Remove image ${index + 1}`} className="rounded-lg bg-white p-2 text-red-500 shadow-sm"><HiOutlineTrash className="h-4 w-4" /></button>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : imageUrl ? (
-                    <div className="relative w-full h-36 rounded-xl overflow-hidden border border-stone-200/90 bg-stone-900 shadow-inner group">
-                      <img
-                        src={getMediaUrl(imageUrl)}
-                        alt="Banner Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleRemoveImage}
-                        className="absolute top-2 right-2 w-7 h-7 rounded-lg bg-white/90 hover:bg-white text-red-500 flex items-center justify-center shadow-sm transition-all cursor-pointer"
-                        title="Remove Image"
-                      >
-                        <HiOutlineTrash className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : null}
-
-                  {formType !== 'collectionbanner' && imageUploadStats && (
-                    <p className="text-[11px] text-emerald-700">
-                      Uploaded size: {formatBytes(imageUploadStats.originalSize)} → {formatBytes(imageUploadStats.compressedSize)}{imageUploadStats.wasCompressed ? ' after compression' : ' (compression not applied)'}
-                    </p>
-                  )}
-
-                  {/* Upload Progress Bar if uploading */}
-                  {isUploading && (
-                    <div className="space-y-1.5 p-3 rounded-xl bg-stone-50 border border-stone-200/60">
-                      <div className="flex items-center justify-between text-[11px] text-stone-600 font-medium">
-                        <span>Uploading image to Cloudflare...</span>
-                        <span>{uploadProgress}%</span>
-                      </div>
-                      <div className="w-full h-1.5 bg-stone-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#8a6d4b] transition-all duration-200 rounded-full"
-                          style={{ width: `${uploadProgress}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Change / Upload Button */}
-                  {formType !== 'collectionbanner' && <button
-                    type="button"
-                    disabled={isUploading}
-                    onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-11 rounded-xl border border-stone-200 hover:border-stone-300 hover:bg-stone-50 text-xs font-medium text-stone-700 flex items-center justify-center gap-2 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    <HiOutlineUpload className="w-4 h-4 text-stone-500" />
-                    <span>{formType === 'collectionbanner'
-                      ? `Upload ${4 - collectionImages.length} more image${4 - collectionImages.length === 1 ? '' : 's'}`
-                      : (imageUrl ? 'Change Image' : 'Upload Image')}</span>
-                  </button>}
-                  {formType === 'collectionbanner' && (
-                    <p className="text-[10px] text-stone-500">Add 4 images to one collection record. They are shown together in the storefront layout.</p>
-                  )}
-
-                  </ThemeImageField>
-
+            {/* If Collection Banner, show group & categories */}
+            {activeType.key === 'collectionbanner' && (
+              <div className="pt-2 border-t border-stone-100 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label htmlFor="banner-platform" className="mb-1 block text-[11px] font-medium text-stone-600">
-                      Platform
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      Collection Group
                     </label>
                     <Dropdown
-                      id="banner-platform"
-                      value={platform}
-                      onChange={(val) => setPlatform(val)}
+                      value={collectionGroup}
+                      onChange={setCollectionGroup}
                       options={[
-                        {
-                          value: 'web',
-                          label: 'Web',
-                          icon: <HiOutlineGlobeAlt className="w-4 h-4 text-stone-500" />,
-                        },
-                        {
-                          value: 'mobile',
-                          label: 'Mobile',
-                          icon: <HiOutlineDeviceMobile className="w-4 h-4 text-stone-500" />,
-                        },
+                        { value: 'gold', label: 'Gold Collection' },
+                        { value: 'silver', label: 'Silver Collection' },
+                        { value: 'spiritual', label: 'Spiritual Collection' },
                       ]}
-                      buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
-                      menuClassName="z-[60]"
+                      buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                      menuClassName="z-30"
                     />
                   </div>
 
-                </div>
-
-                {/* ─── 3. Section Details & Category Settings ─── */}
-                <div className="space-y-3.5">
-                  {/* Offer Banner Active Time Window (Start & End Date with Cron Auto-Deletion) */}
-                  {formType === 'offerbanner' && (
-                    <div className="p-3.5 rounded-xl bg-[#fff8f2] border border-[#f5d7b5] space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8a4b12]">
-                          <HiOutlineClock className="w-4 h-4 text-[#c05621]" />
-                          <span>Offer Time Window (Cron Auto-Expires)</span>
-                        </div>
-                        <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-[#faecd8] text-[#9c4221] border border-[#f5d7b5]">
-                          Auto-Delete on Expiry
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-[11px] font-medium text-stone-700 mb-1">
-                            Start Date & Time <span className="text-stone-400 font-normal">(Optional)</span>
-                          </label>
-                          <DatePicker
-                            includeTime={true}
-                            value={startDate}
-                            onChange={(val) => setStartDate(val)}
-                            direction="up"
-                            placeholder="Select start date & time"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-[11px] font-medium text-stone-700 mb-1">
-                            End Date & Time <span className="text-stone-400 font-normal">(Auto-Delete on pass)</span>
-                          </label>
-                          <DatePicker
-                            includeTime={true}
-                            value={endDate}
-                            onChange={(val) => setEndDate(val)}
-                            direction="up"
-                            minDate={startDate}
-                            placeholder="Select end date & time"
-                          />
-                        </div>
-                      </div>
-
-                      <p className="text-[11px] text-[#9c4221] leading-relaxed">
-                        ⏳ When the <strong>End Date & Time</strong> passes, the scheduled backend cron job will automatically delete this expired offer banner from the website.
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Customize Banner heading, subtitle and action link */}
-                  {formType === 'customizebanner' && (
-                    <div className="space-y-3 p-3.5 rounded-xl bg-amber-50/40 border border-amber-200/60">
-                      <div>
-                        <label className="block text-[11px] font-medium text-stone-700 mb-1">
-                          Heading / Title
-                        </label>
-                        <input
-                          type="text"
-                          value={title}
-                          onChange={(e) => setTitle(e.target.value)}
-                          placeholder="e.g. Craft Your Dream Jewellery"
-                          className="w-full h-10 px-3 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b]"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium text-stone-700 mb-1">
-                          Subtitle / Description
-                        </label>
-                        <input
-                          type="text"
-                          value={subtitle}
-                          onChange={(e) => setSubtitle(e.target.value)}
-                          placeholder="e.g. From bespoke engagement rings to family heirlooms..."
-                          className="w-full h-10 px-3 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b]"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-[11px] font-medium text-stone-700 mb-1">
-                          Button Link / Action URL <span className="text-stone-400 font-normal">(Optional)</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={destinationLink}
-                          onChange={(e) => setDestinationLink(e.target.value)}
-                          placeholder="e.g. /custom-jewellery (leave empty for Appointment modal)"
-                          className="w-full h-10 px-3 rounded-lg border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:border-[#8a6d4b]"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {formType === 'collectionbanner' && (
-                    <div>
-                      <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                        Collection Group <span className="text-red-500">*</span>
-                      </label>
-                      <Dropdown
-                        value={collectionGroup}
-                        direction="up"
-                        openUpward={true}
-                        onChange={setCollectionGroup}
-                        options={[
-                          { value: 'gold', label: 'Gold Collection' },
-                          { value: 'silver', label: 'Silver Collection' },
-                          { value: 'spiritual', label: 'Spiritual Collection' },
-                        ]}
-                        buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
-                        menuClassName="z-[60]"
-                      />
-                    </div>
-                  )}
-
-                  {/* Category selection is available for hero, category, collection, and offer banners. */}
-                  {(formType === 'herobanner' ||
-                    formType === 'categorybanner' ||
-                    formType === 'offerbanner') && (
-                    <div>
-                      <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                        Category {(formType === 'categorybanner' || formType === 'collectionbanner') && <span className="text-red-500">*</span>}
-                      </label>
-                      <Dropdown
-                        value={selectedCategory}
-                        direction="up"
-                        openUpward={true}
-                        onChange={(catId) => {
-                          setSelectedCategory(catId);
-                          if (formType === 'collectionbanner') setSelectedMenuItemIds([]);
-                          const cat = categories.find((c) => c._id === catId);
-                          if (cat) {
-                            if (!destinationLink || destinationLink.startsWith('/shop?category=') || destinationLink === '/shop') {
-                              setDestinationLink(`/shop?category=${cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-')}`);
-                            }
-                            if (!title && formType === 'categorybanner') {
-                              setTitle(`${cat.name} Collection`);
-                            }
-                          }
-                        }}
-                        options={[
-                          {
-                            value: '',
-                            label: 'Select Category',
-                          },
-                          ...categories.map((cat) => ({
-                            value: cat._id,
-                            label: cat.name,
-                          })),
-                        ]}
-                        placeholder="Select Category"
-                        buttonClassName="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white shadow-2xs"
-                        menuClassName="z-[60]"
-                      />
-                    </div>
-                  )}
-
-                  {formType === 'collectionbanner' && selectedCategory && (
-                    <div className="rounded-xl border border-stone-200 bg-white p-3.5 space-y-2">
-                      <div>
-                        <h4 className="text-xs font-semibold text-stone-800">Menu Items</h4>
-                        <p className="text-[11px] text-stone-500 mt-0.5">Choose the menu items shown for this collection banner.</p>
-                      </div>
-                      {selectedCategoryMenuItems.length ? (
-                        <div className="max-h-48 overflow-y-auto divide-y divide-stone-100">
-                          {selectedCategoryMenuItems.map((menuItem) => (
-                            <label key={menuItem._id} className="flex items-center gap-2.5 py-2 text-xs text-stone-700 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={selectedMenuItemIds.includes(String(menuItem._id))}
-                                onChange={(event) => setSelectedMenuItemIds((current) => event.target.checked
-                                  ? [...new Set([...current, String(menuItem._id)])]
-                                  : current.filter((id) => id !== String(menuItem._id)))}
-                                className="accent-[#8a6d4b]"
-                              />
-                              <span className="flex-1">{menuItem.name || menuItem.title}</span>
-                              <span className="text-[10px] text-stone-400">{menuItem.sectionName}</span>
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="py-3 text-center text-xs text-stone-400">No active menu items for this category.</p>
-                      )}
-                    </div>
-                  )}
-
-                </div>
-
-                {/* ─── 4. Display Settings ─── */}
-                <div className="space-y-3.5">
-                  <h3 className="text-xs font-semibold text-stone-700">
-                    4. Display Settings
-                  </h3>
-
-                  <div className="grid grid-cols-2 gap-4 items-center">
-                    <div>
-                      <label className="block text-[11px] font-medium text-stone-600 mb-2">
-                        Status
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))
-                        }
-                        className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 cursor-pointer focus:outline-none ${
-                          status === 'active' ? 'bg-[#8a6d4b]' : 'bg-stone-300'
-                        }`}
-                      >
-                        <div
-                          className={`bg-white w-4 h-4 rounded-full shadow-xs transform transition-transform duration-200 ${
-                            status === 'active' ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-medium text-stone-600 mb-1">
-                        Display Order
-                      </label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={order}
-                        onChange={(e) => setOrder(Number(e.target.value) || 0)}
-                        className="w-full h-11 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 focus:outline-none focus:border-[#8a6d4b] focus:ring-1 focus:ring-[#8a6d4b]/20 transition-all bg-white"
-                      />
-                    </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 mb-1">
+                      Associated Category
+                    </label>
+                    <Dropdown
+                      value={selectedCategory}
+                      onChange={setSelectedCategory}
+                      options={[
+                        { value: '', label: 'Select Category (Optional)' },
+                        ...categories.map((c) => ({ value: c._id, label: c.name })),
+                      ]}
+                      buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                      menuClassName="z-30"
+                    />
                   </div>
                 </div>
-              </form>
+              </div>
+            )}
+          </div>
 
-            {/* Modal Footer Actions */}
-            <div className="pt-4 border-t border-stone-100 flex items-center justify-between gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={handleCloseDrawer}
-                className="w-1/2 h-11 bg-[#f7f7f9] hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                form="bannerDrawerForm"
-                disabled={submitting || isUploading}
-                className="w-1/2 h-11 bg-[#8a6d4b] hover:bg-[#785b3a] text-white text-xs font-semibold rounded-xl transition-colors shadow-xs cursor-pointer disabled:opacity-50 flex items-center justify-center"
-              >
-                {submitting ? 'Saving...' : 'Save Section'}
-              </button>
+          {/* Card 2: Images (Desktop Banner & Mobile Banner) */}
+          <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+            <h2 className="text-sm font-bold text-stone-900">
+              Images
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Desktop Banner Upload Box */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-stone-700">
+                    Desktop Banner <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-stone-400 font-normal">
+                    (Recommended 1920 × 600)
+                  </span>
+                </div>
+
+                {imageUrl ? (
+                  <div className="relative rounded-2xl border border-stone-200 overflow-hidden bg-stone-900 aspect-[16/7] group shadow-2xs">
+                    <img
+                      src={getMediaUrl(imageUrl)}
+                      alt="Desktop Banner"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => desktopInputRef.current?.click()}
+                        className="px-3 py-1.5 rounded-lg bg-white/90 text-stone-800 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
+                      >
+                        Replace
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveUploadedImage('desktop')}
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    {desktopUploadStats && (
+                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px]">
+                        {formatBytes(desktopUploadStats.compressedSize)}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => desktopInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleFileUpload(e.dataTransfer?.files?.[0], 'desktop');
+                    }}
+                    className="border-2 border-dashed border-stone-200 hover:border-[#8a6d4b] bg-stone-50/50 hover:bg-[#fbf5ed]/30 rounded-2xl p-6 text-center cursor-pointer transition-all aspect-[16/7] flex flex-col items-center justify-center group"
+                  >
+                    {isUploadingDesktop ? (
+                      <div className="space-y-2">
+                        <div className="w-6 h-6 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto" />
+                        <p className="text-xs text-stone-500 font-medium">Uploading & compressing...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 group-hover:text-[#8a6d4b] group-hover:border-[#8a6d4b]/40 mb-2 transition-colors shadow-2xs">
+                          <HiOutlineCloudUpload className="w-5 h-5 stroke-[1.8]" />
+                        </div>
+                        <p className="text-xs font-semibold text-stone-800">
+                          Click to upload
+                          <span className="font-normal text-stone-500"> or drag and drop</span>
+                        </p>
+                        <p className="text-[11px] text-stone-400 mt-0.5">
+                          JPG, PNG, WebP (Max 5MB)
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Mobile Banner Upload Box */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-stone-700">
+                    Mobile Banner <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-stone-400 font-normal">
+                    (Recommended 768 × 1024)
+                  </span>
+                </div>
+
+                {mobileImageUrl ? (
+                  <div className="relative rounded-2xl border border-stone-200 overflow-hidden bg-stone-900 aspect-[16/7] group shadow-2xs">
+                    <img
+                      src={getMediaUrl(mobileImageUrl)}
+                      alt="Mobile Banner"
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => mobileInputRef.current?.click()}
+                        className="px-3 py-1.5 rounded-lg bg-white/90 text-stone-800 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
+                      >
+                        Replace
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveUploadedImage('mobile')}
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    {mobileUploadStats && (
+                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px]">
+                        {formatBytes(mobileUploadStats.compressedSize)}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => mobileInputRef.current?.click()}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleFileUpload(e.dataTransfer?.files?.[0], 'mobile');
+                    }}
+                    className="border-2 border-dashed border-stone-200 hover:border-[#8a6d4b] bg-stone-50/50 hover:bg-[#fbf5ed]/30 rounded-2xl p-6 text-center cursor-pointer transition-all aspect-[16/7] flex flex-col items-center justify-center group"
+                  >
+                    {isUploadingMobile ? (
+                      <div className="space-y-2">
+                        <div className="w-6 h-6 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto" />
+                        <p className="text-xs text-stone-500 font-medium">Uploading & compressing...</p>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 group-hover:text-[#8a6d4b] group-hover:border-[#8a6d4b]/40 mb-2 transition-colors shadow-2xs">
+                          <HiOutlineCloudUpload className="w-5 h-5 stroke-[1.8]" />
+                        </div>
+                        <p className="text-xs font-semibold text-stone-800">
+                          Click to upload
+                          <span className="font-normal text-stone-500"> or drag and drop</span>
+                        </p>
+                        <p className="text-[11px] text-stone-400 mt-0.5">
+                          JPG, PNG, WebP (Max 5MB)
+                        </p>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Display Settings */}
+          <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+            <h2 className="text-sm font-bold text-stone-900">
+              Display Settings
+            </h2>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Status */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-stone-700">
+                  Status
+                </label>
+                <Dropdown
+                  value={formStatus}
+                  onChange={setFormStatus}
+                  options={[
+                    { value: 'active', label: 'Published' },
+                    { value: 'inactive', label: 'Draft' },
+                    { value: 'scheduled', label: 'Scheduled' },
+                  ]}
+                  buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                  menuClassName="z-30"
+                />
+              </div>
+
+              {/* Display Order */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-stone-700">
+                  Display Order <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={order}
+                  onChange={(e) => setOrder(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+                />
+              </div>
+
+              {/* Schedule (Optional) */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-stone-700">
+                  Schedule (Optional)
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="date"
+                    value={startDate ? startDate.split('T')[0] : ''}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    placeholder="Start date"
+                    className="w-full px-2.5 py-2 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b]"
+                  />
+                  <span className="text-stone-400 text-xs">→</span>
+                  <input
+                    type="date"
+                    value={endDate ? endDate.split('T')[0] : ''}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    placeholder="End date"
+                    className="w-full px-2.5 py-2 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b]"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      )}
+
+        {/* Right Column (Live Visual Preview) - 5 cols */}
+        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-24">
+          <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-xs space-y-4">
+            {/* Preview Header & Device Tabs */}
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-bold text-stone-900">
+                Preview
+              </h2>
+
+              <div className="inline-flex rounded-xl p-1 bg-stone-100 border border-stone-200/60">
+                <button
+                  type="button"
+                  onClick={() => setPreviewDevice('desktop')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    previewDevice === 'desktop'
+                      ? 'bg-white text-stone-900 shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <HiOutlineDesktopComputer className="w-3.5 h-3.5" />
+                  <span>Desktop View</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setPreviewDevice('mobile')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    previewDevice === 'mobile'
+                      ? 'bg-white text-stone-900 shadow-2xs'
+                      : 'text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <HiOutlineDeviceMobile className="w-3.5 h-3.5" />
+                  <span>Mobile View</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Live Canvas Preview Frame matching screenshot */}
+            {previewDevice === 'desktop' ? (
+              /* Desktop Widescreen Preview */
+              <div className="relative rounded-2xl overflow-hidden bg-stone-950 aspect-[16/8] shadow-lg border border-stone-800 flex items-center">
+                {/* Background Image */}
+                {imageUrl && (
+                  <img
+                    src={getMediaUrl(imageUrl)}
+                    alt="Desktop Preview"
+                    className="absolute inset-0 w-full h-full object-cover opacity-85"
+                  />
+                )}
+
+                {/* Gradient Overlay for text contrast */}
+                <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/30" />
+
+                {/* Banner Content Live Render */}
+                <div className="relative z-10 p-6 sm:p-8 max-w-sm space-y-2.5">
+                  <div className="text-[10px] tracking-[0.25em] text-[#d4af37] font-semibold uppercase font-sans">
+                    NEIRAH JEWELS
+                  </div>
+
+                  <h3 className="text-xl sm:text-2xl font-bold text-white font-playfair tracking-tight leading-tight drop-shadow-md">
+                    {title || 'Banner Title'}
+                  </h3>
+
+                  {description && (
+                    <p className="text-[11px] sm:text-xs text-stone-200 font-light tracking-wide drop-shadow leading-relaxed">
+                      {description}
+                    </p>
+                  )}
+
+                  <div className="pt-2">
+                    <span className="inline-flex items-center px-4 py-2 rounded-full text-[11px] font-bold tracking-widest uppercase bg-[#8a6d4b] text-white shadow-md">
+                      SHOP NOW
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* Mobile Portrait Preview Mockup */
+              <div className="py-2">
+                <div className="max-w-[260px] mx-auto aspect-[9/16] rounded-[28px] border-[5px] border-stone-800 bg-stone-950 overflow-hidden relative shadow-xl flex flex-col justify-end p-5 text-center">
+                  {/* Smartphone top bar simulation */}
+                  <div className="absolute top-2.5 inset-x-0 flex justify-center z-20">
+                    <div className="w-16 h-3 bg-stone-800 rounded-full" />
+                  </div>
+
+                  {/* Mobile Image */}
+                  {(mobileImageUrl || imageUrl) && (
+                    <img
+                      src={getMediaUrl(mobileImageUrl) || getMediaUrl(imageUrl)}
+                      alt="Mobile Preview"
+                      className="absolute inset-0 w-full h-full object-cover opacity-85"
+                    />
+                  )}
+
+                  {/* Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
+
+                  {/* Live Mobile Content */}
+                  <div className="relative z-10 space-y-2">
+                    <div className="text-[9px] tracking-[0.2em] text-[#d4af37] font-semibold uppercase">
+                      NEIRAH JEWELS
+                    </div>
+
+                    <h3 className="text-base font-bold text-white font-playfair tracking-tight leading-snug">
+                      {title || 'Timeless Elegance'}
+                    </h3>
+
+                    <p className="text-[10px] text-stone-300 font-light line-clamp-2">
+                      {description || 'Discover our latest collection'}
+                    </p>
+
+                    <div className="pt-1">
+                      <span className="w-full py-1.5 px-4 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#8a6d4b] text-white shadow-md inline-block">
+                        SHOP NOW
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

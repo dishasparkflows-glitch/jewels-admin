@@ -92,12 +92,16 @@ function App() {
           >
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<AnalyticsView />} />
+            <Route path="/reports" element={<AnalyticsView />} />
+            <Route path="/collections" element={<OrnateProductsView />} />
 
             {/* Parent Route Auto-Redirects to First Submenu Page */}
             <Route path="/catalog" element={<Navigate to="/catalog/jewelry-products" replace />} />
             <Route path="/pricing-hub" element={<Navigate to="/pricing-hub/metal-rates" replace />} />
             <Route path="/product-config" element={<Navigate to="/metal-purity" replace />} />
             <Route path="/diamond-config" element={<Navigate to="/diamond-types" replace />} />
+            <Route path="/sales-orders" element={<Navigate to="/orders" replace />} />
+            <Route path="/orders-sales" element={<Navigate to="/orders" replace />} />
 
             {/* Exact Screenshot Views */}
             <Route path="/cod-sequences" element={<CodSequencesView />} />
@@ -127,7 +131,13 @@ function App() {
             <Route path="/marketing/top-announcement" element={<TopAnnouncementView />} />
             <Route path="/marketing/announcements" element={<TopAnnouncementView />} />
             <Route path="/banners" element={<BannersView />} />
+            <Route path="/banners/:typeKey" element={<BannersView />} />
+            <Route path="/banners/:typeKey/new" element={<BannersView />} />
+            <Route path="/banners/:typeKey/edit/:bannerId" element={<BannersView />} />
             <Route path="/marketing/banners" element={<BannersView />} />
+            <Route path="/marketing/banners/:typeKey" element={<BannersView />} />
+            <Route path="/marketing/banners/:typeKey/new" element={<BannersView />} />
+            <Route path="/marketing/banners/:typeKey/edit/:bannerId" element={<BannersView />} />
             <Route path="/website-sections" element={<BannersView />} />
             <Route path="/marketing/website-sections" element={<BannersView />} />
             <Route path="/marketing/before-after" element={<BeforeAfterView />} />

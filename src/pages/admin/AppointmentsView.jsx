@@ -13,8 +13,6 @@ import {
   HiOutlineChevronDown,
   HiOutlineChevronRight,
   HiOutlineAdjustments,
-  HiOutlineViewGrid,
-  HiOutlineViewList,
   HiOutlinePlus,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
@@ -25,167 +23,158 @@ import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import StatCards from '../../components/common/StatCards';
 
 // Reference sample appointments matching the luxury portal design
 const DEFAULT_APPOINTMENTS = [
   {
     _id: 'apt_0010',
     customId: '#APT-0010',
-    fullName: 'Gauri Khan',
-    email: 'gauri.design@gmail.com',
-    phoneNumber: '98404 44522',
     customer: {
       name: 'Gauri Khan',
       email: 'gauri.design@gmail.com',
       phone: { countryCode: '91', number: '98404 44522' },
     },
-    appointmentDate: '2026-10-27T12:00:00.000Z',
-    preferredTime: '12:00 PM',
-    serviceType: 'Custom Design Consultation',
+    appointment: {
+      date: '2026-10-27T12:00:00.000Z',
+      preferredTime: '12:00 PM',
+      serviceType: 'Custom Design Consultation',
+    },
     status: 'pending',
   },
   {
     _id: 'apt_0009',
     customId: '#APT-0009',
-    fullName: 'Natasha Poonawalla',
-    email: 'natasha.p@gmail.com',
-    phoneNumber: '98777 88996',
     customer: {
       name: 'Natasha Poonawalla',
       email: 'natasha.p@gmail.com',
       phone: { countryCode: '91', number: '98777 88996' },
     },
-    appointmentDate: '2026-10-26T16:30:00.000Z',
-    preferredTime: '04:30 PM',
-    serviceType: 'Heritage Collection Viewing',
+    appointment: {
+      date: '2026-10-26T16:30:00.000Z',
+      preferredTime: '04:30 PM',
+      serviceType: 'Heritage Collection Viewing',
+    },
     status: 'pending',
   },
   {
     _id: 'apt_0008',
     customId: '#APT-0008',
-    fullName: 'Devika Singhania',
-    email: 'devika.s@gmail.com',
-    phoneNumber: '98205 99885',
     customer: {
       name: 'Devika Singhania',
       email: 'devika.s@gmail.com',
       phone: { countryCode: '91', number: '98205 99885' },
     },
-    appointmentDate: '2026-10-25T10:00:00.000Z',
-    preferredTime: '10:00 AM',
-    serviceType: 'Anniversary Gift Consultation',
+    appointment: {
+      date: '2026-10-25T10:00:00.000Z',
+      preferredTime: '10:00 AM',
+      serviceType: 'Anniversary Gift Consultation',
+    },
     status: 'pending',
   },
   {
     _id: 'apt_0007',
     customId: '#APT-0007',
-    fullName: 'Rohan Mehra',
-    email: 'rohan.m@gmail.com',
-    phoneNumber: '98204 99884',
     customer: {
       name: 'Rohan Mehra',
       email: 'rohan.m@gmail.com',
       phone: { countryCode: '91', number: '98204 99884' },
     },
-    appointmentDate: '2026-10-24T13:00:00.000Z',
-    preferredTime: '01:00 PM',
-    serviceType: 'Jewellery Viewing',
+    appointment: {
+      date: '2026-10-24T13:00:00.000Z',
+      preferredTime: '01:00 PM',
+      serviceType: 'Jewellery Viewing',
+    },
     status: 'pending',
   },
   {
     _id: 'apt_0006',
     customId: '#APT-0006',
-    fullName: 'Ananya Birla',
-    email: 'ananya.b@gmail.com',
-    phoneNumber: '98203 99883',
     customer: {
       name: 'Ananya Birla',
       email: 'ananya.b@gmail.com',
       phone: { countryCode: '91', number: '98203 99883' },
     },
-    appointmentDate: '2026-10-23T15:00:00.000Z',
-    preferredTime: '03:00 PM',
-    serviceType: 'Bridal Collection Preview',
+    appointment: {
+      date: '2026-10-23T15:00:00.000Z',
+      preferredTime: '03:00 PM',
+      serviceType: 'Bridal Collection Preview',
+    },
     status: 'confirmed',
   },
   {
     _id: 'apt_0005',
     customId: '#APT-0005',
-    fullName: 'Vikram Malhotra',
-    email: 'vikram.m@gmail.com',
-    phoneNumber: '98202 99882',
     customer: {
       name: 'Vikram Malhotra',
       email: 'vikram.m@gmail.com',
       phone: { countryCode: '91', number: '98202 99882' },
     },
-    appointmentDate: '2026-10-21T11:00:00.000Z',
-    preferredTime: '11:00 AM',
-    serviceType: 'Diamond Grading Session',
+    appointment: {
+      date: '2026-10-21T11:00:00.000Z',
+      preferredTime: '11:00 AM',
+      serviceType: 'Diamond Grading Session',
+    },
     status: 'completed',
   },
   {
     _id: 'apt_0004',
     customId: '#APT-0004',
-    fullName: 'Mira Rajput Kapoor',
-    email: 'mira.kapoor@gmail.com',
-    phoneNumber: '98201 99881',
     customer: {
       name: 'Mira Rajput Kapoor',
       email: 'mira.kapoor@gmail.com',
       phone: { countryCode: '91', number: '98201 99881' },
     },
-    appointmentDate: '2026-10-20T14:00:00.000Z',
-    preferredTime: '02:00 PM',
-    serviceType: 'Custom Design Consultation',
+    appointment: {
+      date: '2026-10-20T14:00:00.000Z',
+      preferredTime: '02:00 PM',
+      serviceType: 'Custom Design Consultation',
+    },
     status: 'pending',
   },
   {
     _id: 'apt_0003',
     customId: '#APT-0003',
-    fullName: 'Shloka Ambani',
-    email: 'shloka.a@gmail.com',
-    phoneNumber: '98200 99880',
     customer: {
       name: 'Shloka Ambani',
       email: 'shloka.a@gmail.com',
       phone: { countryCode: '91', number: '98200 99880' },
     },
-    appointmentDate: '2026-10-19T17:00:00.000Z',
-    preferredTime: '05:00 PM',
-    serviceType: 'Heritage Collection Viewing',
+    appointment: {
+      date: '2026-10-19T17:00:00.000Z',
+      preferredTime: '05:00 PM',
+      serviceType: 'Heritage Collection Viewing',
+    },
     status: 'pending',
   },
   {
     _id: 'apt_0002',
     customId: '#APT-0002',
-    fullName: 'Isha Piramal',
-    email: 'isha.p@gmail.com',
-    phoneNumber: '98199 99879',
     customer: {
       name: 'Isha Piramal',
       email: 'isha.p@gmail.com',
       phone: { countryCode: '91', number: '98199 99879' },
     },
-    appointmentDate: '2026-10-18T15:30:00.000Z',
-    preferredTime: '03:30 PM',
-    serviceType: 'Solitaire Diamond Consultation',
+    appointment: {
+      date: '2026-10-18T15:30:00.000Z',
+      preferredTime: '03:30 PM',
+      serviceType: 'Solitaire Diamond Consultation',
+    },
     status: 'pending',
   },
   {
     _id: 'apt_0001',
     customId: '#APT-0001',
-    fullName: 'Karan Johar',
-    email: 'karan.j@gmail.com',
-    phoneNumber: '98198 99878',
     customer: {
       name: 'Karan Johar',
       email: 'karan.j@gmail.com',
       phone: { countryCode: '91', number: '98198 99878' },
     },
-    appointmentDate: '2026-10-17T11:30:00.000Z',
-    preferredTime: '11:30 AM',
-    serviceType: 'Bespoke Cufflinks & Ring Viewing',
+    appointment: {
+      date: '2026-10-17T11:30:00.000Z',
+      preferredTime: '11:30 AM',
+      serviceType: 'Bespoke Cufflinks & Ring Viewing',
+    },
     status: 'confirmed',
   },
 ];
@@ -223,7 +212,6 @@ export default function AppointmentsView() {
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' or 'table'
 
   const dateMenuRef = useRef(null);
   const filterMenuRef = useRef(null);
@@ -320,7 +308,7 @@ export default function AppointmentsView() {
 
   const handleAcceptAppointment = async (apt) => {
     const id = apt._id || apt.id;
-    const clientName = apt.fullName || apt.customer?.name || apt.name || 'Client';
+    const clientName = apt.customer?.name || apt.fullName || apt.name || 'Client';
     const isAlreadyConfirmed = apt.status === 'confirmed';
     const targetStatus = isAlreadyConfirmed ? 'completed' : 'confirmed';
 
@@ -342,7 +330,7 @@ export default function AppointmentsView() {
 
   const handleRejectAppointment = async (apt) => {
     const id = apt._id || apt.id;
-    const clientName = apt.fullName || apt.customer?.name || apt.name || 'Client';
+    const clientName = apt.customer?.name || apt.fullName || apt.name || 'Client';
 
     const isConfirmed = await confirm({
       title: 'Cancel Appointment',
@@ -360,7 +348,7 @@ export default function AppointmentsView() {
 
   const handleDelete = async (apt) => {
     const id = apt._id || apt.id;
-    const clientName = apt.fullName || apt.customer?.name || apt.name || 'this client';
+    const clientName = apt.customer?.name || apt.fullName || apt.name || 'this client';
 
     const isConfirmed = await confirm({
       title: 'Delete Appointment',
@@ -425,17 +413,16 @@ export default function AppointmentsView() {
       const newIdNumber = appointments.length + 1;
       const customId = `#APT-${String(newIdNumber).padStart(4, '0')}`;
       const payload = {
-        fullName: formData.name,
-        email: formData.email,
-        phoneNumber: formData.phone,
         customer: {
-          name: formData.name,
-          email: formData.email,
-          phone: { countryCode: '91', number: formData.phone },
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: { countryCode: '91', number: formData.phone.trim() },
         },
-        appointmentDate: formData.date ? new Date(formData.date).toISOString() : new Date().toISOString(),
-        preferredTime: formData.time || '12:00 PM',
-        serviceType: formData.service || 'Custom Design Consultation',
+        appointment: {
+          date: formData.date ? new Date(formData.date).toISOString() : new Date().toISOString(),
+          preferredTime: formData.time || '12:00 PM',
+          serviceType: formData.service || 'Custom Design Consultation',
+        },
         status: 'pending',
         customId,
       };
@@ -486,12 +473,12 @@ export default function AppointmentsView() {
       }
       // Service filter
       if (serviceFilter !== 'all') {
-        const sType = a.serviceType || a.appointment?.serviceType || '';
+        const sType = a.appointment?.serviceType || a.serviceType || '';
         if (sType !== serviceFilter) return false;
       }
       // Date filter
       if (dateFilter === 'today') {
-        const aptDate = a.appointmentDate || a.appointment?.date || a.date;
+        const aptDate = a.appointment?.date || a.appointmentDate || a.date;
         if (aptDate) {
           const d = new Date(aptDate);
           const now = new Date();
@@ -507,11 +494,11 @@ export default function AppointmentsView() {
       // Search filter
       if (search.trim()) {
         const q = search.toLowerCase();
-        const name = (a.fullName || a.customer?.name || a.name || '').toLowerCase();
-        const email = (a.email || a.customer?.email || '').toLowerCase();
-        const phone = (a.phoneNumber || a.phone || a.customer?.phone?.number || '').toLowerCase();
+        const name = (a.customer?.name || a.fullName || a.name || '').toLowerCase();
+        const email = (a.customer?.email || a.email || '').toLowerCase();
+        const phone = (a.customer?.phone?.number || a.phoneNumber || a.phone || '').toLowerCase();
         const idStr = String(a.customId || a.appointmentId || a._id || '').toLowerCase();
-        const service = (a.serviceType || a.appointment?.serviceType || '').toLowerCase();
+        const service = (a.appointment?.serviceType || a.serviceType || '').toLowerCase();
         return (
           name.includes(q) ||
           email.includes(q) ||
@@ -548,13 +535,13 @@ export default function AppointmentsView() {
   // Extract apt data helper
   const extractAptData = (apt, idx) => {
     const id = apt._id || apt.id || `apt_${idx}`;
-    const clientName = apt.fullName || apt.customer?.name || apt.name || 'Client';
-    const clientEmail = apt.email || apt.customer?.email || '—';
+    const clientName = apt.customer?.name || apt.fullName || apt.name || 'Client';
+    const clientEmail = apt.customer?.email || apt.email || '—';
     const countryCode = apt.customer?.phone?.countryCode || '91';
-    const rawPhone = apt.phoneNumber || apt.phone || apt.customer?.phone?.number || '98200 00000';
-    const service = apt.serviceType || apt.appointment?.serviceType || 'Custom Design Consultation';
-    const aptDate = apt.appointmentDate || apt.appointment?.date || apt.date;
-    const prefTime = apt.preferredTime || apt.appointment?.preferredTime || apt.time || '12:00 PM';
+    const rawPhone = apt.customer?.phone?.number || apt.phoneNumber || apt.phone || '98200 00000';
+    const service = apt.appointment?.serviceType || apt.serviceType || 'Custom Design Consultation';
+    const aptDate = apt.appointment?.date || apt.appointmentDate || apt.date;
+    const prefTime = apt.appointment?.preferredTime || apt.preferredTime || apt.time || '12:00 PM';
     const displayId =
       apt.customId ||
       apt.appointmentId ||
@@ -568,40 +555,48 @@ export default function AppointmentsView() {
       label: 'Total Appointments',
       value: totalCount,
       icon: HiOutlineCalendar,
-      topAccent: 'bg-[#d97706]', // Gold/Bronze accent
-      bgLight: 'bg-[#fcf8f3]',
-      borderColor: 'border-[#faecd8]',
-      textColor: 'text-[#8b6f4e]',
+      color: 'bronze',
+      onClick: () => {
+        setStatusFilter('all');
+        setCurrentPage(1);
+      },
+      active: statusFilter === 'all',
     },
     {
       id: 'pending',
       label: 'Pending Requests',
       value: pendingCount,
       icon: HiOutlineClock,
-      topAccent: 'bg-[#f59e0b]', // Amber accent
-      bgLight: 'bg-[#fff8ec]',
-      borderColor: 'border-[#fde8c8]',
-      textColor: 'text-amber-500',
+      color: 'peach',
+      onClick: () => {
+        setStatusFilter('pending');
+        setCurrentPage(1);
+      },
+      active: statusFilter === 'pending',
     },
     {
       id: 'confirmed',
       label: 'Confirmed',
       value: confirmedCount,
       icon: HiOutlineCheckCircle,
-      topAccent: 'bg-[#10b981]', // Emerald accent
-      bgLight: 'bg-[#ecfdf5]',
-      borderColor: 'border-[#a7f3d0]',
-      textColor: 'text-emerald-500',
+      color: 'green',
+      onClick: () => {
+        setStatusFilter('confirmed');
+        setCurrentPage(1);
+      },
+      active: statusFilter === 'confirmed',
     },
     {
       id: 'completed',
       label: 'Completed',
       value: completedCount,
       icon: HiOutlineFlag,
-      topAccent: 'bg-[#3b82f6]', // Blue accent
-      bgLight: 'bg-[#eff6ff]',
-      borderColor: 'border-[#bfdbfe]',
-      textColor: 'text-blue-500',
+      color: 'blue',
+      onClick: () => {
+        setStatusFilter('completed');
+        setCurrentPage(1);
+      },
+      active: statusFilter === 'completed',
     },
   ];
 
@@ -666,50 +661,10 @@ export default function AppointmentsView() {
         </button>
       </div>
 
-      {/* ─── Top 4 KPI Metric Cards with top accent stripes & chevron buttons ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-        {statCardsData.map((card) => {
-          const Icon = card.icon;
-          return (
-            <div
-              key={card.id}
-              onClick={() => {
-                if (card.id === 'total') setStatusFilter('all');
-                else setStatusFilter(card.id);
-                setCurrentPage(1);
-              }}
-              className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs hover:shadow-md transition-all p-4 sm:p-5 relative overflow-hidden group cursor-pointer"
-            >
-              {/* Top colored accent stripe */}
-              <div className={`absolute top-0 left-0 right-0 h-1 ${card.topAccent}`} />
+      {/* ─── Appointment summary cards ─── */}
+      <StatCards cards={statCardsData} />
 
-              <div className="flex items-center justify-between gap-3 pt-0.5">
-                {/* Left: Icon container */}
-                <div
-                  className={`w-12 h-12 rounded-2xl ${card.bgLight} border ${card.borderColor} flex items-center justify-center ${card.textColor} shrink-0 shadow-2xs group-hover:scale-105 transition-transform`}
-                >
-                  <Icon className="w-6 h-6 stroke-[1.8]" />
-                </div>
-
-                {/* Center: Label + Count */}
-                <div className="flex-1 min-w-0 pl-1">
-                  <p className="text-xs font-semibold text-stone-500 mb-0.5 truncate">{card.label}</p>
-                  <p className="text-2xl sm:text-3xl font-extrabold text-stone-900 leading-none tracking-tight">
-                    {card.value}
-                  </p>
-                </div>
-
-                {/* Right: Circular arrow button */}
-                <div className="w-8 h-8 rounded-full border border-stone-200/90 flex items-center justify-center text-stone-400 group-hover:text-stone-700 group-hover:border-stone-400 transition-colors shrink-0">
-                  <HiOutlineChevronRight className="w-4 h-4" />
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* ─── Controls Row: Status Filter Tabs + Grid/List Toggle + Search + Dropdown Filters ─── */}
+      {/* ─── Controls Row: Status Filters, Search, and Dropdown Filters ─── */}
       <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3 pt-1">
         {/* Left: Status Filter Tabs */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1 xl:pb-0">
@@ -764,45 +719,17 @@ export default function AppointmentsView() {
           })}
         </div>
 
-        {/* Right: Grid/List Toggle + Search + Date Range + More Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* View Mode Toggle */}
-          <div className="flex items-center bg-[#f7f2ea]/70 p-1 rounded-xl border border-[#ebdcc9]/80 shadow-2xs">
-            <button
-              type="button"
-              onClick={() => setViewMode('cards')}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === 'cards'
-                  ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                  : 'text-stone-400 hover:text-stone-700'
-              }`}
-              title="Card grid view"
-            >
-              <HiOutlineViewGrid className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === 'table'
-                  ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                  : 'text-stone-400 hover:text-stone-700'
-              }`}
-              title="Table list view"
-            >
-              <HiOutlineViewList className="w-4 h-4" />
-            </button>
-          </div>
-
+        {/* Search + Date Range + More Filters */}
+        <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
           {/* Search Input */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none min-w-[200px]">
             <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search client, email, phone..."
-              className="w-56 sm:w-64 pl-9 pr-8 py-2 text-xs rounded-xl bg-white border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
+              className="w-full sm:w-56 md:w-64 pl-9 pr-8 py-2 text-xs rounded-xl bg-white border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
             />
             {search && (
               <button
@@ -923,7 +850,7 @@ export default function AppointmentsView() {
 
       {/* ─── Bulk Actions Bar ─── */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center justify-between px-4 py-2.5 bg-[#faf4ec] border border-[#ecdcc7] rounded-xl animate-fadeIn">
+        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-[#faf4ec] border border-[#ecdcc7] rounded-xl animate-fadeIn">
           <span className="text-xs font-semibold text-[#8b6f4e]">
             {selectedIds.size} appointment{selectedIds.size > 1 ? 's' : ''} selected
           </span>
@@ -938,7 +865,7 @@ export default function AppointmentsView() {
         </div>
       )}
 
-      {/* ─── Main Content: Cards Grid or Table View ─── */}
+      {/* ─── Main Content: Appointment Table ─── */}
       {loading ? (
         <div className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs py-20 flex flex-col items-center justify-center gap-3">
           <div className="w-9 h-9 border-[3px] border-[#8b6f4e] border-t-transparent rounded-full animate-spin" />
@@ -952,181 +879,8 @@ export default function AppointmentsView() {
           <p className="text-sm text-stone-600 font-bold">No appointments found</p>
           <p className="text-xs text-stone-400">Try adjusting your status tabs or search criteria</p>
         </div>
-      ) : viewMode === 'cards' ? (
-        /* ─── 3-COLUMN APPOINTMENT CARDS (EXACT SCREENSHOT LAYOUT) ─── */
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {paginatedItems.map((apt, idx) => {
-              const {
-                id,
-                clientName,
-                clientEmail,
-                countryCode,
-                rawPhone,
-                service,
-                aptDate,
-                prefTime,
-                displayId,
-              } = extractAptData(apt, idx);
-
-              // Top accent line matching status
-              const topBorderColor =
-                apt.status === 'confirmed'
-                  ? 'bg-emerald-500'
-                  : apt.status === 'completed'
-                  ? 'bg-blue-500'
-                  : apt.status === 'cancelled'
-                  ? 'bg-rose-500'
-                  : 'bg-amber-500';
-
-              return (
-                <div
-                  key={id}
-                  className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs hover:shadow-md hover:-translate-y-0.5 transition-all overflow-hidden flex flex-col justify-between group"
-                >
-                  {/* Top colored accent line */}
-                  <div className={`h-1 w-full ${topBorderColor}`} />
-
-                  <div className="p-5 flex flex-col justify-between h-full">
-                    {/* Header: Initials Avatar + Full Name + Email + Status Pill */}
-                    <div>
-                      <div className="flex items-start justify-between gap-3 mb-4">
-                        <div className="flex items-center gap-3 min-w-0">
-                          {/* Initials circle */}
-                          <div className="w-11 h-11 rounded-full bg-[#fdf3e7] text-[#8b6f4e] font-bold text-xs flex items-center justify-center shrink-0 border border-[#f5e3ce]">
-                            {getInitials(clientName)}
-                          </div>
-                          <div className="min-w-0">
-                            <h4 className="font-bold text-stone-900 text-sm leading-tight truncate">
-                              {clientName}
-                            </h4>
-                            <p className="text-xs text-stone-400 mt-0.5 truncate">{clientEmail}</p>
-                          </div>
-                        </div>
-                        {renderStatusPill(apt.status)}
-                      </div>
-
-                      {/* Middle Details Grid: Two soft background boxes */}
-                      <div className="grid grid-cols-2 gap-3 mb-4">
-                        {/* Box 1: Date & Time */}
-                        <div className="bg-[#fcfaf7] rounded-xl p-2.5 border border-[#f2ebe1] flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-white border border-[#ebdcc9] flex items-center justify-center text-[#8b6f4e] shrink-0 shadow-2xs">
-                            <HiOutlineCalendar className="w-4 h-4 stroke-[1.8]" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-stone-800 leading-tight truncate">
-                              {formatDateDisplay(aptDate)}
-                            </p>
-                            <p className="text-[11px] text-stone-400 mt-0.5 leading-tight truncate">
-                              {prefTime}
-                            </p>
-                          </div>
-                        </div>
-
-                        {/* Box 2: Phone & Label */}
-                        <div className="bg-[#fcfaf7] rounded-xl p-2.5 border border-[#f2ebe1] flex items-center gap-2.5">
-                          <div className="w-8 h-8 rounded-lg bg-white border border-[#ebdcc9] flex items-center justify-center text-[#8b6f4e] shrink-0 shadow-2xs">
-                            <HiOutlinePhone className="w-4 h-4 stroke-[1.8]" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-stone-800 leading-tight truncate">
-                              +{countryCode} {rawPhone}
-                            </p>
-                            <p className="text-[11px] text-stone-400 mt-0.5 leading-tight">Phone</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Consultation Type Tag with Diamond Icon */}
-                      <div className="mb-4">
-                        <div className="inline-flex items-center gap-1.5 bg-[#fdf9f4] border border-[#f2e2cf] px-3 py-1.5 rounded-xl text-xs font-medium text-[#8b6f4e]">
-                          <IoDiamondOutline className="w-3.5 h-3.5 text-[#8b6f4e] shrink-0" />
-                          <span className="truncate">{service}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer: ID + 4 Action Buttons (✔, ✖, 👁, 🗑) */}
-                    <div className="flex items-center justify-between pt-3.5 border-t border-stone-100 mt-auto">
-                      <span className="text-xs font-mono font-medium text-stone-400">{displayId}</span>
-
-                      <div className="flex items-center gap-1.5">
-                        {/* 1. Accept / Confirm Checkmark Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleAcceptAppointment(apt)}
-                          title={apt.status === 'confirmed' ? 'Mark Completed' : 'Accept & Confirm'}
-                          className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                        >
-                          <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
-                        </button>
-
-                        {/* 2. Reject / Cancel Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleRejectAppointment(apt)}
-                          title="Cancel Appointment"
-                          className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                        >
-                          <HiOutlineXCircle className="w-4 h-4 stroke-2" />
-                        </button>
-
-                        {/* 3. View Details Button */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setViewingApt({
-                              ...apt,
-                              clientName,
-                              clientEmail,
-                              rawPhone,
-                              countryCode,
-                              service,
-                              displayId,
-                              prefTime,
-                              aptDate,
-                            })
-                          }
-                          title="View Details"
-                          className="w-7 h-7 rounded-lg bg-[#faf4ec] hover:bg-[#f3ebd9] text-[#8b6f4e] border border-[#eadbc7] flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                        >
-                          <HiOutlineEye className="w-4 h-4 stroke-[1.8]" />
-                        </button>
-
-                        {/* 4. Delete Button */}
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(apt)}
-                          title="Delete Appointment"
-                          className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                        >
-                          <HiOutlineTrash className="w-4 h-4 stroke-[1.8]" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Cards Pagination */}
-          <div className="pt-2">
-            <Pagination
-              currentPage={currentPage}
-              totalItems={serverTotal ?? totalItems}
-              pageSize={pageSize}
-              onPageChange={setCurrentPage}
-              onPageSizeChange={(newSize) => {
-                setPageSize(newSize);
-                setCurrentPage(1);
-              }}
-              itemLabel="appointments"
-            />
-          </div>
-        </div>
       ) : (
-        /* ─── TABLE / LIST VIEW ─── */
+        /* ─── TABLE VIEW ─── */
         <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -1278,11 +1032,11 @@ export default function AppointmentsView() {
       {/* ─── Book Appointment Modal ─── */}
       {isBookModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setIsBookModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200/90 space-y-5 animate-scaleUp"
+            className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-4 sm:p-6 shadow-2xl border border-stone-200/90 space-y-4 sm:space-y-5 animate-scaleUp max-h-[92vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
@@ -1406,15 +1160,15 @@ export default function AppointmentsView() {
       {/* ─── View Appointment Details Modal ─── */}
       {viewingApt && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setViewingApt(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-stone-200/90 animate-scaleUp overflow-hidden"
+            className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200/90 animate-scaleUp overflow-hidden max-h-[92vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="bg-[#faf3ea] border-b border-[#ebdcc9] px-6 py-5 flex items-center justify-between">
+            <div className="bg-[#faf3ea] border-b border-[#ebdcc9] px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3.5">
                 <div className="w-12 h-12 rounded-full bg-white text-[#8b6f4e] font-bold text-sm flex items-center justify-center border border-[#ebdcc9] shadow-2xs">
                   {getInitials(viewingApt.clientName)}
@@ -1436,13 +1190,13 @@ export default function AppointmentsView() {
             </div>
 
             {/* Content */}
-            <div className="p-6 space-y-4">
+            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               <div className="flex items-center justify-between pb-3 border-b border-stone-100">
                 <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Status</span>
                 {renderStatusPill(viewingApt.status)}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">Email</p>
                   <p className="text-xs font-bold text-stone-800 break-all">{viewingApt.clientEmail}</p>
@@ -1470,8 +1224,8 @@ export default function AppointmentsView() {
               </div>
 
               {/* Actions in Modal */}
-              <div className="flex items-center justify-between gap-3 pt-4 border-t border-stone-100">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-stone-100">
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                   {viewingApt.status === 'pending' && (
                     <>
                       <button
@@ -1516,7 +1270,7 @@ export default function AppointmentsView() {
                 <button
                   type="button"
                   onClick={() => setViewingApt(null)}
-                  className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                  className="w-full sm:w-auto px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer text-center"
                 >
                   Close
                 </button>

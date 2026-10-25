@@ -239,6 +239,76 @@ export default function OrnateProductsView() {
     );
   };
 
+  const [updatingVisibilityId, setUpdatingVisibilityId] = useState(null);
+
+  // Toggle Web & App visibility for products
+  const handleToggleProductVisibility = async (p, platform, e) => {
+    if (e) e.stopPropagation();
+    const pid = p._id || p.id;
+    if (!pid) return;
+
+    const currentWeb = p.inweb !== false && p.visibility?.web !== false;
+    const currentApp = p.inapp !== false && p.visibility?.app !== false;
+    const nextWeb = platform === 'web' ? !currentWeb : currentWeb;
+    const nextApp = platform === 'app' ? !currentApp : currentApp;
+
+    // Optimistically update products state
+    setProducts((prev) =>
+      prev.map((item) => {
+        if ((item._id || item.id) === pid) {
+          return {
+            ...item,
+            inweb: nextWeb,
+            inapp: nextApp,
+            visibility: {
+              ...(item.visibility || {}),
+              web: nextWeb,
+              app: nextApp,
+            },
+          };
+        }
+        return item;
+      })
+    );
+
+    try {
+      setUpdatingVisibilityId(`${pid}-${platform}`);
+      const payload =
+        platform === 'web'
+          ? { inweb: nextWeb, 'visibility.web': nextWeb }
+          : { inapp: nextApp, 'visibility.app': nextApp };
+      await api.put(`/products/${pid}`, payload);
+      toast.success(
+        `${platform === 'web' ? 'Web' : 'App'} visibility ${
+          (platform === 'web' ? nextWeb : nextApp) ? 'enabled' : 'disabled'
+        }`
+      );
+    } catch (err) {
+      console.error('Failed to update product visibility:', err);
+      toast.error(`Failed to update ${platform} visibility`);
+      // Revert on error
+      setProducts((prev) =>
+        prev.map((item) => {
+          if ((item._id || item.id) === pid) {
+            return {
+              ...item,
+              inweb: currentWeb,
+              inapp: currentApp,
+              visibility: {
+                ...(item.visibility || {}),
+                web: currentWeb,
+                app: currentApp,
+              },
+            };
+          }
+          return item;
+        })
+      );
+    } finally {
+      setUpdatingVisibilityId(null);
+    }
+  };
+
   // Delete Single Product using Confirm Modal
   const handleDeleteProduct = async (id, title) => {
     const isConfirmed = await confirm({
@@ -565,7 +635,35 @@ export default function OrnateProductsView() {
                           onChange={() => toggleSelectOne(p._id)}
                           className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer"
                         />
-                        {renderStatusBadge(p)}
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleProductVisibility(p, 'web', e)}
+                            disabled={updatingVisibilityId === `${p._id}-web`}
+                            title={p.inweb !== false && p.visibility?.web !== false ? 'Web: Visible (Click to Hide)' : 'Web: Hidden (Click to Show)'}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                              p.inweb !== false && p.visibility?.web !== false
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                                : 'bg-stone-50 text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-100'
+                            }`}
+                          >
+                            🌐 Web
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleProductVisibility(p, 'app', e)}
+                            disabled={updatingVisibilityId === `${p._id}-app`}
+                            title={p.inapp !== false && p.visibility?.app !== false ? 'App: Visible (Click to Hide)' : 'App: Hidden (Click to Show)'}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
+                              p.inapp !== false && p.visibility?.app !== false
+                                ? 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100'
+                                : 'bg-stone-50 text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-100'
+                            }`}
+                          >
+                            📱 App
+                          </button>
+                          {renderStatusBadge(p)}
+                        </div>
                       </div>
 
                       <div
@@ -614,72 +712,109 @@ export default function OrnateProductsView() {
             ) : (
               /* Ungrouped List View */
               <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
-                <table className="w-full text-xs text-left">
-                  <thead className="bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[10px] border-b border-stone-200">
-                    <tr>
-                      <th className="p-3 w-10 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.size === products.length && products.length > 0}
-                          onChange={toggleSelectAll}
-                          className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
-                        />
-                      </th>
-                      <th className="p-3 w-16">Image</th>
-                      <th className="p-3">Product Name</th>
-                      <th className="p-3">SKU / Tag</th>
-                      <th className="p-3">Price</th>
-                      <th className="p-3">Status</th>
-                      <th className="p-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {products.map((p) => {
-                      const isSelected = selectedIds.has(p._id);
-                      const imgUrl = getProductImage(p);
-                      const title = p.basicInfo?.title || p.name || 'Ornate Jewellery';
-                      const sku = p.basicInfo?.sku || p.ornate?.tagNo || '—';
-                      const price = p.pricing?.salePrice ?? 0;
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[10px] border-b border-stone-200">
+                      <tr>
+                        <th className="p-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.size === products.length && products.length > 0}
+                            onChange={toggleSelectAll}
+                            className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
+                          />
+                        </th>
+                        <th className="p-3 w-16">Image</th>
+                        <th className="p-3">Product Name</th>
+                        <th className="p-3">SKU / Tag</th>
+                        <th className="p-3">Price</th>
+                        <th className="p-3 text-center">Visibility</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {products.map((p) => {
+                        const isSelected = selectedIds.has(p._id);
+                        const imgUrl = getProductImage(p);
+                        const title = p.basicInfo?.title || p.name || 'Ornate Jewellery';
+                        const sku = p.basicInfo?.sku || p.ornate?.tagNo || '—';
+                        const price = p.pricing?.salePrice ?? 0;
 
-                      return (
-                        <tr
-                          key={p._id}
-                          className={`hover:bg-stone-50/70 transition-colors ${isSelected ? 'bg-stone-50/90' : ''}`}
-                        >
-                          <td className="p-3 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleSelectOne(p._id)}
-                              className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
-                            />
-                          </td>
-                          <td className="p-3">
-                            <div className="w-10 h-10 rounded-lg bg-stone-50 border border-stone-100 p-1 flex items-center justify-center">
-                              {imgUrl ? (
-                                <img src={imgUrl} alt="" className="max-w-full max-h-full object-contain" />
-                              ) : (
-                                <IoDiamondOutline className="w-5 h-5 text-stone-300" />
-                              )}
-                            </div>
-                          </td>
-                          <td className="p-3 font-bold text-stone-900">{title}</td>
-                          <td className="p-3 font-mono text-stone-500 text-[11px]">{sku}</td>
-                          <td className="p-3 font-bold text-stone-900">{money(price)}</td>
-                          <td className="p-3">{renderStatusBadge(p)}</td>
-                          <td className="p-3 text-right">
-                            <RowActions
-                              onOpenWebsite={() => openProductPreview(p)}
-                          onView={() => setViewingProduct(p)}
-                              onEdit={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
-                              onDelete={() => handleDeleteProduct(p._id, title)}
-                            />
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                        return (
+                          <tr
+                            key={p._id}
+                            className={`hover:bg-stone-50/70 transition-colors ${isSelected ? 'bg-stone-50/90' : ''}`}
+                          >
+                            <td className="p-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelectOne(p._id)}
+                                className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
+                              />
+                            </td>
+                            <td className="p-3">
+                              <div className="w-10 h-10 rounded-lg bg-stone-50 border border-stone-100 p-1 flex items-center justify-center">
+                                {imgUrl ? (
+                                  <img src={imgUrl} alt="" className="max-w-full max-h-full object-contain" />
+                                ) : (
+                                  <IoDiamondOutline className="w-5 h-5 text-stone-300" />
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-3 font-bold text-stone-900">{title}</td>
+                            <td className="p-3 font-mono text-stone-500 text-[11px]">{sku}</td>
+                            <td className="p-3 font-bold text-stone-900">{money(price)}</td>
+                            <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                              <div className="inline-flex items-center gap-1.5 bg-stone-50/90 p-1 rounded-lg border border-stone-200/80 shadow-2xs">
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleToggleProductVisibility(p, 'web', e)}
+                                  disabled={updatingVisibilityId === `${p._id}-web`}
+                                  title={p.inweb !== false && p.visibility?.web !== false ? 'Web: Visible (Click to Hide)' : 'Web: Hidden (Click to Show)'}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                    p.inweb !== false && p.visibility?.web !== false
+                                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100'
+                                      : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
+                                  }`}
+                                >
+                                  <span className="text-[10px]">🌐</span>
+                                  <span>Web</span>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${p.inweb !== false && p.visibility?.web !== false ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleToggleProductVisibility(p, 'app', e)}
+                                  disabled={updatingVisibilityId === `${p._id}-app`}
+                                  title={p.inapp !== false && p.visibility?.app !== false ? 'App: Visible (Click to Hide)' : 'App: Hidden (Click to Show)'}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                    p.inapp !== false && p.visibility?.app !== false
+                                      ? 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100'
+                                      : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
+                                  }`}
+                                >
+                                  <span className="text-[10px]">📱</span>
+                                  <span>App</span>
+                                  <span className={`w-1.5 h-1.5 rounded-full ${p.inapp !== false && p.visibility?.app !== false ? 'bg-sky-500' : 'bg-stone-300'}`} />
+                                </button>
+                              </div>
+                            </td>
+                            <td className="p-3">{renderStatusBadge(p)}</td>
+                            <td className="p-3 text-right">
+                              <RowActions
+                                onOpenWebsite={() => openProductPreview(p)}
+                            onView={() => setViewingProduct(p)}
+                                onEdit={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
+                                onDelete={() => handleDeleteProduct(p._id, title)}
+                              />
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
