@@ -1,25 +1,24 @@
 import ThemeImageField from '../../components/common/ThemeImageField';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import {
-  HiOutlineSearch,
   HiOutlinePlus,
-  HiOutlineFilter,
   HiOutlineTrash,
   HiOutlineRefresh,
   HiOutlineEye,
   HiOutlinePencil,
+  HiOutlinePencilAlt,
+  HiOutlineMenuAlt4,
   HiOutlineX,
   HiOutlineUpload,
   HiOutlinePhotograph,
   HiOutlineSparkles,
-  HiOutlineCheck,
   HiOutlineExternalLink,
 } from 'react-icons/hi';
+import { IoDiamondOutline } from 'react-icons/io5';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -27,7 +26,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
-import RowActions, { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
+import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import OrnateSyncModal from '../../components/common/OrnateSyncModal';
 import { deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
@@ -269,6 +268,18 @@ const DynamicModuleView = () => {
     order: 0,
   });
   const [isUploadingBannerImage, setIsUploadingBannerImage] = useState(false);
+  const [availableThemes, setAvailableThemes] = useState([]);
+
+  useEffect(() => {
+    if (isCategoryPage) {
+      api.get('/website/themes', { params: { status: 'all', limit: 100 } })
+        .then(({ data }) => {
+          const rows = Array.isArray(data.data) ? data.data : data.data?.items || [];
+          setAvailableThemes(rows.filter((t) => t.status !== 'archived'));
+        })
+        .catch(() => {});
+    }
+  }, [isCategoryPage]);
 
   const handleOpenAdd = () => {
     if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
@@ -1575,15 +1586,15 @@ const DynamicModuleView = () => {
           }}
         >
           <div
-            className={`bg-white rounded-2xl sm:rounded-3xl ${isCategoryPage ? 'max-w-2xl' : 'max-w-lg'} w-full p-4 sm:p-6 shadow-2xl border border-stone-200 space-y-4 sm:space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
+            className={`bg-white rounded-2xl sm:rounded-3xl ${isCategoryPage ? 'max-w-5xl p-5 sm:p-7' : 'max-w-lg p-4 sm:p-6'} w-full shadow-2xl border border-stone-200 space-y-4 sm:space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+            <div className="flex items-center justify-between pb-3.5 border-b border-stone-100">
               <div>
-                <h3 className="text-base font-bold text-stone-900">
-                  {editingRecord ? 'Edit' : 'Create New'} {singleName}
+                <h3 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight">
+                  {editingRecord ? 'Edit' : 'Add'} {singleName}
                 </h3>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#8b6f4e] block mt-0.5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8b6f4e] block mt-0.5">
                   LUXURY CATALOG MANAGEMENT
                 </span>
               </div>
@@ -1593,40 +1604,80 @@ const DynamicModuleView = () => {
                   setIsModalOpen(false);
                   setEditingRecord(null);
                 }}
-                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+                className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-50 rounded-xl transition-colors cursor-pointer"
               >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {config.fields?.map((field) => (
-                <div key={field.name} className="space-y-1">
-                  {/* Category Banner Option */}
-                  {field.type === 'banner' ? (
-                    (() => {
-                      const bannerVal = formData[field.name];
-                      const bannerUrl = typeof bannerVal === 'object' ? (bannerVal?.url || '') : (bannerVal || '');
-                      const hasBanner = Boolean(bannerUrl && typeof bannerUrl === 'string' && bannerUrl.trim().length > 0);
+            {isCategoryPage ? (
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                  {/* ─── LEFT COLUMN: Category Details & Media ─── */}
+                  <div className="space-y-4">
+                    {/* Category Name */}
+                    <div>
+                      <label className="text-xs font-bold text-stone-800 mb-1.5 block">
+                        Category Name <span className="text-rose-500 font-bold">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Bangles & Bracelets"
+                        value={formData.name || ''}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, name: e.target.value }))
+                        }
+                        className="w-full px-4 py-2.5 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-xl hover:border-stone-300 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all shadow-2xs placeholder:text-stone-400"
+                      />
+                    </div>
+
+                    {/* Theme */}
+                    <div>
+                      <label className="text-xs font-bold text-stone-800 mb-1.5 block">
+                        Theme <span className="text-rose-500 font-bold">*</span>
+                      </label>
+                      <Dropdown
+                        value={formData.themeId || ''}
+                        onChange={(val) => {
+                          setFormData((prev) => ({ ...prev, themeId: val }));
+                          setPendingThemeImages({});
+                        }}
+                        options={[
+                          { value: '', label: 'Select Theme (or Default)' },
+                          ...availableThemes.map((theme) => ({
+                            value: theme._id,
+                            label: `${theme.name}${theme.status ? ` - ${theme.status}` : ''}`,
+                          })),
+                        ]}
+                        placeholder="Select Theme"
+                        size="sm"
+                        buttonClassName="w-full h-10 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
+                      />
+                    </div>
+
+                    {/* Category Icon */}
+                    {(() => {
+                      const iconVal = formData.icon;
+                      const iconUrl = typeof iconVal === 'object' ? iconVal?.url || '' : iconVal || '';
+                      const hasIcon = Boolean(iconUrl && typeof iconUrl === 'string' && iconUrl.trim().length > 0);
 
                       return (
-                        <div className="space-y-2 p-3.5 bg-stone-50/80 rounded-2xl border border-stone-200/80">
-                          <div className="flex items-center gap-1.5">
-                            <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
-                            <span className="text-xs font-bold text-stone-900">
-                              {field.label}
-                            </span>
-                          </div>
-
-                          <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} selectedThemeId={formData.themeId || ''} onThemeChange={(value) => { setFormData((previous) => ({ ...previous, themeId: value })); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={[{ key: 'banner', label: 'Category banner', url: bannerUrl }]}>
-                          <div className="space-y-2 pt-1">
-                            {hasBanner ? (
-                              <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
+                        <div>
+                          <label className="text-xs font-bold text-stone-800 mb-1.5 block">
+                            Category Icon
+                          </label>
+                          <div className="flex items-center gap-3">
+                            {/* Circle Preview */}
+                            <div className="w-16 h-16 rounded-full border border-amber-200/70 bg-[#FAF4ED] flex items-center justify-center shrink-0 overflow-hidden shadow-2xs relative">
+                              {uploadingField === 'icon' ? (
+                                <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                              ) : hasIcon ? (
                                 <img
-                                  key={bannerUrl}
-                                  src={getMediaUrl(bannerUrl)}
-                                  alt="Banner preview"
-                                  className="w-full h-28 object-cover"
+                                  key={iconUrl}
+                                  src={getMediaUrl(iconUrl)}
+                                  alt="Category Icon"
+                                  className="w-full h-full object-contain p-2.5"
                                   onError={(e) => {
                                     e.currentTarget.style.display = 'none';
                                   }}
@@ -1634,44 +1685,573 @@ const DynamicModuleView = () => {
                                     e.currentTarget.style.display = 'block';
                                   }}
                                 />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                  <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
-                                    <HiOutlineUpload className="w-3.5 h-3.5" />
-                                    <span>Change</span>
-                                    <input
-                                      type="file"
-                                      accept="image/*"
-                                      className="hidden"
-                                      onChange={(e) => {
-                                        const file = e.target.files?.[0];
-                                        if (file) {
-                                          handleFileUpload(field.name, file, 'categories');
-                                          e.target.value = '';
-                                        }
-                                      }}
-                                    />
-                                  </label>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleClearImageField(field.name)}
-                                    className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
-                                  >
-                                    <HiOutlineTrash className="w-3.5 h-3.5" />
-                                    <span>Remove</span>
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <label
-                                className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                                  uploadingField === field.name
-                                    ? 'border-[#8b6f4e] bg-[#faf5ed]'
-                                    : 'border-stone-200 bg-white hover:border-[#8b6f4e] hover:bg-[#fcfaf7]'
-                                }`}
-                              >
+                              ) : (
+                                <IoDiamondOutline className="w-6 h-6 text-[#8b6f4e]/70" />
+                              )}
+                            </div>
+
+                            {/* Upload Area & Clear */}
+                            <div className="flex-1 flex items-center gap-2">
+                              <label className="flex-1 py-2.5 px-4 bg-white hover:bg-stone-50/80 border border-dashed border-stone-300 hover:border-[#8b6f4e] rounded-xl text-center transition-all cursor-pointer shadow-2xs group flex flex-col items-center justify-center">
                                 <input
                                   type="file"
-                                  accept="image/*"
+                                  accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                                  className="hidden"
+                                  disabled={uploadingField === 'icon'}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      handleFileUpload('icon', file, 'categories');
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                />
+                                <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
+                                  <HiOutlineUpload className="w-4 h-4 text-stone-500 group-hover:text-[#8b6f4e]" />
+                                  <span>{hasIcon ? 'Change Category Icon' : 'Upload Category Icon'}</span>
+                                </div>
+                                <span className="text-[11px] text-stone-400 mt-0.5">
+                                  Recommended size: 200 x 200 px (PNG, SVG)
+                                </span>
+                              </label>
+
+                              {hasIcon && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleClearImageField('icon')}
+                                  className="p-3 text-rose-500 hover:text-rose-700 bg-rose-50/60 hover:bg-rose-100/80 rounded-xl transition-colors cursor-pointer border border-rose-200/60 shadow-2xs shrink-0"
+                                  title="Remove Icon"
+                                >
+                                  <HiOutlineTrash className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Category Banner */}
+                    {(() => {
+                      const bannerVal = formData.banner;
+                      const bannerUrl = typeof bannerVal === 'object' ? bannerVal?.url || '' : bannerVal || '';
+                      const hasBanner = Boolean(bannerUrl && typeof bannerUrl === 'string' && bannerUrl.trim().length > 0);
+
+                      return (
+                        <div>
+                          <label className="text-xs font-bold text-stone-800 mb-1.5 block">
+                            Category Banner
+                          </label>
+                          <div className="space-y-2">
+                            {hasBanner && (
+                              <div className="relative rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 shadow-2xs group h-28">
+                                <img
+                                  key={bannerUrl}
+                                  src={getMediaUrl(bannerUrl)}
+                                  alt="Banner preview"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = 'none';
+                                  }}
+                                  onLoad={(e) => {
+                                    e.currentTarget.style.display = 'block';
+                                  }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleClearImageField('banner')}
+                                  className="absolute top-2.5 right-2.5 p-2 bg-white/95 hover:bg-white text-rose-600 rounded-lg shadow-sm border border-rose-100 transition-all cursor-pointer"
+                                  title="Remove Banner"
+                                >
+                                  <HiOutlineTrash className="w-4 h-4" />
+                                </button>
+                              </div>
+                            )}
+
+                            <label className="w-full py-3 px-4 bg-white hover:bg-stone-50/80 border border-dashed border-stone-300 hover:border-[#8b6f4e] rounded-xl text-center transition-all cursor-pointer shadow-2xs group flex flex-col items-center justify-center">
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={uploadingField === 'banner'}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    handleFileUpload('banner', file, 'categories');
+                                    e.target.value = '';
+                                  }
+                                }}
+                              />
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
+                                <HiOutlineUpload className="w-4 h-4 text-stone-500 group-hover:text-[#8b6f4e]" />
+                                <span>{hasBanner ? 'Change Category Banner' : 'Upload Category Banner'}</span>
+                              </div>
+                              <span className="text-[11px] text-stone-400 mt-0.5">
+                                Recommended size: 1200 x 400 px (JPG, PNG)
+                              </span>
+                            </label>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* ─── RIGHT COLUMN: Promo Banners ─── */}
+                  <div className="bg-[#FAF8F5]/80 rounded-2xl border border-stone-200/90 p-4 sm:p-5 flex flex-col h-full min-h-[380px]">
+                    <div className="flex items-center justify-between pb-3 border-b border-stone-200/60">
+                      <span className="text-xs sm:text-sm font-bold text-stone-900">
+                        Promo Banners ({(formData.promoBanners || []).length})
+                      </span>
+
+                      {!bannerFormOpen && (
+                        <button
+                          type="button"
+                          onClick={() => handleOpenBannerForm()}
+                          className="px-3.5 py-1.5 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
+                        >
+                          <HiOutlinePlus className="w-3.5 h-3.5" />
+                          <span>Add Promo Banner</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Banner Add/Edit Sub-Form */}
+                    {bannerFormOpen && (
+                      <div className="my-3 bg-white rounded-xl border border-stone-200 p-4 shadow-sm space-y-3 animate-in fade-in duration-150">
+                        <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                          <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                            <HiOutlinePhotograph className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                            <span>{editingBannerIndex !== null ? 'Edit Promo Banner' : 'New Promo Banner'}</span>
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleCloseBannerForm}
+                            className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+                          >
+                            <HiOutlineX className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* Image Upload Box */}
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-stone-700 block">
+                            Banner Image
+                          </label>
+                          {bannerFormData.imageUrl ? (
+                            <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
+                              <img
+                                src={getMediaUrl(bannerFormData.imageUrl)}
+                                alt="Promo banner preview"
+                                className="w-full h-24 object-cover"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src =
+                                    'https://placehold.co/600x200/f5efe6/8b6f4e?text=Banner+Preview';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
+                                  <HiOutlineUpload className="w-3.5 h-3.5" />
+                                  <span>Change Image</span>
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    disabled={isUploadingBannerImage}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleUploadBannerImage(file);
+                                    }}
+                                  />
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={handleClearPromoBannerImage}
+                                  className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
+                                >
+                                  <HiOutlineTrash className="w-3.5 h-3.5" />
+                                  <span>Remove</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label
+                              className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                                isUploadingBannerImage
+                                  ? 'border-[#8b6f4e] bg-[#faf5ed]'
+                                  : 'border-stone-200 bg-stone-50/50 hover:border-[#8b6f4e] hover:bg-white'
+                              }`}
+                            >
+                              <input
+                                type="file"
+                                accept="image/*"
+                                className="hidden"
+                                disabled={isUploadingBannerImage}
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) handleUploadBannerImage(file);
+                                }}
+                              />
+                              {isUploadingBannerImage ? (
+                                <>
+                                  <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                  <span className="text-[11px] font-semibold text-[#8b6f4e]">
+                                    Uploading banner...
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <HiOutlineUpload className="w-5 h-5 text-stone-400" />
+                                  <span className="text-xs font-semibold text-stone-700">
+                                    Click to upload banner image
+                                  </span>
+                                </>
+                              )}
+                            </label>
+                          )}
+                        </div>
+
+                        {/* Title */}
+                        <div className="space-y-1">
+                          <label className="text-[11px] font-bold text-stone-700">
+                            Title <span className="text-rose-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Festive Collection"
+                            value={bannerFormData.title}
+                            onChange={(e) =>
+                              setBannerFormData((prev) => ({ ...prev, title: e.target.value }))
+                            }
+                            className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                        </div>
+
+                        {/* Form Buttons */}
+                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+                          <button
+                            type="button"
+                            onClick={handleCloseBannerForm}
+                            className="px-3 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSavePromoBannerItem}
+                            disabled={isUploadingBannerImage}
+                            className="px-4 py-1.5 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
+                          >
+                            {editingBannerIndex !== null ? 'Update Promo Banner' : 'Add Promo Banner'}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Banner List Matching Screenshot */}
+                    {!(formData.promoBanners && formData.promoBanners.length > 0) ? (
+                      !bannerFormOpen && (
+                        <div className="my-auto py-8 px-4 rounded-xl border border-dashed border-stone-200/90 text-center space-y-1.5 bg-white/70">
+                          <HiOutlinePhotograph className="w-6 h-6 text-stone-300 mx-auto" />
+                          <p className="text-xs font-semibold text-stone-600">No promo banners yet</p>
+                          <p className="text-[11px] text-stone-400">
+                            Click &quot;+ Add Promo Banner&quot; above to add banners for this category.
+                          </p>
+                        </div>
+                      )
+                    ) : (
+                      <div className="space-y-2.5 overflow-y-auto max-h-[340px] pr-1 py-1">
+                        {formData.promoBanners.map((banner, index) => {
+                          const bannerImg =
+                            banner.image?.url ||
+                            banner.imageUrl ||
+                            (typeof banner.image === 'string' ? banner.image : '');
+                          return (
+                            <div
+                              key={banner._id || index}
+                              className="flex items-center gap-3 p-2.5 rounded-xl border border-stone-200 bg-white hover:border-[#8b6f4e]/40 shadow-2xs transition-all group"
+                            >
+                              {/* Drag Handle Grip Icon */}
+                              <div className="flex flex-col gap-0.5 text-stone-300 group-hover:text-stone-400 shrink-0 select-none">
+                                <HiOutlineMenuAlt4 className="w-4 h-4" />
+                              </div>
+
+                              {/* Thumbnail */}
+                              <div className="w-16 h-11 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden shrink-0">
+                                {bannerImg ? (
+                                  <img
+                                    src={getMediaUrl(bannerImg)}
+                                    alt={banner.title}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.onerror = null;
+                                      e.currentTarget.src =
+                                        'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-full flex items-center justify-center text-[10px] text-stone-400">
+                                    No Img
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Title */}
+                              <div className="min-w-0 flex-1">
+                                <span className="text-xs font-semibold text-stone-900 block truncate">
+                                  {banner.title || 'Untitled Banner'}
+                                </span>
+                              </div>
+
+                              {/* Actions Matching Screenshot */}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenBannerForm(banner, index)}
+                                  className="p-1.5 text-blue-600 bg-blue-50/70 hover:bg-blue-100/90 rounded-lg transition-colors border border-blue-100 cursor-pointer"
+                                  title="Edit Promo Banner"
+                                >
+                                  <HiOutlinePencilAlt className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeletePromoBannerItem(index)}
+                                  className="p-1.5 text-rose-600 bg-rose-50/70 hover:bg-rose-100/90 rounded-lg transition-colors border border-rose-100 cursor-pointer"
+                                  title="Delete Promo Banner"
+                                >
+                                  <HiOutlineTrash className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ─── BOTTOM FOOTER BAR ─── */}
+                <div className="pt-4 border-t border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  {/* Category Status Toggle with Subtitle */}
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <span className="text-xs font-bold text-stone-900 block">
+                        Category Status
+                      </span>
+                      <span className="text-[11px] text-stone-500 font-normal">
+                        Enable or disable this category on the website.
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={formData.status === 'active'}
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            status: prev.status === 'active' ? 'inactive' : 'active',
+                          }))
+                        }
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          formData.status === 'active' ? 'bg-[#8b6f4e]' : 'bg-stone-300'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                            formData.status === 'active' ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                      <span className="text-xs font-bold text-stone-800">
+                        {formData.status === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Cancel & Save Changes Action Buttons */}
+                  <div className="flex items-center justify-end gap-3 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsModalOpen(false);
+                        setEditingRecord(null);
+                      }}
+                      className="px-5 py-2.5 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200/90 rounded-xl transition-all shadow-2xs cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={saving}
+                      className="px-6 py-2.5 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                    >
+                      {saving
+                        ? editingRecord
+                          ? 'Saving...'
+                          : 'Creating...'
+                        : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {config.fields?.map((field) => (
+                  <div key={field.name} className="space-y-1">
+                    {field.type === 'banner' ? (
+                      (() => {
+                        const bannerVal = formData[field.name];
+                        const bannerUrl = typeof bannerVal === 'object' ? (bannerVal?.url || '') : (bannerVal || '');
+                        const hasBanner = Boolean(bannerUrl && typeof bannerUrl === 'string' && bannerUrl.trim().length > 0);
+
+                        return (
+                          <div className="space-y-2 p-3.5 bg-stone-50/80 rounded-2xl border border-stone-200/80">
+                            <div className="flex items-center gap-1.5">
+                              <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                              <span className="text-xs font-bold text-stone-900">
+                                {field.label}
+                              </span>
+                            </div>
+
+                            <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} selectedThemeId={formData.themeId || ''} onThemeChange={(value) => { setFormData((previous) => ({ ...previous, themeId: value })); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={[{ key: 'banner', label: 'Category banner', url: bannerUrl }]}>
+                            <div className="space-y-2 pt-1">
+                              {hasBanner ? (
+                                <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
+                                  <img
+                                    key={bannerUrl}
+                                    src={getMediaUrl(bannerUrl)}
+                                    alt="Banner preview"
+                                    className="w-full h-28 object-cover"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                    onLoad={(e) => {
+                                      e.currentTarget.style.display = 'block';
+                                    }}
+                                  />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                    <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
+                                      <HiOutlineUpload className="w-3.5 h-3.5" />
+                                      <span>Change</span>
+                                      <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={(e) => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            handleFileUpload(field.name, file, 'categories');
+                                            e.target.value = '';
+                                          }
+                                        }}
+                                      />
+                                    </label>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleClearImageField(field.name)}
+                                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
+                                    >
+                                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                                      <span>Remove</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <label
+                                  className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                                    uploadingField === field.name
+                                      ? 'border-[#8b6f4e] bg-[#faf5ed]'
+                                      : 'border-stone-200 bg-white hover:border-[#8b6f4e] hover:bg-[#fcfaf7]'
+                                  }`}
+                                >
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    disabled={uploadingField === field.name}
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                        handleFileUpload(field.name, file, 'categories');
+                                        e.target.value = '';
+                                      }
+                                    }}
+                                  />
+                                  {uploadingField === field.name ? (
+                                    <>
+                                      <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                      <span className="text-[11px] font-semibold text-[#8b6f4e]">
+                                        Uploading banner...
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <HiOutlineUpload className="w-5 h-5 text-stone-400 group-hover:text-[#8b6f4e]" />
+                                      <span className="text-xs font-semibold text-stone-700">
+                                        Click to upload category banner
+                                      </span>
+                                    </>
+                                  )}
+                                </label>
+                              )}
+                            </div>
+                            </ThemeImageField>
+                          </div>
+                        );
+                      })()
+                    ) : field.type === 'icon' ? (
+                      (() => {
+                        const iconVal = formData[field.name];
+                        const iconUrl = typeof iconVal === 'object' ? (iconVal?.url || '') : (iconVal || '');
+                        const hasIcon = Boolean(iconUrl && typeof iconUrl === 'string' && iconUrl.trim().length > 0);
+
+                        return (
+                          <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} selectedThemeId={formData.themeId || ''} onThemeChange={(value) => { setFormData((previous) => ({ ...previous, themeId: value })); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={[{ key: 'icon', label: 'Category icon', url: iconUrl }]}>
+                          <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                              <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                              <span>{field.label}</span>
+                            </label>
+
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-xl border border-stone-200 bg-[#fdfcfb] flex items-center justify-center shrink-0 overflow-hidden shadow-2xs relative">
+                                {uploadingField === field.name ? (
+                                  <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                ) : hasIcon ? (
+                                  <img
+                                    key={iconUrl}
+                                    src={getMediaUrl(iconUrl)}
+                                    alt="Category Icon"
+                                    className="w-full h-full object-contain p-1.5"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                    onLoad={(e) => {
+                                      e.currentTarget.style.display = 'block';
+                                    }}
+                                  />
+                                ) : (
+                                  <HiOutlineSparkles className="w-5 h-5 text-stone-300" />
+                                )}
+                              </div>
+
+                              <label className="flex-1 py-2.5 px-4 bg-stone-50 hover:bg-stone-100 border border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-xl text-stone-700 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs font-semibold shadow-2xs">
+                                {uploadingField === field.name ? (
+                                  <>
+                                    <div className="w-3.5 h-3.5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                    <span className="text-[#8b6f4e]">Uploading icon...</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <HiOutlineUpload className="w-4 h-4 text-stone-500" />
+                                    <span>{hasIcon ? 'Change Category Icon' : 'Upload Category Icon'}</span>
+                                  </>
+                                )}
+                                <input
+                                  type="file"
+                                  accept="image/png, image/jpeg, image/svg+xml, image/webp"
                                   className="hidden"
                                   disabled={uploadingField === field.name}
                                   onChange={(e) => {
@@ -1682,427 +2262,94 @@ const DynamicModuleView = () => {
                                     }
                                   }}
                                 />
-                                {uploadingField === field.name ? (
-                                  <>
-                                    <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
-                                    <span className="text-[11px] font-semibold text-[#8b6f4e]">
-                                      Uploading banner...
-                                    </span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <HiOutlineUpload className="w-5 h-5 text-stone-400 group-hover:text-[#8b6f4e]" />
-                                    <span className="text-xs font-semibold text-stone-700">
-                                      Click to upload category banner
-                                    </span>
-                                  </>
-                                )}
                               </label>
-                            )}
+
+                              {hasIcon && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleClearImageField(field.name)}
+                                  className="p-2.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-stone-200"
+                                  title="Clear Icon"
+                                >
+                                  <HiOutlineX className="w-4 h-4" />
+                                </button>
+                              )}
+                            </div>
                           </div>
                           </ThemeImageField>
-                        </div>
-                      );
-                    })()
-                  ) : field.type === 'icon' ? (
-                    /* Category Icon Field with Instant Preview */
-                    (() => {
-                      const iconVal = formData[field.name];
-                      const iconUrl = typeof iconVal === 'object' ? (iconVal?.url || '') : (iconVal || '');
-                      const hasIcon = Boolean(iconUrl && typeof iconUrl === 'string' && iconUrl.trim().length > 0);
-
-                      return (
-                        <ThemeImageField key={editingRecord?._id || 'new'} module="category" recordId={editingRecord?._id} selectedThemeId={formData.themeId || ''} onThemeChange={(value) => { setFormData((previous) => ({ ...previous, themeId: value })); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={[{ key: 'icon', label: 'Category icon', url: iconUrl }]}>
-
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                            <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                            <span>{field.label}</span>
-                          </label>
-
-                          <div className="flex items-center gap-3">
-                            {/* Visual Icon Preview Box */}
-                            <div className="w-12 h-12 rounded-xl border border-stone-200 bg-[#fdfcfb] flex items-center justify-center shrink-0 overflow-hidden shadow-2xs relative">
-                              {uploadingField === field.name ? (
-                                <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
-                              ) : hasIcon ? (
-                                <img
-                                  key={iconUrl}
-                                  src={getMediaUrl(iconUrl)}
-                                  alt="Category Icon"
-                                  className="w-full h-full object-contain p-1.5"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                  onLoad={(e) => {
-                                    e.currentTarget.style.display = 'block';
-                                  }}
-                                />
-                              ) : (
-                                <HiOutlineSparkles className="w-5 h-5 text-stone-300" />
-                              )}
-                            </div>
-
-                            {/* Upload button for icon */}
-                            <label className="flex-1 py-2.5 px-4 bg-stone-50 hover:bg-stone-100 border border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-xl text-stone-700 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs font-semibold shadow-2xs">
-                              {uploadingField === field.name ? (
-                                <>
-                                  <div className="w-3.5 h-3.5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
-                                  <span className="text-[#8b6f4e]">Uploading icon...</span>
-                                </>
-                              ) : (
-                                <>
-                                  <HiOutlineUpload className="w-4 h-4 text-stone-500" />
-                                  <span>{hasIcon ? 'Change Category Icon' : 'Upload Category Icon'}</span>
-                                </>
-                              )}
-                              <input
-                                type="file"
-                                accept="image/png, image/jpeg, image/svg+xml, image/webp"
-                                className="hidden"
-                                disabled={uploadingField === field.name}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    handleFileUpload(field.name, file, 'categories');
-                                    e.target.value = '';
-                                  }
-                                }}
-                              />
-                            </label>
-
-                            {/* Clear Button */}
-                            {hasIcon && (
-                              <button
-                                type="button"
-                                onClick={() => handleClearImageField(field.name)}
-                                className="p-2.5 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors cursor-pointer border border-stone-200"
-                                title="Clear Icon"
-                              >
-                                <HiOutlineX className="w-4 h-4" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                        </ThemeImageField>
-                      );
-                    })()
-                  ) : (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
-                        {field.label} {field.required && <span className="text-rose-500 font-bold">*</span>}
-                      </label>
-                      {field.type === 'select' ? (
-                        <Dropdown
-                          value={formData[field.name] || field.default || ''}
-                          onChange={(val) =>
-                            setFormData((prev) => ({ ...prev, [field.name]: val }))
-                          }
-                          options={field.options}
-                          placeholder={`Select ${field.label}`}
-                          size="sm"
-                          buttonClassName="w-full h-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
-                        />
-                      ) : field.type === 'lookup' ? (
-                        <Dropdown
-                          value={formData[field.name] || ''}
-                          onChange={(val) =>
-                            setFormData((prev) => ({ ...prev, [field.name]: val }))
-                          }
-                          options={lookupData[field.name] || []}
-                          placeholder={`Select ${field.label}`}
-                          size="sm"
-                          buttonClassName="w-full h-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
-                        />
-                      ) : (
-                        <input
-                          type={field.type}
-                          required={field.required}
-                          placeholder={field.placeholder || field.label}
-                          value={formData[field.name] || ''}
-                          onChange={(e) =>
-                            setFormData((prev) => ({ ...prev, [field.name]: e.target.value }))
-                          }
-                          className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
-                        />
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
-
-              {isCategoryPage && (
-                <div className="flex items-center justify-between rounded-xl border border-stone-200 px-4 py-3">
-                  <span className="text-sm font-semibold text-stone-900">Category Status</span>
-                  <ColorStatusToggle
-                    name="Category"
-                    status={formData.status}
-                    disabled={saving}
-                    onChange={(status) => setFormData((previous) => ({ ...previous, status }))}
-                  />
-                </div>
-              )}
-
-              {/* Category Promo Banners Section (Upload & Display) */}
-              {isCategoryPage && (
-                <div className="space-y-3 p-4 bg-gradient-to-br from-[#faf7f2]/90 to-[#fdfbf7] rounded-2xl border border-[#e8d8c0]/90 shadow-2xs">
-                  {/* Header */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-[#8b6f4e]/10 flex items-center justify-center text-[#8b6f4e]">
-                        <HiOutlineSparkles className="w-3.5 h-3.5" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-stone-900 block leading-tight">
-                          Promo Banners
-                        </span>
-                      </div>
-                      <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#8b6f4e] border border-[#e8d8c0] shadow-2xs">
-                        {(formData.promoBanners || []).length}
-                      </span>
-                    </div>
-
-                    {!bannerFormOpen && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenBannerForm()}
-                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#faf5ed] border border-[#e8d8c0] text-[#8b6f4e] text-xs font-bold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                      >
-                        <HiOutlinePlus className="w-3.5 h-3.5" />
-                        <span>Add Promo Banner</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Banner Add/Edit Form */}
-                  {bannerFormOpen && (
-                    <div className="bg-white rounded-xl border border-[#d6cfc2] p-4 shadow-sm space-y-3 animate-in fade-in duration-150">
-                      <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-                        <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                          <HiOutlinePhotograph className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                          <span>{editingBannerIndex !== null ? 'Edit Promo Banner' : 'New Promo Banner'}</span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={handleCloseBannerForm}
-                          className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
-                        >
-                          <HiOutlineX className="w-4 h-4" />
-                        </button>
-                      </div>
-
-                      {/* Image Upload Box */}
+                        );
+                      })()
+                    ) : (
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-stone-700 block">
-                          Banner Image
+                        <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                          {field.label} {field.required && <span className="text-rose-500 font-bold">*</span>}
                         </label>
-                        {bannerFormData.imageUrl ? (
-                          <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
-                            <img
-                              src={getMediaUrl(bannerFormData.imageUrl)}
-                              alt="Promo banner preview"
-                              className="w-full h-24 object-cover"
-                              onError={(e) => {
-                                e.currentTarget.onerror = null;
-                                e.currentTarget.src =
-                                  'https://placehold.co/600x200/f5efe6/8b6f4e?text=Banner+Preview';
-                              }}
-                            />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                              <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
-                                <HiOutlineUpload className="w-3.5 h-3.5" />
-                                <span>Change Image</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  disabled={isUploadingBannerImage}
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) handleUploadBannerImage(file);
-                                  }}
-                                />
-                              </label>
-                              <button
-                                type="button"
-                                onClick={handleClearPromoBannerImage}
-                                className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
-                              >
-                                <HiOutlineTrash className="w-3.5 h-3.5" />
-                                <span>Remove</span>
-                              </button>
-                            </div>
-                          </div>
+                        {field.type === 'select' ? (
+                          <Dropdown
+                            value={formData[field.name] || field.default || ''}
+                            onChange={(val) =>
+                              setFormData((prev) => ({ ...prev, [field.name]: val }))
+                            }
+                            options={field.options}
+                            placeholder={`Select ${field.label}`}
+                            size="sm"
+                            buttonClassName="w-full h-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
+                          />
+                        ) : field.type === 'lookup' ? (
+                          <Dropdown
+                            value={formData[field.name] || ''}
+                            onChange={(val) =>
+                              setFormData((prev) => ({ ...prev, [field.name]: val }))
+                            }
+                            options={lookupData[field.name] || []}
+                            placeholder={`Select ${field.label}`}
+                            size="sm"
+                            buttonClassName="w-full h-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
+                          />
                         ) : (
-                          <label
-                            className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                              isUploadingBannerImage
-                                ? 'border-[#8b6f4e] bg-[#faf5ed]'
-                                : 'border-stone-200 bg-stone-50/50 hover:border-[#8b6f4e] hover:bg-white'
-                            }`}
-                          >
-                            <input
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              disabled={isUploadingBannerImage}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleUploadBannerImage(file);
-                              }}
-                            />
-                            {isUploadingBannerImage ? (
-                              <>
-                                <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
-                                <span className="text-[11px] font-semibold text-[#8b6f4e]">
-                                  Uploading banner...
-                                </span>
-                              </>
-                            ) : (
-                              <>
-                                <HiOutlineUpload className="w-5 h-5 text-stone-400" />
-                                <span className="text-xs font-semibold text-stone-700">
-                                  Click to upload banner image
-                                </span>
-                              </>
-                            )}
-                          </label>
+                          <input
+                            type={field.type}
+                            required={field.required}
+                            placeholder={field.placeholder || field.label}
+                            value={formData[field.name] || ''}
+                            onChange={(e) =>
+                              setFormData((prev) => ({ ...prev, [field.name]: e.target.value }))
+                            }
+                            className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
+                          />
                         )}
                       </div>
+                    )}
+                  </div>
+                ))}
 
-                      {/* Inputs Grid */}
-                      {/* Inputs: Title only */}
-                      <div className="space-y-1">
-                        <label className="text-[11px] font-bold text-stone-700">
-                          Title <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="e.g. Tennis Bracelets Collection"
-                          value={bannerFormData.title}
-                          onChange={(e) =>
-                            setBannerFormData((prev) => ({ ...prev, title: e.target.value }))
-                          }
-                          className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e]"
-                        />
-                      </div>
-
-                      {/* Banner Form Actions */}
-                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
-                        <button
-                          type="button"
-                          onClick={handleCloseBannerForm}
-                          className="px-3 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleSavePromoBannerItem}
-                          disabled={isUploadingBannerImage}
-                          className="px-4 py-1.5 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
-                        >
-                          {editingBannerIndex !== null ? 'Update Promo Banner' : 'Add Promo Banner'}
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Existing Banners Display List */}
-                  {!(formData.promoBanners && formData.promoBanners.length > 0) ? (
-                    !bannerFormOpen && (
-                      <div className="p-4 rounded-xl border border-dashed border-stone-200/90 text-center space-y-1.5 bg-white/70">
-                        <HiOutlinePhotograph className="w-6 h-6 text-stone-300 mx-auto" />
-                        <p className="text-xs font-semibold text-stone-600">No promo banners yet</p>
-                        <p className="text-[11px] text-stone-400">
-                          Upload promo banner cards to delight shoppers exploring this category.
-                        </p>
-                      </div>
-                    )
-                  ) : (
-                    <div className="space-y-2">
-                      {formData.promoBanners.map((banner, index) => {
-                        const bannerImg =
-                          banner.image?.url ||
-                          banner.imageUrl ||
-                          (typeof banner.image === 'string' ? banner.image : '');
-                        return (
-                          <div
-                            key={index}
-                            className="flex items-center justify-between gap-3 p-2.5 rounded-xl border border-stone-200 bg-white hover:border-[#8b6f4e]/40 shadow-2xs transition-all group"
-                          >
-                            {/* Image Thumbnail */}
-                            <div className="w-16 h-11 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden relative shrink-0">
-                              {bannerImg ? (
-                                <img
-                                  src={getMediaUrl(bannerImg)}
-                                  alt={banner.title}
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.onerror = null;
-                                    e.currentTarget.src =
-                                      'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
-                                  }}
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-[10px] text-stone-400">
-                                  No Img
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Details: Title only */}
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-xs font-bold text-stone-900 truncate">
-                                {banner.title || 'Untitled Banner'}
-                              </h4>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <EditActionButton
-                                onClick={() => handleOpenBannerForm(banner, index)}
-                                title="Edit banner"
-                              />
-                              <DeleteActionButton
-                                onClick={() => handleDeletePromoBannerItem(index)}
-                                title="Delete banner"
-                              />
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-100">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsModalOpen(false);
-                    setEditingRecord(null);
-                  }}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 rounded-xl cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="px-5 py-2 text-xs font-semibold tracking-wider text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl uppercase shadow-sm cursor-pointer disabled:opacity-50"
-                >
-                  {saving
-                    ? editingRecord
-                      ? 'Saving...'
-                      : 'Creating...'
-                    : editingRecord
+                <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-100">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingRecord(null);
+                    }}
+                    className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 rounded-xl cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="px-5 py-2 text-xs font-semibold tracking-wider text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl uppercase shadow-sm cursor-pointer disabled:opacity-50"
+                  >
+                    {saving
+                      ? editingRecord
+                        ? 'Saving...'
+                        : 'Creating...'
+                      : editingRecord
                       ? 'Save Changes'
                       : 'Create Record'}
-                </button>
-              </div>
-            </form>
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
