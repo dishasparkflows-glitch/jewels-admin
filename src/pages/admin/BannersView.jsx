@@ -158,7 +158,6 @@ export default function BannersView() {
   const location = useLocation();
   const { typeKey, bannerId } = useParams();
   const confirm = useConfirm();
-  const { categories } = useCategoryLookup();
 
   // Determine base path (/banners or /marketing/banners)
   const basePath = useMemo(() => {
@@ -175,6 +174,8 @@ export default function BannersView() {
     }
     return 'grid';
   }, [location.pathname, typeKey]);
+
+  const { categories } = useCategoryLookup({ enabled: viewMode === 'form' });
 
   // Current active banner type configuration
   const currentBannerType = useMemo(() => {
@@ -232,15 +233,70 @@ export default function BannersView() {
   // Screen 3 Live Preview State
   const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' | 'mobile'
 
-  // Fetch all banners
-  const fetchData = async () => {
+  // Screen 1: Banner counts by type
+  const [bannerCounts, setBannerCounts] = useState({
+    herobanner: 0,
+    collectionbanner: 0,
+    categorybanner: 0,
+    offerbanner: 0,
+    mobileappbanner: 0,
+    bookappointbanner: 0,
+    customizebanner: 0,
+    websitebanner: 0,
+    total: 0,
+  });
+
+  const fetchCounts = async () => {
     try {
       setLoading(true);
-      const res = await api.get(`/banners?limit=200`);
-      const items = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
-      setBanners(items);
-      if (res.data?.pagination?.totalDocs !== undefined) {
-        setServerTotal(res.data.pagination.totalDocs);
+      const res = await api.get('/banners/counts');
+      if (res.data?.data) {
+        setBannerCounts(res.data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load banner counts:', err);
+      toast.error('Failed to load banner counts');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (viewMode === 'grid') {
+      fetchCounts();
+    }
+  }, [viewMode]);
+
+  // Screen 2: Paginated list banners for active type
+  const fetchListBanners = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        type: typeKey || 'herobanner',
+        page: currentPage,
+        limit: pageSize,
+      };
+      if (search.trim()) params.search = search.trim();
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'published') params.status = 'active';
+        else if (statusFilter === 'draft') params.status = 'inactive';
+        else if (statusFilter === 'scheduled') params.status = 'scheduled';
+      }
+      if (deviceFilter !== 'all') {
+        params.platform = deviceFilter;
+      }
+      if (sortBy) {
+        params.sortBy = sortBy;
+      }
+
+      const res = await api.get('/banners', { params });
+      const items = res.data?.data || [];
+      setBanners(Array.isArray(items) ? items : []);
+      const pagination = res.data?.pagination;
+      if (pagination?.totalDocs !== undefined) {
+        setServerTotal(pagination.totalDocs);
+      } else {
+        setServerTotal(items.length);
       }
     } catch (err) {
       console.error('Failed to load banners:', err);
@@ -251,11 +307,20 @@ export default function BannersView() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (viewMode === 'list') {
+      fetchListBanners();
+    }
+  }, [viewMode, typeKey, currentPage, pageSize, search, statusFilter, deviceFilter, sortBy]);
 
-  // Fetch navigation categories for collection banner links
+  // Reset pagination when list filters change
   useEffect(() => {
+    setCurrentPage(1);
+    setSelectedIds([]);
+  }, [typeKey, search, statusFilter, deviceFilter, sortBy]);
+
+  // Screen 3: Fetch navigation categories only when in form mode
+  useEffect(() => {
+    if (viewMode !== 'form') return;
     let cancelled = false;
     api.get('/categories/navigation')
       .then((res) => {
@@ -266,22 +331,7 @@ export default function BannersView() {
         if (!cancelled) setNavigationCategories([]);
       });
     return () => { cancelled = true; };
-  }, []);
-
-  // Counts for each banner type on Screen 1
-  const bannerCounts = useMemo(() => {
-    const counts = {};
-    BANNER_TYPES.forEach((t) => { counts[t.key] = 0; });
-    banners.forEach((b) => {
-      const type = (b.display?.type || 'herobanner').toLowerCase();
-      if (counts[type] !== undefined) {
-        counts[type] += 1;
-      } else {
-        counts.websitebanner = (counts.websitebanner || 0) + 1;
-      }
-    });
-    return counts;
-  }, [banners]);
+  }, [viewMode]);
 
   // Synchronize form when entering Edit mode via URL or state
   useEffect(() => {
@@ -290,7 +340,7 @@ export default function BannersView() {
         const existing = banners.find((b) => b._id === bannerId);
         if (existing) {
           populateFormWithBanner(existing);
-        } else if (!loading && banners.length > 0) {
+        } else {
           // Attempt direct fetch
           api.get(`/banners/${bannerId}`)
             .then((res) => {
@@ -307,7 +357,7 @@ export default function BannersView() {
         resetForm();
       }
     }
-  }, [viewMode, bannerId, banners, loading]);
+  }, [viewMode, bannerId]);
 
   const populateFormWithBanner = (banner) => {
     setEditingBanner(banner);
@@ -353,8 +403,8 @@ export default function BannersView() {
     setMobileImageUrl('');
     setMobileImageKey('');
     setFormStatus('active');
-    const existingTypeBanners = banners.filter((b) => (b.display?.type || 'herobanner').toLowerCase() === (typeKey || 'herobanner'));
-    setOrder(existingTypeBanners.length + 1);
+    const totalCount = bannerCounts[typeKey || 'herobanner'] ?? banners.length;
+    setOrder(totalCount + 1);
     setStartDate('');
     setEndDate('');
     setCollectionImages([]);
@@ -367,70 +417,8 @@ export default function BannersView() {
     setMobileUploadStats(null);
   };
 
-  // Screen 2 Filtered List
-  const filteredBanners = useMemo(() => {
-    if (viewMode !== 'list') return [];
-
-    let list = banners.filter((b) => {
-      const bType = (b.display?.type || 'herobanner').toLowerCase();
-      return bType === (typeKey || 'herobanner');
-    });
-
-    // Search filter
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      list = list.filter((b) => {
-        const t = (b.content?.title || b.title || '').toLowerCase();
-        const d = (b.content?.description || b.content?.subtitle || b.subtitle || '').toLowerCase();
-        const l = (b.link || '').toLowerCase();
-        return t.includes(q) || d.includes(q) || l.includes(q);
-      });
-    }
-
-    // Status filter
-    if (statusFilter !== 'all') {
-      list = list.filter((b) => {
-        const isScheduled = b.status === 'scheduled' || (b.startDate && new Date(b.startDate) > new Date());
-        if (statusFilter === 'published') return b.status === 'active' && !isScheduled;
-        if (statusFilter === 'scheduled') return isScheduled;
-        if (statusFilter === 'draft') return b.status === 'inactive';
-        return true;
-      });
-    }
-
-    // Device filter
-    if (deviceFilter !== 'all') {
-      list = list.filter((b) => {
-        const hasDesktop = Boolean(b.image?.url) || b.display?.platform !== 'mobile';
-        const hasMobile = Boolean(b.mobileImage?.url) || b.display?.platform === 'mobile';
-        if (deviceFilter === 'desktop') return hasDesktop;
-        if (deviceFilter === 'mobile') return hasMobile;
-        return true;
-      });
-    }
-
-    // Sort
-    list.sort((a, b) => {
-      if (sortBy === 'order_asc') {
-        return (a.display?.order ?? 0) - (b.display?.order ?? 0);
-      }
-      if (sortBy === 'order_desc') {
-        return (b.display?.order ?? 0) - (a.display?.order ?? 0);
-      }
-      if (sortBy === 'oldest') {
-        return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
-      }
-      // default newest first
-      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
-      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
-      return dateB - dateA;
-    });
-
-    return list;
-  }, [banners, viewMode, typeKey, search, statusFilter, deviceFilter, sortBy]);
-
   // Paginated items for Screen 2
-  const { totalItems, paginatedItems } = usePagination(filteredBanners, pageSize, serverTotal);
+  const { totalItems, paginatedItems } = usePagination(banners, pageSize, serverTotal);
 
   // Upload handler for Desktop or Mobile
   const handleFileUpload = async (file, targetDevice) => {
@@ -571,7 +559,6 @@ export default function BannersView() {
         await savePendingThemeMedia(themeId, 'banner', savedBanner._id, pendingThemeImages);
       }
 
-      await fetchData();
       navigate(`${basePath}/${effectiveType}`);
     } catch (err) {
       console.error('Error saving banner:', err);
@@ -608,7 +595,7 @@ export default function BannersView() {
 
       await api.post('/banners', payload);
       toast.success(`"${origTitle}" duplicated as draft`);
-      fetchData();
+      fetchListBanners();
     } catch (err) {
       console.error('Failed to duplicate:', err);
       toast.error('Failed to duplicate banner');
@@ -631,8 +618,8 @@ export default function BannersView() {
     try {
       await api.delete(`/banners/${banner._id}`);
       toast.success('Banner deleted');
-      setBanners((prev) => prev.filter((b) => b._id !== banner._id));
       setSelectedIds((prev) => prev.filter((id) => id !== banner._id));
+      fetchListBanners();
     } catch (err) {
       console.error('Delete failed:', err);
       toast.error(err.response?.data?.message || 'Failed to delete banner');
@@ -654,9 +641,9 @@ export default function BannersView() {
 
     try {
       await Promise.allSettled(selectedIds.map((id) => api.delete(`/banners/${id}`)));
-      setBanners((prev) => prev.filter((b) => !selectedIds.includes(b._id)));
       setSelectedIds([]);
       toast.success(`${count} banner${count > 1 ? 's' : ''} deleted`);
+      fetchListBanners();
     } catch (err) {
       console.error('Bulk delete failed:', err);
       toast.error('Failed to delete some banners');
@@ -914,7 +901,7 @@ export default function BannersView() {
                       <span>Loading banners...</span>
                     </td>
                   </tr>
-                ) : filteredBanners.length === 0 ? (
+                ) : banners.length === 0 ? (
                   <tr>
                     <td colSpan="8" className="py-16 text-center text-stone-400">
                       <HiOutlinePhotograph className="w-10 h-10 mx-auto text-stone-300 mb-2 stroke-1" />
@@ -1092,13 +1079,13 @@ export default function BannersView() {
           {/* Pagination */}
           <div className="px-5 py-4 border-t border-stone-150 flex flex-col sm:flex-row items-center justify-between gap-3 bg-stone-50/50">
             <span className="text-xs text-stone-500 font-medium">
-              Showing {filteredBanners.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
-              {Math.min(currentPage * pageSize, filteredBanners.length)} of {filteredBanners.length} banners
+              Showing {(serverTotal ?? banners.length) > 0 ? (currentPage - 1) * pageSize + 1 : 0}-
+              {Math.min(currentPage * pageSize, serverTotal ?? banners.length)} of {serverTotal ?? banners.length} banners
             </span>
 
             <Pagination
               currentPage={currentPage}
-              totalItems={serverTotal ?? totalItems}
+              totalItems={serverTotal ?? banners.length}
               pageSize={pageSize}
               onPageChange={setCurrentPage}
               onPageSizeChange={(newSize) => {

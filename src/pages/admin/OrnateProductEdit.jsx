@@ -351,8 +351,8 @@ export default function OrnateProductEdit() {
             })(),
             status: product.status || 'draft',
             stockStatus: product.stockStatus || '',
-            showInApp: Boolean(product.inapp),
-            showOnWeb: Boolean(product.inweb),
+            showInApp: product.visibility?.app !== false && product.inapp !== false,
+            showOnWeb: product.visibility?.web !== false && product.inweb !== false,
             description: product.basicInfo?.description || '',
           });
 
@@ -1002,8 +1002,10 @@ export default function OrnateProductEdit() {
         gender: baseInfo.targetGender ? [baseInfo.targetGender] : [],
         status: activeStatus,
         stockStatus: baseInfo.stockStatus || undefined,
-        inapp: Boolean(baseInfo.showInApp),
-        inweb: Boolean(baseInfo.showOnWeb),
+        visibility: {
+          app: Boolean(baseInfo.showInApp),
+          web: Boolean(baseInfo.showOnWeb),
+        },
         isOrnate: true,
         productType: 'silver',
 

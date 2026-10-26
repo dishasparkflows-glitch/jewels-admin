@@ -20,7 +20,6 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const {
-    currentTheme,
     sidebarOpen,
     setSidebarOpen,
     sidebarPosition,
@@ -36,14 +35,12 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   const isRight = sidebarPosition === 'right';
   const isVisible = isMobileViewport ? mobileOpen : isOpen;
 
-  // Open all main groups by default matching target admin design
+  // Open existing submenus by default matching portal screenshots
   const [openSubmenus, setOpenSubmenus] = useState({
-    analytics: true,
-    catalog: true,
-    'sales-orders': true,
-    marketing: true,
-    'website-content': true,
-    'system-settings': true,
+    'diamond-config': true,
+    'product-config': true,
+    'pricing-hub': true,
+    catalog: false,
   });
 
   const [brandLogo, setBrandLogo] = useState({ desktop: '', mobile: '' });
@@ -83,31 +80,39 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
       (childPath === '/catalog/categories' &&
         (location.pathname === '/catalog/categories' ||
           location.pathname.startsWith('/catalog/categories') ||
-          location.pathname === '/categories' ||
-          location.pathname === '/catalog/navigation-menus')) ||
+          location.pathname === '/categories')) ||
+      (childPath === '/catalog/navigation-menus' &&
+        (location.pathname === '/catalog/navigation-menus' ||
+          location.pathname === '/navigation-menus')) ||
       (childPath === '/pricing-hub/metal-rates' &&
-        (location.pathname.startsWith('/pricing-hub') ||
+        (location.pathname === '/pricing-hub/metal-rates' ||
           location.pathname === '/metal-rates' ||
-          location.pathname === '/goldprice' ||
+          location.pathname === '/goldprice')) ||
+      (childPath === '/pricing-hub/diamond-rates' &&
+        (location.pathname === '/pricing-hub/diamond-rates' ||
           location.pathname === '/diamondprice' ||
           location.pathname === '/diamond-price' ||
-          location.pathname === '/diamond-rates' ||
-          location.pathname === '/currencies')) ||
+          location.pathname === '/diamond-rates')) ||
+      (childPath === '/currencies' &&
+        (location.pathname === '/pricing-hub/currencies' || location.pathname === '/currencies')) ||
       (childPath === '/metal-purity' &&
-        (location.pathname.startsWith('/product-config') ||
-          location.pathname === '/metal-purity' ||
-          location.pathname === '/metal-color' ||
-          location.pathname === '/sizes' ||
-          location.pathname === '/vto-masters')) ||
+        (location.pathname === '/product-config/metal-purity' || location.pathname === '/metal-purity')) ||
+      (childPath === '/metal-color' &&
+        (location.pathname === '/product-config/metal-color' || location.pathname === '/metal-color')) ||
+      (childPath === '/sizes' &&
+        (location.pathname === '/product-config/sizes' || location.pathname === '/sizes')) ||
+      (childPath === '/vto-masters' &&
+        (location.pathname === '/product-config/vto-masters' || location.pathname === '/vto-masters')) ||
       (childPath === '/diamond-types' &&
-        (location.pathname.startsWith('/diamond-config') ||
-          location.pathname === '/diamond-types' ||
-          location.pathname === '/diamond-shapes' ||
-          location.pathname === '/diamond-color' ||
-          location.pathname === '/diamond-clarity' ||
-          location.pathname === '/diamond-size' ||
-          location.pathname === '/diamonds' ||
-          location.pathname.startsWith('/diamonds/'))) ||
+        (location.pathname === '/diamond-config/types' || location.pathname === '/diamond-types')) ||
+      (childPath === '/diamond-shapes' &&
+        (location.pathname === '/diamond-config/shapes' || location.pathname === '/diamond-shapes')) ||
+      (childPath === '/diamond-color' &&
+        (location.pathname === '/diamond-config/color' || location.pathname === '/diamond-color')) ||
+      (childPath === '/diamond-clarity' &&
+        (location.pathname === '/diamond-config/clarity' || location.pathname === '/diamond-clarity')) ||
+      (childPath === '/diamond-size' &&
+        (location.pathname === '/diamond-config/size' || location.pathname === '/diamond-size')) ||
       (childPath === '/cod-sequences' &&
         (location.pathname === '/cod-sequences' || location.pathname === '/cod-sequence')) ||
       (childPath === '/celebrate-gifts' &&
@@ -152,21 +157,23 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   };
 
   useEffect(() => {
-    // Automatically ensure the section of the current active path is opened
-    let activeGroupId = null;
-    navSections.forEach((item) => {
-      if (item.children) {
-        const isChildActive = item.children.some((c) => checkIsChildActive(c.path));
-        if (isChildActive) {
-          activeGroupId = item.id;
+    // Automatically ensure the submenu containing the active path is opened
+    let activeParentId = null;
+    navSections.forEach((section) => {
+      section.items?.forEach((item) => {
+        if (item.children) {
+          const isChildActive = item.children.some((c) => checkIsChildActive(c.path));
+          if (isChildActive) {
+            activeParentId = item.id;
+          }
         }
-      }
+      });
     });
 
-    if (activeGroupId) {
+    if (activeParentId) {
       setOpenSubmenus((prev) => ({
         ...prev,
-        [activeGroupId]: true,
+        [activeParentId]: true,
       }));
     }
   }, [location.pathname]);
@@ -240,14 +247,13 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
 
           <div className="flex flex-col min-w-0 text-left">
             <span className="font-serif text-[13px] font-bold tracking-[0.16em] text-[#1F1D1A] group-hover:text-[#8a6d4b] uppercase truncate leading-tight transition-colors">
-              NEIRAH JEWELS
+              NEIRAH
             </span>
             <span className="text-[7.5px] tracking-[0.24em] text-[#A67C52] uppercase font-semibold mt-0.5">
-              FINE JEWELLERY
+              LUXURY PORTAL
             </span>
           </div>
         </NavLink>
-
 
         {/* ─── Controls: Move to Right / Hide Sidebar ─── */}
         <div className="flex items-center gap-1 shrink-0 ml-1">
@@ -279,96 +285,113 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
         </div>
       </div>
 
-      {/* ─── Navigation Scrollable Area (Exact Grouped Hierarchy) ─ */}
-      <nav className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-1.5 scrollbar-thin scrollbar-thumb-stone-200">
-        {navSections.map((item) => {
-          const Icon = item.icon;
-          const hasChildren = item.children && item.children.length > 0;
+      {/* ─── Navigation Scrollable Area (Exact Portal Hierarchy) ─ */}
+      <nav className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-2 scrollbar-thin scrollbar-thumb-stone-200">
+        {navSections.map((section) => (
+          <div key={section.id} className="space-y-0.5">
+            {section.title && isVisible && (
+              <p className="px-3 pt-3 pb-1 text-[10px] font-bold tracking-widest text-[#A67C52] uppercase">
+                {section.title}
+              </p>
+            )}
 
-          // ─── Case 1: Standalone Menu Item (e.g., Dashboard) ─────
-          if (!hasChildren) {
-            const isDashboardActive =
-              location.pathname === item.path ||
-              (item.path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard'));
+            {section.items?.map((item) => {
+              const Icon = item.icon;
+              const hasChildren = item.children && item.children.length > 0;
 
-            return (
-              <NavLink
-                key={item.id}
-                to={item.path}
-                onClick={onMobileClose}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer ${
-                  isDashboardActive
-                    ? 'bg-[#F5EFE8] text-[#1C1917] font-semibold'
-                    : 'text-[#3E3832] hover:text-[#1C1917] hover:bg-[#FAF6F1]'
-                }`}
-              >
-                <Icon
-                  className={`w-4 h-4 shrink-0 transition-colors ${
-                    isDashboardActive ? 'text-[#9A724A]' : 'text-[#87786B]'
-                  }`}
-                />
-                <span className="truncate">{item.title}</span>
-              </NavLink>
-            );
-          }
+              // ─── Case 1: Standalone Menu Item ──────────────────
+              if (!hasChildren) {
+                const isActive =
+                  checkIsChildActive(item.path) ||
+                  (item.path === '/dashboard' && (location.pathname === '/' || location.pathname === '/dashboard'));
 
-          // ─── Case 2: Accordion Group Header (e.g., ANALYTICS, CATALOG) ─
-          const isGroupOpen = !!openSubmenus[item.id];
+                return (
+                  <NavLink
+                    key={item.id || item.path}
+                    to={item.path}
+                    onClick={onMobileClose}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer ${
+                      isActive
+                        ? 'bg-[#F5EFE8] text-[#1C1917] font-semibold'
+                        : 'text-[#3E3832] hover:text-[#1C1917] hover:bg-[#FAF6F1]'
+                    }`}
+                  >
+                    <Icon
+                      className={`w-4 h-4 shrink-0 transition-colors ${
+                        isActive ? 'text-[#9A724A]' : 'text-[#87786B]'
+                      }`}
+                    />
+                    <span className="truncate">{item.title}</span>
+                  </NavLink>
+                );
+              }
 
-          return (
-            <div key={item.id} className="space-y-0.5">
-              <button
-                type="button"
-                onClick={() => toggleSubmenu(item.id)}
-                className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-[11px] font-bold tracking-[0.08em] text-[#3D3730] hover:bg-[#FAF6F1] transition-colors cursor-pointer group"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <Icon className="w-4 h-4 text-[#9A724A] shrink-0" />
-                  <span className="uppercase text-[#3D3730] font-bold tracking-wider truncate">
-                    {item.title}
-                  </span>
-                </div>
-                <span className="text-stone-400 group-hover:text-stone-600 transition-colors shrink-0 ml-1">
-                  {isGroupOpen ? (
-                    <HiOutlineChevronUp className="w-3.5 h-3.5 stroke-2" />
-                  ) : (
-                    <HiOutlineChevronDown className="w-3.5 h-3.5 stroke-2" />
-                  )}
-                </span>
-              </button>
+              // ─── Case 2: Submenu Group (Diamond Config, Product Config, etc.) ─
+              const isSubOpen = !!openSubmenus[item.id];
+              const isAnyChildActive = item.children.some((c) => checkIsChildActive(c.path));
 
-              {/* Accordion Children Items */}
-              {isGroupOpen && (
-                <div className="space-y-0.5 pl-3 pr-1 animate-fadeIn">
-                  {item.children.map((child) => {
-                    const ChildIcon = child.icon || Icon;
-                    const isChildActive = checkIsChildActive(child.path);
-
-                    return (
-                      <NavLink
-                        key={child.id || child.path}
-                        to={child.path}
-                        onClick={onMobileClose}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] transition-colors cursor-pointer ${
-                          isChildActive
-                            ? 'bg-[#F5EFE8] text-[#1C1917] font-semibold'
-                            : 'text-[#504840] hover:text-[#1C1917] hover:bg-[#FAF6F1] font-normal'
+              return (
+                <div key={item.id} className="space-y-0.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleSubmenu(item.id)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] transition-colors cursor-pointer group ${
+                      isSubOpen || isAnyChildActive
+                        ? 'text-[#9A724A] font-semibold bg-[#FAF6F1]'
+                        : 'text-[#3E3832] hover:text-[#1C1917] hover:bg-[#FAF6F1] font-medium'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <Icon
+                        className={`w-4 h-4 shrink-0 transition-colors ${
+                          isSubOpen || isAnyChildActive ? 'text-[#9A724A]' : 'text-[#87786B]'
                         }`}
-                      >
-                        <ChildIcon
-                          className={`w-4 h-4 shrink-0 transition-colors ${
-                            isChildActive ? 'text-[#9A724A]' : 'text-[#87786B]'
-                          }`}
-                        />
-                        <span className="truncate flex-1 text-left">{child.title}</span>
-                      </NavLink>
-                    );
-                  })}
+                      />
+                      <span className="truncate text-left">{item.title}</span>
+                    </div>
+                    <span className="text-stone-400 group-hover:text-stone-600 transition-colors shrink-0 ml-1">
+                      {isSubOpen ? (
+                        <HiOutlineChevronUp className="w-3.5 h-3.5 stroke-2" />
+                      ) : (
+                        <HiOutlineChevronRight className="w-3.5 h-3.5 stroke-2" />
+                      )}
+                    </span>
+                  </button>
+
+                  {/* Submenu Children Items with guideline line */}
+                  {isSubOpen && (
+                    <div className="ml-5 pl-3 border-l border-[#EDE8E1] py-1 space-y-0.5 animate-fadeIn">
+                      {item.children.map((child) => {
+                        const ChildIcon = child.icon || Icon;
+                        const isChildActive = checkIsChildActive(child.path);
+
+                        return (
+                          <NavLink
+                            key={child.id || child.path}
+                            to={child.path}
+                            onClick={onMobileClose}
+                            className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-[12.5px] transition-colors cursor-pointer ${
+                              isChildActive
+                                ? 'bg-[#F5EFE8] text-[#1C1917] font-semibold'
+                                : 'text-[#504840] hover:text-[#1C1917] hover:bg-[#FAF6F1] font-normal'
+                            }`}
+                          >
+                            <ChildIcon
+                              className={`w-4 h-4 shrink-0 transition-colors ${
+                                isChildActive ? 'text-[#9A724A]' : 'text-[#87786B]'
+                              }`}
+                            />
+                            <span className="truncate flex-1 text-left">{child.title}</span>
+                          </NavLink>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+        ))}
       </nav>
 
       {/* ─── Bottom User Profile Footer (Matches Screenshot) ──── */}

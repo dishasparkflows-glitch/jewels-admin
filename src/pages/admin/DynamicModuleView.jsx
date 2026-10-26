@@ -983,8 +983,8 @@ const DynamicModuleView = () => {
       setUpdatingVisibilityId(`${rowId}-${platform}`);
       const payload =
         platform === 'web'
-          ? { inweb: nextWeb, 'visibility.web': nextWeb }
-          : { inapp: nextApp, 'visibility.app': nextApp };
+          ? { 'visibility.web': nextWeb }
+          : { 'visibility.app': nextApp };
 
       await api.put(`/products/${rowId}`, payload);
       toast.success(

@@ -1143,17 +1143,21 @@ export default function HomeSectionsView() {
                       SELECTED PRODUCTS ({formData.selectedProducts?.length || 0})
                     </h3>
                     <p className="text-[11px] text-stone-500 mt-0.5">
-                      Click the button to open the product catalog pop-up and pick products with pagination.
+                      {formData.selectedProducts?.length > 0
+                        ? 'Manage or pick additional products for this section.'
+                        : 'Pick products with pagination to feature in this section.'}
                     </p>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenProductPicker}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer self-start sm:self-auto"
-                  >
-                    <HiOutlinePlus className="w-4 h-4" />
-                    <span>Browse & Select Products</span>
-                  </button>
+                  {formData.selectedProducts?.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleOpenProductPicker}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] text-white rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer self-start sm:self-auto"
+                    >
+                      <HiOutlinePlus className="w-4 h-4" />
+                      <span>Browse & Select Products</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Product Container: Empty state vs Selected Products list */}

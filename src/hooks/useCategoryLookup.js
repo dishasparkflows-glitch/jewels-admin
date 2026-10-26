@@ -13,9 +13,14 @@ import api from '../api/axios';
  */
 export default function useCategoryLookup(opts = {}) {
   const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(opts.enabled !== false);
 
   useEffect(() => {
+    if (opts.enabled === false) {
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
 
     const fetchLookup = async () => {
@@ -39,9 +44,9 @@ export default function useCategoryLookup(opts = {}) {
     return () => {
       cancelled = true;
     };
-    // Re-fetch when the type filter changes
+    // Re-fetch when the type filter or enabled changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [opts.type]);
+  }, [opts.type, opts.enabled]);
 
   // Formatted options for <Dropdown> components
   const categoryOptions = useMemo(

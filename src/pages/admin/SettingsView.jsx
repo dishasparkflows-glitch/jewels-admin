@@ -14,6 +14,7 @@ import {
   HiOutlineShieldCheck,
   HiOutlineSearch,
   HiOutlineTrash,
+  HiOutlineColorSwatch,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -32,8 +33,15 @@ export default function SettingsView() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Active modal: null | 'logos' | 'compression' | 'trust' | 'business' | 'monetary'
+  // Active modal: null | 'logos' | 'compression' | 'trust' | 'business' | 'monetary' | 'theme'
   const [activeModal, setActiveModal] = useState(null);
+
+  // Storefront Theme state
+  const [selectedThemeId, setSelectedThemeId] = useState('');
+  const [selectedThemeName, setSelectedThemeName] = useState('');
+  const [themesList, setThemesList] = useState([]);
+  const [loadingThemes, setLoadingThemes] = useState(false);
+  const [savingTheme, setSavingTheme] = useState(false);
 
   // Trust Badges state
   const [trustBadges, setTrustBadges] = useState([]);
@@ -106,6 +114,13 @@ export default function SettingsView() {
         bankAccountNumber: data.bankAccountNumber ?? '',
         ifscCode: data.ifscCode ?? '',
       });
+
+      if (data.currentThemeId) {
+        const themeId = typeof data.currentThemeId === 'object' ? data.currentThemeId._id : data.currentThemeId;
+        const themeName = typeof data.currentThemeId === 'object' ? data.currentThemeId.name : '';
+        setSelectedThemeId(themeId || '');
+        if (themeName) setSelectedThemeName(themeName);
+      }
     } catch (err) {
       console.error('Failed to load settings:', err);
       toast.error('Failed to load system settings');
@@ -157,6 +172,8 @@ export default function SettingsView() {
       });
       setTrustBadges(Array.isArray(settings.trustBadges) ? settings.trustBadges : []);
       setImageCompression({ ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(settings.mediaCompression || {}) });
+      const initialThemeId = typeof settings.currentThemeId === 'object' ? settings.currentThemeId?._id : settings.currentThemeId;
+      setSelectedThemeId(initialThemeId || '');
     }
     setActiveModal(null);
   };
@@ -335,6 +352,59 @@ export default function SettingsView() {
     }
   };
 
+  // Fetch Theme lookup
+  const fetchThemesLookup = async () => {
+    try {
+      setLoadingThemes(true);
+      const res = await api.get('/website/themes/lookup');
+      const list = res.data?.data || [];
+      setThemesList(list);
+      if (selectedThemeId) {
+        const found = list.find((t) => String(t._id) === String(selectedThemeId));
+        if (found) setSelectedThemeName(found.name);
+      }
+    } catch (err) {
+      console.error('Failed to load theme lookup:', err);
+      toast.error('Failed to load themes');
+    } finally {
+      setLoadingThemes(false);
+    }
+  };
+
+  // Save Storefront Theme
+  const handleSaveTheme = async () => {
+    if (!selectedThemeId) {
+      toast.error('Please select a theme');
+      return;
+    }
+    try {
+      setSavingTheme(true);
+      const res = await api.put('/settings', { currentThemeId: selectedThemeId });
+      const updated = res.data?.data || {};
+      setSettings(updated);
+      const themeObj = updated.currentThemeId;
+      const themeName =
+        (typeof themeObj === 'object' && themeObj?.name) ||
+        themesList.find((t) => String(t._id) === String(selectedThemeId))?.name ||
+        '';
+      setSelectedThemeName(themeName);
+      setActiveModal(null);
+      toast.success('Storefront theme updated successfully');
+    } catch (err) {
+      console.error('Failed to save theme:', err);
+      toast.error(err.response?.data?.message || 'Failed to update theme');
+    } finally {
+      setSavingTheme(false);
+    }
+  };
+
+  const handleOpenModal = (id) => {
+    setActiveModal(id);
+    if (id === 'theme') {
+      fetchThemesLookup();
+    }
+  };
+
   // Quick stat cards
   const statCardsData = [
     {
@@ -414,6 +484,14 @@ export default function SettingsView() {
       }`,
       hasPreview: false,
     },
+    {
+      id: 'theme',
+      title: 'Storefront Theme',
+      subtitle: 'Select active website theme to apply banners, colors, and layout.',
+      icon: HiOutlineColorSwatch,
+      badgeText: selectedThemeName ? `Active: ${selectedThemeName}` : 'Select active storefront theme',
+      hasPreview: false,
+    },
   ];
 
   const filteredBoxes = settingBoxes.filter(
@@ -472,7 +550,7 @@ export default function SettingsView() {
           return (
             <div
               key={box.id}
-              onClick={() => setActiveModal(box.id)}
+              onClick={() => handleOpenModal(box.id)}
               className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white p-4 shadow-2xs hover:border-[#8f6d43]/60 hover:shadow-md transition-all duration-200 cursor-pointer"
             >
               <div>
@@ -561,6 +639,7 @@ export default function SettingsView() {
                   {activeModal === 'trust' && 'Trust Strip Configuration'}
                   {activeModal === 'business' && 'Business & Identity'}
                   {activeModal === 'monetary' && 'Monetary Settlement Details'}
+                  {activeModal === 'theme' && 'Storefront Theme'}
                 </h2>
                 <p className="mt-0.5 text-xs text-stone-500">
                   {activeModal === 'logos' && 'Manage your desktop and mobile brand logos.'}
@@ -568,6 +647,7 @@ export default function SettingsView() {
                   {activeModal === 'trust' && 'Manage trust badges shown in the storefront assurance strip.'}
                   {activeModal === 'business' && 'Store name, credentials, address, and policies.'}
                   {activeModal === 'monetary' && 'Bank settlement details and payout credentials.'}
+                  {activeModal === 'theme' && 'Select the active theme that controls storefront layout, banners, and media.'}
                 </p>
               </div>
               <button
@@ -1018,6 +1098,85 @@ export default function SettingsView() {
                   </div>
                 </div>
               )}
+
+              {/* Theme Selector Modal Body */}
+              {activeModal === 'theme' && (
+                <div className="space-y-4 max-h-[70vh] overflow-y-auto p-5">
+                  <div className="bg-[#faf6f0] border border-[#ebdcc8]/80 rounded-xl p-3.5 text-xs text-stone-700 leading-relaxed">
+                    Choose the active theme for your storefront. The selected theme&apos;s banners, featured showcases, and promotional media will automatically be served across the website.
+                  </div>
+
+                  {loadingThemes ? (
+                    <div className="py-12 flex flex-col items-center justify-center gap-2">
+                      <div className="w-6 h-6 border-2 border-[#8f6d43] border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs text-stone-500">Loading themes...</span>
+                    </div>
+                  ) : themesList.length === 0 ? (
+                    <div className="py-8 text-center text-xs text-stone-500">
+                      No themes found. Create a theme in Website Themes first.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {themesList.map((t) => {
+                        const isSelected = String(selectedThemeId) === String(t._id);
+                        return (
+                          <div
+                            key={t._id}
+                            onClick={() => setSelectedThemeId(t._id)}
+                            className={`relative cursor-pointer rounded-xl border p-4 transition-all duration-150 flex flex-col justify-between ${
+                              isSelected
+                                ? 'border-[#8f6d43] bg-[#faf6f0]/70 ring-2 ring-[#8f6d43]/20 shadow-xs'
+                                : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50/50'
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-start justify-between gap-2">
+                                <h4 className="text-sm font-bold text-stone-900">{t.name}</h4>
+                                <span
+                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                                    t.status === 'active'
+                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                      : 'bg-stone-100 text-stone-600 border border-stone-200'
+                                  }`}
+                                >
+                                  {t.status}
+                                </span>
+                              </div>
+                              <p className="mt-1 font-mono text-[11px] text-stone-400">{t.code}</p>
+                              {t.description && (
+                                <p className="mt-2 text-xs text-stone-600 line-clamp-2">
+                                  {t.description}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
+                              <span className="text-[11px] text-stone-500">
+                                {isSelected ? (
+                                  <span className="font-semibold text-[#8f6d43] flex items-center gap-1">
+                                    <HiOutlineCheck className="w-3.5 h-3.5" /> Selected
+                                  </span>
+                                ) : (
+                                  <span className="text-stone-400">Click to select</span>
+                                )}
+                              </span>
+                              <div
+                                className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                                  isSelected
+                                    ? 'border-[#8f6d43] bg-[#8f6d43]'
+                                    : 'border-stone-300 bg-white'
+                                }`}
+                              >
+                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
@@ -1071,6 +1230,17 @@ export default function SettingsView() {
                   className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
                 >
                   {savingMonetary ? 'Saving…' : 'Save Changes'}
+                </button>
+              )}
+
+              {activeModal === 'theme' && (
+                <button
+                  type="button"
+                  onClick={handleSaveTheme}
+                  disabled={savingTheme || !selectedThemeId}
+                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
+                >
+                  {savingTheme ? 'Saving…' : 'Apply Theme'}
                 </button>
               )}
             </div>
