@@ -319,12 +319,8 @@ const DynamicModuleView = () => {
       initial.promoBanners = row.promoBanners.map((b, idx) => ({
         _id: b._id,
         title: b.title || '',
-        subtitle: b.subtitle || '',
         image: typeof b.image === 'object' ? { url: b.image?.url || '', key: b.image?.key || '' } : { url: b.image || '', key: '' },
         imageUrl: typeof b.image === 'object' ? (b.image?.url || '') : (b.image || ''),
-        link: b.link || b.url || '',
-        url: b.url || b.link || '',
-        status: b.status || 'active',
         order: b.order ?? idx + 1,
       }));
     } else if (isCategoryPage) {
@@ -342,22 +338,16 @@ const DynamicModuleView = () => {
       setEditingBannerIndex(index);
       setBannerFormData({
         title: banner.title || '',
-        subtitle: banner.subtitle || '',
         imageUrl: banner.image?.url || banner.imageUrl || (typeof banner.image === 'string' ? banner.image : '') || '',
         key: banner.image?.key || banner.key || '',
-        link: banner.link || banner.url || '',
-        status: banner.status || 'active',
         order: banner.order ?? index + 1,
       });
     } else {
       setEditingBannerIndex(null);
       setBannerFormData({
         title: '',
-        subtitle: '',
         imageUrl: '',
         key: '',
-        link: '',
-        status: 'active',
         order: (formData.promoBanners?.length || 0) + 1,
       });
     }
@@ -369,11 +359,8 @@ const DynamicModuleView = () => {
     setEditingBannerIndex(null);
     setBannerFormData({
       title: '',
-      subtitle: '',
       imageUrl: '',
       key: '',
-      link: '',
-      status: 'active',
       order: 0,
     });
   };
@@ -418,15 +405,11 @@ const DynamicModuleView = () => {
     }
     const newItem = {
       title: bannerFormData.title.trim(),
-      subtitle: (bannerFormData.subtitle || '').trim(),
       image: {
         url: (bannerFormData.imageUrl || '').trim(),
         key: (bannerFormData.key || '').trim(),
       },
       imageUrl: (bannerFormData.imageUrl || '').trim(),
-      link: (bannerFormData.link || '').trim(),
-      url: (bannerFormData.link || '').trim(),
-      status: bannerFormData.status || 'active',
       order: Number(bannerFormData.order || 0),
     };
 
@@ -696,14 +679,10 @@ const DynamicModuleView = () => {
           payload.promoBanners = payload.promoBanners.map((b, idx) => ({
             _id: b._id,
             title: (b.title || '').trim(),
-            subtitle: (b.subtitle || '').trim(),
             image: {
               url: (typeof b.image === 'object' ? b.image?.url : b.image || b.imageUrl || '') || '',
               key: (typeof b.image === 'object' ? b.image?.key : b.key || '') || '',
             },
-            link: (b.link || b.url || '').trim(),
-            url: (b.url || b.link || '').trim(),
-            status: b.status || 'active',
             order: Number(b.order ?? idx + 1),
           }));
         }
@@ -887,6 +866,17 @@ const DynamicModuleView = () => {
     return String(val ?? '');
   };
 
+  // Helper to filter out legacy/seed static images like /featured/ or /promos/
+  const isValidMediaUrl = (u) => {
+    if (!u || typeof u !== 'string') return false;
+    const trimmed = u.trim();
+    if (!trimmed) return false;
+    if (trimmed.startsWith('/featured/') || trimmed.startsWith('/promos/') || trimmed.includes('example.com')) {
+      return false;
+    }
+    return true;
+  };
+
   // Helper to resolve product and generic thumbnails
   const getRowThumbnail = (row) => {
     if (!row) return null;
@@ -894,13 +884,13 @@ const DynamicModuleView = () => {
     if (row.ornate?.ornateImages && row.ornate.ornateImages.length > 0) {
       const first = row.ornate.ornateImages[0];
       const u = typeof first === 'string' ? first : first?.url;
-      if (u) return u;
+      if (isValidMediaUrl(u)) return u;
     }
-    if (row.ornate?.firstPhoto) return row.ornate.firstPhoto;
+    if (isValidMediaUrl(row.ornate?.firstPhoto)) return row.ornate.firstPhoto;
     if (Array.isArray(row.ornateImages) && row.ornateImages.length > 0) {
       const first = row.ornateImages[0];
       const u = typeof first === 'string' ? first : first?.url;
-      if (u) return u;
+      if (isValidMediaUrl(u)) return u;
     }
     // 2. Color images (catalog products)
     if (Array.isArray(row.colorImages) && row.colorImages.length > 0) {
@@ -911,37 +901,43 @@ const DynamicModuleView = () => {
           );
           const target = nonVid || col.images[0];
           const u = typeof target === 'string' ? target : target?.url;
-          if (u) return u;
+          if (isValidMediaUrl(u)) return u;
         }
       }
     }
     // 3. metalColors
     if (Array.isArray(row.metalColors) && row.metalColors.length > 0) {
       for (const mc of row.metalColors) {
-        if (mc?.firstPhoto) return mc.firstPhoto;
+        if (isValidMediaUrl(mc?.firstPhoto)) return mc.firstPhoto;
         if (Array.isArray(mc?.images) && mc.images.length > 0) {
           const u = typeof mc.images[0] === 'string' ? mc.images[0] : mc.images[0]?.url;
-          if (u) return u;
+          if (isValidMediaUrl(u)) return u;
         }
       }
     }
     // 4. images array
     if (Array.isArray(row.images) && row.images.length > 0) {
-      const first = row.images[0];
-      const u = typeof first === 'string' ? first : first?.url;
-      if (u) return u;
+      for (const item of row.images) {
+        const u = typeof item === 'string' ? item : item?.url;
+        if (isValidMediaUrl(u)) return u;
+      }
     }
     // 5. media gallery
-    if (row.media?.gallery?.[0]?.url) return row.media.gallery[0].url;
+    if (Array.isArray(row.media?.gallery)) {
+      for (const g of row.media.gallery) {
+        const u = typeof g === 'string' ? g : g?.url;
+        if (isValidMediaUrl(u)) return u;
+      }
+    }
     // 6. standard fallbacks (image, banner, lightImage, icon)
-    if (row.image?.url) return row.image.url;
-    if (typeof row.image === 'string' && (row.image.startsWith('http') || row.image.startsWith('/'))) return row.image;
-    if (row.imageUrl) return row.imageUrl;
-    if (row.banner?.url) return row.banner.url;
-    if (typeof row.banner === 'string' && (row.banner.startsWith('http') || row.banner.startsWith('/'))) return row.banner;
-    if (row.lightImage?.url) return row.lightImage.url;
-    if (row.icon?.url) return row.icon.url;
-    if (typeof row.icon === 'string' && (row.icon.startsWith('http') || row.icon.startsWith('/'))) return row.icon;
+    if (isValidMediaUrl(row.image?.url)) return row.image.url;
+    if (typeof row.image === 'string' && isValidMediaUrl(row.image)) return row.image;
+    if (isValidMediaUrl(row.imageUrl)) return row.imageUrl;
+    if (isValidMediaUrl(row.banner?.url)) return row.banner.url;
+    if (typeof row.banner === 'string' && isValidMediaUrl(row.banner)) return row.banner;
+    if (isValidMediaUrl(row.lightImage?.url)) return row.lightImage.url;
+    if (isValidMediaUrl(row.icon?.url)) return row.icon.url;
+    if (typeof row.icon === 'string' && isValidMediaUrl(row.icon)) return row.icon;
     return null;
   };
 
@@ -1342,16 +1338,16 @@ const DynamicModuleView = () => {
                                     e.currentTarget.style.display = 'none';
                                     if (e.currentTarget.parentElement) {
                                       e.currentTarget.parentElement.innerHTML =
-                                        '<span class="text-[9px] text-stone-400 font-medium">No img</span>';
+                                        '<span class="text-[9px] text-stone-400 font-medium select-none">No Img</span>';
                                     }
                                   }}
                                 />
                               ) : isEmoji ? (
                                 <span className="text-base">{row.icon}</span>
                               ) : (
-                                <div className="flex flex-col items-center justify-center text-stone-300">
-                                  <HiOutlinePhotograph className="w-5 h-5 stroke-1 text-stone-400" />
-                                </div>
+                                <span className="text-[9px] text-stone-400 font-medium select-none">
+                                  No Img
+                                </span>
                               )}
                             </div>
                             <div className="min-w-0 max-w-xs space-y-0.5">
@@ -1860,9 +1856,6 @@ const DynamicModuleView = () => {
                         <span className="text-xs font-bold text-stone-900 block leading-tight">
                           Promo Banners
                         </span>
-                        <span className="text-[10px] text-stone-500 block">
-                          Highlight offers & collections for this category
-                        </span>
                       </div>
                       <span className="ml-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-white text-[#8b6f4e] border border-[#e8d8c0] shadow-2xs">
                         {(formData.promoBanners || []).length}
@@ -1901,7 +1894,7 @@ const DynamicModuleView = () => {
                       {/* Image Upload Box */}
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-stone-700 block">
-                          Banner Image <span className="text-stone-400 font-normal">(R2 Presigned Upload)</span>
+                          Banner Image
                         </label>
                         {bannerFormData.imageUrl ? (
                           <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
@@ -1962,7 +1955,7 @@ const DynamicModuleView = () => {
                               <>
                                 <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
                                 <span className="text-[11px] font-semibold text-[#8b6f4e]">
-                                  Uploading banner to Cloudflare R2...
+                                  Uploading banner...
                                 </span>
                               </>
                             ) : (
@@ -1971,9 +1964,6 @@ const DynamicModuleView = () => {
                                 <span className="text-xs font-semibold text-stone-700">
                                   Click to upload banner image
                                 </span>
-                                <span className="text-[10px] text-stone-400">
-                                  PNG, JPG, WEBP (stored in Cloudflare R2)
-                                </span>
                               </>
                             )}
                           </label>
@@ -1981,83 +1971,20 @@ const DynamicModuleView = () => {
                       </div>
 
                       {/* Inputs Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-stone-700">
-                            Title <span className="text-rose-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Tennis Bracelets Collection"
-                            value={bannerFormData.title}
-                            onChange={(e) =>
-                              setBannerFormData((prev) => ({ ...prev, title: e.target.value }))
-                            }
-                            className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e]"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-stone-700">
-                            Subtitle (optional)
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Handcrafted in 18K Solid Gold"
-                            value={bannerFormData.subtitle}
-                            onChange={(e) =>
-                              setBannerFormData((prev) => ({ ...prev, subtitle: e.target.value }))
-                            }
-                            className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e]"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-stone-700">
-                            Link / URL
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. /catalog/jewelry-products or https://..."
-                            value={bannerFormData.link}
-                            onChange={(e) =>
-                              setBannerFormData((prev) => ({ ...prev, link: e.target.value }))
-                            }
-                            className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e]"
-                          />
-                        </div>
-
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-stone-700">Status</label>
-                          <div className="flex items-center gap-2 pt-1">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setBannerFormData((prev) => ({ ...prev, status: 'active' }))
-                              }
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                bannerFormData.status === 'active'
-                                  ? 'bg-emerald-600 text-white shadow-2xs'
-                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                              }`}
-                            >
-                              Active
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setBannerFormData((prev) => ({ ...prev, status: 'inactive' }))
-                              }
-                              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                                bannerFormData.status === 'inactive'
-                                  ? 'bg-stone-700 text-white shadow-2xs'
-                                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                              }`}
-                            >
-                              Inactive
-                            </button>
-                          </div>
-                        </div>
+                      {/* Inputs: Title only */}
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-bold text-stone-700">
+                          Title <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Tennis Bracelets Collection"
+                          value={bannerFormData.title}
+                          onChange={(e) =>
+                            setBannerFormData((prev) => ({ ...prev, title: e.target.value }))
+                          }
+                          className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e]"
+                        />
                       </div>
 
                       {/* Banner Form Actions */}
@@ -2075,7 +2002,7 @@ const DynamicModuleView = () => {
                           disabled={isUploadingBannerImage}
                           className="px-4 py-1.5 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
                         >
-                          {editingBannerIndex !== null ? 'Update Banner' : 'Add to Category'}
+                          {editingBannerIndex !== null ? 'Update Promo Banner' : 'Add Promo Banner'}
                         </button>
                       </div>
                     </div>
@@ -2124,36 +2051,11 @@ const DynamicModuleView = () => {
                               )}
                             </div>
 
-                            {/* Details */}
+                            {/* Details: Title only */}
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <h4 className="text-xs font-bold text-stone-900 truncate">
-                                  {banner.title || 'Untitled Banner'}
-                                </h4>
-                                <button
-                                  type="button"
-                                  onClick={() => handleTogglePromoBannerStatus(index)}
-                                  className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full cursor-pointer transition-colors ${
-                                    banner.status === 'active'
-                                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                                      : 'bg-stone-100 text-stone-600 border border-stone-200 hover:bg-stone-200'
-                                  }`}
-                                  title="Click to toggle status"
-                                >
-                                  {banner.status === 'active' ? 'Active' : 'Inactive'}
-                                </button>
-                              </div>
-                              {banner.subtitle && (
-                                <p className="text-[11px] text-stone-500 truncate mt-0.5">
-                                  {banner.subtitle}
-                                </p>
-                              )}
-                              {(banner.link || banner.url) && (
-                                <p className="text-[10px] font-mono text-[#8b6f4e] truncate mt-0.5 flex items-center gap-1">
-                                  <HiOutlineExternalLink className="w-3 h-3 shrink-0" />
-                                  <span>{banner.link || banner.url}</span>
-                                </p>
-                              )}
+                              <h4 className="text-xs font-bold text-stone-900 truncate">
+                                {banner.title || 'Untitled Banner'}
+                              </h4>
                             </div>
 
                             {/* Actions */}

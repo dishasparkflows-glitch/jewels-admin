@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlineUser,
   HiOutlinePhotograph,
@@ -51,6 +51,7 @@ export default function ReviewsView() {
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
+  const fileInputRef = useRef(null);
 
   const fetchReviews = async (page = currentPage, limit = pageSize) => {
     try {
@@ -88,6 +89,7 @@ export default function ReviewsView() {
     });
     setImageFile(null);
     setImagePreview('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setHoverRating(0);
     setShowAddModal(true);
   };
@@ -107,8 +109,31 @@ export default function ReviewsView() {
     });
     setImageFile(null);
     setImagePreview(rev.image?.url || '');
+    if (fileInputRef.current) fileInputRef.current.value = '';
     setHoverRating(0);
     setShowAddModal(true);
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select a valid image file');
+        return;
+      }
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleRemoveImage = (e) => {
+    if (e) e.stopPropagation();
+    setImageFile(null);
+    setImagePreview('');
+    setFormData((prev) => ({ ...prev, image: { url: '', key: '' } }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -125,9 +150,12 @@ export default function ReviewsView() {
       if (imageFile) {
         try {
           const uploaded = await uploadWithPresignedUrl(imageFile, 'reviews');
-          imageData = { url: uploaded.fileUrl, key: uploaded.key };
-        } catch {
-          // fallback
+          imageData = { url: uploaded.fileUrl || uploaded.url, key: uploaded.key || '' };
+        } catch (uploadErr) {
+          console.error('Image upload failed:', uploadErr);
+          toast.error('Failed to upload image. Please try again.');
+          setSubmitting(false);
+          return;
         }
       }
 
@@ -422,8 +450,12 @@ export default function ReviewsView() {
                       {/* Reviewer */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-[#f4ece3] text-[#8b6f4e] font-semibold text-[11px] flex items-center justify-center border border-[#8b6f4e]/20 shadow-2xs shrink-0">
-                            {initial}
+                          <div className="w-7 h-7 rounded-full bg-[#f4ece3] text-[#8b6f4e] font-semibold text-[11px] flex items-center justify-center border border-[#8b6f4e]/20 shadow-2xs shrink-0 overflow-hidden">
+                            {rev.image?.url ? (
+                              <img src={rev.image.url} alt={reviewerName} className="w-full h-full object-cover" />
+                            ) : (
+                              initial
+                            )}
                           </div>
                           <div>
                             <p className="font-bold text-stone-900 text-xs sm:text-[13px]">
@@ -509,7 +541,7 @@ export default function ReviewsView() {
           onClick={() => setShowAddModal(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200/90 space-y-5 animate-scaleUp"
+            className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-stone-200/90 space-y-5 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
@@ -611,6 +643,75 @@ export default function ReviewsView() {
                 />
               </div>
 
+              {/* Review Image / Client Photo Upload */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                    <HiOutlinePhotograph className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                    Review Image / Client Photo
+                  </label>
+                  <span className="text-[11px] font-normal text-stone-400">Optional</span>
+                </div>
+
+                {imagePreview ? (
+                  <div className="relative flex items-center gap-3 p-3 rounded-xl border border-stone-200 bg-stone-50/70">
+                    <div className="w-14 h-14 rounded-lg overflow-hidden bg-white border border-stone-200 shrink-0 shadow-2xs">
+                      <img
+                        src={imagePreview}
+                        alt="Review Preview"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-stone-800 truncate">
+                        {imageFile?.name || 'Attached Photo'}
+                      </p>
+                      <p className="text-[11px] text-stone-500">
+                        {imageFile ? `${(imageFile.size / 1024).toFixed(1)} KB` : 'Attached to review'}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-[11px] font-semibold text-[#8b6f4e] hover:underline mt-0.5 cursor-pointer"
+                      >
+                        Change Photo
+                      </button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      title="Remove image"
+                    >
+                      <HiOutlineTrash className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-[#d6cfc2] hover:border-[#8b6f4e] rounded-xl p-3.5 text-center cursor-pointer transition-colors bg-stone-50/40 hover:bg-[#faf7f2] flex flex-col items-center justify-center gap-1 group"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-white border border-stone-200 group-hover:border-[#8b6f4e]/40 flex items-center justify-center text-stone-400 group-hover:text-[#8b6f4e] transition-colors shadow-2xs">
+                      <HiOutlinePhotograph className="w-4 h-4" />
+                    </div>
+                    <p className="text-xs font-semibold text-stone-700 group-hover:text-[#8b6f4e]">
+                      Click to upload photo
+                    </p>
+                    <p className="text-[10px] text-stone-400">
+                      Supports JPG, PNG, WEBP up to 10MB
+                    </p>
+                  </div>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </div>
+
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">
                 <button
                   type="button"
@@ -658,7 +759,16 @@ export default function ReviewsView() {
             <div className="space-y-3.5 text-xs bg-stone-50/70 p-4 sm:p-5 rounded-2xl border border-stone-200/60">
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-stone-500">Reviewer</span>
-                <span className="font-bold text-stone-900 text-xs sm:text-[13px]">{viewingReview.reviewerName}</span>
+                <div className="flex items-center gap-2">
+                  {viewingReview.image?.url && (
+                    <img
+                      src={viewingReview.image.url}
+                      alt={viewingReview.reviewerName}
+                      className="w-6 h-6 rounded-full object-cover border border-stone-200"
+                    />
+                  )}
+                  <span className="font-bold text-stone-900 text-xs sm:text-[13px]">{viewingReview.reviewerName}</span>
+                </div>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs font-bold text-stone-500">Rating</span>
@@ -679,6 +789,18 @@ export default function ReviewsView() {
                   &quot;{viewingReview.reviewComment}&quot;
                 </p>
               </div>
+              {viewingReview.image?.url && (
+                <div className="pt-2 border-t border-stone-200/50">
+                  <span className="text-xs font-bold text-stone-500 block mb-1.5">Attached Photo</span>
+                  <div className="rounded-xl overflow-hidden border border-stone-200 max-h-48 bg-white flex items-center justify-center">
+                    <img
+                      src={viewingReview.image.url}
+                      alt={viewingReview.reviewTitle || 'Review attachment'}
+                      className="max-h-48 w-full object-contain"
+                    />
+                  </div>
+                </div>
+              )}
               <div className="flex justify-between items-center pt-2">
                 <span className="text-xs font-bold text-stone-500">Date</span>
                 <span className="font-semibold text-stone-700">{viewingReview.dateStr}</span>

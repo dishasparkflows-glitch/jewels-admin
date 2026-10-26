@@ -723,7 +723,7 @@ export default function NavigationMenusView() {
       open: true,
       mode: 'create',
       index: null,
-      data: { title: '', subtitle: '', imageUrl: '', link: '', status: 'active', order: promoBanners.length + 1 },
+      data: { title: '', imageUrl: '', imageKey: '', order: promoBanners.length + 1 },
     });
   }
 
@@ -734,11 +734,8 @@ export default function NavigationMenusView() {
       index,
       data: {
         title: banner.title || '',
-        subtitle: banner.subtitle || '',
         imageUrl: banner.image?.url || (typeof banner.image === 'string' ? banner.image : ''),
         imageKey: banner.image?.key || '',
-        link: banner.link || banner.url || '',
-        status: banner.status || 'active',
         order: banner.order ?? index + 1,
       },
     });
@@ -757,11 +754,7 @@ export default function NavigationMenusView() {
     try {
       const bannerItem = {
         title: data.title.trim(),
-        subtitle: (data.subtitle || '').trim(),
         image: { url: (data.imageUrl || '').trim(), key: data.imageKey || '' },
-        link: (data.link || '').trim(),
-        url: (data.link || '').trim(),
-        status: data.status || 'active',
         order: Number(data.order || 0),
       };
 
@@ -1334,26 +1327,12 @@ export default function NavigationMenusView() {
                                   No Image
                                 </div>
                               )}
-                              <span
-                                className={`absolute top-2 right-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                                  banner.status === 'active'
-                                    ? 'bg-emerald-600 text-white'
-                                    : 'bg-stone-500 text-white'
-                                }`}
-                              >
-                                {banner.status === 'active' ? 'Active' : 'Inactive'}
-                              </span>
                             </div>
 
                             <div>
                               <h4 className="text-xs font-bold text-stone-900 truncate">
                                 {banner.title || 'Untitled Banner'}
                               </h4>
-                              {banner.subtitle && (
-                                <p className="text-[11px] text-stone-500 truncate mt-0.5">
-                                  {banner.subtitle}
-                                </p>
-                              )}
                             </div>
 
                             <div className="flex items-center justify-end gap-1.5 pt-1.5 border-t border-stone-200/60">
@@ -1799,22 +1778,6 @@ export default function NavigationMenusView() {
                     />
                   </label>
 
-                  <label className="block space-y-1 text-xs">
-                    <span className="font-semibold text-stone-700">Subtitle (optional)</span>
-                    <input
-                      type="text"
-                      placeholder="e.g. Handcrafted in 18K Solid Gold"
-                      value={bannerModal.data?.subtitle || ''}
-                      onChange={(e) =>
-                        setBannerModal((prev) => ({
-                          ...prev,
-                          data: { ...prev.data, subtitle: e.target.value },
-                        }))
-                      }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
-                    />
-                  </label>
-
                   {/* Banner Image Upload & Preview */}
                   <div className="space-y-1.5 text-xs">
                     <div className="flex items-center justify-between">
@@ -1864,59 +1827,6 @@ export default function NavigationMenusView() {
                           </button>
                         </div>
                       </div>
-                    </div>
-                  </div>
-
-                  <label className="block space-y-1 text-xs">
-                    <span className="font-semibold text-stone-700">Destination Link</span>
-                    <input
-                      type="text"
-                      placeholder="/shop?category=bangles-bracelets"
-                      value={bannerModal.data?.link || ''}
-                      onChange={(e) =>
-                        setBannerModal((prev) => ({
-                          ...prev,
-                          data: { ...prev.data, link: e.target.value },
-                        }))
-                      }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
-                    />
-                  </label>
-
-                  <div className="grid grid-cols-2 gap-3 items-end">
-                    <label className="block space-y-1 text-xs">
-                      <span className="font-semibold text-stone-700">Order</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={bannerModal.data?.order ?? 0}
-                        onChange={(e) =>
-                          setBannerModal((prev) => ({
-                            ...prev,
-                            data: { ...prev.data, order: e.target.value },
-                          }))
-                        }
-                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
-                      />
-                    </label>
-
-                    <div>
-                      <Dropdown
-                        label="Status"
-                        value={bannerModal.data?.status || 'active'}
-                        onChange={(val) =>
-                          setBannerModal((prev) => ({
-                            ...prev,
-                            data: { ...prev.data, status: val },
-                          }))
-                        }
-                        options={[
-                          { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
-                          { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
-                        ]}
-                        showStatusDot
-                        size="field"
-                      />
                     </div>
                   </div>
                 </div>

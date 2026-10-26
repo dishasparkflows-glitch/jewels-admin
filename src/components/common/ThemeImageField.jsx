@@ -66,14 +66,16 @@ export default function ThemeImageField({ module, recordId, slots, children, the
     {!themeId ? children : <>
       {children}
       <div className="space-y-3 rounded-xl border border-stone-200 bg-stone-50 p-3">
-      <p className="text-xs text-stone-600">Choose a theme image for this record. Theme images appear on the website when the theme is published.</p>
-      {!canEditThemeImages && <p className="text-xs text-amber-700">Duplicate this published theme to add or change its images.</p>}
-      {!slots?.length ? <p className="text-xs text-amber-700">Add the default image first to enable a theme image for this section.</p> : loading ? <p className="text-xs">Loading theme images…</p> : slots.map((slot) => {
+      {!slots?.length ? null : loading ? (
+        <div className="py-2 flex items-center justify-center">
+          <div className="w-4 h-4 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+        </div>
+      ) : slots.map((slot) => {
         const mapping = rows.find((row) => row.module === module && String(row.recordId) === String(recordId) && row.slot === slot.key);
         const url = mapping?.asset?.url || pendingImages[slot.key]?.url || slot.url;
         return <div key={slot.key} className="space-y-2">
-          <p className="text-xs font-semibold">{slot.label}{!mapping && !pendingImages[slot.key] && ' · Using default'}</p>
-          {url && <img src={url} alt={slot.label} className="h-28 w-full rounded-lg object-contain bg-white" />}
+          {slots.length > 1 && <p className="text-xs font-semibold text-stone-700">{slot.label}</p>}
+          {url && <img src={url} alt={slot.label} onError={(e) => { e.currentTarget.style.display = 'none'; }} className="h-28 w-full rounded-lg object-contain bg-white" />}
           <div className="flex items-center gap-3">
             <label className={`rounded-lg bg-[#8b6f4e] px-3 py-2 text-xs text-white ${busy || !canEditThemeImages ? 'opacity-50' : 'cursor-pointer'}`}>
               {busy ? 'Uploading…' : url ? 'Change theme image' : 'Upload theme image'}

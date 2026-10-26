@@ -141,3 +141,13 @@ export const categoriesAPI = {
   getById: (id) => api.get(`/categories/${id}`),
 };
 
+// ─── Static Pages ─────────────────────────────────
+export const staticPagesAPI = {
+  getAll: (params) => api.get('/static-pages', { params }),
+  getById: (id) => api.get(`/static-pages/${id}`),
+  getBySlug: (slug) => api.get(`/static-pages/slug/${slug}`),
+  create: (data) => api.post('/static-pages', data),
+  update: (id, data) => api.put(`/static-pages/${id}`, data),
+  delete: (id) => api.delete(`/static-pages/${id}`),
+};
+

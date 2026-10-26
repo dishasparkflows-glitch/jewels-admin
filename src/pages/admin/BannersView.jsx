@@ -1456,7 +1456,7 @@ export default function BannersView() {
               Display Settings
             </h2>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Status */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold text-stone-700">
@@ -1468,7 +1468,6 @@ export default function BannersView() {
                   options={[
                     { value: 'active', label: 'Published' },
                     { value: 'inactive', label: 'Draft' },
-                    { value: 'scheduled', label: 'Scheduled' },
                   ]}
                   buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
                   menuClassName="z-30"
@@ -1487,30 +1486,6 @@ export default function BannersView() {
                   onChange={(e) => setOrder(Math.max(1, parseInt(e.target.value) || 1))}
                   className="w-full px-3.5 py-2 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
                 />
-              </div>
-
-              {/* Schedule (Optional) */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-stone-700">
-                  Schedule (Optional)
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="date"
-                    value={startDate ? startDate.split('T')[0] : ''}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    placeholder="Start date"
-                    className="w-full px-2.5 py-2 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b]"
-                  />
-                  <span className="text-stone-400 text-xs">→</span>
-                  <input
-                    type="date"
-                    value={endDate ? endDate.split('T')[0] : ''}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    placeholder="End date"
-                    className="w-full px-2.5 py-2 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b]"
-                  />
-                </div>
               </div>
             </div>
           </div>

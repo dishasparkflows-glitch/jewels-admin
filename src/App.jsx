@@ -47,6 +47,7 @@ import BlogCategoriesView from './pages/admin/BlogCategoriesView';
 import DynamicModuleView from './pages/admin/DynamicModuleView';
 import ProfileView from './pages/admin/ProfileView';
 import AnalyticsView from './pages/admin/AnalyticsView';
+import StaticPagesView from './pages/admin/StaticPagesView';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 const WebsiteThemesView = lazy(() => import('./pages/admin/WebsiteThemesView'));
@@ -146,6 +147,10 @@ function App() {
             <Route path="/cust-jewellery-before-after" element={<BeforeAfterView />} />
             <Route path="/home-sections" element={<HomeSectionsView />} />
             <Route path="/website/themes" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading theme management…</div>}><WebsiteThemesView /></Suspense>} />
+            <Route path="/static-pages" element={<StaticPagesView />} />
+            <Route path="/website/static-pages" element={<StaticPagesView />} />
+            <Route path="/website-content/static-pages" element={<StaticPagesView />} />
+            <Route path="/pages" element={<StaticPagesView />} />
             <Route path="/marketing/home-sections" element={<HomeSectionsView />} />
             <Route path="/marketing/sections" element={<HomeSectionsView />} />
             {/* Luxury Blog Module, Editorial Studio & Categories */}

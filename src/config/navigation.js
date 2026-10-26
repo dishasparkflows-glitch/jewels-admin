@@ -18,6 +18,7 @@ import {
   HiOutlineSpeakerphone,
   HiOutlineBookOpen,
   HiOutlineDocumentReport,
+  HiOutlineDocumentText,
 } from 'react-icons/hi';
 
 import {
@@ -143,8 +144,9 @@ export const navSections = [
   // ─── Website Section ─────────────────────────────────────────────────
   {
     id: 'website',
-    title: 'WEBSITE',
+    title: 'WEBSITE CONTENT',
     items: [
+      { id: 'static-pages', title: 'Static Pages', path: '/static-pages', icon: HiOutlineDocumentText, apiEndpoint: '/static-pages' },
       { id: 'website-themes', title: 'Themes', path: '/website/themes', icon: HiOutlineColorSwatch, apiEndpoint: '/website/themes' },
     ],
   },
