@@ -1085,7 +1085,10 @@ export default function OrnateProductEdit() {
         basicInfo: {
           title: baseInfo.title.trim(),
           sku: erpDetails.labelNumber || erpDetails.uniqueLabelId || '',
-          slug: seo.slug || baseInfo.title.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
+          slug: (erpDetails.barcodeNumber
+            ? `${baseInfo.title.trim()}-${erpDetails.barcodeNumber}`
+            : (erpDetails.labelNumber ? `${baseInfo.title.trim()}-${erpDetails.labelNumber}` : baseInfo.title.trim())
+          ).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
           description: baseInfo.description,
           ...(baseInfo.targetGender ? { gender: [baseInfo.targetGender] } : {}),
         },
