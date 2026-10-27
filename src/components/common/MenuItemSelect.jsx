@@ -39,13 +39,23 @@ export default function MenuItemSelect({
   const prevCatIdRef = useRef(categoryId);
   const id = useId();
 
+  const onOpenChangeRef = useRef(onOpenChange);
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  });
+
   const updateOpen = (next) => {
-    setOpen((prev) => {
-      const val = typeof next === 'function' ? next(prev) : next;
-      onOpenChange?.(val);
-      return val;
-    });
+    setOpen((prev) => (typeof next === 'function' ? next(prev) : next));
   };
+
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    onOpenChangeRef.current?.(open);
+  }, [open]);
 
   // Auto-open when autoOpen prop is true or when categoryId changes to a truthy value
   useEffect(() => {

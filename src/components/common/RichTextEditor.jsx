@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   HiOutlineLink,
   HiOutlinePhotograph,
@@ -499,118 +500,134 @@ export default function RichTextEditor({
       </div>
 
       {/* ─── Insert Link Modal ─── */}
-      {showLinkModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs">
-          <div className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl border border-stone-200 space-y-4 animate-scaleUp">
-            <h4 className="font-bold text-sm text-stone-900">Insert Link</h4>
-            <div>
-              <label className="block text-[11px] font-semibold text-stone-600 mb-1">Link URL</label>
-              <input
-                type="url"
-                autoFocus
-                placeholder="https://example.com"
-                value={linkUrl}
-                onChange={(e) => setLinkUrl(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
-              />
+      {showLinkModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs animate-fadeIn"
+            onClick={() => setShowLinkModal(false)}
+          >
+            <div
+              className="w-full max-w-sm bg-white rounded-2xl p-5 shadow-2xl border border-stone-200 space-y-4 animate-scaleUp"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4 className="font-bold text-sm text-stone-900">Insert Link</h4>
+              <div>
+                <label className="block text-[11px] font-semibold text-stone-600 mb-1">Link URL</label>
+                <input
+                  type="url"
+                  autoFocus
+                  placeholder="https://example.com"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-stone-600 mb-1">Display Text (optional)</label>
+                <input
+                  type="text"
+                  placeholder="Click here"
+                  value={linkText}
+                  onChange={(e) => setLinkText(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowLinkModal(false)}
+                  className="px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInsertLink}
+                  className="px-4 py-1.5 text-xs font-semibold bg-[#8b6f4e] text-white rounded-lg hover:bg-[#785e40] cursor-pointer"
+                >
+                  Insert Link
+                </button>
+              </div>
             </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-stone-600 mb-1">Display Text (optional)</label>
-              <input
-                type="text"
-                placeholder="Click here"
-                value={linkText}
-                onChange={(e) => setLinkText(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
-              />
-            </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowLinkModal(false)}
-                className="px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleInsertLink}
-                className="px-4 py-1.5 text-xs font-semibold bg-[#8b6f4e] text-white rounded-lg hover:bg-[#785e40] cursor-pointer"
-              >
-                Insert Link
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* ─── Insert Image Modal ─── */}
-      {showImageModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-stone-200 space-y-4 animate-scaleUp">
-            <h4 className="font-bold text-sm text-stone-900">Insert Article Image</h4>
+      {showImageModal &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-stone-900/40 backdrop-blur-xs animate-fadeIn"
+            onClick={() => setShowImageModal(false)}
+          >
+            <div
+              className="w-full max-w-md bg-white rounded-2xl p-6 shadow-2xl border border-stone-200 space-y-4 animate-scaleUp"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h4 className="font-bold text-sm text-stone-900">Insert Article Image</h4>
 
-            {/* Upload Option */}
-            <div className="p-4 border-2 border-dashed border-stone-200 rounded-xl bg-stone-50/50 text-center space-y-2">
-              <HiOutlinePhotograph className="w-8 h-8 text-[#8b6f4e] mx-auto" />
-              <p className="text-xs font-semibold text-stone-700">Upload Image File</p>
-              <p className="text-[11px] text-stone-500">PNG, JPG, WEBP up to 10MB</p>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="px-4 py-2 bg-white border border-stone-300 text-stone-800 text-xs font-semibold rounded-lg hover:bg-stone-100 shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
-              >
-                Choose Local File
-              </button>
-            </div>
+              {/* Upload Option */}
+              <div className="p-4 border-2 border-dashed border-stone-200 rounded-xl bg-stone-50/50 text-center space-y-2">
+                <HiOutlinePhotograph className="w-8 h-8 text-[#8b6f4e] mx-auto" />
+                <p className="text-xs font-semibold text-stone-700">Upload Image File</p>
+                <p className="text-[11px] text-stone-500">PNG, JPG, WEBP up to 10MB</p>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-4 py-2 bg-white border border-stone-300 text-stone-800 text-xs font-semibold rounded-lg hover:bg-stone-100 shadow-2xs cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  Choose Local File
+                </button>
+              </div>
 
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-[1px] bg-stone-200" />
-              <span className="text-[10px] uppercase font-bold text-stone-400">or via URL</span>
-              <div className="flex-1 h-[1px] bg-stone-200" />
-            </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-[1px] bg-stone-200" />
+                <span className="text-[10px] uppercase font-bold text-stone-400">or via URL</span>
+                <div className="flex-1 h-[1px] bg-stone-200" />
+              </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold text-stone-600 mb-1">Image Web URL</label>
-              <input
-                type="url"
-                placeholder="https://images.unsplash.com/photo-..."
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
-              />
-            </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-stone-600 mb-1">Image Web URL</label>
+                <input
+                  type="url"
+                  placeholder="https://images.unsplash.com/photo-..."
+                  value={imageUrl}
+                  onChange={(e) => setImageUrl(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                />
+              </div>
 
-            <div>
-              <label className="block text-[11px] font-semibold text-stone-600 mb-1">Caption / Alt text (optional)</label>
-              <input
-                type="text"
-                placeholder="Exquisite 18K Solitaire Ring"
-                value={imageAlt}
-                onChange={(e) => setImageAlt(e.target.value)}
-                className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
-              />
-            </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-stone-600 mb-1">Caption / Alt text (optional)</label>
+                <input
+                  type="text"
+                  placeholder="Exquisite 18K Solitaire Ring"
+                  value={imageAlt}
+                  onChange={(e) => setImageAlt(e.target.value)}
+                  className="w-full px-3 py-2 text-xs border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                />
+              </div>
 
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowImageModal(false)}
-                className="px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleInsertImageUrl}
-                className="px-4 py-1.5 text-xs font-semibold bg-[#8b6f4e] text-white rounded-lg hover:bg-[#785e40] cursor-pointer"
-              >
-                Insert Image
-              </button>
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowImageModal(false)}
+                  className="px-3 py-1.5 text-xs text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleInsertImageUrl}
+                  className="px-4 py-1.5 text-xs font-semibold bg-[#8b6f4e] text-white rounded-lg hover:bg-[#785e40] cursor-pointer"
+                >
+                  Insert Image
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Embedded CSS for contentEditable styling */}
       <style>{`

@@ -48,6 +48,29 @@ main {
   max-width: 100%;
 }
 
+/* Ensure all modal backdrops & popups across the entire admin panel overlay the sticky header and sidebar completely */
+main:has(.fixed.inset-0:not(#admin-sidebar)),
+main:has([role="dialog"]),
+main:has([role="alertdialog"]),
+main:has([aria-modal="true"]) {
+  position: relative;
+  z-index: 9999 !important;
+}
+
+body:has(.fixed.inset-0:not(#admin-sidebar)) header,
+body:has([role="dialog"]) header,
+body:has([role="alertdialog"]) header,
+body:has([aria-modal="true"]) header {
+  z-index: 10 !important;
+}
+
+body:has(.fixed.inset-0:not(#admin-sidebar)) aside#admin-sidebar,
+body:has([role="dialog"]) aside#admin-sidebar,
+body:has([role="alertdialog"]) aside#admin-sidebar,
+body:has([aria-modal="true"]) aside#admin-sidebar {
+  z-index: 20 !important;
+}
+
 /* Ensure any container holding a table provides smooth touch horizontal scrolling */
 .overflow-x-auto,
 div:has(> table),

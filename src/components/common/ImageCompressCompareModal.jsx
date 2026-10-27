@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   HiOutlineX,
   HiOutlineCheck,
@@ -139,8 +140,11 @@ export default function ImageCompressCompareModal({
   const savingsPercent = compressedStats?.savingsPercent ?? 0;
   const isActuallySmaller = compressedStats && compressedStats.size < originalStats.size;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-5 bg-stone-900/60 backdrop-blur-xs animate-in fade-in duration-200"
+      onClick={!isUploading ? onClose : undefined}
+    >
       <div
         className="bg-white rounded-3xl max-w-4xl w-full p-5 sm:p-6 shadow-2xl border border-stone-200 space-y-4 max-h-[94vh] flex flex-col animate-in zoom-in-95 duration-200"
         onClick={(e) => e.stopPropagation()}
@@ -497,6 +501,7 @@ export default function ImageCompressCompareModal({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

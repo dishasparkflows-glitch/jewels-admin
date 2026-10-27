@@ -93,11 +93,7 @@ export default function SyncPreviewModal({
         fields,
       });
 
-      toast.success(
-        res.data?.data?.isFirstSync
-          ? 'Group initial sync completed successfully!'
-          : 'Group synchronization completed successfully!'
-      );
+      toast.success('Group synchronization completed successfully!');
       onSuccess?.(res.data?.data);
       onClose();
     } catch (err) {
@@ -107,8 +103,6 @@ export default function SyncPreviewModal({
       setSyncing(false);
     }
   };
-
-  const isFirstSync = !group?.sync?.firstSyncedAt;
 
   const displayVal = (val, field) => {
     if (field === 'salePrice') return money(val);
@@ -129,12 +123,12 @@ export default function SyncPreviewModal({
       onClose={onClose}
       title={previewData ? 'Review Proposed Field Synchronization' : `Sync Products in Group — ${group?.groupName}`}
       subtitle={
-        isFirstSync
-          ? 'Notice: This will be recorded as the First-Time Synchronization for this group.'
-          : `Sync version ${(group?.sync?.syncVersion || 0) + 1}`
+        previewData
+          ? 'Review proposed field changes across target products before executing.'
+          : 'Synchronize selected field values across products in this group.'
       }
       maxWidth="max-w-3xl"
-      zIndex="z-[70]"
+      zIndex="z-[1050]"
     >
       {!previewData ? (
         <div className="space-y-4">

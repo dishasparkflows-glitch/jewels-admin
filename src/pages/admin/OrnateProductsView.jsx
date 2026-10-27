@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import {
@@ -9,6 +10,8 @@ import {
   HiOutlineViewList,
   HiOutlineX,
   HiOutlineTag,
+  HiOutlineSparkles,
+  HiOutlineCheckCircle,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import Dropdown from '../../components/common/Dropdown';
@@ -77,10 +80,10 @@ export default function OrnateProductsView() {
   const confirm = useConfirm();
 
   // Tab & View State
-  const [activeTab, setActiveTab] = useState('all'); // all, draft, approved, sold, common_group, ungrouped
+  const [activeTab, setActiveTab] = useState('all'); // all, draft, approved, sold, ungrouped
   const [viewMode, setViewMode] = useState('grid'); // grid, list
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('price_desc');
+  const [sortBy, setSortBy] = useState('single_first');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => getAdminPageSize(10));
 
@@ -96,7 +99,6 @@ export default function OrnateProductsView() {
     draft: 0,
     approved: 0,
     sold: 0,
-    common_group: 0,
     ungrouped: 0,
   });
 
@@ -108,9 +110,31 @@ export default function OrnateProductsView() {
   const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false);
   const [selectedGroupIdForManage, setSelectedGroupIdForManage] = useState(null);
   const [viewingProduct, setViewingProduct] = useState(null);
+  const [bulkSplitting, setBulkSplitting] = useState(false);
+  const [bulkApproving, setBulkApproving] = useState(false);
+  const [approvingGroupId, setApprovingGroupId] = useState(null);
+
+  // Close viewingProduct on ESC & lock body scroll
+  useEffect(() => {
+    if (!viewingProduct) return;
+    document.body.style.overflow = 'hidden';
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setViewingProduct(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [viewingProduct]);
 
   // Sort Options
   const sortOptions = [
+    { value: 'single_first', label: '1-Product Groups First' },
     { value: 'price_desc', label: 'Price: High to Low' },
     { value: 'price_asc', label: 'Price: Low to High' },
     { value: 'latest', label: 'Sort by: Latest' },
@@ -138,6 +162,7 @@ export default function OrnateProductsView() {
       if (activeTab === 'ungrouped') {
         const params = new URLSearchParams({
           isOrnate: 'true',
+          status: 'all',
           page: String(page),
           limit: String(pageSize),
         });
@@ -214,6 +239,78 @@ export default function OrnateProductsView() {
       else next.add(id);
       return next;
     });
+  };
+
+  // Bulk Split Ungrouped Products into individual groups (1 product per group)
+  const handleBulkSplitUngrouped = async () => {
+    if (!selectedIds.size) return;
+    const isConfirmed = await confirm({
+      title: `Create ${selectedIds.size} Separate Groups`,
+      message: `Create a separate standalone Common Group for each of the ${selectedIds.size} selected products automatically? Each group will be named with its item title and barcode.`,
+      confirmText: `Create ${selectedIds.size} Separate Groups`,
+      type: 'success',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      setBulkSplitting(true);
+      const res = await api.post('/product-groups/bulk-split-individual', {
+        productIds: Array.from(selectedIds),
+      });
+      toast.success(res.data?.message || `Successfully created ${selectedIds.size} separate groups!`);
+      setSelectedIds(new Set());
+      fetchData();
+      fetchTabCounts();
+    } catch (err) {
+      console.error('Failed to bulk split products:', err);
+      toast.error(err.response?.data?.message || 'Failed to create separate groups');
+    } finally {
+      setBulkSplitting(false);
+    }
+  };
+
+  // Bulk Approve Products in Selected Groups
+  const handleBulkApproveGroups = async () => {
+    if (!selectedIds.size) return;
+    const isConfirmed = await confirm({
+      title: `Approve Products in ${selectedIds.size} Group(s)`,
+      message: `Directly approve all in-stock products across the ${selectedIds.size} selected group(s)? Approved products will become active in your catalogue.`,
+      confirmText: `Approve ${selectedIds.size} Group(s)`,
+      type: 'success',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      setBulkApproving(true);
+      const res = await api.post('/product-groups/bulk-approve', {
+        groupIds: Array.from(selectedIds),
+      });
+      toast.success(res.data?.message || `Successfully approved products across selected groups!`);
+      setSelectedIds(new Set());
+      fetchData();
+      fetchTabCounts();
+    } catch (err) {
+      console.error('Failed to bulk approve groups:', err);
+      toast.error(err.response?.data?.message || 'Failed to approve selected groups');
+    } finally {
+      setBulkApproving(false);
+    }
+  };
+
+  // Direct 1-Click Approve Products in a Single Group (instant without extra modal)
+  const handleDirectApproveOneGroup = async (group) => {
+    try {
+      setApprovingGroupId(group._id);
+      const res = await api.post(`/product-groups/${group._id}/approve`);
+      toast.success(res.data?.message || `Approved products in "${group.groupName}"`);
+      fetchData();
+      fetchTabCounts();
+    } catch (err) {
+      console.error('Failed to approve group:', err);
+      toast.error(err.response?.data?.message || 'Failed to approve group');
+    } finally {
+      setApprovingGroupId(null);
+    }
   };
 
   // Status Badge Component for products
@@ -400,7 +497,6 @@ export default function OrnateProductsView() {
             { key: 'draft', label: 'Draft', count: tabCounts.draft },
             { key: 'approved', label: 'Approved', count: tabCounts.approved },
             { key: 'sold', label: 'Sold', count: tabCounts.sold },
-            { key: 'common_group', label: 'Common Groups', count: tabCounts.common_group },
             { key: 'ungrouped', label: 'Ungrouped', count: tabCounts.ungrouped },
           ].map((tab) => {
             const isActive = activeTab === tab.key;
@@ -544,6 +640,53 @@ export default function OrnateProductsView() {
           </div>
         ) : (
           <div className="space-y-4">
+            {/* Top Selection & Action Bar for Groups */}
+            {selectedIds.size > 0 && (
+              <div className="bg-[#8b6f4e]/10 border border-[#8b6f4e]/20 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-[#8b6f4e]">
+                    {selectedIds.size} group(s) selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds(new Set())}
+                    className="text-[11px] text-stone-500 hover:text-stone-800 underline ml-1 cursor-pointer"
+                  >
+                    Deselect All
+                  </button>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const singleGroups = groups.filter((g) => (g.productCount ?? 0) === 1);
+                      setSelectedIds(new Set(singleGroups.map((g) => g._id)));
+                    }}
+                    className="px-3 py-1.5 font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer text-xs"
+                    title="Select all groups on this page that have exactly 1 product"
+                  >
+                    <span>Select All 1-Product Groups</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={toggleSelectAll}
+                    className="px-3 py-1.5 font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer text-xs"
+                  >
+                    <span>{selectedIds.size === groups.length ? 'Deselect Page' : 'Select All on Page'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkApproveGroups}
+                    disabled={bulkApproving}
+                    className="px-3.5 py-1.5 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                  >
+                    <HiOutlineCheckCircle className="w-4 h-4" />
+                    <span>{bulkApproving ? 'Approving Products...' : `Approve Selected Groups (${selectedIds.size})`}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div
               className={
                 viewMode === 'grid'
@@ -556,11 +699,15 @@ export default function OrnateProductsView() {
                   key={g._id}
                   group={g}
                   viewMode={viewMode}
+                  isSelected={selectedIds.has(g._id)}
+                  onToggleSelect={() => toggleSelectOne(g._id)}
                   onManage={(group) => setSelectedGroupIdForManage(group._id)}
                   onEdit={(group) => setSelectedGroupIdForManage(group._id)}
                   onAddProducts={(group) => setSelectedGroupIdForManage(group._id)}
                   onToggleStatus={handleToggleGroupStatus}
                   onDelete={handleDeleteGroup}
+                  onDirectApprove={handleDirectApproveOneGroup}
+                  isApproving={approvingGroupId === g._id}
                 />
               ))}
             </div>
@@ -596,18 +743,32 @@ export default function OrnateProductsView() {
           <div className="space-y-4">
             {/* Top Selection Bar for Ungrouped Products */}
             {selectedIds.size > 0 && (
-              <div className="bg-[#8b6f4e]/10 border border-[#8b6f4e]/20 rounded-2xl p-3 flex items-center justify-between gap-3 text-xs">
+              <div className="bg-[#8b6f4e]/10 border border-[#8b6f4e]/20 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
                 <span className="font-bold text-[#8b6f4e]">
                   {selectedIds.size} ungrouped product(s) selected
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setIsCreateGroupModalOpen(true)}
-                  className="px-4 py-1.5 font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs flex items-center gap-1.5"
-                >
-                  <HiOutlinePlus className="w-4 h-4" />
-                  <span>Create Group from Selected</span>
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreateGroupModalOpen(true)}
+                    className="px-3.5 py-1.5 font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <HiOutlinePlus className="w-3.5 h-3.5" />
+                    <span>Create 1 Combined Group</span>
+                  </button>
+                  {selectedIds.size > 1 && (
+                    <button
+                      type="button"
+                      onClick={handleBulkSplitUngrouped}
+                      disabled={bulkSplitting}
+                      className="px-3.5 py-1.5 font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      title="Create an individual Common Group for each selected product in one click"
+                    >
+                      <HiOutlineSparkles className="w-3.5 h-3.5" />
+                      <span>{bulkSplitting ? 'Creating Groups...' : `1 Group / Product (${selectedIds.size} Groups)`}</span>
+                    </button>
+                  )}
+                </div>
               </div>
             )}
 
@@ -755,9 +916,15 @@ export default function OrnateProductsView() {
                               />
                             </td>
                             <td className="p-3">
-                              <div className="w-10 h-10 rounded-lg bg-stone-50 border border-stone-100 p-1 flex items-center justify-center">
+                              <div
+                                className={`w-10 h-10 rounded-lg bg-stone-50 border border-stone-200 p-1 flex items-center justify-center transition-all ${
+                                  imgUrl ? 'cursor-pointer hover:border-[#8b6f4e] hover:scale-105 hover:shadow-xs' : ''
+                                }`}
+                                onClick={() => setViewingProduct(p)}
+                                title={imgUrl ? 'Click to view product & image' : undefined}
+                              >
                                 {imgUrl ? (
-                                  <img src={imgUrl} alt="" className="max-w-full max-h-full object-contain" />
+                                  <img src={imgUrl} alt="" className="max-w-full max-h-full object-contain pointer-events-none" />
                                 ) : (
                                   <IoDiamondOutline className="w-5 h-5 text-stone-300" />
                                 )}
@@ -912,12 +1079,16 @@ export default function OrnateProductsView() {
       />
 
       {/* Quick View Product Modal */}
-      {viewingProduct && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+      {viewingProduct &&
+        createPortal(
           <div
-            className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-[999] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fadeIn"
+            onClick={() => setViewingProduct(null)}
           >
+            <div
+              className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 animate-scaleUp max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div className="space-y-0.5">
                 <span className="text-[10px] uppercase font-bold tracking-wider text-[#8b6f4e]">
@@ -1022,7 +1193,8 @@ export default function OrnateProductsView() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Ornate ERP Sync Modal */}

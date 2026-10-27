@@ -57,7 +57,7 @@ const AdminLayout = () => {
 
       {/* Main Container */}
       <div
-        className={`min-h-screen flex flex-col min-w-0 transition-all duration-200 ${desktopLayoutClass}`}
+        className={`min-h-screen flex flex-col min-w-0 transition-[margin,width] duration-200 ${desktopLayoutClass}`}
       >
         <Header />
 

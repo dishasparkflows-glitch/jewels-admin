@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { IoClose, IoRefreshOutline, IoCubeOutline, IoSearchOutline, IoGridOutline, IoListOutline, IoEyeOutline, IoChevronBack, IoChevronForward } from 'react-icons/io5';
 import Dropdown from './Dropdown';
@@ -89,7 +90,6 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     const term = query.trim().toLowerCase();
     const result = products.filter((p) =>
       (!selectedCategory || String(p.groupName || '').trim().toLowerCase() === selectedCategory.trim().toLowerCase()) &&
-      (!metal || p.metalName === metal) &&
       (selectionFilter === 'all' || (selectionFilter === 'selected' ? selected.has(p.id) : !selected.has(p.id))) &&
       (!term || [p.itemName, p.groupName, p.barcodeNo, p.labelNo, p.uniqueLabelID, p.metalName, p.carat].some((v) => String(v ?? '').toLowerCase().includes(term)))
     );
@@ -109,8 +109,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     setPage(1);
     const matched = products.filter((p) =>
       p.id &&
-      (!nextCat || String(p.groupName || '').trim().toLowerCase() === nextCat.trim().toLowerCase()) &&
-      (!metal || p.metalName === metal)
+      (!nextCat || String(p.groupName || '').trim().toLowerCase() === nextCat.trim().toLowerCase())
     );
     setSelected(new Set(matched.map((p) => p.id)));
   };
@@ -164,7 +163,8 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
   };
   if (!isOpen) return null;
 
-  return <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !syncing && onClose?.()} />
     <section role="dialog" aria-modal="true" aria-labelledby="ornate-sync-title" className="relative w-full max-w-[1250px] max-h-[92dvh] flex flex-col rounded-[22px] bg-white shadow-2xl overflow-hidden">
       <header className="flex items-center gap-4 border-b border-stone-100 px-6 py-5 shrink-0">
@@ -173,13 +173,33 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
         <button type="button" className={button} aria-label="Close sync dialog" disabled={syncing} onClick={onClose}><IoClose size={20} /></button>
       </header>
       <div className="px-6 py-4 border-b border-stone-100 space-y-3 shrink-0">
-        <div className="flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-[200px]"><IoSearchOutline className="absolute left-3 top-4 text-stone-400" size={18} /><input aria-label="Search ERP products" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search product name, label, barcode, metal, category..." className="h-[44px] w-full rounded-xl border border-stone-200 pl-10 pr-3 text-[13px]" /></div>
-          <Dropdown className="w-[150px]" value={sort} onChange={setSort} options={[{ value: 'erp', label: 'ERP order' }, { value: 'name', label: 'Name' }, { value: 'priceAsc', label: 'Price: Low to high' }, { value: 'priceDesc', label: 'Price: High to low' }]} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="relative w-full">
+            <IoSearchOutline className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" size={18} />
+            <input
+              aria-label="Search ERP products"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search product name, label, barcode, metal, category..."
+              className="h-[44px] w-full rounded-xl border border-stone-200 pl-10 pr-3 text-[13px] bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 transition-all"
+            />
+          </div>
+          <div className="w-full">
+            <Dropdown
+              className="w-full"
+              value={sort}
+              onChange={setSort}
+              options={[
+                { value: 'erp', label: 'ERP order' },
+                { value: 'name', label: 'Name' },
+                { value: 'priceAsc', label: 'Price: Low to high' },
+                { value: 'priceDesc', label: 'Price: High to low' },
+              ]}
+            />
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {[{ name: '', label: `All (${products.length})` }, ...metals.map((name) => ({ name, label: `${name} (${products.filter((p) => p.metalName === name).length})` }))].map((tab) => <button type="button" key={tab.name} aria-pressed={metal === tab.name} onClick={() => handleSelectMetal(tab.name)} className={`rounded-full px-4 py-2 border text-[12px] cursor-pointer transition-colors ${metal === tab.name ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs' : 'border-stone-200 text-stone-600 hover:bg-stone-50'}`}>{tab.label}</button>)}
-          <div role="group" aria-label="Filter by categories" className="flex flex-wrap items-center gap-2 border-l border-stone-200 pl-3">
+          <div role="group" aria-label="Filter by categories" className="flex flex-wrap items-center gap-2">
             <span className="text-[12px] font-semibold text-stone-500">Categories</span>
             <button
               type="button"
@@ -347,5 +367,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
         <div className="flex flex-wrap justify-end gap-3"><button type="button" className={`${button} mr-auto text-red-600`} disabled={syncing || !selected.size} onClick={() => setSelected(new Set())}>Clear All</button><button type="button" className={button} disabled={syncing} onClick={onClose}>Cancel</button><button type="button" disabled={loading || !!error || syncing || !selected.size} onClick={sync} className="flex items-center gap-2 rounded-xl px-6 py-3 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-[13px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"><IoRefreshOutline size={18} className={syncing ? 'animate-spin' : ''} />{syncing ? 'Syncing...' : `Sync Selected (${selected.size} Products)`}</button></div>
       </footer>
     </section>
-  </div>;
+  </div>,
+  document.body
+);
 }

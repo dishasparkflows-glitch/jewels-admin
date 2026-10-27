@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   HiOutlineTrash,
   HiOutlineExclamation,
@@ -85,11 +86,11 @@ export default function ConfirmModal({
     icon: <HiOutlineTrash className="w-6 h-6 stroke-[2]" />,
   };
 
-  return (
+  return createPortal(
     <div
       role="alertdialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-stone-900/50 backdrop-blur-xs transition-opacity duration-200 animate-fadeIn"
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-3 sm:p-6 bg-stone-900/50 backdrop-blur-xs transition-opacity duration-200 animate-fadeIn"
       onClick={!loading ? onCancel : undefined}
     >
       <div
@@ -149,6 +150,7 @@ export default function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { HiOutlineX } from 'react-icons/hi';
 
 /**
@@ -26,7 +27,7 @@ export default function Modal({
   showClose = true,
   closeOnOverlayClick = true,
   className = '',
-  zIndex = 'z-50',
+  zIndex = 'z-[999]',
 }) {
   // Lock body scroll and listen for Escape key
   useEffect(() => {
@@ -53,7 +54,7 @@ export default function Modal({
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
@@ -105,6 +106,7 @@ export default function Modal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
