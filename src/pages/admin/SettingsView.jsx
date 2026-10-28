@@ -15,7 +15,19 @@ import {
   HiOutlineSearch,
   HiOutlineTrash,
   HiOutlineColorSwatch,
+  HiOutlineFire,
+  HiOutlineShare,
+  HiOutlineExternalLink,
 } from 'react-icons/hi';
+import {
+  FaInstagram,
+  FaFacebookF,
+  FaYoutube,
+  FaPinterestP,
+  FaXTwitter,
+  FaLinkedinIn,
+  FaWhatsapp,
+} from 'react-icons/fa6';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import {
@@ -84,6 +96,29 @@ export default function SettingsView() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingMobileLogo, setUploadingMobileLogo] = useState(false);
 
+  // Social Proof & Urgency state
+  const [socialProofForm, setSocialProofForm] = useState({
+    showSoldCounter: true,
+    soldTimeHours: 3,
+    defaultSoldCount: 24,
+    showReviews: true,
+    defaultReviewCount: 13,
+    defaultRating: 5,
+  });
+  const [savingSocialProof, setSavingSocialProof] = useState(false);
+
+  // Social Media state
+  const [socialMediaForm, setSocialMediaForm] = useState({
+    instagram: '',
+    facebook: '',
+    youtube: '',
+    pinterest: '',
+    twitter: '',
+    linkedin: '',
+    whatsapp: '',
+  });
+  const [savingSocialMedia, setSavingSocialMedia] = useState(false);
+
   // Fetch settings from API
   const fetchSettings = async () => {
     try {
@@ -95,6 +130,27 @@ export default function SettingsView() {
       const compressionSettings = { ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(data.mediaCompression || {}) };
       setImageCompression(compressionSettings);
       setUploadCompressionSettings(compressionSettings);
+      if (data.socialProof) {
+        setSocialProofForm({
+          showSoldCounter: data.socialProof.showSoldCounter !== false,
+          soldTimeHours: data.socialProof.soldTimeHours ?? 3,
+          defaultSoldCount: data.socialProof.defaultSoldCount ?? 24,
+          showReviews: data.socialProof.showReviews !== false,
+          defaultReviewCount: data.socialProof.defaultReviewCount ?? 13,
+          defaultRating: data.socialProof.defaultRating ?? 5,
+        });
+      }
+      if (data.socialMedia) {
+        setSocialMediaForm({
+          instagram: data.socialMedia.instagram ?? '',
+          facebook: data.socialMedia.facebook ?? '',
+          youtube: data.socialMedia.youtube ?? '',
+          pinterest: data.socialMedia.pinterest ?? '',
+          twitter: data.socialMedia.twitter ?? '',
+          linkedin: data.socialMedia.linkedin ?? '',
+          whatsapp: data.socialMedia.whatsapp ?? '',
+        });
+      }
 
       setBusinessForm({
         companyName: data.companyName ?? '',
@@ -398,6 +454,48 @@ export default function SettingsView() {
     }
   };
 
+  // Save Social Proof & Urgency
+  const handleSaveSocialProof = async () => {
+    try {
+      setSavingSocialProof(true);
+      const res = await api.put('/settings', {
+        socialProof: {
+          showSoldCounter: Boolean(socialProofForm.showSoldCounter),
+          soldTimeHours: Number(socialProofForm.soldTimeHours) || 3,
+          defaultSoldCount: Number(socialProofForm.defaultSoldCount) || 24,
+          showReviews: Boolean(socialProofForm.showReviews),
+          defaultReviewCount: Number(socialProofForm.defaultReviewCount) || 13,
+          defaultRating: Number(socialProofForm.defaultRating) || 5,
+        },
+      });
+      setSettings(res.data?.data || {});
+      toast.success('Social proof & urgency configuration saved');
+      setActiveModal(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save settings');
+    } finally {
+      setSavingSocialProof(false);
+    }
+  };
+
+  // Save Social Media Channels
+  const handleSaveSocialMedia = async () => {
+    try {
+      setSavingSocialMedia(true);
+      const res = await api.put('/settings', {
+        socialMedia: socialMediaForm,
+      });
+      setSettings(res.data?.data || {});
+      toast.success('Social media links updated successfully');
+      setActiveModal(null);
+    } catch (err) {
+      console.error('Failed to save social media links:', err);
+      toast.error(err.response?.data?.message || 'Failed to update social media links');
+    } finally {
+      setSavingSocialMedia(false);
+    }
+  };
+
   const handleOpenModal = (id) => {
     setActiveModal(id);
     if (id === 'theme') {
@@ -490,6 +588,22 @@ export default function SettingsView() {
       subtitle: 'Select active website theme to apply banners, colors, and layout.',
       icon: HiOutlineColorSwatch,
       badgeText: selectedThemeName ? `Active: ${selectedThemeName}` : 'Select active storefront theme',
+      hasPreview: false,
+    },
+    {
+      id: 'socialProof',
+      title: 'Social Proof & Urgency (Reviews & Sold Counter)',
+      subtitle: 'Configure dummy sold count, review rating badge, and dynamic sale hours.',
+      icon: HiOutlineFire,
+      badgeText: `${socialProofForm.showSoldCounter ? 'Sold ON' : 'Sold OFF'} · ${socialProofForm.showReviews ? 'Reviews ON' : 'Reviews OFF'}`,
+      hasPreview: false,
+    },
+    {
+      id: 'socialMedia',
+      title: 'Social Media Channels',
+      subtitle: 'Manage official store links for Instagram, Facebook, YouTube, Pinterest, X/Twitter, LinkedIn, and WhatsApp.',
+      icon: HiOutlineShare,
+      badgeText: `${Object.values(socialMediaForm).filter((val) => typeof val === 'string' && val.trim().length > 0).length} channels active`,
       hasPreview: false,
     },
   ];
@@ -640,6 +754,8 @@ export default function SettingsView() {
                   {activeModal === 'business' && 'Business & Identity'}
                   {activeModal === 'monetary' && 'Monetary Settlement Details'}
                   {activeModal === 'theme' && 'Storefront Theme'}
+                  {activeModal === 'socialProof' && 'Social Proof & Urgency (Reviews & Sold Counter)'}
+                  {activeModal === 'socialMedia' && 'Social Media & Brand Channels'}
                 </h2>
                 <p className="mt-0.5 text-xs text-stone-500">
                   {activeModal === 'logos' && 'Manage your desktop and mobile brand logos.'}
@@ -648,6 +764,8 @@ export default function SettingsView() {
                   {activeModal === 'business' && 'Store name, credentials, address, and policies.'}
                   {activeModal === 'monetary' && 'Bank settlement details and payout credentials.'}
                   {activeModal === 'theme' && 'Select the active theme that controls storefront layout, banners, and media.'}
+                  {activeModal === 'socialProof' && 'Manage sold count urgency, review badges, and dynamic time window shown on the product page.'}
+                  {activeModal === 'socialMedia' && 'Manage official social profiles and chat channels shown in the storefront footer.'}
                 </p>
               </div>
               <button
@@ -1177,6 +1295,315 @@ export default function SettingsView() {
                   )}
                 </div>
               )}
+
+              {/* Social Proof Modal Body */}
+              {activeModal === 'socialProof' && (
+                <div className="space-y-4">
+                  {/* Storefront Live Preview */}
+                  <div className="rounded-xl border border-[#ebdcc8] bg-[#fbf9f6] p-4 shadow-2xs">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#ebdcc8]/70 mb-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-[#8b6f4e]">
+                        Storefront Live Preview
+                      </span>
+                      <span className="text-[10px] text-stone-400">Updates live as you configure</span>
+                    </div>
+
+                    <div className="space-y-1.5 bg-white p-3 rounded-lg border border-stone-200/70">
+                      {/* Review Badge */}
+                      {socialProofForm.showReviews && (
+                        <div className="flex items-center gap-1.5 text-xs text-stone-600">
+                          <span className="text-amber-400 text-xs tracking-tight">★★★★★</span>
+                          <span className="font-semibold text-stone-900">
+                            {socialProofForm.defaultReviewCount || 13} reviews
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Hourly Sold Badge */}
+                      {socialProofForm.showSoldCounter && (
+                        <div className="flex items-center gap-1.5 text-xs text-stone-700">
+                          <span className="text-sm leading-none">🔥</span>
+                          <span>
+                            <strong className="font-bold text-stone-900">{socialProofForm.defaultSoldCount || 24}</strong> sold in last{' '}
+                            <strong>{socialProofForm.soldTimeHours || 3}</strong> hours
+                          </span>
+                        </div>
+                      )}
+
+                      {!socialProofForm.showReviews && !socialProofForm.showSoldCounter && (
+                        <div className="text-xs text-stone-400 italic py-1 text-center">
+                          All social proof badges are currently turned off.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 1. Sold Counter Configuration */}
+                  <div className="rounded-xl border border-stone-200 bg-white p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                          <span>🔥</span>
+                          <span>Hourly Sold Counter</span>
+                        </div>
+                        <div className="text-[11px] text-stone-500">
+                          Shows urgency sold badge on product pages
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={socialProofForm.showSoldCounter}
+                          onChange={(e) =>
+                            setSocialProofForm((prev) => ({ ...prev, showSoldCounter: e.target.checked }))
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-stone-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#8b6f4e]"></div>
+                      </label>
+                    </div>
+
+                    {socialProofForm.showSoldCounter && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-stone-100">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                            Sold Time Window (Hours)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="72"
+                            value={socialProofForm.soldTimeHours}
+                            onChange={(e) =>
+                              setSocialProofForm((prev) => ({
+                                ...prev,
+                                soldTimeHours: Number(e.target.value) || 1,
+                              }))
+                            }
+                            className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e]"
+                            placeholder="e.g. 3"
+                          />
+                          <span className="text-[10px] text-stone-400 mt-0.5 block">
+                            Displayed as &apos;sold in last {socialProofForm.soldTimeHours || 3} hours&apos;
+                          </span>
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                            Default / Fallback Sold Quantity
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="999"
+                            value={socialProofForm.defaultSoldCount}
+                            onChange={(e) =>
+                              setSocialProofForm((prev) => ({
+                                ...prev,
+                                defaultSoldCount: Number(e.target.value) || 1,
+                              }))
+                            }
+                            className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e]"
+                            placeholder="e.g. 24"
+                          />
+                          <span className="text-[10px] text-stone-400 mt-0.5 block">
+                            Used when product has no custom sales count
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 2. Customer Reviews & Ratings */}
+                  <div className="rounded-xl border border-stone-200 bg-white p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                          <span className="text-amber-400">★</span>
+                          <span>Customer Reviews Badge</span>
+                        </div>
+                        <div className="text-[11px] text-stone-500">
+                          Shows star rating badge and review count
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={socialProofForm.showReviews}
+                          onChange={(e) =>
+                            setSocialProofForm((prev) => ({ ...prev, showReviews: e.target.checked }))
+                          }
+                          className="sr-only peer"
+                        />
+                        <div className="w-9 h-5 bg-stone-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#8b6f4e]"></div>
+                      </label>
+                    </div>
+
+                    {socialProofForm.showReviews && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-stone-100">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                            Default Star Rating (1 to 5)
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="5"
+                            step="0.1"
+                            value={socialProofForm.defaultRating}
+                            onChange={(e) =>
+                              setSocialProofForm((prev) => ({
+                                ...prev,
+                                defaultRating: Number(e.target.value) || 5,
+                              }))
+                            }
+                            className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e]"
+                            placeholder="e.g. 5"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                            Default Review Count
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="999"
+                            value={socialProofForm.defaultReviewCount}
+                            onChange={(e) =>
+                              setSocialProofForm((prev) => ({
+                                ...prev,
+                                defaultReviewCount: Number(e.target.value) || 1,
+                              }))
+                            }
+                            className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e]"
+                            placeholder="e.g. 13"
+                          />
+                          <span className="text-[10px] text-stone-400 mt-0.5 block">
+                            Displayed as &apos;{socialProofForm.defaultReviewCount || 13} reviews&apos;
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+
+                </div>
+              )}
+
+              {activeModal === 'socialMedia' && (
+                <div className="space-y-4">
+                  <div className="bg-[#faf6f0] border border-[#ebdcc8]/80 rounded-xl p-3.5 text-xs text-stone-700 leading-relaxed">
+                    <span className="font-semibold text-stone-900">Dynamic Storefront Social Channels:</span>
+                    <p className="mt-0.5 text-stone-600">
+                      Configure your brand&apos;s official social profiles below. Configured channels will automatically appear in the storefront footer (&ldquo;FOLLOW US&rdquo;) and contact sections.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3">
+                    {[
+                      {
+                        key: 'instagram',
+                        label: 'Instagram',
+                        placeholder: 'https://www.instagram.com/neirah.officials',
+                        icon: FaInstagram,
+                        color: 'text-pink-600 bg-pink-50 border-pink-200',
+                        hint: 'Instagram brand profile or feed page',
+                      },
+                      {
+                        key: 'facebook',
+                        label: 'Facebook',
+                        placeholder: 'https://www.facebook.com/yourbrand',
+                        icon: FaFacebookF,
+                        color: 'text-blue-600 bg-blue-50 border-blue-200',
+                        hint: 'Official Facebook page or community link',
+                      },
+                      {
+                        key: 'youtube',
+                        label: 'YouTube',
+                        placeholder: 'https://www.youtube.com/@yourbrand',
+                        icon: FaYoutube,
+                        color: 'text-red-600 bg-red-50 border-red-200',
+                        hint: 'Brand YouTube channel or video gallery',
+                      },
+                      {
+                        key: 'pinterest',
+                        label: 'Pinterest',
+                        placeholder: 'https://www.pinterest.com/yourbrand',
+                        icon: FaPinterestP,
+                        color: 'text-rose-700 bg-rose-50 border-rose-200',
+                        hint: 'Pinterest moodboard or jewellery catalogue',
+                      },
+                      {
+                        key: 'twitter',
+                        label: 'X (Twitter)',
+                        placeholder: 'https://x.com/yourbrand',
+                        icon: FaXTwitter,
+                        color: 'text-stone-900 bg-stone-100 border-stone-300',
+                        hint: 'Official X/Twitter feed handle',
+                      },
+                      {
+                        key: 'linkedin',
+                        label: 'LinkedIn',
+                        placeholder: 'https://www.linkedin.com/company/yourbrand',
+                        icon: FaLinkedinIn,
+                        color: 'text-sky-700 bg-sky-50 border-sky-200',
+                        hint: 'Company LinkedIn page',
+                      },
+                      {
+                        key: 'whatsapp',
+                        label: 'WhatsApp Chat / Number',
+                        placeholder: 'https://wa.me/919726237723?text=Hi%20Neirah%20Jewels',
+                        icon: FaWhatsapp,
+                        color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
+                        hint: 'WhatsApp wa.me direct chat or contact link',
+                      },
+                    ].map((platform) => {
+                      const IconComp = platform.icon;
+                      const hasValue = Boolean(socialMediaForm[platform.key]?.trim());
+                      return (
+                        <div
+                          key={platform.key}
+                          className="p-3 bg-stone-50/70 rounded-xl border border-stone-200/80 transition-all hover:bg-stone-50"
+                        >
+                          <div className="flex items-center justify-between mb-1.5">
+                            <label className="flex items-center gap-2 text-xs font-semibold text-stone-800">
+                              <span className={`w-6 h-6 rounded-md border flex items-center justify-center ${platform.color}`}>
+                                <IconComp className="w-3.5 h-3.5" />
+                              </span>
+                              <span>{platform.label}</span>
+                            </label>
+                            {hasValue && (
+                              <a
+                                href={socialMediaForm[platform.key]}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 text-[11px] font-medium text-[#8b6f4e] hover:underline"
+                              >
+                                Test Link <HiOutlineExternalLink className="w-3 h-3" />
+                              </a>
+                            )}
+                          </div>
+                          <input
+                            type="url"
+                            value={socialMediaForm[platform.key]}
+                            onChange={(e) =>
+                              setSocialMediaForm((prev) => ({
+                                ...prev,
+                                [platform.key]: e.target.value,
+                              }))
+                            }
+                            placeholder={platform.placeholder}
+                            className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e]"
+                          />
+                          <p className="mt-1 text-[10px] text-stone-400">{platform.hint}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
@@ -1241,6 +1668,30 @@ export default function SettingsView() {
                   className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
                 >
                   {savingTheme ? 'Saving…' : 'Apply Theme'}
+                </button>
+              )}
+
+              {activeModal === 'socialProof' && (
+                <button
+                  type="button"
+                  onClick={handleSaveSocialProof}
+                  disabled={savingSocialProof}
+                  style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {savingSocialProof ? 'Saving…' : 'Save Social Proof Settings'}
+                </button>
+              )}
+
+              {activeModal === 'socialMedia' && (
+                <button
+                  type="button"
+                  onClick={handleSaveSocialMedia}
+                  disabled={savingSocialMedia}
+                  style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {savingSocialMedia ? 'Saving…' : 'Save Social Media Links'}
                 </button>
               )}
             </div>

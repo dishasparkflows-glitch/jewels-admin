@@ -176,21 +176,33 @@ export default function WriteBlogView() {
     fetchBlog();
   }, [id, navigate]);
 
-  // Handle title change & auto-generate slug
+  // Handle title change & auto-generate slug using hyphens
   const handleTitleChange = (e) => {
     const title = e.target.value;
     const autoSlug = title
       .toLowerCase()
-      .trim()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/^-+/, '');
 
     setFormData((prev) => ({
       ...prev,
       title,
       slug: isEditingSlug ? prev.slug : autoSlug,
-      metaTitle: prev.metaTitle ? prev.metaTitle : `${title} | Neirah Jewellers`,
+      metaTitle: prev.metaTitle && prev.metaTitle !== `${prev.title} | Neirah Jewellers`
+        ? prev.metaTitle
+        : (title ? `${title} | Neirah Jewellers` : ''),
     }));
+  };
+
+  const handleRegenerateSlug = () => {
+    const newSlug = (formData.title || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+    setIsEditingSlug(false);
+    setFormData((prev) => ({ ...prev, slug: newSlug }));
+    toast.success('URL slug regenerated from title');
   };
 
   // Add tag
@@ -431,11 +443,22 @@ export default function WriteBlogView() {
               </div>
             </div>
 
-            {/* Row 2: URL Slug (auto-generated) */}
+            {/* Row 2: URL Slug (auto-generated from title) */}
             <div>
-              <label className="block text-xs font-semibold text-stone-700 mb-1.5">
-                URL Slug <span className="text-stone-400 font-normal">(auto-generated)</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-semibold text-stone-700">
+                  URL Slug <span className="text-stone-400 font-normal">(auto-generated from title)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={handleRegenerateSlug}
+                  className="text-[11px] font-semibold text-[#8b6f4e] hover:text-[#785327] hover:underline flex items-center gap-1 cursor-pointer transition-colors"
+                  title="Generate URL slug from current article title"
+                >
+                  <HiOutlineSparkles className="w-3.5 h-3.5" />
+                  Regenerate from Title
+                </button>
+              </div>
               <div className="flex items-center">
                 <span className="h-10 px-3.5 bg-stone-50 border border-r-0 border-stone-200 rounded-l-xl text-xs text-stone-500 font-mono flex items-center select-none">
                   /blog/
@@ -444,7 +467,15 @@ export default function WriteBlogView() {
                   type="text"
                   value={formData.slug}
                   readOnly={!isEditingSlug}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, slug: e.target.value }))}
+                  onChange={(e) => setFormData((prev) => ({
+                    ...prev,
+                    slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]+/g, '-'),
+                  }))}
+                  onBlur={() => setFormData((prev) => ({
+                    ...prev,
+                    slug: (prev.slug || '').replace(/^-+|-+$/g, ''),
+                  }))}
+                  placeholder="article-title-url"
                   className={`flex-1 h-10 px-3 font-mono text-xs text-stone-800 border border-stone-200 outline-none transition-colors ${
                     isEditingSlug ? 'bg-white focus:border-[#8b6f4e]' : 'bg-stone-50/50 cursor-default'
                   }`}
@@ -452,7 +483,7 @@ export default function WriteBlogView() {
                 <button
                   type="button"
                   onClick={() => setIsEditingSlug(!isEditingSlug)}
-                  title={isEditingSlug ? 'Lock slug' : 'Edit slug'}
+                  title={isEditingSlug ? 'Lock slug' : 'Edit slug manually'}
                   className="h-10 px-3 bg-white border border-l-0 border-stone-200 rounded-r-xl text-stone-400 hover:text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer flex items-center justify-center"
                 >
                   <HiOutlinePencil className={`w-4 h-4 ${isEditingSlug ? 'text-[#8b6f4e]' : ''}`} />

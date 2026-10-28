@@ -930,9 +930,10 @@ export default function HomeSectionsView() {
                                 #{sec.sectionKey}
                               </code>
                               {sec.visibility && (
-                                <span className="inline-flex items-center gap-1 text-[10px] text-stone-600 bg-stone-100 px-1.5 py-0.2 rounded">
-                                  {sec.visibility.website !== false && <span title="Visible on Website">🌐</span>}
-                                  {sec.visibility.mobileApp !== false && <span title="Visible on Mobile App">📱</span>}
+                                <span className="inline-flex items-center gap-1 text-[10px] text-stone-600 bg-stone-100 px-2 py-0.5 rounded font-medium">
+                                  {sec.visibility.website !== false && <span>Web</span>}
+                                  {sec.visibility.website !== false && sec.visibility.mobileApp !== false && <span className="text-stone-300">/</span>}
+                                  {sec.visibility.mobileApp !== false && <span>App</span>}
                                 </span>
                               )}
                               {sec.subtitle && (
@@ -1109,10 +1110,7 @@ export default function HomeSectionsView() {
                       }
                       className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer accent-[#8b6f4e]"
                     />
-                    <span className="flex items-center gap-1.5">
-                      <span>🌐</span>
-                      <span>Website</span>
-                    </span>
+                    <span>Web</span>
                   </label>
 
                   <label className="inline-flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer select-none">
@@ -1127,10 +1125,7 @@ export default function HomeSectionsView() {
                       }
                       className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer accent-[#8b6f4e]"
                     />
-                    <span className="flex items-center gap-1.5">
-                      <span>📱</span>
-                      <span>Mobile App</span>
-                    </span>
+                    <span>App</span>
                   </label>
                 </div>
               </div>
@@ -1666,13 +1661,11 @@ export default function HomeSectionsView() {
               {/* Platform Visibility Status */}
               <div className="flex items-center gap-4 bg-stone-50 p-3 rounded-xl border border-stone-100">
                 <span className="text-stone-500 text-xs font-semibold">Visibility:</span>
-                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${viewingSection.visibility?.website !== false ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-400'}`}>
-                  <span>🌐</span>
-                  <span>Website {viewingSection.visibility?.website !== false ? '✓' : '✗'}</span>
+                <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full ${viewingSection.visibility?.website !== false ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-400'}`}>
+                  Web {viewingSection.visibility?.website !== false ? '✓' : '✗'}
                 </span>
-                <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${viewingSection.visibility?.mobileApp !== false ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-400'}`}>
-                  <span>📱</span>
-                  <span>Mobile App {viewingSection.visibility?.mobileApp !== false ? '✓' : '✗'}</span>
+                <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full ${viewingSection.visibility?.mobileApp !== false ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-400'}`}>
+                  App {viewingSection.visibility?.mobileApp !== false ? '✓' : '✗'}
                 </span>
               </div>
 

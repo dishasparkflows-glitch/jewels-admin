@@ -177,19 +177,18 @@ export default function BlogsView() {
     setIsModalOpen(true);
   };
 
-  // Title change with auto-slug
+  // Title change with auto-slug using hyphens
   const handleTitleChange = (e) => {
     const title = e.target.value;
     const autoSlug = title
       .toLowerCase()
-      .trim()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/^-+/, '');
 
     setFormData((prev) => ({
       ...prev,
       title,
-      slug: editingBlog ? prev.slug : autoSlug,
+      slug: autoSlug,
     }));
   };
 

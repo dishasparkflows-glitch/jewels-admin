@@ -544,6 +544,8 @@ export default function AddJewelryProduct() {
     gender: '',
     description: '',
     isOrnate: false,
+    soldCount: '',
+    reviewCount: '',
   });
 
   // Immediately hydrate Step 1 (Basic Details) as soon as productRecord is fetched without waiting for diamond masters
@@ -569,6 +571,8 @@ export default function AddJewelryProduct() {
       })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
+      soldCount: productRecord.demoMetrics?.soldCount ?? '',
+      reviewCount: productRecord.demoMetrics?.reviewCount ?? '',
     });
   }, [productRecord]);
 
@@ -2032,7 +2036,7 @@ export default function AddJewelryProduct() {
   };
   const pricingInput = () => ({
     basicInfo: { sku: basicDetails.sku },
-    pricing: { calculationMode: 'automatic', baseCarat: Number(baseCarat), gstPercentage: Number(gstPercentage), baseLabourCharge: Number(specs.baseLabourCharge), certificateCharge: Number(specs.certificateCharge), otherAmountPercentage: Number(specs.otherAmountPercentage) },
+    pricing: { baseCarat: Number(baseCarat), gstPercentage: Number(gstPercentage), baseLabourCharge: Number(specs.baseLabourCharge), certificateCharge: Number(specs.certificateCharge), otherAmountPercentage: Number(specs.otherAmountPercentage) },
     specifications: { metalWeight: Number(specs.metalWeight) },
     metalPurityIds: selectedPurities.map((name) => masterId(purityMasterList, name)),
     metalColorIds: selectedColors.map((name) => masterId(colorsList, name)),
@@ -2226,7 +2230,7 @@ export default function AddJewelryProduct() {
       clarity: firstCenter.clarity || '',
       caratWeight: firstCenter.carat == null ? '' : String(firstCenter.carat),
     });
-    setAutomaticPricing(productRecord.pricing?.calculationMode === 'automatic');
+    setAutomaticPricing(productRecord.productType !== 'silver' && !productRecord.isOrnate);
     setBaseCarat(String(productRecord.pricing?.baseCarat ?? 1));
     setGstPercentage(String(productRecord.pricing?.gstPercentage ?? 3));
     setSideRows((productRecord.sideDiamondRows || []).map((row) => ({ ...row, rateSource: row.rateSource || (row.priceINR ? 'manual' : 'master') })));
@@ -2742,14 +2746,12 @@ export default function AddJewelryProduct() {
         }),
         ...(!isSilverProduct ? {
           ...(metalWeightNum ? {
-            calculationMode: automaticPricing ? 'automatic' : 'manual',
             baseCarat: Number(baseCarat),
             gstPercentage: Number(gstPercentage),
             baseLabourCharge: numberValue(specs.baseLabourCharge),
             certificateCharge: numberValue(specs.certificateCharge),
             otherAmountPercentage: numberValue(specs.otherAmountPercentage),
           } : (!isDraft ? {
-            calculationMode: automaticPricing ? 'automatic' : 'manual',
             baseCarat: Number(baseCarat),
             gstPercentage: Number(gstPercentage),
           } : {})),
@@ -2793,6 +2795,10 @@ export default function AddJewelryProduct() {
         ...(!productId ? { _id: draftProductId } : {}),
         productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
         isOrnate: Boolean(basicDetails.isOrnate),
+        demoMetrics: {
+          soldCount: basicDetails.soldCount !== '' ? Number(basicDetails.soldCount) : 0,
+          reviewCount: basicDetails.reviewCount !== '' ? Number(basicDetails.reviewCount) : 0,
+        },
         ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
         basicInfo: compactObject({
           title: activeTitle,
@@ -3155,6 +3161,59 @@ export default function AddJewelryProduct() {
                     className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all leading-relaxed shadow-2xs placeholder:text-stone-400"
                   />
                 </div>
+
+                {/* Social Proof & Urgency (Demo Metrics) */}
+                <div className="sm:col-span-2 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 space-y-3 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-base">🔥</span>
+                      <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                        Social Proof & Urgency (Demo Metrics)
+                      </h4>
+                    </div>
+                    <span className="text-[11px] text-stone-400 font-medium">Storefront Product Detail Display</span>
+                  </div>
+                  <p className="text-xs text-stone-500">
+                    Set product-specific sold and review counts displayed under the title on the storefront.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        Sold Count
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs">🔥</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={basicDetails.soldCount}
+                          onChange={(e) => setBasicDetails((prev) => ({ ...prev, soldCount: e.target.value }))}
+                          placeholder="e.g. 24"
+                          className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
+                        />
+                      </div>
+                      <span className="text-[10px] text-stone-400 mt-1 block">Displayed as &apos;X sold in last 3 hours&apos;</span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-stone-700 mb-1">
+                        Review Count
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-xs">★</span>
+                        <input
+                          type="number"
+                          min="0"
+                          value={basicDetails.reviewCount}
+                          onChange={(e) => setBasicDetails((prev) => ({ ...prev, reviewCount: e.target.value }))}
+                          placeholder="e.g. 13"
+                          className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
+                        />
+                      </div>
+                      <span className="text-[10px] text-stone-400 mt-1 block">Displayed as &apos;★★★★★ X reviews&apos;</span>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -3279,14 +3338,6 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-stone-200 p-4 space-y-3">
-                <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" checked={automaticPricing} onChange={(event) => setAutomaticPricing(event.target.checked)} /> Calculate prices from live master rates</label>
-                <p className="text-xs text-stone-500">Base weight is at 14KT. Includes 5% casting allowance. Center stones adjust weight by 8% per carat difference; side-only quality options keep the same weight. Markup is applied after GST.</p>
-                <div className="flex gap-4">
-                  <label className="text-xs">Base center carat<input type="number" min="0" step="0.01" value={baseCarat} onChange={(event) => setBaseCarat(event.target.value)} className="ml-2 w-24 rounded border p-2" /></label>
-                  <label className="text-xs">GST %<input type="number" min="0" step="0.01" value={gstPercentage} onChange={(event) => setGstPercentage(event.target.value)} className="ml-2 w-20 rounded border p-2" /></label>
-                </div>
-              </div>
 
               {/* ─── Sub-Section 3: Center & Side Diamond Configuration ──── */}
               <div className="space-y-4 pt-3 border-t border-stone-100">
@@ -4518,14 +4569,15 @@ export default function AddJewelryProduct() {
                     </div>
                   </div>
 
-                  {/* Unified Product Media Content (Images & Videos Mixed) */}
+                  {/* Unified Product Media Content (Images & Videos Mixed in Multi-Row Grid) */}
                   {(activeMediaSubTab === 'media' || activeMediaSubTab === 'images') && (
                     <div className="relative">
-                      <div className="flex items-center gap-3 overflow-x-auto pb-2 scrollbar-thin">
+                      {/* Responsive Grid Layout Utilizing All Space - No Horizontal Scrollbar */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-3.5 sm:gap-4">
                         {/* Upload Media Button Card */}
                         <label
                           htmlFor="metal-color-upload-input"
-                          className="w-32 h-32 sm:w-36 sm:h-36 shrink-0 rounded-2xl border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] bg-[#fdfcfb] hover:bg-[#faf7f2]/30 flex flex-col items-center justify-center p-3 text-center transition-all cursor-pointer group shadow-2xs"
+                          className="aspect-square w-full rounded-2xl border-2 border-dashed border-stone-300 hover:border-[#8b6f4e] bg-[#fdfcfb] hover:bg-[#faf7f2]/50 flex flex-col items-center justify-center p-3 text-center transition-all cursor-pointer group shadow-2xs"
                         >
                           <input
                             id="metal-color-upload-input"
@@ -4535,14 +4587,17 @@ export default function AddJewelryProduct() {
                             onChange={(e) => handleMixedMediaUpload(e, activeMediaColor)}
                             className="hidden"
                           />
-                          <div className="w-8 h-8 rounded-full border border-stone-300 group-hover:border-[#8b6f4e] group-hover:bg-[#faf5ee] text-stone-400 group-hover:text-[#8b6f4e] flex items-center justify-center transition-all mb-1.5">
-                            <HiOutlinePlus className="w-4 h-4" />
+                          <div className="w-10 h-10 rounded-full border border-stone-300 group-hover:border-[#8b6f4e] bg-white group-hover:bg-[#faf5ee] text-stone-400 group-hover:text-[#8b6f4e] flex items-center justify-center transition-all mb-2 shadow-2xs group-hover:scale-105">
+                            <HiOutlinePlus className="w-5 h-5 stroke-[2.2]" />
                           </div>
                           <span className="text-xs font-bold text-stone-800 group-hover:text-[#8b6f4e]">
                             Upload Media
                           </span>
-                          <span className="text-[9.5px] text-emerald-600 font-medium mt-0.5">
+                          <span className="text-[10px] text-emerald-600 font-semibold mt-0.5">
                             Local preview &amp; compress
+                          </span>
+                          <span className="text-[9px] text-stone-400 mt-0.5">
+                            JPG, PNG, WebP, MP4
                           </span>
                         </label>
 
@@ -4553,7 +4608,7 @@ export default function AddJewelryProduct() {
                             <div
                               key={img.id || i}
                               onClick={() => handleOpenImagePreview(img.url, gallery)}
-                              className="relative w-32 h-32 sm:w-36 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-50 shadow-2xs group cursor-pointer transition-all hover:shadow-md hover:border-[#8b6f4e]"
+                              className="relative aspect-square w-full rounded-2xl border border-stone-200/90 overflow-hidden bg-white shadow-2xs group cursor-pointer transition-all hover:shadow-md hover:border-[#8b6f4e]"
                               title="Click to zoom in / inspect"
                             >
                               <img
@@ -4567,11 +4622,11 @@ export default function AddJewelryProduct() {
                                     e.target.src = `${backendBase}/upload/file?key=${encodeURIComponent(key)}`;
                                   }
                                 }}
-                                className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                                className="w-full h-full object-contain p-2 transition-transform duration-200 group-hover:scale-105"
                               />
 
                               {/* Hover Zoom Hint Overlay */}
-                              <div className="absolute inset-0 bg-stone-900/25 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                              <div className="absolute inset-0 bg-stone-900/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                                 <span className="p-2 rounded-full bg-white/90 text-stone-800 shadow-md transform scale-90 group-hover:scale-100 transition-transform">
                                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
@@ -4581,7 +4636,8 @@ export default function AddJewelryProduct() {
 
                               {/* Top Left Badge or Set Primary */}
                               {img.isPrimary ? (
-                                <span className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#8b6f4e] text-white shadow-xs">
+                                <span className="absolute top-2 left-2 z-10 px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#8b6f4e] text-white shadow-xs flex items-center gap-1">
+                                  <HiOutlineStar className="w-3 h-3 fill-white" />
                                   Primary
                                 </span>
                               ) : (
@@ -4591,12 +4647,18 @@ export default function AddJewelryProduct() {
                                     e.stopPropagation();
                                     handleSetPrimaryMedia(activeMediaColor, img.id);
                                   }}
-                                  className="absolute top-2 left-2 z-10 p-1 rounded-md bg-black/50 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                                  className="absolute top-2 left-2 z-10 px-1.5 py-1 rounded-md bg-black/60 hover:bg-[#8b6f4e] text-white opacity-0 group-hover:opacity-100 transition-all shadow-xs cursor-pointer text-[10px] font-semibold flex items-center gap-1"
                                   title="Set as Primary"
                                 >
                                   <HiOutlineStar className="w-3.5 h-3.5" />
+                                  <span className="hidden sm:inline">Set Primary</span>
                                 </button>
                               )}
+
+                              {/* Image Order Badge (Bottom Left) */}
+                              <span className="absolute bottom-2 left-2 z-10 px-1.5 py-0.5 rounded text-[9.5px] font-bold font-mono bg-stone-900/60 text-white backdrop-blur-xs">
+                                #{i + 1}
+                              </span>
 
                               {/* Top Right Close / Delete Button */}
                               <button
@@ -4605,7 +4667,7 @@ export default function AddJewelryProduct() {
                                   e.stopPropagation();
                                   handleRemoveMedia(activeMediaColor, img.id);
                                 }}
-                                className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/50 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
+                                className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-black/50 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-all shadow-xs cursor-pointer"
                                 title="Remove image"
                               >
                                 <HiOutlineX className="w-3.5 h-3.5" />
@@ -4619,7 +4681,7 @@ export default function AddJewelryProduct() {
                           <div
                             key={vid.id || `video-${i}`}
                             onClick={() => setViewingCompressionMedia({ ...vid, mediaType: 'video' })}
-                            className="relative w-36 h-32 sm:w-44 sm:h-36 shrink-0 rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-900 shadow-2xs group flex flex-col justify-end p-2.5 text-white cursor-pointer hover:shadow-md hover:border-[#8b6f4e] transition-all"
+                            className="relative aspect-square w-full rounded-2xl border border-stone-200/90 overflow-hidden bg-stone-900 shadow-2xs group flex flex-col justify-end p-2.5 text-white cursor-pointer hover:shadow-md hover:border-[#8b6f4e] transition-all"
                             title="Click to view & play video"
                           >
                             <video src={getMediaUrl(vid.url) || vid.url} className="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-85 transition-opacity" />
@@ -4632,7 +4694,7 @@ export default function AddJewelryProduct() {
 
                             {/* Center Play Icon Overlay */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                              <div className="w-8 h-8 rounded-full bg-black/60 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-md">
+                              <div className="w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center group-hover:scale-110 transition-transform shadow-md">
                                 <svg className="w-4 h-4 fill-white translate-x-0.5" viewBox="0 0 24 24">
                                   <path d="M8 5v14l11-7z" />
                                 </svg>
@@ -4651,20 +4713,13 @@ export default function AddJewelryProduct() {
                                 e.stopPropagation();
                                 handleRemoveVideo(activeMediaColor, vid.id);
                               }}
-                              className="absolute top-2 right-2 z-10 p-1 rounded-md bg-black/60 hover:bg-black text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-xs"
+                              className="absolute top-2 right-2 z-10 p-1.5 rounded-md bg-black/60 hover:bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-all cursor-pointer shadow-xs"
                               title="Remove video"
                             >
                               <HiOutlineX className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         ))}
-
-                        {/* Next arrow hint if multiple items */}
-                        {((mediaImages[activeMediaColor] || []).length + (mediaVideos[activeMediaColor] || []).length) > 2 && (
-                          <div className="w-8 h-8 rounded-full bg-white border border-stone-200/90 shadow-2xs flex items-center justify-center text-stone-500 shrink-0">
-                            <HiOutlineChevronRight className="w-4 h-4" />
-                          </div>
-                        )}
                       </div>
                     </div>
                   )}
@@ -5267,7 +5322,11 @@ export default function AddJewelryProduct() {
                   onClick={() => setViewingCompressionMedia(null)}
                 >
                   <div
-                    className="relative flex flex-col max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl"
+                    className={`relative flex flex-col max-h-[92vh] w-full ${
+                      viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i)
+                        ? 'max-w-3xl'
+                        : 'max-w-2xl'
+                    } overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl`}
                     onClick={(e) => e.stopPropagation()}
                   >
                     {/* Header */}
@@ -5302,26 +5361,30 @@ export default function AddJewelryProduct() {
                     })()}
 
                     {/* Main Image / Video View Area */}
-                    <div className="relative flex-1 bg-[#fdfcfb] p-4 flex flex-col items-center justify-center min-h-[260px] max-h-[52vh] overflow-hidden">
-                      {(() => {
-                        const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
+                    {(() => {
+                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
+                      const mediaSrc = getMediaUrl(viewingCompressionMedia.url) || viewingCompressionMedia.url;
 
-                        return isVideo ? (
-                          <video
-                            src={viewingCompressionMedia.url}
-                            controls
-                            autoPlay
-                            muted
-                            className="max-h-[48vh] w-auto max-w-full rounded-xl shadow-xs"
-                          />
-                        ) : (
-                          <img
-                            src={viewingCompressionMedia.url}
-                            alt={viewingCompressionMedia.name || 'Preview'}
-                            className="max-h-[48vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
-                          />
-                        );
-                      })()}
+                      return (
+                        <div className={`relative flex-1 bg-[#fdfcfb] p-4 flex flex-col items-center justify-center overflow-hidden ${
+                          isVideo ? 'min-h-[320px] max-h-[75vh]' : 'min-h-[260px] max-h-[52vh]'
+                        }`}>
+                          {isVideo ? (
+                            <video
+                              src={mediaSrc}
+                              controls
+                              autoPlay
+                              muted
+                              playsInline
+                              className="max-h-[70vh] w-auto max-w-full rounded-xl shadow-xs"
+                            />
+                          ) : (
+                            <img
+                              src={mediaSrc}
+                              alt={viewingCompressionMedia.name || 'Preview'}
+                              className="max-h-[48vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
+                            />
+                          )}
 
                       {/* Previous / Next Arrows to flip between media items */}
                       {(() => {
@@ -5364,16 +5427,20 @@ export default function AddJewelryProduct() {
                           </>
                         );
                       })()}
-                    </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Stats Breakdown and Actions */}
                     {(() => {
+                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
+                      if (isVideo) return null;
+
                       const preview = compressionPreviews[viewingCompressionMedia.id];
                       const origSize = preview?.originalSize || viewingCompressionMedia.fileSize || 0;
                       const compSize = preview?.compressedSize || 0;
                       const savings = origSize && compSize ? Math.max(0, Math.round((1 - compSize / origSize) * 100)) : 0;
                       const isSelected = selectedCompressionIds.includes(viewingCompressionMedia.id);
-                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
 
                       return (
                         <div className="border-t border-stone-100 bg-white p-4 sm:p-5 space-y-3">

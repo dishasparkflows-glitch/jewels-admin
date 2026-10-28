@@ -105,6 +105,7 @@ export default function DiamondTypesView() {
   const [iconUrl, setIconUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [typeStatus, setTypeStatus] = useState('active');
 
   const fileInputRef = useRef(null);
 
@@ -153,6 +154,7 @@ export default function DiamondTypesView() {
     setEditingType(null);
     setTypeName('');
     setIconUrl('');
+    setTypeStatus('active');
     setIsUploading(false);
     setIsModalOpen(true);
   };
@@ -162,6 +164,7 @@ export default function DiamondTypesView() {
     setEditingType(t);
     setTypeName(t.name || '');
     setIconUrl(t.image?.url || '');
+    setTypeStatus(t.status || 'active');
     setIsUploading(false);
     setIsModalOpen(true);
   };
@@ -293,7 +296,7 @@ export default function DiamondTypesView() {
       setSubmitting(true);
       const payload = {
         name: typeName.trim(),
-        status: 'active',
+        status: typeStatus,
       };
       if (iconUrl) {
         payload.image = { url: iconUrl };
@@ -407,6 +410,7 @@ export default function DiamondTypesView() {
                 <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
                 <th className="py-2 px-3 whitespace-nowrap">ICON</th>
                 <th className="py-2 px-3 whitespace-nowrap">DIAMOND TYPE</th>
+                <th className="py-2 px-3 text-center whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">STATUS</th>
                 <th className="py-2 px-3 whitespace-nowrap">CREATED DATE</th>
                 <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
@@ -414,13 +418,13 @@ export default function DiamondTypesView() {
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     Loading diamond types...
                   </td>
                 </tr>
               ) : filteredTypes.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     No diamond types found.
                   </td>
                 </tr>
@@ -471,6 +475,37 @@ export default function DiamondTypesView() {
                       {/* Diamond Type Name */}
                       <td className="py-2.5 px-3 whitespace-nowrap font-bold text-stone-900 text-xs">
                         {t.name}
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={t.status === 'active'}
+                            onClick={() => handleToggleStatus(t)}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                              t.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
+                            }`}
+                            title={`Click to set ${t.status === 'active' ? 'Inactive' : 'Active'}`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                t.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              t.status === 'active'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-stone-100 text-stone-500 border border-stone-200'
+                            }`}
+                          >
+                            {t.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Created Date */}

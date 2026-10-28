@@ -51,6 +51,7 @@ import StaticPagesView from './pages/admin/StaticPagesView';
 import { ThemeProvider } from './contexts/ThemeContext';
 
 const WebsiteThemesView = lazy(() => import('./pages/admin/WebsiteThemesView'));
+const GalleryView = lazy(() => import('./pages/admin/GalleryView'));
 
 function App() {
   return (
@@ -146,6 +147,10 @@ function App() {
             <Route path="/custjewellerybeforeafter" element={<BeforeAfterView />} />
             <Route path="/cust-jewellery-before-after" element={<BeforeAfterView />} />
             <Route path="/home-sections" element={<HomeSectionsView />} />
+            <Route path="/gallery" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading gallery…</div>}><GalleryView /></Suspense>} />
+            <Route path="/media-gallery" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading gallery…</div>}><GalleryView /></Suspense>} />
+            <Route path="/website/gallery" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading gallery…</div>}><GalleryView /></Suspense>} />
+            <Route path="/marketing/gallery" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading gallery…</div>}><GalleryView /></Suspense>} />
             <Route path="/website/themes" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading theme management…</div>}><WebsiteThemesView /></Suspense>} />
             <Route path="/static-pages" element={<StaticPagesView />} />
             <Route path="/website/static-pages" element={<StaticPagesView />} />

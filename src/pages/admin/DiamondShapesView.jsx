@@ -73,6 +73,7 @@ export default function DiamondShapesView() {
   const [iconUrl, setIconUrl] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [shapeStatus, setShapeStatus] = useState('active');
 
   const fileInputRef = useRef(null);
 
@@ -152,6 +153,7 @@ export default function DiamondShapesView() {
     setEditingShape(null);
     setShapeName('');
     setIconUrl('');
+    setShapeStatus('active');
     setIsUploading(false);
     setIsModalOpen(true);
   };
@@ -161,6 +163,7 @@ export default function DiamondShapesView() {
     setEditingShape(s);
     setShapeName(s.name || '');
     setIconUrl(s.image?.url || '');
+    setShapeStatus(s.status || 'active');
     setIsUploading(false);
     setIsModalOpen(true);
   };
@@ -292,7 +295,7 @@ export default function DiamondShapesView() {
       setSubmitting(true);
       const payload = {
         name: shapeName.trim(),
-        status: 'active',
+        status: shapeStatus,
       };
       if (iconUrl) {
         payload.image = { url: iconUrl };
@@ -376,6 +379,7 @@ export default function DiamondShapesView() {
                 <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
                 <th className="py-2 px-3 whitespace-nowrap">VISUAL SHAPE</th>
                 <th className="py-2 px-3 whitespace-nowrap">SHAPE NAME</th>
+                <th className="py-2 px-3 text-center whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">STATUS</th>
                 <th className="py-2 px-3 whitespace-nowrap">CREATED DATE</th>
                 <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
@@ -383,13 +387,13 @@ export default function DiamondShapesView() {
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     Loading diamond shapes...
                   </td>
                 </tr>
               ) : filteredShapes.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     No diamond shapes found.
                   </td>
                 </tr>
@@ -440,6 +444,37 @@ export default function DiamondShapesView() {
                         <span className={isRound ? 'text-[#8b6f4e]' : ''}>
                           {s.name}
                         </span>
+                      </td>
+
+                      {/* Status */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={s.status === 'active'}
+                            onClick={() => handleToggleStatus(s)}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                              s.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
+                            }`}
+                            title={`Click to set ${s.status === 'active' ? 'Inactive' : 'Active'}`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                s.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              s.status === 'active'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-stone-100 text-stone-500 border border-stone-200'
+                            }`}
+                          >
+                            {s.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Created Date */}
@@ -554,6 +589,36 @@ export default function DiamondShapesView() {
                   placeholder="e.g. Emerald, Princess"
                   className="w-full h-11 px-4 text-xs font-semibold rounded-lg border border-[#8f6d43]/60 bg-white text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
                 />
+              </div>
+
+              {/* Status Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-xl border border-stone-200 bg-stone-50/60">
+                <div>
+                  <span className="text-xs font-bold text-stone-800 block">Status</span>
+                  <span className="text-[11px] text-stone-400">
+                    Control visibility across storefront diamond filters
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={shapeStatus === 'active'}
+                    onClick={() => setShapeStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                      shapeStatus === 'active' ? 'bg-[#8f6d43]' : 'bg-stone-300'
+                    }`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        shapeStatus === 'active' ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs font-bold text-stone-800">
+                    {shapeStatus === 'active' ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
               </div>
 
               {/* Modal Footer Actions (Matches Screenshot 2) */}

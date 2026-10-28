@@ -18,7 +18,12 @@ import {
   HiOutlineSpeakerphone,
   HiOutlineBookOpen,
   HiOutlineDocumentReport,
+  HiOutlineTrendingUp,
+  HiOutlineUser,
   HiOutlineDocumentText,
+  HiOutlineViewGrid,
+  HiOutlineGift,
+  HiOutlineFolder,
 } from 'react-icons/hi';
 
 import {
@@ -48,7 +53,6 @@ export const navSections = [
       { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles, apiEndpoint: '/custom-inquiries' },
       { id: 'diamonds', title: 'Diamonds', path: '/diamonds', icon: IoDiamondOutline, apiEndpoint: '/diamonds' },
       { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
-      { id: 'reports', title: 'Reports', path: '/reports', icon: HiOutlineDocumentReport, apiEndpoint: '/analytics/overview' },
 
       // ─── 1. Catalog (Collapsible Submenu) ─────────────────────────────
       {
@@ -109,22 +113,64 @@ export const navSections = [
     ],
   },
 
-  // ─── Marketing Section ───────────────────────────────────────────────
+  // ─── Marketing Section (Grouped Submenus) ───────────────────────────
   {
     id: 'marketing',
     title: 'MARKETING',
     items: [
-      { id: 'home-sections', title: 'Home Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
-      { id: 'celebrate-gifts', title: 'Celebrate & Gifts', path: '/celebrate-gifts', icon: IoDiamondOutline, apiEndpoint: '/featured' },
-      { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
-      { id: 'offers', title: 'Offers', path: '/coupons', icon: HiOutlineTicket, apiEndpoint: '/coupons' },
-      { id: 'top-announcement', title: 'Top Announcement', path: '/top-announcements', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
-      { id: 'before-after', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineEye, apiEndpoint: '/cust-jewellery-before-after' },
-      { id: 'birthstones', title: 'Birthstones', path: '/birthstones', icon: IoDiamondOutline, apiEndpoint: '/birthstones' },
-      { id: 'instagram', title: 'Instagram Posts', path: '/instagram-posts', icon: HiOutlineCamera, apiEndpoint: '/instagram-posts' },
-      { id: 'blogs', title: 'Blog Articles', path: '/blogs', icon: HiOutlineBookOpen, apiEndpoint: '/blogs' },
-      { id: 'blog-categories', title: 'Blog Categories', path: '/blog-categories', icon: HiOutlineTag, apiEndpoint: '/blog-categories' },
-      { id: 'footer-management', title: 'Footer Management', path: '/footer-settings', icon: HiOutlineTemplate, apiEndpoint: '/footer-settings' },
+      // 1. Storefront Submenu
+      {
+        id: 'storefront',
+        title: 'Storefront',
+        path: '/storefront',
+        icon: HiOutlineViewGrid,
+        children: [
+          { id: 'home-sections', title: 'Home Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
+          { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
+          { id: 'top-announcement', title: 'Top Announcement', path: '/top-announcements', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
+          { id: 'footer-management', title: 'Footer Management', path: '/footer-settings', icon: HiOutlineTemplate, apiEndpoint: '/footer-settings' },
+        ],
+      },
+
+      // 2. Promotions & Gifts Submenu
+      {
+        id: 'promotions-gifts',
+        title: 'Promotions & Gifts',
+        path: '/promotions-gifts',
+        icon: HiOutlineTag,
+        children: [
+          { id: 'celebrate-gifts', title: 'Celebrate & Gifts', path: '/celebrate-gifts', icon: HiOutlineGift, apiEndpoint: '/featured' },
+          { id: 'offers', title: 'Offers', path: '/coupons', icon: HiOutlineTicket, apiEndpoint: '/coupons' },
+        ],
+      },
+
+      // 3. Jewelry Collections Submenu
+      {
+        id: 'jewelry-collections',
+        title: 'Jewelry Collections',
+        path: '/jewelry-collections',
+        icon: IoDiamondOutline,
+        children: [
+          { id: 'birthstones', title: 'Birthstones', path: '/birthstones', icon: IoDiamondOutline, apiEndpoint: '/birthstones' },
+          { id: 'before-after', title: 'Lookare Before/After', path: '/marketing/before-after', icon: HiOutlineEye, apiEndpoint: '/cust-jewellery-before-after' },
+        ],
+      },
+
+      // 4. Content & Social Submenu
+      {
+        id: 'content-social',
+        title: 'Content & Social',
+        path: '/content-social',
+        icon: HiOutlineBookOpen,
+        children: [
+          { id: 'instagram', title: 'Instagram Posts', path: '/instagram-posts', icon: HiOutlineCamera, apiEndpoint: '/instagram-posts' },
+          { id: 'blogs', title: 'Blog Articles', path: '/blogs', icon: HiOutlineBookOpen, apiEndpoint: '/blogs' },
+          { id: 'blog-categories', title: 'Blog Categories', path: '/blog-categories', icon: HiOutlineFolder, apiEndpoint: '/blog-categories' },
+          { id: 'gallery', title: 'Media Gallery', path: '/gallery', icon: HiOutlinePhotograph, apiEndpoint: '/gallery' },
+          { id: 'static-pages', title: 'Static Pages', path: '/static-pages', icon: HiOutlineDocumentText, apiEndpoint: '/static-pages' },
+          { id: 'website-themes', title: 'Themes', path: '/website/themes', icon: HiOutlineColorSwatch, apiEndpoint: '/website/themes' },
+        ],
+      },
     ],
   },
 
@@ -141,23 +187,14 @@ export const navSections = [
     ],
   },
 
-  // ─── Website Section ─────────────────────────────────────────────────
+  // ─── Analytics & Administration Section ──────────────────────────────
   {
-    id: 'website',
-    title: 'WEBSITE CONTENT',
+    id: 'analytics-administration',
+    title: 'ANALYTICS & ADMINISTRATION',
     items: [
-      { id: 'static-pages', title: 'Static Pages', path: '/static-pages', icon: HiOutlineDocumentText, apiEndpoint: '/static-pages' },
-      { id: 'website-themes', title: 'Themes', path: '/website/themes', icon: HiOutlineColorSwatch, apiEndpoint: '/website/themes' },
-    ],
-  },
-
-  // ─── System & Settings Section ───────────────────────────────────────
-  {
-    id: 'system',
-    title: 'SYSTEM & SETTINGS',
-    items: [
+      { id: 'reports', title: 'Reports', path: '/reports', icon: HiOutlineTrendingUp, apiEndpoint: '/analytics/overview' },
       { id: 'whatsapp', title: 'WhatsApp Connect', path: '/system/whatsapp', icon: HiOutlineChatAlt2 },
-      { id: 'profile', title: 'User Profile & Theme', path: '/profile', icon: HiOutlineUserGroup },
+      { id: 'profile', title: 'User Profile & Theme', path: '/profile', icon: HiOutlineUser },
       { id: 'settings', title: 'Settings', path: '/settings', icon: HiOutlineCog },
     ],
   },

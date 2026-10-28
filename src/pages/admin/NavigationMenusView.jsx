@@ -1605,9 +1605,6 @@ export default function NavigationMenusView() {
                               {showManualUrlInput ? 'Hide URL' : 'Paste URL'}
                             </button>
                           </div>
-                          <p className="text-[10px] text-stone-400 mt-1">
-                            Upload custom image (PNG/WEBP/SVG) or pick a preset below
-                          </p>
                         </div>
                       </div>
 

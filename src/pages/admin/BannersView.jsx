@@ -164,18 +164,27 @@ export default function BannersView() {
     return location.pathname.startsWith('/marketing/banners') ? '/marketing/banners' : '/banners';
   }, [location.pathname]);
 
-  // Determine current screen view mode: 'grid' (Screen 1) | 'list' (Screen 2) | 'form' (Screen 3)
+  // Determine current screen view mode: 'grid' (Screen 1) | 'list' (Screen 2 with edit modal)
   const viewMode = useMemo(() => {
-    if (location.pathname.endsWith('/new') || location.pathname.includes('/edit/')) {
-      return 'form';
-    }
     if (typeKey && BANNER_TYPES.some((t) => t.key === typeKey)) {
       return 'list';
     }
     return 'grid';
-  }, [location.pathname, typeKey]);
+  }, [typeKey]);
 
-  const { categories } = useCategoryLookup({ enabled: viewMode === 'form' });
+  // Modal open state for Add / Edit Banner
+  const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+
+  const handleCloseModal = () => {
+    setIsFormModalOpen(false);
+    resetForm();
+    setEditingBanner(null);
+    if (location.pathname.includes('/edit/') || location.pathname.endsWith('/new')) {
+      navigate(`${basePath}/${currentBannerType.key}`);
+    }
+  };
+
+  const { categories } = useCategoryLookup({ enabled: isFormModalOpen });
 
   // Current active banner type configuration
   const currentBannerType = useMemo(() => {
@@ -230,8 +239,7 @@ export default function BannersView() {
   const collectionSlotRef = useRef(null);
   const [collectionUploadStats, setCollectionUploadStats] = useState({});
 
-  // Screen 3 Live Preview State
-  const [previewDevice, setPreviewDevice] = useState('desktop'); // 'desktop' | 'mobile'
+
 
   // Screen 1: Banner counts by type
   const [bannerCounts, setBannerCounts] = useState({
@@ -318,9 +326,9 @@ export default function BannersView() {
     setSelectedIds([]);
   }, [typeKey, search, statusFilter, deviceFilter, sortBy]);
 
-  // Screen 3: Fetch navigation categories only when in form mode
+  // Fetch navigation categories when modal is open
   useEffect(() => {
-    if (viewMode !== 'form') return;
+    if (!isFormModalOpen) return;
     let cancelled = false;
     api.get('/categories/navigation')
       .then((res) => {
@@ -331,33 +339,35 @@ export default function BannersView() {
         if (!cancelled) setNavigationCategories([]);
       });
     return () => { cancelled = true; };
-  }, [viewMode]);
+  }, [isFormModalOpen]);
 
-  // Synchronize form when entering Edit mode via URL or state
+  // Synchronize modal state when entering Edit or New mode via URL
   useEffect(() => {
-    if (viewMode === 'form') {
-      if (bannerId) {
-        const existing = banners.find((b) => b._id === bannerId);
-        if (existing) {
-          populateFormWithBanner(existing);
-        } else {
-          // Attempt direct fetch
-          api.get(`/banners/${bannerId}`)
-            .then((res) => {
-              const b = res.data?.data;
-              if (b) populateFormWithBanner(b);
-            })
-            .catch(() => {
-              toast.error('Banner not found');
-              navigate(`${basePath}/${typeKey || 'herobanner'}`);
-            });
-        }
-      } else if (!editingBanner) {
-        // Fresh Add New form
-        resetForm();
+    if (location.pathname.endsWith('/new')) {
+      resetForm();
+      setEditingBanner(null);
+      setIsFormModalOpen(true);
+    } else if (bannerId) {
+      const existing = banners.find((b) => b._id === bannerId);
+      if (existing) {
+        populateFormWithBanner(existing);
+        setIsFormModalOpen(true);
+      } else {
+        api.get(`/banners/${bannerId}`)
+          .then((res) => {
+            const b = res.data?.data;
+            if (b) {
+              populateFormWithBanner(b);
+              setIsFormModalOpen(true);
+            }
+          })
+          .catch(() => {
+            toast.error('Banner not found');
+            navigate(`${basePath}/${typeKey || 'herobanner'}`);
+          });
       }
     }
-  }, [viewMode, bannerId]);
+  }, [location.pathname, bannerId, banners]);
 
   const populateFormWithBanner = (banner) => {
     setEditingBanner(banner);
@@ -559,7 +569,13 @@ export default function BannersView() {
         await savePendingThemeMedia(themeId, 'banner', savedBanner._id, pendingThemeImages);
       }
 
-      navigate(`${basePath}/${effectiveType}`);
+      setIsFormModalOpen(false);
+      resetForm();
+      setEditingBanner(null);
+      fetchListBanners();
+      if (location.pathname.includes('/edit/') || location.pathname.endsWith('/new')) {
+        navigate(`${basePath}/${effectiveType}`);
+      }
     } catch (err) {
       console.error('Error saving banner:', err);
       toast.error(err.response?.data?.message || 'Failed to save banner');
@@ -794,12 +810,13 @@ export default function BannersView() {
               type="button"
               onClick={() => {
                 resetForm();
-                navigate(`${basePath}/${currentBannerType.key}/new`);
+                setEditingBanner(null);
+                setIsFormModalOpen(true);
               }}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#8a6d4b] hover:bg-[#785b3a] text-white shadow-xs transition-all cursor-pointer active:scale-98"
             >
               <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-              <span>+ Add {currentBannerType.label}</span>
+              <span>Add {currentBannerType.label}</span>
             </button>
           </div>
         </div>
@@ -1037,24 +1054,17 @@ export default function BannersView() {
                         {/* ACTIONS */}
                         <td className="py-3.5 pr-6 pl-4 whitespace-nowrap text-right">
                           <div className="inline-flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            {/* Edit Pencil */}
+                            {/* Edit Pencil (Opens Popup Modal) */}
                             <button
                               type="button"
-                              onClick={() => navigate(`${basePath}/${currentBannerType.key}/edit/${banner._id}`)}
+                              onClick={() => {
+                                populateFormWithBanner(banner);
+                                setIsFormModalOpen(true);
+                              }}
                               title="Edit banner"
-                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-[#faf6f0] text-stone-600 hover:text-[#8a6d4b] transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
                             >
                               <HiOutlinePencil className="w-3.5 h-3.5 stroke-[1.8]" />
-                            </button>
-
-                            {/* Duplicate */}
-                            <button
-                              type="button"
-                              onClick={(e) => handleDuplicate(banner, e)}
-                              title="Duplicate banner"
-                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
-                            >
-                              <HiOutlineDuplicate className="w-3.5 h-3.5 stroke-[1.8]" />
                             </button>
 
                             {/* Delete Trash */}
@@ -1095,526 +1105,396 @@ export default function BannersView() {
             />
           </div>
         </div>
+
+        {/* Hidden inputs for image uploading */}
+        <input
+          ref={desktopInputRef}
+          type="file"
+          onChange={(e) => handleFileUpload(e.target.files?.[0], 'desktop')}
+          accept="image/png, image/jpeg, image/webp"
+          className="hidden"
+        />
+        <input
+          ref={mobileInputRef}
+          type="file"
+          onChange={(e) => handleFileUpload(e.target.files?.[0], 'mobile')}
+          accept="image/png, image/jpeg, image/webp"
+          className="hidden"
+        />
+
+        {/* ─── ADD / EDIT BANNER POPUP MODAL ───────────────────────── */}
+        {isFormModalOpen && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-stone-900/60 backdrop-blur-xs overflow-y-auto animate-fadeIn"
+            onClick={handleCloseModal}
+          >
+            <div
+              className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden my-auto animate-scaleIn"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className="bg-[#faf8f5] px-5 sm:px-6 py-4 border-b border-stone-150 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-[#e8d8c0] flex items-center justify-center text-[#8a6d4b] shadow-2xs shrink-0">
+                    <ActiveBannerIcon className="w-5 h-5 stroke-[1.8]" />
+                  </div>
+                  <div>
+                    <h2 className="text-base sm:text-lg font-bold text-stone-900 font-playfair tracking-tight">
+                      {editingBanner ? `Edit ${currentBannerType.label}` : `Add ${currentBannerType.label}`}
+                    </h2>
+                    <p className="text-[11px] sm:text-xs text-stone-500 font-normal">
+                      Upload banner images and set details for {currentBannerType.label.toLowerCase()}.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="w-8 h-8 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                  aria-label="Close modal"
+                >
+                  <HiOutlineX className="w-4 h-4 stroke-2" />
+                </button>
+              </div>
+
+              {/* Modal Body (Scrollable) */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 scrollbar-thin">
+                {/* 1. Banner Details Card */}
+                <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
+                  <h3 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+                    Banner Details
+                  </h3>
+
+                  {/* Title */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-stone-700">
+                      Title <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={title}
+                      onChange={(e) => setTitle(e.target.value)}
+                      placeholder="Enter banner title"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-stone-700">
+                      Description
+                    </label>
+                    <input
+                      type="text"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Enter short description (optional)"
+                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+                    />
+                  </div>
+
+                  {/* Link / URL */}
+                  <div className="space-y-1.5">
+                    <label className="block text-xs font-semibold text-stone-700">
+                      Link / URL
+                    </label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={destinationLink}
+                        onChange={(e) => setDestinationLink(e.target.value)}
+                        placeholder="https://"
+                        className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+                      />
+                      <Dropdown
+                        value={linkTarget}
+                        onChange={setLinkTarget}
+                        options={[
+                          { value: '_self', label: 'Open in same tab' },
+                          { value: '_blank', label: 'Open in new tab' },
+                        ]}
+                        buttonClassName="h-10 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white whitespace-nowrap"
+                        menuClassName="z-30"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Collection Banner extra options */}
+                  {currentBannerType.key === 'collectionbanner' && (
+                    <div className="pt-2 border-t border-stone-200/60 space-y-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-stone-700 mb-1">
+                            Collection Group
+                          </label>
+                          <Dropdown
+                            value={collectionGroup}
+                            onChange={setCollectionGroup}
+                            options={[
+                              { value: 'gold', label: 'Gold Collection' },
+                              { value: 'silver', label: 'Silver Collection' },
+                              { value: 'spiritual', label: 'Spiritual Collection' },
+                            ]}
+                            buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                            menuClassName="z-30"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-semibold text-stone-700 mb-1">
+                            Associated Category
+                          </label>
+                          <Dropdown
+                            value={selectedCategory}
+                            onChange={setSelectedCategory}
+                            options={[
+                              { value: '', label: 'Select Category (Optional)' },
+                              ...categories.map((c) => ({ value: c._id, label: c.name })),
+                            ]}
+                            buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                            menuClassName="z-30"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. Banner Images Card */}
+                <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
+                  <h3 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+                    Banner Images
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Desktop Banner Upload Box */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-stone-700">
+                          Desktop Banner <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-[10.5px] text-stone-400 font-normal">
+                          (Recommended 1920 × 600)
+                        </span>
+                      </div>
+
+                      {imageUrl ? (
+                        <div className="relative rounded-2xl border border-stone-200 overflow-hidden bg-stone-900 aspect-[16/7] group shadow-2xs">
+                          <img
+                            src={getMediaUrl(imageUrl)}
+                            alt="Desktop Banner"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => desktopInputRef.current?.click()}
+                              className="px-3 py-1.5 rounded-lg bg-white/90 text-stone-800 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
+                            >
+                              Replace
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveUploadedImage('desktop')}
+                              className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          {desktopUploadStats && (
+                            <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px]">
+                              {formatBytes(desktopUploadStats.compressedSize)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => desktopInputRef.current?.click()}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            handleFileUpload(e.dataTransfer?.files?.[0], 'desktop');
+                          }}
+                          className="border-2 border-dashed border-stone-300 hover:border-[#8a6d4b] bg-white hover:bg-[#fbf5ed]/40 rounded-2xl p-5 text-center cursor-pointer transition-all aspect-[16/7] flex flex-col items-center justify-center group shadow-2xs"
+                        >
+                          {isUploadingDesktop ? (
+                            <div className="space-y-2">
+                              <div className="w-6 h-6 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto" />
+                              <p className="text-xs text-stone-500 font-medium">Uploading & compressing...</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="w-10 h-10 rounded-full bg-[#faf6f0] border border-stone-200 flex items-center justify-center text-stone-500 group-hover:text-[#8a6d4b] group-hover:border-[#8a6d4b]/40 mb-2 transition-colors shadow-2xs">
+                                <HiOutlineCloudUpload className="w-5 h-5 stroke-[1.8]" />
+                              </div>
+                              <p className="text-xs font-semibold text-stone-800">
+                                Click to upload
+                                <span className="font-normal text-stone-500"> or drag and drop</span>
+                              </p>
+                              <p className="text-[10.5px] text-stone-400 mt-0.5">
+                                JPG, PNG, WebP (Max 5MB)
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Mobile Banner Upload Box */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-stone-700">
+                          Mobile Banner <span className="text-red-500">*</span>
+                        </label>
+                        <span className="text-[10.5px] text-stone-400 font-normal">
+                          (Recommended 768 × 1024)
+                        </span>
+                      </div>
+
+                      {mobileImageUrl ? (
+                        <div className="relative rounded-2xl border border-stone-200 overflow-hidden bg-stone-900 aspect-[16/7] group shadow-2xs">
+                          <img
+                            src={getMediaUrl(mobileImageUrl)}
+                            alt="Mobile Banner"
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => mobileInputRef.current?.click()}
+                              className="px-3 py-1.5 rounded-lg bg-white/90 text-stone-800 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
+                            >
+                              Replace
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveUploadedImage('mobile')}
+                              className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                          {mobileUploadStats && (
+                            <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px]">
+                              {formatBytes(mobileUploadStats.compressedSize)}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div
+                          onClick={() => mobileInputRef.current?.click()}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            handleFileUpload(e.dataTransfer?.files?.[0], 'mobile');
+                          }}
+                          className="border-2 border-dashed border-stone-300 hover:border-[#8a6d4b] bg-white hover:bg-[#fbf5ed]/40 rounded-2xl p-5 text-center cursor-pointer transition-all aspect-[16/7] flex flex-col items-center justify-center group shadow-2xs"
+                        >
+                          {isUploadingMobile ? (
+                            <div className="space-y-2">
+                              <div className="w-6 h-6 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto" />
+                              <p className="text-xs text-stone-500 font-medium">Uploading & compressing...</p>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="w-10 h-10 rounded-full bg-[#faf6f0] border border-stone-200 flex items-center justify-center text-stone-500 group-hover:text-[#8a6d4b] group-hover:border-[#8a6d4b]/40 mb-2 transition-colors shadow-2xs">
+                                <HiOutlineCloudUpload className="w-5 h-5 stroke-[1.8]" />
+                              </div>
+                              <p className="text-xs font-semibold text-stone-800">
+                                Click to upload
+                                <span className="font-normal text-stone-500"> or drag and drop</span>
+                              </p>
+                              <p className="text-[10.5px] text-stone-400 mt-0.5">
+                                JPG, PNG, WebP (Max 5MB)
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Display Settings Card */}
+                <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
+                  <h3 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
+                    Display Settings
+                  </h3>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Status */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Status
+                      </label>
+                      <Dropdown
+                        value={formStatus}
+                        onChange={setFormStatus}
+                        options={[
+                          { value: 'active', label: 'Published' },
+                          { value: 'inactive', label: 'Draft' },
+                        ]}
+                        buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                        menuClassName="z-30"
+                      />
+                    </div>
+
+                    {/* Display Order */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Display Order <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={order}
+                        onChange={(e) => setOrder(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-5 sm:px-6 py-3.5 border-t border-stone-150 bg-stone-50/80 flex items-center justify-between gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-xs sm:text-sm font-semibold text-stone-700 transition cursor-pointer shadow-2xs"
+                >
+                  Cancel
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => handleSaveBanner('inactive')}
+                    className="px-4 py-2 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-xs sm:text-sm font-semibold text-stone-700 transition cursor-pointer shadow-2xs disabled:opacity-50"
+                  >
+                    Save as Draft
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={submitting}
+                    onClick={() => handleSaveBanner('active')}
+                    className="px-5 py-2 rounded-xl bg-[#8a6d4b] hover:bg-[#785b3a] text-white text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                  >
+                    {submitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                    <span>{editingBanner ? 'Update Banner' : 'Publish Banner'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  // =========================================================================
-  // RENDER SCREEN 3: ADD / EDIT BANNER FORM WITH LIVE PREVIEW
-  // =========================================================================
-  const isEditing = Boolean(editingBanner?._id);
-  const activeType = currentBannerType;
-
-  return (
-    <div className="space-y-6 pb-20 animate-fadeIn">
-      {/* Hidden File Inputs for Presigned Upload */}
-      <input
-        type="file"
-        ref={desktopInputRef}
-        onChange={(e) => handleFileUpload(e.target.files?.[0], 'desktop')}
-        accept="image/png, image/jpeg, image/webp"
-        className="hidden"
-      />
-      <input
-        type="file"
-        ref={mobileInputRef}
-        onChange={(e) => handleFileUpload(e.target.files?.[0], 'mobile')}
-        accept="image/png, image/jpeg, image/webp"
-        className="hidden"
-      />
-
-      {/* Breadcrumb matching screenshot */}
-      <div className="flex items-center gap-2 text-xs font-medium text-stone-500">
-        <span>Website Content</span>
-        <HiOutlineChevronRight className="w-3.5 h-3.5 text-stone-400" />
-        <button
-          type="button"
-          onClick={() => navigate(basePath)}
-          className="hover:text-stone-900 transition-colors cursor-pointer"
-        >
-          Banners
-        </button>
-        <HiOutlineChevronRight className="w-3.5 h-3.5 text-stone-400" />
-        <button
-          type="button"
-          onClick={() => navigate(`${basePath}/${activeType.key}`)}
-          className="hover:text-stone-900 transition-colors cursor-pointer"
-        >
-          {activeType.label}
-        </button>
-        <HiOutlineChevronRight className="w-3.5 h-3.5 text-stone-400" />
-        <span className="text-stone-900 font-semibold">{isEditing ? 'Edit Banner' : 'Add Banner'}</span>
-      </div>
-
-      {/* Header with Back button and Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => navigate(`${basePath}/${activeType.key}`)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-          >
-            <HiOutlineArrowLeft className="w-3.5 h-3.5" />
-            <span>Back</span>
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-stone-900 tracking-tight font-playfair">
-              {isEditing ? `Edit ${activeType.label}` : `Add ${activeType.label}`}
-            </h1>
-            <p className="text-xs text-stone-500 font-normal mt-0.5">
-              Upload banner images and set details for {activeType.label.toLowerCase()}.
-            </p>
-          </div>
-        </div>
-
-        {/* Save Actions */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={() => handleSaveBanner('inactive')}
-            className="px-4 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs sm:text-sm font-semibold transition-all cursor-pointer shadow-2xs disabled:opacity-50"
-          >
-            Save as Draft
-          </button>
-
-          <button
-            type="button"
-            disabled={submitting}
-            onClick={() => handleSaveBanner('active')}
-            className="px-5 py-2.5 rounded-xl bg-[#8a6d4b] hover:bg-[#785b3a] text-white text-xs sm:text-sm font-semibold transition-all cursor-pointer shadow-xs active:scale-98 disabled:opacity-50 flex items-center gap-2"
-          >
-            {submitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-            <span>Publish Banner</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Two Column Layout matching screenshot */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Left Column (Forms & Details) - 7 cols */}
-        <div className="lg:col-span-7 space-y-6">
-          {/* Card 1: Banner Details */}
-          <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-xs space-y-4">
-            <h2 className="text-sm font-bold text-stone-900">
-              Banner Details
-            </h2>
-
-            {/* Title */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-stone-700">
-                Title <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Enter banner title"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
-              />
-            </div>
-
-            {/* Description */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-stone-700">
-                Description
-              </label>
-              <input
-                type="text"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Enter short description (optional)"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
-              />
-            </div>
-
-            {/* Link / URL */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-stone-700">
-                Link / URL
-              </label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={destinationLink}
-                  onChange={(e) => setDestinationLink(e.target.value)}
-                  placeholder="https://"
-                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
-                />
-                <Dropdown
-                  value={linkTarget}
-                  onChange={setLinkTarget}
-                  options={[
-                    { value: '_self', label: 'Open in same tab' },
-                    { value: '_blank', label: 'Open in new tab' },
-                  ]}
-                  buttonClassName="h-10 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white whitespace-nowrap"
-                  menuClassName="z-30"
-                />
-              </div>
-            </div>
-
-            {/* If Collection Banner, show group & categories */}
-            {activeType.key === 'collectionbanner' && (
-              <div className="pt-2 border-t border-stone-100 space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
-                      Collection Group
-                    </label>
-                    <Dropdown
-                      value={collectionGroup}
-                      onChange={setCollectionGroup}
-                      options={[
-                        { value: 'gold', label: 'Gold Collection' },
-                        { value: 'silver', label: 'Silver Collection' },
-                        { value: 'spiritual', label: 'Spiritual Collection' },
-                      ]}
-                      buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
-                      menuClassName="z-30"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-stone-700 mb-1">
-                      Associated Category
-                    </label>
-                    <Dropdown
-                      value={selectedCategory}
-                      onChange={setSelectedCategory}
-                      options={[
-                        { value: '', label: 'Select Category (Optional)' },
-                        ...categories.map((c) => ({ value: c._id, label: c.name })),
-                      ]}
-                      buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
-                      menuClassName="z-30"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Card 2: Images (Desktop Banner & Mobile Banner) */}
-          <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-xs space-y-4">
-            <h2 className="text-sm font-bold text-stone-900">
-              Images
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Desktop Banner Upload Box */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-stone-700">
-                    Desktop Banner <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[11px] text-stone-400 font-normal">
-                    (Recommended 1920 × 600)
-                  </span>
-                </div>
-
-                {imageUrl ? (
-                  <div className="relative rounded-2xl border border-stone-200 overflow-hidden bg-stone-900 aspect-[16/7] group shadow-2xs">
-                    <img
-                      src={getMediaUrl(imageUrl)}
-                      alt="Desktop Banner"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => desktopInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg bg-white/90 text-stone-800 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
-                      >
-                        Replace
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveUploadedImage('desktop')}
-                        className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    {desktopUploadStats && (
-                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px]">
-                        {formatBytes(desktopUploadStats.compressedSize)}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => desktopInputRef.current?.click()}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      handleFileUpload(e.dataTransfer?.files?.[0], 'desktop');
-                    }}
-                    className="border-2 border-dashed border-stone-200 hover:border-[#8a6d4b] bg-stone-50/50 hover:bg-[#fbf5ed]/30 rounded-2xl p-6 text-center cursor-pointer transition-all aspect-[16/7] flex flex-col items-center justify-center group"
-                  >
-                    {isUploadingDesktop ? (
-                      <div className="space-y-2">
-                        <div className="w-6 h-6 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto" />
-                        <p className="text-xs text-stone-500 font-medium">Uploading & compressing...</p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 group-hover:text-[#8a6d4b] group-hover:border-[#8a6d4b]/40 mb-2 transition-colors shadow-2xs">
-                          <HiOutlineCloudUpload className="w-5 h-5 stroke-[1.8]" />
-                        </div>
-                        <p className="text-xs font-semibold text-stone-800">
-                          Click to upload
-                          <span className="font-normal text-stone-500"> or drag and drop</span>
-                        </p>
-                        <p className="text-[11px] text-stone-400 mt-0.5">
-                          JPG, PNG, WebP (Max 5MB)
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Mobile Banner Upload Box */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-stone-700">
-                    Mobile Banner <span className="text-red-500">*</span>
-                  </label>
-                  <span className="text-[11px] text-stone-400 font-normal">
-                    (Recommended 768 × 1024)
-                  </span>
-                </div>
-
-                {mobileImageUrl ? (
-                  <div className="relative rounded-2xl border border-stone-200 overflow-hidden bg-stone-900 aspect-[16/7] group shadow-2xs">
-                    <img
-                      src={getMediaUrl(mobileImageUrl)}
-                      alt="Mobile Banner"
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => mobileInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg bg-white/90 text-stone-800 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
-                      >
-                        Replace
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveUploadedImage('mobile')}
-                        className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                    {mobileUploadStats && (
-                      <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-white text-[10px]">
-                        {formatBytes(mobileUploadStats.compressedSize)}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => mobileInputRef.current?.click()}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      handleFileUpload(e.dataTransfer?.files?.[0], 'mobile');
-                    }}
-                    className="border-2 border-dashed border-stone-200 hover:border-[#8a6d4b] bg-stone-50/50 hover:bg-[#fbf5ed]/30 rounded-2xl p-6 text-center cursor-pointer transition-all aspect-[16/7] flex flex-col items-center justify-center group"
-                  >
-                    {isUploadingMobile ? (
-                      <div className="space-y-2">
-                        <div className="w-6 h-6 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto" />
-                        <p className="text-xs text-stone-500 font-medium">Uploading & compressing...</p>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="w-10 h-10 rounded-full bg-white border border-stone-200 flex items-center justify-center text-stone-500 group-hover:text-[#8a6d4b] group-hover:border-[#8a6d4b]/40 mb-2 transition-colors shadow-2xs">
-                          <HiOutlineCloudUpload className="w-5 h-5 stroke-[1.8]" />
-                        </div>
-                        <p className="text-xs font-semibold text-stone-800">
-                          Click to upload
-                          <span className="font-normal text-stone-500"> or drag and drop</span>
-                        </p>
-                        <p className="text-[11px] text-stone-400 mt-0.5">
-                          JPG, PNG, WebP (Max 5MB)
-                        </p>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Display Settings */}
-          <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-xs space-y-4">
-            <h2 className="text-sm font-bold text-stone-900">
-              Display Settings
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Status */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-stone-700">
-                  Status
-                </label>
-                <Dropdown
-                  value={formStatus}
-                  onChange={setFormStatus}
-                  options={[
-                    { value: 'active', label: 'Published' },
-                    { value: 'inactive', label: 'Draft' },
-                  ]}
-                  buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
-                  menuClassName="z-30"
-                />
-              </div>
-
-              {/* Display Order */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-stone-700">
-                  Display Order <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  value={order}
-                  onChange={(e) => setOrder(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column (Live Visual Preview) - 5 cols */}
-        <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-24">
-          <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-xs space-y-4">
-            {/* Preview Header & Device Tabs */}
-            <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold text-stone-900">
-                Preview
-              </h2>
-
-              <div className="inline-flex rounded-xl p-1 bg-stone-100 border border-stone-200/60">
-                <button
-                  type="button"
-                  onClick={() => setPreviewDevice('desktop')}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    previewDevice === 'desktop'
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-500 hover:text-stone-800'
-                  }`}
-                >
-                  <HiOutlineDesktopComputer className="w-3.5 h-3.5" />
-                  <span>Desktop View</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setPreviewDevice('mobile')}
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    previewDevice === 'mobile'
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-500 hover:text-stone-800'
-                  }`}
-                >
-                  <HiOutlineDeviceMobile className="w-3.5 h-3.5" />
-                  <span>Mobile View</span>
-                </button>
-              </div>
-            </div>
-
-            {/* Live Canvas Preview Frame matching screenshot */}
-            {previewDevice === 'desktop' ? (
-              /* Desktop Widescreen Preview */
-              <div className="relative rounded-2xl overflow-hidden bg-stone-950 aspect-[16/8] shadow-lg border border-stone-800 flex items-center">
-                {/* Background Image */}
-                {imageUrl && (
-                  <img
-                    src={getMediaUrl(imageUrl)}
-                    alt="Desktop Preview"
-                    className="absolute inset-0 w-full h-full object-cover opacity-85"
-                  />
-                )}
-
-                {/* Gradient Overlay for text contrast */}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/85 via-black/45 to-black/30" />
-
-                {/* Banner Content Live Render */}
-                <div className="relative z-10 p-6 sm:p-8 max-w-sm space-y-2.5">
-                  <div className="text-[10px] tracking-[0.25em] text-[#d4af37] font-semibold uppercase font-sans">
-                    NEIRAH JEWELS
-                  </div>
-
-                  <h3 className="text-xl sm:text-2xl font-bold text-white font-playfair tracking-tight leading-tight drop-shadow-md">
-                    {title || 'Banner Title'}
-                  </h3>
-
-                  {description && (
-                    <p className="text-[11px] sm:text-xs text-stone-200 font-light tracking-wide drop-shadow leading-relaxed">
-                      {description}
-                    </p>
-                  )}
-
-                  <div className="pt-2">
-                    <span className="inline-flex items-center px-4 py-2 rounded-full text-[11px] font-bold tracking-widest uppercase bg-[#8a6d4b] text-white shadow-md">
-                      SHOP NOW
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* Mobile Portrait Preview Mockup */
-              <div className="py-2">
-                <div className="max-w-[260px] mx-auto aspect-[9/16] rounded-[28px] border-[5px] border-stone-800 bg-stone-950 overflow-hidden relative shadow-xl flex flex-col justify-end p-5 text-center">
-                  {/* Smartphone top bar simulation */}
-                  <div className="absolute top-2.5 inset-x-0 flex justify-center z-20">
-                    <div className="w-16 h-3 bg-stone-800 rounded-full" />
-                  </div>
-
-                  {/* Mobile Image */}
-                  {(mobileImageUrl || imageUrl) && (
-                    <img
-                      src={getMediaUrl(mobileImageUrl) || getMediaUrl(imageUrl)}
-                      alt="Mobile Preview"
-                      className="absolute inset-0 w-full h-full object-cover opacity-85"
-                    />
-                  )}
-
-                  {/* Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/20" />
-
-                  {/* Live Mobile Content */}
-                  <div className="relative z-10 space-y-2">
-                    <div className="text-[9px] tracking-[0.2em] text-[#d4af37] font-semibold uppercase">
-                      NEIRAH JEWELS
-                    </div>
-
-                    <h3 className="text-base font-bold text-white font-playfair tracking-tight leading-snug">
-                      {title || 'Timeless Elegance'}
-                    </h3>
-
-                    <p className="text-[10px] text-stone-300 font-light line-clamp-2">
-                      {description || 'Discover our latest collection'}
-                    </p>
-
-                    <div className="pt-1">
-                      <span className="w-full py-1.5 px-4 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#8a6d4b] text-white shadow-md inline-block">
-                        SHOP NOW
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  // Fallback redirect to list
+  return null;
 }

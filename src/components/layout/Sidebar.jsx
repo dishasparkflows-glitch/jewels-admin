@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../../api/axios';
 import { getMediaUrl } from '../../utils/imageUrl';
+import { hexToRgb } from '../../utils/themeUtils';
 import {
   HiOutlineChevronRight,
   HiOutlineChevronDown,
@@ -27,6 +28,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
     isMobileViewport,
     mobileSidebarOpen,
     setMobileSidebarOpen,
+    currentTheme,
   } = useTheme();
 
   const isOpen = propIsOpen !== undefined ? propIsOpen : sidebarOpen;
@@ -35,12 +37,16 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   const isRight = sidebarPosition === 'right';
   const isVisible = isMobileViewport ? mobileOpen : isOpen;
 
-  // Open existing submenus by default matching portal screenshots
+  const themeRgb = hexToRgb(currentTheme?.primary || '#8b6f4e');
+  const activeBg = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.14)`;
+  const activeBorder = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.32)`;
+  const activeGlow = `0 0 10px rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.55)`;
+  const activeShadow = `0 1px 3px rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.12)`;
+  const activeParentBg = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.08)`;
+
+  // Only open catalog submenu by default; other submenus remain closed
   const [openSubmenus, setOpenSubmenus] = useState({
-    'diamond-config': true,
-    'product-config': true,
-    'pricing-hub': true,
-    catalog: false,
+    catalog: true,
   });
 
   const [brandLogo, setBrandLogo] = useState({ desktop: '', mobile: '' });
@@ -136,6 +142,18 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
           location.pathname.startsWith('/banners/') ||
           location.pathname === '/marketing/banners' ||
           location.pathname === '/website-sections')) ||
+      (childPath === '/gallery' &&
+        (location.pathname === '/gallery' ||
+          location.pathname === '/media-gallery' ||
+          location.pathname === '/website/gallery' ||
+          location.pathname === '/marketing/gallery')) ||
+      (childPath === '/static-pages' &&
+        (location.pathname === '/static-pages' ||
+          location.pathname.startsWith('/static-pages/'))) ||
+      (childPath === '/website/themes' &&
+        (location.pathname === '/website/themes' ||
+          location.pathname.startsWith('/website/themes') ||
+          location.pathname === '/themes')) ||
       (childPath === '/home-sections' &&
         (location.pathname === '/home-sections' || location.pathname === '/marketing/home-sections')) ||
       (childPath === '/blogs' &&
@@ -310,16 +328,41 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                     key={item.id || item.path}
                     to={item.path}
                     onClick={onMobileClose}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-xl text-[13px] font-medium transition-all duration-150 cursor-pointer ${
+                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all duration-150 cursor-pointer overflow-hidden ${
                       isActive
-                        ? 'bg-[#F5EFE8] text-[#1C1917] font-semibold'
-                        : 'text-[#3E3832] hover:text-[#1C1917] hover:bg-[#FAF6F1]'
+                        ? 'sidebar-item-active font-bold'
+                        : 'sidebar-item-inactive text-[#443D37] hover:text-[#1C1917] font-medium'
                     }`}
+                    style={
+                      isActive
+                        ? {
+                            backgroundColor: activeBg,
+                            color: currentTheme?.primary || '#8b6f4e',
+                            borderWidth: '1px',
+                            borderStyle: 'solid',
+                            borderColor: activeBorder,
+                            boxShadow: activeShadow,
+                          }
+                        : {}
+                    }
                   >
+                    {/* Active accent vertical line on the side of the button */}
+                    {isActive && (
+                      <span
+                        className="absolute left-0 top-1 bottom-1 w-[4.5px] rounded-r-md transition-all duration-200"
+                        style={{
+                          backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
+                          boxShadow: activeGlow,
+                        }}
+                      />
+                    )}
                     <Icon
-                      className={`w-4 h-4 shrink-0 transition-colors ${
-                        isActive ? 'text-[#9A724A]' : 'text-[#87786B]'
-                      }`}
+                      className="w-4 h-4 shrink-0 transition-colors"
+                      style={
+                        isActive
+                          ? { color: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }
+                          : { color: '#786e64' }
+                      }
                     />
                     <span className="truncate">{item.title}</span>
                   </NavLink>
@@ -335,21 +378,47 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                   <button
                     type="button"
                     onClick={() => toggleSubmenu(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-[13px] transition-colors cursor-pointer group ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition-colors cursor-pointer group relative overflow-hidden ${
                       isSubOpen || isAnyChildActive
-                        ? 'text-[#9A724A] font-semibold bg-[#FAF6F1]'
-                        : 'text-[#3E3832] hover:text-[#1C1917] hover:bg-[#FAF6F1] font-medium'
+                        ? 'font-bold'
+                        : 'sidebar-item-inactive text-[#443D37] hover:text-[#1C1917] font-medium'
                     }`}
+                    style={
+                      isSubOpen || isAnyChildActive
+                        ? {
+                            backgroundColor: activeParentBg,
+                            color: currentTheme?.primary || '#8b6f4e',
+                          }
+                        : {}
+                    }
                   >
+                    {/* Collapsed parent with active child gets the indicator line */}
+                    {isAnyChildActive && !isSubOpen && (
+                      <span
+                        className="absolute left-0 top-1.5 bottom-1.5 w-[4.5px] rounded-r-md transition-all duration-200"
+                        style={{
+                          backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
+                          boxShadow: activeGlow,
+                        }}
+                      />
+                    )}
                     <div className="flex items-center gap-2.5 min-w-0">
                       <Icon
-                        className={`w-4 h-4 shrink-0 transition-colors ${
-                          isSubOpen || isAnyChildActive ? 'text-[#9A724A]' : 'text-[#87786B]'
-                        }`}
+                        className="w-4 h-4 shrink-0 transition-colors"
+                        style={
+                          isSubOpen || isAnyChildActive
+                            ? { color: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }
+                            : { color: '#786e64' }
+                        }
                       />
                       <span className="truncate text-left">{item.title}</span>
                     </div>
-                    <span className="text-stone-400 group-hover:text-stone-600 transition-colors shrink-0 ml-1">
+                    <span
+                      className="transition-colors shrink-0 ml-1"
+                      style={{
+                        color: isSubOpen || isAnyChildActive ? (currentTheme?.primary || '#8b6f4e') : '#a89d91',
+                      }}
+                    >
                       {isSubOpen ? (
                         <HiOutlineChevronUp className="w-3.5 h-3.5 stroke-2" />
                       ) : (
@@ -370,16 +439,41 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                             key={child.id || child.path}
                             to={child.path}
                             onClick={onMobileClose}
-                            className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-[12.5px] transition-colors cursor-pointer ${
+                            className={`relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] transition-all duration-150 cursor-pointer overflow-hidden ${
                               isChildActive
-                                ? 'bg-[#F5EFE8] text-[#1C1917] font-semibold'
-                                : 'text-[#504840] hover:text-[#1C1917] hover:bg-[#FAF6F1] font-normal'
+                                ? 'sidebar-item-active font-bold'
+                                : 'sidebar-item-inactive text-[#504840] hover:text-[#1C1917] font-normal'
                             }`}
+                            style={
+                              isChildActive
+                                ? {
+                                    backgroundColor: activeBg,
+                                    color: currentTheme?.primary || '#8b6f4e',
+                                    borderWidth: '1px',
+                                    borderStyle: 'solid',
+                                    borderColor: activeBorder,
+                                    boxShadow: activeShadow,
+                                  }
+                                : {}
+                            }
                           >
+                            {/* Active accent vertical line on the side of the button */}
+                            {isChildActive && (
+                              <span
+                                className="absolute left-0 top-1 bottom-1 w-[4.5px] rounded-r-md transition-all duration-200"
+                                style={{
+                                  backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
+                                  boxShadow: activeGlow,
+                                }}
+                              />
+                            )}
                             <ChildIcon
-                              className={`w-4 h-4 shrink-0 transition-colors ${
-                                isChildActive ? 'text-[#9A724A]' : 'text-[#87786B]'
-                              }`}
+                              className="w-4 h-4 shrink-0 transition-colors"
+                              style={
+                                isChildActive
+                                  ? { color: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }
+                                  : { color: '#87786B' }
+                              }
                             />
                             <span className="truncate flex-1 text-left">{child.title}</span>
                           </NavLink>
@@ -396,50 +490,87 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
 
       {/* ─── Bottom User Profile Footer (Matches Screenshot) ──── */}
       <div className="p-3 border-t border-[#EDE8E1]/80 flex-shrink-0 bg-[#FDFCFB]">
-        <div
-          onClick={() => {
-            navigate('/profile');
-            onMobileClose?.();
-          }}
-          className="flex items-center justify-between p-2 rounded-xl border border-[#EDE8E1] bg-white hover:bg-[#FAF6F1] transition-colors cursor-pointer group"
-          title="View Profile & Theme Options"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 transition-transform group-hover:scale-105"
-              style={{
-                backgroundColor: '#F5EFE8',
-                color: '#9A724A',
-              }}
-            >
-              {user?.firstName?.[0] || 'S'}
-            </div>
-            {isVisible && (
-              <div className="flex flex-col min-w-0 text-left">
-                <span className="text-xs font-bold text-stone-900 truncate group-hover:text-black">
-                  {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
-                </span>
-                <span className="text-[10px] text-stone-400 truncate">
-                  {user?.email || 'superadmin@jewels.com'}
-                </span>
-              </div>
-            )}
-          </div>
+        {(() => {
+          const isProfileActive =
+            location.pathname === '/profile' ||
+            location.pathname === '/theme' ||
+            location.pathname === '/settings/profile' ||
+            location.pathname === '/user-profile';
 
-          {isVisible && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                logout();
+          return (
+            <div
+              onClick={() => {
+                navigate('/profile');
+                onMobileClose?.();
               }}
-              title="Sign Out"
-              className="p-1 text-stone-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+              className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer group ${
+                isProfileActive
+                  ? 'sidebar-item-active'
+                  : 'border-[#EDE8E1] bg-white hover:bg-[#FAF6F1]'
+              }`}
+              style={
+                isProfileActive
+                  ? {
+                      backgroundColor: activeBg,
+                      borderColor: activeBorder,
+                      boxShadow: activeShadow,
+                    }
+                  : {}
+              }
+              title="View Profile & Theme Options"
             >
-              <HiOutlineLogout className="w-4 h-4" />
-            </button>
-          )}
-        </div>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div
+                  className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs flex-shrink-0 transition-transform group-hover:scale-105"
+                  style={
+                    isProfileActive
+                      ? {
+                          backgroundColor: currentTheme?.primary || '#8b6f4e',
+                          color: '#ffffff',
+                        }
+                      : {
+                          backgroundColor: `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.12)`,
+                          color: currentTheme?.primary || '#8b6f4e',
+                        }
+                  }
+                >
+                  {user?.firstName?.[0] || 'S'}
+                </div>
+                {isVisible && (
+                  <div className="flex flex-col min-w-0 text-left">
+                    <span
+                      className="text-xs font-bold truncate transition-colors"
+                      style={
+                        isProfileActive
+                          ? { color: currentTheme?.primary || '#8b6f4e' }
+                          : { color: '#1C1917' }
+                      }
+                    >
+                      {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
+                    </span>
+                    <span className="text-[10px] text-stone-400 truncate">
+                      {user?.email || 'superadmin@jewels.com'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {isVisible && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    logout();
+                  }}
+                  title="Sign Out"
+                  className="p-1 text-stone-400 hover:text-rose-600 rounded-lg transition-colors cursor-pointer"
+                >
+                  <HiOutlineLogout className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </aside>
   );

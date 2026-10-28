@@ -3,6 +3,7 @@ import {
   DEFAULT_THEME,
   THEME_PRESETS,
   generateThemeFromHex,
+  hexToRgb,
 } from '../utils/themeUtils';
 
 const ThemeContext = createContext(null);
@@ -108,6 +109,7 @@ export const ThemeProvider = ({ children }) => {
   // Apply theme to CSS variables and dynamic overrides
   useEffect(() => {
     const root = document.documentElement;
+    const rgb = hexToRgb(currentTheme.primary);
 
     // Set CSS custom properties on :root
     root.style.setProperty('--theme-primary', currentTheme.primary);
@@ -116,6 +118,7 @@ export const ThemeProvider = ({ children }) => {
     root.style.setProperty('--theme-primary-light', currentTheme.light);
     root.style.setProperty('--theme-primary-soft', currentTheme.soft);
     root.style.setProperty('--theme-primary-border', currentTheme.border);
+    root.style.setProperty('--theme-primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
     root.style.setProperty(
       '--theme-sidebar-border',
       currentTheme.accent || currentTheme.primary
@@ -130,7 +133,6 @@ export const ThemeProvider = ({ children }) => {
     }
 
     if (currentTheme.isDefault) {
-      // When default theme is selected, remove overrides so original #8b6f4e classes operate natively
       styleEl.textContent = `
         :root {
           --theme-primary: ${DEFAULT_THEME.primary};
@@ -139,11 +141,34 @@ export const ThemeProvider = ({ children }) => {
           --theme-primary-light: ${DEFAULT_THEME.light};
           --theme-primary-soft: ${DEFAULT_THEME.soft};
           --theme-primary-border: ${DEFAULT_THEME.border};
+          --theme-primary-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b};
           --theme-sidebar-border: ${DEFAULT_THEME.accent};
+        }
+
+        /* ─── SIDEBAR ACTIVE & HOVER (Default Bronze) ─── */
+        #admin-sidebar .sidebar-item-active,
+        #admin-sidebar a.sidebar-item-active,
+        #admin-sidebar button.sidebar-item-active {
+          background-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14) !important;
+          color: ${DEFAULT_THEME.primary} !important;
+          border-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.32) !important;
+          font-weight: 700 !important;
+        }
+
+        #admin-sidebar .sidebar-item-active svg {
+          color: ${DEFAULT_THEME.primary} !important;
+        }
+
+        #admin-sidebar .sidebar-item-inactive:hover {
+          background-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.07) !important;
+          color: ${DEFAULT_THEME.primary} !important;
+        }
+
+        #admin-sidebar .sidebar-item-inactive:hover svg {
+          color: ${DEFAULT_THEME.primary} !important;
         }
       `;
     } else {
-      // Apply comprehensive overrides to theme the entire admin portal effortlessly
       styleEl.textContent = `
         :root {
           --theme-primary: ${currentTheme.primary};
@@ -152,74 +177,320 @@ export const ThemeProvider = ({ children }) => {
           --theme-primary-light: ${currentTheme.light};
           --theme-primary-soft: ${currentTheme.soft};
           --theme-primary-border: ${currentTheme.border};
+          --theme-primary-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b};
           --theme-sidebar-border: ${currentTheme.accent || currentTheme.primary};
         }
 
-        /* Dynamic Theme Backgrounds */
-        .bg-\\[\\#8b6f4e\\],
-        .bg-\\[\\#8f6d43\\] {
+        /* ─── 1. Primary Solid Backgrounds (Tabs, Buttons, Badges, Add Actions) ─── */
+        [class~="bg-[#8b6f4e]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class~="bg-[#8f6d43]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class~="bg-[#8b6c3a]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class~="bg-[#8a6d4b]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        .bg-\\[\\#8b6f4e\\]:not(#admin-root-layout):not(body):not(html):not(main),
+        .bg-\\[\\#8f6d43\\]:not(#admin-root-layout):not(body):not(html):not(main),
+        .bg-\\[\\#8b6c3a\\]:not(#admin-root-layout):not(body):not(html):not(main),
+        .bg-\\[\\#8a6d4b\\]:not(#admin-root-layout):not(body):not(html):not(main) {
           background-color: var(--theme-primary) !important;
         }
 
+        /* ─── 2. Hover Backgrounds for Solid Buttons ─── */
+        [class*="hover:bg-[#785e40]"]:hover,
+        [class*="hover:bg-[#7a5f3f]"]:hover,
+        [class*="hover:bg-[#8f6d43]"]:hover,
+        [class*="hover:bg-[#765a2d]"]:hover,
+        [class*="hover:bg-[#634b25]"]:hover,
+        [class*="hover:bg-[#644d32]"]:hover,
+        [class*="hover:bg-[#785b3a]"]:hover,
         .hover\\:bg-\\[\\#785e40\\]:hover,
         .hover\\:bg-\\[\\#7a5f3f\\]:hover,
-        .hover\\:bg-\\[\\#8f6d43\\]:hover {
+        .hover\\:bg-\\[\\#8f6d43\\]:hover,
+        .hover\\:bg-\\[\\#765a2d\\]:hover,
+        .hover\\:bg-\\[\\#634b25\\]:hover,
+        .hover\\:bg-\\[\\#644d32\\]:hover,
+        .hover\\:bg-\\[\\#785b3a\\]:hover {
           background-color: var(--theme-primary-hover) !important;
         }
 
-        /* Dynamic Theme Text */
+        /* ─── 3. Primary Texts & Icons ─── */
+        [class*="text-[#8b6f4e]"],
+        [class*="text-[#8f6d43]"],
+        [class*="text-[#8b6c3a]"],
+        [class*="text-[#8a6d4b]"],
+        [class*="text-[#8A6D4B]"],
+        [class*="text-[#9a724a]"],
+        [class*="text-[#9A724A]"],
+        [class*="text-[#a67c52]"],
+        [class*="text-[#A67C52]"],
+        [class*="text-[#c19b65]"],
+        [class*="text-[#C19B65]"],
+        [class*="text-[#9c7849]"],
         .text-\\[\\#8b6f4e\\],
-        .text-\\[\\#8f6d43\\] {
+        .text-\\[\\#8f6d43\\],
+        .text-\\[\\#8b6c3a\\],
+        .text-\\[\\#8a6d4b\\],
+        .text-\\[\\#9a724a\\] {
           color: var(--theme-primary) !important;
         }
 
+        /* ─── 4. Hover Texts ─── */
+        [class*="hover:text-[#8b6f4e]"]:hover,
+        [class*="hover:text-[#8f6d43]"]:hover,
+        [class*="hover:text-[#8b6c3a]"]:hover,
+        [class*="hover:text-[#785e40]"]:hover,
+        [class*="hover:text-[#8a6d4b]"]:hover,
+        [class*="hover:text-[#9a724a]"]:hover,
+        [class*="hover:text-[#a0815e]"]:hover,
         .hover\\:text-\\[\\#8b6f4e\\]:hover,
-        .hover\\:text-\\[\\#8f6d43\\]:hover {
+        .hover\\:text-\\[\\#8f6d43\\]:hover,
+        .hover\\:text-\\[\\#8b6c3a\\]:hover,
+        .hover\\:text-\\[\\#785e40\\]:hover,
+        .group:hover [class*="group-hover:text-[#8b6f4e]"],
+        .group:hover [class*="group-hover:text-[#8b6c3a]"],
+        .group:hover [class*="group-hover:text-[#9A724A]"],
+        .group:hover [class*="group-hover:text-[#8a6d4b]"] {
           color: var(--theme-primary-hover) !important;
         }
 
-        /* Dynamic Theme Borders */
+        /* ─── 5. Borders & Hover Borders ─── */
+        [class*="border-[#8b6f4e]"],
+        [class*="border-[#8f6d43]"],
+        [class*="border-[#8b6c3a]"],
+        [class*="border-[#9c7849]"],
+        [class*="border-[#9a724a]"],
+        [class*="border-[#a67c52]"],
         .border-\\[\\#8b6f4e\\],
-        .border-\\[\\#8f6d43\\] {
+        .border-\\[\\#8f6d43\\],
+        .border-\\[\\#8b6c3a\\] {
           border-color: var(--theme-primary) !important;
         }
 
-        .border-\\[\\#9c7849\\] {
-          border-color: var(--theme-sidebar-border) !important;
+        [class*="hover:border-[#8b6f4e]"]:hover,
+        [class*="hover:border-[#8f6d43]"]:hover,
+        [class*="hover:border-[#8b6c3a]"]:hover,
+        .hover\\:border-\\[\\#8b6f4e\\]:hover,
+        .hover\\:border-\\[\\#8f6d43\\]:hover,
+        .hover\\:border-\\[\\#8b6c3a\\]:hover,
+        .group:hover [class*="group-hover:border-[#8b6f4e]"],
+        .group:hover [class*="group-hover:border-[#8b6c3a]"] {
+          border-color: var(--theme-primary) !important;
         }
 
+        [class*="border-[#e8d9c2]"],
+        [class*="border-[#ecd9c2]"],
+        [class*="border-[#e8ddce]"],
+        [class*="border-[#e8ded1]"],
+        [class*="border-[#ede8e1]"],
+        [class*="border-[#EDE8E1]"],
         .border-\\[\\#e8d9c2\\],
-        .border-\\[\\#ecd9c2\\] {
+        .border-\\[\\#ecd9c2\\],
+        .border-\\[\\#e8ddce\\],
+        .border-\\[\\#e8ded1\\],
+        .border-\\[\\#ede8e1\\] {
           border-color: var(--theme-primary-border) !important;
         }
 
-        /* Dynamic Subtle Backgrounds & Badges */
+        /* ─── 6. SIDEBAR ACTIVE & HOVER (High Contrast, Luxury Theme-Matched) ─── */
+        #admin-sidebar .sidebar-item-active,
+        #admin-sidebar a.sidebar-item-active,
+        #admin-sidebar button.sidebar-item-active {
+          background-color: rgba(var(--theme-primary-rgb), 0.14) !important;
+          color: var(--theme-primary) !important;
+          border-color: rgba(var(--theme-primary-rgb), 0.32) !important;
+          font-weight: 700 !important;
+        }
+
+        #admin-sidebar .sidebar-item-active svg {
+          color: var(--theme-primary) !important;
+        }
+
+        #admin-sidebar .sidebar-item-inactive:hover {
+          background-color: rgba(var(--theme-primary-rgb), 0.07) !important;
+          color: var(--theme-primary) !important;
+        }
+
+        #admin-sidebar .sidebar-item-inactive:hover svg {
+          color: var(--theme-primary) !important;
+        }
+
+        #admin-sidebar a.hover\\:bg-\\[\\#FAF6F1\\]:hover:not(.sidebar-item-active),
+        #admin-sidebar button.hover\\:bg-\\[\\#FAF6F1\\]:hover:not(.sidebar-item-active),
+        #admin-sidebar [class*="hover:bg-[#FAF6F1]"]:hover:not(.sidebar-item-active) {
+          background-color: rgba(var(--theme-primary-rgb), 0.07) !important;
+          color: var(--theme-primary) !important;
+        }
+
+        #admin-sidebar [class*="bg-[#F5EFE8]"],
+        #admin-sidebar [class*="bg-[#f5efe8]"] {
+          background-color: rgba(var(--theme-primary-rgb), 0.14) !important;
+          color: var(--theme-primary) !important;
+        }
+
+        /* ─── 7. DROPDOWNS: HOVER, SELECTED, LISTBOX OPTIONS ─── */
+        [class*="bg-[#f4eee4]"],
+        [class*="bg-[#faf6f0]"],
+        .bg-\\[\\#f4eee4\\],
+        .bg-\\[\\#faf6f0\\] {
+          background-color: rgba(var(--theme-primary-rgb), 0.12) !important;
+          color: var(--theme-primary) !important;
+        }
+
+        [class*="hover:bg-[#fbf9f6]"]:hover,
+        [class*="hover:text-[#8f6d43]"]:hover,
+        .hover\\:bg-\\[\\#fbf9f6\\]:hover {
+          background-color: rgba(var(--theme-primary-rgb), 0.07) !important;
+          color: var(--theme-primary) !important;
+        }
+
+        [role="combobox"] ~ div [role="option"]:hover,
+        [role="listbox"] [role="option"]:hover,
+        [role="listbox"] button:hover {
+          background-color: rgba(var(--theme-primary-rgb), 0.08) !important;
+          color: var(--theme-primary) !important;
+        }
+
+        [role="listbox"] [role="option"][aria-selected="true"],
+        [role="listbox"] button[aria-selected="true"] {
+          background-color: rgba(var(--theme-primary-rgb), 0.12) !important;
+          color: var(--theme-primary) !important;
+        }
+
+        [class*="ring-[#8f6d43]"],
+        .ring-\\[\\#8f6d43\\] {
+          --tw-ring-color: rgba(var(--theme-primary-rgb), 0.3) !important;
+        }
+
+        /* ─── 8. SUBTLE BACKGROUNDS & HOVERS ANYWHERE ─── */
+        [class*="bg-[#f8f2eb]"],
+        [class*="bg-[#faf5ee]"],
+        [class*="bg-[#faf8f5]"],
+        [class*="bg-[#FAF8F5]"],
+        [class*="bg-[#fbf4eb]"],
+        [class*="bg-[#faf3e8]"],
         .bg-\\[\\#f8f2eb\\],
         .bg-\\[\\#faf5ee\\],
         .bg-\\[\\#faf8f5\\],
-        .bg-\\[\\#fbf4eb\\] {
+        .bg-\\[\\#FAF8F5\\],
+        .bg-\\[\\#fbf4eb\\],
+        .bg-\\[\\#faf3e8\\] {
           background-color: var(--theme-primary-soft) !important;
         }
 
+        [class*="hover:bg-[#FAF8F5]"]:hover,
+        [class*="hover:bg-[#faf8f5]"]:hover,
+        [class*="hover:bg-[#faf5ee]"]:hover,
+        [class*="hover:bg-[#f8f2eb]"]:hover,
+        [class*="hover:bg-[#fbf4eb]"]:hover,
+        [class*="hover:bg-[#faf3e8]"]:hover,
+        [class*="hover:bg-[#f4eee4]"]:hover {
+          background-color: var(--theme-primary-soft) !important;
+        }
+
+        [class*="bg-[#f4ece0]"],
         .bg-\\[\\#f4ece0\\] {
           background-color: var(--theme-primary-light) !important;
         }
 
-        .badge-paid {
-          background-color: var(--theme-primary-soft) !important;
-          color: var(--theme-primary) !important;
-          border-color: var(--theme-primary-border) !important;
+        /* ─── 9. OPACITY-BASED UTILITY CLASSES ─── */
+        [class*="bg-[#8b6f4e]/10"],
+        [class*="bg-[#8b6c3a]/10"],
+        [class*="bg-[#8f6d43]/10"],
+        .bg-\\[\\#8b6f4e\\]\\/10,
+        .bg-\\[\\#8b6c3a\\]\\/10 {
+          background-color: rgba(var(--theme-primary-rgb), 0.10) !important;
+        }
+        [class*="bg-[#8b6f4e]/15"],
+        [class*="bg-[#8b6c3a]/15"],
+        .bg-\\[\\#8b6c3a\\]\\/15 {
+          background-color: rgba(var(--theme-primary-rgb), 0.15) !important;
+        }
+        [class*="bg-[#8b6f4e]/20"],
+        [class*="bg-[#8b6c3a]/20"],
+        .bg-\\[\\#8b6f4e\\]\\/20,
+        .bg-\\[\\#8b6c3a\\]\\/20 {
+          background-color: rgba(var(--theme-primary-rgb), 0.20) !important;
+        }
+        [class*="bg-[#8b6c3a]/30"],
+        [class*="bg-[#8b6f4e]/30"],
+        .bg-\\[\\#8b6c3a\\]\\/30 {
+          background-color: rgba(var(--theme-primary-rgb), 0.30) !important;
         }
 
-        /* Selection & Rings */
-        .selection\\:bg-\\[\\#8b6f4e\\]::selection,
+        [class*="border-[#8b6f4e]/20"],
+        [class*="border-[#8b6c3a]/20"],
+        [class*="border-[#8f6d43]/20"],
+        .border-\\[\\#8b6f4e\\]\\/20,
+        .border-\\[\\#8b6c3a\\]\\/20 {
+          border-color: rgba(var(--theme-primary-rgb), 0.20) !important;
+        }
+        [class*="border-[#8b6f4e]/30"],
+        [class*="border-[#8b6c3a]/30"],
+        .border-\\[\\#8b6f4e\\]\\/30,
+        .border-\\[\\#8b6c3a\\]\\/30 {
+          border-color: rgba(var(--theme-primary-rgb), 0.30) !important;
+        }
+
+        /* ─── 10. RINGS & FOCUS RINGS ─── */
+        [class*="ring-[#8b6f4e]"],
+        [class*="ring-[#8b6c3a]"],
+        [class*="ring-[#8f6d43]"],
+        .ring-\\[\\#8b6f4e\\],
+        .ring-\\[\\#8b6c3a\\],
+        .ring-\\[\\#8f6d43\\],
+        [class*="focus:ring-[#8b6f4e]"]:focus,
+        [class*="focus:ring-[#8b6c3a]"]:focus,
+        [class*="focus:ring-[#8f6d43]"]:focus,
+        .focus\\:ring-\\[\\#8b6f4e\\]:focus,
+        .focus\\:ring-\\[\\#8b6c3a\\]:focus,
+        .focus\\:ring-\\[\\#8f6d43\\]:focus,
+        [class*="focus:border-[#8b6f4e]"]:focus,
+        [class*="focus:border-[#8b6c3a]"]:focus,
+        select:focus {
+          --tw-ring-color: rgba(var(--theme-primary-rgb), 0.25) !important;
+          border-color: var(--theme-primary) !important;
+        }
+
+        /* ─── 11. CHECKBOXES & RADIOS ─── */
+        input[type="checkbox"]:checked,
+        input[type="radio"]:checked,
+        [class*="accent-[#8b6f4e]"],
+        [class*="accent-[#8b6c3a]"],
+        .accent-\\[\\#8b6f4e\\],
+        .accent-\\[\\#8b6c3a\\] {
+          accent-color: var(--theme-primary) !important;
+        }
+
+        /* ─── 12. GRADIENT BUTTONS ─── */
+        [class*="from-[#8b6c3a]"],
+        [class*="from-[#8b6f4e]"],
+        .from-\\[\\#8b6c3a\\],
+        .from-\\[\\#8b6f4e\\] {
+          --tw-gradient-from: var(--theme-primary) !important;
+          --tw-gradient-to: var(--theme-primary-hover) !important;
+          --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+        }
+        [class*="to-[#765a2d]"],
+        [class*="to-[#634b25]"],
+        [class*="to-[#785e40]"],
+        .to-\\[\\#765a2d\\],
+        .to-\\[\\#634b25\\],
+        .to-\\[\\#785e40\\] {
+          --tw-gradient-to: var(--theme-primary-dark) !important;
+        }
+
+        /* ─── 13. SELECTION ─── */
         ::selection {
           background-color: var(--theme-primary) !important;
           color: #ffffff !important;
         }
 
-        .focus\\:ring-\\[\\#8f6d43\\]\\/30:focus {
-          --tw-ring-color: var(--theme-primary-border) !important;
+        /* ─── 14. ROOT & PAGE BACKGROUND SAFEGUARD (Preserve clean luxury default background) ─── */
+        html,
+        body,
+        #root,
+        #admin-root-layout,
+        .admin-page-bg,
+        #admin-root-layout > div {
+          background-color: #fbfaf8 !important;
         }
       `;
     }

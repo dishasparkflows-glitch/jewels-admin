@@ -335,6 +335,7 @@ export default function CelebrateGiftsView() {
         } : null,
         status,
         products: selectedProductIds,
+        productIds: selectedProductIds,
         productCount: selectedProductIds.length,
       };
 

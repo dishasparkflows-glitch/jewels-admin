@@ -127,8 +127,8 @@ export const THEME_PRESETS = [
     primary: '#475569',
     hover: '#334155',
     dark: '#0f172a',
-    light: '#f1f5f9',
-    soft: '#f8fafc',
+    light: '#e2e8f0',
+    soft: '#f1f5f9',
     border: '#cbd5e1',
     accent: '#64748b',
   },
@@ -197,9 +197,9 @@ export function generateThemeFromHex(customHex, name = 'Custom Tone') {
   const rgb = hexToRgb(customHex);
   const hoverRgb = blendWithBlack(rgb, 0.14);
   const darkRgb = blendWithBlack(rgb, 0.35);
-  const lightRgb = blendWithWhite(rgb, 0.82);
-  const softRgb = blendWithWhite(rgb, 0.94);
-  const borderRgb = blendWithWhite(rgb, 0.72);
+  const lightRgb = blendWithWhite(rgb, 0.78);
+  const softRgb = blendWithWhite(rgb, 0.90);
+  const borderRgb = blendWithWhite(rgb, 0.68);
   const accentRgb = blendWithWhite(rgb, 0.15);
 
   return {

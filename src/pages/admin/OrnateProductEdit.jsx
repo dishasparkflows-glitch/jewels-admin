@@ -232,6 +232,8 @@ export default function OrnateProductEdit() {
     showInApp: false,
     showOnWeb: false,
     description: '',
+    soldCount: '',
+    reviewCount: '',
   });
   const [autoOpenMenu, setAutoOpenMenu] = useState(false);
 
@@ -354,6 +356,8 @@ export default function OrnateProductEdit() {
             showInApp: product.visibility?.app !== false && product.inapp !== false,
             showOnWeb: product.visibility?.web !== false && product.inweb !== false,
             description: product.basicInfo?.description || '',
+            soldCount: product.demoMetrics?.soldCount ?? '',
+            reviewCount: product.demoMetrics?.reviewCount ?? '',
           });
 
           // Populate Pricing
@@ -1005,6 +1009,10 @@ export default function OrnateProductEdit() {
         visibility: {
           app: Boolean(baseInfo.showInApp),
           web: Boolean(baseInfo.showOnWeb),
+        },
+        demoMetrics: {
+          soldCount: baseInfo.soldCount !== '' ? Number(baseInfo.soldCount) : 0,
+          reviewCount: baseInfo.reviewCount !== '' ? Number(baseInfo.reviewCount) : 0,
         },
         isOrnate: true,
         productType: 'silver',

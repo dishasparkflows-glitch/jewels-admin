@@ -428,21 +428,37 @@ export default function OrnateProductsView() {
 
   // Delete Group using Confirm Modal (explaining member products are preserved)
   const handleDeleteGroup = async (group) => {
+    const pCount = group.productCount ?? (Array.isArray(group.productIds) ? group.productIds.length : 0);
+    const isEmpty = pCount === 0;
+    const isSingle = pCount === 1;
+    const title = isEmpty ? 'Delete Empty Group' : isSingle ? 'Delete Product' : 'Delete Product Group';
+    const message = isEmpty
+      ? `Are you sure you want to delete empty group "${group.groupName || group.groupCode}"?`
+      : isSingle
+      ? `Are you sure you want to delete "${group.groupName}"?`
+      : `Are you sure you want to delete group "${group.groupName}"? Member products will be preserved in Ungrouped.`;
+
     const isConfirmed = await confirm({
-      title: 'Delete Product Group',
-      message: `Are you sure you want to delete group "${group.groupName}"? Deleting this group will NOT delete its member products.`,
-      confirmText: 'Delete Group',
+      title,
+      message,
+      confirmText: 'Delete',
       type: 'danger',
     });
     if (!isConfirmed) return;
 
     try {
+      const pId = group.primaryProductId || group.firstProduct?._id || group.representative?._id;
+      if (pId && isSingle) {
+        try {
+          await api.delete(`/products/${pId}`);
+        } catch (e) {}
+      }
       await api.delete(`/product-groups/${group._id}`);
-      toast.success('Group deleted successfully. Products preserved.');
+      toast.success(isEmpty ? 'Empty group deleted successfully' : isSingle ? 'Product deleted successfully' : 'Group deleted successfully');
       fetchData();
       fetchTabCounts();
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not delete group');
+      toast.error(err.response?.data?.message || 'Could not delete');
     }
   };
 
@@ -700,9 +716,17 @@ export default function OrnateProductsView() {
                   group={g}
                   viewMode={viewMode}
                   isSelected={selectedIds.has(g._id)}
+                  activeTab={activeTab}
                   onToggleSelect={() => toggleSelectOne(g._id)}
                   onManage={(group) => setSelectedGroupIdForManage(group._id)}
-                  onEdit={(group) => setSelectedGroupIdForManage(group._id)}
+                  onEdit={(group) => {
+                    const pId = group.primaryProductId || group.firstProduct?._id || group.representative?._id;
+                    if (pId && (!group.productCount || group.productCount <= 1)) {
+                      navigate(`/catalog/ornate-products/edit/${pId}`);
+                    } else {
+                      setSelectedGroupIdForManage(group._id);
+                    }
+                  }}
                   onAddProducts={(group) => setSelectedGroupIdForManage(group._id)}
                   onToggleStatus={handleToggleGroupStatus}
                   onDelete={handleDeleteGroup}

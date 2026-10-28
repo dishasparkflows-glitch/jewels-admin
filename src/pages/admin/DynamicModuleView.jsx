@@ -19,6 +19,7 @@ import {
   HiOutlineExternalLink,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
+import { RxDragHandleDots2 } from 'react-icons/rx';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -244,6 +245,44 @@ const DynamicModuleView = () => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
+
+  // Demo Metrics Quick Edit Modal state
+  const [editingMetricsProduct, setEditingMetricsProduct] = useState(null);
+  const [metricsSoldCount, setMetricsSoldCount] = useState(0);
+  const [metricsReviewCount, setMetricsReviewCount] = useState(0);
+  const [savingMetrics, setSavingMetrics] = useState(false);
+
+  const handleOpenMetricsModal = (product) => {
+    setEditingMetricsProduct(product);
+    setMetricsSoldCount(product.demoMetrics?.soldCount ?? 0);
+    setMetricsReviewCount(product.demoMetrics?.reviewCount ?? 0);
+  };
+
+  const handleSaveMetrics = async () => {
+    if (!editingMetricsProduct) return;
+    try {
+      setSavingMetrics(true);
+      const prodId = editingMetricsProduct._id || editingMetricsProduct.id;
+      const payload = {
+        demoMetrics: {
+          soldCount: Number(metricsSoldCount) || 0,
+          reviewCount: Number(metricsReviewCount) || 0,
+        },
+      };
+      await api.put('/products/' + prodId, payload);
+      setItems((prev) =>
+        prev.map((item) =>
+          (item._id || item.id) === prodId ? { ...item, ...payload } : item
+        )
+      );
+      toast.success('Demo metrics updated for product');
+      setEditingMetricsProduct(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update metrics');
+    } finally {
+      setSavingMetrics(false);
+    }
+  };
   const [viewingRecord, setViewingRecord] = useState(null);
   const [formData, setFormData] = useState({});
   const [pendingThemeImages, setPendingThemeImages] = useState({});
@@ -290,7 +329,7 @@ const DynamicModuleView = () => {
       navigate('/catalog/ornate-products/add');
     } else {
       setEditingRecord(null);
-      const defaults = isCategoryPage ? { promoBanners: [], status: 'active', themeId: '' } : {};
+      const defaults = isCategoryPage ? { promoBanners: [], status: 'active', themeId: '', sizeChart: '', sizeChartKey: '', iconKey: '', bannerKey: '' } : {};
       setPendingThemeImages({});
       (config.fields || []).forEach((f) => {
         if (f.default !== undefined) defaults[f.name] = f.default;
@@ -322,9 +361,15 @@ const DynamicModuleView = () => {
     if (row.type && initial.type === undefined) initial.type = row.type;
     if (row.icon !== undefined) {
       initial.icon = typeof row.icon === 'object' ? (row.icon?.url || '') : (row.icon || '');
+      initial.iconKey = typeof row.icon === 'object' ? (row.icon?.key || '') : '';
     }
     if (row.banner !== undefined) {
       initial.banner = typeof row.banner === 'object' ? (row.banner?.url || '') : (row.banner || '');
+      initial.bannerKey = typeof row.banner === 'object' ? (row.banner?.key || '') : '';
+    }
+    if (row.sizeChart !== undefined) {
+      initial.sizeChart = typeof row.sizeChart === 'object' ? (row.sizeChart?.url || '') : (row.sizeChart || '');
+      initial.sizeChartKey = typeof row.sizeChart === 'object' ? (row.sizeChart?.key || '') : '';
     }
     if (Array.isArray(row.promoBanners)) {
       initial.promoBanners = row.promoBanners.map((b, idx) => ({
@@ -438,6 +483,16 @@ const DynamicModuleView = () => {
     handleCloseBannerForm();
   };
 
+  const handleUpdateBannerTitle = (index, newTitle) => {
+    setFormData((prev) => {
+      const currentList = Array.isArray(prev.promoBanners) ? [...prev.promoBanners] : [];
+      if (currentList[index]) {
+        currentList[index] = { ...currentList[index], title: newTitle };
+      }
+      return { ...prev, promoBanners: currentList };
+    });
+  };
+
   const handleDeletePromoBannerItem = async (index) => {
     const bannerToRemove = (Array.isArray(formData.promoBanners) ? formData.promoBanners : [])[index];
     try {
@@ -458,10 +513,15 @@ const DynamicModuleView = () => {
 
   const handleClearImageField = async (fieldName) => {
     try {
-      await deleteUploadedFile({ key: formData[`${fieldName}Key`], url: formData[fieldName] });
+      const currentVal = formData[fieldName];
+      const url = typeof currentVal === 'object' ? currentVal?.url : currentVal;
+      const key = formData[`${fieldName}Key`] || (typeof currentVal === 'object' ? currentVal?.key : '');
+      if (key || url) {
+        await deleteUploadedFile({ key, url });
+      }
       setFormData((prev) => ({ ...prev, [fieldName]: '', [`${fieldName}Key`]: '' }));
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
+      toast.error(err.response?.data?.message || err.message || 'Could not delete file from storage');
     }
   };
 
@@ -684,8 +744,13 @@ const DynamicModuleView = () => {
         const bannerKey = payload.bannerKey || (typeof payload.banner === 'object' ? payload.banner?.key : '') || '';
         payload.banner = { url: (bannerVal || '').trim(), key: (bannerKey || '').trim() };
 
+        const sizeChartVal = typeof payload.sizeChart === 'object' ? (payload.sizeChart?.url || '') : (payload.sizeChart || '');
+        const sizeChartKey = payload.sizeChartKey || (typeof payload.sizeChart === 'object' ? payload.sizeChart?.key : '') || '';
+        payload.sizeChart = { url: (sizeChartVal || '').trim(), key: (sizeChartKey || '').trim() };
+
         delete payload.iconKey;
         delete payload.bannerKey;
+        delete payload.sizeChartKey;
         if (Array.isArray(payload.promoBanners)) {
           payload.promoBanners = payload.promoBanners.map((b, idx) => ({
             _id: b._id,
@@ -1245,6 +1310,9 @@ const DynamicModuleView = () => {
                     </th>
                     <th className="py-2 px-3 whitespace-nowrap">SPECIFICATIONS</th>
                     {isProductCatalogPage && (
+                      <th className="py-2 px-3 whitespace-nowrap text-center">DEMO METRICS</th>
+                    )}
+                    {isProductCatalogPage && (
                       <th className="py-2 px-3 whitespace-nowrap text-center">VISIBILITY</th>
                     )}
                     <th className="py-2 px-3 whitespace-nowrap">STATUS</th>
@@ -1586,7 +1654,7 @@ const DynamicModuleView = () => {
           }}
         >
           <div
-            className={`bg-white rounded-2xl sm:rounded-3xl ${isCategoryPage ? 'max-w-5xl p-5 sm:p-7' : 'max-w-lg p-4 sm:p-6'} w-full shadow-2xl border border-stone-200 space-y-4 sm:space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
+            className={`bg-white rounded-2xl sm:rounded-3xl ${isCategoryPage ? 'max-w-6xl p-5 sm:p-7' : 'max-w-lg p-4 sm:p-6'} w-full shadow-2xl border border-stone-200 space-y-4 sm:space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3.5 border-b border-stone-100">
@@ -1611,93 +1679,135 @@ const DynamicModuleView = () => {
             </div>
 
             {isCategoryPage ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-                  {/* ─── LEFT COLUMN: Category Details & Media ─── */}
-                  <div className="space-y-4">
-                    {/* Category Name */}
-                    <div>
-                      <label className="text-xs font-bold text-stone-800 mb-1.5 block">
-                        Category Name <span className="text-rose-500 font-bold">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="e.g. Bangles & Bracelets"
-                        value={formData.name || ''}
-                        onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, name: e.target.value }))
-                        }
-                        className="w-full px-4 py-2.5 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-xl hover:border-stone-300 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all shadow-2xs placeholder:text-stone-400"
-                      />
-                    </div>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                {/* ─── TOP ROW: Category Name & Theme ─── */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Category Name */}
+                  <div>
+                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
+                      Category Name <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Rings, Necklaces, Bracelets"
+                      value={formData.name || ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({ ...prev, name: e.target.value }))
+                      }
+                      className="w-full h-10 px-4 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-xl hover:border-stone-300 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all shadow-2xs placeholder:text-stone-400"
+                    />
+                  </div>
 
-                    {/* Theme */}
-                    <div>
-                      <label className="text-xs font-bold text-stone-800 mb-1.5 block">
-                        Theme <span className="text-rose-500 font-bold">*</span>
-                      </label>
-                      <Dropdown
-                        value={formData.themeId || ''}
-                        onChange={(val) => {
-                          setFormData((prev) => ({ ...prev, themeId: val }));
-                          setPendingThemeImages({});
-                        }}
-                        options={[
-                          { value: '', label: 'Select Theme (or Default)' },
-                          ...availableThemes.map((theme) => ({
-                            value: theme._id,
-                            label: `${theme.name}${theme.status ? ` - ${theme.status}` : ''}`,
-                          })),
-                        ]}
-                        placeholder="Select Theme"
-                        size="sm"
-                        buttonClassName="w-full h-10 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
-                      />
-                    </div>
+                  {/* Theme */}
+                  <div>
+                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
+                      Theme <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <Dropdown
+                      value={formData.themeId || ''}
+                      onChange={(val) => {
+                        setFormData((prev) => ({ ...prev, themeId: val }));
+                        setPendingThemeImages({});
+                      }}
+                      options={[
+                        { value: '', label: 'Select Theme (or Default)' },
+                        ...availableThemes.map((theme) => ({
+                          value: theme._id,
+                          label: `${theme.name}${theme.status ? ` - ${theme.status}` : ''}`,
+                        })),
+                      ]}
+                      placeholder="Select Theme"
+                      size="field"
+                      buttonClassName="w-full h-10 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
+                    />
+                  </div>
+                </div>
 
-                    {/* Category Icon */}
+                {/* ─── CATEGORY IMAGES SECTION ─── */}
+                <div className="bg-[#FAF9F6]/60 rounded-2xl border border-stone-200/90 p-4 sm:p-5 space-y-4">
+                  {/* Section Header */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-700 shrink-0 shadow-2xs">
+                      <HiOutlinePhotograph className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900 leading-tight">
+                        Category Images
+                      </h4>
+                      <p className="text-[11px] text-stone-500 font-normal mt-0.5">
+                        Upload images for this category.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* 4-Column Grid: Icon, Banner, Size Chart, Promo Banners */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-stretch">
+                    {/* ─── Col 1: Category Icon ─── */}
                     {(() => {
                       const iconVal = formData.icon;
                       const iconUrl = typeof iconVal === 'object' ? iconVal?.url || '' : iconVal || '';
                       const hasIcon = Boolean(iconUrl && typeof iconUrl === 'string' && iconUrl.trim().length > 0);
 
                       return (
-                        <div>
-                          <label className="text-xs font-bold text-stone-800 mb-1.5 block">
-                            Category Icon
-                          </label>
-                          <div className="flex items-center gap-3">
-                            {/* Circle Preview */}
-                            <div className="w-16 h-16 rounded-full border border-amber-200/70 bg-[#FAF4ED] flex items-center justify-center shrink-0 overflow-hidden shadow-2xs relative">
-                              {uploadingField === 'icon' ? (
-                                <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
-                              ) : hasIcon ? (
-                                <img
-                                  key={iconUrl}
-                                  src={getMediaUrl(iconUrl)}
-                                  alt="Category Icon"
-                                  className="w-full h-full object-contain p-2.5"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                  onLoad={(e) => {
-                                    e.currentTarget.style.display = 'block';
-                                  }}
-                                />
-                              ) : (
-                                <IoDiamondOutline className="w-6 h-6 text-[#8b6f4e]/70" />
-                              )}
-                            </div>
+                        <div className="lg:col-span-2 xl:col-span-2 flex flex-col h-full">
+                          <div className="mb-2">
+                            <label className="text-xs font-bold text-stone-900 block leading-tight">
+                              Category Icon <span className="text-rose-500 font-bold">*</span>
+                            </label>
+                            <span className="text-[11px] text-stone-400 font-normal block mt-0.5 truncate">
+                              Square image (e.g. 200 × 200 px)
+                            </span>
+                          </div>
 
-                            {/* Upload Area & Clear */}
-                            <div className="flex-1 flex items-center gap-2">
-                              <label className="flex-1 py-2.5 px-4 bg-white hover:bg-stone-50/80 border border-dashed border-stone-300 hover:border-[#8b6f4e] rounded-xl text-center transition-all cursor-pointer shadow-2xs group flex flex-col items-center justify-center">
+                          <div className="flex-1 min-h-[148px] relative rounded-xl border border-dashed border-stone-200 hover:border-[#8b6f4e] bg-white p-3 flex flex-col items-center justify-center text-center transition-all group shadow-2xs">
+                            {uploadingField === 'icon' ? (
+                              <div className="flex flex-col items-center justify-center py-4 gap-2">
+                                <div className="w-6 h-6 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                <span className="text-[11px] font-medium text-[#8b6f4e]">Uploading icon...</span>
+                              </div>
+                            ) : hasIcon ? (
+                              <div className="flex flex-col items-center justify-center w-full h-full py-1">
+                                <div className="w-16 h-16 rounded-xl border border-stone-100 bg-[#FAF4ED]/50 p-2 flex items-center justify-center overflow-hidden shadow-2xs mb-2">
+                                  <img
+                                    src={getMediaUrl(iconUrl)}
+                                    alt="Category Icon"
+                                    className="w-full h-full object-contain"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <label className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer">
+                                    <span>Change</span>
+                                    <input
+                                      type="file"
+                                      accept="image/png, image/jpeg, image/svg+xml, image/webp"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          handleFileUpload('icon', file, 'categories');
+                                          e.target.value = '';
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                  <span className="text-stone-300">•</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleClearImageField('icon')}
+                                    className="text-[11px] font-semibold text-rose-500 hover:underline cursor-pointer"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer py-3 group">
                                 <input
                                   type="file"
                                   accept="image/png, image/jpeg, image/svg+xml, image/webp"
                                   className="hidden"
-                                  disabled={uploadingField === 'icon'}
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
@@ -1706,327 +1816,446 @@ const DynamicModuleView = () => {
                                     }
                                   }}
                                 />
-                                <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
-                                  <HiOutlineUpload className="w-4 h-4 text-stone-500 group-hover:text-[#8b6f4e]" />
-                                  <span>{hasIcon ? 'Change Category Icon' : 'Upload Category Icon'}</span>
-                                </div>
+                                <HiOutlinePhotograph className="w-8 h-8 text-stone-400 group-hover:text-[#8b6f4e] transition-colors mb-1.5" />
+                                <span className="text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
+                                  Click to upload
+                                </span>
                                 <span className="text-[11px] text-stone-400 mt-0.5">
-                                  Recommended size: 200 x 200 px (PNG, SVG)
+                                  PNG, JPG up to 2 MB
                                 </span>
                               </label>
-
-                              {hasIcon && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleClearImageField('icon')}
-                                  className="p-3 text-rose-500 hover:text-rose-700 bg-rose-50/60 hover:bg-rose-100/80 rounded-xl transition-colors cursor-pointer border border-rose-200/60 shadow-2xs shrink-0"
-                                  title="Remove Icon"
-                                >
-                                  <HiOutlineTrash className="w-4 h-4" />
-                                </button>
-                              )}
-                            </div>
+                            )}
                           </div>
                         </div>
                       );
                     })()}
 
-                    {/* Category Banner */}
+                    {/* ─── Col 2: Category Banner ─── */}
                     {(() => {
                       const bannerVal = formData.banner;
                       const bannerUrl = typeof bannerVal === 'object' ? bannerVal?.url || '' : bannerVal || '';
                       const hasBanner = Boolean(bannerUrl && typeof bannerUrl === 'string' && bannerUrl.trim().length > 0);
 
                       return (
-                        <div>
-                          <label className="text-xs font-bold text-stone-800 mb-1.5 block">
-                            Category Banner
-                          </label>
-                          <div className="space-y-2">
-                            {hasBanner && (
-                              <div className="relative rounded-2xl overflow-hidden border border-stone-200 bg-stone-100 shadow-2xs group h-28">
-                                <img
-                                  key={bannerUrl}
-                                  src={getMediaUrl(bannerUrl)}
-                                  alt="Banner preview"
-                                  className="w-full h-full object-cover"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                  onLoad={(e) => {
-                                    e.currentTarget.style.display = 'block';
+                        <div className="lg:col-span-3 xl:col-span-3 flex flex-col h-full">
+                          <div className="mb-2">
+                            <label className="text-xs font-bold text-stone-900 block leading-tight">
+                              Category Banner <span className="text-rose-500 font-bold">*</span>
+                            </label>
+                            <span className="text-[11px] text-stone-400 font-normal block mt-0.5 truncate">
+                              Landscape image (e.g. 1920 × 600 px)
+                            </span>
+                          </div>
+
+                          <div className="flex-1 min-h-[148px] relative rounded-xl border border-dashed border-stone-200 hover:border-[#8b6f4e] bg-white p-3 flex flex-col items-center justify-center text-center transition-all group shadow-2xs">
+                            {uploadingField === 'banner' ? (
+                              <div className="flex flex-col items-center justify-center py-4 gap-2">
+                                <div className="w-6 h-6 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                <span className="text-[11px] font-medium text-[#8b6f4e]">Uploading banner...</span>
+                              </div>
+                            ) : hasBanner ? (
+                              <div className="flex flex-col items-center justify-center w-full h-full py-1">
+                                <div className="w-full h-20 rounded-lg overflow-hidden border border-stone-200 shadow-2xs mb-2 bg-stone-100">
+                                  <img
+                                    src={getMediaUrl(bannerUrl)}
+                                    alt="Banner preview"
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                  />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <label className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer">
+                                    <span>Change</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          handleFileUpload('banner', file, 'categories');
+                                          e.target.value = '';
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                  <span className="text-stone-300">•</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleClearImageField('banner')}
+                                    className="text-[11px] font-semibold text-rose-500 hover:underline cursor-pointer"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer py-3 group">
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      handleFileUpload('banner', file, 'categories');
+                                      e.target.value = '';
+                                    }
                                   }}
                                 />
-                                <button
-                                  type="button"
-                                  onClick={() => handleClearImageField('banner')}
-                                  className="absolute top-2.5 right-2.5 p-2 bg-white/95 hover:bg-white text-rose-600 rounded-lg shadow-sm border border-rose-100 transition-all cursor-pointer"
-                                  title="Remove Banner"
-                                >
-                                  <HiOutlineTrash className="w-4 h-4" />
-                                </button>
-                              </div>
+                                <HiOutlinePhotograph className="w-8 h-8 text-stone-400 group-hover:text-[#8b6f4e] transition-colors mb-1.5" />
+                                <span className="text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
+                                  Click to upload
+                                </span>
+                                <span className="text-[11px] text-stone-400 mt-0.5">
+                                  PNG, JPG up to 5 MB
+                                </span>
+                              </label>
                             )}
-
-                            <label className="w-full py-3 px-4 bg-white hover:bg-stone-50/80 border border-dashed border-stone-300 hover:border-[#8b6f4e] rounded-xl text-center transition-all cursor-pointer shadow-2xs group flex flex-col items-center justify-center">
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                disabled={uploadingField === 'banner'}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    handleFileUpload('banner', file, 'categories');
-                                    e.target.value = '';
-                                  }
-                                }}
-                              />
-                              <div className="flex items-center gap-1.5 text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
-                                <HiOutlineUpload className="w-4 h-4 text-stone-500 group-hover:text-[#8b6f4e]" />
-                                <span>{hasBanner ? 'Change Category Banner' : 'Upload Category Banner'}</span>
-                              </div>
-                              <span className="text-[11px] text-stone-400 mt-0.5">
-                                Recommended size: 1200 x 400 px (JPG, PNG)
-                              </span>
-                            </label>
                           </div>
                         </div>
                       );
                     })()}
-                  </div>
 
-                  {/* ─── RIGHT COLUMN: Promo Banners ─── */}
-                  <div className="bg-[#FAF8F5]/80 rounded-2xl border border-stone-200/90 p-4 sm:p-5 flex flex-col h-full min-h-[380px]">
-                    <div className="flex items-center justify-between pb-3 border-b border-stone-200/60">
-                      <span className="text-xs sm:text-sm font-bold text-stone-900">
-                        Promo Banners ({(formData.promoBanners || []).length})
-                      </span>
+                    {/* ─── Col 3: Size Chart ─── */}
+                    {(() => {
+                      const sizeChartVal = formData.sizeChart;
+                      const sizeChartUrl = typeof sizeChartVal === 'object' ? sizeChartVal?.url || '' : sizeChartVal || '';
+                      const hasSizeChart = Boolean(sizeChartUrl && typeof sizeChartUrl === 'string' && sizeChartUrl.trim().length > 0);
 
-                      {!bannerFormOpen && (
-                        <button
-                          type="button"
-                          onClick={() => handleOpenBannerForm()}
-                          className="px-3.5 py-1.5 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-                        >
-                          <HiOutlinePlus className="w-3.5 h-3.5" />
-                          <span>Add Promo Banner</span>
-                        </button>
-                      )}
-                    </div>
+                      return (
+                        <div className="lg:col-span-3 xl:col-span-3 flex flex-col h-full">
+                          <div className="mb-2">
+                            <label className="text-xs font-bold text-stone-900 block leading-tight">
+                              Size Chart <span className="text-stone-400 font-normal text-[11px]">(Optional)</span>
+                            </label>
+                            <span className="text-[11px] text-stone-400 font-normal block mt-0.5 truncate">
+                              PDF document or Image (e.g. PDF size guide, PNG, JPG)
+                            </span>
+                          </div>
 
-                    {/* Banner Add/Edit Sub-Form */}
-                    {bannerFormOpen && (
-                      <div className="my-3 bg-white rounded-xl border border-stone-200 p-4 shadow-sm space-y-3 animate-in fade-in duration-150">
-                        <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-                          <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                            <HiOutlinePhotograph className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                            <span>{editingBannerIndex !== null ? 'Edit Promo Banner' : 'New Promo Banner'}</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={handleCloseBannerForm}
-                            className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
-                          >
-                            <HiOutlineX className="w-4 h-4" />
-                          </button>
+                          <div className="flex-1 min-h-[148px] relative rounded-xl border border-dashed border-stone-200 hover:border-[#8b6f4e] bg-white p-3 flex flex-col items-center justify-center text-center transition-all group shadow-2xs">
+                            {uploadingField === 'sizeChart' ? (
+                              <div className="flex flex-col items-center justify-center py-4 gap-2">
+                                <div className="w-6 h-6 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                <span className="text-[11px] font-medium text-[#8b6f4e]">Uploading size chart...</span>
+                              </div>
+                            ) : hasSizeChart ? (
+                              <div className="flex flex-col items-center justify-center w-full h-full py-1">
+                                {/\.pdf($|\?)/i.test(sizeChartUrl) ? (
+                                  <div className="w-full h-20 rounded-lg overflow-hidden border border-rose-200 bg-rose-50/60 p-2 flex flex-col items-center justify-center gap-1 shadow-2xs mb-2">
+                                    <div className="flex items-center gap-1.5 text-rose-600 font-bold text-xs">
+                                      <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white font-mono text-[10px]">PDF</span>
+                                      <span>Size Guide Document</span>
+                                    </div>
+                                    <span className="text-[10px] text-stone-500 truncate max-w-[180px]">
+                                      {sizeChartUrl.split('/').pop() || 'size-guide.pdf'}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="w-full h-20 rounded-lg overflow-hidden border border-stone-200 shadow-2xs mb-2 bg-stone-50 p-1 flex items-center justify-center">
+                                    <img
+                                      src={getMediaUrl(sizeChartUrl)}
+                                      alt="Size Chart preview"
+                                      className="w-full h-full object-contain"
+                                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                    />
+                                  </div>
+                                )}
+                                <div className="flex items-center gap-2">
+                                  <a
+                                    href={getMediaUrl(sizeChartUrl)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-[11px] font-semibold text-stone-600 hover:text-[#8b6f4e] hover:underline flex items-center gap-0.5"
+                                  >
+                                    View <HiOutlineExternalLink className="w-3 h-3" />
+                                  </a>
+                                  <span className="text-stone-300">•</span>
+                                  <label className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer">
+                                    <span>Change</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*,application/pdf,.pdf"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          handleFileUpload('sizeChart', file, 'categories');
+                                          e.target.value = '';
+                                        }
+                                      }}
+                                    />
+                                  </label>
+                                  <span className="text-stone-300">•</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleClearImageField('sizeChart')}
+                                    className="text-[11px] font-semibold text-rose-500 hover:underline cursor-pointer"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer py-3 group">
+                                <input
+                                  type="file"
+                                  accept="image/*,application/pdf,.pdf"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      handleFileUpload('sizeChart', file, 'categories');
+                                      e.target.value = '';
+                                    }
+                                  }}
+                                />
+                                <HiOutlinePhotograph className="w-8 h-8 text-stone-400 group-hover:text-[#8b6f4e] transition-colors mb-1.5" />
+                                <span className="text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
+                                  Click to upload
+                                </span>
+                                <span className="text-[11px] text-stone-400 mt-0.5">
+                                  PNG, JPG up to 5 MB
+                                </span>
+                              </label>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* ─── Col 4: Promo Banners ─── */}
+                    <div className="sm:col-span-2 lg:col-span-4 xl:col-span-4 flex flex-col h-full">
+                      <div className="mb-2 flex items-center justify-between">
+                        <div>
+                          <label className="text-xs font-bold text-stone-900 block leading-tight">
+                            Promo Banners <span className="text-stone-400 font-normal text-[11px]">(Optional)</span>
+                          </label>
                         </div>
 
-                        {/* Image Upload Box */}
-                        <div className="space-y-1.5">
-                          <label className="text-xs font-semibold text-stone-700 block">
-                            Banner Image
-                          </label>
-                          {bannerFormData.imageUrl ? (
-                            <div className="relative rounded-xl overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs">
-                              <img
-                                src={getMediaUrl(bannerFormData.imageUrl)}
-                                alt="Promo banner preview"
-                                className="w-full h-24 object-cover"
-                                onError={(e) => {
-                                  e.currentTarget.onerror = null;
-                                  e.currentTarget.src =
-                                    'https://placehold.co/600x200/f5efe6/8b6f4e?text=Banner+Preview';
-                                }}
-                              />
-                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                                <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
-                                  <HiOutlineUpload className="w-3.5 h-3.5" />
-                                  <span>Change Image</span>
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    disabled={isUploadingBannerImage}
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) handleUploadBannerImage(file);
-                                    }}
-                                  />
-                                </label>
-                                <button
-                                  type="button"
-                                  onClick={handleClearPromoBannerImage}
-                                  className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
-                                >
-                                  <HiOutlineTrash className="w-3.5 h-3.5" />
-                                  <span>Remove</span>
-                                </button>
+                        {!bannerFormOpen && (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenBannerForm()}
+                            className="px-2.5 py-1 rounded-lg bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold flex items-center gap-1 shadow-xs transition-all cursor-pointer shrink-0"
+                          >
+                            <HiOutlinePlus className="w-3.5 h-3.5" />
+                            <span>Add Banner</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Banner Add/Edit Sub-Form */}
+                      {bannerFormOpen && (
+                        <div className="rounded-xl border border-stone-200 bg-white p-3.5 shadow-sm space-y-3 mb-2 animate-in fade-in duration-150">
+                          <div className="flex items-center justify-between pb-2 border-b border-stone-100">
+                            <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                              <HiOutlinePhotograph className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                              <span>{editingBannerIndex !== null ? 'Edit Promo Banner' : 'New Promo Banner'}</span>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleCloseBannerForm}
+                              className="p-1 text-stone-400 hover:text-stone-700 rounded-lg cursor-pointer"
+                            >
+                              <HiOutlineX className="w-4 h-4" />
+                            </button>
+                          </div>
+
+                          {/* Image Upload Area */}
+                          <div>
+                            <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                              Banner Image <span className="text-rose-500">*</span>
+                            </label>
+                            {bannerFormData.imageUrl ? (
+                              <div className="relative rounded-lg overflow-hidden border border-stone-200 bg-stone-100 group shadow-2xs h-20">
+                                <img
+                                  src={getMediaUrl(bannerFormData.imageUrl)}
+                                  alt="Promo banner preview"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.onerror = null;
+                                    e.currentTarget.src = 'https://placehold.co/600x200/f5efe6/8b6f4e?text=Banner+Preview';
+                                  }}
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                  <label className="px-2.5 py-1 bg-white text-stone-800 rounded-md text-[11px] font-semibold hover:bg-stone-100 cursor-pointer shadow-md flex items-center gap-1">
+                                    <HiOutlineUpload className="w-3 h-3" />
+                                    <span>Change</span>
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      disabled={isUploadingBannerImage}
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleUploadBannerImage(file);
+                                      }}
+                                    />
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={handleClearPromoBannerImage}
+                                    className="px-2.5 py-1 bg-red-600 text-white rounded-md text-[11px] font-semibold hover:bg-red-700 cursor-pointer shadow-md flex items-center gap-1"
+                                  >
+                                    <HiOutlineTrash className="w-3 h-3" />
+                                    <span>Remove</span>
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            <label
-                              className={`w-full py-4 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                            ) : (
+                              <label className={`w-full py-3 border-2 border-dashed rounded-lg flex flex-col items-center justify-center gap-1 transition-all cursor-pointer ${
                                 isUploadingBannerImage
                                   ? 'border-[#8b6f4e] bg-[#faf5ed]'
                                   : 'border-stone-200 bg-stone-50/50 hover:border-[#8b6f4e] hover:bg-white'
-                              }`}
-                            >
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                disabled={isUploadingBannerImage}
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleUploadBannerImage(file);
-                                }}
-                              />
-                              {isUploadingBannerImage ? (
-                                <>
-                                  <div className="w-5 h-5 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
-                                  <span className="text-[11px] font-semibold text-[#8b6f4e]">
-                                    Uploading banner...
-                                  </span>
-                                </>
-                              ) : (
-                                <>
-                                  <HiOutlineUpload className="w-5 h-5 text-stone-400" />
-                                  <span className="text-xs font-semibold text-stone-700">
-                                    Click to upload banner image
-                                  </span>
-                                </>
-                              )}
-                            </label>
-                          )}
-                        </div>
-
-                        {/* Title */}
-                        <div className="space-y-1">
-                          <label className="text-[11px] font-bold text-stone-700">
-                            Title <span className="text-rose-500">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            placeholder="e.g. Festive Collection"
-                            value={bannerFormData.title}
-                            onChange={(e) =>
-                              setBannerFormData((prev) => ({ ...prev, title: e.target.value }))
-                            }
-                            className="w-full px-3 py-2 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e]"
-                          />
-                        </div>
-
-                        {/* Form Buttons */}
-                        <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
-                          <button
-                            type="button"
-                            onClick={handleCloseBannerForm}
-                            className="px-3 py-1.5 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
-                          >
-                            Cancel
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleSavePromoBannerItem}
-                            disabled={isUploadingBannerImage}
-                            className="px-4 py-1.5 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
-                          >
-                            {editingBannerIndex !== null ? 'Update Promo Banner' : 'Add Promo Banner'}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Banner List Matching Screenshot */}
-                    {!(formData.promoBanners && formData.promoBanners.length > 0) ? (
-                      !bannerFormOpen && (
-                        <div className="my-auto py-8 px-4 rounded-xl border border-dashed border-stone-200/90 text-center space-y-1.5 bg-white/70">
-                          <HiOutlinePhotograph className="w-6 h-6 text-stone-300 mx-auto" />
-                          <p className="text-xs font-semibold text-stone-600">No promo banners yet</p>
-                          <p className="text-[11px] text-stone-400">
-                            Click &quot;+ Add Promo Banner&quot; above to add banners for this category.
-                          </p>
-                        </div>
-                      )
-                    ) : (
-                      <div className="space-y-2.5 overflow-y-auto max-h-[340px] pr-1 py-1">
-                        {formData.promoBanners.map((banner, index) => {
-                          const bannerImg =
-                            banner.image?.url ||
-                            banner.imageUrl ||
-                            (typeof banner.image === 'string' ? banner.image : '');
-                          return (
-                            <div
-                              key={banner._id || index}
-                              className="flex items-center gap-3 p-2.5 rounded-xl border border-stone-200 bg-white hover:border-[#8b6f4e]/40 shadow-2xs transition-all group"
-                            >
-                              {/* Drag Handle Grip Icon */}
-                              <div className="flex flex-col gap-0.5 text-stone-300 group-hover:text-stone-400 shrink-0 select-none">
-                                <HiOutlineMenuAlt4 className="w-4 h-4" />
-                              </div>
-
-                              {/* Thumbnail */}
-                              <div className="w-16 h-11 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden shrink-0">
-                                {bannerImg ? (
-                                  <img
-                                    src={getMediaUrl(bannerImg)}
-                                    alt={banner.title}
-                                    className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      e.currentTarget.onerror = null;
-                                      e.currentTarget.src =
-                                        'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
-                                    }}
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-[10px] text-stone-400">
-                                    No Img
+                              }`}>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  disabled={isUploadingBannerImage}
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleUploadBannerImage(file);
+                                  }}
+                                />
+                                {isUploadingBannerImage ? (
+                                  <div className="flex items-center gap-2 py-1">
+                                    <div className="w-4 h-4 rounded-full border-2 border-stone-300 border-t-[#8b6f4e] animate-spin" />
+                                    <span className="text-[11px] font-semibold text-[#8b6f4e]">Uploading...</span>
                                   </div>
+                                ) : (
+                                  <>
+                                    <HiOutlinePhotograph className="w-5 h-5 text-stone-400" />
+                                    <span className="text-[11px] font-semibold text-stone-700">Click to upload banner image</span>
+                                  </>
                                 )}
-                              </div>
+                              </label>
+                            )}
+                          </div>
 
-                              {/* Title */}
-                              <div className="min-w-0 flex-1">
-                                <span className="text-xs font-semibold text-stone-900 block truncate">
-                                  {banner.title || 'Untitled Banner'}
-                                </span>
-                              </div>
+                          {/* Banner Title */}
+                          <div>
+                            <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                              Banner Title <span className="text-rose-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              placeholder="e.g. New Arrivals"
+                              value={bannerFormData.title}
+                              onChange={(e) =>
+                                setBannerFormData((prev) => ({ ...prev, title: e.target.value }))
+                              }
+                              className="w-full px-3 py-1.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                            />
+                          </div>
 
-                              {/* Actions Matching Screenshot */}
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenBannerForm(banner, index)}
-                                  className="p-1.5 text-blue-600 bg-blue-50/70 hover:bg-blue-100/90 rounded-lg transition-colors border border-blue-100 cursor-pointer"
-                                  title="Edit Promo Banner"
-                                >
-                                  <HiOutlinePencilAlt className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDeletePromoBannerItem(index)}
-                                  className="p-1.5 text-rose-600 bg-rose-50/70 hover:bg-rose-100/90 rounded-lg transition-colors border border-rose-100 cursor-pointer"
-                                  title="Delete Promo Banner"
-                                >
-                                  <HiOutlineTrash className="w-3.5 h-3.5" />
-                                </button>
+                          {/* Form Buttons */}
+                          <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+                            <button
+                              type="button"
+                              onClick={handleCloseBannerForm}
+                              className="px-2.5 py-1 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-lg cursor-pointer"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleSavePromoBannerItem}
+                              disabled={isUploadingBannerImage}
+                              className="px-3 py-1 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
+                            >
+                              {editingBannerIndex !== null ? 'Save Changes' : 'Add Banner'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Banner Cards List Matching Screenshot */}
+                      {!(formData.promoBanners && formData.promoBanners.length > 0) ? (
+                        !bannerFormOpen && (
+                          <div className="flex-1 min-h-[148px] border border-dashed border-stone-200 rounded-xl bg-white p-4 flex flex-col items-center justify-center text-center shadow-2xs">
+                            <HiOutlinePhotograph className="w-8 h-8 text-stone-300 mb-1" />
+                            <span className="text-xs font-semibold text-stone-600">No promo banners yet</span>
+                            <span className="text-[11px] text-stone-400 mt-0.5">Click &ldquo;+ Add Banner&rdquo; to add promo banners</span>
+                          </div>
+                        )
+                      ) : (
+                        <div className="space-y-2.5 overflow-y-auto max-h-[220px] pr-1">
+                          {formData.promoBanners.map((banner, index) => {
+                            const bannerImg =
+                              banner.imageUrl ||
+                              (typeof banner.image === 'object' ? banner.image?.url : banner.image) ||
+                              '';
+
+                            return (
+                              <div
+                                key={banner._id || index}
+                                className="rounded-xl border border-stone-200 bg-white p-2.5 flex items-center gap-2.5 shadow-2xs hover:border-stone-300 transition-colors"
+                              >
+                                {/* Grip Icon */}
+                                <RxDragHandleDots2 className="w-4 h-4 text-stone-400 shrink-0 cursor-grab" />
+
+                                {/* Thumbnail */}
+                                <div className="w-16 h-11 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden shrink-0">
+                                  {bannerImg ? (
+                                    <img
+                                      src={getMediaUrl(bannerImg)}
+                                      alt={banner.title || 'Banner'}
+                                      className="w-full h-full object-cover"
+                                      onError={(e) => {
+                                        e.currentTarget.onerror = null;
+                                        e.currentTarget.src =
+                                          'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
+                                      }}
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full flex items-center justify-center text-[10px] text-stone-400">
+                                      No Img
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Title with input matching screenshot */}
+                                <div className="flex-1 min-w-0">
+                                  <label className="text-[10px] font-bold text-stone-700 block mb-0.5">
+                                    Banner Title
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={banner.title || ''}
+                                    placeholder="e.g. New Arrivals"
+                                    onChange={(e) => handleUpdateBannerTitle(index, e.target.value)}
+                                    className="w-full px-2.5 py-1 text-xs font-medium text-stone-900 bg-stone-50/70 hover:bg-stone-50 focus:bg-white border border-stone-200 focus:border-[#8b6f4e] rounded-lg focus:outline-none transition-colors"
+                                  />
+                                </div>
+
+                                {/* Edit & Delete Buttons Matching Screenshot */}
+                                <div className="flex items-center gap-1.5 shrink-0">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenBannerForm(banner, index)}
+                                    className="p-1.5 text-stone-600 hover:text-stone-900 bg-stone-50 hover:bg-stone-100 rounded-lg transition-colors border border-stone-200 cursor-pointer"
+                                    title="Edit Details"
+                                  >
+                                    <HiOutlinePencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeletePromoBannerItem(index)}
+                                    className="p-1.5 text-rose-600 bg-rose-50/80 hover:bg-rose-100 rounded-lg transition-colors border border-rose-100 cursor-pointer"
+                                    title="Delete Banner"
+                                  >
+                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
                               </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -2292,8 +2521,8 @@ const DynamicModuleView = () => {
                             }
                             options={field.options}
                             placeholder={`Select ${field.label}`}
-                            size="sm"
-                            buttonClassName="w-full h-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
+                            size="field"
+                            buttonClassName="w-full h-10 px-3.5 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
                           />
                         ) : field.type === 'lookup' ? (
                           <Dropdown
@@ -2303,8 +2532,8 @@ const DynamicModuleView = () => {
                             }
                             options={lookupData[field.name] || []}
                             placeholder={`Select ${field.label}`}
-                            size="sm"
-                            buttonClassName="w-full h-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
+                            size="field"
+                            buttonClassName="w-full h-10 px-3.5 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-[13px] font-medium shadow-2xs"
                           />
                         ) : (
                           <input
@@ -2315,7 +2544,7 @@ const DynamicModuleView = () => {
                             onChange={(e) =>
                               setFormData((prev) => ({ ...prev, [field.name]: e.target.value }))
                             }
-                            className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
+                            className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-stone-200 hover:border-stone-300 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
                           />
                         )}
                       </div>
@@ -2872,6 +3101,124 @@ const DynamicModuleView = () => {
             fetchItems();
           }}
         />
+      )}
+
+
+      {/* ─── QUICK EDIT DEMO METRICS MODAL ─── */}
+      {editingMetricsProduct && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs animate-fadeIn"
+          onClick={() => setEditingMetricsProduct(null)}
+        >
+          <div
+            className="relative w-full max-w-md bg-white rounded-2xl border border-stone-200 shadow-2xl p-5 space-y-4 animate-scaleUp overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between pb-3 border-b border-stone-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-600 text-lg shadow-2xs">
+                  🔥
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-stone-900">
+                    Product Demo Metrics
+                  </h3>
+                  <p className="text-[11px] text-stone-500 truncate max-w-[260px]">
+                    {editingMetricsProduct.basicInfo?.title || editingMetricsProduct.title}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingMetricsProduct(null)}
+                className="w-7 h-7 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Live Storefront Preview */}
+            <div className="rounded-xl border border-stone-200/90 bg-[#fdfcfb] p-3 space-y-1">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                Storefront Live Badge Preview
+              </span>
+              <div className="flex items-center gap-1.5 text-xs text-stone-700">
+                <span className="text-amber-400 tracking-tighter">★★★★★</span>
+                <span className="font-semibold text-stone-800 text-xs">
+                  {metricsReviewCount || 0} reviews
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-stone-700 font-medium">
+                <span>🔥</span>
+                <span>
+                  <strong className="font-bold text-stone-900">{metricsSoldCount || 0}</strong> sold in last 3 hours
+                </span>
+              </div>
+            </div>
+
+            {/* Inputs */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  Sold Count
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs">🔥</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={metricsSoldCount}
+                    onChange={(e) => setMetricsSoldCount(e.target.value)}
+                    className="w-full h-9 pl-7 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
+                    placeholder="e.g. 24"
+                  />
+                </div>
+                <span className="text-[10px] text-stone-400 mt-1 block">Number of pieces sold</span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  Review Count
+                </label>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-xs">★</span>
+                  <input
+                    type="number"
+                    min="0"
+                    value={metricsReviewCount}
+                    onChange={(e) => setMetricsReviewCount(e.target.value)}
+                    className="w-full h-9 pl-7 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
+                    placeholder="e.g. 13"
+                  />
+                </div>
+                <span className="text-[10px] text-stone-400 mt-1 block">Number of customer reviews</span>
+              </div>
+            </div>
+
+            {/* Footer Buttons */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+              <button
+                type="button"
+                onClick={() => setEditingMetricsProduct(null)}
+                className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 rounded-lg border border-stone-200"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveMetrics}
+                disabled={savingMetrics}
+                style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                className="px-4 py-2 text-xs font-semibold text-white rounded-lg hover:brightness-95 disabled:opacity-50 transition cursor-pointer"
+              >
+                {savingMetrics ? 'Saving…' : 'Save Demo Metrics'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

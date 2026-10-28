@@ -124,19 +124,18 @@ export default function BlogCategoriesView() {
     setIsModalOpen(true);
   };
 
-  // Auto-generate slug on name change
+  // Auto-generate slug on name change using hyphens
   const handleNameChange = (e) => {
     const name = e.target.value;
     const generatedSlug = name
       .toLowerCase()
-      .trim()
       .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+      .replace(/^-+/, '');
 
     setFormData((prev) => ({
       ...prev,
       name,
-      slug: editingCategory ? prev.slug : generatedSlug,
+      slug: generatedSlug,
     }));
   };
 

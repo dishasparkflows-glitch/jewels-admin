@@ -72,6 +72,16 @@ const STATUS_COLORS = {
  * @param {Function} [renderOption] - Custom renderer (option, isSelected, isHighlighted) => ReactNode
  * @param {React.ReactNode} [prefixIcon] - Icon to show at the start of the button
  */
+const renderDropdownIcon = (iconItem, defaultClassName = 'w-4 h-4') => {
+  if (!iconItem) return null;
+  if (React.isValidElement(iconItem)) return iconItem;
+  if (typeof iconItem === 'function' || (typeof iconItem === 'object' && iconItem.$$typeof)) {
+    const IconComp = iconItem;
+    return <IconComp className={defaultClassName} />;
+  }
+  return null;
+};
+
 export default function Dropdown({
   value,
   onChange,
@@ -154,8 +164,40 @@ export default function Dropdown({
     }
   }, [isOpen, selectedIndex]);
 
-  // Handle smart auto-flip (open upward if near screen bottom or container boundary)
+  // Compute and update portal menu position anchored to trigger button
+  const updateMenuPosition = useCallback(() => {
+    if (!buttonRef.current) return;
+    const rect = buttonRef.current.getBoundingClientRect();
+    if (!rect || (rect.width === 0 && rect.height === 0)) return;
+
+    const estimatedMenuHeight = Math.min(normalizedOptions.length * 44 + 16, 260);
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const shouldDropUp = isForcedUp || (!isForcedDown && spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow);
+    setDropUp(shouldDropUp);
+
+    // Support custom z-index from menuClassName or default to 100000 so portaled menus always overlay modals
+    let resolvedZIndex = 100000;
+    const customZMatch = menuClassName?.match(/z-\[(\d+)\]/);
+    if (customZMatch && customZMatch[1]) {
+      resolvedZIndex = Math.max(Number(customZMatch[1]), 100000);
+    }
+
+    setMenuPosition({
+      position: 'fixed',
+      left: Math.round(rect.left),
+      width: Math.round(rect.width),
+      top: shouldDropUp ? 'auto' : Math.round(rect.bottom + 6),
+      bottom: shouldDropUp ? Math.round(window.innerHeight - rect.top + 6) : 'auto',
+      margin: 0,
+      maxHeight: Math.max(40, Math.min(260, shouldDropUp ? rect.top - 14 : window.innerHeight - rect.bottom - 14)),
+      zIndex: resolvedZIndex,
+    });
+  }, [normalizedOptions.length, isForcedUp, isForcedDown, menuClassName]);
+
+  // Handle smart auto-flip when NOT portaled
   useEffect(() => {
+    if (portal) return;
     if (isForcedDown) {
       setDropUp(false);
       return;
@@ -170,22 +212,19 @@ export default function Dropdown({
       let spaceBelow = window.innerHeight - rect.bottom;
       let spaceAbove = rect.top;
 
-      // Only inspect parent boundary if not portaled and parent is vertically scrollable with overflow
-      if (!portal) {
-        let parent = containerRef.current?.parentElement;
-        while (parent && parent !== document.body) {
-          const style = window.getComputedStyle(parent);
-          const overflowY = style.overflowY;
-          if ((overflowY === 'auto' || overflowY === 'scroll') && parent.scrollHeight > parent.clientHeight + 5) {
-            const parentRect = parent.getBoundingClientRect();
-            const pBelow = parentRect.bottom - rect.bottom;
-            const pAbove = rect.top - parentRect.top;
-            if (pBelow < spaceBelow) spaceBelow = pBelow;
-            if (pAbove < spaceAbove) spaceAbove = pAbove;
-            break;
-          }
-          parent = parent.parentElement;
+      let parent = containerRef.current?.parentElement;
+      while (parent && parent !== document.body) {
+        const style = window.getComputedStyle(parent);
+        const overflowY = style.overflowY;
+        if ((overflowY === 'auto' || overflowY === 'scroll') && parent.scrollHeight > parent.clientHeight + 5) {
+          const parentRect = parent.getBoundingClientRect();
+          const pBelow = parentRect.bottom - rect.bottom;
+          const pAbove = rect.top - parentRect.top;
+          if (pBelow < spaceBelow) spaceBelow = pBelow;
+          if (pAbove < spaceAbove) spaceAbove = pAbove;
+          break;
         }
+        parent = parent.parentElement;
       }
 
       if (spaceBelow < estimatedMenuHeight && spaceAbove > spaceBelow) {
@@ -196,22 +235,17 @@ export default function Dropdown({
     }
   }, [isOpen, isForcedDown, isForcedUp, normalizedOptions.length, portal]);
 
-  // Portal menus escape table overflow while staying anchored to their field.
+  // Portal menus escape modal & container overflow while staying anchored to their field
   useLayoutEffect(() => {
     if (!isOpen || !portal) return;
-    const position = () => {
-      const rect = buttonRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const below = isForcedDown || !dropUp;
-      setMenuPosition({ position: 'fixed', left: rect.left, width: rect.width,
-        top: below ? rect.bottom + 6 : 'auto', bottom: below ? 'auto' : window.innerHeight - rect.top + 6,
-        margin: 0, maxHeight: Math.max(40, Math.min(260, below ? window.innerHeight - rect.bottom - 14 : rect.top - 14)), zIndex: 1000 });
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
     };
-    position();
-    window.addEventListener('resize', position);
-    window.addEventListener('scroll', position, true);
-    return () => { window.removeEventListener('resize', position); window.removeEventListener('scroll', position, true); };
-  }, [isOpen, portal, dropUp, isForcedDown]);
+  }, [isOpen, portal, updateMenuPosition]);
 
   // Auto-scroll highlighted option into view
   useEffect(() => {
@@ -295,6 +329,9 @@ export default function Dropdown({
     if (!isOpen) {
       if (['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
         e.preventDefault();
+        if (portal) {
+          updateMenuPosition();
+        }
         setIsOpen(true);
         setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
         return;
@@ -387,17 +424,29 @@ export default function Dropdown({
     if (isPointerDownRef.current) return;
 
     // Focused via keyboard (Tab / Shift+Tab) -> automatically open dropdown list!
+    if (portal) {
+      updateMenuPosition();
+    }
     setIsOpen(true);
     setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
   };
 
   // Blur handler: When focus leaves the dropdown container, cleanly close it
   const handleBlur = (e) => {
-    if (!containerRef.current?.contains(e.relatedTarget) && !menuRef.current?.contains(e.relatedTarget)) {
-      setIsOpen(false);
-      setHighlightedIndex(-1);
-      hasKeyboardNavigatedRef.current = false;
+    if (
+      e.relatedTarget &&
+      (containerRef.current?.contains(e.relatedTarget) || menuRef.current?.contains(e.relatedTarget))
+    ) {
+      return;
     }
+    // If relatedTarget is null (e.g. pointer click on menu item or document),
+    // let pointerdown listener handle outside clicks so option selection clicks are not cancelled
+    if (!e.relatedTarget) {
+      return;
+    }
+    setIsOpen(false);
+    setHighlightedIndex(-1);
+    hasKeyboardNavigatedRef.current = false;
   };
 
   // Button click toggle
@@ -408,13 +457,16 @@ export default function Dropdown({
       const willOpen = !prev;
       if (willOpen) {
         setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+        if (portal) {
+          updateMenuPosition();
+        }
       }
       return willOpen;
     });
   };
 
-  // Size styling tokens
-  const sizeStyles = {
+  // Size styling tokens - Default is standard field height h-10 (40px) matching inputs
+  const sizeMap = {
     sm: {
       button: 'h-8 px-2.5 text-xs rounded-lg gap-1.5',
       icon: 'w-3.5 h-3.5',
@@ -428,7 +480,7 @@ export default function Dropdown({
       menu: 'py-1.5 rounded-2xl',
     },
     md: {
-      button: 'h-11 px-3.5 text-xs sm:text-sm rounded-xl gap-2',
+      button: 'h-10 px-3.5 text-xs sm:text-sm rounded-xl gap-2',
       icon: 'w-4 h-4',
       option: 'py-2.5 px-3.5 text-xs sm:text-sm',
       menu: 'py-1.5 rounded-2xl',
@@ -439,7 +491,24 @@ export default function Dropdown({
       option: 'py-3 px-4 text-sm',
       menu: 'py-2 rounded-2xl',
     },
-  }[size] || sizeStyles.md;
+  };
+  const sizeStyles = sizeMap[size] || sizeMap.field;
+
+  let resolvedButtonClass = sizeStyles.button;
+  if (buttonClassName) {
+    if (/\bh-\S+/.test(buttonClassName)) {
+      resolvedButtonClass = resolvedButtonClass.replace(/\bh-\S+/g, '');
+    }
+    if (/\bpx-\S+/.test(buttonClassName)) {
+      resolvedButtonClass = resolvedButtonClass.replace(/\bpx-\S+/g, '');
+    }
+    if (/\brounded-\S+/.test(buttonClassName)) {
+      resolvedButtonClass = resolvedButtonClass.replace(/\brounded-\S+/g, '');
+    }
+    if (/\bgap-\S+/.test(buttonClassName)) {
+      resolvedButtonClass = resolvedButtonClass.replace(/\bgap-\S+/g, '');
+    }
+  }
 
   // Variant styling tokens
   const variantStyles = {
@@ -513,15 +582,15 @@ export default function Dropdown({
           isOpen && highlightedIndex >= 0 ? `${dropdownId}-opt-${highlightedIndex}` : undefined
         }
         className={`w-full flex items-center justify-between text-left font-medium ${animate ? 'transition-all duration-150' : ''} outline-none cursor-pointer ${
-          sizeStyles.button
+          resolvedButtonClass
         } ${variantStyles} ${
           isOpen ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20' : ''
         } ${disabled ? 'opacity-50 cursor-not-allowed bg-stone-100/60' : ''} ${buttonClassName}`}
       >
         <span className="flex items-center gap-2 truncate">
-          {prefixIcon && <span className="shrink-0 text-stone-400">{prefixIcon}</span>}
+          {prefixIcon && <span className="shrink-0 text-stone-400">{renderDropdownIcon(prefixIcon, sizeStyles.icon || 'w-4 h-4')}</span>}
           {selectedOption?.icon && !prefixIcon && (
-            <span className="shrink-0 text-stone-500">{selectedOption.icon}</span>
+            <span className="shrink-0 text-stone-500">{renderDropdownIcon(selectedOption.icon, sizeStyles.icon || 'w-4 h-4')}</span>
           )}
           {showStatusDot && value && renderStatusDot(value, selectedOption)}
           <span
@@ -545,19 +614,28 @@ export default function Dropdown({
       {isOpen && (
         <MenuLayer enabled={portal}>
         <div
-          style={portal ? menuPosition : undefined}
+          style={portal ? { ...menuPosition, visibility: menuPosition.left !== undefined ? 'visible' : 'hidden' } : undefined}
           ref={menuRef}
           id={`${dropdownId}-menu`}
           role="listbox"
           tabIndex={-1}
-          className={`absolute left-0 w-full z-50 bg-white border border-stone-200/90 shadow-xl shadow-stone-900/10 backdrop-blur-md overflow-y-auto max-h-60 ${animate ? 'transition-all animate-fadeIn' : ''} ${
+          onMouseDown={(e) => {
+            // Prevent trigger button from blurring and prematurely dismissing options on scroll or click
+            e.preventDefault();
+          }}
+          className={`${
+            portal ? 'fixed' : 'absolute left-0 w-full z-50'
+          } bg-white border border-stone-200/90 shadow-xl shadow-stone-900/10 backdrop-blur-md overflow-y-auto max-h-60 ${animate ? 'transition-all animate-fadeIn' : ''} ${
             sizeStyles.menu
           } ${
-            dropUp
-              ? 'bottom-full mb-1.5 origin-bottom'
-              : 'top-full mt-1.5 origin-top'
-          } ${menuClassName}`}
-        >
+            !portal
+              ? dropUp
+                ? 'bottom-full mb-1.5 origin-bottom'
+                : 'top-full mt-1.5 origin-top'
+              : dropUp
+              ? 'origin-bottom'
+              : 'origin-top'
+          } ${menuClassName}`}>
           {normalizedOptions.length === 0 ? (
             <div className="py-3 px-4 text-xs text-stone-400 text-center italic">
               No options available
@@ -574,6 +652,7 @@ export default function Dropdown({
                     id={`${dropdownId}-opt-${idx}`}
                     role="option"
                     aria-selected={isSelected}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => handleSelect(opt)}
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     className="cursor-pointer"
@@ -592,6 +671,7 @@ export default function Dropdown({
                   disabled={opt.disabled}
                   role="option"
                   aria-selected={isSelected}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(opt)}
                   onMouseEnter={() => setHighlightedIndex(idx)}
                   className={`w-full flex items-center justify-between text-left transition-colors duration-100 cursor-pointer ${
@@ -605,7 +685,7 @@ export default function Dropdown({
                   } ${opt.disabled ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''}`}
                 >
                   <div className="flex items-center gap-2 truncate">
-                    {opt.icon && <span className="shrink-0">{opt.icon}</span>}
+                    {opt.icon && <span className="shrink-0 text-stone-400 group-hover:text-stone-600">{renderDropdownIcon(opt.icon, sizeStyles.icon || 'w-4 h-4')}</span>}
                     {showStatusDot && renderStatusDot(opt.value, opt)}
                     <span className="truncate">{opt.label}</span>
                     {opt.sublabel && (

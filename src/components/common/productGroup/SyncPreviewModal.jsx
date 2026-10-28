@@ -1,13 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import { HiOutlineRefresh, HiOutlineCheckCircle, HiOutlineArrowLeft } from 'react-icons/hi';
 import Modal from '../Modal';
+import Dropdown from '../Dropdown';
 import api from '../../../api/axios';
 
 const money = (val) => {
   if (val == null || val === '') return '₹ 0';
   return `₹ ${Number(val).toLocaleString('en-IN')}`;
 };
+
+const SYNC_FIELDS = [
+  { id: 'gender', label: 'Gender', desc: 'Target audience / gender classification' },
+  { id: 'description', label: 'Description', desc: 'Product marketing description' },
+  { id: 'seo', label: 'SEO', desc: 'Meta title, description, & keywords' },
+  { id: 'categoryIds', label: 'Category IDs', desc: 'Catalog navigation category links' },
+  { id: 'colorImages', label: 'Color & Studio Images', desc: 'Complete gallery & VTO assets' },
+  { id: 'visibility', label: 'Visibility', desc: 'Web and mobile app visibility' },
+  { id: 'productSpecifications', label: 'Product Specifications', desc: 'Custom specification attributes' },
+  { id: 'descriptionSections', label: 'Description Sections', desc: 'Feature & detail highlight sections' },
+];
+
+const ALL_SYNC_FIELD_IDS = SYNC_FIELDS.map((f) => f.id);
 
 export default function SyncPreviewModal({
   isOpen,
@@ -17,18 +31,46 @@ export default function SyncPreviewModal({
   onSuccess,
 }) {
   const [sourceId, setSourceId] = useState('');
-  const [fields, setFields] = useState(['description']);
+  const [fields] = useState(ALL_SYNC_FIELD_IDS);
   const [scope, setScope] = useState('all'); // 'all' | 'selected'
   const [previewData, setPreviewData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  const products = group?.products || [];
+  const products = group?.products || group?.productIds || [];
+
+  const productOptions = useMemo(() => {
+    return products.map((p) => {
+      const productName = (p.basicInfo?.title || p.title || p.name || 'Unnamed Product').trim();
+      const barcode = (
+        p.ornate?.barcode ||
+        p.barcode ||
+        p.barcodeNo ||
+        p.basicInfo?.barcode ||
+        p.ornate?.tagNo ||
+        p.basicInfo?.sku ||
+        ''
+      ).trim();
+
+      const label = barcode ? `${productName} - ${barcode}` : productName;
+
+      const tag = p.ornate?.tagNo ? `Tag: ${p.ornate.tagNo}` : '';
+      const price = p.pricing?.salePrice ? money(p.pricing.salePrice) : '';
+      const sublabelParts = [tag, price].filter(Boolean);
+      const sublabel = sublabelParts.length > 0 ? sublabelParts.join(' · ') : undefined;
+
+      return {
+        value: String(p._id),
+        label,
+        sublabel,
+        raw: p,
+      };
+    });
+  }, [products]);
 
   useEffect(() => {
     if (!isOpen) {
       setPreviewData(null);
-      setFields(['description']);
       return;
     }
     // Default source to group representative or first product
@@ -36,12 +78,6 @@ export default function SyncPreviewModal({
     setSourceId(defaultSource);
     setScope(selectedProductIds.length > 0 ? 'selected' : 'all');
   }, [isOpen, group, selectedProductIds]);
-
-  const toggleField = (field) => {
-    setFields((prev) =>
-      prev.includes(field) ? prev.filter((f) => f !== field) : [...prev, field]
-    );
-  };
 
   const handlePreview = async () => {
     if (!sourceId) {
@@ -105,12 +141,28 @@ export default function SyncPreviewModal({
   };
 
   const displayVal = (val, field) => {
+    if (val == null || val === '') return '—';
     if (field === 'salePrice') return money(val);
-    if (field === 'images') {
+    if (field === 'colorImages' || field === 'images') {
       const count = Array.isArray(val)
         ? val.reduce((acc, ci) => acc + (ci.images?.length || 0), 0)
         : 0;
       return `${count} image(s)`;
+    }
+    if (field === 'gender') {
+      return Array.isArray(val) ? val.join(', ') : String(val);
+    }
+    if (field === 'categoryIds') {
+      return Array.isArray(val) ? `${val.length} category ID(s)` : String(val);
+    }
+    if (field === 'visibility') {
+      return `Web: ${val?.web ? 'Yes' : 'No'} | App: ${val?.app ? 'Yes' : 'No'}`;
+    }
+    if (field === 'productSpecifications' || field === 'descriptionSections') {
+      return Array.isArray(val) ? `${val.length} section(s)` : String(val);
+    }
+    if (field === 'seo') {
+      return val?.metaTitle || val?.metaDescription ? `${val.metaTitle || 'Configured'}` : 'Configured';
     }
     if (Array.isArray(val)) return `[${val.length} items]`;
     if (typeof val === 'object' && val !== null) return JSON.stringify(val);
@@ -134,68 +186,53 @@ export default function SyncPreviewModal({
         <div className="space-y-4">
           {/* Source Product Selector */}
           <div>
-            <label className="block text-xs font-semibold text-stone-700 mb-1">
+            <label className="block text-xs font-semibold text-stone-700 mb-1.5">
               Source / Master Product <span className="text-rose-500">*</span>
             </label>
-            <select
+            <Dropdown
               value={sourceId}
-              onChange={(e) => setSourceId(e.target.value)}
-              className="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl bg-stone-50/50 focus:outline-none focus:border-[#8b6f4e]"
-            >
-              {products.map((p) => {
-                const title = p.basicInfo?.title || p.name || 'Unnamed';
-                const tag = p.ornate?.tagNo ? `[${p.ornate.tagNo}] ` : '';
-                const price = p.pricing?.salePrice ? ` · ${money(p.pricing.salePrice)}` : '';
-                return (
-                  <option key={p._id} value={p._id}>
-                    {tag}
-                    {title}
-                    {price}
-                  </option>
-                );
-              })}
-            </select>
-            <p className="text-[11px] text-stone-400 mt-1">
+              onChange={(val) => setSourceId(val)}
+              options={productOptions}
+              placeholder="Select source / master product"
+              portal={true}
+              size="field"
+              className="w-full"
+            />
+            <p className="text-[11px] text-stone-400 mt-1.5">
               Values from this product will be copied to other group members.
             </p>
           </div>
 
-          {/* Fields to sync allowlist */}
+          {/* Synchronized Fields (Non-selectable, Fixed List) */}
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-2">
-              Select Fields to Synchronize <span className="text-rose-500">*</span>
+              Fields to Synchronize
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {[
-                { id: 'description', label: 'Product Description', desc: 'Copy description text' },
-                { id: 'title', label: 'Product Title', desc: 'Copy title name' },
-                { id: 'salePrice', label: 'Sale Price', desc: 'Synchronize retail pricing' },
-                { id: 'images', label: 'Color & Studio Images', desc: 'Copy gallery image assets' },
-              ].map((f) => (
-                <label
-                  key={f.id}
-                  className={`flex items-start gap-3 p-3 border rounded-xl cursor-pointer transition-colors ${
-                    fields.includes(f.id)
-                      ? 'border-[#8b6f4e] bg-[#8b6f4e]/5'
-                      : 'border-stone-200 hover:bg-stone-50'
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={fields.includes(f.id)}
-                    onChange={() => toggleField(f.id)}
-                    className="mt-0.5 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] w-4 h-4 cursor-pointer"
-                  />
-                  <div>
-                    <p className="text-xs font-semibold text-stone-800">{f.label}</p>
-                    <p className="text-[10px] text-stone-500">{f.desc}</p>
+            <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5 space-y-2.5">
+              <div className="flex items-center gap-2">
+                <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#8b6f4e]/10 text-[#8b6f4e]">
+                  <HiOutlineCheckCircle className="w-4 h-4" />
+                </span>
+                <p className="text-xs font-bold text-stone-800">
+                  The following fields are automatically copied from the master product:
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {SYNC_FIELDS.map((f) => (
+                  <div
+                    key={f.id}
+                    className="flex items-center gap-2 px-2.5 py-2 rounded-xl bg-white border border-stone-200/90 shadow-2xs"
+                  >
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-stone-800 truncate">{f.label}</p>
+                      <p className="text-[10px] font-mono text-stone-400 truncate">{f.id}</p>
+                    </div>
                   </div>
-                </label>
-              ))}
+                ))}
+              </div>
             </div>
-            <p className="text-[11px] text-stone-500 mt-2 bg-stone-50 p-2 rounded-lg border border-stone-100">
-              🔒 <strong>Protected Fields:</strong> SKU, tag number, barcode, metal weight, stock quantity, and sold status are strictly protected and will never be overwritten.
-            </p>
           </div>
 
           {/* Target Scope */}

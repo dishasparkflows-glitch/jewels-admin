@@ -151,3 +151,16 @@ export const staticPagesAPI = {
   delete: (id) => api.delete(`/static-pages/${id}`),
 };
 
+
+// --- Media & Theme Gallery -------------------------
+export const galleryAPI = {
+  getAll: (params) => api.get('/gallery', { params }),
+  getOne: (id) => api.get('/gallery/' + id),
+  create: (data) => api.post('/gallery', data),
+  uploadAssign: (data) => api.post('/gallery/upload-assign', data),
+  update: (id, data) => api.put('/gallery/' + id, data),
+  toggleStatus: (id) => api.patch('/gallery/' + id + '/status'),
+  getThemes: () => api.get('/gallery/themes'),
+  getBanners: (params) => api.get('/gallery/banners', { params }),
+  deleteItem: (id, params) => api.delete('/gallery/' + id, { params }),
+};

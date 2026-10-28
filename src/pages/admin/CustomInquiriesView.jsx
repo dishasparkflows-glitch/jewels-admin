@@ -20,6 +20,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { ViewActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import StatCards from '../../components/common/StatCards';
+import Pagination from '../../components/common/Pagination';
 
 const STATUS_TABS = [
   { value: 'all', label: 'ALL' },

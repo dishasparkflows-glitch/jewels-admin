@@ -33,7 +33,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbfaf8] flex items-center justify-center p-4 selection:bg-[#8b6f4e] selection:text-white">
+    <div className="min-h-screen bg-[#fbfaf8] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white border border-stone-200/80 rounded-3xl p-8 sm:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         {/* Brand Header */}
         <div className="text-center space-y-2 mb-8">

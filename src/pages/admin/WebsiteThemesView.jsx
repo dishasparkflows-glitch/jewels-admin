@@ -108,7 +108,7 @@ function Field({ label, children, hint }) {
 }
 
 const inputClass =
-  'w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-xs text-stone-800 outline-none transition focus:border-[#8b6c3a] focus:ring-2 focus:ring-[#8b6c3a]/15';
+  'w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-xs text-stone-800 outline-none transition focus:border-[#8b6c3a] focus:ring-2 focus:ring-[#8b6c3a]/15';
 
 export default function WebsiteThemesView() {
   const [themes, setThemes] = useState([]);
@@ -120,7 +120,6 @@ export default function WebsiteThemesView() {
   const [availableBanners, setAvailableBanners] = useState([]);
   const [availableFeatured, setAvailableFeatured] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [history, setHistory] = useState([]);
 
   // Editor states
   const [editing, setEditing] = useState(null);
@@ -200,15 +199,7 @@ export default function WebsiteThemesView() {
     };
   }, [editing?._id, tab]);
 
-  // History tab loader
-  useEffect(() => {
-    if (tab === 'history' && editing?._id) {
-      websiteThemesAPI
-        .getHistory(editing._id)
-        .then((res) => setHistory(getData(res) || []))
-        .catch(() => {});
-    }
-  }, [tab, editing?._id]);
+
 
   const visibleThemes = useMemo(() => {
     return themes.filter((theme) => {
@@ -403,7 +394,6 @@ export default function WebsiteThemesView() {
       ['categories', 'Category Icons'],
       ['preview', 'Live Preview'],
       ['publish', 'Schedule & Publish'],
-      ['history', 'History'],
     ];
 
     return (
@@ -895,43 +885,7 @@ export default function WebsiteThemesView() {
           </section>
         )}
 
-        {/* TAB 10: HISTORY */}
-        {tab === 'history' && (
-          <section className="overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xs">
-            <div className="border-b border-stone-100 p-5">
-              <h3 className="font-bold text-stone-900">Publishing & Revision History</h3>
-              <p className="mt-0.5 text-xs text-stone-500">
-                Audit trail of changes, scheduled campaigns, activations and rollbacks.
-              </p>
-            </div>
 
-            {history.length ? (
-              <div className="divide-y divide-stone-100">
-                {history.map((item) => (
-                  <div key={item._id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-                    <div>
-                      <span className="font-semibold capitalize text-stone-800 text-xs">
-                        {item.action?.replace('_', ' ')}
-                      </span>
-                      <span className="ml-2 text-xs text-stone-500">{item.details}</span>
-                      <p className="mt-1 text-[11px] text-stone-400">
-                        {item.actorId?.name || 'System'} ·{' '}
-                        {new Date(item.createdAt).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST
-                      </p>
-                    </div>
-                    <span className="text-[11px] font-mono text-stone-400">
-                      Revision {item.revision || '—'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-12 text-center text-xs text-stone-500">
-                No activity recorded for this theme yet.
-              </div>
-            )}
-          </section>
-        )}
       </div>
     );
   }

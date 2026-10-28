@@ -43,7 +43,7 @@ const AdminLayout = () => {
       : 'w-full';
 
   return (
-    <div className="min-h-screen bg-[#fbfaf8] text-stone-900 selection:bg-[#8b6f4e] selection:text-white relative overflow-x-hidden">
+    <div id="admin-root-layout" className="min-h-screen bg-[#fbfaf8] text-stone-900 relative overflow-x-hidden admin-page-bg" style={{ backgroundColor: "#fbfaf8" }}>
       {/* Mobile backdrop */}
       {mobileSidebarOpen && (
         <div
