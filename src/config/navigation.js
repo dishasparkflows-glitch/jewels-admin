@@ -65,6 +65,7 @@ export const navSections = [
           { id: 'silver-products', title: 'Silver Products', path: '/catalog/silver-products', icon: IoSparklesOutline, apiEndpoint: '/products?productType=silver' },
           { id: 'ornate-products', title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoLayersOutline, apiEndpoint: '/products?isOrnate=true' },
           { id: 'categories', title: 'Categories', path: '/catalog/categories', icon: HiOutlineTag, apiEndpoint: '/categories' },
+          { id: 'media-theme-gallery', title: 'Media & Theme Gallery', path: '/gallery', icon: HiOutlineBookOpen, apiEndpoint: '/gallery' },
           { id: 'navigation-menus', title: 'Navigation Menus', path: '/catalog/navigation-menus', icon: IoMapOutline, apiEndpoint: '/categories' },
         ],
       },

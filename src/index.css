@@ -195,4 +195,11 @@ label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge"]):not([c
   animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* Universal "No Img" Fallback Image Styling */
+img.no-img-fallback {
+  object-fit: contain !important;
+  border-radius: inherit;
+}
+
+
 

@@ -425,7 +425,8 @@ export default function InstagramPostsView() {
           <button
             type="button"
             onClick={handleOpenAddModal}
-            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg bg-[#8c6d46] hover:bg-[#785d3b] text-white text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            style={{ backgroundColor: 'var(--theme-primary, #8c6d46)' }}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-lg text-white text-xs font-semibold shadow-2xs hover:brightness-95 active:scale-[0.98] transition-all cursor-pointer"
           >
             <HiOutlinePlus className="w-4 h-4 stroke-2" />
             <span>Add Post</span>
@@ -437,8 +438,17 @@ export default function InstagramPostsView() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Card 1: Total Posts */}
         <div className="bg-white rounded-xl border border-stone-200/90 p-4 flex items-center gap-3.5 shadow-2xs">
-          <div className="w-11 h-11 rounded-xl bg-[#faf4ed] border border-[#f2e7db] flex items-center justify-center shrink-0">
-            <HiOutlinePhotograph className="w-5 h-5 text-[#8c6d46]" />
+          <div
+            className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border"
+            style={{
+              backgroundColor: 'rgba(var(--theme-primary-rgb, 140, 109, 70), 0.12)',
+              borderColor: 'rgba(var(--theme-primary-rgb, 140, 109, 70), 0.22)',
+            }}
+          >
+            <HiOutlinePhotograph
+              className="w-5 h-5"
+              style={{ color: 'var(--theme-primary, #8c6d46)' }}
+            />
           </div>
           <div>
             <div className="flex items-baseline gap-1.5">
@@ -729,9 +739,10 @@ export default function InstagramPostsView() {
                   key={`page-${num}`}
                   type="button"
                   onClick={() => setCurrentPage(num)}
+                  style={isActive ? { backgroundColor: 'var(--theme-primary, #8c6d46)' } : {}}
                   className={`w-7 h-7 rounded-md text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer ${
                     isActive
-                      ? 'bg-[#8c6d46] text-white shadow-2xs'
+                      ? 'text-white shadow-2xs'
                       : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200/90'
                   }`}
                 >
@@ -780,7 +791,8 @@ export default function InstagramPostsView() {
               type="button"
               onClick={handleSaveOrder}
               disabled={savingOrder}
-              className="px-5 py-2 rounded-lg bg-[#8c6d46] hover:bg-[#785d3b] text-white text-xs font-semibold tracking-wide transition-colors cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ backgroundColor: 'var(--theme-primary, #8c6d46)' }}
+              className="px-5 py-2 rounded-lg text-white text-xs font-semibold tracking-wide hover:brightness-95 active:scale-[0.98] transition-all cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {savingOrder ? 'Saving...' : 'Save Order'}
             </button>
@@ -867,8 +879,9 @@ export default function InstagramPostsView() {
                 <button
                   type="button"
                   onClick={() => setIsActive(!isActive)}
+                  style={isActive ? { backgroundColor: 'var(--theme-primary, #8c6d46)' } : {}}
                   className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none ${
-                    isActive ? 'bg-[#8c6d46]' : 'bg-stone-300'
+                    isActive ? '' : 'bg-stone-300'
                   }`}
                 >
                   <span
@@ -891,7 +904,8 @@ export default function InstagramPostsView() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-6 py-2.5 rounded-lg bg-[#8c6d46] hover:bg-[#785d3b] text-white text-xs font-bold tracking-wider uppercase transition-colors shadow-2xs cursor-pointer disabled:opacity-50"
+                  style={{ backgroundColor: 'var(--theme-primary, #8c6d46)' }}
+                  className="px-6 py-2.5 rounded-lg text-white text-xs font-bold tracking-wider uppercase hover:brightness-95 active:scale-[0.98] transition-all shadow-2xs cursor-pointer disabled:opacity-50"
                 >
                   {submitting ? 'Saving...' : editingPost ? 'Update Post' : 'Add Post'}
                 </button>
@@ -991,7 +1005,8 @@ export default function InstagramPostsView() {
                   href={viewingPost.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 py-2.5 bg-[#8c6d46] hover:bg-[#785d3b] text-white rounded-lg text-xs font-bold tracking-wider uppercase transition-colors text-center flex items-center justify-center gap-1.5 shadow-2xs"
+                  style={{ backgroundColor: 'var(--theme-primary, #8c6d46)' }}
+                  className="flex-1 py-2.5 text-white rounded-lg text-xs font-bold tracking-wider uppercase hover:brightness-95 active:scale-[0.98] transition-all text-center flex items-center justify-center gap-1.5 shadow-2xs"
                 >
                   <span>Open On Instagram</span>
                   <HiOutlineExternalLink className="w-4 h-4" />

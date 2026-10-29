@@ -87,6 +87,11 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
         (location.pathname === '/catalog/categories' ||
           location.pathname.startsWith('/catalog/categories') ||
           location.pathname === '/categories')) ||
+      ((childPath === '/gallery' || childPath === '/media-gallery' || childPath === '/catalog/gallery') &&
+        (location.pathname === '/gallery' ||
+          location.pathname.startsWith('/gallery') ||
+          location.pathname === '/media-gallery' ||
+          location.pathname === '/catalog/gallery')) ||
       (childPath === '/catalog/navigation-menus' &&
         (location.pathname === '/catalog/navigation-menus' ||
           location.pathname === '/navigation-menus')) ||

@@ -25,6 +25,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
 import RowActions, { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import AdminImage, { NoImagePlaceholder } from '../../components/common/AdminImage';
 
 // Preset luxury jewelry icons for 1-click selection
 const PRESET_ICONS = [
@@ -132,19 +133,15 @@ function CategoryGlyph({ name, className = 'w-5 h-5' }) {
 
 // Item thumbnail or gem icon
 function ItemIcon({ iconUrl, title, className = 'w-7 h-7' }) {
-  if (iconUrl) {
-    return (
-      <img
-        src={iconUrl}
-        alt={title || ''}
-        className={`${className} rounded-lg object-cover border border-stone-100 bg-stone-50 shrink-0`}
-      />
-    );
-  }
   return (
-    <div className={`${className} rounded-lg border border-stone-200 bg-stone-50 text-stone-500 flex items-center justify-center shrink-0`}>
-      <CategoryGlyph name={title} className="w-4 h-4 text-[#85583f]" />
-    </div>
+    <AdminImage
+      src={iconUrl}
+      alt={title || ''}
+      className={`${className} rounded-lg object-cover shrink-0`}
+      containerClassName={`${className} rounded-lg`}
+      rounded="rounded-lg"
+      textClassName="text-[9px] font-semibold text-stone-400 select-none"
+    />
   );
 }
 
@@ -846,7 +843,8 @@ export default function NavigationMenusView() {
             type="button"
             disabled={isSavingAll}
             onClick={handleSaveAll}
-            className="inline-flex items-center gap-2 rounded-xl bg-[#85583f] px-5 py-2.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#724a34] disabled:opacity-60 transition-all cursor-pointer"
+            style={{ backgroundColor: 'var(--theme-primary, #85583f)' }}
+            className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold text-white shadow-2xs hover:brightness-95 active:scale-[0.98] disabled:opacity-60 transition-all cursor-pointer"
           >
             <HiOutlineCheck className="w-4 h-4" />
             {isSavingAll ? 'Saving Changes…' : 'Save Changes'}
@@ -905,16 +903,15 @@ export default function NavigationMenusView() {
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 overflow-hidden border ${
-                          isSelected ? 'border-[#eadbcc] bg-white' : 'border-stone-200/80 bg-stone-50'
-                        }`}
-                      >
-                        {iconSrc ? (
-                          <img src={iconSrc} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          <CategoryGlyph name={cat.name} className="w-4.5 h-4.5 text-[#85583f]" />
-                        )}
+                      <div className="w-9 h-9 rounded-xl shrink-0 overflow-hidden flex items-center justify-center">
+                        <AdminImage
+                          src={iconSrc}
+                          alt={cat.name}
+                          className="w-full h-full object-cover rounded-xl"
+                          containerClassName="w-9 h-9"
+                          rounded="rounded-xl"
+                          textClassName="text-[10px] font-semibold text-stone-400 select-none"
+                        />
                       </div>
                       <span className="truncate">{cat.name}</span>
                     </div>
@@ -938,16 +935,15 @@ export default function NavigationMenusView() {
               {/* Category Header Card with Status Switch */}
               <div className="rounded-2xl border border-stone-200/90 bg-white p-4 shadow-xs flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-14 h-14 rounded-xl border border-stone-200 bg-white p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
-                    {selectedCategory.icon?.url || selectedCategory.images?.[0]?.url ? (
-                      <img
-                        src={selectedCategory.icon?.url || selectedCategory.images?.[0]?.url}
-                        alt=""
-                        className="w-full h-full object-cover rounded-lg"
-                      />
-                    ) : (
-                      <CategoryGlyph name={selectedCategory.name} className="w-7 h-7 text-[#85583f]" />
-                    )}
+                  <div className="w-14 h-14 rounded-2xl shrink-0 overflow-hidden flex items-center justify-center shadow-2xs">
+                    <AdminImage
+                      src={selectedCategory.icon?.url || selectedCategory.images?.[0]?.url}
+                      alt={selectedCategory.name}
+                      className="w-full h-full object-cover rounded-2xl"
+                      containerClassName="w-14 h-14"
+                      rounded="rounded-2xl"
+                      textClassName="text-xs font-semibold text-stone-400 select-none"
+                    />
                   </div>
                   <div className="min-w-0">
                     <h2 className="text-lg font-bold text-stone-900 tracking-tight truncate">
@@ -971,8 +967,9 @@ export default function NavigationMenusView() {
                     className="flex items-center gap-2 cursor-pointer group"
                   >
                     <div
+                      style={selectedCategory.status === 'active' ? { backgroundColor: 'var(--theme-primary, #85583f)' } : {}}
                       className={`w-11 h-6 rounded-full transition-colors p-0.5 relative ${
-                        selectedCategory.status === 'active' ? 'bg-[#85583f]' : 'bg-stone-300'
+                        selectedCategory.status === 'active' ? '' : 'bg-stone-300'
                       }`}
                     >
                       <div
@@ -1019,7 +1016,8 @@ export default function NavigationMenusView() {
                   <button
                     type="button"
                     onClick={openAddSectionModal}
-                    className="inline-flex items-center gap-1.5 rounded-xl bg-[#85583f] px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:bg-[#724a34] transition-all cursor-pointer mb-2"
+                    style={{ backgroundColor: 'var(--theme-primary, #85583f)' }}
+                    className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs font-semibold text-white shadow-2xs hover:brightness-95 active:scale-[0.98] transition-all cursor-pointer mb-2"
                   >
                     <HiOutlinePlus className="w-3.5 h-3.5" />
                     Add Section
@@ -1188,16 +1186,15 @@ export default function NavigationMenusView() {
                                       >
                                         <div className="flex items-center gap-3.5 min-w-0">
                                           <DragHandle />
-                                          <div className="w-8 h-8 rounded-lg border border-stone-200/80 bg-white p-0.5 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
-                                            {item.icon?.url ? (
-                                              <img
-                                                src={item.icon.url}
-                                                alt=""
-                                                className="w-full h-full object-cover rounded"
-                                              />
-                                            ) : (
-                                              <CategoryGlyph name={item.title} className="w-4 h-4 text-[#85583f]" />
-                                            )}
+                                          <div className="w-8 h-8 rounded-lg shrink-0 overflow-hidden flex items-center justify-center shadow-2xs">
+                                            <AdminImage
+                                              src={item.icon?.url}
+                                              alt={item.title || ''}
+                                              className="w-full h-full object-cover rounded-lg"
+                                              containerClassName="w-8 h-8"
+                                              rounded="rounded-lg"
+                                              textClassName="text-[9px] font-semibold text-stone-400 select-none"
+                                            />
                                           </div>
                                           <span className="text-xs font-medium text-stone-800 truncate">
                                             {item.title}
@@ -1319,14 +1316,15 @@ export default function NavigationMenusView() {
                             key={index}
                             className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2.5 relative group overflow-hidden"
                           >
-                            <div className="w-full h-32 rounded-lg bg-stone-200 overflow-hidden relative border border-stone-200">
-                              {img ? (
-                                <img src={img} alt="" className="w-full h-full object-cover" />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center text-stone-400 text-xs">
-                                  No Image
-                                </div>
-                              )}
+                            <div className="w-full h-32 rounded-xl overflow-hidden relative">
+                              <AdminImage
+                                src={img}
+                                alt=""
+                                className="w-full h-full object-cover rounded-xl"
+                                containerClassName="w-full h-full"
+                                rounded="rounded-xl"
+                                textClassName="text-xs font-semibold text-stone-400 select-none"
+                              />
                             </div>
 
                             <div>
@@ -1566,16 +1564,15 @@ export default function NavigationMenusView() {
                     <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-3">
                       {/* Top Preview & Upload Button Row */}
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl border border-stone-200/90 bg-white p-1 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
-                          {itemModal.data?.iconUrl ? (
-                            <img
-                              src={itemModal.data.iconUrl}
-                              alt=""
-                              className="w-full h-full object-contain rounded"
-                            />
-                          ) : (
-                            <CategoryGlyph name={itemModal.data?.title || ''} className="w-6 h-6 text-[#85583f]" />
-                          )}
+                        <div className="w-12 h-12 rounded-xl shrink-0 overflow-hidden flex items-center justify-center shadow-2xs">
+                          <AdminImage
+                            src={itemModal.data?.iconUrl}
+                            alt=""
+                            className="w-full h-full object-contain rounded-xl"
+                            containerClassName="w-12 h-12"
+                            rounded="rounded-xl"
+                            textClassName="text-[10px] font-semibold text-stone-400 select-none"
+                          />
                         </div>
 
                         <div className="flex-1 min-w-0">
@@ -1797,12 +1794,15 @@ export default function NavigationMenusView() {
 
                     <div className="rounded-xl border border-stone-200 bg-stone-50/50 p-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-16 h-12 rounded-lg border border-stone-200 bg-stone-100 flex items-center justify-center shrink-0 overflow-hidden shadow-2xs">
-                          {bannerModal.data?.imageUrl ? (
-                            <img src={bannerModal.data.imageUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <HiOutlinePhotograph className="w-6 h-6 text-stone-300" />
-                          )}
+                        <div className="w-16 h-12 rounded-lg shrink-0 overflow-hidden flex items-center justify-center shadow-2xs">
+                          <AdminImage
+                            src={bannerModal.data?.imageUrl}
+                            alt=""
+                            className="w-full h-full object-cover rounded-lg"
+                            containerClassName="w-16 h-12"
+                            rounded="rounded-lg"
+                            textClassName="text-[10px] font-semibold text-stone-400 select-none"
+                          />
                         </div>
 
                         <div className="flex-1 min-w-0">

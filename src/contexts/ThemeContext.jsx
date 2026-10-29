@@ -186,10 +186,20 @@ export const ThemeProvider = ({ children }) => {
         [class~="bg-[#8f6d43]"]:not(#admin-root-layout):not(body):not(html):not(main),
         [class~="bg-[#8b6c3a]"]:not(#admin-root-layout):not(body):not(html):not(main),
         [class~="bg-[#8a6d4b]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class~="bg-[#8c6d46]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class~="bg-[#85583f]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class~="bg-[#855836]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class~="bg-[#96744f]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class~="bg-[#8b6f47]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class~="bg-[#8d5b4c]"]:not(#admin-root-layout):not(body):not(html):not(main),
         .bg-\\[\\#8b6f4e\\]:not(#admin-root-layout):not(body):not(html):not(main),
         .bg-\\[\\#8f6d43\\]:not(#admin-root-layout):not(body):not(html):not(main),
         .bg-\\[\\#8b6c3a\\]:not(#admin-root-layout):not(body):not(html):not(main),
-        .bg-\\[\\#8a6d4b\\]:not(#admin-root-layout):not(body):not(html):not(main) {
+        .bg-\\[\\#8a6d4b\\]:not(#admin-root-layout):not(body):not(html):not(main),
+        .bg-\\[\\#8c6d46\\]:not(#admin-root-layout):not(body):not(html):not(main),
+        .bg-\\[\\#85583f\\]:not(#admin-root-layout):not(body):not(html):not(main),
+        .bg-\\[\\#855836\\]:not(#admin-root-layout):not(body):not(html):not(main),
+        .bg-\\[\\#96744f\\]:not(#admin-root-layout):not(body):not(html):not(main) {
           background-color: var(--theme-primary) !important;
         }
 
@@ -201,13 +211,33 @@ export const ThemeProvider = ({ children }) => {
         [class*="hover:bg-[#634b25]"]:hover,
         [class*="hover:bg-[#644d32]"]:hover,
         [class*="hover:bg-[#785b3a]"]:hover,
+        [class*="hover:bg-[#785d3b]"]:hover,
+        [class*="hover:bg-[#724a34]"]:hover,
+        [class*="hover:bg-[#6f4828]"]:hover,
+        [class*="hover:bg-[#7a5c36]"]:hover,
+        [class*="hover:bg-[#7b5b33]"]:hover,
+        [class*="hover:bg-[#7b5e39]"]:hover,
+        [class*="hover:bg-[#7b5f3e]"]:hover,
+        [class*="hover:bg-[#785e42]"]:hover,
+        [class*="hover:bg-[#78532f]"]:hover,
+        [class*="hover:bg-[#785327]"]:hover,
+        [class*="hover:bg-[#856543]"]:hover,
         .hover\\:bg-\\[\\#785e40\\]:hover,
         .hover\\:bg-\\[\\#7a5f3f\\]:hover,
         .hover\\:bg-\\[\\#8f6d43\\]:hover,
         .hover\\:bg-\\[\\#765a2d\\]:hover,
         .hover\\:bg-\\[\\#634b25\\]:hover,
         .hover\\:bg-\\[\\#644d32\\]:hover,
-        .hover\\:bg-\\[\\#785b3a\\]:hover {
+        .hover\\:bg-\\[\\#785b3a\\]:hover,
+        .hover\\:bg-\\[\\#785d3b\\]:hover,
+        .hover\\:bg-\\[\\#724a34\\]:hover,
+        .hover\\:bg-\\[\\#7a5c36\\]:hover,
+        .hover\\:bg-\\[\\#7b5b33\\]:hover,
+        .hover\\:bg-\\[\\#7b5e39\\]:hover,
+        .hover\\:bg-\\[\\#7b5f3e\\]:hover,
+        .hover\\:bg-\\[\\#785e42\\]:hover,
+        .hover\\:bg-\\[\\#78532f\\]:hover,
+        .hover\\:bg-\\[\\#856543\\]:hover {
           background-color: var(--theme-primary-hover) !important;
         }
 
@@ -217,6 +247,10 @@ export const ThemeProvider = ({ children }) => {
         [class*="text-[#8b6c3a]"],
         [class*="text-[#8a6d4b]"],
         [class*="text-[#8A6D4B]"],
+        [class*="text-[#8c6d46]"],
+        [class*="text-[#85583f]"],
+        [class*="text-[#855836]"],
+        [class*="text-[#96744f]"],
         [class*="text-[#9a724a]"],
         [class*="text-[#9A724A]"],
         [class*="text-[#a67c52]"],
@@ -224,10 +258,17 @@ export const ThemeProvider = ({ children }) => {
         [class*="text-[#c19b65]"],
         [class*="text-[#C19B65]"],
         [class*="text-[#9c7849]"],
+        [class*="text-[#9a6435]"],
+        [class*="text-[#704f2d]"],
+        [class*="text-[#735839]"],
+        [class*="text-[#785327]"],
         .text-\\[\\#8b6f4e\\],
         .text-\\[\\#8f6d43\\],
         .text-\\[\\#8b6c3a\\],
         .text-\\[\\#8a6d4b\\],
+        .text-\\[\\#8c6d46\\],
+        .text-\\[\\#85583f\\],
+        .text-\\[\\#855836\\],
         .text-\\[\\#9a724a\\] {
           color: var(--theme-primary) !important;
         }
@@ -240,14 +281,22 @@ export const ThemeProvider = ({ children }) => {
         [class*="hover:text-[#8a6d4b]"]:hover,
         [class*="hover:text-[#9a724a]"]:hover,
         [class*="hover:text-[#a0815e]"]:hover,
+        [class*="hover:text-[#8c6d46]"]:hover,
+        [class*="hover:text-[#85583f]"]:hover,
+        [class*="hover:text-[#855836]"]:hover,
         .hover\\:text-\\[\\#8b6f4e\\]:hover,
         .hover\\:text-\\[\\#8f6d43\\]:hover,
         .hover\\:text-\\[\\#8b6c3a\\]:hover,
         .hover\\:text-\\[\\#785e40\\]:hover,
+        .hover\\:text-\\[\\#8c6d46\\]:hover,
+        .hover\\:text-\\[\\#85583f\\]:hover,
+        .hover\\:text-\\[\\#855836\\]:hover,
         .group:hover [class*="group-hover:text-[#8b6f4e]"],
         .group:hover [class*="group-hover:text-[#8b6c3a]"],
         .group:hover [class*="group-hover:text-[#9A724A]"],
-        .group:hover [class*="group-hover:text-[#8a6d4b]"] {
+        .group:hover [class*="group-hover:text-[#8a6d4b]"],
+        .group:hover [class*="group-hover:text-[#8c6d46]"],
+        .group:hover [class*="group-hover:text-[#85583f]"] {
           color: var(--theme-primary-hover) !important;
         }
 
@@ -255,21 +304,33 @@ export const ThemeProvider = ({ children }) => {
         [class*="border-[#8b6f4e]"],
         [class*="border-[#8f6d43]"],
         [class*="border-[#8b6c3a]"],
+        [class*="border-[#8c6d46]"],
+        [class*="border-[#85583f]"],
+        [class*="border-[#855836]"],
         [class*="border-[#9c7849]"],
         [class*="border-[#9a724a]"],
         [class*="border-[#a67c52]"],
         .border-\\[\\#8b6f4e\\],
         .border-\\[\\#8f6d43\\],
-        .border-\\[\\#8b6c3a\\] {
+        .border-\\[\\#8b6c3a\\],
+        .border-\\[\\#8c6d46\\],
+        .border-\\[\\#85583f\\],
+        .border-\\[\\#855836\\] {
           border-color: var(--theme-primary) !important;
         }
 
         [class*="hover:border-[#8b6f4e]"]:hover,
         [class*="hover:border-[#8f6d43]"]:hover,
         [class*="hover:border-[#8b6c3a]"]:hover,
+        [class*="hover:border-[#8c6d46]"]:hover,
+        [class*="hover:border-[#85583f]"]:hover,
+        [class*="hover:border-[#855836]"]:hover,
         .hover\\:border-\\[\\#8b6f4e\\]:hover,
         .hover\\:border-\\[\\#8f6d43\\]:hover,
         .hover\\:border-\\[\\#8b6c3a\\]:hover,
+        .hover\\:border-\\[\\#8c6d46\\]:hover,
+        .hover\\:border-\\[\\#85583f\\]:hover,
+        .hover\\:border-\\[\\#855836\\]:hover,
         .group:hover [class*="group-hover:border-[#8b6f4e]"],
         .group:hover [class*="group-hover:border-[#8b6c3a]"] {
           border-color: var(--theme-primary) !important;
@@ -281,6 +342,11 @@ export const ThemeProvider = ({ children }) => {
         [class*="border-[#e8ded1]"],
         [class*="border-[#ede8e1]"],
         [class*="border-[#EDE8E1]"],
+        [class*="border-[#ebdcc8]"],
+        [class*="border-[#ebdcc9]"],
+        [class*="border-[#ebdccb]"],
+        [class*="border-[#d8c8b2]"],
+        [class*="border-[#f2e7db]"],
         .border-\\[\\#e8d9c2\\],
         .border-\\[\\#ecd9c2\\],
         .border-\\[\\#e8ddce\\],
@@ -366,6 +432,8 @@ export const ThemeProvider = ({ children }) => {
         [class*="bg-[#FAF8F5]"],
         [class*="bg-[#fbf4eb]"],
         [class*="bg-[#faf3e8]"],
+        [class*="bg-[#faf4ed]"],
+        [class*="bg-[#faf6f1]"],
         .bg-\\[\\#f8f2eb\\],
         .bg-\\[\\#faf5ee\\],
         .bg-\\[\\#faf8f5\\],
@@ -394,23 +462,34 @@ export const ThemeProvider = ({ children }) => {
         [class*="bg-[#8b6f4e]/10"],
         [class*="bg-[#8b6c3a]/10"],
         [class*="bg-[#8f6d43]/10"],
+        [class*="bg-[#8c6d46]/10"],
+        [class*="bg-[#85583f]/10"],
+        [class*="bg-[#855836]/10"],
         .bg-\\[\\#8b6f4e\\]\\/10,
         .bg-\\[\\#8b6c3a\\]\\/10 {
           background-color: rgba(var(--theme-primary-rgb), 0.10) !important;
         }
+        [class*="bg-[#85583f]/5"] {
+          background-color: rgba(var(--theme-primary-rgb), 0.06) !important;
+        }
         [class*="bg-[#8b6f4e]/15"],
         [class*="bg-[#8b6c3a]/15"],
+        [class*="bg-[#8c6d46]/15"],
+        [class*="bg-[#85583f]/15"],
         .bg-\\[\\#8b6c3a\\]\\/15 {
           background-color: rgba(var(--theme-primary-rgb), 0.15) !important;
         }
         [class*="bg-[#8b6f4e]/20"],
         [class*="bg-[#8b6c3a]/20"],
+        [class*="bg-[#8c6d46]/20"],
+        [class*="bg-[#85583f]/20"],
         .bg-\\[\\#8b6f4e\\]\\/20,
         .bg-\\[\\#8b6c3a\\]\\/20 {
           background-color: rgba(var(--theme-primary-rgb), 0.20) !important;
         }
         [class*="bg-[#8b6c3a]/30"],
         [class*="bg-[#8b6f4e]/30"],
+        [class*="bg-[#85583f]/30"],
         .bg-\\[\\#8b6c3a\\]\\/30 {
           background-color: rgba(var(--theme-primary-rgb), 0.30) !important;
         }
@@ -418,12 +497,14 @@ export const ThemeProvider = ({ children }) => {
         [class*="border-[#8b6f4e]/20"],
         [class*="border-[#8b6c3a]/20"],
         [class*="border-[#8f6d43]/20"],
+        [class*="border-[#85583f]/20"],
         .border-\\[\\#8b6f4e\\]\\/20,
         .border-\\[\\#8b6c3a\\]\\/20 {
           border-color: rgba(var(--theme-primary-rgb), 0.20) !important;
         }
         [class*="border-[#8b6f4e]/30"],
         [class*="border-[#8b6c3a]/30"],
+        [class*="border-[#85583f]/30"],
         .border-\\[\\#8b6f4e\\]\\/30,
         .border-\\[\\#8b6c3a\\]\\/30 {
           border-color: rgba(var(--theme-primary-rgb), 0.30) !important;
@@ -433,20 +514,39 @@ export const ThemeProvider = ({ children }) => {
         [class*="ring-[#8b6f4e]"],
         [class*="ring-[#8b6c3a]"],
         [class*="ring-[#8f6d43]"],
+        [class*="ring-[#8c6d46]"],
+        [class*="ring-[#85583f]"],
         .ring-\\[\\#8b6f4e\\],
         .ring-\\[\\#8b6c3a\\],
         .ring-\\[\\#8f6d43\\],
         [class*="focus:ring-[#8b6f4e]"]:focus,
         [class*="focus:ring-[#8b6c3a]"]:focus,
         [class*="focus:ring-[#8f6d43]"]:focus,
+        [class*="focus:ring-[#8c6d46]"]:focus,
+        [class*="focus:ring-[#85583f]"]:focus,
         .focus\\:ring-\\[\\#8b6f4e\\]:focus,
         .focus\\:ring-\\[\\#8b6c3a\\]:focus,
         .focus\\:ring-\\[\\#8f6d43\\]:focus,
         [class*="focus:border-[#8b6f4e]"]:focus,
         [class*="focus:border-[#8b6c3a]"]:focus,
+        [class*="focus:border-[#8c6d46]"]:focus,
+        [class*="focus:border-[#85583f]"]:focus,
         select:focus {
           --tw-ring-color: rgba(var(--theme-primary-rgb), 0.25) !important;
           border-color: var(--theme-primary) !important;
+        }
+
+        /* ─── 10b. SWITCHES & CHECKBOXES (Peer Checked) ─── */
+        .peer:checked ~ [class*="peer-checked:bg-[#8b6f4e]"],
+        .peer:checked ~ [class*="peer-checked:bg-[#8f6d43]"],
+        .peer:checked ~ [class*="peer-checked:bg-[#8b6c3a]"],
+        .peer:checked ~ [class*="peer-checked:bg-[#8c6d46]"],
+        .peer:checked ~ [class*="peer-checked:bg-[#85583f]"],
+        .peer:checked ~ [class*="peer-checked:bg-[#855836]"],
+        [class*="peer-checked:bg-[#8b6f4e]"]:checked,
+        [class*="peer-checked:bg-[#8c6d46]"]:checked,
+        [class*="peer-checked:bg-[#85583f]"]:checked {
+          background-color: var(--theme-primary) !important;
         }
 
         /* ─── 11. CHECKBOXES & RADIOS ─── */
@@ -494,6 +594,10 @@ export const ThemeProvider = ({ children }) => {
         }
       `;
     }
+
+    try {
+      window.dispatchEvent(new CustomEvent('themeChanged', { detail: currentTheme }));
+    } catch (e) {}
   }, [currentTheme]);
 
   const selectTheme = (themeId) => {

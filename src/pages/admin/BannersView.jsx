@@ -747,7 +747,8 @@ export default function BannersView() {
   // RENDER SCREEN 2: BANNER TYPE LIST VIEW (Table with filters & + Add Button)
   // =========================================================================
   if (viewMode === 'list') {
-    const TypeIcon = currentBannerType.icon;
+    const TypeIcon = currentBannerType.icon || HiOutlinePhotograph;
+    const ActiveBannerIcon = TypeIcon;
 
     return (
       <div className="space-y-6 pb-14 animate-fadeIn">
@@ -1136,7 +1137,7 @@ export default function BannersView() {
               <div className="bg-[#faf8f5] px-5 sm:px-6 py-4 border-b border-stone-150 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-white border border-[#e8d8c0] flex items-center justify-center text-[#8a6d4b] shadow-2xs shrink-0">
-                    <ActiveBannerIcon className="w-5 h-5 stroke-[1.8]" />
+                    <TypeIcon className="w-5 h-5 stroke-[1.8]" />
                   </div>
                   <div>
                     <h2 className="text-base sm:text-lg font-bold text-stone-900 font-playfair tracking-tight">
