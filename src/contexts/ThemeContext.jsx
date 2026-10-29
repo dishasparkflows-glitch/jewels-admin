@@ -204,6 +204,8 @@ export const ThemeProvider = ({ children }) => {
         [class~="bg-[#96744f]"]:not(#admin-root-layout):not(body):not(html):not(main),
         [class~="bg-[#8b6f47]"]:not(#admin-root-layout):not(body):not(html):not(main),
         [class~="bg-[#8d5b4c]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        [class*="bg-[#9c7a4b]"]:not(#admin-root-layout):not(body):not(html):not(main),
+        .bg-\\[\\#9c7a4b\\]:not(#admin-root-layout):not(body):not(html):not(main),
         .bg-\\[\\#8b6f4e\\]:not(#admin-root-layout):not(body):not(html):not(main),
         .bg-\\[\\#8f6d43\\]:not(#admin-root-layout):not(body):not(html):not(main),
         .bg-\\[\\#8b6c3a\\]:not(#admin-root-layout):not(body):not(html):not(main),
@@ -274,6 +276,8 @@ export const ThemeProvider = ({ children }) => {
         [class*="text-[#704f2d]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
         [class*="text-[#735839]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
         [class*="text-[#785327]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#9c7a4b]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        .text-\\[\\#9c7a4b\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
         .text-\\[\\#8b6f4e\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
         .text-\\[\\#8f6d43\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
         .text-\\[\\#8b6c3a\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
@@ -320,8 +324,10 @@ export const ThemeProvider = ({ children }) => {
         [class*="border-[#85583f]"],
         [class*="border-[#855836]"],
         [class*="border-[#9c7849]"],
+        [class*="border-[#9c7a4b]"],
         [class*="border-[#9a724a]"],
         [class*="border-[#a67c52]"],
+        .border-\\[\\#9c7a4b\\],
         .border-\\[\\#8b6f4e\\],
         .border-\\[\\#8f6d43\\],
         .border-\\[\\#8b6c3a\\],
@@ -404,8 +410,10 @@ export const ThemeProvider = ({ children }) => {
         }
 
         /* ─── 7. DROPDOWNS: HOVER, SELECTED, LISTBOX OPTIONS ─── */
+        [class*="bg-[#f4eae0]"],
         [class*="bg-[#f4eee4]"],
         [class*="bg-[#faf6f0]"],
+        .bg-\\[\\#f4eae0\\],
         .bg-\\[\\#f4eee4\\],
         .bg-\\[\\#faf6f0\\] {
           background-color: rgba(var(--theme-primary-rgb), 0.12) !important;
@@ -430,6 +438,14 @@ export const ThemeProvider = ({ children }) => {
         [role="listbox"] button[aria-selected="true"] {
           background-color: rgba(var(--theme-primary-rgb), 0.12) !important;
           color: var(--theme-primary) !important;
+        }
+
+        /* Dropdown Selected Item Left Accent Bar */
+        [role="listbox"] span[class*="bg-[#9c7a4b]"],
+        [role="listbox"] span[class*="bg-[#8b6f4e]"],
+        [role="listbox"] span.bg-\\[\\#9c7a4b\\],
+        [role="listbox"] [aria-selected="true"] span.absolute {
+          background-color: var(--theme-primary) !important;
         }
 
         [class*="ring-[#8f6d43]"],

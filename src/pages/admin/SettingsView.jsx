@@ -49,6 +49,15 @@ const LUXURY_BUTTON_PALETTES = [
   { name: 'Classic Navy', bg: '#132238', hover: '#0c1624', text: '#ffffff' },
 ];
 
+const DEFAULT_HEADER_FOOTER_COLORS = {
+  topBarBgColor: '#60574d',
+  topBarTextColor: '#ffffff',
+  headerBgColor: '#22201e',
+  headerTextColor: '#ffffff',
+  footerBgColor: '#0f0d0b',
+  footerTextColor: '#c8b89e',
+};
+
 export default function SettingsView() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -504,6 +513,17 @@ export default function SettingsView() {
     }
   };
 
+  // Reset Storefront Header & Footer Colors to Defaults
+  const handleResetHeaderFooterDefaults = () => {
+    setTopBarBgColor(DEFAULT_HEADER_FOOTER_COLORS.topBarBgColor);
+    setTopBarTextColor(DEFAULT_HEADER_FOOTER_COLORS.topBarTextColor);
+    setHeaderBgColor(DEFAULT_HEADER_FOOTER_COLORS.headerBgColor);
+    setHeaderTextColor(DEFAULT_HEADER_FOOTER_COLORS.headerTextColor);
+    setFooterBgColor(DEFAULT_HEADER_FOOTER_COLORS.footerBgColor);
+    setFooterTextColor(DEFAULT_HEADER_FOOTER_COLORS.footerTextColor);
+    toast.success('Header & footer colors reset to defaults');
+  };
+
   // Save Storefront Theme
   const handleSaveTheme = async () => {
     if (!selectedThemeId) {
@@ -836,7 +856,9 @@ export default function SettingsView() {
         >
           <div
             className={`relative flex flex-col w-full my-auto rounded-2xl bg-white border border-stone-200 shadow-2xl overflow-hidden transition-all duration-200 ${
-              activeModal === 'compression'
+              activeModal === 'theme'
+                ? 'max-w-5xl lg:max-w-6xl'
+                : activeModal === 'compression'
                 ? 'max-w-4xl'
                 : activeModal === 'business' || activeModal === 'logos'
                 ? 'max-w-3xl'
@@ -1355,10 +1377,7 @@ export default function SettingsView() {
 
               {/* Theme & Button Color Modal Body */}
               {activeModal === 'theme' && (
-                <div className="space-y-5 max-h-[75vh] overflow-y-auto p-5">
-                  <div className="bg-[#faf6f0] border border-[#ebdcc8]/80 rounded-xl p-3.5 text-xs text-stone-700 leading-relaxed">
-                    Choose the active theme for your storefront and customize your global button colors. Action buttons across the entire website and all modals (such as Schedule Appointment, Sign In, Add to Cart, Explore Jewellery, Copy Code) will instantly use your configured color.
-                  </div>
+                <div className="space-y-6 max-h-[82vh] overflow-y-auto p-6 sm:p-7">
 
                   {/* ── Section A: Global Storefront Button Styling ── */}
                   <div className="bg-stone-50/90 border border-stone-200/90 rounded-2xl p-4.5 space-y-4">
@@ -1526,13 +1545,24 @@ export default function SettingsView() {
 
                   {/* ── Section A2: Header, Top Bar & Footer Colors ── */}
                   <div className="rounded-2xl border border-stone-200/80 bg-stone-50/50 p-4 space-y-4">
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 flex items-center justify-between">
-                        <span>Storefront Header & Footer Colors</span>
-                      </h4>
-                      <p className="text-[11px] text-stone-500 mt-0.5">
-                        Customize background and text colors for the top announcement bar, main header, and footer.
-                      </p>
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                          Storefront Header & Footer Colors
+                        </h4>
+                        <p className="text-[11px] text-stone-500 mt-0.5">
+                          Customize background and text colors for the top announcement bar, main header, and footer.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleResetHeaderFooterDefaults}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 active:scale-95 border border-stone-200 rounded-lg shadow-2xs transition-all cursor-pointer self-start sm:self-auto shrink-0"
+                        title="Reset all header and footer colors to luxury defaults"
+                      >
+                        <HiOutlineRefresh className="w-3.5 h-3.5 text-stone-500" />
+                        <span>Reset to Defaults</span>
+                      </button>
                     </div>
 
                     {/* Live Header & Footer Preview */}
@@ -1584,7 +1614,20 @@ export default function SettingsView() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
                       {/* 1. Top Bar */}
                       <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
-                        <span className="text-[11px] font-bold text-stone-800 block">Top Announcement Bar</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-stone-800">Top Announcement Bar</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setTopBarBgColor(DEFAULT_HEADER_FOOTER_COLORS.topBarBgColor);
+                              setTopBarTextColor(DEFAULT_HEADER_FOOTER_COLORS.topBarTextColor);
+                            }}
+                            className="text-[10px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                            title="Reset top bar colors to default"
+                          >
+                            Default
+                          </button>
+                        </div>
                         <div>
                           <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
                           <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
@@ -1623,7 +1666,20 @@ export default function SettingsView() {
 
                       {/* 2. Main Header */}
                       <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
-                        <span className="text-[11px] font-bold text-stone-800 block">Main Header & Nav</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-stone-800">Main Header & Nav</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHeaderBgColor(DEFAULT_HEADER_FOOTER_COLORS.headerBgColor);
+                              setHeaderTextColor(DEFAULT_HEADER_FOOTER_COLORS.headerTextColor);
+                            }}
+                            className="text-[10px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                            title="Reset header colors to default"
+                          >
+                            Default
+                          </button>
+                        </div>
                         <div>
                           <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
                           <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
@@ -1662,7 +1718,20 @@ export default function SettingsView() {
 
                       {/* 3. Footer */}
                       <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
-                        <span className="text-[11px] font-bold text-stone-800 block">Footer Section</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-stone-800">Footer Section</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFooterBgColor(DEFAULT_HEADER_FOOTER_COLORS.footerBgColor);
+                              setFooterTextColor(DEFAULT_HEADER_FOOTER_COLORS.footerTextColor);
+                            }}
+                            className="text-[10px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                            title="Reset footer colors to default"
+                          >
+                            Default
+                          </button>
+                        </div>
                         <div>
                           <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
                           <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
@@ -1717,7 +1786,7 @@ export default function SettingsView() {
                         No themes found. Create a theme in Website Themes first.
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                         {themesList.map((t) => {
                           const isSelected = String(selectedThemeId) === String(t._id);
                           return (

@@ -513,13 +513,13 @@ export default function Dropdown({
   // Variant styling tokens
   const variantStyles = {
     default:
-      'bg-white border-[1.5px] border-[#9c7a4b] hover:border-[#86663a] focus:border-[#9c7a4b] focus:ring-2 focus:ring-[#9c7a4b]/20 shadow-2xs text-stone-900',
+      'bg-white border-[1.5px] border-[#9c7a4b] hover:border-[var(--theme-primary-hover,#86663a)] focus:border-[var(--theme-primary,#9c7a4b)] focus:ring-2 focus:ring-[var(--theme-primary,#9c7a4b)]/20 shadow-2xs text-stone-900',
     input:
-      'bg-white border-[1.5px] border-[#9c7a4b] hover:border-[#86663a] focus:border-[#9c7a4b] focus:ring-2 focus:ring-[#9c7a4b]/20 shadow-2xs text-stone-900',
+      'bg-white border-[1.5px] border-[#9c7a4b] hover:border-[var(--theme-primary-hover,#86663a)] focus:border-[var(--theme-primary,#9c7a4b)] focus:ring-2 focus:ring-[var(--theme-primary,#9c7a4b)]/20 shadow-2xs text-stone-900',
     minimal:
-      'bg-transparent border border-transparent hover:border-[#9c7a4b] focus:border-[#9c7a4b] text-stone-800 font-serif',
+      'bg-transparent border border-transparent hover:border-[var(--theme-primary,#9c7a4b)] focus:border-[var(--theme-primary,#9c7a4b)] text-stone-800 font-serif',
     inline:
-      'bg-stone-50/80 border border-stone-200 hover:border-[#9c7a4b] text-stone-800 font-serif',
+      'bg-stone-50/80 border border-stone-200 hover:border-[var(--theme-primary,#9c7a4b)] text-stone-800 font-serif',
   }[variant] || variantStyles.default;
 
   // Render status dot if enabled or mapped
@@ -586,6 +586,7 @@ export default function Dropdown({
         } ${variantStyles} ${
           isOpen ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20' : ''
         } ${disabled ? 'opacity-50 cursor-not-allowed bg-stone-100/60' : ''} ${buttonClassName}`}
+        style={isOpen ? { borderColor: 'var(--theme-primary)' } : undefined}
       >
         <span className="flex items-center gap-2 truncate">
           {prefixIcon && <span className="shrink-0 text-stone-400">{renderDropdownIcon(prefixIcon, sizeStyles.icon || 'w-4 h-4')}</span>}
@@ -607,6 +608,7 @@ export default function Dropdown({
           className={`${sizeStyles.icon} text-stone-400 ${animate ? 'transition-transform duration-200' : ''} shrink-0 ml-2 ${
             isOpen ? 'rotate-180 text-[#8b6f4e]' : ''
           }`}
+          style={isOpen ? { color: 'var(--theme-primary)' } : undefined}
         />
       </button>
 
@@ -678,15 +680,30 @@ export default function Dropdown({
                     sizeStyles.option
                   } ${
                     isSelected
-                      ? 'bg-[#f4eae0] text-stone-900 font-serif font-normal'
+                      ? 'font-serif font-medium'
                       : isHighlighted
-                      ? 'bg-[#faf5ee] text-stone-900 font-serif font-normal'
-                      : 'text-stone-800 bg-white font-serif font-normal hover:bg-[#faf5ee]'
+                      ? 'bg-stone-50 text-stone-900 font-serif font-normal'
+                      : 'text-stone-800 bg-white font-serif font-normal hover:bg-stone-50'
                   } ${opt.disabled ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''}`}
+                  style={
+                    isSelected
+                      ? {
+                          backgroundColor: 'rgba(var(--theme-primary-rgb, 156, 122, 75), 0.12)',
+                          color: 'var(--theme-primary, #8b6f4e)',
+                        }
+                      : isHighlighted
+                      ? {
+                          backgroundColor: 'rgba(var(--theme-primary-rgb, 156, 122, 75), 0.05)',
+                        }
+                      : undefined
+                  }
                 >
-                  {/* Left Gold Accent Bar on Selected Item */}
+                  {/* Left Accent Bar on Selected Item (Uses User Selected Theme Color) */}
                   {isSelected && (
-                    <span className="absolute left-0 inset-y-0 w-1.5 bg-[#9c7a4b] rounded-r-xs" />
+                    <span
+                      className="absolute left-0 inset-y-0 w-1.5 rounded-r-xs bg-[var(--theme-primary,#9c7a4b)]"
+                      style={{ backgroundColor: 'var(--theme-primary, #9c7a4b)' }}
+                    />
                   )}
 
                   <div className="flex items-center gap-2.5 truncate">

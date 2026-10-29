@@ -12,8 +12,11 @@ import {
   HiOutlineTag,
   HiOutlineSparkles,
   HiOutlineCheckCircle,
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
+  HiOutlineCube,
 } from 'react-icons/hi';
-import { IoDiamondOutline } from 'react-icons/io5';
+import { IoDiamondOutline, IoLayersOutline } from 'react-icons/io5';
 import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
 import OrnateSyncModal from '../../components/common/OrnateSyncModal';
@@ -81,6 +84,8 @@ export default function OrnateProductsView() {
 
   // Tab & View State
   const [activeTab, setActiveTab] = useState('all'); // all, draft, approved, sold, ungrouped
+  const [groupFilterType, setGroupFilterType] = useState('all'); // 'all' (shows 2 parts), 'single', 'multi'
+  const [collapsedSections, setCollapsedSections] = useState({ single: false, multi: false });
   const [viewMode, setViewMode] = useState('grid'); // grid, list
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('single_first');
@@ -100,6 +105,8 @@ export default function OrnateProductsView() {
     approved: 0,
     sold: 0,
     ungrouped: 0,
+    single: 0,
+    multi: 0,
   });
 
   // Selection
@@ -135,6 +142,7 @@ export default function OrnateProductsView() {
   // Sort Options
   const sortOptions = [
     { value: 'single_first', label: '1-Product Groups First' },
+    { value: 'multi_first', label: 'Multi-Product Groups First' },
     { value: 'price_desc', label: 'Price: High to Low' },
     { value: 'price_asc', label: 'Price: Low to High' },
     { value: 'latest', label: 'Sort by: Latest' },
@@ -188,6 +196,7 @@ export default function OrnateProductsView() {
       else if (activeTab === 'sold') params.set('productStatus', 'sold');
       else params.set('status', 'all');
 
+      if (groupFilterType !== 'all') params.set('groupType', groupFilterType);
       if (searchQuery.trim()) params.set('search', searchQuery.trim());
       if (sortBy) params.set('sort', sortBy);
 
@@ -205,7 +214,7 @@ export default function OrnateProductsView() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, page, pageSize, searchQuery, sortBy]);
+  }, [activeTab, groupFilterType, page, pageSize, searchQuery, sortBy]);
 
   useEffect(() => {
     fetchTabCounts();
@@ -219,7 +228,17 @@ export default function OrnateProductsView() {
   useEffect(() => {
     setPage(1);
     setSelectedIds(new Set());
-  }, [activeTab, searchQuery, sortBy]);
+  }, [activeTab, groupFilterType, searchQuery, sortBy]);
+
+  // Split loaded groups into 1-product (single) and multi-product groups
+  const singleGroups = useMemo(
+    () => groups.filter((g) => (g.productCount ?? (g.productIds?.length || 0)) === 1),
+    [groups]
+  );
+  const multiGroups = useMemo(
+    () => groups.filter((g) => (g.productCount ?? (g.productIds?.length || 0)) !== 1),
+    [groups]
+  );
 
   // Bulk Selection Handlers
   const currentItems = activeTab === 'ungrouped' ? products : groups;
@@ -553,7 +572,7 @@ export default function OrnateProductsView() {
       <div className="bg-white border border-stone-200 rounded-2xl p-3 shadow-2xs space-y-3">
         <div className="flex flex-col lg:flex-row items-center justify-between gap-3">
           {/* Search Box */}
-          <div className="relative w-full lg:w-96">
+          <div className="relative w-full lg:w-80">
             <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
             <input
               type="text"
@@ -576,6 +595,74 @@ export default function OrnateProductsView() {
               </button>
             )}
           </div>
+
+          {/* Sub-Filter: 2-Part View vs 1-Product Only vs Multi-Product Only */}
+          {activeTab !== 'ungrouped' && (
+            <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0 w-full lg:w-auto justify-center overflow-x-auto">
+              <button
+                type="button"
+                onClick={() => setGroupFilterType('all')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  groupFilterType === 'all'
+                    ? 'bg-white text-stone-900 shadow-2xs font-bold ring-1 ring-stone-200'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                title="Show both 1-product and multi-product groups broken into 2 parts"
+              >
+                <span>2 Parts (All)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setGroupFilterType('single')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  groupFilterType === 'single'
+                    ? 'text-white shadow-2xs font-bold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                style={groupFilterType === 'single' ? { backgroundColor: 'var(--theme-primary)' } : undefined}
+                title="Show only 1-product groups"
+              >
+                <IoDiamondOutline className="w-3.5 h-3.5" />
+                <span>1 Product</span>
+                {tabCounts.single > 0 && activeTab === 'all' && (
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      groupFilterType === 'single'
+                        ? 'bg-black/20 text-white'
+                        : 'bg-stone-200 text-stone-700'
+                    }`}
+                  >
+                    {tabCounts.single}
+                  </span>
+                )}
+              </button>
+              <button
+                type="button"
+                onClick={() => setGroupFilterType('multi')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
+                  groupFilterType === 'multi'
+                    ? 'text-white shadow-2xs font-bold'
+                    : 'text-stone-600 hover:text-stone-900'
+                }`}
+                style={groupFilterType === 'multi' ? { backgroundColor: 'var(--theme-primary)' } : undefined}
+                title="Show only multi-product groups"
+              >
+                <HiOutlineSparkles className="w-3.5 h-3.5" />
+                <span>Multi-Product</span>
+                {tabCounts.multi > 0 && activeTab === 'all' && (
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                      groupFilterType === 'multi'
+                        ? 'bg-black/20 text-white'
+                        : 'bg-stone-200 text-stone-700'
+                    }`}
+                  >
+                    {tabCounts.multi}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
 
           {/* Quick Dropdown Filters */}
           <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-end">
@@ -675,17 +762,32 @@ export default function OrnateProductsView() {
                   </button>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const singleGroups = groups.filter((g) => (g.productCount ?? 0) === 1);
-                      setSelectedIds(new Set(singleGroups.map((g) => g._id)));
-                    }}
-                    className="px-3 py-1.5 font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer text-xs"
-                    title="Select all groups on this page that have exactly 1 product"
-                  >
-                    <span>Select All 1-Product Groups</span>
-                  </button>
+                  {singleGroups.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const singles = groups.filter((g) => (g.productCount ?? 0) === 1);
+                        setSelectedIds(new Set(singles.map((g) => g._id)));
+                      }}
+                      className="px-3 py-1.5 font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer text-xs"
+                      title="Select all groups on this page that have exactly 1 product"
+                    >
+                      <span>Select All 1-Product ({singleGroups.length})</span>
+                    </button>
+                  )}
+                  {multiGroups.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const multis = groups.filter((g) => (g.productCount ?? 0) !== 1);
+                        setSelectedIds(new Set(multis.map((g) => g._id)));
+                      }}
+                      className="px-3 py-1.5 font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer text-xs"
+                      title="Select all groups on this page that have multiple products"
+                    >
+                      <span>Select All Multi-Product ({multiGroups.length})</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={toggleSelectAll}
@@ -706,38 +808,267 @@ export default function OrnateProductsView() {
               </div>
             )}
 
-            <div
-              className={
-                viewMode === 'grid'
-                  ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
-                  : 'space-y-3'
+            {/* Helper to render group cards in grid or list mode */}
+            {(() => {
+              const renderCardsGrid = (items) => (
+                <div
+                  className={
+                    viewMode === 'grid'
+                      ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
+                      : 'space-y-3'
+                  }
+                >
+                  {items.map((g) => (
+                    <GroupCard
+                      key={g._id}
+                      group={g}
+                      viewMode={viewMode}
+                      isSelected={selectedIds.has(g._id)}
+                      activeTab={activeTab}
+                      onToggleSelect={() => toggleSelectOne(g._id)}
+                      onManage={(group) => setSelectedGroupIdForManage(group._id)}
+                      onEdit={(group) => {
+                        const pId = group.primaryProductId || group.firstProduct?._id || group.representative?._id;
+                        if (pId && (!group.productCount || group.productCount <= 1)) {
+                          navigate(`/catalog/ornate-products/edit/${pId}`);
+                        } else {
+                          setSelectedGroupIdForManage(group._id);
+                        }
+                      }}
+                      onAddProducts={(group) => setSelectedGroupIdForManage(group._id)}
+                      onToggleStatus={handleToggleGroupStatus}
+                      onDelete={handleDeleteGroup}
+                      onDirectApprove={handleDirectApproveOneGroup}
+                      isApproving={approvingGroupId === g._id}
+                    />
+                  ))}
+                </div>
+              );
+
+              if (groupFilterType === 'single') {
+                return (
+                  <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-700">
+                          <IoDiamondOutline className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-sm font-bold text-stone-900 tracking-tight">
+                              Single Products (1-Product Groups)
+                            </h2>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                              {groups.length} {groups.length === 1 ? 'Group' : 'Groups'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-stone-500">
+                            Individual products assigned to their own standalone group
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    {renderCardsGrid(groups)}
+                  </div>
+                );
               }
-            >
-              {groups.map((g) => (
-                <GroupCard
-                  key={g._id}
-                  group={g}
-                  viewMode={viewMode}
-                  isSelected={selectedIds.has(g._id)}
-                  activeTab={activeTab}
-                  onToggleSelect={() => toggleSelectOne(g._id)}
-                  onManage={(group) => setSelectedGroupIdForManage(group._id)}
-                  onEdit={(group) => {
-                    const pId = group.primaryProductId || group.firstProduct?._id || group.representative?._id;
-                    if (pId && (!group.productCount || group.productCount <= 1)) {
-                      navigate(`/catalog/ornate-products/edit/${pId}`);
-                    } else {
-                      setSelectedGroupIdForManage(group._id);
-                    }
-                  }}
-                  onAddProducts={(group) => setSelectedGroupIdForManage(group._id)}
-                  onToggleStatus={handleToggleGroupStatus}
-                  onDelete={handleDeleteGroup}
-                  onDirectApprove={handleDirectApproveOneGroup}
-                  isApproving={approvingGroupId === g._id}
-                />
-              ))}
-            </div>
+
+              if (groupFilterType === 'multi') {
+                return (
+                  <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-700">
+                          <IoLayersOutline className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h2 className="text-sm font-bold text-stone-900 tracking-tight">
+                              Multi-Product Groups (Multiple Products)
+                            </h2>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                              {groups.length} {groups.length === 1 ? 'Group' : 'Groups'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-stone-500">
+                            Groups containing multiple products, sizes, designs, or matching sets
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    {renderCardsGrid(groups)}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-6">
+                  {/* ═══ PART 1: SINGLE PRODUCTS (1 PRODUCT) ═══ */}
+                  <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-700">
+                          <IoDiamondOutline className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-200">
+                              Part 1
+                            </span>
+                            <h2 className="text-sm font-bold text-stone-900 tracking-tight">
+                              Single Products (1-Product Groups)
+                            </h2>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                              {singleGroups.length} {singleGroups.length === 1 ? 'Product' : 'Products'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-stone-500">
+                            Standalone products assigned to their own dedicated group
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {singleGroups.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allSingleSelected = singleGroups.every((g) => selectedIds.has(g._id));
+                              setSelectedIds((prev) => {
+                                const next = new Set(prev);
+                                singleGroups.forEach((g) => {
+                                  if (allSingleSelected) next.delete(g._id);
+                                  else next.add(g._id);
+                                });
+                                return next;
+                              });
+                            }}
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-xl text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer"
+                          >
+                            {singleGroups.every((g) => selectedIds.has(g._id))
+                              ? 'Deselect 1-Product'
+                              : `Select 1-Product (${singleGroups.length})`}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCollapsedSections((prev) => ({ ...prev, single: !prev.single }))
+                          }
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded-xl text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <span>{collapsedSections.single ? 'Expand' : 'Collapse'}</span>
+                          {collapsedSections.single ? (
+                            <HiOutlineChevronDown className="w-3.5 h-3.5" />
+                          ) : (
+                            <HiOutlineChevronUp className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {!collapsedSections.single && (
+                      singleGroups.length > 0 ? (
+                        renderCardsGrid(singleGroups)
+                      ) : (
+                        <div className="text-center py-6 text-stone-400 text-xs italic">
+                          No 1-product groups on this page
+                        </div>
+                      )
+                    )}
+                  </div>
+
+                  {/* ═══ VISUAL DIVIDER (Where the admin drew the red line) ═══ */}
+                  <div className="relative py-2 flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t-2 border-dashed border-[#8b6f4e]/30" />
+                    </div>
+                    <div className="relative bg-[#fcfaf7] px-4 py-1.5 rounded-full border border-[#8b6f4e]/30 text-[11px] font-bold text-[#8b6f4e] uppercase tracking-wider flex items-center gap-2 shadow-2xs">
+                      <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                      <span>Part 2: Multiple Products in Group Below</span>
+                      <span className="px-2 py-0.2 rounded-full text-[10px] bg-[#8b6f4e]/10 text-[#8b6f4e] font-semibold">
+                        {multiGroups.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* ═══ PART 2: MULTI-PRODUCT GROUPS (2+ PRODUCTS) ═══ */}
+                  <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-700">
+                          <IoLayersOutline className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-200">
+                              Part 2
+                            </span>
+                            <h2 className="text-sm font-bold text-stone-900 tracking-tight">
+                              Multi-Product Groups (Multiple Products)
+                            </h2>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-800 border border-blue-200">
+                              {multiGroups.length} {multiGroups.length === 1 ? 'Group' : 'Groups'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-stone-500">
+                            Product groups containing multiple items, variants, designs, or matching sets
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {multiGroups.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const allMultiSelected = multiGroups.every((g) => selectedIds.has(g._id));
+                              setSelectedIds((prev) => {
+                                const next = new Set(prev);
+                                multiGroups.forEach((g) => {
+                                  if (allMultiSelected) next.delete(g._id);
+                                  else next.add(g._id);
+                                });
+                                return next;
+                              });
+                            }}
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-xl text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
+                          >
+                            {multiGroups.every((g) => selectedIds.has(g._id))
+                              ? 'Deselect Multi'
+                              : `Select Multi (${multiGroups.length})`}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setCollapsedSections((prev) => ({ ...prev, multi: !prev.multi }))
+                          }
+                          className="text-xs font-semibold px-2.5 py-1.5 rounded-xl text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer flex items-center gap-1"
+                        >
+                          <span>{collapsedSections.multi ? 'Expand' : 'Collapse'}</span>
+                          {collapsedSections.multi ? (
+                            <HiOutlineChevronDown className="w-3.5 h-3.5" />
+                          ) : (
+                            <HiOutlineChevronUp className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {!collapsedSections.multi && (
+                      multiGroups.length > 0 ? (
+                        renderCardsGrid(multiGroups)
+                      ) : (
+                        <div className="text-center py-6 text-stone-400 text-xs italic">
+                          No multi-product groups on this page
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             <Pagination
                 className="border border-stone-200 rounded-2xl bg-white shadow-2xs"

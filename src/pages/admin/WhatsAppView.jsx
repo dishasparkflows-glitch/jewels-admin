@@ -328,8 +328,8 @@ export default function WhatsAppView() {
   ];
 
   return (
-    <div className="space-y-2 font-sans">
-      {/* ─── Breadcrumb & Module Header (Matches Coupons View) ─── */}
+    <div className="space-y-4 font-sans">
+      {/* ─── Breadcrumb & Module Header ─── */}
       <ModuleHeader
         breadcrumbs={['Home', 'System', 'WhatsApp Connect']}
         title="WhatsApp Management"
@@ -351,27 +351,52 @@ export default function WhatsAppView() {
         }
       />
 
-      {/* ─── 4 Compact Stat Cards (Matches Coupons View) ─── */}
+      {/* ─── 4 Stat Cards ─── */}
       <StatCards cards={statCardsData} />
 
-      {/* ─── Compact Navigation Tabs Bar ─── */}
-      <div className="flex items-center gap-6 border-b border-stone-200/80 -mb-0.5 px-0.5 pt-0.5">
+      {/* ─── Navigation Tabs Bar ─── */}
+      <div className="flex items-center gap-6 border-b border-stone-200 px-1 pt-1">
         <button
           type="button"
           onClick={() => {
             setActiveTab('templates');
             setCurrentPage(1);
           }}
-          className={`flex items-center gap-1.5 pb-1.5 text-xs font-semibold transition-all relative cursor-pointer ${
+          className={`flex items-center gap-2 pb-2.5 text-xs font-semibold transition-all relative cursor-pointer ${
             activeTab === 'templates'
               ? 'text-[#8b6f4e]'
               : 'text-stone-500 hover:text-stone-800'
           }`}
+          style={
+            activeTab === 'templates'
+              ? { color: 'var(--theme-primary, #8b6f4e)' }
+              : undefined
+          }
         >
-          <HiOutlineDocumentText className="w-3.5 h-3.5" />
+          <HiOutlineDocumentText className="w-4 h-4" />
           <span>Message Templates</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === 'templates'
+                ? 'bg-[#8b6f4e]/10 text-[#8b6f4e]'
+                : 'bg-stone-100 text-stone-500'
+            }`}
+            style={
+              activeTab === 'templates'
+                ? {
+                    backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.12)',
+                    color: 'var(--theme-primary, #8b6f4e)',
+                  }
+                : undefined
+            }
+          >
+            {templates.length}
+          </span>
           {activeTab === 'templates' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8b6f4e] rounded-t-full" />
+            <span
+              className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full"
+              style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+            />
           )}
         </button>
 
@@ -381,24 +406,49 @@ export default function WhatsAppView() {
             setActiveTab('history');
             setMsgPage(1);
           }}
-          className={`flex items-center gap-1.5 pb-1.5 text-xs font-semibold transition-all relative cursor-pointer ${
+          className={`flex items-center gap-2 pb-2.5 text-xs font-semibold transition-all relative cursor-pointer ${
             activeTab === 'history'
               ? 'text-[#8b6f4e]'
               : 'text-stone-500 hover:text-stone-800'
           }`}
+          style={
+            activeTab === 'history'
+              ? { color: 'var(--theme-primary, #8b6f4e)' }
+              : undefined
+          }
         >
-          <HiOutlineClock className="w-3.5 h-3.5" />
+          <HiOutlineClock className="w-4 h-4" />
           <span>Sent Message History</span>
+          <span
+            className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+              activeTab === 'history'
+                ? 'bg-[#8b6f4e]/10 text-[#8b6f4e]'
+                : 'bg-stone-100 text-stone-500'
+            }`}
+            style={
+              activeTab === 'history'
+                ? {
+                    backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.12)',
+                    color: 'var(--theme-primary, #8b6f4e)',
+                  }
+                : undefined
+            }
+          >
+            {messages.length}
+          </span>
           {activeTab === 'history' && (
-            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#8b6f4e] rounded-t-full" />
+            <span
+              className="absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full"
+              style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+            />
           )}
         </button>
       </div>
 
       {/* ─── TAB 1: MESSAGE TEMPLATES ─── */}
       {activeTab === 'templates' && (
-        <div className="space-y-2">
-          {/* Compact Search & Filter Bar (Matches Coupons View) */}
+        <div className="space-y-3.5">
+          {/* Compact Search & Filter Bar */}
           <SearchFilterBar
             search={search}
             onSearchChange={(val) => {
@@ -407,7 +457,7 @@ export default function WhatsAppView() {
             }}
             placeholder="Search templates by name, body, or category..."
             extraActions={
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <Dropdown
                   value={selectedCategory}
                   onChange={(val) => {
@@ -460,26 +510,26 @@ export default function WhatsAppView() {
             }
           />
 
-          {/* Compact Templates Table Card */}
-          <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+          {/* Templates Table Card */}
+          <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse table-auto">
                 <thead>
-                  <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
-                    <th className="py-2 px-3.5">Template Name</th>
-                    <th className="py-2 px-3.5">Category</th>
-                    <th className="py-2 px-3.5">Language</th>
-                    <th className="py-2 px-3.5">Status</th>
-                    <th className="py-2 px-3.5">Last Updated</th>
-                    <th className="py-2 px-3.5 text-right">Actions</th>
+                  <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                    <th className="py-3 px-4 w-[38%]">Template Details</th>
+                    <th className="py-3 px-4 w-[13%]">Category</th>
+                    <th className="py-3 px-4 w-[12%]">Language</th>
+                    <th className="py-3 px-4 w-[13%]">Status</th>
+                    <th className="py-3 px-4 w-[14%]">Last Updated</th>
+                    <th className="py-3 px-4 w-[10%] text-right pr-5">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100 text-xs">
                   {(!paginatedTemplates || paginatedTemplates.length === 0) ? (
                     <tr>
-                      <td colSpan="6" className="py-10 text-center">
+                      <td colSpan="6" className="py-12 text-center">
                         <div className="flex flex-col items-center justify-center text-stone-400">
-                          <HiOutlineDocumentText className="w-8 h-8 mb-1.5 stroke-1" />
+                          <HiOutlineDocumentText className="w-9 h-9 mb-2 stroke-1" />
                           <p className="text-xs font-semibold text-stone-600">No templates found</p>
                           <p className="text-[11px] text-stone-400 mt-0.5">Try adjusting your filters or search keywords</p>
                         </div>
@@ -495,84 +545,100 @@ export default function WhatsAppView() {
                       const isUtility = (tmpl.category || '').toUpperCase() === 'UTILITY';
                       const isMarketing = (tmpl.category || '').toUpperCase() === 'MARKETING';
 
+                      const templateTitle =
+                        tmpl.displayName ||
+                        (tmpl.name
+                          ? tmpl.name
+                              .split('_')
+                              .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                              .join(' ')
+                          : 'Untitled Template');
+
                       return (
                         <tr
                           key={tmpl._id}
-                          className="hover:bg-stone-50/80 transition-colors group"
+                          className="hover:bg-stone-50/70 transition-colors group"
                         >
                           {/* Template Name & Preview */}
-                          <td className="py-2 px-3.5 align-middle max-w-sm">
-                            <div className="flex flex-col">
-                              <span className="font-semibold text-stone-900 text-xs leading-tight">
-                                {tmpl.name}
-                              </span>
-                              <span className="text-[11px] text-stone-500 line-clamp-1 mt-0.5 leading-normal font-normal">
+                          <td className="py-3.5 px-4 align-top">
+                            <div className="flex flex-col gap-1 max-w-xl">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-semibold text-stone-900 text-xs sm:text-[13px] leading-tight">
+                                  {templateTitle}
+                                </span>
+                                <span className="inline-flex items-center font-mono text-[10px] font-medium text-stone-500 bg-stone-100/90 border border-stone-200/80 px-1.5 py-0.5 rounded">
+                                  {tmpl.name}
+                                </span>
+                              </div>
+                              <p className="text-xs text-stone-500 line-clamp-2 leading-relaxed font-normal mt-0.5">
                                 {tmpl.body}
-                              </span>
+                              </p>
                             </div>
                           </td>
 
                           {/* Category Badge */}
-                          <td className="py-2 px-3.5 align-middle whitespace-nowrap">
+                          <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                             {isUtility && (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#eef4ff] text-[#3b82f6]">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200/60 shadow-2xs">
                                 Utility
                               </span>
                             )}
                             {isMarketing && (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#fef1e8] text-[#c2410c]">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-orange-50 text-orange-700 border border-orange-200/60 shadow-2xs">
                                 Marketing
                               </span>
                             )}
                             {!isUtility && !isMarketing && (
-                              <span className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#f3e8ff] text-[#9333ea]">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200/60 shadow-2xs">
                                 {tmpl.category || 'Utility'}
                               </span>
                             )}
                           </td>
 
                           {/* Language */}
-                          <td className="py-2 px-3.5 align-middle whitespace-nowrap text-stone-700">
-                            {tmpl.language || 'English'}
+                          <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                            <span className="text-xs font-medium text-stone-700">
+                              {tmpl.language === 'en_US' || tmpl.language === 'en' ? 'English' : tmpl.language || 'English'}
+                            </span>
                           </td>
 
                           {/* Status Badge with Dot */}
-                          <td className="py-2 px-3.5 align-middle whitespace-nowrap">
+                          <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                             {isApproved && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#e8f8ed] text-[#16a34a]">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#16a34a]" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70 shadow-2xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                                 Approved
                               </span>
                             )}
                             {isPending && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#fef5e7] text-[#d97706]">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#d97706]" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/70 shadow-2xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                                 Pending
                               </span>
                             )}
                             {isRejected && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#fde8e8] text-[#dc2626]">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#dc2626]" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/70 shadow-2xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                                 Rejected
                               </span>
                             )}
                           </td>
 
                           {/* Last Updated */}
-                          <td className="py-2 px-3.5 align-middle whitespace-nowrap">
-                            <div className="flex flex-col text-[11px]">
-                              <span className="text-stone-800 leading-tight">
+                          <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-medium text-stone-800">
                                 {date}
                               </span>
-                              <span className="text-stone-400 text-[10px] leading-tight">
+                              <span className="text-[11px] text-stone-400 mt-0.5">
                                 {time}
                               </span>
                             </div>
                           </td>
 
                           {/* Actions */}
-                          <td className="py-2 px-3.5 align-middle whitespace-nowrap text-right">
-                            <div className="inline-flex items-center gap-1.5 justify-end">
+                          <td className="py-3.5 px-4 align-middle whitespace-nowrap text-right pr-5">
+                            <div className="inline-flex items-center gap-2 justify-end">
                               <ViewActionButton
                                 onClick={() => setPreviewTemplate(tmpl)}
                                 title="Preview Template"
@@ -604,7 +670,7 @@ export default function WhatsAppView() {
 
             {/* Pagination */}
             {filteredTemplates.length > 0 && (
-              <div className="border-t border-stone-200 px-3.5 py-1.5 bg-stone-50/50">
+              <div className="border-t border-stone-200 px-4 py-3 bg-stone-50/60">
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}
@@ -621,7 +687,7 @@ export default function WhatsAppView() {
 
       {/* ─── TAB 2: SENT MESSAGE HISTORY ─── */}
       {activeTab === 'history' && (
-        <div className="space-y-2">
+        <div className="space-y-3.5">
           {/* Compact Search & Filter Bar */}
           <SearchFilterBar
             search={historySearch}
@@ -650,23 +716,23 @@ export default function WhatsAppView() {
             }
           />
 
-          <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+          <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
+              <table className="w-full text-left border-collapse table-auto">
                 <thead>
-                  <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-semibold text-stone-500 uppercase tracking-wider">
-                    <th className="py-2 px-3.5">Recipient</th>
-                    <th className="py-2 px-3.5">Template / Message</th>
-                    <th className="py-2 px-3.5">Status</th>
-                    <th className="py-2 px-3.5">Sent Time</th>
-                    <th className="py-2 px-3.5 text-right">Action</th>
+                  <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                    <th className="py-3 px-4 w-[20%]">Recipient</th>
+                    <th className="py-3 px-4 w-[40%]">Template / Message</th>
+                    <th className="py-3 px-4 w-[15%]">Status</th>
+                    <th className="py-3 px-4 w-[15%]">Sent Time</th>
+                    <th className="py-3 px-4 w-[10%] text-right pr-5">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100 text-xs">
                   {(!paginatedMessages || paginatedMessages.length === 0) ? (
                     <tr>
-                      <td colSpan="5" className="py-10 text-center text-stone-400">
-                        <HiOutlineChatAlt2 className="w-8 h-8 mx-auto mb-1.5 stroke-1" />
+                      <td colSpan="5" className="py-12 text-center text-stone-400">
+                        <HiOutlineChatAlt2 className="w-9 h-9 mx-auto mb-2 stroke-1" />
                         <p className="text-xs font-semibold text-stone-600">No sent messages recorded</p>
                       </td>
                     </tr>
@@ -679,47 +745,54 @@ export default function WhatsAppView() {
                       const isSent = !isDelivered && !isRead && !isFailed;
 
                       return (
-                        <tr key={msg._id} className="hover:bg-stone-50/80 transition-colors">
-                          <td className="py-2 px-3.5 align-middle font-mono text-[11px] text-stone-900 font-medium">
-                            {msg.to}
-                          </td>
-                          <td className="py-2 px-3.5 align-middle max-w-md">
-                            <span className="inline-block text-[10px] font-semibold text-[#8b6f4e] uppercase tracking-wider mb-0.5">
-                              {msg.templateName}
+                        <tr key={msg._id} className="hover:bg-stone-50/70 transition-colors">
+                          <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                            <span className="font-mono text-xs text-stone-900 font-semibold bg-stone-100/80 px-2 py-0.5 rounded border border-stone-200/60">
+                              {msg.to}
                             </span>
-                            <p className="text-[11px] text-stone-600 line-clamp-1">
-                              {msg.renderedPreview || msg.message}
-                            </p>
                           </td>
-                          <td className="py-2 px-3.5 align-middle whitespace-nowrap">
+                          <td className="py-3.5 px-4 align-top max-w-md">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="inline-block text-[11px] font-semibold text-[#8b6f4e] uppercase tracking-wider">
+                                {msg.templateName}
+                              </span>
+                              <p className="text-xs text-stone-600 line-clamp-2 leading-relaxed">
+                                {msg.renderedPreview || msg.message}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                             {isRead && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#e0f2fe] text-[#0284c7]">
-                                <IoCheckmarkDoneOutline className="w-3 h-3" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-sky-50 text-sky-700 border border-sky-200/70 shadow-2xs">
+                                <IoCheckmarkDoneOutline className="w-3.5 h-3.5" />
                                 Read
                               </span>
                             )}
                             {isDelivered && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#dcfce7] text-[#15803d]">
-                                <HiOutlineCheck className="w-3 h-3" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70 shadow-2xs">
+                                <HiOutlineCheck className="w-3.5 h-3.5" />
                                 Delivered
                               </span>
                             )}
                             {isSent && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-stone-600">
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-stone-100 text-stone-600 border border-stone-200/70 shadow-2xs">
                                 Sent
                               </span>
                             )}
                             {isFailed && (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-red-50 text-red-600">
-                                <HiOutlineExclamationCircle className="w-3 h-3" />
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/70 shadow-2xs">
+                                <HiOutlineExclamationCircle className="w-3.5 h-3.5" />
                                 Failed
                               </span>
                             )}
                           </td>
-                          <td className="py-2 px-3.5 align-middle whitespace-nowrap text-[11px] text-stone-600">
-                            {date} {time}
+                          <td className="py-3.5 px-4 align-middle whitespace-nowrap">
+                            <div className="flex flex-col">
+                              <span className="text-xs font-medium text-stone-800">{date}</span>
+                              <span className="text-[11px] text-stone-400 mt-0.5">{time}</span>
+                            </div>
                           </td>
-                          <td className="py-2 px-3.5 align-middle whitespace-nowrap text-right">
+                          <td className="py-3.5 px-4 align-middle whitespace-nowrap text-right pr-5">
                             <button
                               type="button"
                               onClick={() => {
@@ -746,7 +819,7 @@ export default function WhatsAppView() {
             </div>
 
             {filteredMessages.length > 0 && (
-              <div className="border-t border-stone-200 px-3.5 py-1.5 bg-stone-50/50">
+              <div className="border-t border-stone-200 px-4 py-3 bg-stone-50/60">
                 <Pagination
                   currentPage={msgPage}
                   totalPages={msgTotalPages}
