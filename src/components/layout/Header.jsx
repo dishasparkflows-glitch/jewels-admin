@@ -16,7 +16,7 @@ import {
   HiOutlineCheck,
   HiOutlineSparkles,
   HiOutlineSwitchHorizontal,
-  HiOutlineViewList,
+  HiOutlineX,
 } from 'react-icons/hi';
 
 const Header = ({ onMobileToggle }) => {
@@ -81,18 +81,9 @@ const Header = ({ onMobileToggle }) => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Format today's date matching screenshot: e.g. "15 OCT 2026 - TODAY"
-  const todayFormatted = (() => {
-    const d = new Date();
-    const day = d.getDate();
-    const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-    const year = d.getFullYear();
-    return `${day} ${month} ${year} - TODAY`;
-  })();
-
-  const handleNavigateProfile = (tab = 'theme') => {
+  const handleNavigateProfile = (activeTab = 'theme') => {
     setDropdownOpen(false);
-    navigate('/profile');
+    navigate('/profile', { state: { activeTab } });
   };
 
   const handleLogout = () => {

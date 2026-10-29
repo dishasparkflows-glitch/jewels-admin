@@ -6,8 +6,6 @@ import {
   HiOutlinePencil,
   HiOutlineTrash,
   HiOutlineEye,
-  HiOutlineCheck,
-  HiOutlineExternalLink,
   HiOutlineChevronRight,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';

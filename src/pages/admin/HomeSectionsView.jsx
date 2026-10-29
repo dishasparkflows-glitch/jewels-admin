@@ -2,30 +2,22 @@ import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlinePlus,
-  HiOutlinePencil,
-  HiOutlineTrash,
-  HiOutlineEye,
-  HiOutlineX,
-  HiOutlineSearch,
-  HiOutlinePhotograph,
-  HiOutlineUpload,
-  HiOutlineCheck,
+    HiOutlineTrash,
+    HiOutlineX,
+    HiOutlinePhotograph,
+    HiOutlineCheck,
   HiOutlineArrowUp,
   HiOutlineArrowDown,
   HiOutlineFilter,
   HiOutlineTemplate,
   HiOutlineViewGrid,
   HiOutlineSparkles,
-  HiOutlineShoppingBag,
-  HiOutlineChatAlt2,
+    HiOutlineChatAlt2,
   HiOutlineShieldCheck,
-  HiOutlineStar,
-  HiOutlineSwitchHorizontal,
-  HiOutlineExternalLink,
-} from 'react-icons/hi';
+    HiOutlineSwitchHorizontal,
+  } from 'react-icons/hi';
 import {
   IoLayersOutline,
-  IoCubeOutline,
   IoDiamondOutline,
 } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -63,12 +55,7 @@ const PLACEMENT_OPTIONS = [
   { value: 'all', label: 'All Pages / Global' },
 ];
 
-const PRODUCT_PICKER_TABS = [
-  { id: 'gold', label: 'Gold Jewelry', icon: IoDiamondOutline, badge: 'GOLD' },
-  { id: 'silver', label: 'Silver Jewelry', icon: IoCubeOutline, badge: 'SILVER' },
-  { id: 'ornate', label: 'Ornate Products', icon: HiOutlineSparkles, badge: 'ORNATE' },
-  { id: 'all', label: 'All Products', icon: IoLayersOutline, badge: 'ALL' },
-];
+
 
 const getProductBadgeLabel = (prod) => {
   if (prod.isOrnate || prod.productType === 'ornate') return 'ORNATE';
@@ -121,25 +108,10 @@ export default function HomeSectionsView() {
     items: [],
   });
 
-  // Product Picker Modal State (Screenshot 2)
+  // Product Picker Modal State
   const [isProductPickerOpen, setIsProductPickerOpen] = useState(false);
-  const [pickerSearch, setPickerSearch] = useState('');
-  const [pickerTab, setPickerTab] = useState('gold'); // 'gold' | 'silver' | 'ornate' | 'all'
-  const [pickerPage, setPickerPage] = useState(1);
-  const [pickerLimit, setPickerLimit] = useState(25);
-  const [pickerLoading, setPickerLoading] = useState(false);
-  const [pickerProducts, setPickerProducts] = useState([]);
-  const [pickerPagination, setPickerPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalDocs: 0,
-    limit: 25,
-  });
-  const [tempSelectedMap, setTempSelectedMap] = useState(new Map());
 
   // Upload state
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
   const [submitting, setSubmitting] = useState(false);
 
   // Reorder State
@@ -222,137 +194,11 @@ export default function HomeSectionsView() {
       .replace(/^-+|-+$/g, '');
   };
 
-  // Fetch products for picker modal
-  const fetchPickerProducts = async (
-    page = pickerPage,
-    type = pickerTab,
-    searchStr = pickerSearch,
-    limit = pickerLimit
-  ) => {
-    try {
-      setPickerLoading(true);
-      const params = new URLSearchParams();
-      params.append('page', String(page));
-      params.append('limit', String(limit));
-      params.append('status', 'active');
-      if (type && type !== 'all') {
-        params.append('productType', type);
-      }
-      if (searchStr && searchStr.trim()) {
-        params.append('search', searchStr.trim());
-      }
-
-      const res = await api.get(`/products/lookup?${params.toString()}`);
-      const items = res.data?.data || [];
-      const pagination = res.data?.pagination || {
-        currentPage: page,
-        totalPages: 1,
-        totalDocs: items.length,
-        limit,
-      };
-
-      setPickerProducts(Array.isArray(items) ? items : []);
-      setPickerPagination(pagination);
-      setPickerPage(page);
-    } catch (err) {
-      console.error('Failed to load products for picker:', err);
-      toast.error('Failed to load products');
-    } finally {
-      setPickerLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!isProductPickerOpen) return;
-    const timer = setTimeout(() => {
-      fetchPickerProducts(pickerPage, pickerTab, pickerSearch, pickerLimit);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [isProductPickerOpen, pickerTab, pickerSearch, pickerPage, pickerLimit]);
-
-  // Product picker selection handlers
   const handleOpenProductPicker = () => {
-    const newMap = new Map();
-    (formData.selectedProducts || []).forEach((p) => {
-      const key = String(p._id || p.id || p.productId);
-      newMap.set(key, p);
-    });
-    setTempSelectedMap(newMap);
-    setPickerSearch('');
-    setPickerPage(1);
     setIsProductPickerOpen(true);
   };
 
-  const handleToggleProductSelection = (product) => {
-    const key = String(product._id || product.id);
-    setTempSelectedMap((prev) => {
-      const next = new Map(prev);
-      if (next.has(key)) {
-        next.delete(key);
-      } else {
-        next.set(key, {
-          _id: product._id,
-          id: product._id,
-          productId: product._id,
-          title: product.basicInfo?.title || '',
-          subtitle: product.subtitle || product.ornate?.metalName || '',
-          sku: product.basicInfo?.sku || '',
-          price: product.pricing?.salePrice || product.pricing?.mrp || product.cataloguePrice || 0,
-          productType: product.productType || '',
-          metalName: product.ornate?.metalName || '',
-          isOrnate: product.isOrnate,
-          thumbnail: product.thumbnail || product.colorImages?.[0]?.images?.[0]?.url || '',
-        });
-      }
-      return next;
-    });
-  };
-
-  const isAllPageSelected = useMemo(() => {
-    if (pickerProducts.length === 0) return false;
-    return pickerProducts.every((p) => tempSelectedMap.has(String(p._id || p.id)));
-  }, [pickerProducts, tempSelectedMap]);
-
-  const handleToggleSelectAllPage = () => {
-    setTempSelectedMap((prev) => {
-      const next = new Map(prev);
-      if (isAllPageSelected) {
-        pickerProducts.forEach((p) => {
-          next.delete(String(p._id || p.id));
-        });
-      } else {
-        pickerProducts.forEach((p) => {
-          const key = String(p._id || p.id);
-          next.set(key, {
-            _id: p._id,
-            id: p._id,
-            productId: p._id,
-            title: p.title,
-            subtitle: p.subtitle || p.metalName || '',
-            sku: p.sku || '',
-            price: p.price || p.salePrice || 0,
-            productType: p.productType || '',
-            metalName: p.metalName || '',
-            isOrnate: p.isOrnate,
-            thumbnail: p.thumbnail || p.colorImages?.[0]?.images?.[0]?.url || '',
-          });
-        });
-      }
-      return next;
-    });
-  };
-
-  const handleApplyProductSelection = () => {
-    const selectedList = Array.from(tempSelectedMap.values());
-    setFormData((prev) => ({
-      ...prev,
-      selectedProducts: selectedList,
-    }));
-    setIsProductPickerOpen(false);
-    toast.success(`${selectedList.length} product${selectedList.length === 1 ? '' : 's'} added to section`);
-  };
-
-  const handleRemoveSelectedProduct = (productId) => {
+    const handleRemoveSelectedProduct = (productId) => {
     setFormData((prev) => ({
       ...prev,
       selectedProducts: (prev.selectedProducts || []).filter(

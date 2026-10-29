@@ -5,7 +5,6 @@ import {
   HiOutlineTrash,
   HiOutlineX,
   HiOutlineExternalLink,
-  HiOutlinePencil,
   HiOutlinePhotograph,
   HiOutlineSearch,
   HiOutlineChevronLeft,

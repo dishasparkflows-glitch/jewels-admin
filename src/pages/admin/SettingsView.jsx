@@ -14,7 +14,6 @@ import {
   HiOutlineSparkles,
   HiOutlineShieldCheck,
   HiOutlineSearch,
-  HiOutlineTrash,
   HiOutlineColorSwatch,
   HiOutlineFire,
   HiOutlineShare,

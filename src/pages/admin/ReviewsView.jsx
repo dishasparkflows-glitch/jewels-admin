@@ -4,7 +4,6 @@ import {
   HiOutlineUser,
   HiOutlinePhotograph,
   HiOutlineCheckCircle,
-  HiOutlineBan,
   HiOutlineX,
   HiOutlineStar,
   HiOutlineTrash,

@@ -7,16 +7,12 @@ import {
   HiOutlineEye,
   HiOutlineRefresh,
   HiOutlineTrash,
-  HiOutlineCheck,
   HiOutlineX,
   HiOutlineExternalLink,
-  HiOutlineTag,
-  HiOutlineFilter,
-  HiOutlineSparkles,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { websiteThemesAPI, bannersAPI, featuredAPI } from '../../api/services';
-import { uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
+import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import { useConfirm } from '../../contexts/ConfirmContext';
 

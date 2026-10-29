@@ -1,22 +1,16 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
   HiOutlineColorSwatch,
-  HiOutlineRefresh,
-  HiOutlinePencil,
   HiOutlineTrash,
-  HiOutlineEye,
   HiOutlineX,
-  HiOutlineSearch,
   HiOutlineTag,
   HiOutlinePhotograph,
-  HiOutlineUpload,
   HiOutlineCheck,
   HiOutlineArrowUp,
   HiOutlineArrowDown,
-  HiOutlineFilter,
-} from 'react-icons/hi';
+  } from 'react-icons/hi';
 import { IoCubeOutline, IoDiamondOutline, IoLayersOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -35,6 +29,8 @@ import Dropdown from '../../components/common/Dropdown';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import ProductPickerModal from '../../components/common/ProductPickerModal';
+import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
+import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 
 export default function CelebrateGiftsView() {
   const confirm = useConfirm();
@@ -74,12 +70,6 @@ export default function CelebrateGiftsView() {
 
   // Theme Media Picker Modal State
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
-  const [pickerThemeFilter, setPickerThemeFilter] = useState('all');
-  const [pickerPlacementFilter, setPickerPlacementFilter] = useState('all');
-  const [pickerDeviceFilter, setPickerDeviceFilter] = useState('all');
-  const [pickerSearch, setPickerSearch] = useState('');
-  const [pickerImages, setPickerImages] = useState([]);
-  const [loadingPickerImages, setLoadingPickerImages] = useState(false);
 
   const fetchThemesLookup = async () => {
     try {
@@ -103,45 +93,6 @@ export default function CelebrateGiftsView() {
     }
   };
 
-  const fetchPickerImages = async (tId = pickerThemeFilter, placementParam = pickerPlacementFilter, platformParam = pickerDeviceFilter) => {
-    try {
-      setLoadingPickerImages(true);
-      const params = { limit: 100 };
-      if (tId && tId !== 'all') params.themeId = tId;
-      if (placementParam && placementParam !== 'all') {
-        params.placement = placementParam;
-        params.type = placementParam;
-      }
-      if (platformParam && platformParam !== 'all') {
-        params.platform = platformParam;
-      }
-      let res;
-      try {
-        res = await api.get('/banners/theme-images', { params });
-      } catch {
-        res = await api.get('/gallery', { params });
-      }
-      const items = res.data?.data?.items || res.data?.data || [];
-      setPickerImages(Array.isArray(items) ? items : []);
-    } catch (err) {
-      console.error('Failed to load picker images:', err);
-      setPickerImages([]);
-    } finally {
-      setLoadingPickerImages(false);
-    }
-  };
-
-  const openMediaPicker = () => {
-    const initialTheme = themeId || 'all';
-    const currentPlacementLower = (placement || 'celebrate').toLowerCase();
-    setPickerThemeFilter(initialTheme);
-    setPickerPlacementFilter(currentPlacementLower);
-    setPickerDeviceFilter('all');
-    setPickerSearch('');
-    setIsMediaPickerOpen(true);
-    fetchPickerImages(initialTheme, currentPlacementLower, 'all');
-  };
-
   const handleSelectPickerImage = (item) => {
     const chosenUrl = item.url || item.image?.url;
     const chosenKey = item.key || '';
@@ -155,17 +106,6 @@ export default function CelebrateGiftsView() {
     }
     setIsMediaPickerOpen(false);
   };
-
-  const filteredPickerImages = useMemo(() => {
-    if (!pickerSearch.trim()) return pickerImages;
-    const q = pickerSearch.trim().toLowerCase();
-    return pickerImages.filter((img) => {
-      const name = (img.name || img.title || img.recordTitle || img.url || '').toLowerCase();
-      const p = (img.placement || img.type || img.typeLabel || '').toLowerCase();
-      const theme = (img.themeName || '').toLowerCase();
-      return name.includes(q) || p.includes(q) || theme.includes(q);
-    });
-  }, [pickerImages, pickerSearch]);
 
   // Lock body scroll when modal or media picker is open
   useEffect(() => {
@@ -896,7 +836,7 @@ export default function CelebrateGiftsView() {
 
                     <button
                       type="button"
-                      onClick={openMediaPicker}
+                      onClick={() => setIsMediaPickerOpen(true)}
                       className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl border border-[var(--theme-primary,#8a6d4b)]/40 bg-white hover:bg-[#faf6f0] text-xs font-semibold text-[var(--theme-primary,#8a6d4b)] hover:text-[#785b3a] shadow-2xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
                     >
                       <HiOutlinePhotograph className="w-3.5 h-3.5" />
@@ -906,86 +846,16 @@ export default function CelebrateGiftsView() {
                 </div>
 
                 {/* Cover Image Box */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-stone-700">
-                    Cover Image
-                  </label>
-
-                  {imageUrl ? (
-                    <div className="relative rounded-xl border border-stone-200 overflow-hidden bg-stone-900 h-28 sm:h-32 group shadow-2xs">
-                      <img
-                        src={getMediaUrl(imageUrl)}
-                        alt="Cover Preview"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
-                        <button
-                          type="button"
-                          onClick={openMediaPicker}
-                          className="px-3 py-1.5 rounded-lg bg-[var(--theme-primary,#8a6d4b)] text-white text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs"
-                        >
-                          Choose Image
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleRemoveImage}
-                          className="px-3 py-1.5 rounded-lg bg-red-700 text-white text-xs font-semibold hover:bg-red-800 shadow-xs shadow-red-900/20 transition-colors cursor-pointer shadow-2xs"
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        const file = e.dataTransfer?.files?.[0];
-                        if (file) handleImageFile(file);
-                      }}
-                      className="border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all h-28 sm:h-32 flex flex-col items-center justify-center group shadow-2xs"
-                    >
-                      {uploading ? (
-                        <div className="space-y-1.5">
-                          <div className="w-5 h-5 border-2 border-stone-300 border-t-[var(--theme-primary,#8b6f4e)] rounded-full animate-spin mx-auto" />
-                          <p className="text-[11px] text-stone-500 font-medium">Uploading & compressing... {uploadProgress}%</p>
-                        </div>
-                      ) : (
-                        <>
-                          <div
-                            onClick={() => imageInputRef.current?.click()}
-                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#ecf7f7] border border-[#cbebeb] flex items-center justify-center text-[#1c7878] group-hover:scale-105 mb-1 transition-transform cursor-pointer shadow-2xs"
-                          >
-                            <HiOutlinePhotograph className="w-4 h-4 stroke-[1.8]" />
-                          </div>
-                          <p
-                            onClick={() => imageInputRef.current?.click()}
-                            className="text-[11px] sm:text-xs font-semibold text-stone-800 cursor-pointer"
-                          >
-                            Click to upload <span className="font-normal text-stone-500">or drag and drop</span>
-                          </p>
-
-                          <button
-                            type="button"
-                            onClick={openMediaPicker}
-                            className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[11px] sm:text-xs font-semibold text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] hover:text-[var(--theme-primary,#8b6f4e)] transition-all cursor-pointer"
-                          >
-                            <HiOutlinePhotograph className="w-3.5 h-3.5" />
-                            <span>Choose Image</span>
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    className="hidden"
-                    disabled={uploading}
-                  />
-                </div>
+                <ImageUploadDropzone
+                  label="Cover Image"
+                  value={imageUrl}
+                  alt="Cover Preview"
+                  uploading={uploading}
+                  uploadProgress={uploadProgress}
+                  onFileSelect={handleImageFile}
+                  onChooseGallery={() => setIsMediaPickerOpen(true)}
+                  onRemove={handleRemoveImage}
+                />
               </div>
 
               {/* SELECT PRODUCTS SECTION */}
@@ -1289,227 +1159,18 @@ export default function CelebrateGiftsView() {
           </div>
         </div>, document.body)
       )}
-      {/* ─── THEME MEDIA PICKER MODAL (CHOOSE IMAGE FROM THEME) ─── */}
-      {isMediaPickerOpen && createPortal((
-        <div
-          className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5 bg-stone-900/70 backdrop-blur-xs overflow-y-auto animate-fadeIn"
-          onClick={() => setIsMediaPickerOpen(false)}
-        >
-          <div
-            className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden my-auto animate-scaleIn"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Picker Header */}
-            <div className="bg-[#faf8f5] px-5 sm:px-6 py-4 border-b border-stone-150 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-[#e8d8c0] flex items-center justify-center text-[#8a6d4b] shadow-2xs shrink-0">
-                  <HiOutlinePhotograph className="w-5 h-5 stroke-[1.8]" />
-                </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-stone-900 font-playfair tracking-tight">
-                    Select Theme Image
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-stone-500 font-normal">
-                    Target slot: <span className="font-semibold text-stone-800 capitalize">Cover Image ({placement})</span> · Choose from pre-configured theme placement images.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsMediaPickerOpen(false)}
-                className="w-8 h-8 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
-                aria-label="Close image picker"
-              >
-                <HiOutlineX className="w-4 h-4 stroke-2" />
-              </button>
-            </div>
-
-            {/* Picker Filters Bar */}
-            <div className="p-4 border-b border-stone-150 bg-stone-50/50 flex flex-col sm:flex-row items-center gap-3 shrink-0">
-              {/* Search */}
-              <div className="relative flex-1 w-full sm:w-auto">
-                <HiOutlineSearch className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                <input
-                  type="text"
-                  value={pickerSearch}
-                  onChange={(e) => setPickerSearch(e.target.value)}
-                  placeholder="Search by name, placement or theme..."
-                  className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b]"
-                />
-              </div>
-
-              {/* Filter Theme */}
-              <div className="w-full sm:w-52">
-                <Dropdown
-                  value={pickerThemeFilter}
-                  onChange={(val) => {
-                    setPickerThemeFilter(val);
-                    fetchPickerImages(val, pickerPlacementFilter, pickerDeviceFilter);
-                  }}
-                  options={[
-                    { value: 'all', label: 'All Website Themes' },
-                    ...themes.map((t) => ({
-                      value: t._id,
-                      label: `${t.name}${t.status === 'active' ? ' · Active' : ''}`,
-                    })),
-                  ]}
-                  buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
-                  menuClassName="z-30"
-                />
-              </div>
-
-              {/* Filter Placement */}
-              <div className="w-full sm:w-48">
-                <Dropdown
-                  value={pickerPlacementFilter}
-                  onChange={(val) => {
-                    setPickerPlacementFilter(val);
-                    fetchPickerImages(pickerThemeFilter, val, pickerDeviceFilter);
-                  }}
-                  options={[
-                    { value: 'all', label: 'All Placements' },
-                    { value: 'celebrate', label: 'Celebrate' },
-                    { value: 'gifts', label: 'Gifts' },
-                    { value: 'herobanner', label: 'Hero Banner' },
-                    { value: 'collectionbanner', label: 'Collection Banner' },
-                    { value: 'categorybanner', label: 'Category Banner' },
-                    { value: 'offerbanner', label: 'Offer Banner' },
-                    { value: 'asset', label: 'Media Library Assets' },
-                  ]}
-                  buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
-                  menuClassName="z-30"
-                />
-              </div>
-
-              {/* Filter Platform (Web / App / All) */}
-              <div className="w-full sm:w-40">
-                <Dropdown
-                  value={pickerDeviceFilter}
-                  onChange={(val) => {
-                    setPickerDeviceFilter(val);
-                    fetchPickerImages(pickerThemeFilter, pickerPlacementFilter, val);
-                  }}
-                  options={[
-                    { value: 'all', label: 'All Platforms' },
-                    { value: 'web', label: 'Web (Desktop)' },
-                    { value: 'app', label: 'App (Mobile)' },
-                  ]}
-                  buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
-                  menuClassName="z-30"
-                />
-              </div>
-
-              {/* Refresh */}
-              <button
-                type="button"
-                onClick={() => fetchPickerImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter)}
-                title="Refresh images"
-                className="w-9 h-9 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
-              >
-                <HiOutlineRefresh className={`w-4 h-4 ${loadingPickerImages ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-
-            {/* Picker Images Grid */}
-            <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
-              {loadingPickerImages ? (
-                <div className="py-20 text-center text-stone-400">
-                  <div className="w-8 h-8 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
-                  <p className="text-xs font-medium text-stone-600">Loading theme placement images...</p>
-                </div>
-              ) : filteredPickerImages.length === 0 ? (
-                <div className="py-20 text-center text-stone-400">
-                  <HiOutlinePhotograph className="w-12 h-12 mx-auto text-stone-300 mb-2 stroke-1" />
-                  <p className="text-sm font-medium text-stone-600">No images found</p>
-                  <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto">
-                    No images matching the selected theme and placement. Try switching to "All Website Themes" or "All Placements".
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
-                  {filteredPickerImages.map((img, idx) => {
-                    const imgUrl = img.url || img.image?.url;
-                    const imgTitle = img.name || img.title || img.recordTitle || `Theme Image ${idx + 1}`;
-                    const imgPlacement = img.placement || img.type || img.filterType || 'media';
-                    const imgTheme = img.themeName || img.themeId?.name || '';
-                    const isCurrentlySelected = imageUrl === imgUrl;
-
-                    return (
-                      <div
-                        key={img.id || img._id || idx}
-                        onClick={() => handleSelectPickerImage(img)}
-                        className={`group relative rounded-2xl border overflow-hidden bg-white cursor-pointer transition-all duration-200 flex flex-col ${
-                          isCurrentlySelected
-                            ? 'border-[var(--theme-primary,#8b6f4e)] ring-2 ring-[var(--theme-primary,#8b6f4e)]/40 shadow-md'
-                            : 'border-stone-200/90 hover:border-[#8a6d4b] hover:shadow-md hover:-translate-y-0.5'
-                        }`}
-                      >
-                        {/* Image Thumbnail */}
-                        <div className="relative aspect-[16/10] bg-stone-900 overflow-hidden">
-                          <img
-                            src={getMediaUrl(imgUrl)}
-                            alt={imgTitle}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-
-                          {/* Overlay button on hover */}
-                          <div className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
-                            <span className="px-3 py-1.5 rounded-xl bg-white text-stone-900 text-xs font-bold shadow-md flex items-center gap-1.5">
-                              <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" style={{ color: 'var(--theme-primary, #8b6f4e)' }} />
-                              <span>Select</span>
-                            </span>
-                          </div>
-
-                          {/* Selected Badge */}
-                          {isCurrentlySelected && (
-                            <div style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }} className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-white text-[10px] font-bold shadow-xs">
-                              Current
-                            </div>
-                          )}
-
-                          {/* Placement pill */}
-                          <div className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-stone-900/75 backdrop-blur-xs text-white text-[9.5px] font-semibold uppercase tracking-wider">
-                            {imgPlacement}
-                          </div>
-                        </div>
-
-                        {/* Image details */}
-                        <div className="p-2.5 space-y-1">
-                          <p className="text-xs font-semibold text-stone-800 truncate" title={imgTitle}>
-                            {imgTitle}
-                          </p>
-                          {imgTheme && (
-                            <p className="text-[10px] text-stone-400 truncate flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#8a6d4b]" />
-                              <span>{imgTheme}</span>
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Picker Footer */}
-            <div className="px-5 py-3 border-t border-stone-150 bg-stone-50 flex items-center justify-between shrink-0">
-              <span className="text-xs text-stone-500 font-medium">
-                {filteredPickerImages.length} images available
-              </span>
-
-              <button
-                type="button"
-                onClick={() => setIsMediaPickerOpen(false)}
-                className="px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-xs font-semibold text-stone-700 transition cursor-pointer shadow-2xs"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      ), document.body)}
+      {/* ─── COMMON GALLERY MEDIA PICKER MODAL ─── */}
+      <GalleryMediaPickerModal
+        isOpen={isMediaPickerOpen}
+        onClose={() => setIsMediaPickerOpen(false)}
+        onSelect={handleSelectPickerImage}
+        currentSelectedUrl={imageUrl}
+        initialTheme={themeId || 'all'}
+        initialPlacement={(placement || 'celebrate').toLowerCase()}
+        themes={themes}
+        title="Gallery Media Picker"
+        subtitle={`Select a cover image for ${placement || 'Celebrate & Gifts'} campaign.`}
+      />
       {/* ─── COMMON PRODUCT PICKER MODAL POPUP ─── */}
       <ProductPickerModal
         isOpen={isProductPickerOpen}

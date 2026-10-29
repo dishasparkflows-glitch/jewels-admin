@@ -11,31 +11,19 @@ import {
   HiOutlineX,
   HiOutlineDotsVertical,
   HiOutlineSearch,
-  HiOutlineSparkles,
-  HiOutlineTag,
-  HiOutlineColorSwatch,
-  HiOutlineViewGrid,
-  HiOutlineCalendar,
-  HiOutlineClock,
+      HiOutlineColorSwatch,
+      HiOutlineClock,
   HiOutlineCheckCircle,
   HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
-import api from '../../api/axios';
 import { websiteThemesAPI, bannersAPI, featuredAPI, categoriesAPI } from '../../api/services';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import DatePicker from '../../components/common/DatePicker';
 import ThemeMediaLibraryTab from './ThemeMediaLibraryTab';
 
-const COLOR_OPTIONS = [
-  ['primary', 'Primary (#8B6C3A)'],
-  ['secondary', 'Secondary (#EADCC8)'],
-  ['background', 'Background (#FBF9F5)'],
-  ['surface', 'Surface (#FFFFFF)'],
-  ['text', 'Text (#29251F)'],
-  ['accent', 'Accent (#A67536)'],
-];
+
 
 const DEFAULT_CONFIG = {
   colors: {
@@ -178,21 +166,7 @@ export default function WebsiteThemesView() {
     fetchRelatedData();
   }, [fetchThemes, fetchRelatedData]);
 
-  // Preview media resolution
-  useEffect(() => {
-    let cancelled = false;
-    if (editing?._id) {
-      websiteThemesAPI
-        .preview(editing._id)
-        .then((res) => {
-          if (!cancelled) setPreviewMedia(getData(res)?.config?.mediaOverrides || []);
-        })
-        .catch(() => {});
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [editing?._id, tab]);
+
 
 
 
