@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlineCalendar,
@@ -542,7 +543,7 @@ export default function BirthstonePortfolioView() {
 
       {/* ─── Modal: Configure / Edit Birthstone ─── */}
       {isModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
           onClick={() => setIsModalOpen(false)}
         >
@@ -721,12 +722,12 @@ export default function BirthstonePortfolioView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── Modal: View Birthstone Portrait Preview ─── */}
       {viewingMonth && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
           onClick={() => setViewingMonth(null)}
         >
@@ -815,7 +816,7 @@ export default function BirthstonePortfolioView() {
               </div>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

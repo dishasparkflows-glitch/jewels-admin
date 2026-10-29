@@ -145,6 +145,12 @@ export const ThemeProvider = ({ children }) => {
           --theme-sidebar-border: ${DEFAULT_THEME.accent};
         }
 
+        /* ─── Global Checkboxes & Radios ─── */
+        input[type="checkbox"],
+        input[type="radio"] {
+          accent-color: var(--theme-primary) !important;
+        }
+
         /* ─── SIDEBAR ACTIVE & HOVER (Default Bronze) ─── */
         #admin-sidebar .sidebar-item-active,
         #admin-sidebar a.sidebar-item-active,
@@ -179,6 +185,12 @@ export const ThemeProvider = ({ children }) => {
           --theme-primary-border: ${currentTheme.border};
           --theme-primary-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b};
           --theme-sidebar-border: ${currentTheme.accent || currentTheme.primary};
+        }
+
+        /* ─── Global Checkboxes & Radios ─── */
+        input[type="checkbox"],
+        input[type="radio"] {
+          accent-color: var(--theme-primary) !important;
         }
 
         /* ─── 1. Primary Solid Backgrounds (Tabs, Buttons, Badges, Add Actions) ─── */
@@ -242,34 +254,34 @@ export const ThemeProvider = ({ children }) => {
         }
 
         /* ─── 3. Primary Texts & Icons ─── */
-        [class*="text-[#8b6f4e]"],
-        [class*="text-[#8f6d43]"],
-        [class*="text-[#8b6c3a]"],
-        [class*="text-[#8a6d4b]"],
-        [class*="text-[#8A6D4B]"],
-        [class*="text-[#8c6d46]"],
-        [class*="text-[#85583f]"],
-        [class*="text-[#855836]"],
-        [class*="text-[#96744f]"],
-        [class*="text-[#9a724a]"],
-        [class*="text-[#9A724A]"],
-        [class*="text-[#a67c52]"],
-        [class*="text-[#A67C52]"],
-        [class*="text-[#c19b65]"],
-        [class*="text-[#C19B65]"],
-        [class*="text-[#9c7849]"],
-        [class*="text-[#9a6435]"],
-        [class*="text-[#704f2d]"],
-        [class*="text-[#735839]"],
-        [class*="text-[#785327]"],
-        .text-\\[\\#8b6f4e\\],
-        .text-\\[\\#8f6d43\\],
-        .text-\\[\\#8b6c3a\\],
-        .text-\\[\\#8a6d4b\\],
-        .text-\\[\\#8c6d46\\],
-        .text-\\[\\#85583f\\],
-        .text-\\[\\#855836\\],
-        .text-\\[\\#9a724a\\] {
+        [class*="text-[#8b6f4e]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#8f6d43]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#8b6c3a]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#8a6d4b]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#8A6D4B]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#8c6d46]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#85583f]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#855836]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#96744f]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#9a724a]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#9A724A]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#a67c52]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#A67C52]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#c19b65]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#C19B65]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#9c7849]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#9a6435]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#704f2d]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#735839]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        [class*="text-[#785327]"]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        .text-\\[\\#8b6f4e\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        .text-\\[\\#8f6d43\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        .text-\\[\\#8b6c3a\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        .text-\\[\\#8a6d4b\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        .text-\\[\\#8c6d46\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        .text-\\[\\#85583f\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        .text-\\[\\#855836\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]),
+        .text-\\[\\#9a724a\\]:not([class*="hover:text-"]):not([class*="group-hover:text-"]) {
           color: var(--theme-primary) !important;
         }
 
@@ -426,20 +438,20 @@ export const ThemeProvider = ({ children }) => {
         }
 
         /* ─── 8. SUBTLE BACKGROUNDS & HOVERS ANYWHERE ─── */
-        [class*="bg-[#f8f2eb]"],
-        [class*="bg-[#faf5ee]"],
-        [class*="bg-[#faf8f5]"],
-        [class*="bg-[#FAF8F5]"],
-        [class*="bg-[#fbf4eb]"],
-        [class*="bg-[#faf3e8]"],
-        [class*="bg-[#faf4ed]"],
-        [class*="bg-[#faf6f1]"],
-        .bg-\\[\\#f8f2eb\\],
-        .bg-\\[\\#faf5ee\\],
-        .bg-\\[\\#faf8f5\\],
-        .bg-\\[\\#FAF8F5\\],
-        .bg-\\[\\#fbf4eb\\],
-        .bg-\\[\\#faf3e8\\] {
+        [class*="bg-[#f8f2eb]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        [class*="bg-[#faf5ee]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        [class*="bg-[#faf8f5]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        [class*="bg-[#FAF8F5]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        [class*="bg-[#fbf4eb]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        [class*="bg-[#faf3e8]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        [class*="bg-[#faf4ed]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        [class*="bg-[#faf6f1]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        .bg-\\[\\#f8f2eb\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        .bg-\\[\\#faf5ee\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        .bg-\\[\\#faf8f5\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        .bg-\\[\\#FAF8F5\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        .bg-\\[\\#fbf4eb\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
+        .bg-\\[\\#faf3e8\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]) {
           background-color: var(--theme-primary-soft) !important;
         }
 

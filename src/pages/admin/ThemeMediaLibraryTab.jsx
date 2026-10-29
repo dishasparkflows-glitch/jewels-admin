@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePhotograph,
@@ -17,8 +18,10 @@ import toast from 'react-hot-toast';
 import { websiteThemesAPI, bannersAPI, featuredAPI } from '../../api/services';
 import { uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 export default function ThemeMediaLibraryTab({
+
   themeId,
   themeStatus = 'draft',
   availableBanners = [],
@@ -26,6 +29,7 @@ export default function ThemeMediaLibraryTab({
   categories = [],
   onMediaChanged,
 }) {
+  const confirm = useConfirm();
   const [mediaItems, setMediaItems] = useState([]);
   const [counts, setCounts] = useState({
     all: 0,
@@ -287,9 +291,14 @@ export default function ThemeMediaLibraryTab({
 
   // Handle Removing media association
   const handleRemoveMedia = async (item) => {
-    if (!window.confirm(`Are you sure you want to remove media "${item.name}" from ${item.usageLocation}?`)) {
-      return;
-    }
+    const isConfirmed = await confirm({
+      title: 'Remove Media',
+      message: `Are you sure you want to remove media "${item.name}" from ${item.usageLocation}?`,
+      confirmText: 'Remove Media',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
 
     try {
       if (item.module === 'banner' && item.recordId) {
@@ -383,9 +392,14 @@ export default function ThemeMediaLibraryTab({
               onClick={() => setActiveFilter(tab.key)}
               className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold transition ${
                 activeFilter === tab.key
-                  ? 'bg-stone-900 text-white shadow-xs'
+                  ? 'bg-[#8b6f4e] text-white shadow-xs'
                   : 'border border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
               }`}
+              style={
+                activeFilter === tab.key
+                  ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff', borderColor: 'var(--theme-primary, #8b6f4e)' }
+                  : {}
+              }
             >
               <span>{tab.label}</span>
               <span
@@ -512,7 +526,7 @@ export default function ThemeMediaLibraryTab({
                     <button
                       type="button"
                       onClick={() => handleRemoveMedia(item)}
-                      className="rounded-lg border border-rose-100 p-1.5 text-rose-600 hover:bg-rose-50"
+                      className="rounded-lg border border-red-200 p-1.5 text-red-700 hover:bg-red-50 transition cursor-pointer"
                       title="Remove from section"
                     >
                       <HiOutlineTrash className="h-3.5 w-3.5" />
@@ -527,47 +541,49 @@ export default function ThemeMediaLibraryTab({
 
       {/* Lightbox Preview Modal */}
       {previewItem && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs"
+        createPortal(<div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-xs animate-fadeIn"
           onClick={() => setPreviewItem(null)}
         >
           <div
-            className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white p-4 shadow-2xl flex flex-col"
+            className="relative max-w-4xl max-h-[90vh] overflow-hidden rounded-2xl bg-white p-4 shadow-2xl flex flex-col animate-scaleUp"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-3">
-              <div>
-                <h3 className="text-sm font-bold text-stone-900">{previewItem.name}</h3>
-                <p className="text-xs text-stone-500">{previewItem.usageLocation}</p>
+            <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-3 gap-3">
+              <div className="min-w-0 flex-1">
+                <h3 className="text-sm font-bold text-stone-900 truncate">{previewItem.name}</h3>
+                <p className="text-xs text-stone-500 truncate">{previewItem.usageLocation}</p>
               </div>
-              <button
-                type="button"
-                onClick={() => setPreviewItem(null)}
-                className="rounded-lg p-1.5 text-stone-500 hover:bg-stone-100"
-              >
-                <HiOutlineX className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href={previewItem.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white text-xs font-semibold text-stone-700 hover:bg-stone-50 hover:text-stone-900 transition shadow-2xs cursor-pointer"
+                  title="Open in new tab"
+                >
+                  <span>Open in new tab</span>
+                  <HiOutlineExternalLink className="w-3.5 h-3.5" />
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewItem(null)}
+                  className="rounded-lg p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+                  title="Close preview"
+                >
+                  <HiOutlineX className="h-5 w-5" />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-auto max-h-[70vh] flex items-center justify-center bg-stone-950/5 rounded-xl p-2">
               <img
                 src={previewItem.url}
                 alt={previewItem.name}
-                className="max-h-[65vh] w-auto max-w-full object-contain rounded-lg"
+                className="max-h-[65vh] w-auto max-w-full object-contain rounded-lg shadow-sm"
               />
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs text-stone-600 pt-2 border-t border-stone-100">
-              <span className="font-mono break-all">{previewItem.url}</span>
-              <a
-                href={previewItem.url}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex items-center gap-1 font-semibold text-[#8b6c3a] hover:underline shrink-0"
-              >
-                Open in new tab <HiOutlineExternalLink />
-              </a>
-            </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

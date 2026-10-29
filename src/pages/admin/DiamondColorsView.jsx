@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
@@ -517,7 +518,7 @@ export default function DiamondColorsView() {
 
       {/* ─── Add / Edit Modal (Matches Screenshot 2 Exactly) ─── */}
       {isModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setIsModalOpen(false)}
         >
@@ -642,12 +643,12 @@ export default function DiamondColorsView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Color Details Modal ─── */}
       {viewingColor && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setViewingColor(null)}
         >
@@ -701,7 +702,7 @@ export default function DiamondColorsView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

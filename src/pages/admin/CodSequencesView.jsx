@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineCash,
@@ -425,7 +426,7 @@ export default function CodSequencesView() {
 
       {/* ─── Add / Edit Tier Modal ─── */}
       {isModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setIsModalOpen(false)}
         >
@@ -515,12 +516,12 @@ export default function CodSequencesView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Tier Modal ─── */}
       {viewingItem && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setViewingItem(null)}
         >
@@ -577,7 +578,7 @@ export default function CodSequencesView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

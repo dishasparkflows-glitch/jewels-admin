@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   HiOutlinePlus,
@@ -13,8 +14,6 @@ import {
   HiOutlineSparkles,
   HiOutlineChevronDown,
   HiOutlineChevronRight,
-  HiOutlineExternalLink,
-  HiOutlineFilm,
   HiOutlineSearch,
   HiOutlineTag,
   HiOutlineGift,
@@ -28,6 +27,9 @@ import {
   HiOutlineDesktopComputer,
   HiOutlineDuplicate,
   HiOutlineCloudUpload,
+  HiOutlineAdjustments,
+  HiOutlineUsers,
+  HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -37,9 +39,7 @@ import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import Dropdown from '../../components/common/Dropdown';
-import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
-import ThemeImageField from '../../components/common/ThemeImageField';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 
 const getMediaUrl = (url) => {
@@ -93,6 +93,8 @@ const BANNER_TYPES = [
     desc: 'Main homepage slider banner for top section.',
     placement: 'Homepage hero',
     placementBadge: 'bg-[#fcf3e8] text-[#9a6435] border border-[#f5e3cc]/70',
+    recDesktop: '1920 × 600',
+    recMobile: '768 × 1200',
   },
   {
     key: 'collectionbanner',
@@ -101,6 +103,8 @@ const BANNER_TYPES = [
     desc: 'Banners for collection pages and featured collections.',
     placement: 'Collection page',
     placementBadge: 'bg-[#faebee] text-[#b84d4d] border border-[#f7d5dc]/70',
+    recDesktop: '1920 × 600',
+    recMobile: '768 × 1200',
   },
   {
     key: 'categorybanner',
@@ -109,6 +113,8 @@ const BANNER_TYPES = [
     desc: 'Banners for category pages and category highlights.',
     placement: 'Category page',
     placementBadge: 'bg-[#eaf5ef] text-[#2b7a4b] border border-[#cbe8d6]/70',
+    recDesktop: '1920 × 600',
+    recMobile: '768 × 1200',
   },
   {
     key: 'offerbanner',
@@ -117,6 +123,8 @@ const BANNER_TYPES = [
     desc: 'Banners for offers, promotions and special deals.',
     placement: 'Offers & deals',
     placementBadge: 'bg-[#f4eefc] text-[#6b3ba7] border border-[#e2d5f5]/70',
+    recDesktop: '1920 × 600',
+    recMobile: '768 × 1200',
   },
   {
     key: 'mobileappbanner',
@@ -125,6 +133,8 @@ const BANNER_TYPES = [
     desc: 'Banners for app download promotion.',
     placement: 'App download',
     placementBadge: 'bg-[#edf5fc] text-[#20639b] border border-[#d2e5f8]/70',
+    recDesktop: '1920 × 600',
+    recMobile: '768 × 1200',
   },
   {
     key: 'bookappointbanner',
@@ -133,6 +143,8 @@ const BANNER_TYPES = [
     desc: 'Banners for appointment booking section.',
     placement: 'Appointment page',
     placementBadge: 'bg-[#eef8f8] text-[#1c7878] border border-[#cfeeee]/70',
+    recDesktop: '1920 × 600',
+    recMobile: '768 × 1200',
   },
   {
     key: 'customizebanner',
@@ -141,6 +153,8 @@ const BANNER_TYPES = [
     desc: 'Custom banners for special pages or campaigns.',
     placement: 'Custom page',
     placementBadge: 'bg-[#fdf7e7] text-[#9c6a15] border border-[#fae8b8]/70',
+    recDesktop: '1920 × 600',
+    recMobile: '768 × 1200',
   },
   {
     key: 'websitebanner',
@@ -149,9 +163,22 @@ const BANNER_TYPES = [
     desc: 'Other banners and miscellaneous placements.',
     placement: 'Other section',
     placementBadge: 'bg-stone-100 text-stone-600 border border-stone-200/70',
+    recDesktop: '1920 × 600',
+    recMobile: '768 × 1200',
   },
 ];
 
+const PLACEMENT_TABS = [
+  { key: 'herobanner', label: 'Hero Banner' },
+  { key: 'celebrate', label: 'Gifts & Celebrate' },
+  { key: 'collectionbanner', label: 'Collection Banner' },
+  { key: 'categorybanner', label: 'Category Banner' },
+  { key: 'offerbanner', label: 'Offer Banner' },
+  { key: 'mobileappbanner', label: 'Mobile App' },
+  { key: 'bookappointbanner', label: 'Appointments' },
+  { key: 'customizebanner', label: 'Custom' },
+  { key: 'all', label: 'All Media' },
+];
 
 export default function BannersView() {
   const navigate = useNavigate();
@@ -172,6 +199,12 @@ export default function BannersView() {
     return 'grid';
   }, [typeKey]);
 
+  // Current active banner type configuration
+  const currentBannerType = useMemo(() => {
+    const key = typeKey || 'herobanner';
+    return BANNER_TYPES.find((t) => t.key === key) || BANNER_TYPES[0];
+  }, [typeKey]);
+
   // Modal open state for Add / Edit Banner
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 
@@ -185,12 +218,6 @@ export default function BannersView() {
   };
 
   const { categories } = useCategoryLookup({ enabled: isFormModalOpen });
-
-  // Current active banner type configuration
-  const currentBannerType = useMemo(() => {
-    const key = typeKey || 'herobanner';
-    return BANNER_TYPES.find((t) => t.key === key) || BANNER_TYPES[0];
-  }, [typeKey]);
 
   // Data states
   const [banners, setBanners] = useState([]);
@@ -211,14 +238,15 @@ export default function BannersView() {
   const [submitting, setSubmitting] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [destinationLink, setDestinationLink] = useState('');
-  const [linkTarget, setLinkTarget] = useState('_self');
   const [imageUrl, setImageUrl] = useState('');
   const [imageKey, setImageKey] = useState('');
   const [mobileImageUrl, setMobileImageUrl] = useState('');
   const [mobileImageKey, setMobileImageKey] = useState('');
   const [formStatus, setFormStatus] = useState('active');
   const [order, setOrder] = useState(1);
+  const [showOnDesktop, setShowOnDesktop] = useState(true);
+  const [showOnMobile, setShowOnMobile] = useState(true);
+  const [themeId, setThemeId] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [collectionImages, setCollectionImages] = useState([]);
@@ -226,8 +254,33 @@ export default function BannersView() {
   const [collectionGroup, setCollectionGroup] = useState('gold');
   const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
   const [navigationCategories, setNavigationCategories] = useState([]);
-  const [themeId, setThemeId] = useState('');
   const [pendingThemeImages, setPendingThemeImages] = useState({});
+
+  // Theme lookup & Theme placement images states
+  const [themes, setThemes] = useState([]);
+  const [loadingThemes, setLoadingThemes] = useState(false);
+  const [selectedPlacementTab, setSelectedPlacementTab] = useState(currentBannerType?.key || 'herobanner');
+  const [selectedPlatformTab, setSelectedPlatformTab] = useState('all');
+  const [themePlacementImages, setThemePlacementImages] = useState([]);
+  const [loadingPlacementImages, setLoadingPlacementImages] = useState(false);
+
+    // Keep placement tab synced with current banner type when route changes
+  useEffect(() => {
+    if (currentBannerType?.key) {
+      setSelectedPlacementTab(currentBannerType.key);
+    }
+  }, [currentBannerType?.key]);
+
+  // Theme Media Picker Modal State
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const [mediaPickerSlot, setMediaPickerSlot] = useState('desktop'); // 'desktop' | 'mobile' | 'collection'
+  const [mediaPickerSlotIndex, setMediaPickerSlotIndex] = useState(null);
+  const [pickerThemeFilter, setPickerThemeFilter] = useState('all');
+  const [pickerPlacementFilter, setPickerPlacementFilter] = useState('herobanner');
+  const [pickerDeviceFilter, setPickerDeviceFilter] = useState('all');
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerImages, setPickerImages] = useState([]);
+  const [loadingPickerImages, setLoadingPickerImages] = useState(false);
 
   // Image Upload States
   const [isUploadingDesktop, setIsUploadingDesktop] = useState(false);
@@ -237,9 +290,7 @@ export default function BannersView() {
   const desktopInputRef = useRef(null);
   const mobileInputRef = useRef(null);
   const collectionSlotRef = useRef(null);
-  const [collectionUploadStats, setCollectionUploadStats] = useState({});
-
-
+  const [uploadingCollectionSlot, setUploadingCollectionSlot] = useState(null);
 
   // Screen 1: Banner counts by type
   const [bannerCounts, setBannerCounts] = useState({
@@ -286,8 +337,8 @@ export default function BannersView() {
       };
       if (search.trim()) params.search = search.trim();
       if (statusFilter !== 'all') {
-        if (statusFilter === 'published') params.status = 'active';
-        else if (statusFilter === 'draft') params.status = 'inactive';
+        if (statusFilter === 'published' || statusFilter === 'active') params.status = 'active';
+        else if (statusFilter === 'draft' || statusFilter === 'inactive') params.status = 'inactive';
         else if (statusFilter === 'scheduled') params.status = 'scheduled';
       }
       if (deviceFilter !== 'all') {
@@ -341,6 +392,149 @@ export default function BannersView() {
     return () => { cancelled = true; };
   }, [isFormModalOpen]);
 
+  // -------------------------------------------------------------------------
+  // THEME LOOKUP & THEME PLACEMENT IMAGES API CALLS
+  // -------------------------------------------------------------------------
+  const fetchThemesLookup = async () => {
+    try {
+      setLoadingThemes(true);
+      let res;
+      try {
+        res = await api.get('/banners/themes/lookup');
+      } catch {
+        try {
+          res = await api.get('/website/themes/lookup');
+        } catch {
+          res = await api.get('/gallery/themes');
+        }
+      }
+      const items = res.data?.data || [];
+      setThemes(Array.isArray(items) ? items : []);
+    } catch (err) {
+      console.error('Failed to load themes lookup:', err);
+    } finally {
+      setLoadingThemes(false);
+    }
+  };
+
+  const fetchThemePlacementImages = async (tId = themeId, placement = selectedPlacementTab, platform = selectedPlatformTab) => {
+    try {
+      setLoadingPlacementImages(true);
+      const params = { limit: 100 };
+      if (tId && tId !== 'all') params.themeId = tId;
+      if (placement && placement !== 'all') {
+        params.placement = placement;
+        params.type = placement;
+      }
+      let res;
+      try {
+        res = await api.get('/banners/theme-images', { params });
+      } catch {
+        res = await api.get('/gallery', { params });
+      }
+      const items = res.data?.data?.items || res.data?.data || [];
+      setThemePlacementImages(Array.isArray(items) ? items : []);
+    } catch (err) {
+      console.error('Failed to load theme placement images:', err);
+      setThemePlacementImages([]);
+    } finally {
+      setLoadingPlacementImages(false);
+    }
+  };
+
+  // Fetch picker images for Theme Media Picker Modal
+  const fetchPickerImages = async (tId = pickerThemeFilter, placement = pickerPlacementFilter, platform = pickerDeviceFilter) => {
+    try {
+      setLoadingPickerImages(true);
+      const params = { limit: 100 };
+      if (tId && tId !== 'all') params.themeId = tId;
+      if (placement && placement !== 'all') {
+        params.placement = placement;
+        params.type = placement;
+      }
+      if (platform && platform !== 'all') {
+        params.platform = platform;
+      }
+      let res;
+      try {
+        res = await api.get('/banners/theme-images', { params });
+      } catch {
+        res = await api.get('/gallery', { params });
+      }
+      const items = res.data?.data?.items || res.data?.data || [];
+      setPickerImages(Array.isArray(items) ? items : []);
+    } catch (err) {
+      console.error('Failed to load picker images:', err);
+      setPickerImages([]);
+    } finally {
+      setLoadingPickerImages(false);
+    }
+  };
+
+  // Open Theme Media Picker Modal
+  const openMediaPicker = (slot, index = null) => {
+    setMediaPickerSlot(slot);
+    setMediaPickerSlotIndex(index);
+    const initialTheme = themeId || 'all';
+    const initialPlacement = currentBannerType.key;
+    const initialPlatform = slot === 'desktop' ? 'web' : slot === 'mobile' ? 'app' : 'all';
+    setPickerThemeFilter(initialTheme);
+    setPickerPlacementFilter(initialPlacement);
+    setPickerDeviceFilter(initialPlatform);
+    setPickerSearch('');
+    setIsMediaPickerOpen(true);
+    fetchPickerImages(initialTheme, initialPlacement, initialPlatform);
+  };
+
+  // On selecting an image from Theme Media Picker
+  const handleSelectPickerImage = (item) => {
+    const chosenUrl = item.url || item.image?.url;
+    const chosenKey = item.key || item.image?.key || '';
+    if (!chosenUrl) {
+      toast.error('Selected item does not have a valid image URL');
+      return;
+    }
+
+    if (mediaPickerSlot === 'desktop') {
+      setImageUrl(chosenUrl);
+      setImageKey(chosenKey);
+      setDesktopUploadStats(null);
+      toast.success('Selected theme image for Desktop Banner');
+    } else if (mediaPickerSlot === 'mobile') {
+      setMobileImageUrl(chosenUrl);
+      setMobileImageKey(chosenKey);
+      setMobileUploadStats(null);
+      toast.success('Selected theme image for Mobile Banner');
+    } else if (mediaPickerSlot === 'collection' && mediaPickerSlotIndex !== null) {
+      setCollectionImages((prev) => {
+        const next = [...prev];
+        next[mediaPickerSlotIndex] = {
+          ...next[mediaPickerSlotIndex],
+          url: chosenUrl,
+          key: chosenKey,
+        };
+        return next;
+      });
+      toast.success(`Selected theme image for Tile ${mediaPickerSlotIndex + 1}`);
+    }
+
+    // Auto-associate theme if banner does not have one yet
+    const itemThemeId = item.themeId?._id || item.themeId;
+    if (!themeId && itemThemeId) {
+      setThemeId(String(itemThemeId));
+    }
+
+    setIsMediaPickerOpen(false);
+  };
+
+  // When form modal opens, fetch themes lookup and placement images
+  useEffect(() => {
+    if (isFormModalOpen) {
+      fetchThemesLookup();
+      fetchThemePlacementImages(themeId || 'all', currentBannerType.key);
+    }
+  }, [isFormModalOpen, themeId, currentBannerType.key]);
+
   // Synchronize modal state when entering Edit or New mode via URL
   useEffect(() => {
     if (location.pathname.endsWith('/new')) {
@@ -373,8 +567,6 @@ export default function BannersView() {
     setEditingBanner(banner);
     setTitle(banner.content?.title || banner.title || '');
     setDescription(banner.content?.description || banner.content?.subtitle || banner.subtitle || '');
-    setDestinationLink(banner.link || '');
-    setLinkTarget(banner.linkTarget || '_self');
     setImageUrl(banner.image?.url || (banner.mediaType !== 'video' ? banner.image?.url : '') || '');
     setImageKey(banner.image?.key || '');
     setMobileImageUrl(banner.mobileImage?.url || '');
@@ -383,6 +575,18 @@ export default function BannersView() {
     setOrder(banner.display?.order ?? 1);
     setStartDate(formatForInput(banner.startDate));
     setEndDate(formatForInput(banner.endDate));
+
+    const platform = banner.display?.platform || 'web';
+    if (platform === 'common') {
+      setShowOnDesktop(true);
+      setShowOnMobile(true);
+    } else if (platform === 'mobile') {
+      setShowOnDesktop(false);
+      setShowOnMobile(true);
+    } else {
+      setShowOnDesktop(true);
+      setShowOnMobile(Boolean(banner.mobileImage?.url));
+    }
 
     const catObj = banner.display?.categoryId || banner.display?.category;
     setSelectedCategory(typeof catObj === 'object' ? catObj?._id : catObj || '');
@@ -396,18 +600,22 @@ export default function BannersView() {
       categoryId: img.categoryId?._id || img.categoryId || banner.display?.categoryId?._id || banner.display?.categoryId || '',
     })));
 
-    setThemeId(banner.themeId?._id || banner.themeId || '');
+    const currentThemeId = banner.themeId?._id || banner.themeId || '';
+    setThemeId(currentThemeId);
     setPendingThemeImages({});
     setDesktopUploadStats(null);
     setMobileUploadStats(null);
+
+    fetchThemesLookup();
+    const activePlacement = banner.display?.type || currentBannerType.key || 'herobanner';
+    setSelectedPlacementTab(activePlacement);
+    fetchThemePlacementImages(currentThemeId || 'all', activePlacement);
   };
 
   const resetForm = () => {
     setEditingBanner(null);
     setTitle('');
     setDescription('');
-    setDestinationLink('');
-    setLinkTarget('_self');
     setImageUrl('');
     setImageKey('');
     setMobileImageUrl('');
@@ -415,6 +623,8 @@ export default function BannersView() {
     setFormStatus('active');
     const totalCount = bannerCounts[typeKey || 'herobanner'] ?? banners.length;
     setOrder(totalCount + 1);
+    setShowOnDesktop(true);
+    setShowOnMobile(true);
     setStartDate('');
     setEndDate('');
     setCollectionImages([]);
@@ -425,6 +635,11 @@ export default function BannersView() {
     setPendingThemeImages({});
     setDesktopUploadStats(null);
     setMobileUploadStats(null);
+
+    fetchThemesLookup();
+    const initialPlacement = typeKey || 'herobanner';
+    setSelectedPlacementTab(initialPlacement);
+    fetchThemePlacementImages('all', initialPlacement);
   };
 
   // Paginated items for Screen 2
@@ -477,6 +692,33 @@ export default function BannersView() {
     }
   };
 
+  // Upload handler for collection tile
+  const handleCollectionSlotUpload = async (file, slotIndex) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+    setUploadingCollectionSlot(slotIndex);
+    try {
+      const res = await uploadWithPresignedUrl(file, 'banners');
+      setCollectionImages((prev) => {
+        const next = [...prev];
+        next[slotIndex] = {
+          ...next[slotIndex],
+          url: res.fileUrl,
+          key: res.key || '',
+        };
+        return next;
+      });
+      toast.success(`Tile ${slotIndex + 1} image uploaded`);
+    } catch (err) {
+      toast.error(err.message || 'Upload failed');
+    } finally {
+      setUploadingCollectionSlot(null);
+    }
+  };
+
   // Remove uploaded image
   const handleRemoveUploadedImage = async (device) => {
     if (device === 'desktop') {
@@ -496,7 +738,7 @@ export default function BannersView() {
     }
   };
 
-  // Submit banner from Screen 3
+  // Submit banner from Modal
   const handleSaveBanner = async (saveStatus = 'active') => {
     if (!title.trim()) {
       toast.error('Please enter a banner title');
@@ -506,6 +748,11 @@ export default function BannersView() {
     try {
       setSubmitting(true);
       const effectiveType = typeKey || editingBanner?.display?.type || 'herobanner';
+
+      let platform = 'web';
+      if (showOnDesktop && showOnMobile) platform = 'common';
+      else if (showOnDesktop && !showOnMobile) platform = 'web';
+      else if (!showOnDesktop && showOnMobile) platform = 'mobile';
 
       const payloadContent = {
         title: title.trim(),
@@ -518,7 +765,7 @@ export default function BannersView() {
       const payloadDisplay = {
         type: effectiveType,
         order: Number(order) || 1,
-        platform: 'web',
+        platform,
       };
 
       if (selectedCategory) {
@@ -534,7 +781,6 @@ export default function BannersView() {
         display: payloadDisplay,
         mediaType: 'image',
         status: saveStatus,
-        link: destinationLink.trim() || undefined,
         themeId: themeId || undefined,
       };
 
@@ -548,6 +794,16 @@ export default function BannersView() {
         payload.mobileImage = { url: mobileImageUrl, key: mobileImageKey || undefined };
       } else if (editingBanner?.mobileImage?.url) {
         payload.mobileImage = null;
+      }
+
+      if (effectiveType === 'collectionbanner' && collectionImages.length > 0) {
+        payload.collectionImages = collectionImages
+          .filter((img) => img.url)
+          .map((img) => ({
+            url: img.url,
+            key: img.key || undefined,
+            categoryId: img.categoryId || undefined,
+          }));
       }
 
       if (startDate) payload.startDate = new Date(startDate).toISOString();
@@ -602,7 +858,6 @@ export default function BannersView() {
         mobileImage: banner.mobileImage?.url ? { url: banner.mobileImage.url, key: banner.mobileImage.key } : undefined,
         collectionImages: banner.collectionImages?.length ? banner.collectionImages : undefined,
         mediaType: banner.mediaType || 'image',
-        link: banner.link || '',
         status: 'inactive', // Draft
         startDate: banner.startDate || undefined,
         endDate: banner.endDate || undefined,
@@ -666,6 +921,29 @@ export default function BannersView() {
     }
   };
 
+    // Lock body scroll when any banner modal is open
+  useEffect(() => {
+    if (isFormModalOpen || isMediaPickerOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isFormModalOpen, isMediaPickerOpen]);
+
+  // Filtered picker images by search
+  const filteredPickerImages = useMemo(() => {
+    if (!pickerSearch.trim()) return pickerImages;
+    const q = pickerSearch.trim().toLowerCase();
+    return pickerImages.filter((img) => {
+      const name = (img.name || img.title || img.recordTitle || img.url || '').toLowerCase();
+      const placement = (img.placement || img.type || img.typeLabel || '').toLowerCase();
+      const theme = (img.themeName || '').toLowerCase();
+      return name.includes(q) || placement.includes(q) || theme.includes(q);
+    });
+  }, [pickerImages, pickerSearch]);
+
   // =========================================================================
   // RENDER SCREEN 1: BANNER MANAGEMENT OVERVIEW (8 Boxes Grid)
   // =========================================================================
@@ -685,7 +963,7 @@ export default function BannersView() {
             Banner Management
           </h1>
           <p className="text-xs sm:text-sm text-stone-500 font-normal mt-1">
-            Choose a banner type to manage its banners.
+            Choose a banner type to manage its banners and theme placements.
           </p>
         </div>
 
@@ -699,19 +977,20 @@ export default function BannersView() {
               <div
                 key={card.key}
                 onClick={() => navigate(`${basePath}/${card.key}`)}
-                className="bg-white rounded-xl sm:rounded-2xl border border-stone-200/90 p-4 sm:p-5 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between hover:border-[#8a6d4b] hover:shadow-lg hover:shadow-stone-200/50 hover:bg-[#faf8f5]/40 hover:-translate-y-0.5"
+                style={{ backgroundColor: '#ffffff' }}
+                className="bg-white rounded-xl sm:rounded-2xl border border-stone-200/90 p-4 sm:p-5 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between hover:border-stone-300 hover:shadow-md hover:shadow-stone-200/40 hover:bg-stone-50/50 hover:-translate-y-0.5"
               >
                 <div>
                   {/* Top row: Icon and Count Badge */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#fbf5ed] border border-[#f5e3cc]/70 flex items-center justify-center text-[#8a6d4b] shrink-0 group-hover:scale-105 group-hover:bg-[#f6ebd9] transition-all">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-stone-100/90 border border-stone-200/80 flex items-center justify-center text-stone-700 shrink-0 group-hover:scale-105 transition-all">
                       <CardIcon className="w-5 h-5 stroke-[1.8]" />
                     </div>
 
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold tracking-wide ${
                         count > 0
-                          ? 'bg-[#fbf5ed] text-[#8a6d4b] border border-[#f5e3cc]'
+                          ? 'bg-stone-100 text-stone-700 border border-stone-200'
                           : 'bg-stone-50 text-stone-400 border border-stone-200/60'
                       }`}
                     >
@@ -720,7 +999,7 @@ export default function BannersView() {
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-sm sm:text-base font-bold text-stone-900 group-hover:text-[#8a6d4b] transition-colors leading-snug">
+                  <h3 className="text-sm sm:text-base font-bold text-stone-900 group-hover:text-stone-800 transition-colors leading-snug">
                     {card.label}
                   </h3>
 
@@ -731,7 +1010,7 @@ export default function BannersView() {
                 </div>
 
                 {/* Bottom link */}
-                <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-[11px] font-semibold text-stone-400 group-hover:text-[#8a6d4b] transition-colors">
+                <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-[11px] font-semibold text-stone-400 group-hover:text-stone-700 transition-colors">
                   <span>Manage</span>
                   <HiOutlineChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </div>
@@ -748,7 +1027,6 @@ export default function BannersView() {
   // =========================================================================
   if (viewMode === 'list') {
     const TypeIcon = currentBannerType.icon || HiOutlinePhotograph;
-    const ActiveBannerIcon = TypeIcon;
 
     return (
       <div className="space-y-6 pb-14 animate-fadeIn">
@@ -800,7 +1078,7 @@ export default function BannersView() {
               <button
                 type="button"
                 onClick={handleBulkDelete}
-                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 transition-colors cursor-pointer shadow-2xs"
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors cursor-pointer shadow-2xs"
               >
                 <HiOutlineTrash className="w-4 h-4" />
                 <span>Delete Selected ({selectedIds.length})</span>
@@ -814,7 +1092,8 @@ export default function BannersView() {
                 setEditingBanner(null);
                 setIsFormModalOpen(true);
               }}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-[#8a6d4b] hover:bg-[#785b3a] text-white shadow-xs transition-all cursor-pointer active:scale-98"
+              style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold hover:opacity-90 text-white shadow-xs transition-all cursor-pointer active:scale-98"
             >
               <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
               <span>Add {currentBannerType.label}</span>
@@ -838,31 +1117,30 @@ export default function BannersView() {
 
           {/* Right Filter Dropdowns */}
           <div className="flex items-center gap-2.5 w-full md:w-auto justify-end overflow-x-auto">
-            {/* Status Filter */}
-            <Dropdown
-              value={statusFilter}
-              onChange={setStatusFilter}
-              options={[
-                { value: 'all', label: 'All Status' },
-                { value: 'published', label: 'Published' },
-                { value: 'scheduled', label: 'Scheduled' },
-                { value: 'draft', label: 'Draft' },
-              ]}
-              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
-              menuClassName="z-30"
-            />
-
             {/* Devices Filter */}
             <Dropdown
               value={deviceFilter}
               onChange={setDeviceFilter}
               options={[
                 { value: 'all', label: 'All Devices' },
-                { value: 'desktop', label: 'Desktop' },
+                { value: 'web', label: 'Desktop' },
                 { value: 'mobile', label: 'Mobile' },
               ]}
-              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
-              menuClassName="z-30"
+              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 whitespace-nowrap"
+              menuClassName="z-20"
+            />
+
+            {/* Status Filter */}
+            <Dropdown
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'published', label: 'Active' },
+                { value: 'draft', label: 'Draft' },
+              ]}
+              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 whitespace-nowrap"
+              menuClassName="z-20"
             />
 
             {/* Sort Dropdown */}
@@ -870,33 +1148,29 @@ export default function BannersView() {
               value={sortBy}
               onChange={setSortBy}
               options={[
-                { value: 'newest', label: 'Newest first' },
-                { value: 'oldest', label: 'Oldest first' },
-                { value: 'order_asc', label: 'Order: Low to High' },
-                { value: 'order_desc', label: 'Order: High to Low' },
+                { value: 'newest', label: 'Newest First' },
+                { value: 'oldest', label: 'Oldest First' },
+                { value: 'order', label: 'Display Order' },
               ]}
-              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
-              menuClassName="z-30"
+              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 whitespace-nowrap"
+              menuClassName="z-20"
             />
           </div>
         </div>
 
-        {/* Data Table Matching Screenshot */}
-        <div className="bg-white rounded-2xl border border-stone-200/80 shadow-xs overflow-hidden">
+        {/* Banners Table */}
+        <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-stone-150 bg-[#faf9f7] text-[11px] font-semibold text-stone-400 uppercase tracking-wider">
+                <tr className="border-b border-stone-150 bg-[#faf8f5]/80 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
                   <th className="py-3.5 px-4 w-10">
                     <input
                       type="checkbox"
-                      checked={paginatedItems.length > 0 && paginatedItems.every((b) => selectedIds.includes(b._id))}
+                      checked={banners.length > 0 && selectedIds.length === banners.length}
                       onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedIds(paginatedItems.map((b) => b._id));
-                        } else {
-                          setSelectedIds([]);
-                        }
+                        if (e.target.checked) setSelectedIds(banners.map((b) => b._id));
+                        else setSelectedIds([]);
                       }}
                       className="rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b] cursor-pointer"
                     />
@@ -934,8 +1208,7 @@ export default function BannersView() {
                     const bTitle = banner.content?.title || banner.title || 'Untitled Banner';
                     const bDesc = banner.content?.description || banner.content?.subtitle || banner.subtitle || '';
                     const assetUrl = banner.image?.url || (banner.collectionImages?.[0]?.url);
-                    const isScheduled = banner.status === 'scheduled' || (banner.startDate && new Date(banner.startDate) > new Date());
-                    const isPublished = banner.status === 'active' && !isScheduled;
+                    const isPublished = banner.status === 'active';
                     const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);
                     const isSelected = selectedIds.includes(banner._id);
 
@@ -964,7 +1237,10 @@ export default function BannersView() {
                         {/* PREVIEW */}
                         <td className="py-3.5 px-4 whitespace-nowrap">
                           <div
-                            onClick={() => navigate(`${basePath}/${currentBannerType.key}/edit/${banner._id}`)}
+                            onClick={() => {
+                              populateFormWithBanner(banner);
+                              setIsFormModalOpen(true);
+                            }}
                             className="w-28 sm:w-32 h-14 rounded-xl border border-stone-200/90 overflow-hidden bg-stone-900 relative shadow-2xs cursor-pointer group flex items-center justify-center shrink-0"
                           >
                             {assetUrl ? (
@@ -984,7 +1260,10 @@ export default function BannersView() {
                         {/* TITLE */}
                         <td className="py-3.5 px-4 font-medium text-stone-900">
                           <div
-                            onClick={() => navigate(`${basePath}/${currentBannerType.key}/edit/${banner._id}`)}
+                            onClick={() => {
+                              populateFormWithBanner(banner);
+                              setIsFormModalOpen(true);
+                            }}
                             className="font-bold text-stone-900 text-sm max-w-[260px] truncate cursor-pointer hover:text-[#8a6d4b] transition-colors"
                             title={bTitle}
                           >
@@ -1002,12 +1281,7 @@ export default function BannersView() {
                           {isPublished ? (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf7ee] text-[#137333]">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#137333]" />
-                              <span>Published</span>
-                            </span>
-                          ) : isScheduled ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#fff7e6] text-[#d46b08]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#fa8c16]" />
-                              <span>Scheduled</span>
+                              <span>Active</span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-500">
@@ -1055,7 +1329,17 @@ export default function BannersView() {
                         {/* ACTIONS */}
                         <td className="py-3.5 pr-6 pl-4 whitespace-nowrap text-right">
                           <div className="inline-flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            {/* Edit Pencil (Opens Popup Modal) */}
+                            {/* Duplicate */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleDuplicate(banner, e)}
+                              title="Duplicate banner"
+                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-[#faf6f0] text-stone-600 hover:text-[#8a6d4b] transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                            >
+                              <HiOutlineDuplicate className="w-3.5 h-3.5 stroke-[1.8]" />
+                            </button>
+
+                            {/* Edit Pencil */}
                             <button
                               type="button"
                               onClick={() => {
@@ -1073,7 +1357,7 @@ export default function BannersView() {
                               type="button"
                               onClick={(e) => handleDelete(banner, e)}
                               title="Delete banner"
-                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-rose-50 text-stone-600 hover:text-rose-600 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-red-50 text-stone-600 hover:text-red-700 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
                             >
                               <HiOutlineTrash className="w-3.5 h-3.5 stroke-[1.8]" />
                             </button>
@@ -1122,9 +1406,20 @@ export default function BannersView() {
           accept="image/png, image/jpeg, image/webp"
           className="hidden"
         />
+        <input
+          ref={collectionSlotRef}
+          type="file"
+          onChange={(e) => {
+            if (uploadingCollectionSlot !== null) {
+              handleCollectionSlotUpload(e.target.files?.[0], uploadingCollectionSlot);
+            }
+          }}
+          accept="image/png, image/jpeg, image/webp"
+          className="hidden"
+        />
 
-        {/* ─── ADD / EDIT BANNER POPUP MODAL ───────────────────────── */}
-        {isFormModalOpen && (
+        {/* ─── ADD / EDIT BANNER POPUP MODAL (MATCHING SCREENSHOT) ─── */}
+        {isFormModalOpen && createPortal((
           <div
             className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-stone-900/60 backdrop-blur-xs overflow-y-auto animate-fadeIn"
             onClick={handleCloseModal}
@@ -1144,7 +1439,7 @@ export default function BannersView() {
                       {editingBanner ? `Edit ${currentBannerType.label}` : `Add ${currentBannerType.label}`}
                     </h2>
                     <p className="text-[11px] sm:text-xs text-stone-500 font-normal">
-                      Upload banner images and set details for {currentBannerType.label.toLowerCase()}.
+                      Upload banner images and set details for the {currentBannerType.label.toLowerCase()}.
                     </p>
                   </div>
                 </div>
@@ -1161,62 +1456,41 @@ export default function BannersView() {
 
               {/* Modal Body (Scrollable) */}
               <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 scrollbar-thin">
-                {/* 1. Banner Details Card */}
+                {/* 1. Banner Details Card (Link & Open in Removed) */}
                 <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
-                  <h3 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                    Banner Details
-                  </h3>
-
-                  {/* Title */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-stone-700">
-                      Title <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      placeholder="Enter banner title"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
-                    />
+                  <div className="flex items-center gap-2 text-stone-800">
+                    <HiOutlinePhotograph className="w-4 h-4 text-[#8a6d4b]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider">
+                      Banner Details
+                    </h3>
                   </div>
 
-                  {/* Description */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-stone-700">
-                      Description
-                    </label>
-                    <input
-                      type="text"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="Enter short description (optional)"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
-                    />
-                  </div>
-
-                  {/* Link / URL */}
-                  <div className="space-y-1.5">
-                    <label className="block text-xs font-semibold text-stone-700">
-                      Link / URL
-                    </label>
-                    <div className="flex items-center gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Title */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Title <span className="text-red-500">*</span>
+                      </label>
                       <input
                         type="text"
-                        value={destinationLink}
-                        onChange={(e) => setDestinationLink(e.target.value)}
-                        placeholder="https://"
-                        className="flex-1 px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        placeholder="Enter banner title"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all placeholder:text-stone-400"
                       />
-                      <Dropdown
-                        value={linkTarget}
-                        onChange={setLinkTarget}
-                        options={[
-                          { value: '_self', label: 'Open in same tab' },
-                          { value: '_blank', label: 'Open in new tab' },
-                        ]}
-                        buttonClassName="h-10 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white whitespace-nowrap"
-                        menuClassName="z-30"
+                    </div>
+
+                    {/* Description */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Description
+                      </label>
+                      <input
+                        type="text"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Enter short description (optional)"
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all placeholder:text-stone-400"
                       />
                     </div>
                   </div>
@@ -1260,45 +1534,98 @@ export default function BannersView() {
                       </div>
                     </div>
                   )}
+
+                  {/* Category Banner extra options */}
+                  {currentBannerType.key === 'categorybanner' && (
+                    <div className="pt-2 border-t border-stone-200/60">
+                      <label className="block text-xs font-semibold text-stone-700 mb-1">
+                        Category
+                      </label>
+                      <Dropdown
+                        value={selectedCategory}
+                        onChange={setSelectedCategory}
+                        options={[
+                          { value: '', label: 'Select Target Category' },
+                          ...categories.map((c) => ({ value: c._id, label: c.name })),
+                        ]}
+                        buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                        menuClassName="z-30"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                {/* 2. Banner Images Card */}
+                {/* 2. Banner Images & Theme Placement Media Card */}
                 <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
-                  <h3 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                    Banner Images
-                  </h3>
+                  {/* Top: Website Theme Selector & Direct Browse in Gallery Action */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-stone-200/70">
+                    <div>
+                      <div className="flex items-center gap-2 text-stone-900">
+                        <HiOutlineColorSwatch className="w-4 h-4 text-[#8a6d4b]" />
+                        <h3 className="text-xs font-bold uppercase tracking-wider">
+                          Website Theme & Media
+                        </h3>
+                      </div>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        Select a website theme for this banner or browse available media in gallery.
+                      </p>
+                    </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Desktop Banner Upload Box */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-xs font-semibold text-stone-700">
-                          Desktop Banner <span className="text-red-500">*</span>
-                        </label>
-                        <span className="text-[10.5px] text-stone-400 font-normal">
-                          (Recommended 1920 × 600)
-                        </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="w-48 sm:w-56">
+                        <Dropdown
+                          value={themeId}
+                          onChange={(val) => setThemeId(val)}
+                          options={[
+                            { value: '', label: 'All Website Themes' },
+                            ...themes.map((t) => ({
+                              value: t._id,
+                              label: `${t.name}${t.status === 'active' ? ' · Active' : ''}`,
+                            })),
+                          ]}
+                          buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)]"
+                          menuClassName="z-30"
+                        />
                       </div>
 
+                      <button
+                        type="button"
+                        onClick={() => openMediaPicker('desktop')}
+                        className="inline-flex items-center gap-1.5 px-3 h-9 rounded-xl border border-[var(--theme-primary,#8b6f4e)]/40 bg-white hover:bg-[#faf6f0] text-xs font-semibold text-[var(--theme-primary,#8b6f4e)] hover:text-[#785b3a] shadow-2xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                      >
+                        <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                        <span>View in Gallery</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Desktop and Mobile Banner Upload Boxes matching screenshot */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Desktop Banner Box */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                          Desktop Banner <span className="text-red-500">*</span>
+                        </label>
+
                       {imageUrl ? (
-                        <div className="relative rounded-2xl border border-stone-200 overflow-hidden bg-stone-900 aspect-[16/7] group shadow-2xs">
+                        <div className="relative rounded-xl border border-stone-200 overflow-hidden bg-stone-900 h-28 sm:h-32 group shadow-2xs">
                           <img
                             src={getMediaUrl(imageUrl)}
                             alt="Desktop Banner"
                             className="w-full h-full object-cover"
                           />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
                             <button
                               type="button"
-                              onClick={() => desktopInputRef.current?.click()}
-                              className="px-3 py-1.5 rounded-lg bg-white/90 text-stone-800 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
+                              onClick={() => openMediaPicker('desktop')}
+                              className="px-3 py-1.5 rounded-lg bg-[var(--theme-primary,#8a6d4b)] text-white text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs"
                             >
-                              Replace
+                              Choose Image
                             </button>
                             <button
                               type="button"
                               onClick={() => handleRemoveUploadedImage('desktop')}
-                              className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer"
+                              className="px-3 py-1.5 rounded-lg bg-red-700 text-white text-xs font-semibold hover:bg-red-800 shadow-xs shadow-red-900/20 transition-colors cursor-pointer shadow-2xs"
                             >
                               Remove
                             </button>
@@ -1311,67 +1638,72 @@ export default function BannersView() {
                         </div>
                       ) : (
                         <div
-                          onClick={() => desktopInputRef.current?.click()}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={(e) => {
                             e.preventDefault();
                             handleFileUpload(e.dataTransfer?.files?.[0], 'desktop');
                           }}
-                          className="border-2 border-dashed border-stone-300 hover:border-[#8a6d4b] bg-white hover:bg-[#fbf5ed]/40 rounded-2xl p-5 text-center cursor-pointer transition-all aspect-[16/7] flex flex-col items-center justify-center group shadow-2xs"
+                          className="border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all h-28 sm:h-32 flex flex-col items-center justify-center group shadow-2xs"
                         >
                           {isUploadingDesktop ? (
-                            <div className="space-y-2">
-                              <div className="w-6 h-6 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto" />
-                              <p className="text-xs text-stone-500 font-medium">Uploading & compressing...</p>
+                            <div className="space-y-1.5">
+                              <div className="w-5 h-5 border-2 border-stone-300 border-t-[var(--theme-primary,#8b6f4e)] rounded-full animate-spin mx-auto" />
+                              <p className="text-[11px] text-stone-500 font-medium">Uploading & compressing...</p>
                             </div>
                           ) : (
                             <>
-                              <div className="w-10 h-10 rounded-full bg-[#faf6f0] border border-stone-200 flex items-center justify-center text-stone-500 group-hover:text-[#8a6d4b] group-hover:border-[#8a6d4b]/40 mb-2 transition-colors shadow-2xs">
-                                <HiOutlineCloudUpload className="w-5 h-5 stroke-[1.8]" />
+                              <div
+                                onClick={() => desktopInputRef.current?.click()}
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#ecf7f7] border border-[#cbebeb] flex items-center justify-center text-[#1c7878] group-hover:scale-105 mb-1 transition-transform cursor-pointer shadow-2xs"
+                              >
+                                <HiOutlinePhotograph className="w-4 h-4 stroke-[1.8]" />
                               </div>
-                              <p className="text-xs font-semibold text-stone-800">
-                                Click to upload
-                                <span className="font-normal text-stone-500"> or drag and drop</span>
+                              <p
+                                onClick={() => desktopInputRef.current?.click()}
+                                className="text-[11px] sm:text-xs font-semibold text-stone-800 cursor-pointer"
+                              >
+                                Click to upload <span className="font-normal text-stone-500">or drag and drop</span>
                               </p>
-                              <p className="text-[10.5px] text-stone-400 mt-0.5">
-                                JPG, PNG, WebP (Max 5MB)
-                              </p>
+                              
+                              <button
+                                type="button"
+                                onClick={() => openMediaPicker('desktop')}
+                                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[11px] sm:text-xs font-semibold text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] hover:text-[var(--theme-primary,#8b6f4e)] transition-all cursor-pointer"
+                              >
+                                <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                                <span>Choose Image</span>
+                              </button>
                             </>
                           )}
                         </div>
                       )}
                     </div>
 
-                    {/* Mobile Banner Upload Box */}
+                    {/* Mobile Banner Box */}
                     <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <label className="block text-xs font-semibold text-stone-700">
+                      <label className="block text-xs font-semibold text-stone-700">
                           Mobile Banner <span className="text-red-500">*</span>
                         </label>
-                        <span className="text-[10.5px] text-stone-400 font-normal">
-                          (Recommended 768 × 1024)
-                        </span>
-                      </div>
 
                       {mobileImageUrl ? (
-                        <div className="relative rounded-2xl border border-stone-200 overflow-hidden bg-stone-900 aspect-[16/7] group shadow-2xs">
+                        <div className="relative rounded-xl border border-stone-200 overflow-hidden bg-stone-900 h-28 sm:h-32 group shadow-2xs">
                           <img
                             src={getMediaUrl(mobileImageUrl)}
                             alt="Mobile Banner"
                             className="w-full h-full object-cover"
                           />
-                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
                             <button
                               type="button"
-                              onClick={() => mobileInputRef.current?.click()}
-                              className="px-3 py-1.5 rounded-lg bg-white/90 text-stone-800 text-xs font-semibold hover:bg-white transition-colors cursor-pointer"
+                              onClick={() => openMediaPicker('mobile')}
+                              className="px-3 py-1.5 rounded-lg bg-[var(--theme-primary,#8a6d4b)] text-white text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs"
                             >
-                              Replace
+                              Choose Image
                             </button>
                             <button
                               type="button"
                               onClick={() => handleRemoveUploadedImage('mobile')}
-                              className="px-3 py-1.5 rounded-lg bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 transition-colors cursor-pointer"
+                              className="px-3 py-1.5 rounded-lg bg-red-700 text-white text-xs font-semibold hover:bg-red-800 shadow-xs shadow-red-900/20 transition-colors cursor-pointer shadow-2xs"
                             >
                               Remove
                             </button>
@@ -1384,59 +1716,173 @@ export default function BannersView() {
                         </div>
                       ) : (
                         <div
-                          onClick={() => mobileInputRef.current?.click()}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={(e) => {
                             e.preventDefault();
                             handleFileUpload(e.dataTransfer?.files?.[0], 'mobile');
                           }}
-                          className="border-2 border-dashed border-stone-300 hover:border-[#8a6d4b] bg-white hover:bg-[#fbf5ed]/40 rounded-2xl p-5 text-center cursor-pointer transition-all aspect-[16/7] flex flex-col items-center justify-center group shadow-2xs"
+                          className="border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all h-28 sm:h-32 flex flex-col items-center justify-center group shadow-2xs"
                         >
                           {isUploadingMobile ? (
-                            <div className="space-y-2">
-                              <div className="w-6 h-6 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto" />
-                              <p className="text-xs text-stone-500 font-medium">Uploading & compressing...</p>
+                            <div className="space-y-1.5">
+                              <div className="w-5 h-5 border-2 border-stone-300 border-t-[var(--theme-primary,#8b6f4e)] rounded-full animate-spin mx-auto" />
+                              <p className="text-[11px] text-stone-500 font-medium">Uploading & compressing...</p>
                             </div>
                           ) : (
                             <>
-                              <div className="w-10 h-10 rounded-full bg-[#faf6f0] border border-stone-200 flex items-center justify-center text-stone-500 group-hover:text-[#8a6d4b] group-hover:border-[#8a6d4b]/40 mb-2 transition-colors shadow-2xs">
-                                <HiOutlineCloudUpload className="w-5 h-5 stroke-[1.8]" />
+                              <div
+                                onClick={() => mobileInputRef.current?.click()}
+                                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#ecf7f7] border border-[#cbebeb] flex items-center justify-center text-[#1c7878] group-hover:scale-105 mb-1 transition-transform cursor-pointer shadow-2xs"
+                              >
+                                <HiOutlinePhotograph className="w-4 h-4 stroke-[1.8]" />
                               </div>
-                              <p className="text-xs font-semibold text-stone-800">
-                                Click to upload
-                                <span className="font-normal text-stone-500"> or drag and drop</span>
+                              <p
+                                onClick={() => mobileInputRef.current?.click()}
+                                className="text-[11px] sm:text-xs font-semibold text-stone-800 cursor-pointer"
+                              >
+                                Click to upload <span className="font-normal text-stone-500">or drag and drop</span>
                               </p>
-                              <p className="text-[10.5px] text-stone-400 mt-0.5">
-                                JPG, PNG, WebP (Max 5MB)
-                              </p>
+                              
+                              <button
+                                type="button"
+                                onClick={() => openMediaPicker('mobile')}
+                                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[11px] sm:text-xs font-semibold text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] hover:text-[var(--theme-primary,#8b6f4e)] transition-all cursor-pointer"
+                              >
+                                <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                                <span>Choose Image</span>
+                              </button>
                             </>
                           )}
                         </div>
                       )}
                     </div>
                   </div>
+
+                  {/* Collection Banners Grid Slots (4 items) */}
+                  {currentBannerType.key === 'collectionbanner' && (
+                    <div className="pt-3 border-t border-stone-200/60 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <label className="block text-xs font-semibold text-stone-700">
+                          Collection Grid Tiles (4 Slots)
+                        </label>
+                        <span className="text-[11px] text-stone-400">
+                          Assign 4 collection tiles with images and categories
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        {[0, 1, 2, 3].map((slotIdx) => {
+                          const tile = collectionImages[slotIdx] || {};
+                          const tileUrl = tile.url;
+
+                          return (
+                            <div
+                              key={slotIdx}
+                              className="bg-white rounded-xl border border-stone-200 p-2.5 space-y-2 shadow-2xs"
+                            >
+                              <span className="text-[10px] font-bold text-stone-500 block uppercase">
+                                Tile {slotIdx + 1}
+                              </span>
+
+                              {tileUrl ? (
+                                <div className="relative aspect-square rounded-lg overflow-hidden border border-stone-200 bg-stone-900 group">
+                                  <img
+                                    src={getMediaUrl(tileUrl)}
+                                    alt={`Tile ${slotIdx + 1}`}
+                                    className="w-full h-full object-cover"
+                                  />
+                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 p-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => openMediaPicker('collection', slotIdx)}
+                                      className="px-2 py-1 rounded bg-[#8a6d4b] text-white text-[10px] font-semibold cursor-pointer"
+                                    >
+                                      Change
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setCollectionImages((prev) => {
+                                          const next = [...prev];
+                                          next[slotIdx] = { ...next[slotIdx], url: '', key: '' };
+                                          return next;
+                                        });
+                                      }}
+                                      className="px-2 py-1 rounded bg-red-700 hover:bg-red-800 text-white text-[10px] font-semibold cursor-pointer"
+                                    >
+                                      Remove
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="aspect-square rounded-lg border-2 border-dashed border-stone-200 flex flex-col items-center justify-center p-2 text-center bg-stone-50/50">
+                                  <button
+                                    type="button"
+                                    onClick={() => openMediaPicker('collection', slotIdx)}
+                                    className="px-2 py-1 rounded-lg border border-stone-300 bg-white text-[10px] font-semibold text-stone-700 hover:text-[#8a6d4b] hover:border-[#8a6d4b] transition cursor-pointer shadow-2xs"
+                                  >
+                                    Choose Image
+                                  </button>
+                                </div>
+                              )}
+
+                              <Dropdown
+                                value={tile.categoryId || ''}
+                                onChange={(val) => {
+                                  setCollectionImages((prev) => {
+                                    const next = [...prev];
+                                    next[slotIdx] = { ...next[slotIdx], categoryId: val };
+                                    return next;
+                                  });
+                                }}
+                                options={[
+                                  { value: '', label: 'Select Category' },
+                                  ...categories.map((c) => ({ value: c._id, label: c.name })),
+                                ]}
+                                buttonClassName="w-full h-7 px-2 rounded-lg border border-stone-200 text-[10.5px] text-stone-700 bg-white"
+                                menuClassName="z-30"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* 3. Display Settings Card */}
+                {/* 3. Display Settings Card (Status, Display Order, Show On) */}
                 <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
-                  <h3 className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                    Display Settings
-                  </h3>
+                  <div className="flex items-center gap-2 text-stone-800">
+                    <HiOutlineAdjustments className="w-4 h-4 text-[#8a6d4b]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider">
+                      Display Settings
+                    </h3>
+                  </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
                     {/* Status */}
                     <div className="space-y-1.5">
                       <label className="block text-xs font-semibold text-stone-700">
-                        Status
+                        Status <span className="text-red-500">*</span>
                       </label>
                       <Dropdown
                         value={formStatus}
                         onChange={setFormStatus}
                         options={[
-                          { value: 'active', label: 'Published' },
-                          { value: 'inactive', label: 'Draft' },
+                          { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
+                          { value: 'inactive', label: 'Draft', dotColor: 'bg-stone-400' },
                         ]}
-                        buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                        renderTrigger={(selected) => (
+                          <div className="flex items-center gap-2 w-full text-xs font-medium text-stone-800">
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                selected?.value === 'active' ? 'bg-emerald-500' : 'bg-stone-400'
+                              }`}
+                            />
+                            <span>{selected?.label || 'Select Status'}</span>
+                          </div>
+                        )}
+                        buttonClassName="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
                         menuClassName="z-30"
                       />
                     </div>
@@ -1451,14 +1897,43 @@ export default function BannersView() {
                         min="1"
                         value={order}
                         onChange={(e) => setOrder(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+                        className="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
                       />
+                    </div>
+
+                    {/* Show On (Desktop / Mobile Checkboxes) */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Show On
+                      </label>
+                      <div className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white flex items-center gap-4">
+                        <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-700 select-none">
+                          <input
+                            type="checkbox"
+                            checked={showOnDesktop}
+                            onChange={(e) => setShowOnDesktop(e.target.checked)}
+                            className="rounded border-stone-300 text-[var(--theme-primary,#8b6f4e)] focus:ring-[var(--theme-primary,#8b6f4e)] w-4 h-4 cursor-pointer"
+                          />
+                          <span>Desktop</span>
+                        </label>
+
+                        <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-700 select-none">
+                          <input
+                            type="checkbox"
+                            checked={showOnMobile}
+                            onChange={(e) => setShowOnMobile(e.target.checked)}
+                            className="rounded border-stone-300 text-[var(--theme-primary,#8b6f4e)] focus:ring-[var(--theme-primary,#8b6f4e)] w-4 h-4 cursor-pointer"
+                          />
+                          <span>Mobile</span>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Modal Footer */}
+                </div>
+
+              {/* Modal Footer matching screenshot */}
               <div className="px-5 sm:px-6 py-3.5 border-t border-stone-150 bg-stone-50/80 flex items-center justify-between gap-3 shrink-0">
                 <button
                   type="button"
@@ -1468,7 +1943,7 @@ export default function BannersView() {
                   Cancel
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <button
                     type="button"
                     disabled={submitting}
@@ -1482,7 +1957,8 @@ export default function BannersView() {
                     type="button"
                     disabled={submitting}
                     onClick={() => handleSaveBanner('active')}
-                    className="px-5 py-2 rounded-xl bg-[#8a6d4b] hover:bg-[#785b3a] text-white text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
+                    style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                    className="px-5 py-2 rounded-xl hover:opacity-90 text-white text-xs sm:text-sm font-semibold transition flex items-center gap-2 cursor-pointer shadow-xs disabled:opacity-50"
                   >
                     {submitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                     <span>{editingBanner ? 'Update Banner' : 'Publish Banner'}</span>
@@ -1491,7 +1967,233 @@ export default function BannersView() {
               </div>
             </div>
           </div>
-        )}
+        ), document.body)}
+
+        {/* ─── THEME MEDIA PICKER MODAL (CHOOSE IMAGE FROM THEME) ─── */}
+        {isMediaPickerOpen && createPortal((
+          <div
+            className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5 bg-stone-900/70 backdrop-blur-xs overflow-y-auto animate-fadeIn"
+            onClick={() => setIsMediaPickerOpen(false)}
+          >
+            <div
+              className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden my-auto animate-scaleIn"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Picker Header */}
+              <div className="bg-[#faf8f5] px-5 sm:px-6 py-4 border-b border-stone-150 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-[#e8d8c0] flex items-center justify-center text-[#8a6d4b] shadow-2xs shrink-0">
+                    <HiOutlinePhotograph className="w-5 h-5 stroke-[1.8]" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-stone-900 font-playfair tracking-tight">
+                      Select Theme Image
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-stone-500 font-normal">
+                      Target slot: <span className="font-semibold text-stone-800 capitalize">{mediaPickerSlot} Banner</span>
+                      {mediaPickerSlotIndex !== null ? ` (Tile ${mediaPickerSlotIndex + 1})` : ''} · Choose from pre-configured theme placement images.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsMediaPickerOpen(false)}
+                  className="w-8 h-8 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                  aria-label="Close image picker"
+                >
+                  <HiOutlineX className="w-4 h-4 stroke-2" />
+                </button>
+              </div>
+
+              {/* Picker Filters Bar */}
+              <div className="p-4 border-b border-stone-150 bg-stone-50/50 flex flex-col sm:flex-row items-center gap-3 shrink-0">
+                {/* Search */}
+                <div className="relative flex-1 w-full sm:w-auto">
+                  <HiOutlineSearch className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                  <input
+                    type="text"
+                    value={pickerSearch}
+                    onChange={(e) => setPickerSearch(e.target.value)}
+                    placeholder="Search by name, placement or theme..."
+                    className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b]"
+                  />
+                </div>
+
+                {/* Filter Theme */}
+                <div className="w-full sm:w-52">
+                  <Dropdown
+                    value={pickerThemeFilter}
+                    onChange={(val) => {
+                      setPickerThemeFilter(val);
+                      fetchPickerImages(val, pickerPlacementFilter, pickerDeviceFilter);
+                    }}
+                    options={[
+                      { value: 'all', label: 'All Website Themes' },
+                      ...themes.map((t) => ({
+                        value: t._id,
+                        label: `${t.name}${t.status === 'active' ? ' · Active' : ''}`,
+                      })),
+                    ]}
+                    buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
+                    menuClassName="z-30"
+                  />
+                </div>
+
+                {/* Filter Placement */}
+                <div className="w-full sm:w-48">
+                  <Dropdown
+                    value={pickerPlacementFilter}
+                    onChange={(val) => {
+                      setPickerPlacementFilter(val);
+                      fetchPickerImages(pickerThemeFilter, val, pickerDeviceFilter);
+                    }}
+                    options={[
+                      { value: currentBannerType.key, label: `${currentBannerType.label} (Current)` },
+                      { value: 'all', label: 'All Placements' },
+                      ...BANNER_TYPES.filter((b) => b.key !== currentBannerType.key).map((b) => ({
+                        value: b.key,
+                        label: b.label,
+                      })),
+                      { value: 'celebrate', label: 'Celebrate & Gifts' },
+                      { value: 'asset', label: 'Media Library Assets' },
+                    ]}
+                    buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
+                    menuClassName="z-30"
+                  />
+                </div>
+
+                
+                {/* Filter Platform (Web / App / All) */}
+                <div className="w-full sm:w-40">
+                  <Dropdown
+                    value={pickerDeviceFilter}
+                    onChange={(val) => {
+                      setPickerDeviceFilter(val);
+                      fetchPickerImages(pickerThemeFilter, pickerPlacementFilter, val);
+                    }}
+                    options={[
+                      { value: 'all', label: 'All Platforms' },
+                      { value: 'web', label: 'Web (Desktop)' },
+                      { value: 'app', label: 'App (Mobile)' },
+                    ]}
+                    buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
+                    menuClassName="z-30"
+                  />
+                </div>
+
+                {/* Refresh */}
+                <button
+                  type="button"
+                  onClick={() => fetchPickerImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter)}
+                  title="Refresh images"
+                  className="w-9 h-9 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                >
+                  <HiOutlineRefresh className={`w-4 h-4 ${loadingPickerImages ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
+
+              {/* Picker Images Grid */}
+              <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
+                {loadingPickerImages ? (
+                  <div className="py-20 text-center text-stone-400">
+                    <div className="w-8 h-8 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
+                    <p className="text-xs font-medium text-stone-600">Loading theme placement images...</p>
+                  </div>
+                ) : filteredPickerImages.length === 0 ? (
+                  <div className="py-20 text-center text-stone-400">
+                    <HiOutlinePhotograph className="w-12 h-12 mx-auto text-stone-300 mb-2 stroke-1" />
+                    <p className="text-sm font-medium text-stone-600">No images found</p>
+                    <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto">
+                      No images matching the selected theme and placement. Try switching to "All Website Themes" or "All Placements".
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+                    {filteredPickerImages.map((img, idx) => {
+                      const imgUrl = img.url || img.image?.url;
+                      const imgTitle = img.name || img.title || img.recordTitle || `Theme Image ${idx + 1}`;
+                      const imgPlacement = img.placement || img.type || img.filterType || 'banner';
+                      const imgTheme = img.themeName || img.themeId?.name || '';
+                      const isCurrentlySelected =
+                        (mediaPickerSlot === 'desktop' && imageUrl === imgUrl) ||
+                        (mediaPickerSlot === 'mobile' && mobileImageUrl === imgUrl);
+
+                      return (
+                        <div
+                          key={img.id || img._id || idx}
+                          onClick={() => handleSelectPickerImage(img)}
+                          className={`group relative rounded-2xl border overflow-hidden bg-white cursor-pointer transition-all duration-200 flex flex-col ${
+                            isCurrentlySelected
+                              ? 'border-[var(--theme-primary,#8b6f4e)] ring-2 ring-[var(--theme-primary,#8b6f4e)]/40 shadow-md'
+                              : 'border-stone-200/90 hover:border-[#8a6d4b] hover:shadow-md hover:-translate-y-0.5'
+                          }`}
+                        >
+                          {/* Image Thumbnail */}
+                          <div className="relative aspect-[16/10] bg-stone-900 overflow-hidden">
+                            <img
+                              src={getMediaUrl(imgUrl)}
+                              alt={imgTitle}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+
+                            {/* Overlay button on hover */}
+                            <div className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                              <span className="px-3 py-1.5 rounded-xl bg-white text-stone-900 text-xs font-bold shadow-md flex items-center gap-1.5">
+                                <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" style={{ color: 'var(--theme-primary, #8b6f4e)' }} />
+                                <span>Select</span>
+                              </span>
+                            </div>
+
+                            {/* Selected Badge */}
+                            {isCurrentlySelected && (
+                              <div style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }} className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-white text-[10px] font-bold shadow-xs">
+                                Current
+                              </div>
+                            )}
+
+                            {/* Placement pill */}
+                            <div className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-stone-900/75 backdrop-blur-xs text-white text-[9.5px] font-semibold uppercase tracking-wider">
+                              {imgPlacement}
+                            </div>
+                          </div>
+
+                          {/* Image details */}
+                          <div className="p-2.5 space-y-1">
+                            <p className="text-xs font-semibold text-stone-800 truncate" title={imgTitle}>
+                              {imgTitle}
+                            </p>
+                            {imgTheme && (
+                              <p className="text-[10px] text-stone-400 truncate flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#8a6d4b]" />
+                                <span>{imgTheme}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Picker Footer */}
+              <div className="px-5 py-3 border-t border-stone-150 bg-stone-50 flex items-center justify-between shrink-0">
+                <span className="text-xs text-stone-500 font-medium">
+                  {filteredPickerImages.length} images available
+                </span>
+
+                <button
+                  type="button"
+                  onClick={() => setIsMediaPickerOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-xs font-semibold text-stone-700 transition cursor-pointer shadow-2xs"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        ), document.body)}
       </div>
     );
   }

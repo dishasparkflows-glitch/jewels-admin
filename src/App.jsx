@@ -152,6 +152,7 @@ function App() {
             <Route path="/website/gallery" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading gallery…</div>}><GalleryView /></Suspense>} />
             <Route path="/marketing/gallery" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading gallery…</div>}><GalleryView /></Suspense>} />
             <Route path="/website/themes" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading theme management…</div>}><WebsiteThemesView /></Suspense>} />
+            <Route path="/themes" element={<Suspense fallback={<div className="p-8 text-sm text-slate-500">Loading theme management…</div>}><WebsiteThemesView /></Suspense>} />
             <Route path="/static-pages" element={<StaticPagesView />} />
             <Route path="/website/static-pages" element={<StaticPagesView />} />
             <Route path="/website-content/static-pages" element={<StaticPagesView />} />

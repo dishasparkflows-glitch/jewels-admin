@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   HiOutlineCalendar,
@@ -1031,7 +1032,7 @@ export default function AppointmentsView() {
 
       {/* ─── Book Appointment Modal ─── */}
       {isBookModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setIsBookModalOpen(false)}
         >
@@ -1154,12 +1155,12 @@ export default function AppointmentsView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Appointment Details Modal ─── */}
       {viewingApt && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setViewingApt(null)}
         >
@@ -1277,7 +1278,7 @@ export default function AppointmentsView() {
               </div>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

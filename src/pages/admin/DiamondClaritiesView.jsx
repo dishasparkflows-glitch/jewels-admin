@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
@@ -518,7 +519,7 @@ export default function DiamondClaritiesView() {
 
       {/* ─── Add / Edit Modal (Matches Screenshot 2 Exactly) ─── */}
       {isModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setIsModalOpen(false)}
         >
@@ -643,12 +644,12 @@ export default function DiamondClaritiesView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Clarity Details Modal ─── */}
       {viewingClarity && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setViewingClarity(null)}
         >
@@ -702,7 +703,7 @@ export default function DiamondClaritiesView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

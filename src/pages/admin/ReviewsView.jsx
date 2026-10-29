@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlineUser,
@@ -536,7 +537,7 @@ export default function ReviewsView() {
 
       {/* ─── Add/Edit Modal ─── */}
       {showAddModal && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setShowAddModal(false)}
         >
@@ -730,12 +731,12 @@ export default function ReviewsView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Review Modal ─── */}
       {viewingReview && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setViewingReview(null)}
         >
@@ -828,7 +829,7 @@ export default function ReviewsView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

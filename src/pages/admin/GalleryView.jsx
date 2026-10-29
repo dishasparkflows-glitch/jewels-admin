@@ -20,7 +20,6 @@ import {
   HiOutlineViewList,
   HiOutlineCalendar,
   HiOutlinePlus,
-  HiOutlineDotsVertical,
   HiOutlineDownload,
   HiOutlineClipboardCopy,
   HiOutlineInformationCircle,
@@ -177,14 +176,8 @@ function getMediaDisplayInfo(item) {
     fileName = `${cleanPlacement}-${(item.id || item._id || '').slice(-6) || 'img'}.jpg`;
   }
 
-  const width = item.width || (item.placement === 'herobanner' ? 1920 : item.placement === 'collectionbanner' ? 1920 : 1080);
-  const height = item.height || 1080;
-  const size = item.size ? formatBytes(item.size) : `${(((item.id || '').charCodeAt(0) || 5) % 2 + 1.6).toFixed(1)} MB`;
-
   return {
     fileName,
-    resolution: `${width} × ${height}`,
-    fileSize: size,
   };
 }
 
@@ -479,7 +472,6 @@ export default function GalleryView() {
   const filterThemeOptions = useMemo(() => {
     return [
       { value: 'all', label: 'All Website Themes', dotColor: 'bg-stone-400' },
-      { value: 'active', label: 'Current Live Theme', dotColor: 'bg-emerald-500' },
       ...themes.map((t) => ({
         value: String(t._id),
         label: `${t.name}${t.isLive ? ' (Live)' : ` (${t.status})`}`,
@@ -1057,7 +1049,7 @@ export default function GalleryView() {
                       <button
                         type="button"
                         onClick={() => setDeleteConfirmItem(item)}
-                        className="rounded-md p-1.5 text-rose-400 hover:bg-rose-50 hover:text-rose-600 transition"
+                        className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700 transition cursor-pointer"
                         title="Remove Media Item"
                       >
                         <HiOutlineTrash className="h-3.5 w-3.5" />
@@ -1075,7 +1067,7 @@ export default function GalleryView() {
           {effectiveItems.map((item) => {
             const bt = BANNER_TYPES.find((b) => b.key === item.type) || { icon: HiOutlinePhotograph };
             const Icon = bt.icon;
-            const { fileName, resolution, fileSize } = getMediaDisplayInfo(item);
+            const { fileName } = getMediaDisplayInfo(item);
 
             return (
               <div
@@ -1128,9 +1120,11 @@ export default function GalleryView() {
                     <h4 className="text-xs font-bold text-stone-900 truncate" title={fileName}>
                       {fileName}
                     </h4>
-                    <p className="mt-0.5 text-[10px] text-stone-400 font-normal">
-                      {resolution} &nbsp;|&nbsp; {fileSize}
-                    </p>
+                    {item.themeName ? (
+                      <p className="mt-0.5 text-[10px] text-stone-400 font-normal truncate">
+                        {item.themeName}
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Action Buttons Row */}
@@ -1165,19 +1159,10 @@ export default function GalleryView() {
                     <button
                       type="button"
                       onClick={() => setDeleteConfirmItem(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-stone-200/90 bg-white hover:bg-rose-50 text-rose-500 transition shadow-2xs cursor-pointer"
+                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-stone-200/90 bg-white hover:bg-red-50 text-red-600 hover:text-red-700 transition shadow-2xs cursor-pointer"
                       title="Remove Media Item"
                     >
                       <HiOutlineTrash className="h-3.5 w-3.5" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 transition shadow-2xs cursor-pointer"
-                      title="More Options"
-                    >
-                      <HiOutlineDotsVertical className="h-3.5 w-3.5" />
                     </button>
                   </div>
                 </div>
@@ -1548,7 +1533,7 @@ export default function GalleryView() {
               className="relative w-full max-w-md rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl animate-scaleUp"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-rose-50 text-rose-600">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 border border-red-200 text-red-700">
                 <HiOutlineTrash className="h-6 w-6" />
               </div>
               <h3 className="mt-4 text-base font-bold text-stone-900">Remove Media Item</h3>
@@ -1570,7 +1555,7 @@ export default function GalleryView() {
                   type="button"
                   onClick={handleDeleteItem}
                   disabled={isDeleting}
-                  className="inline-flex items-center gap-2 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white hover:bg-rose-700 transition cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-2 rounded-xl bg-red-700 px-4 py-2 text-xs font-semibold text-white hover:bg-red-800 transition cursor-pointer disabled:opacity-50 shadow-sm shadow-red-900/20"
                 >
                   {isDeleting ? (
                     <>

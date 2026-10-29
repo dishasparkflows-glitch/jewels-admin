@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineSparkles,
@@ -311,9 +312,14 @@ export default function CustomInquiriesView() {
                   setStatusFilter(tab.value);
                   setCurrentPage(1);
                 }}
+                style={
+                  isActive
+                    ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' }
+                    : undefined
+                }
                 className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
                   isActive
-                    ? 'bg-[#8a6d4b] text-white shadow-xs'
+                    ? 'shadow-xs hover:brightness-95'
                     : 'bg-white hover:bg-stone-100 text-stone-500 border border-stone-200/70'
                 }`}
               >
@@ -334,7 +340,7 @@ export default function CustomInquiriesView() {
               setCurrentPage(1);
             }}
             placeholder="Search client name or contact..."
-            className="w-full h-10 pl-10 pr-4 rounded-xl bg-white border border-stone-200/90 focus:border-[#8f6d43] text-xs font-medium text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 shadow-2xs transition-all"
+            className="w-full h-10 pl-10 pr-4 rounded-xl bg-white border border-stone-200/90 text-xs font-medium text-stone-800 placeholder-stone-400 outline-none shadow-2xs transition-all focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)]"
           />
         </div>
       </div>
@@ -350,7 +356,7 @@ export default function CustomInquiriesView() {
                     type="checkbox"
                     checked={allSelected}
                     onChange={handleSelectAll}
-                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                    style={{ accentColor: "var(--theme-primary, #8b6f4e)" }} className="w-3.5 h-3.5 rounded border-stone-300 cursor-pointer"
                   />
                 </th>
                 <th className="py-3 px-4 whitespace-nowrap">CLIENT INFO</th>
@@ -365,7 +371,7 @@ export default function CustomInquiriesView() {
               {loading ? (
                 <tr>
                   <td colSpan="7" className="py-12 text-center text-stone-400">
-                    <div className="animate-spin w-5 h-5 border-2 border-[#8b6f4e] border-t-transparent rounded-full mx-auto mb-2" />
+                    <div className="animate-spin w-5 h-5 border-2 border-t-transparent rounded-full mx-auto mb-2" style={{ borderColor: "var(--theme-primary, #8b6f4e)", borderTopColor: "transparent" }} />
                     Loading custom design inquiries...
                   </td>
                 </tr>
@@ -412,14 +418,14 @@ export default function CustomInquiriesView() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleSelectItem(id)}
-                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                          style={{ accentColor: "var(--theme-primary, #8b6f4e)" }} className="w-3.5 h-3.5 rounded border-stone-300 cursor-pointer"
                         />
                       </td>
 
                       {/* Client Info */}
                       <td className="py-3 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-[#f6f2ec] text-[#8a6d4b] font-bold text-xs flex items-center justify-center shrink-0 border border-[#ecd9c3]">
+                          <div className="w-9 h-9 rounded-full font-bold text-xs flex items-center justify-center shrink-0 border" style={{ backgroundColor: "rgba(var(--theme-primary-rgb, 139, 111, 78), 0.1)", color: "var(--theme-primary, #8b6f4e)", borderColor: "rgba(var(--theme-primary-rgb, 139, 111, 78), 0.25)" }}>
                             {initial}
                           </div>
                           <div className="leading-tight">
@@ -548,7 +554,7 @@ export default function CustomInquiriesView() {
 
       {/* ─── Confirm Inquiry Modal (Screenshot 2) ─── */}
       {confirmModalInquiry && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setConfirmModalInquiry(null)}
         >
@@ -564,7 +570,7 @@ export default function CustomInquiriesView() {
               <HiOutlineX className="w-5 h-5" />
             </button>
 
-            {/* Alert Icon in amber box */}
+            {/* Alert Icon */}
             <div className="w-14 h-14 rounded-2xl bg-[#fff7ed] border border-[#ffedd5] mx-auto flex items-center justify-center text-[#d97706] shadow-2xs">
               <HiOutlineExclamation className="w-7 h-7 stroke-2" />
             </div>
@@ -595,12 +601,12 @@ export default function CustomInquiriesView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── Cancel Inquiry Modal ─── */}
       {cancelModalInquiry && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setCancelModalInquiry(null)}
         >
@@ -616,7 +622,7 @@ export default function CustomInquiriesView() {
               <HiOutlineX className="w-5 h-5" />
             </button>
 
-            <div className="w-14 h-14 rounded-2xl bg-[#fff1f2] border border-[#ffe4e6] mx-auto flex items-center justify-center text-[#e11d48] shadow-2xs">
+            <div className="w-14 h-14 rounded-2xl bg-red-50 border border-red-200 mx-auto flex items-center justify-center text-red-700 shadow-2xs">
               <HiOutlineBan className="w-7 h-7 stroke-2" />
             </div>
 
@@ -640,18 +646,18 @@ export default function CustomInquiriesView() {
               <button
                 type="button"
                 onClick={handleCancelInquiry}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[#e11d48] hover:bg-[#be123c] shadow-sm transition-colors cursor-pointer"
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-red-700 hover:bg-red-800 shadow-sm shadow-red-900/20 transition-colors cursor-pointer"
               >
                 CANCEL REQUEST
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Details Modal ─── */}
       {viewingInquiry && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setViewingInquiry(null)}
         >
@@ -695,7 +701,7 @@ export default function CustomInquiriesView() {
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
                   <span className="text-stone-400 font-semibold">Status</span>
-                  <span className="font-bold uppercase tracking-wider text-[#8f6d43]">
+                  <span className="font-bold uppercase tracking-wider" style={{ color: "var(--theme-primary, #8b6f4e)" }}>
                     {viewingInquiry.status || 'pending'}
                   </span>
                 </div>
@@ -720,15 +726,21 @@ export default function CustomInquiriesView() {
                 </div>
                 <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
                   <span className="text-stone-400 font-semibold">Target Budget</span>
-                  <span className="font-bold text-[#8f6d43] text-sm">
+                  <span
+                    className="font-bold text-sm"
+                    style={{ color: 'var(--theme-primary, #8b6f4e)' }}
+                  >
                     {formatBudget(viewingInquiry.requirements)}
                   </span>
                 </div>
               </div>
 
               {viewingInquiry.requirements?.comments && (
-                <div className="p-4 rounded-2xl bg-[#faf7f2] border border-[#e8d9c2] space-y-1">
-                  <span className="block text-[10px] font-bold text-[#8f6d43] uppercase tracking-wider">
+                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">
+                  <span
+                    className="block text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--theme-primary, #8b6f4e)' }}
+                  >
                     Client Design Notes
                   </span>
                   <p className="text-xs text-stone-700 italic leading-relaxed">
@@ -746,7 +758,8 @@ export default function CustomInquiriesView() {
                   setViewingInquiry(null);
                   setConfirmModalInquiry(inq);
                 }}
-                className="flex-1 py-2.5 bg-[#8f6d43] hover:bg-[#785e40] text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer text-center"
+                style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                className="flex-1 py-2.5 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors hover:brightness-95 cursor-pointer text-center shadow-xs"
               >
                 Confirm Request
               </button>
@@ -759,7 +772,7 @@ export default function CustomInquiriesView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

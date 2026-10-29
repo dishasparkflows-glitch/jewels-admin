@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlinePlus,
@@ -489,7 +490,7 @@ export default function DiamondSizesView() {
 
       {/* ─── Add / Edit Modal (Matches Screenshot 2 Exactly) ─── */}
       {isModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setIsModalOpen(false)}
         >
@@ -602,12 +603,12 @@ export default function DiamondSizesView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Size Details Modal ─── */}
       {viewingSize && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setViewingSize(null)}
         >
@@ -662,7 +663,7 @@ export default function DiamondSizesView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineRefresh,
@@ -488,7 +489,7 @@ export default function MetalRatesView() {
 
       {/* ─── Modal: Update Metal Rates (Compact Luxury Modal) ─── */}
       {isEditModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
           onClick={() => setIsEditModalOpen(false)}
         >
@@ -630,12 +631,12 @@ export default function MetalRatesView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── Modal: View Rate Details ─── */}
       {viewingRecord && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
           onClick={() => setViewingRecord(null)}
         >
@@ -694,7 +695,7 @@ export default function MetalRatesView() {
               </div>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

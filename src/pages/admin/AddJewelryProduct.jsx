@@ -5518,7 +5518,7 @@ export default function AddJewelryProduct() {
 
               {/* ─── Virtual Try-On (VTO) Studio Modal (Matches Screenshot) ─── */}
               {isVtoStudioOpen && (
-                <div
+                createPortal(<div
                   onClick={() => setIsVtoStudioOpen(false)}
                   className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 overflow-y-auto animate-fadeIn cursor-pointer"
                 >
@@ -5875,12 +5875,12 @@ export default function AddJewelryProduct() {
                       </button>
                     </div>
                   </div>
-                </div>
+                </div>, document.body)
               )}
 
               {/* ─── Add Metal Color Modal ─── */}
               {isAddColorModalOpen && (
-                <div
+                createPortal(<div
                   onClick={() => setIsAddColorModalOpen(false)}
                   className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-5 animate-fadeIn cursor-pointer"
                 >
@@ -5934,7 +5934,7 @@ export default function AddJewelryProduct() {
                       </div>
                     </div>
                   </div>
-                </div>
+                </div>, document.body)
               )}
             </div>
           )}
@@ -6570,7 +6570,7 @@ export default function AddJewelryProduct() {
 
       {/* ─── Image Zoom Preview Modal with - / + Controls ───────────── */}
       {previewModalImage && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 bg-stone-950/85 backdrop-blur-md animate-fadeIn select-none"
           onClick={handleCloseImagePreview}
         >
@@ -6709,7 +6709,7 @@ export default function AddJewelryProduct() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

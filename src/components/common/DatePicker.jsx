@@ -416,9 +416,9 @@ export default function DatePicker({
   // Sizes for the input trigger
   const sizeStyles = {
     sm: 'h-8 px-2.5 text-xs rounded-lg gap-1.5',
-    md: 'h-11 px-3.5 text-xs sm:text-[13px] rounded-xl gap-2',
-    lg: 'h-12 px-4 text-sm rounded-xl gap-2.5',
-  }[size] || 'h-11 px-3.5 text-xs sm:text-[13px] rounded-xl gap-2';
+    md: 'h-10 px-3.5 text-xs sm:text-[13px] rounded-xl gap-2',
+    lg: 'h-11 px-4 text-sm rounded-xl gap-2.5',
+  }[size] || 'h-10 px-3.5 text-xs sm:text-[13px] rounded-xl gap-2';
 
   const displayString = formatDateDisplay(value, includeTime);
 
@@ -454,16 +454,19 @@ export default function DatePicker({
           type="button"
           disabled={disabled}
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          className={`w-full flex items-center justify-between text-left font-medium transition-all duration-150 outline-none cursor-pointer bg-white border border-stone-200 hover:border-stone-300 focus:border-[#8a6d4b] focus:ring-2 focus:ring-[#8a6d4b]/15 shadow-2xs text-stone-800 ${
+          className={`w-full flex items-center justify-between text-left font-medium transition-all duration-150 outline-none cursor-pointer bg-white border border-stone-200 hover:border-stone-300 shadow-2xs text-stone-800 ${
             sizeStyles
           } ${
-            isOpen ? 'border-[#8a6d4b] ring-2 ring-[#8a6d4b]/20' : ''
+            isOpen ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20' : ''
           } ${
             disabled ? 'opacity-50 cursor-not-allowed bg-stone-100/60' : ''
           } ${buttonClassName}`}
         >
           <div className="flex items-center gap-2 truncate min-w-0">
-            <HiOutlineCalendar className="w-4 h-4 text-[#8a6d4b] shrink-0" />
+            <HiOutlineCalendar
+              className="w-4 h-4 shrink-0"
+              style={{ color: 'var(--theme-primary, #8b6f4e)' }}
+            />
             <span
               className={`truncate ${
                 !displayString ? 'text-stone-400 font-normal' : 'text-stone-900 font-medium'
@@ -490,8 +493,9 @@ export default function DatePicker({
             )}
             <HiOutlineChevronDown
               className={`w-3.5 h-3.5 text-stone-400 transition-transform duration-200 ${
-                isOpen ? 'rotate-180 text-[#8a6d4b]' : ''
+                isOpen ? 'rotate-180' : ''
               }`}
+              style={isOpen ? { color: 'var(--theme-primary, #8b6f4e)' } : {}}
             />
           </div>
         </button>
@@ -522,13 +526,14 @@ export default function DatePicker({
             <button
               type="button"
               onClick={() => setIsMonthYearPickerOpen(!isMonthYearPickerOpen)}
-              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[15px] font-bold text-stone-900 hover:bg-stone-100 hover:text-[#8a6d4b] transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[15px] font-bold text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
             >
               <span>{MONTH_NAMES[currentMonth]} {currentYear}</span>
               <HiOutlineChevronDown
                 className={`w-3.5 h-3.5 text-stone-500 transition-transform duration-200 ${
-                  isMonthYearPickerOpen ? 'rotate-180 text-[#8a6d4b]' : ''
+                  isMonthYearPickerOpen ? 'rotate-180' : ''
                 }`}
+                style={isMonthYearPickerOpen ? { color: 'var(--theme-primary, #8b6f4e)' } : {}}
               />
             </button>
 
@@ -575,9 +580,14 @@ export default function DatePicker({
                       onClick={() => handleSelectMonth(idx)}
                       className={`py-2 rounded-xl text-xs font-semibold transition-colors cursor-pointer ${
                         isCur
-                          ? 'bg-[#8a6d4b] text-white shadow-xs'
-                          : 'bg-stone-50 text-stone-700 hover:bg-stone-100 hover:text-[#8a6d4b]'
+                          ? 'text-white shadow-xs'
+                          : 'bg-stone-50 text-stone-700 hover:bg-stone-100'
                       }`}
+                      style={
+                        isCur
+                          ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' }
+                          : {}
+                      }
                     >
                       {mName.slice(0, 3)}
                     </button>
@@ -616,13 +626,23 @@ export default function DatePicker({
                         disabledDay
                           ? 'opacity-25 cursor-not-allowed hover:bg-transparent'
                           : selected
-                          ? 'bg-[#8a6d4b] text-white font-bold shadow-md shadow-[#8a6d4b]/25 hover:bg-[#785b3a]'
+                          ? 'text-white font-bold shadow-md hover:opacity-90'
                           : !cell.isCurrentMonth
                           ? 'text-stone-300 hover:text-stone-600 hover:bg-stone-50'
                           : isToday
-                          ? 'text-[#8a6d4b] font-bold bg-[#8a6d4b]/10 hover:bg-[#8a6d4b]/20'
+                          ? 'font-bold'
                           : 'text-stone-800 hover:bg-stone-100 hover:text-stone-900'
                       }`}
+                      style={
+                        selected
+                          ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' }
+                          : isToday && cell.isCurrentMonth
+                          ? {
+                              color: 'var(--theme-primary, #8b6f4e)',
+                              backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.12)',
+                            }
+                          : {}
+                      }
                     >
                       {cell.day}
                     </button>
@@ -635,31 +655,40 @@ export default function DatePicker({
           {/* Optional Time Selector (for includeTime / datetime-local) */}
           {includeTime && (
             <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5 text-stone-500 font-semibold">
-                <HiOutlineClock className="w-4 h-4 text-[#8a6d4b]" />
+              <div className="flex items-center gap-1.5 text-stone-600 font-semibold">
+                <HiOutlineClock
+                  className="w-4 h-4"
+                  style={{ color: 'var(--theme-primary, #8b6f4e)' }}
+                />
                 <span>Time:</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 <select
                   value={timeHours}
                   onChange={(e) => setTimeHours(Number(e.target.value))}
-                  className="px-2 py-1 bg-stone-50 border border-stone-200 rounded-lg text-xs font-bold text-stone-800 focus:outline-none focus:border-[#8a6d4b]"
+                  className="px-2 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-bold text-stone-800 focus:outline-none focus:ring-1 cursor-pointer"
+                  style={{ outlineColor: 'var(--theme-primary, #8b6f4e)' }}
                 >
-                  {Array.from({ length: 24 }).map((_, h) => (
-                    <option key={h} value={h}>
-                      {String(h).padStart(2, '0')}:00
-                    </option>
-                  ))}
+                  {Array.from({ length: 24 }).map((_, h) => {
+                    const ampm = h >= 12 ? 'PM' : 'AM';
+                    const h12 = h % 12 || 12;
+                    return (
+                      <option key={h} value={h}>
+                        {String(h).padStart(2, '0')}:00 ({h12} {ampm})
+                      </option>
+                    );
+                  })}
                 </select>
                 <span className="text-stone-400 font-bold">:</span>
                 <select
                   value={timeMinutes}
                   onChange={(e) => setTimeMinutes(Number(e.target.value))}
-                  className="px-2 py-1 bg-stone-50 border border-stone-200 rounded-lg text-xs font-bold text-stone-800 focus:outline-none focus:border-[#8a6d4b]"
+                  className="px-2 py-1.5 bg-stone-50 border border-stone-200 rounded-lg text-xs font-bold text-stone-800 focus:outline-none focus:ring-1 cursor-pointer"
+                  style={{ outlineColor: 'var(--theme-primary, #8b6f4e)' }}
                 >
-                  {[0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55].map((m) => (
+                  {Array.from({ length: 60 }).map((_, m) => (
                     <option key={m} value={m}>
-                      {String(m).padStart(2, '0')}
+                      {String(m).padStart(2, '0')} min
                     </option>
                   ))}
                 </select>
@@ -672,7 +701,8 @@ export default function DatePicker({
             <button
               type="button"
               onClick={handleClear}
-              className="text-xs sm:text-[13px] font-semibold text-[#8a6d4b] hover:text-[#6e5334] transition-colors cursor-pointer"
+              className="text-xs sm:text-[13px] font-semibold transition-colors cursor-pointer hover:underline"
+              style={{ color: 'var(--theme-primary, #8b6f4e)' }}
             >
               Clear
             </button>
@@ -690,7 +720,8 @@ export default function DatePicker({
                 <button
                   type="button"
                   onClick={handleApply}
-                  className="px-4 py-1.5 rounded-xl bg-[#8a6d4b] hover:bg-[#785b3a] text-white text-xs sm:text-[13px] font-semibold transition-colors shadow-xs cursor-pointer"
+                  className="px-4 py-1.5 rounded-xl text-white text-xs sm:text-[13px] font-semibold transition-colors shadow-xs cursor-pointer hover:opacity-90"
+                  style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' }}
                 >
                   Apply
                 </button>

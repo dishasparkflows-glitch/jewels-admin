@@ -34,6 +34,7 @@ import {
   IoLayersOutline,
   IoCubeOutline,
   IoMapOutline,
+  IoChatbubbleOutline,
 } from 'react-icons/io5';
 
 import {
@@ -41,6 +42,7 @@ import {
   TbRuler2,
   TbCircleOff,
   TbCurrencyDollar,
+  TbUserCog,
 } from 'react-icons/tb';
 
 export const navSections = [
@@ -65,7 +67,6 @@ export const navSections = [
           { id: 'silver-products', title: 'Silver Products', path: '/catalog/silver-products', icon: IoSparklesOutline, apiEndpoint: '/products?productType=silver' },
           { id: 'ornate-products', title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoLayersOutline, apiEndpoint: '/products?isOrnate=true' },
           { id: 'categories', title: 'Categories', path: '/catalog/categories', icon: HiOutlineTag, apiEndpoint: '/categories' },
-          { id: 'media-theme-gallery', title: 'Media & Theme Gallery', path: '/gallery', icon: HiOutlineBookOpen, apiEndpoint: '/gallery' },
           { id: 'navigation-menus', title: 'Navigation Menus', path: '/catalog/navigation-menus', icon: IoMapOutline, apiEndpoint: '/categories' },
         ],
       },
@@ -194,8 +195,8 @@ export const navSections = [
     title: 'ANALYTICS & ADMINISTRATION',
     items: [
       { id: 'reports', title: 'Reports', path: '/reports', icon: HiOutlineTrendingUp, apiEndpoint: '/analytics/overview' },
-      { id: 'whatsapp', title: 'WhatsApp Connect', path: '/system/whatsapp', icon: HiOutlineChatAlt2 },
-      { id: 'profile', title: 'User Profile & Theme', path: '/profile', icon: HiOutlineUser },
+      { id: 'whatsapp', title: 'WhatsApp Connect', path: '/system/whatsapp', icon: IoChatbubbleOutline },
+      { id: 'profile', title: 'User Profile & Theme', path: '/profile', icon: TbUserCog },
       { id: 'settings', title: 'Settings', path: '/settings', icon: HiOutlineCog },
     ],
   },

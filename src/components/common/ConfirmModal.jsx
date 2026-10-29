@@ -61,28 +61,28 @@ export default function ConfirmModal({
   // Icon and accent configuration based on type
   const typeConfig = {
     danger: {
-      badgeBg: 'bg-rose-50 border-rose-100 text-rose-600',
-      confirmBtn: 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200/50',
+      badgeBg: 'bg-red-50 border-red-200 text-red-700',
+      confirmBtn: 'bg-red-700 hover:bg-red-800 active:bg-red-900 text-white shadow-sm shadow-red-900/20',
       icon: <HiOutlineTrash className="w-6 h-6 stroke-[2]" />,
     },
     warning: {
-      badgeBg: 'bg-amber-50 border-amber-100 text-[#8f6d43]',
-      confirmBtn: 'bg-[#8f6d43] hover:bg-[#7b5b33] text-white shadow-[#8f6d43]/20',
+      badgeBg: 'bg-amber-50 border-amber-200 text-amber-600',
+      confirmBtn: 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200/50',
       icon: <HiOutlineExclamation className="w-6 h-6 stroke-[2]" />,
     },
     info: {
-      badgeBg: 'bg-stone-100 border-stone-200 text-stone-700',
-      confirmBtn: 'bg-stone-900 hover:bg-stone-800 text-white shadow-stone-300/50',
+      badgeBg: 'bg-sky-50 border-sky-200 text-sky-600',
+      confirmBtn: 'bg-sky-600 hover:bg-sky-700 text-white shadow-sky-200/50',
       icon: <HiOutlineInformationCircle className="w-6 h-6 stroke-[2]" />,
     },
     success: {
-      badgeBg: 'bg-emerald-50 border-emerald-100 text-emerald-600',
+      badgeBg: 'bg-emerald-50 border-emerald-200 text-emerald-600',
       confirmBtn: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200/50',
       icon: <HiOutlineCheckCircle className="w-6 h-6 stroke-[2]" />,
     },
   }[type] || {
-    badgeBg: 'bg-rose-50 border-rose-100 text-rose-600',
-    confirmBtn: 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200/50',
+    badgeBg: 'bg-red-50 border-red-200 text-red-700',
+    confirmBtn: 'bg-red-700 hover:bg-red-800 active:bg-red-900 text-white shadow-sm shadow-red-900/20',
     icon: <HiOutlineTrash className="w-6 h-6 stroke-[2]" />,
   };
 
@@ -141,7 +141,7 @@ export default function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-sm cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 ${typeConfig.confirmBtn}`}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-sm cursor-pointer hover:brightness-95 disabled:opacity-50 flex items-center justify-center gap-2 ${typeConfig.confirmBtn}`}
           >
             {loading && (
               <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />

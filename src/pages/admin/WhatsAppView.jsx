@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineDocumentText,
@@ -763,7 +764,7 @@ export default function WhatsAppView() {
 
       {/* ─── MODAL 1: NEW TEMPLATE MODAL ─────────────────────── */}
       {isNewModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in cursor-pointer"
           onClick={() => setIsNewModalOpen(false)}
         >
@@ -878,12 +879,12 @@ export default function WhatsAppView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── MODAL 2: SEND TEST MESSAGE MODAL ────────────────── */}
       {isTestModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-in fade-in cursor-pointer"
           onClick={() => setIsTestModalOpen(false)}
         >
@@ -964,12 +965,12 @@ export default function WhatsAppView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── MODAL 3: PREVIEW TEMPLATE IN LUXURY WHATSAPP PHONE FRAME ── */}
       {previewTemplate && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in cursor-pointer"
           onClick={() => setPreviewTemplate(null)}
         >
@@ -1026,7 +1027,7 @@ export default function WhatsAppView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

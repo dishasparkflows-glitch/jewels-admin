@@ -440,8 +440,10 @@ export default function OrnateProductsView() {
 
     const isConfirmed = await confirm({
       title,
-      message,
-      confirmText: 'Delete',
+      message: isEmpty
+        ? `Are you sure you want to permanently delete empty group "${group.groupName || group.groupCode}"? This will permanently remove it from the database.`
+        : message,
+      confirmText: isEmpty ? 'Permanently Delete' : 'Delete',
       type: 'danger',
     });
     if (!isConfirmed) return;
@@ -453,8 +455,9 @@ export default function OrnateProductsView() {
           await api.delete(`/products/${pId}`);
         } catch (e) {}
       }
-      await api.delete(`/product-groups/${group._id}`);
-      toast.success(isEmpty ? 'Empty group deleted successfully' : isSingle ? 'Product deleted successfully' : 'Group deleted successfully');
+      const res = await api.delete(`/product-groups/${group._id}`);
+      const isHard = res.data?.data?.hardDeleted ?? isEmpty;
+      toast.success(isHard ? 'Empty group permanently deleted' : isSingle ? 'Product deleted successfully' : 'Group deleted successfully');
       fetchData();
       fetchTabCounts();
     } catch (err) {

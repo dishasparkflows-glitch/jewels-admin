@@ -12,6 +12,7 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { staticPagesAPI } from '../../api/services';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import RichTextEditor from '../../components/common/RichTextEditor';
 
 // Helper to format date display (e.g. "24 Oct 2026", "10:45 AM")
@@ -46,6 +47,7 @@ const EMPTY_PAGE = {
 };
 
 export default function StaticPagesView() {
+  const confirm = useConfirm();
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -199,9 +201,14 @@ export default function StaticPagesView() {
   // Delete Handler
   const handleDelete = async (pageId, pageTitle, e) => {
     e?.stopPropagation();
-    if (!window.confirm(`Are you sure you want to delete the static page "${pageTitle}"?`)) {
-      return;
-    }
+    const isConfirmed = await confirm({
+      title: 'Delete Static Page',
+      message: `Are you sure you want to delete the static page "${pageTitle}"? This cannot be undone.`,
+      confirmText: 'Delete Page',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
 
     try {
       await staticPagesAPI.delete(pageId);

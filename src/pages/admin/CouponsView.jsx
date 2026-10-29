@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlinePlus,
@@ -47,6 +48,12 @@ export default function CouponsView() {
   const [limitPerUser, setLimitPerUser] = useState('1');
   const [categoryId, setCategoryId] = useState('');
   const { categoryOptions, loading: categoriesLoading } = useCategoryLookup();
+  const categorySelectOptions = useMemo(() => {
+    return [
+      { value: '', label: 'All Categories / None (Optional)' },
+      ...(categoryOptions || []),
+    ];
+  }, [categoryOptions]);
 
   // Fetch all coupons
   const [currentPage, setCurrentPage] = useState(1);
@@ -236,10 +243,6 @@ export default function CouponsView() {
 
     if (!couponCode.trim()) {
       toast.error('Please enter a coupon code');
-      return;
-    }
-    if (!categoryId) {
-      toast.error('Please select a category');
       return;
     }
     if (discountValue === '' || isNaN(Number(discountValue)) || Number(discountValue) < 0) {
@@ -553,7 +556,7 @@ export default function CouponsView() {
 
       {/* ─── Add / Edit Coupon Modal (Matches Screenshot Exactly) ─── */}
       {isModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
           onClick={() => setIsModalOpen(false)}
         >
@@ -610,14 +613,14 @@ export default function CouponsView() {
               {/* Row 2: Discount Type & Discount Value */}
               <div>
                 <label className="block text-xs font-bold text-stone-900 mb-1.5">
-                  Category <span className="text-rose-500 font-bold">*</span>
+                  Category <span className="text-stone-400 font-normal">(Optional)</span>
                 </label>
                 <Dropdown
                   value={categoryId}
                   onChange={(value) => setCategoryId(value)}
-                  options={categoryOptions}
-                  placeholder={categoriesLoading ? 'Loading categories…' : 'Select a category'}
-                  disabled={categoriesLoading || categoryOptions.length === 0}
+                  options={categorySelectOptions}
+                  placeholder={categoriesLoading ? 'Loading categories…' : 'Select a category (optional)'}
+                  disabled={categoriesLoading}
                   buttonClassName="h-10 w-full rounded-xl text-xs sm:text-[13px] font-medium border border-[#d6cfc2] hover:border-[#bdae99]"
                 />
               </div>
@@ -748,7 +751,7 @@ export default function CouponsView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

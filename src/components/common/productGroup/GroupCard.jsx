@@ -126,11 +126,10 @@ export default function GroupCard({
                   e.stopPropagation();
                   onEdit?.(group);
                 }}
-                className="h-8 px-3.5 rounded-xl border border-stone-200 hover:border-[#8b6f4e] bg-white hover:bg-[#8b6f4e]/5 text-stone-700 hover:text-[#8b6f4e] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                className="w-7 h-7 rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                 title="Edit Product"
               >
-                <HiOutlinePencil className="w-3.5 h-3.5 text-stone-500 hover:text-[#8b6f4e]" />
-                <span>Edit</span>
+                <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2]" />
               </button>
 
               <button
@@ -139,15 +138,29 @@ export default function GroupCard({
                   e.stopPropagation();
                   onDelete?.(group);
                 }}
-                className="h-8 px-3.5 rounded-xl border border-rose-200 hover:border-rose-300 bg-rose-50/50 hover:bg-rose-50 text-rose-600 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer active:scale-95"
+                className="w-7 h-7 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                 title="Delete Product"
               >
-                <HiOutlineTrash className="w-3.5 h-3.5 text-rose-500" />
-                <span>Delete</span>
+                <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2]" />
               </button>
             </>
           ) : (
             <>
+              {onManage && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onManage(group);
+                  }}
+                  className="w-7 h-7 rounded-lg border border-[#8b6f4e]/30 bg-[#8b6f4e]/10 text-[#8b6f4e] hover:bg-[#8b6f4e] hover:text-white active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                  title="Manage Group"
+                  aria-label="Manage Group"
+                >
+                  <HiOutlineEye className="w-3.5 h-3.5 stroke-[2]" />
+                </button>
+              )}
+
               {onDirectApprove && (
                 <button
                   type="button"
@@ -156,19 +169,19 @@ export default function GroupCard({
                     e.stopPropagation();
                     onDirectApprove(group);
                   }}
-                  className={`px-3.5 py-2 text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 shrink-0 ${
+                  className={`w-7 h-7 rounded-lg border transition-all shadow-2xs inline-flex items-center justify-center shrink-0 ${
                     isAllApproved
-                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default opacity-90'
-                      : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-95'
+                      ? 'border-emerald-200 bg-emerald-50 text-emerald-600 cursor-default'
+                      : 'border-emerald-600 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white cursor-pointer'
                   }`}
                   title={isAllApproved ? 'All products are approved' : 'Directly approve all products in this group'}
+                  aria-label={isAllApproved ? 'Approved' : 'Approve'}
                 >
                   {isApproving ? (
                     <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
                   ) : (
-                    <HiOutlineCheckCircle className="w-4 h-4" />
+                    <HiOutlineCheckCircle className="w-4 h-4 stroke-[2]" />
                   )}
-                  <span>{isAllApproved ? 'Approved' : 'Approve'}</span>
                 </button>
               )}
 
@@ -180,11 +193,11 @@ export default function GroupCard({
                     e.stopPropagation();
                     onDelete(group);
                   }}
-                  className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
+                  className="w-7 h-7 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                   title="Delete group (no products attached)"
                   aria-label="Delete group"
                 >
-                  <HiOutlineTrash className="w-4 h-4" />
+                  <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2]" />
                 </button>
               )}
 
@@ -208,15 +221,6 @@ export default function GroupCard({
                     isActive ? 'translate-x-4' : 'translate-x-0'
                   }`}
                 />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onManage?.(group)}
-                className="px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs cursor-pointer flex items-center gap-1.5"
-              >
-                <HiOutlineEye className="w-3.5 h-3.5" />
-                <span>Manage Group</span>
               </button>
             </>
           )}
@@ -252,21 +256,100 @@ export default function GroupCard({
               {group.groupCode}
             </span>
           </div>
-          <div className="flex items-center gap-1.5">
-            {/* Delete button if no products attached */}
-            {hasNoProducts && onDelete && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(group);
-                }}
-                className="p-1 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer"
-                title="Delete group (no products attached)"
-                aria-label="Delete group"
-              >
-                <HiOutlineTrash className="w-4 h-4" />
-              </button>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {isDraftOrApproved ? (
+              <>
+                {/* Edit Icon Button */}
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEdit(group);
+                    }}
+                    className="w-7 h-7 rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                    title="Edit Group"
+                    aria-label="Edit Group"
+                  >
+                    <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2]" />
+                  </button>
+                )}
+
+                {/* Delete Icon Button (Dark Red) */}
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(group);
+                    }}
+                    className="w-7 h-7 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                    title="Delete Group"
+                    aria-label="Delete Group"
+                  >
+                    <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2]" />
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Manage Group Icon Button */}
+                {onManage && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onManage(group);
+                    }}
+                    className="w-7 h-7 rounded-lg border border-[#8b6f4e]/30 bg-[#8b6f4e]/10 text-[#8b6f4e] hover:bg-[#8b6f4e] hover:text-white active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                    title="Manage Group"
+                    aria-label="Manage Group"
+                  >
+                    <HiOutlineEye className="w-3.5 h-3.5 stroke-[2]" />
+                  </button>
+                )}
+
+                {/* Direct Approve Icon Button */}
+                {onDirectApprove && (
+                  <button
+                    type="button"
+                    disabled={isApproving || isAllApproved}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDirectApprove(group);
+                    }}
+                    className={`w-7 h-7 rounded-lg border transition-all shadow-2xs inline-flex items-center justify-center shrink-0 ${
+                      isAllApproved
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-600 cursor-default'
+                        : 'border-emerald-600 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white cursor-pointer'
+                    }`}
+                    title={isAllApproved ? 'All products are approved' : 'Directly approve all products in this group'}
+                    aria-label={isAllApproved ? 'Approved' : 'Approve'}
+                  >
+                    {isApproving ? (
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <HiOutlineCheckCircle className="w-4 h-4 stroke-[2]" />
+                    )}
+                  </button>
+                )}
+
+                {/* Delete button if no products attached */}
+                {hasNoProducts && onDelete && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(group);
+                    }}
+                    className="w-7 h-7 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                    title="Delete Group (no products attached)"
+                    aria-label="Delete Group"
+                  >
+                    <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2]" />
+                  </button>
+                )}
+              </>
             )}
 
             {/* On/Off Toggle Switch */}
@@ -328,63 +411,7 @@ export default function GroupCard({
         </h3>
       </div>
 
-      {/* Button Row */}
-      <div className="mt-4 pt-3 border-t border-stone-100 flex items-center gap-2">
-        {isDraftOrApproved ? (
-          <>
-            <button
-              type="button"
-              onClick={() => onEdit?.(group)}
-              className="flex-1 py-2 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] bg-stone-50 hover:bg-[#8b6f4e]/10 border border-stone-200 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <HiOutlinePencil className="w-3.5 h-3.5 text-stone-500 hover:text-[#8b6f4e]" />
-              <span>Edit</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete?.(group)}
-              className="flex-1 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100/70 border border-rose-200 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <HiOutlineTrash className="w-3.5 h-3.5 text-rose-500" />
-              <span>Delete</span>
-            </button>
-          </>
-        ) : (
-          <>
-            <button
-              type="button"
-              onClick={() => onManage?.(group)}
-              className="flex-1 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <HiOutlineEye className="w-3.5 h-3.5" />
-              <span>Manage Group</span>
-            </button>
-            {onDirectApprove && (
-              <button
-                type="button"
-                disabled={isApproving || isAllApproved}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDirectApprove(group);
-                }}
-                className={`py-2 px-3 text-xs font-bold rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 shrink-0 ${
-                  isAllApproved
-                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 cursor-default opacity-90'
-                    : 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-95'
-                }`}
-                title={isAllApproved ? 'All products are approved' : 'Directly approve all products in this group'}
-              >
-                {isApproving ? (
-                  <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <HiOutlineCheckCircle className="w-4 h-4" />
-                )}
-                <span>{isAllApproved ? 'Approved' : 'Approve'}</span>
-              </button>
-            )}
-          </>
-        )}
-      </div>
+
     </article>
   );
 }

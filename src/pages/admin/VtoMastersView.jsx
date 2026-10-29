@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineInformationCircle,
@@ -446,7 +447,7 @@ export default function VtoMastersView() {
 
       {/* ─── Edit / Update Master Modal ─── */}
       {isModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs"
           onClick={() => setIsModalOpen(false)}
         >
@@ -670,7 +671,7 @@ export default function VtoMastersView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

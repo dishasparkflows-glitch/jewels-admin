@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useRef, useEffect } from 'react';
 import {
   HiOutlinePhotograph,
@@ -645,7 +646,7 @@ export default function ThemeHomeSectionsEditor({
 
       {/* ─── ADD SECTION MODAL ─── */}
       {isAddSectionOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs"
           onClick={() => setIsAddSectionOpen(false)}
         >
@@ -697,7 +698,7 @@ export default function ThemeHomeSectionsEditor({
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

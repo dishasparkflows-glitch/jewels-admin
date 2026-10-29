@@ -19,6 +19,7 @@ import { blogsAPI, blogCategoriesAPI } from '../../api/services';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import RichTextEditor from '../../components/common/RichTextEditor';
 import Dropdown from '../../components/common/Dropdown';
+import DatePicker from '../../components/common/DatePicker';
 
 // Helper to format file size
 const formatFileSize = (bytes) => {
@@ -764,27 +765,12 @@ export default function WriteBlogView() {
               <label className="block text-xs font-semibold text-stone-700 mb-1.5">
                 Publish Date
               </label>
-              <div className="relative flex items-center">
-                <span className="absolute left-3.5 text-stone-400 pointer-events-none">
-                  <HiOutlineCalendar className="w-4 h-4" />
-                </span>
-                <input
-                  type="date"
-                  value={formData.publishDate}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, publishDate: e.target.value }))}
-                  className="w-full h-10 pl-10 pr-9 rounded-xl border border-stone-200 hover:border-stone-300 focus:border-[#8b6f4e] text-xs font-medium text-stone-800 outline-none bg-white shadow-2xs cursor-pointer"
-                />
-                {formData.publishDate && (
-                  <button
-                    type="button"
-                    onClick={() => setFormData((prev) => ({ ...prev, publishDate: '' }))}
-                    className="absolute right-3 text-stone-400 hover:text-stone-700 cursor-pointer"
-                    title="Clear date"
-                  >
-                    <HiOutlineX className="w-3.5 h-3.5" />
-                  </button>
-                )}
-              </div>
+              <DatePicker
+                value={formData.publishDate}
+                onChange={(val) => setFormData((prev) => ({ ...prev, publishDate: val }))}
+                placeholder="Select publish date"
+                direction="down"
+              />
             </div>
 
             {/* Author */}

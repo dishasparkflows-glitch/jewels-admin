@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import ThemeImageField from '../../components/common/ThemeImageField';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -1315,7 +1316,7 @@ const DynamicModuleView = () => {
                     {isProductCatalogPage && (
                       <th className="py-2 px-3 whitespace-nowrap text-center">VISIBILITY</th>
                     )}
-                    <th className="py-2 px-3 whitespace-nowrap">STATUS</th>
+                    <th className="py-2 px-3 whitespace-nowrap text-center">STATUS</th>
                     <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
                   </tr>
                 </thead>
@@ -1548,6 +1549,37 @@ const DynamicModuleView = () => {
                           )}
                         </td>
 
+                        {/* DEMO METRICS COLUMN */}
+                        {isProductCatalogPage && (
+                          <td
+                            className="py-2.5 px-3 text-center"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenMetricsModal(row);
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleOpenMetricsModal(row);
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-stone-200/90 bg-stone-50/80 hover:bg-amber-50 hover:border-amber-200 text-stone-700 hover:text-amber-900 transition-all cursor-pointer shadow-2xs group"
+                              title="Click to edit demo metrics (sold & review count)"
+                            >
+                              <span className="flex items-center gap-1 text-[11px] font-semibold">
+                                <span className="text-amber-500 font-bold">★</span>
+                                <span>{row.demoMetrics?.reviewCount ?? 0}</span>
+                              </span>
+                              <span className="text-stone-300">|</span>
+                              <span className="flex items-center gap-1 text-[11px] font-semibold">
+                                <span>🔥</span>
+                                <span>{row.demoMetrics?.soldCount ?? 0}</span>
+                              </span>
+                            </button>
+                          </td>
+                        )}
+
                         {/* VISIBILITY COLUMN (Web & App) */}
                         {isProductCatalogPage && (
                           <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
@@ -1590,7 +1622,7 @@ const DynamicModuleView = () => {
                         )}
 
                         {/* STATUS COLUMN */}
-                        <td className="py-2.5 px-3" onClick={(e) => isProductCatalogPage && handleToggleProductStatus(row, e)}>
+                        <td className="py-2.5 px-3 text-center" onClick={(e) => isProductCatalogPage && handleToggleProductStatus(row, e)}>
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize transition-all ${
                               isProductCatalogPage ? 'cursor-pointer hover:scale-105 select-none' : ''
@@ -1646,7 +1678,7 @@ const DynamicModuleView = () => {
 
       {/* ─── Create / Edit Record Modal ────────────────────────────── */}
       {isModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/40 backdrop-blur-xs animate-in fade-in duration-200"
           onClick={() => {
             setIsModalOpen(false);
@@ -2580,12 +2612,12 @@ const DynamicModuleView = () => {
               </form>
             )}
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Record Details Modal ──────────────────────── */}
       {viewingRecord && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setViewingRecord(null)}
         >
@@ -3089,7 +3121,7 @@ const DynamicModuleView = () => {
               Close
             </button>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── Ornate ERP Category Sync Modal ─── */}
@@ -3106,7 +3138,7 @@ const DynamicModuleView = () => {
 
       {/* ─── QUICK EDIT DEMO METRICS MODAL ─── */}
       {editingMetricsProduct && (
-        <div
+        createPortal(<div
           role="dialog"
           aria-modal="true"
           className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs animate-fadeIn"
@@ -3218,7 +3250,7 @@ const DynamicModuleView = () => {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
     </div>

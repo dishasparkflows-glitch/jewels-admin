@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineUserGroup,
@@ -452,7 +453,7 @@ export default function CustomersView() {
 
       {/* ─── Add Customer Modal ─── */}
       {isAddModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setIsAddModalOpen(false)}
         >
@@ -552,12 +553,12 @@ export default function CustomersView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Customer Profile Modal ─── */}
       {viewingCustomer && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
           onClick={() => setViewingCustomer(null)}
         >
@@ -622,7 +623,7 @@ export default function CustomersView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );

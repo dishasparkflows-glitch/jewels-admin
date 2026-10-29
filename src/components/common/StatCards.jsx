@@ -47,6 +47,8 @@ export default function StatCards({ cards = [] }) {
         const Icon = card.icon;
         const color = colorStyles[card.color || 'bronze'] || colorStyles.bronze;
         const isClickable = Boolean(card.onClick);
+        const isActive = Boolean(card.active || card.isActive);
+        const isThemeColor = card.color === 'bronze' || !card.color || card.color === 'theme';
 
         return (
           <div
@@ -55,14 +57,33 @@ export default function StatCards({ cards = [] }) {
             role={isClickable ? 'button' : undefined}
             tabIndex={isClickable ? 0 : undefined}
             className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all ${
-              card.active
-                ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
-                : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
+              !isActive
+                ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
+                : ''
             } ${isClickable ? 'cursor-pointer active:scale-[0.99]' : ''}`}
+            style={
+              isActive
+                ? {
+                    borderColor: 'var(--theme-primary, #8b6f4e)',
+                    boxShadow: '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)',
+                  }
+                : undefined
+            }
           >
             {Icon && (
               <div
-                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${color.bg} ${color.text} flex items-center justify-center shrink-0 border ${color.border}`}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                  isThemeColor ? '' : `${color.bg} ${color.text} ${color.border}`
+                }`}
+                style={
+                  isThemeColor
+                    ? {
+                        backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.12)',
+                        color: 'var(--theme-primary, #8b6f4e)',
+                        borderColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.25)',
+                      }
+                    : undefined
+                }
               >
                 <Icon className="w-3.5 h-3.5 stroke-[2]" />
               </div>

@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import React, { useState, useEffect, useRef } from 'react';
 import {
   HiOutlineChevronRight,
@@ -729,7 +730,7 @@ export default function SettingsView() {
 
       {/* ─── POP-UP MODAL ─── */}
       {activeModal && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/40 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-150"
           onClick={(e) => {
             if (e.target === e.currentTarget) closeModal();
@@ -1696,7 +1697,7 @@ export default function SettingsView() {
               )}
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── Footer ─── */}

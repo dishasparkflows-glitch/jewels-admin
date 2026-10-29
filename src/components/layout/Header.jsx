@@ -118,9 +118,14 @@ const Header = ({ onMobileToggle }) => {
           }}
           className={`p-2 rounded-xl border text-stone-600 hover:text-stone-900 transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${
             !sidebarVisible
-              ? 'bg-[#faf5ee] border-[#e8d9c2] text-[#8b6f4e] hover:bg-[#f3ece0] shadow-2xs'
+              ? 'shadow-2xs'
               : 'border-stone-200/90 hover:border-stone-300 bg-white hover:bg-stone-50'
           }`}
+          style={!sidebarVisible ? {
+            backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.12)',
+            borderColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.3)',
+            color: 'var(--theme-primary, #8b6f4e)',
+          } : undefined}
           title={sidebarVisible ? 'Hide sidebar (Turn OFF)' : 'Show sidebar (Turn ON)'}
           aria-label="Toggle Sidebar"
           aria-controls="admin-sidebar"
@@ -128,7 +133,7 @@ const Header = ({ onMobileToggle }) => {
         >
           <HiOutlineMenu className="w-4 h-4" />
           {!sidebarVisible && (
-            <span className="hidden sm:inline text-xs font-semibold text-[#8b6f4e]">
+            <span className="hidden sm:inline text-xs font-semibold" style={{ color: "var(--theme-primary, #8b6f4e)" }}>
               Menu
             </span>
           )}
@@ -141,12 +146,12 @@ const Header = ({ onMobileToggle }) => {
           className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-stone-200/90 hover:border-stone-300 bg-white hover:bg-stone-50 text-xs font-semibold text-stone-700 transition-colors shadow-2xs shrink-0 cursor-pointer"
           title={`Sidebar is on ${sidebarPosition}. Click to move to ${sidebarPosition === 'left' ? 'Right' : 'Left'} side.`}
         >
-          <HiOutlineSwitchHorizontal className="w-3.5 h-3.5 text-[#8b6f4e]" />
+          <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" style={{ color: "var(--theme-primary, #8b6f4e)" }} />
           <span>{sidebarPosition === 'left' ? 'Sidebar: Left' : 'Sidebar: Right'}</span>
         </button>
 
         {/* Desktop Global Search Bar */}
-        <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus-within:border-[#8b6f4e] focus-within:ring-2 focus-within:ring-[#8b6f4e]/20 transition-all shadow-2xs w-full max-w-md">
+        <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus-within:border-[var(--theme-primary,#8b6f4e)] focus-within:ring-2 focus-within:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] transition-all shadow-2xs w-full max-w-md">
           <HiOutlineSearch className="w-4 h-4 text-stone-400 shrink-0" />
           <input
             type="text"
@@ -183,13 +188,13 @@ const Header = ({ onMobileToggle }) => {
           >
             {/* Desktop full date pill */}
             <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] text-xs font-semibold text-stone-700 shadow-2xs cursor-pointer hover:bg-stone-50 transition-colors">
-              <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8b6f4e]" />
+              <HiOutlineCalendar className="w-3.5 h-3.5" style={{ color: "var(--theme-primary, #8b6f4e)" }} />
               <span>{headerDateFormatted}</span>
               <HiOutlineChevronDown className="w-3 h-3 text-stone-400 ml-0.5" />
             </div>
             {/* Mobile / Tablet compact calendar icon */}
             <div className="md:hidden p-2 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 shadow-2xs cursor-pointer transition-colors" title={headerDateFormatted}>
-              <HiOutlineCalendar className="w-4 h-4 text-[#8b6f4e]" />
+              <HiOutlineCalendar className="w-4 h-4" style={{ color: "var(--theme-primary, #8b6f4e)" }} />
             </div>
           </DatePicker>
         </div>
@@ -336,9 +341,10 @@ const Header = ({ onMobileToggle }) => {
                     <button
                       type="button"
                       onClick={() => setSidebarPosition('left')}
+                      style={sidebarPosition === 'left' ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' } : undefined}
                       className={`px-2 py-0.5 rounded-md cursor-pointer transition-colors ${
                         sidebarPosition === 'left'
-                          ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                          ? 'shadow-2xs'
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >
@@ -347,9 +353,10 @@ const Header = ({ onMobileToggle }) => {
                     <button
                       type="button"
                       onClick={() => setSidebarPosition('right')}
+                      style={sidebarPosition === 'right' ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' } : undefined}
                       className={`px-2 py-0.5 rounded-md cursor-pointer transition-colors ${
                         sidebarPosition === 'right'
-                          ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                          ? 'shadow-2xs'
                           : 'text-stone-600 hover:text-stone-900'
                       }`}
                     >

@@ -3,7 +3,6 @@ import {
   HiOutlineArrowLeft,
   HiOutlineCheck,
   HiOutlineDuplicate,
-  HiOutlineEye,
   HiOutlinePhotograph,
   HiOutlinePlus,
   HiOutlineSave,
@@ -16,20 +15,18 @@ import {
   HiOutlineTag,
   HiOutlineColorSwatch,
   HiOutlineViewGrid,
-  HiOutlineDeviceMobile,
   HiOutlineCalendar,
   HiOutlineClock,
-  HiOutlineDesktopComputer,
   HiOutlineCheckCircle,
+  HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { websiteThemesAPI, bannersAPI, featuredAPI, categoriesAPI } from '../../api/services';
 import ConfirmModal from '../../components/common/ConfirmModal';
-import StatCards from '../../components/common/StatCards';
-import ThemeStorefrontPreview from './ThemeStorefrontPreview';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import DatePicker from '../../components/common/DatePicker';
 import ThemeMediaLibraryTab from './ThemeMediaLibraryTab';
-import ThemeHomeSectionsEditor from './ThemeHomeSectionsEditor';
 
 const COLOR_OPTIONS = [
   ['primary', 'Primary (#8B6C3A)'],
@@ -111,6 +108,7 @@ const inputClass =
   'w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-xs text-stone-800 outline-none transition focus:border-[#8b6c3a] focus:ring-2 focus:ring-[#8b6c3a]/15';
 
 export default function WebsiteThemesView() {
+  const confirm = useConfirm();
   const [themes, setThemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -123,10 +121,7 @@ export default function WebsiteThemesView() {
 
   // Editor states
   const [editing, setEditing] = useState(null);
-  const [tab, setTab] = useState('sections');
-  const [selectedHomeSectionKey, setSelectedHomeSectionKey] = useState('hero');
-  const [previewMedia, setPreviewMedia] = useState([]);
-  const [previewMode, setPreviewMode] = useState('desktop');
+  const [tab, setTab] = useState('details');
   const [saving, setSaving] = useState(false);
 
   // Publish / Schedule
@@ -215,7 +210,7 @@ export default function WebsiteThemesView() {
     setEditing((current) => ({ ...current, config: updater(current.config) }));
 
   // Open theme editor
-  const openEditor = async (theme = null, initialTab = 'sections') => {
+  const openEditor = async (theme = null, initialTab = 'details') => {
     if (!theme) {
       setEditing(emptyTheme());
       setTab('details');
@@ -244,8 +239,8 @@ export default function WebsiteThemesView() {
         },
       });
 
-      setPublishStart('');
-      setPublishEnd('');
+      setPublishStart(data.schedule?.startAt ? new Date(data.schedule.startAt).toISOString().slice(0, 16) : '');
+      setPublishEnd(data.schedule?.endAt ? new Date(data.schedule.endAt).toISOString().slice(0, 16) : '');
       setFallbackThemeId(data.schedule?.fallbackThemeId || '');
       setTab(initialTab);
     } catch (err) {
@@ -263,7 +258,12 @@ export default function WebsiteThemesView() {
       code: editing.code?.trim() || slugify(editing.name),
       description: editing.description || '',
       config: themeConfig,
-      schedule: editing.schedule || {},
+      schedule: {
+        ...(editing.schedule || {}),
+        ...(publishStart ? { startAt: istDateToIso(publishStart) } : {}),
+        ...(publishEnd ? { endAt: istDateToIso(publishEnd) } : {}),
+        ...(fallbackThemeId ? { fallbackThemeId } : {}),
+      },
     };
 
     try {
@@ -334,7 +334,14 @@ export default function WebsiteThemesView() {
 
   // Rollback
   const rollbackTheme = async (theme) => {
-    if (!window.confirm(`Restore previous published snapshot of "${theme.name}"?`)) return;
+    const isConfirmed = await confirm({
+      title: 'Restore Published Theme Snapshot',
+      message: `Are you sure you want to restore the previous published snapshot of "${theme.name}"?`,
+      confirmText: 'Restore Theme',
+      cancelText: 'Cancel',
+      type: 'warning',
+    });
+    if (!isConfirmed) return;
     try {
       await websiteThemesAPI.rollback(theme._id);
       toast.success('Theme rolled back successfully');
@@ -346,7 +353,14 @@ export default function WebsiteThemesView() {
 
   // Archive
   const archiveTheme = async (theme) => {
-    if (!window.confirm(`Archive theme "${theme.name}"?`)) return;
+    const isConfirmed = await confirm({
+      title: 'Archive Theme',
+      message: `Are you sure you want to archive theme "${theme.name}"?`,
+      confirmText: 'Archive Theme',
+      cancelText: 'Cancel',
+      type: 'warning',
+    });
+    if (!isConfirmed) return;
     try {
       await websiteThemesAPI.archive(theme._id);
       toast.success('Theme archived');
@@ -379,6 +393,11 @@ export default function WebsiteThemesView() {
     {}
   );
 
+  const activeThemeObj = useMemo(
+    () => themes.find((t) => t.status === 'active'),
+    [themes]
+  );
+
   // ─────────────────────────────────────────────────────────────
   // VIEW 2: THEME EDITOR (Screenshot 2)
   // ─────────────────────────────────────────────────────────────
@@ -388,12 +407,7 @@ export default function WebsiteThemesView() {
 
     const tabs = [
       ['details', 'Theme Details'],
-      ['sections', 'Home Sections'],
-      ['banners', 'Banners & Content'],
       ['media', 'Media Library'],
-      ['categories', 'Category Icons'],
-      ['preview', 'Live Preview'],
-      ['publish', 'Schedule & Publish'],
     ];
 
     return (
@@ -421,7 +435,7 @@ export default function WebsiteThemesView() {
                 )}
               </div>
               <p className="mt-0.5 text-xs text-stone-500">
-                Manage sections, banners and content for this theme.
+                Manage details, media and schedule for this theme.
               </p>
             </div>
           </div>
@@ -429,21 +443,9 @@ export default function WebsiteThemesView() {
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setTab('preview')}
-              className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2.5 text-xs font-semibold transition cursor-pointer ${
-                tab === 'preview'
-                  ? 'border-[#8b6c3a] bg-[#8b6c3a]/10 text-[#8b6c3a]'
-                  : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
-              }`}
-            >
-              <HiOutlineEye className="h-4 w-4" />
-              Live Preview
-            </button>
-            <button
-              type="button"
               onClick={saveTheme}
               disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-[#8b6c3a] px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:bg-[#765a2d] transition disabled:opacity-50 cursor-pointer"
+              style={{ backgroundColor: "var(--theme-primary, #8b6f4e)" }} className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:brightness-95 transition disabled:opacity-50 cursor-pointer"
             >
               <HiOutlineSave className="h-4 w-4" />
               {saving ? 'Saving…' : 'Save Changes'}
@@ -462,18 +464,7 @@ export default function WebsiteThemesView() {
           </div>
         </header>
 
-        {isLive && (
-          <div className="rounded-2xl border border-blue-200 bg-blue-50/80 px-5 py-3.5 text-xs text-blue-900 flex items-center justify-between">
-            <span>● <strong>Active Theme:</strong> Changes to this theme will be reflected on the live storefront when saved.</span>
-            <button
-              type="button"
-              onClick={() => duplicateTheme(editing)}
-              className="font-bold underline ml-3"
-            >
-              Duplicate as draft
-            </button>
-          </div>
-        )}
+
 
         {/* Tab Navigation Strip */}
         <nav className="flex gap-1.5 overflow-x-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-xs">
@@ -483,192 +474,145 @@ export default function WebsiteThemesView() {
               onClick={() => setTab(key)}
               className={`shrink-0 rounded-xl px-4 py-2.5 text-xs font-semibold transition cursor-pointer ${
                 tab === key
-                  ? 'bg-[#8b6c3a] text-white shadow-xs'
+                  ? 'bg-[#8b6f4e] text-white shadow-xs'
                   : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'
               }`}
+              style={
+                tab === key
+                  ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' }
+                  : {}
+              }
             >
               {label}
             </button>
           ))}
         </nav>
 
-        {/* TAB 1: THEME DETAILS */}
+        {/* TAB 1: THEME DETAILS (Includes Identity & Campaign Schedule) */}
         {tab === 'details' && (
-          <section className="grid gap-5 rounded-2xl border border-stone-200 bg-white p-6 md:grid-cols-2 shadow-xs">
-            <Field label="Theme Name">
-              <input
-                className={inputClass}
-                value={editing.name}
-                onChange={(e) =>
-                  setEditing({
-                    ...editing,
-                    name: e.target.value,
-                    code: editing._id ? editing.code : slugify(e.target.value),
-                  })
-                }
-                placeholder="Diwali 2026"
-              />
-            </Field>
-
-            <Field label="Theme Code" hint="Stable internal identifier for the theme">
-              <input
-                className={inputClass}
-                value={editing.code || ''}
-                onChange={(e) => setEditing({ ...editing, code: slugify(e.target.value) })}
-                placeholder="diwali-2026"
-              />
-            </Field>
-
-            <div className="md:col-span-2">
-              <Field label="Description">
-                <textarea
-                  rows={3}
-                  className={inputClass}
-                  value={editing.description || ''}
-                  onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                  placeholder="Seasonal campaign notes, collection highlights, and storefront focus."
-                />
-              </Field>
-            </div>
-
-          </section>
-        )}
-
-        {/* TAB 3: HOME SECTIONS (TWO-PANEL EDITOR - Screenshot 2) */}
-        {tab === 'sections' && (
-          <ThemeHomeSectionsEditor
-            themeConfig={config}
-            updateThemeConfig={updateConfig}
-            availableBanners={availableBanners}
-            availableFeatured={availableFeatured}
-            categories={categories}
-            onBannerUpdated={fetchRelatedData}
-            onFeaturedUpdated={fetchRelatedData}
-            selectedSectionKey={selectedHomeSectionKey}
-            setSelectedSectionKey={setSelectedHomeSectionKey}
-          />
-        )}
-
-        {/* TAB 4: BANNERS & CONTENT */}
-        {tab === 'banners' && (
-          <section className="space-y-6 rounded-2xl border border-stone-200 bg-white p-6 shadow-xs">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+            <section className="space-y-6 rounded-2xl border border-stone-200 bg-white p-6 shadow-xs w-full">
               <div>
-                <h3 className="font-bold text-stone-900">Website Banners & Content Selection</h3>
+                <h3 className="font-bold text-stone-900 text-sm">Theme Identity</h3>
                 <p className="mt-0.5 text-xs text-stone-500">
-                  Select and order existing website banner records for this theme.
+                  Theme name, slug code, and campaign notes.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() =>
-                  updateConfig((cfg) => ({
-                    ...cfg,
-                    bannerSelections: [
-                      ...(cfg.bannerSelections || []),
-                      { bannerId: null, type: 'herobanner', platform: 'web', order: (cfg.bannerSelections || []).length + 1, visible: true },
-                    ],
-                  }))
-                }
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#8b6c3a] px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#765a2d] transition"
-              >
-                <HiOutlinePlus className="h-4 w-4" />
-                Add Banner Selection
-              </button>
-            </div>
 
-            <div className="space-y-3">
-              {(config.bannerSelections || []).map((sel, idx) => {
-                const banner = availableBanners.find((b) => String(b._id) === String(sel.bannerId?._id || sel.bannerId));
-                return (
-                  <div
-                    key={idx}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 p-4 bg-stone-50/50"
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Theme Name">
+                  <input
+                    className={inputClass}
+                    value={editing.name}
+                    onChange={(e) =>
+                      setEditing({
+                        ...editing,
+                        name: e.target.value,
+                        code: editing._id ? editing.code : slugify(e.target.value),
+                      })
+                    }
+                    placeholder="Diwali 2026"
+                  />
+                </Field>
+
+                <Field label="Theme Code">
+                  <input
+                    className={inputClass}
+                    value={editing.code || ''}
+                    onChange={(e) => setEditing({ ...editing, code: slugify(e.target.value) })}
+                    placeholder="diwali-2026"
+                  />
+                </Field>
+
+                <div className="md:col-span-2">
+                  <Field label="Description">
+                    <textarea
+                      rows={4}
+                      className="w-full min-h-[120px] rounded-xl border border-stone-200 bg-white p-3 text-xs text-stone-800 outline-none transition focus:border-[#8b6c3a] focus:ring-2 focus:ring-[#8b6c3a]/15 resize-y leading-relaxed placeholder:text-stone-400"
+                      value={editing.description || ''}
+                      onChange={(e) => setEditing({ ...editing, description: e.target.value })}
+                      placeholder="Seasonal campaign notes, collection highlights, and storefront focus."
+                    />
+                  </Field>
+                </div>
+              </div>
+            </section>
+
+            {/* Campaign Schedule & Publish */}
+            <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-xs w-full">
+              <div>
+                <h3 className="font-bold text-stone-900 text-sm">Publish or Schedule Campaign</h3>
+                <p className="mt-0.5 text-xs text-stone-500">
+                  Release dates use the Neirah storefront timezone (Asia/Kolkata).
+                </p>
+              </div>
+
+              <div className="grid gap-5 sm:grid-cols-2">
+                <div>
+                  <span className="block text-xs font-bold text-stone-700 mb-1.5">
+                    Start Date & Time (Schedule Release)
+                  </span>
+                  <DatePicker
+                    includeTime={true}
+                    value={publishStart}
+                    onChange={(val) => setPublishStart(val)}
+                    placeholder="Select start date & time"
+                  />
+                </div>
+
+                <div>
+                  <span className="block text-xs font-bold text-stone-700 mb-1.5">
+                    End Date & Expiry (Optional)
+                  </span>
+                  <DatePicker
+                    includeTime={true}
+                    value={publishEnd}
+                    onChange={(val) => setPublishEnd(val)}
+                    minDate={publishStart}
+                    placeholder="Select end date & time"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <Field label="Fallback Theme on Expiry">
+                  <select
+                    className={inputClass}
+                    value={fallbackThemeId}
+                    onChange={(e) => setFallbackThemeId(e.target.value)}
                   >
-                    <div className="grid flex-1 gap-3 sm:grid-cols-3">
-                      <div>
-                        <span className="block text-[11px] font-bold text-stone-600 mb-1">Banner Type</span>
-                        <select
-                          className={inputClass}
-                          value={sel.type}
-                          onChange={(e) => {
-                            const next = [...config.bannerSelections];
-                            next[idx] = { ...next[idx], type: e.target.value };
-                            updateConfig((c) => ({ ...c, bannerSelections: next }));
-                          }}
-                        >
-                          <option value="herobanner">Hero Banner</option>
-                          <option value="collectionbanner">Collection Banner</option>
-                          <option value="categorybanner">Category Banner</option>
-                          <option value="mobileappbanner">App Banner</option>
-                          <option value="customizebanner">Customize Banner</option>
-                          <option value="bookappointbanner">Appointment Banner</option>
-                        </select>
-                      </div>
+                    <option value="">Use the previous published theme</option>
+                    {themes
+                      .filter((t) => t._id !== editing._id && t.status !== 'archived')
+                      .map((t) => (
+                        <option key={t._id} value={t._id}>
+                          {t.name} ({t.status})
+                        </option>
+                      ))}
+                  </select>
+                </Field>
+              </div>
 
-                      <div>
-                        <span className="block text-[11px] font-bold text-stone-600 mb-1">Existing Banner Record</span>
-                        <select
-                          className={inputClass}
-                          value={String(sel.bannerId?._id || sel.bannerId || '')}
-                          onChange={(e) => {
-                            const next = [...config.bannerSelections];
-                            next[idx] = { ...next[idx], bannerId: e.target.value || null };
-                            updateConfig((c) => ({ ...c, bannerSelections: next }));
-                          }}
-                        >
-                          <option value="">Select a banner…</option>
-                          {availableBanners.map((b) => (
-                            <option key={b._id} value={b._id}>
-                              {b.content?.title || b.title || 'Untitled'} ({b.display?.type} · {b.display?.platform})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div>
-                        <span className="block text-[11px] font-bold text-stone-600 mb-1">Display Order</span>
-                        <input
-                          type="number"
-                          className={inputClass}
-                          value={sel.order ?? idx + 1}
-                          onChange={(e) => {
-                            const next = [...config.bannerSelections];
-                            next[idx] = { ...next[idx], order: Number(e.target.value) };
-                            updateConfig((c) => ({ ...c, bannerSelections: next }));
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      {banner?.image?.url && (
-                        <img
-                          src={banner.image.url}
-                          alt="Banner"
-                          className="h-12 w-16 rounded-lg object-cover border border-stone-200"
-                        />
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const next = config.bannerSelections.filter((_, i) => i !== idx);
-                          updateConfig((c) => ({ ...c, bannerSelections: next }));
-                        }}
-                        className="rounded-lg p-2 text-rose-600 hover:bg-rose-50"
-                        title="Remove selection"
-                      >
-                        <HiOutlineTrash className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </section>
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={publishTheme}
+                  disabled={!editing._id}
+                  style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-xl px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:brightness-95 transition disabled:opacity-50 cursor-pointer"
+                >
+                  {publishStart && new Date(istDateToIso(publishStart)) > new Date()
+                    ? 'Schedule Theme Release'
+                    : isLive
+                    ? 'Update Schedule Settings'
+                    : 'Publish Live Storefront Now'}
+                </button>
+              </div>
+            </section>
+          </div>
         )}
 
-        {/* TAB 5: MEDIA LIBRARY (Comprehensive View - Section 4) */}
+        {/* TAB 2: MEDIA LIBRARY (Comprehensive View - Section 4) */}
         {tab === 'media' && (
           <ThemeMediaLibraryTab
             themeId={editing._id}
@@ -680,298 +624,182 @@ export default function WebsiteThemesView() {
           />
         )}
 
-        {/* TAB 6: CATEGORY ICONS */}
-        {tab === 'categories' && (
-          <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-xs">
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <h3 className="font-bold text-stone-900">Category Presentation Overrides</h3>
-                <p className="mt-0.5 text-xs text-stone-500">
-                  Override icon artwork and display labels for existing categories without changing database records.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() =>
-                  updateConfig((cfg) => ({
-                    ...cfg,
-                    categoryAppearances: [
-                      ...(cfg.categoryAppearances || []),
-                      { categoryId: '', displayName: '', icon: { url: '', key: '' }, visible: true, order: (cfg.categoryAppearances || []).length + 1 },
-                    ],
-                  }))
-                }
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#8b6c3a] px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#765a2d] transition"
-              >
-                <HiOutlinePlus className="h-4 w-4" />
-                Add Category Icon
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              {(config.categoryAppearances || []).map((entry, idx) => (
-                <div
-                  key={idx}
-                  className="grid items-end gap-3 rounded-2xl border border-stone-200 p-4 sm:grid-cols-[1.5fr_1.5fr_80px_auto_auto]"
-                >
-                  <Field label="Category">
-                    <select
-                      className={inputClass}
-                      value={entry.categoryId?._id || entry.categoryId || ''}
-                      onChange={(e) => {
-                        const next = [...config.categoryAppearances];
-                        next[idx] = { ...next[idx], categoryId: e.target.value };
-                        updateConfig((c) => ({ ...c, categoryAppearances: next }));
-                      }}
-                    >
-                      <option value="">Choose category…</option>
-                      {categories.map((c) => (
-                        <option key={c._id} value={c._id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-
-                  <Field label="Custom Display Name">
-                    <input
-                      type="text"
-                      className={inputClass}
-                      value={entry.displayName || ''}
-                      placeholder="Use default category name"
-                      onChange={(e) => {
-                        const next = [...config.categoryAppearances];
-                        next[idx] = { ...next[idx], displayName: e.target.value };
-                        updateConfig((c) => ({ ...c, categoryAppearances: next }));
-                      }}
-                    />
-                  </Field>
-
-                  <Field label="Order">
-                    <input
-                      type="number"
-                      className={inputClass}
-                      value={entry.order ?? idx + 1}
-                      onChange={(e) => {
-                        const next = [...config.categoryAppearances];
-                        next[idx] = { ...next[idx], order: Number(e.target.value) };
-                        updateConfig((c) => ({ ...c, categoryAppearances: next }));
-                      }}
-                    />
-                  </Field>
-
-                  <label className="flex items-center gap-2 pb-3 text-xs text-stone-700">
-                    <input
-                      type="checkbox"
-                      checked={entry.visible !== false}
-                      onChange={(e) => {
-                        const next = [...config.categoryAppearances];
-                        next[idx] = { ...next[idx], visible: e.target.checked };
-                        updateConfig((c) => ({ ...c, categoryAppearances: next }));
-                      }}
-                    />
-                    Visible
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const next = config.categoryAppearances.filter((_, i) => i !== idx);
-                      updateConfig((c) => ({ ...c, categoryAppearances: next }));
-                    }}
-                    className="pb-3 text-xs font-semibold text-rose-600 hover:underline"
-                  >
-                    Remove
-                  </button>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* TAB 8: LIVE PREVIEW (Screenshot 3) */}
-        {tab === 'preview' && (
-          <ThemeStorefrontPreview
-            config={config}
-            availableBanners={availableBanners}
-            availableFeatured={availableFeatured}
-            categories={categories}
-            previewMedia={previewMedia}
-            previewMode={previewMode}
-            setPreviewMode={setPreviewMode}
-            themeName={editing.name}
-            onSelectSection={(secKey) => {
-              setSelectedHomeSectionKey(secKey);
-              setTab('sections');
-              toast.success(`Opened ${secKey} editor in Home Sections`);
-            }}
-          />
-        )}
-
-        {/* TAB 9: SCHEDULE & PUBLISH */}
-        {tab === 'publish' && (
-          <section className="grid gap-6 rounded-2xl border border-stone-200 bg-white p-6 lg:grid-cols-2 shadow-xs">
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-bold text-stone-900">Publish or Schedule Campaign</h3>
-                <p className="mt-0.5 text-xs text-stone-500">
-                  Release dates use the Neirah storefront timezone (Asia/Kolkata).
-                </p>
-              </div>
-
-              <Field label="Start Date & Time (Schedule Release)">
-                <input
-                  type="datetime-local"
-                  className={inputClass}
-                  value={publishStart}
-                  onChange={(e) => setPublishStart(e.target.value)}
-                />
-              </Field>
-
-              <Field label="End Date & Expiry (Optional)">
-                <input
-                  type="datetime-local"
-                  className={inputClass}
-                  value={publishEnd}
-                  onChange={(e) => setPublishEnd(e.target.value)}
-                />
-              </Field>
-
-              <Field label="Fallback Theme on Expiry">
-                <select
-                  className={inputClass}
-                  value={fallbackThemeId}
-                  onChange={(e) => setFallbackThemeId(e.target.value)}
-                >
-                  <option value="">Use the previous published theme</option>
-                  {themes
-                    .filter((t) => t._id !== editing._id && t.status !== 'archived')
-                    .map((t) => (
-                      <option key={t._id} value={t._id}>
-                        {t.name} ({t.status})
-                      </option>
-                    ))}
-                </select>
-              </Field>
-
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={publishTheme}
-                  disabled={!editing._id}
-                  className="rounded-xl bg-[#8b6c3a] px-6 py-3 text-xs font-semibold text-white shadow-xs hover:bg-[#765a2d] transition disabled:opacity-50"
-                >
-                  {publishStart && new Date(istDateToIso(publishStart)) > new Date()
-                    ? 'Schedule Theme Release'
-                    : isLive
-                    ? 'Update Schedule Settings'
-                    : 'Publish Live Storefront Now'}
-                </button>
-              </div>
-            </div>
-
-            <div className="rounded-2xl bg-stone-50 p-5 space-y-3 border border-stone-200">
-              <h4 className="text-sm font-bold text-stone-900 flex items-center gap-2">
-                <HiOutlineShieldCheck className="h-5 w-5 text-emerald-600" />
-                Publishing Safeguards
-              </h4>
-              <ul className="text-xs text-stone-600 space-y-2 leading-relaxed">
-                <li>• Draft changes stay private and isolated from the live storefront.</li>
-                <li>• Publishing takes an immutable snapshot for safe instantaneous rollback.</li>
-                <li>• Automatic cron reconciles scheduled campaigns at their exact start time.</li>
-                <li>• Shared media files are preserved across theme transitions and rollbacks.</li>
-              </ul>
-            </div>
-          </section>
-        )}
-
 
       </div>
     );
   }
 
   // ─────────────────────────────────────────────────────────────
-  // VIEW 1: THEME MANAGEMENT (Screenshot 1)
+  // VIEW 1: THEME MANAGEMENT (Matches Media & Theme Gallery compact layout)
   // ─────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-[1550px] space-y-6 p-4 md:p-8">
-      {/* 1. Header */}
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-stone-900">Theme Management</h1>
-          <p className="mt-1 text-xs md:text-sm text-stone-500">
-            Create, manage and preview website themes with banners, sections and media.
-          </p>
+    <div className="space-y-2.5 sm:space-y-3">
+      {/* ─── 1. COMPACT MODULE HEADER (Matching Media & Theme Gallery) ─── */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-stone-900 leading-tight">
+            Theme Management
+          </h1>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Live: {activeThemeObj?.name || 'diwali 2026'}
+          </span>
         </div>
-        <button
-          type="button"
-          onClick={() => openEditor(null)}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#8b6c3a] px-5 py-3 text-xs md:text-sm font-semibold text-white shadow-xs hover:bg-[#765a2d] transition cursor-pointer"
+
+        {/* Header Actions */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={fetchThemes}
+            disabled={loading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-lg text-xs font-semibold shadow-2xs transition cursor-pointer"
+            title="Refresh Themes"
+          >
+            <HiOutlineRefresh className={`w-3.5 h-3.5 stroke-2 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => openEditor(null)}
+            style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 hover:brightness-95 active:scale-[0.98] text-white rounded-lg text-xs font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
+          >
+            <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
+            <span>Add Theme</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ─── 2. STAT CARDS ROW (Compact layout matching Media & Theme Gallery) ─── */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-2.5">
+        {/* Live Themes */}
+        <div
+          onClick={() => setFilter(filter === 'active' ? 'all' : 'active')}
+          style={{
+            borderColor: filter === 'active' ? 'var(--theme-primary, #8b6f4e)' : undefined,
+            boxShadow: filter === 'active' ? '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)' : undefined,
+          }}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
+            filter !== 'active' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
+          }`}
         >
-          <HiOutlinePlus className="h-4 w-4" />
-          Add Theme
-        </button>
-      </header>
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#effaf2] text-[#16a34a] border border-emerald-200/50 flex items-center justify-center shrink-0">
+            <HiOutlineCheckCircle className="w-3.5 h-3.5 stroke-[2]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold text-stone-500 truncate leading-none">Live Themes</p>
+            <p className="text-sm sm:text-base font-bold text-stone-900 tracking-tight mt-0.5 truncate leading-none">
+              {counts.active || 0}
+            </p>
+          </div>
+        </div>
 
-      {/* 2. Stats Cards */}
-      <StatCards
-        cards={[
-          {
-            label: 'Live Themes',
-            value: counts.active || 0,
-            icon: HiOutlineCheckCircle,
-            color: 'green',
-            onClick: () => setFilter(filter === 'active' ? 'all' : 'active'),
-            active: filter === 'active',
-          },
-          {
-            label: 'Scheduled',
-            value: counts.scheduled || 0,
-            icon: HiOutlineClock,
-            color: 'blue',
-            onClick: () => setFilter(filter === 'scheduled' ? 'all' : 'scheduled'),
-            active: filter === 'scheduled',
-          },
-          {
-            label: 'Drafts',
-            value: counts.draft || 0,
-            icon: HiOutlineColorSwatch,
-            color: 'gold',
-            onClick: () => setFilter(filter === 'draft' ? 'all' : 'draft'),
-            active: filter === 'draft',
-          },
-          {
-            label: 'Archived',
-            value: counts.archived || 0,
-            icon: HiOutlineShieldCheck,
-            color: 'bronze',
-            onClick: () => setFilter(filter === 'archived' ? 'all' : 'archived'),
-            active: filter === 'archived',
-          },
-        ]}
-      />
+        {/* Scheduled */}
+        <div
+          onClick={() => setFilter(filter === 'scheduled' ? 'all' : 'scheduled')}
+          style={{
+            borderColor: filter === 'scheduled' ? 'var(--theme-primary, #8b6f4e)' : undefined,
+            boxShadow: filter === 'scheduled' ? '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)' : undefined,
+          }}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
+            filter !== 'scheduled' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
+          }`}
+        >
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#eff6ff] text-[#2563eb] border border-blue-200/50 flex items-center justify-center shrink-0">
+            <HiOutlineClock className="w-3.5 h-3.5 stroke-[2]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold text-stone-500 truncate leading-none">Scheduled</p>
+            <p className="text-sm sm:text-base font-bold text-stone-900 tracking-tight mt-0.5 truncate leading-none">
+              {counts.scheduled || 0}
+            </p>
+          </div>
+        </div>
 
-      {/* 3. Search and Status Filters */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-stone-200 bg-white p-3 shadow-xs">
-        <div className="relative w-full max-w-md">
+        {/* Drafts */}
+        <div
+          onClick={() => setFilter(filter === 'draft' ? 'all' : 'draft')}
+          style={{
+            borderColor: filter === 'draft' ? 'var(--theme-primary, #8b6f4e)' : undefined,
+            boxShadow: filter === 'draft' ? '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)' : undefined,
+          }}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
+            filter !== 'draft' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
+          }`}
+        >
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#fef6ee] text-[#ea580c] border border-orange-200/50 flex items-center justify-center shrink-0">
+            <HiOutlineColorSwatch className="w-3.5 h-3.5 stroke-[2]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold text-stone-500 truncate leading-none">Drafts</p>
+            <p className="text-sm sm:text-base font-bold text-stone-900 tracking-tight mt-0.5 truncate leading-none">
+              {counts.draft || 0}
+            </p>
+          </div>
+        </div>
+
+        {/* Archived */}
+        <div
+          onClick={() => setFilter(filter === 'archived' ? 'all' : 'archived')}
+          style={{
+            borderColor: filter === 'archived' ? 'var(--theme-primary, #8b6f4e)' : undefined,
+            boxShadow: filter === 'archived' ? '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)' : undefined,
+          }}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
+            filter !== 'archived' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
+          }`}
+        >
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#f5f5f4] text-[#78716c] border border-stone-200/50 flex items-center justify-center shrink-0">
+            <HiOutlineShieldCheck className="w-3.5 h-3.5 stroke-[2]" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-semibold text-stone-500 truncate leading-none">Archived</p>
+            <p className="text-sm sm:text-base font-bold text-stone-900 tracking-tight mt-0.5 truncate leading-none">
+              {counts.archived || 0}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ─── 3. FILTER & TOOLBAR (Compact Layout like Media & Theme Gallery) ─── */}
+      <div className="rounded-lg border border-stone-200/90 bg-white p-2 sm:p-2.5 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
+        <div className="relative flex-1 min-w-[240px] max-w-md">
+          <HiOutlineSearch className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
           <input
             type="text"
-            className={inputClass}
+            className="w-full rounded-md border border-stone-200 bg-stone-50/70 pl-8.5 pr-7 py-1.5 text-xs text-stone-800 placeholder-stone-400 outline-none transition focus:border-[#8b6f4e] focus:bg-white focus:ring-1 focus:ring-[#8b6f4e]/20"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search themes by name or code…"
           />
-          <HiOutlineSearch className="absolute right-3 top-3 h-4 w-4 text-stone-400" />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+            >
+              <HiOutlineX className="h-3.5 w-3.5" />
+            </button>
+          )}
         </div>
-        <div className="flex flex-wrap gap-1">
+
+        <div className="flex flex-wrap items-center gap-1">
           {['all', 'active', 'scheduled', 'draft', 'archived'].map((val) => (
             <button
               key={val}
               type="button"
               onClick={() => setFilter(val)}
-              className={`rounded-xl px-3 py-1.5 text-xs font-semibold capitalize transition cursor-pointer ${
-                filter === val ? 'bg-stone-900 text-white' : 'text-stone-600 hover:bg-stone-100'
+              className={`rounded-lg px-3 py-1 text-xs font-semibold capitalize transition cursor-pointer ${
+                filter === val
+                  ? 'text-white shadow-xs'
+                  : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
               }`}
+              style={
+                filter === val
+                  ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' }
+                  : {}
+              }
             >
               {val}
             </button>
@@ -993,7 +821,7 @@ export default function WebsiteThemesView() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {visibleThemes.map((theme) => {
             // Pick banner image for card cover
             const heroBanner =
@@ -1004,77 +832,93 @@ export default function WebsiteThemesView() {
             return (
               <article
                 key={theme._id}
-                className="group flex flex-col overflow-hidden rounded-2xl border border-stone-200 bg-white shadow-xs transition hover:shadow-md hover:border-stone-300"
+                onClick={() => openEditor(theme, 'details')}
+                className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs hover:border-stone-300 transition-all overflow-hidden cursor-pointer"
               >
-                {/* Cover Image Header */}
+                {/* Cover Image Header (16:10 aspect ratio matching Media Gallery) */}
                 <div
-                  className="relative h-48 w-full overflow-hidden bg-cover bg-center"
+                  className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden bg-cover bg-center"
                   style={{
                     backgroundImage: coverUrl
-                      ? `linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.5) 100%), url("${coverUrl}")`
+                      ? `linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.45) 100%), url("${coverUrl}")`
                       : 'linear-gradient(135deg, #EADCC8, #8B6C3A)',
                   }}
                 >
-                  {/* Status Badge */}
-                  <span
-                    className={`absolute top-3.5 right-3.5 rounded-full px-3 py-1 text-xs capitalize ${
-                      statusClass[theme.status] || 'bg-stone-600 text-white'
-                    }`}
-                  >
-                    {theme.status}
-                  </span>
+                  {/* Top-Left: Code Badge */}
+                  <div className="absolute left-2 top-2 z-10">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-medium text-white shadow-xs font-mono">
+                      {theme.code}
+                    </span>
+                  </div>
+
+                  {/* Top-Right: Status Badge */}
+                  <div className="absolute right-2 top-2 z-10">
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize shadow-xs backdrop-blur-md ${
+                        theme.status === 'active'
+                          ? 'bg-emerald-600/90 text-white'
+                          : theme.status === 'scheduled'
+                          ? 'bg-sky-600/90 text-white'
+                          : theme.status === 'archived'
+                          ? 'bg-stone-600/90 text-white'
+                          : 'bg-amber-600/90 text-white'
+                      }`}
+                    >
+                      {theme.status === 'active' && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                      )}
+                      <span>{theme.status}</span>
+                    </span>
+                  </div>
                 </div>
 
-                {/* Card Content */}
-                <div className="flex flex-1 flex-col justify-between p-5 space-y-4">
+                {/* Card Content (Compact padding matching Media Gallery) */}
+                <div className="p-2.5 flex flex-col justify-between flex-1">
                   <div>
-                    <h3 className="text-base font-bold text-stone-900 group-hover:text-[#8b6c3a] transition">
+                    <h4
+                      className="text-xs font-bold text-stone-900 group-hover:text-[var(--theme-primary,#8b6f4e)] transition truncate"
+                      title={theme.name}
+                    >
                       {theme.name}
-                    </h3>
-                    <p className="mt-1 text-xs text-stone-500">
-                      Theme code: <span className="font-mono text-stone-600">{theme.code}</span>
-                    </p>
-                    <p className="mt-0.5 text-xs text-stone-400">
-                      Last updated:{' '}
-                      {theme.meta?.updatedAt
+                    </h4>
+                    <p className="mt-0.5 text-[10px] text-stone-400 font-normal">
+                      Last updated: {theme.meta?.updatedAt
                         ? new Date(theme.meta.updatedAt).toLocaleDateString('en-IN', {
                             day: 'numeric',
                             month: 'short',
                             year: 'numeric',
                           })
-                        : '24 Oct 2026'}
+                        : '28 Oct 2026'}
                     </p>
                   </div>
 
-                  {/* Actions Row */}
-                  <div className="flex items-center gap-2 border-t border-stone-100 pt-4">
+                  {/* Actions Row (Compact) */}
+                  <div className="mt-2.5 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100">
                     <button
                       type="button"
-                      onClick={() => openEditor(theme, 'sections')}
-                      className="rounded-xl bg-[#8b6c3a] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#765a2d] transition cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditor(theme, 'details');
+                      }}
+                      style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                      className="flex-1 py-1 px-2.5 flex items-center justify-center rounded-md text-[11px] font-semibold text-white shadow-2xs hover:brightness-95 transition cursor-pointer"
+                      title="Edit Theme"
                     >
                       Edit
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => openEditor(theme, 'preview')}
-                      className="rounded-xl border border-stone-200 bg-white px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition cursor-pointer"
-                    >
-                      Preview
-                    </button>
 
                     {/* Three Dots Menu */}
-                    <div className="relative ml-auto">
+                    <div className="relative">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveMenuThemeId(activeMenuThemeId === theme._id ? null : theme._id);
                         }}
-                        className="rounded-xl border border-stone-200 p-2 text-stone-500 hover:bg-stone-50 hover:text-stone-800 transition cursor-pointer"
+                        className="py-1 px-1.5 rounded-md border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-500 hover:text-stone-800 transition shadow-2xs cursor-pointer flex items-center justify-center"
                         title="More actions"
                       >
-                        <HiOutlineDotsVertical className="h-4 w-4" />
+                        <HiOutlineDotsVertical className="h-3.5 w-3.5" />
                       </button>
 
                       {activeMenuThemeId === theme._id && (

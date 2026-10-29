@@ -349,7 +349,7 @@ export default function TopAnnouncementView() {
                 { value: 'horizontal', label: 'Left to right' },
                 { value: 'vertical', label: 'Top to bottom' },
               ].map((option) => (
-                <button key={option.value} type="button" disabled={savingSettings} onClick={() => handleDisplayDirectionChange(option.value)} className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${settings.displayDirection === option.value ? 'bg-[#8b6f4e] text-white' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}>
+                <button key={option.value} type="button" disabled={savingSettings} onClick={() => handleDisplayDirectionChange(option.value)} style={settings.displayDirection === option.value ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined} className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition-colors ${settings.displayDirection === option.value ? 'text-white shadow-xs' : 'bg-stone-100 text-stone-600 hover:bg-stone-200'}`}>
                   {option.label}
                 </button>
               ))}
@@ -413,10 +413,17 @@ export default function TopAnnouncementView() {
             <HiOutlineChevronLeft className="w-4 h-4" />
           </button>
 
-          {/* Center Announcement Content */}
-          <div className="flex-1 text-center py-0.5">
+          {/* Center Announcement Content with Directional Slide Animation */}
+          <div className="flex-1 text-center py-0.5 h-7 overflow-hidden flex items-center justify-center relative">
             {activeAnnouncements.length > 0 ? (
-              <div className="inline-flex items-center justify-center gap-2 font-medium text-[13px] text-stone-800 transition-all duration-300 animate-fadeIn">
+              <div
+                key={`${previewIndex}-${settings.displayDirection}`}
+                className={`inline-flex items-center justify-center gap-2 font-medium text-[13px] text-stone-800 ${
+                  settings.displayDirection === 'vertical'
+                    ? 'animate-slide-top-to-bottom'
+                    : 'animate-slide-left-to-right'
+                }`}
+              >
                 <span>{activeAnnouncements[previewIndex]?.message}</span>
               </div>
             ) : (

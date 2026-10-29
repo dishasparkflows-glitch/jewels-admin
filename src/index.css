@@ -182,6 +182,7 @@ label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge"]):not([c
   animation: fadeInModal 0.18s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+.animate-scaleIn,
 .animate-scaleUp {
   animation: scaleUpModal 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -203,3 +204,42 @@ img.no-img-fallback {
 
 
 
+
+
+/* Global Checkbox and Radio Accent Color */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--theme-primary, #8b6f4e);
+}
+
+
+/* Announcement Bar Slide Animations */
+@keyframes slide-top-to-bottom {
+  0% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slide-left-to-right {
+  0% {
+    opacity: 0;
+    transform: translateX(-100%);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-top-to-bottom {
+  animation: slide-top-to-bottom 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.animate-slide-left-to-right {
+  animation: slide-left-to-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}

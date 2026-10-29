@@ -61,6 +61,7 @@ export const websiteThemesAPI = {
   archive: (id) => api.post(`/website/themes/${id}/archive`),
   remove: (id) => api.delete(`/website/themes/${id}`),
   getHistory: (themeId) => api.get('/website/themes/history', { params: themeId ? { themeId } : {} }),
+  getLookup: () => api.get('/website/themes/lookup'),
   getMediaLibrary: (themeId) => api.get(`/website/themes/${themeId}/media-library`),
   saveMedia: (themeId, data) => api.put(`/website/themes/${themeId}/media`, data),
 };
@@ -123,6 +124,9 @@ export const bannersAPI = {
   create: (data) => api.post('/banners', data),
   update: (id, data) => api.put(`/banners/${id}`, data),
   delete: (id) => api.delete(`/banners/${id}`),
+  getCounts: () => api.get('/banners/counts'),
+  getThemesLookup: () => api.get('/banners/themes/lookup'),
+  getThemeImages: (params) => api.get('/banners/theme-images', { params }),
 };
 
 // ─── Featured (Celebrate & Gifts) ─────────────────

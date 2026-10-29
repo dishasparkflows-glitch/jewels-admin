@@ -1,7 +1,9 @@
-import ThemeImageField from '../../components/common/ThemeImageField';
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { createPortal } from "react-dom";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   HiOutlinePlus,
+  HiOutlineColorSwatch,
+  HiOutlineRefresh,
   HiOutlinePencil,
   HiOutlineTrash,
   HiOutlineEye,
@@ -15,7 +17,7 @@ import {
   HiOutlineArrowDown,
   HiOutlineFilter,
 } from 'react-icons/hi';
-import { IoCubeOutline } from 'react-icons/io5';
+import { IoCubeOutline, IoDiamondOutline, IoLayersOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { deleteUploadedFile, formatBytes, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
@@ -32,6 +34,7 @@ import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import Dropdown from '../../components/common/Dropdown';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
+import ProductPickerModal from '../../components/common/ProductPickerModal';
 
 export default function CelebrateGiftsView() {
   const confirm = useConfirm();
@@ -40,20 +43,6 @@ export default function CelebrateGiftsView() {
   const [featuredItems, setFeaturedItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedIds, setSelectedIds] = useState([]);
-
-  // Available products for modal selection (lookup API)
-  const [allProducts, setAllProducts] = useState([]);
-  const [loadingProducts, setLoadingProducts] = useState(false);
-  const [productPage, setProductPage] = useState(1);
-  const [productPageSize, setProductPageSize] = useState(10);
-  const [productPagination, setProductPagination] = useState({
-    currentPage: 1,
-    totalPages: 1,
-    totalDocs: 0,
-    limit: 10,
-    hasNextPage: false,
-    hasPrevPage: false,
-  });
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -75,9 +64,125 @@ export default function CelebrateGiftsView() {
   const [pendingThemeImages, setPendingThemeImages] = useState({});
   const [imagePublicId, setImagePublicId] = useState('');
   const [status, setStatus] = useState('active');
-  const [selectedProductIds, setSelectedProductIds] = useState([]);
-  const [productSearch, setProductSearch] = useState('');
-  const [productFilterType, setProductFilterType] = useState('all');
+  const [selectedProducts, setSelectedProducts] = useState([]);
+  const [isProductPickerOpen, setIsProductPickerOpen] = useState(false);
+
+  // Website Themes State
+  const [themes, setThemes] = useState([]);
+  const [loadingThemes, setLoadingThemes] = useState(false);
+  const imageInputRef = useRef(null);
+
+  // Theme Media Picker Modal State
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const [pickerThemeFilter, setPickerThemeFilter] = useState('all');
+  const [pickerPlacementFilter, setPickerPlacementFilter] = useState('all');
+  const [pickerDeviceFilter, setPickerDeviceFilter] = useState('all');
+  const [pickerSearch, setPickerSearch] = useState('');
+  const [pickerImages, setPickerImages] = useState([]);
+  const [loadingPickerImages, setLoadingPickerImages] = useState(false);
+
+  const fetchThemesLookup = async () => {
+    try {
+      setLoadingThemes(true);
+      let res;
+      try {
+        res = await api.get('/banners/themes/lookup');
+      } catch {
+        try {
+          res = await api.get('/website/themes/lookup');
+        } catch {
+          res = await api.get('/gallery/themes');
+        }
+      }
+      const items = res.data?.data || [];
+      setThemes(Array.isArray(items) ? items : []);
+    } catch (err) {
+      console.error('Failed to load themes lookup:', err);
+    } finally {
+      setLoadingThemes(false);
+    }
+  };
+
+  const fetchPickerImages = async (tId = pickerThemeFilter, placementParam = pickerPlacementFilter, platformParam = pickerDeviceFilter) => {
+    try {
+      setLoadingPickerImages(true);
+      const params = { limit: 100 };
+      if (tId && tId !== 'all') params.themeId = tId;
+      if (placementParam && placementParam !== 'all') {
+        params.placement = placementParam;
+        params.type = placementParam;
+      }
+      if (platformParam && platformParam !== 'all') {
+        params.platform = platformParam;
+      }
+      let res;
+      try {
+        res = await api.get('/banners/theme-images', { params });
+      } catch {
+        res = await api.get('/gallery', { params });
+      }
+      const items = res.data?.data?.items || res.data?.data || [];
+      setPickerImages(Array.isArray(items) ? items : []);
+    } catch (err) {
+      console.error('Failed to load picker images:', err);
+      setPickerImages([]);
+    } finally {
+      setLoadingPickerImages(false);
+    }
+  };
+
+  const openMediaPicker = () => {
+    const initialTheme = themeId || 'all';
+    const currentPlacementLower = (placement || 'celebrate').toLowerCase();
+    setPickerThemeFilter(initialTheme);
+    setPickerPlacementFilter(currentPlacementLower);
+    setPickerDeviceFilter('all');
+    setPickerSearch('');
+    setIsMediaPickerOpen(true);
+    fetchPickerImages(initialTheme, currentPlacementLower, 'all');
+  };
+
+  const handleSelectPickerImage = (item) => {
+    const chosenUrl = item.url || item.image?.url;
+    const chosenKey = item.key || '';
+    if (chosenUrl) {
+      setImageUrl(chosenUrl);
+      setImagePublicId(chosenKey);
+      if (item.themeId && !themeId) {
+        setThemeId(item.themeId);
+      }
+      toast.success('Selected image from gallery');
+    }
+    setIsMediaPickerOpen(false);
+  };
+
+  const filteredPickerImages = useMemo(() => {
+    if (!pickerSearch.trim()) return pickerImages;
+    const q = pickerSearch.trim().toLowerCase();
+    return pickerImages.filter((img) => {
+      const name = (img.name || img.title || img.recordTitle || img.url || '').toLowerCase();
+      const p = (img.placement || img.type || img.typeLabel || '').toLowerCase();
+      const theme = (img.themeName || '').toLowerCase();
+      return name.includes(q) || p.includes(q) || theme.includes(q);
+    });
+  }, [pickerImages, pickerSearch]);
+
+  // Lock body scroll when modal or media picker is open
+  useEffect(() => {
+    if (isModalOpen || isMediaPickerOpen) {
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => {
+        document.body.style.overflow = prevOverflow;
+      };
+    }
+  }, [isModalOpen, isMediaPickerOpen]);
+
+  useEffect(() => {
+    if (isModalOpen) {
+      fetchThemesLookup();
+    }
+  }, [isModalOpen]);
 
   // Upload state
   const [uploading, setUploading] = useState(false);
@@ -124,53 +229,9 @@ export default function CelebrateGiftsView() {
     fetchFeatured(currentPage, pageSize);
   }, [currentPage, pageSize]);
 
-  // Fetch products using lightweight lookup API with pagination & filtering
-  const fetchProducts = useCallback(async (page = 1, searchQuery = '', filterType = 'all') => {
-    try {
-      setLoadingProducts(true);
-      const params = new URLSearchParams();
-      params.append('page', String(page));
-      params.append('limit', '10');
-      if (searchQuery.trim()) {
-        params.append('search', searchQuery.trim());
-      }
-      if (filterType && filterType !== 'all') {
-        params.append('productType', filterType);
-      }
-
-      const res = await api.get(`/products/lookup?${params.toString()}`);
-      const items = res.data?.data || res.data?.data?.items || [];
-      const pagination = res.data?.pagination || {
-        currentPage: page,
-        totalPages: 1,
-        totalDocs: Array.isArray(items) ? items.length : 0,
-        limit: 10,
-        hasNextPage: false,
-        hasPrevPage: false,
-      };
-
-      setAllProducts(Array.isArray(items) ? items : []);
-      setProductPagination(pagination);
-      setProductPage(page);
-    } catch (err) {
-      console.error('Failed to load products for picker:', err);
-    } finally {
-      setLoadingProducts(false);
-    }
-  }, []);
-
   useEffect(() => {
     fetchFeatured();
   }, []);
-
-  // Debounced search / filter for product lookup inside modal
-  useEffect(() => {
-    if (!isModalOpen) return;
-    const timer = setTimeout(() => {
-      fetchProducts(1, productSearch, productFilterType, productPageSize);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [isModalOpen, productSearch, productFilterType, productPageSize, fetchProducts]);
 
   // Filtered featured items (Search query + placement filter, NO active/inactive filter)
   const filteredItems = useMemo(() => {
@@ -224,9 +285,6 @@ export default function CelebrateGiftsView() {
     },
   ];
 
-  // Products inside modal (filtered by backend lookup)
-  const filteredProducts = allProducts;
-
   // Open Add Modal
   const openAddModal = () => {
     setEditingItem(null);
@@ -239,8 +297,8 @@ export default function CelebrateGiftsView() {
     setPendingThemeImages({});
     setImagePublicId('');
     setStatus('active');
-    setSelectedProductIds([]);
-    setProductSearch('');
+    setSelectedProducts([]);
+    fetchThemesLookup();
     setIsModalOpen(true);
   };
 
@@ -260,8 +318,13 @@ export default function CelebrateGiftsView() {
     setPendingThemeImages({});
     setImagePublicId(item.image?.key || '');
     setStatus(item.status || 'active');
-    setSelectedProductIds(item.productIds || []);
-    setProductSearch('');
+    const loadedProducts = Array.isArray(item.products) && item.products.length > 0
+      ? item.products
+      : Array.isArray(item.productIds)
+      ? item.productIds.map((p) => (typeof p === 'object' ? p : { _id: String(p) }))
+      : [];
+    setSelectedProducts(loadedProducts);
+    fetchThemesLookup();
     setIsModalOpen(true);
   };
 
@@ -271,21 +334,14 @@ export default function CelebrateGiftsView() {
     setIsViewModalOpen(true);
   };
 
-  // Toggle product selection
-  const toggleProduct = (productId) => {
-    setSelectedProductIds((prev) =>
-      prev.includes(productId)
-        ? prev.filter((id) => id !== productId)
-        : [...prev, productId]
-    );
-  };
-
-  // Image upload handler
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
+  // Image upload handler with support for file drop and input ref
+  const handleImageFile = async (file) => {
     if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (JPG, PNG, WebP)');
+      return;
+    }
 
-    // Instant local preview while uploading
     const localPreview = URL.createObjectURL(file);
     setImageUrl(localPreview);
 
@@ -301,8 +357,13 @@ export default function CelebrateGiftsView() {
       toast.error('Failed to upload image');
     } finally {
       setUploading(false);
-      e.target.value = '';
+      if (imageInputRef.current) imageInputRef.current.value = '';
     }
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (file) handleImageFile(file);
   };
 
   const handleRemoveImage = async () => {
@@ -334,9 +395,9 @@ export default function CelebrateGiftsView() {
           key: imagePublicId || '',
         } : null,
         status,
-        products: selectedProductIds,
-        productIds: selectedProductIds,
-        productCount: selectedProductIds.length,
+        products: selectedProducts.map((p) => String(p._id || p.id || p.productId || p)),
+        productIds: selectedProducts.map((p) => String(p._id || p.id || p.productId || p)),
+        productCount: selectedProducts.length,
       };
 
       let saveResponse;
@@ -684,7 +745,7 @@ export default function CelebrateGiftsView() {
 
       {/* ─── Add / Edit Group Modal (Exact Match to Screenshot 2) ─── */}
       {isModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs"
           onClick={() => setIsModalOpen(false)}
         >
@@ -800,182 +861,236 @@ export default function CelebrateGiftsView() {
                 </div>
               </div>
 
-              {/* COVER IMAGE */}
-              <div>
-                <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
-                  COVER IMAGE
-                </label>
-                <ThemeImageField key={editingItem?._id || 'new'} module="featured" recordId={editingItem?._id} selectedThemeId={themeId} onThemeChange={(value) => { setThemeId(value); setPendingThemeImages({}); }} onPendingChange={(slot, image) => setPendingThemeImages((current) => ({ ...current, [slot]: image }))} slots={[{ key: 'image', label: 'Cover image', url: imageUrl }]}>
-                <div className="relative border-2 border-dashed border-stone-200 hover:border-stone-400 rounded-2xl p-4 flex flex-col items-center justify-center bg-[#fafafa] hover:bg-stone-50/50 transition-colors min-h-[140px] cursor-pointer">
+              {/* WEBSITE THEME & MEDIA */}
+              <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
+                {/* Top: Website Theme Selector & Direct View in Gallery Action */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-stone-200/70">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 text-stone-900">
+                      <HiOutlineColorSwatch className="w-4 h-4 text-[var(--theme-primary,#8a6d4b)]" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider">
+                        Website Theme & Media
+                      </h3>
+                    </div>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Select a website theme for this campaign or browse available media in gallery.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="w-48 sm:w-56">
+                      <Dropdown
+                        value={themeId}
+                        onChange={(val) => setThemeId(val)}
+                        options={[
+                          { value: '', label: 'All Website Themes' },
+                          ...themes.map((t) => ({
+                            value: t._id,
+                            label: `${t.name}${t.status === 'active' ? ' · Active' : ''}`,
+                          })),
+                        ]}
+                        buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)]"
+                        menuClassName="z-30"
+                      />
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={openMediaPicker}
+                      className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl border border-[var(--theme-primary,#8a6d4b)]/40 bg-white hover:bg-[#faf6f0] text-xs font-semibold text-[var(--theme-primary,#8a6d4b)] hover:text-[#785b3a] shadow-2xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
+                    >
+                      <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                      <span>View in Gallery</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Cover Image Box */}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-stone-700">
+                    Cover Image
+                  </label>
+
                   {imageUrl ? (
-                    <div className="relative w-full h-32 rounded-xl overflow-hidden group">
+                    <div className="relative rounded-xl border border-stone-200 overflow-hidden bg-stone-900 h-28 sm:h-32 group shadow-2xs">
                       <img
                         src={getMediaUrl(imageUrl)}
                         alt="Cover Preview"
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <label className="px-3 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold cursor-pointer shadow-sm">
-                          Change Image
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className="hidden"
-                          />
-                        </label>
+                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
+                        <button
+                          type="button"
+                          onClick={openMediaPicker}
+                          className="px-3 py-1.5 rounded-lg bg-[var(--theme-primary,#8a6d4b)] text-white text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs"
+                        >
+                          Choose Image
+                        </button>
                         <button
                           type="button"
                           onClick={handleRemoveImage}
-                          className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold shadow-sm"
+                          className="px-3 py-1.5 rounded-lg bg-red-700 text-white text-xs font-semibold hover:bg-red-800 shadow-xs shadow-red-900/20 transition-colors cursor-pointer shadow-2xs"
                         >
                           Remove
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <label className="w-full h-full flex flex-col items-center justify-center cursor-pointer">
-                      <HiOutlinePhotograph className="w-8 h-8 text-stone-300 mb-1.5" />
-                      <span className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
-                        {uploading ? `UPLOADING (${uploadProgress}%)` : 'SELECT VISUAL'}
-                      </span>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                        disabled={uploading}
-                      />
-                    </label>
-                  )}
-                </div>
-                </ThemeImageField>
-              </div>
-
-              {/* SELECT PRODUCTS (X SELECTED) */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-[11px] font-bold tracking-wider text-stone-500 uppercase">
-                    SELECT PRODUCTS ({selectedProductIds.length} SELECTED)
-                  </label>
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setProductFilterType((prev) =>
-                          prev === 'all' ? 'jewelry' : prev === 'jewelry' ? 'ornate' : 'all'
-                        )
-                      }
-                      className="inline-flex items-center gap-1 text-[11px] font-bold tracking-wider text-stone-500 uppercase hover:text-stone-800"
+                    <div
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer?.files?.[0];
+                        if (file) handleImageFile(file);
+                      }}
+                      className="border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all h-28 sm:h-32 flex flex-col items-center justify-center group shadow-2xs"
                     >
-                      <HiOutlineFilter className="w-3.5 h-3.5" />
-                      <span>FILTER: {productFilterType}</span>
-                    </button>
-                  </div>
-                </div>
+                      {uploading ? (
+                        <div className="space-y-1.5">
+                          <div className="w-5 h-5 border-2 border-stone-300 border-t-[var(--theme-primary,#8b6f4e)] rounded-full animate-spin mx-auto" />
+                          <p className="text-[11px] text-stone-500 font-medium">Uploading & compressing... {uploadProgress}%</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div
+                            onClick={() => imageInputRef.current?.click()}
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#ecf7f7] border border-[#cbebeb] flex items-center justify-center text-[#1c7878] group-hover:scale-105 mb-1 transition-transform cursor-pointer shadow-2xs"
+                          >
+                            <HiOutlinePhotograph className="w-4 h-4 stroke-[1.8]" />
+                          </div>
+                          <p
+                            onClick={() => imageInputRef.current?.click()}
+                            className="text-[11px] sm:text-xs font-semibold text-stone-800 cursor-pointer"
+                          >
+                            Click to upload <span className="font-normal text-stone-500">or drag and drop</span>
+                          </p>
 
-                {/* Product Search Input */}
-                <div className="relative mb-2">
-                  <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                          <button
+                            type="button"
+                            onClick={openMediaPicker}
+                            className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[11px] sm:text-xs font-semibold text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] hover:text-[var(--theme-primary,#8b6f4e)] transition-all cursor-pointer"
+                          >
+                            <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                            <span>Choose Image</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                   <input
-                    type="text"
-                    value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
-                    placeholder="Search products by title or SKU..."
-                    className="w-full pl-9 pr-4 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43]"
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                    disabled={uploading}
                   />
                 </div>
+              </div>
 
-                {/* Product List */}
-                <div className="border border-stone-200 rounded-xl max-h-72 sm:max-h-80 overflow-y-auto divide-y divide-stone-100 bg-white">
-                  {loadingProducts ? (
-                    <div className="py-8 flex flex-col items-center justify-center text-stone-400 gap-2">
-                      <div className="w-5 h-5 border-2 border-stone-300 border-t-[#8f6d43] rounded-full animate-spin" />
-                      <span className="text-[11px] font-bold tracking-wider uppercase text-stone-400">
-                        LOADING PRODUCTS...
-                      </span>
+              {/* SELECT PRODUCTS SECTION */}
+              <div className="space-y-3 pt-2 border-t border-stone-200/70">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <IoDiamondOutline className="w-4 h-4 text-[var(--theme-primary,#8a6d4b)]" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900">
+                        Campaign Products ({selectedProducts.length} Selected)
+                      </h3>
                     </div>
-                  ) : filteredProducts.length === 0 ? (
-                    <div className="py-6 text-center text-xs text-stone-400">
-                      No matching products found
-                    </div>
-                  ) : (
-                    filteredProducts.map((p) => {
-                      const isSelected = selectedProductIds.includes(p._id);
-                      const thumb =
-                        p.thumbnail ||
-                        p.image ||
-                        p.firstPhoto ||
-                        p.colorImages?.[0]?.firstPhoto ||
-                        p.colorImages?.[0]?.images?.[0]?.url ||
-                        null;
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      {selectedProducts.length > 0
+                        ? 'Manage or pick additional products to feature in this campaign.'
+                        : 'Open the product catalog popup to select products for this group.'}
+                    </p>
+                  </div>
 
-                      const title = p.title || p.basicInfo?.title || 'Untitled Product';
-                      const sku = p.sku || p.basicInfo?.sku || p.ornate?.tagNo || p.ornate?.itemCode || 'N/A';
-                      const price = Number(p.price || p.pricing?.salePrice || p.pricing?.mrp || p.cataloguePrice || 0);
-                      const categoryName = Array.isArray(p.category) && p.category[0]?.name ? p.category[0].name : '';
-
-                      return (
-                        <div
-                          key={p._id}
-                          onClick={() => toggleProduct(p._id)}
-                          className={`flex items-center gap-3 px-3 py-2 hover:bg-stone-50 cursor-pointer transition-colors ${
-                            isSelected ? 'bg-[#faf5ee]/60' : ''
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {}}
-                            className="w-4 h-4 rounded text-[#8f6d43] border-stone-300 focus:ring-0 cursor-pointer"
-                          />
-                          <div className="w-8 h-8 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center">
-                            {thumb ? (
-                              <img
-                                src={getMediaUrl(thumb)}
-                                alt={title}
-                                onError={(e) => {
-                                  e.currentTarget.style.display = 'none';
-                                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                                }}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : null}
-                            <IoCubeOutline className={`w-4 h-4 text-stone-400 ${thumb ? 'hidden' : ''}`} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-semibold text-stone-800 truncate" title={title}>
-                              {title}
-                            </p>
-                            <p className="text-[10px] text-stone-400 font-mono truncate">
-                              {categoryName ? (
-                                <span className="text-stone-500 font-sans mr-1">{categoryName} •</span>
-                              ) : null}
-                              SKU: {sku} • ₹{price > 0 ? price.toLocaleString('en-IN') : '0'}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsProductPickerOpen(true)}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white shadow-2xs transition-all cursor-pointer self-start sm:self-auto hover:opacity-90"
+                    style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
+                  >
+                    <HiOutlinePlus className="w-4 h-4" />
+                    <span>Browse & Select Products</span>
+                  </button>
                 </div>
 
-                {/* Common Luxury Pagination */}
-                <Pagination
-                  currentPage={productPage}
-                  totalItems={productPagination.totalDocs || allProducts.length}
-                  pageSize={productPageSize}
-                  pageSizeOptions={[10, 25, 50, 100]}
-                  onPageChange={(newPage) => {
-                    fetchProducts(newPage, productSearch, productFilterType, productPageSize);
-                  }}
-                  onPageSizeChange={(newSize) => {
-                    setProductPageSize(newSize);
-                    fetchProducts(1, productSearch, productFilterType, newSize);
-                  }}
-                  itemLabel="products"
-                  className="rounded-xl border border-stone-200/80 mt-2 bg-stone-50/50"
-                />
+                {/* Selected Products Area: Empty State vs Cards Grid */}
+                {selectedProducts.length === 0 ? (
+                  <div className="border-2 border-dashed border-stone-200 rounded-2xl p-6 sm:p-8 text-center bg-stone-50/40">
+                    <div className="w-10 h-10 rounded-full bg-[#f6efe6] text-[#8a6d4b] flex items-center justify-center mx-auto mb-2 shadow-2xs">
+                      <IoLayersOutline className="w-5 h-5" />
+                    </div>
+                    <h4 className="text-xs font-bold text-stone-800 mb-0.5">
+                      No products added to this group yet
+                    </h4>
+                    <p className="text-[11px] text-stone-500 max-w-sm mx-auto mb-3">
+                      Click below to open the catalog popup, search pieces, and select items.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => setIsProductPickerOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white shadow-2xs transition-all cursor-pointer hover:opacity-90"
+                      style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
+                    >
+                      <HiOutlinePlus className="w-4 h-4" />
+                      <span>Browse & Select Products</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="border border-stone-200 rounded-2xl p-3 bg-stone-50/50">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 max-h-60 overflow-y-auto pr-1 scrollbar-thin">
+                      {selectedProducts.map((prod, idx) => {
+                        const key = prod._id || prod.id || prod.productId || idx;
+                        const thumb =
+                          prod.thumbnail ||
+                          prod.colorImages?.[0]?.images?.[0]?.url ||
+                          prod.images?.[0]?.url ||
+                          prod.image?.url;
+                        const pTitle = prod.title || prod.name || prod.basicInfo?.title || 'Untitled Jewelry';
+                        const price = Number(prod.price || prod.salePrice || prod.pricing?.sellingPrice || 0);
+                        const sku = prod.sku || prod.basicInfo?.sku || prod.ornate?.tagNo || '';
+
+                        return (
+                          <div
+                            key={key}
+                            className="flex items-center gap-2.5 p-2 bg-white rounded-xl border border-stone-200 shadow-2xs group relative hover:border-[var(--theme-primary,#8a6d4b)] transition-colors"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center p-0.5 shrink-0 overflow-hidden">
+                              {thumb ? (
+                                <img src={thumb} alt={pTitle} className="w-full h-full object-contain" />
+                              ) : (
+                                <IoDiamondOutline className="w-4 h-4 text-stone-400" />
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h5 className="text-[11px] font-semibold text-stone-800 truncate" title={pTitle}>
+                                {pTitle}
+                              </h5>
+                              <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5">
+                                {price > 0 && <span className="font-bold text-stone-900">₹{price.toLocaleString('en-IN')}</span>}
+                                {sku && <span className="font-mono text-stone-400 truncate">SKU: {sku}</span>}
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setSelectedProducts((prev) =>
+                                  prev.filter((p) => String(p._id || p.id || p.productId) !== String(key))
+                                )
+                              }
+                              className="w-6 h-6 rounded-lg text-stone-400 hover:text-red-600 hover:bg-red-50 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                              title="Remove product"
+                            >
+                              <HiOutlineX className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Status Select */}
@@ -1026,12 +1141,12 @@ export default function CelebrateGiftsView() {
               </div>
             </form>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── Reorder Modal ─── */}
       {isReorderModalOpen && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs"
           onClick={() => setIsReorderModalOpen(false)}
         >
@@ -1104,12 +1219,12 @@ export default function CelebrateGiftsView() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
 
       {/* ─── View Modal ─── */}
       {isViewModalOpen && viewingItem && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs"
           onClick={() => setIsViewModalOpen(false)}
         >
@@ -1172,8 +1287,241 @@ export default function CelebrateGiftsView() {
               </div>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
+      {/* ─── THEME MEDIA PICKER MODAL (CHOOSE IMAGE FROM THEME) ─── */}
+      {isMediaPickerOpen && createPortal((
+        <div
+          className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5 bg-stone-900/70 backdrop-blur-xs overflow-y-auto animate-fadeIn"
+          onClick={() => setIsMediaPickerOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden my-auto animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Picker Header */}
+            <div className="bg-[#faf8f5] px-5 sm:px-6 py-4 border-b border-stone-150 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white border border-[#e8d8c0] flex items-center justify-center text-[#8a6d4b] shadow-2xs shrink-0">
+                  <HiOutlinePhotograph className="w-5 h-5 stroke-[1.8]" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-stone-900 font-playfair tracking-tight">
+                    Select Theme Image
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-stone-500 font-normal">
+                    Target slot: <span className="font-semibold text-stone-800 capitalize">Cover Image ({placement})</span> · Choose from pre-configured theme placement images.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsMediaPickerOpen(false)}
+                className="w-8 h-8 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                aria-label="Close image picker"
+              >
+                <HiOutlineX className="w-4 h-4 stroke-2" />
+              </button>
+            </div>
+
+            {/* Picker Filters Bar */}
+            <div className="p-4 border-b border-stone-150 bg-stone-50/50 flex flex-col sm:flex-row items-center gap-3 shrink-0">
+              {/* Search */}
+              <div className="relative flex-1 w-full sm:w-auto">
+                <HiOutlineSearch className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input
+                  type="text"
+                  value={pickerSearch}
+                  onChange={(e) => setPickerSearch(e.target.value)}
+                  placeholder="Search by name, placement or theme..."
+                  className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b]"
+                />
+              </div>
+
+              {/* Filter Theme */}
+              <div className="w-full sm:w-52">
+                <Dropdown
+                  value={pickerThemeFilter}
+                  onChange={(val) => {
+                    setPickerThemeFilter(val);
+                    fetchPickerImages(val, pickerPlacementFilter, pickerDeviceFilter);
+                  }}
+                  options={[
+                    { value: 'all', label: 'All Website Themes' },
+                    ...themes.map((t) => ({
+                      value: t._id,
+                      label: `${t.name}${t.status === 'active' ? ' · Active' : ''}`,
+                    })),
+                  ]}
+                  buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
+                  menuClassName="z-30"
+                />
+              </div>
+
+              {/* Filter Placement */}
+              <div className="w-full sm:w-48">
+                <Dropdown
+                  value={pickerPlacementFilter}
+                  onChange={(val) => {
+                    setPickerPlacementFilter(val);
+                    fetchPickerImages(pickerThemeFilter, val, pickerDeviceFilter);
+                  }}
+                  options={[
+                    { value: 'all', label: 'All Placements' },
+                    { value: 'celebrate', label: 'Celebrate' },
+                    { value: 'gifts', label: 'Gifts' },
+                    { value: 'herobanner', label: 'Hero Banner' },
+                    { value: 'collectionbanner', label: 'Collection Banner' },
+                    { value: 'categorybanner', label: 'Category Banner' },
+                    { value: 'offerbanner', label: 'Offer Banner' },
+                    { value: 'asset', label: 'Media Library Assets' },
+                  ]}
+                  buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
+                  menuClassName="z-30"
+                />
+              </div>
+
+              {/* Filter Platform (Web / App / All) */}
+              <div className="w-full sm:w-40">
+                <Dropdown
+                  value={pickerDeviceFilter}
+                  onChange={(val) => {
+                    setPickerDeviceFilter(val);
+                    fetchPickerImages(pickerThemeFilter, pickerPlacementFilter, val);
+                  }}
+                  options={[
+                    { value: 'all', label: 'All Platforms' },
+                    { value: 'web', label: 'Web (Desktop)' },
+                    { value: 'app', label: 'App (Mobile)' },
+                  ]}
+                  buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
+                  menuClassName="z-30"
+                />
+              </div>
+
+              {/* Refresh */}
+              <button
+                type="button"
+                onClick={() => fetchPickerImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter)}
+                title="Refresh images"
+                className="w-9 h-9 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+              >
+                <HiOutlineRefresh className={`w-4 h-4 ${loadingPickerImages ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            {/* Picker Images Grid */}
+            <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
+              {loadingPickerImages ? (
+                <div className="py-20 text-center text-stone-400">
+                  <div className="w-8 h-8 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
+                  <p className="text-xs font-medium text-stone-600">Loading theme placement images...</p>
+                </div>
+              ) : filteredPickerImages.length === 0 ? (
+                <div className="py-20 text-center text-stone-400">
+                  <HiOutlinePhotograph className="w-12 h-12 mx-auto text-stone-300 mb-2 stroke-1" />
+                  <p className="text-sm font-medium text-stone-600">No images found</p>
+                  <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto">
+                    No images matching the selected theme and placement. Try switching to "All Website Themes" or "All Placements".
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+                  {filteredPickerImages.map((img, idx) => {
+                    const imgUrl = img.url || img.image?.url;
+                    const imgTitle = img.name || img.title || img.recordTitle || `Theme Image ${idx + 1}`;
+                    const imgPlacement = img.placement || img.type || img.filterType || 'media';
+                    const imgTheme = img.themeName || img.themeId?.name || '';
+                    const isCurrentlySelected = imageUrl === imgUrl;
+
+                    return (
+                      <div
+                        key={img.id || img._id || idx}
+                        onClick={() => handleSelectPickerImage(img)}
+                        className={`group relative rounded-2xl border overflow-hidden bg-white cursor-pointer transition-all duration-200 flex flex-col ${
+                          isCurrentlySelected
+                            ? 'border-[var(--theme-primary,#8b6f4e)] ring-2 ring-[var(--theme-primary,#8b6f4e)]/40 shadow-md'
+                            : 'border-stone-200/90 hover:border-[#8a6d4b] hover:shadow-md hover:-translate-y-0.5'
+                        }`}
+                      >
+                        {/* Image Thumbnail */}
+                        <div className="relative aspect-[16/10] bg-stone-900 overflow-hidden">
+                          <img
+                            src={getMediaUrl(imgUrl)}
+                            alt={imgTitle}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+
+                          {/* Overlay button on hover */}
+                          <div className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                            <span className="px-3 py-1.5 rounded-xl bg-white text-stone-900 text-xs font-bold shadow-md flex items-center gap-1.5">
+                              <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" style={{ color: 'var(--theme-primary, #8b6f4e)' }} />
+                              <span>Select</span>
+                            </span>
+                          </div>
+
+                          {/* Selected Badge */}
+                          {isCurrentlySelected && (
+                            <div style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }} className="absolute top-2 right-2 px-2 py-0.5 rounded-full text-white text-[10px] font-bold shadow-xs">
+                              Current
+                            </div>
+                          )}
+
+                          {/* Placement pill */}
+                          <div className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-stone-900/75 backdrop-blur-xs text-white text-[9.5px] font-semibold uppercase tracking-wider">
+                            {imgPlacement}
+                          </div>
+                        </div>
+
+                        {/* Image details */}
+                        <div className="p-2.5 space-y-1">
+                          <p className="text-xs font-semibold text-stone-800 truncate" title={imgTitle}>
+                            {imgTitle}
+                          </p>
+                          {imgTheme && (
+                            <p className="text-[10px] text-stone-400 truncate flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#8a6d4b]" />
+                              <span>{imgTheme}</span>
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Picker Footer */}
+            <div className="px-5 py-3 border-t border-stone-150 bg-stone-50 flex items-center justify-between shrink-0">
+              <span className="text-xs text-stone-500 font-medium">
+                {filteredPickerImages.length} images available
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setIsMediaPickerOpen(false)}
+                className="px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-xs font-semibold text-stone-700 transition cursor-pointer shadow-2xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      ), document.body)}
+      {/* ─── COMMON PRODUCT PICKER MODAL POPUP ─── */}
+      <ProductPickerModal
+        isOpen={isProductPickerOpen}
+        onClose={() => setIsProductPickerOpen(false)}
+        onApply={(newList) => {
+          setSelectedProducts(newList);
+          toast.success(`${newList.length} product${newList.length === 1 ? '' : 's'} selected`);
+        }}
+        initialSelected={selectedProducts}
+        title={`Select Products for ${title || 'Campaign Group'}`}
+        subtitle="Search and select products across pages. Selections stay saved when navigating pages."
+      />
     </div>
   );
 }

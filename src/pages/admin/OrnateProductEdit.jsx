@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
@@ -3115,7 +3116,7 @@ export default function OrnateProductEdit() {
 
       {/* ─── Image Zoom Preview Modal with - / + Controls ───────────── */}
       {previewModalImage && (
-        <div
+        createPortal(<div
           className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 bg-stone-950/85 backdrop-blur-md animate-fadeIn select-none"
           onClick={handleCloseImagePreview}
         >
@@ -3254,7 +3255,7 @@ export default function OrnateProductEdit() {
               </button>
             </div>
           </div>
-        </div>
+        </div>, document.body)
       )}
     </div>
   );
