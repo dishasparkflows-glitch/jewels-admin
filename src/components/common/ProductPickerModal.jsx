@@ -87,7 +87,7 @@ export default function ProductPickerModal({
       const params = new URLSearchParams();
       params.append('page', String(page));
       params.append('limit', String(limit));
-      params.append('status', 'active');
+      params.append('status', 'approved');
       if (type && type !== 'all') {
         params.append('productType', type);
       }

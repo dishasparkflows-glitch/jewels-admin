@@ -40,6 +40,15 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import ImageCompressionDemo from '../../components/common/ImageCompressionDemo';
 
+const LUXURY_BUTTON_PALETTES = [
+  { name: 'Emerald Luxury', bg: '#1f3a2b', hover: '#162b20', text: '#ffffff' },
+  { name: 'Warm Gold', bg: '#8b6f4e', hover: '#755c3e', text: '#ffffff' },
+  { name: 'Champagne Ochre', bg: '#c58b32', hover: '#a87325', text: '#ffffff' },
+  { name: 'Velvet Plum', bg: '#4a1525', hover: '#3b0e1b', text: '#ffffff' },
+  { name: 'Midnight Onyx', bg: '#1a1a1a', hover: '#0d0d0d', text: '#ffffff' },
+  { name: 'Classic Navy', bg: '#132238', hover: '#0c1624', text: '#ffffff' },
+];
+
 export default function SettingsView() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -54,6 +63,17 @@ export default function SettingsView() {
   const [themesList, setThemesList] = useState([]);
   const [loadingThemes, setLoadingThemes] = useState(false);
   const [savingTheme, setSavingTheme] = useState(false);
+
+  // Storefront Button Colors state
+  const [buttonColor, setButtonColor] = useState('#1f3a2b');
+  const [buttonHoverColor, setButtonHoverColor] = useState('#162b20');
+  const [buttonTextColor, setButtonTextColor] = useState('#ffffff');
+  const [topBarBgColor, setTopBarBgColor] = useState('#60574d');
+  const [topBarTextColor, setTopBarTextColor] = useState('#ffffff');
+  const [headerBgColor, setHeaderBgColor] = useState('#22201e');
+  const [headerTextColor, setHeaderTextColor] = useState('#ffffff');
+  const [footerBgColor, setFooterBgColor] = useState('#0f0d0b');
+  const [footerTextColor, setFooterTextColor] = useState('#c8b89e');
 
   // Trust Badges state
   const [trustBadges, setTrustBadges] = useState([]);
@@ -93,8 +113,10 @@ export default function SettingsView() {
   const fileInputRef = useRef(null);
   const logoInputRef = useRef(null);
   const mobileLogoInputRef = useRef(null);
+  const loginModalImageInputRef = useRef(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingMobileLogo, setUploadingMobileLogo] = useState(false);
+  const [uploadingLoginModalImage, setUploadingLoginModalImage] = useState(false);
 
   // Social Proof & Urgency state
   const [socialProofForm, setSocialProofForm] = useState({
@@ -166,9 +188,9 @@ export default function SettingsView() {
       });
 
       setMonetaryForm({
-        bankName: data.bankName ?? '',
-        bankAccountNumber: data.bankAccountNumber ?? '',
-        ifscCode: data.ifscCode ?? '',
+        bankName: data.bankDetails?.bankName ?? data.bankName ?? '',
+        bankAccountNumber: data.bankDetails?.bankAccountNumber ?? data.bankAccountNumber ?? '',
+        ifscCode: data.bankDetails?.ifscCode ?? data.ifscCode ?? '',
       });
 
       if (data.currentThemeId) {
@@ -177,6 +199,16 @@ export default function SettingsView() {
         setSelectedThemeId(themeId || '');
         if (themeName) setSelectedThemeName(themeName);
       }
+      const colors = data.themeColors || {};
+      setButtonColor(colors.buttonColor || data.buttonColor || '#1f3a2b');
+      setButtonHoverColor(colors.buttonHoverColor || data.buttonHoverColor || '#162b20');
+      setButtonTextColor(colors.buttonTextColor || data.buttonTextColor || '#ffffff');
+      setTopBarBgColor(colors.topBarBgColor || '#60574d');
+      setTopBarTextColor(colors.topBarTextColor || '#ffffff');
+      setHeaderBgColor(colors.headerBgColor || '#22201e');
+      setHeaderTextColor(colors.headerTextColor || '#ffffff');
+      setFooterBgColor(colors.footerBgColor || '#0f0d0b');
+      setFooterTextColor(colors.footerTextColor || '#c8b89e');
     } catch (err) {
       console.error('Failed to load settings:', err);
       toast.error('Failed to load system settings');
@@ -222,20 +254,30 @@ export default function SettingsView() {
         certificateImageUrl: settings.certificateImage?.url ?? '',
       });
       setMonetaryForm({
-        bankName: settings.bankName ?? '',
-        bankAccountNumber: settings.bankAccountNumber ?? '',
-        ifscCode: settings.ifscCode ?? '',
+        bankName: settings.bankDetails?.bankName ?? settings.bankName ?? '',
+        bankAccountNumber: settings.bankDetails?.bankAccountNumber ?? settings.bankAccountNumber ?? '',
+        ifscCode: settings.bankDetails?.ifscCode ?? settings.ifscCode ?? '',
       });
       setTrustBadges(Array.isArray(settings.trustBadges) ? settings.trustBadges : []);
       setImageCompression({ ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(settings.mediaCompression || {}) });
       const initialThemeId = typeof settings.currentThemeId === 'object' ? settings.currentThemeId?._id : settings.currentThemeId;
       setSelectedThemeId(initialThemeId || '');
+      const colors = settings.themeColors || {};
+      setButtonColor(colors.buttonColor || settings.buttonColor || '#1f3a2b');
+      setButtonHoverColor(colors.buttonHoverColor || settings.buttonHoverColor || '#162b20');
+      setButtonTextColor(colors.buttonTextColor || settings.buttonTextColor || '#ffffff');
+      setTopBarBgColor(colors.topBarBgColor || '#60574d');
+      setTopBarTextColor(colors.topBarTextColor || '#ffffff');
+      setHeaderBgColor(colors.headerBgColor || '#22201e');
+      setHeaderTextColor(colors.headerTextColor || '#ffffff');
+      setFooterBgColor(colors.footerBgColor || '#0f0d0b');
+      setFooterTextColor(colors.footerTextColor || '#c8b89e');
     }
     setActiveModal(null);
   };
 
-  // Upload Logo handler
-  const handleLogoUpload = async (event, isMobile = false) => {
+  // Upload Logo and Banner handler
+  const handleLogoUpload = async (event, type = 'desktop') => {
     const file = event.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -243,9 +285,23 @@ export default function SettingsView() {
       event.target.value = '';
       return;
     }
-    const setter = isMobile ? setUploadingMobileLogo : setUploadingLogo;
-    const ref = isMobile ? mobileLogoInputRef : logoInputRef;
-    const field = isMobile ? 'mobileLogoImage' : 'logoImage';
+    let setter = setUploadingLogo;
+    let ref = logoInputRef;
+    let field = 'logoImage';
+    let label = 'Website logo';
+
+    if (type === 'mobile' || type === true) {
+      setter = setUploadingMobileLogo;
+      ref = mobileLogoInputRef;
+      field = 'mobileLogoImage';
+      label = 'Mobile logo';
+    } else if (type === 'loginModal') {
+      setter = setUploadingLoginModalImage;
+      ref = loginModalImageInputRef;
+      field = 'loginModalImage';
+      label = 'Login modal banner';
+    }
+
     try {
       setter(true);
       const { fileUrl, key } = await uploadWithPresignedUrl(file, 'brand-logos');
@@ -254,12 +310,28 @@ export default function SettingsView() {
         [field]: { url: fileUrl, key: key || current.key || '' },
       });
       setSettings(response.data?.data || { ...settings, [field]: { url: fileUrl, key: key } });
-      toast.success(`${isMobile ? 'Mobile' : 'Website'} logo saved`);
+      toast.success(`${label} saved`);
     } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Logo upload failed');
+      toast.error(err.response?.data?.message || err.message || 'Image upload failed');
     } finally {
       setter(false);
       if (ref.current) ref.current.value = '';
+    }
+  };
+
+  const handleRemoveLoginModalImage = async (e) => {
+    e.stopPropagation();
+    try {
+      setUploadingLoginModalImage(true);
+      const response = await api.put('/settings', {
+        loginModalImage: { url: '', key: '' },
+      });
+      setSettings(response.data?.data || { ...settings, loginModalImage: { url: '', key: '' } });
+      toast.success('Login modal banner reset to default');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to remove banner');
+    } finally {
+      setUploadingLoginModalImage(false);
     }
   };
 
@@ -392,6 +464,11 @@ export default function SettingsView() {
     try {
       setSavingMonetary(true);
       const payload = {
+        bankDetails: {
+          bankName: monetaryForm.bankName,
+          bankAccountNumber: monetaryForm.bankAccountNumber,
+          ifscCode: monetaryForm.ifscCode,
+        },
         bankName: monetaryForm.bankName,
         bankAccountNumber: monetaryForm.bankAccountNumber,
         ifscCode: monetaryForm.ifscCode,
@@ -435,7 +512,23 @@ export default function SettingsView() {
     }
     try {
       setSavingTheme(true);
-      const res = await api.put('/settings', { currentThemeId: selectedThemeId });
+      const res = await api.put('/settings', {
+        currentThemeId: selectedThemeId,
+        themeColors: {
+          buttonColor,
+          buttonHoverColor,
+          buttonTextColor,
+          topBarBgColor,
+          topBarTextColor,
+          headerBgColor,
+          headerTextColor,
+          footerBgColor,
+          footerTextColor,
+        },
+        buttonColor,
+        buttonHoverColor,
+        buttonTextColor,
+      });
       const updated = res.data?.data || {};
       setSettings(updated);
       const themeObj = updated.currentThemeId;
@@ -445,7 +538,7 @@ export default function SettingsView() {
         '';
       setSelectedThemeName(themeName);
       setActiveModal(null);
-      toast.success('Storefront theme updated successfully');
+      toast.success('Storefront theme & colors updated successfully');
     } catch (err) {
       console.error('Failed to save theme:', err);
       toast.error(err.response?.data?.message || 'Failed to update theme');
@@ -535,10 +628,14 @@ export default function SettingsView() {
   const settingBoxes = [
     {
       id: 'logos',
-      title: 'Website Logos',
-      subtitle: 'Manage your desktop and mobile brand logos and storefront icons.',
+      title: 'Website Logos & Auth Banner',
+      subtitle: 'Manage desktop & mobile logos, and the customer login modal banner.',
       icon: HiOutlinePhotograph,
-      badgeText: settings?.logoImage?.url ? 'Desktop & Mobile logos active' : 'Tap to configure logos',
+      badgeText: settings?.logoImage?.url
+        ? settings?.loginModalImage?.url
+          ? 'Logos & Login banner active'
+          : 'Desktop & Mobile logos active'
+        : 'Tap to configure logos & banner',
       hasPreview: Boolean(settings?.logoImage?.url),
       logoUrl: settings?.logoImage?.url,
     },
@@ -584,10 +681,12 @@ export default function SettingsView() {
     },
     {
       id: 'theme',
-      title: 'Storefront Theme',
-      subtitle: 'Select active website theme to apply banners, colors, and layout.',
+      title: 'Storefront Theme & Colors',
+      subtitle: 'Manage active website theme, button colors, and header/footer styling from one place.',
       icon: HiOutlineColorSwatch,
-      badgeText: selectedThemeName ? `Active: ${selectedThemeName}` : 'Select active storefront theme',
+      badgeText: selectedThemeName
+        ? `Active: ${selectedThemeName} · Button: ${(buttonColor || '#1f3a2b').toUpperCase()}`
+        : `Colors Configured`,
       hasPreview: false,
     },
     {
@@ -739,7 +838,7 @@ export default function SettingsView() {
             className={`relative flex flex-col w-full my-auto rounded-2xl bg-white border border-stone-200 shadow-2xl overflow-hidden transition-all duration-200 ${
               activeModal === 'compression'
                 ? 'max-w-4xl'
-                : activeModal === 'business'
+                : activeModal === 'business' || activeModal === 'logos'
                 ? 'max-w-3xl'
                 : 'max-w-2xl'
             }`}
@@ -748,7 +847,7 @@ export default function SettingsView() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 bg-[#fdfcfb]">
               <div>
                 <h2 className="text-base font-bold text-stone-900 tracking-tight">
-                  {activeModal === 'logos' && 'Website Logos'}
+                  {activeModal === 'logos' && 'Website Logos & Auth Banner'}
                   {activeModal === 'compression' && 'Global Image Compression'}
                   {activeModal === 'trust' && 'Trust Strip Configuration'}
                   {activeModal === 'business' && 'Business & Identity'}
@@ -758,7 +857,7 @@ export default function SettingsView() {
                   {activeModal === 'socialMedia' && 'Social Media & Brand Channels'}
                 </h2>
                 <p className="mt-0.5 text-xs text-stone-500">
-                  {activeModal === 'logos' && 'Manage your desktop and mobile brand logos.'}
+                  {activeModal === 'logos' && 'Manage your desktop & mobile logos, and the customer login modal banner.'}
                   {activeModal === 'compression' && 'Set automatic image optimization and quality presets.'}
                   {activeModal === 'trust' && 'Manage trust badges shown in the storefront assurance strip.'}
                   {activeModal === 'business' && 'Store name, credentials, address, and policies.'}
@@ -783,49 +882,86 @@ export default function SettingsView() {
               {/* 1. Website Logos Modal */}
               {activeModal === 'logos' && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     {[
                       {
                         label: 'Desktop logo',
                         field: 'logoImage',
                         inputRef: logoInputRef,
                         busy: uploadingLogo,
-                        mobile: false,
+                        type: 'desktop',
                         desc: 'Main brand logo displayed on desktop headers.',
+                        format: 'PNG, JPG, WebP or SVG',
                       },
                       {
                         label: 'Mobile logo (optional)',
                         field: 'mobileLogoImage',
                         inputRef: mobileLogoInputRef,
                         busy: uploadingMobileLogo,
-                        mobile: true,
+                        type: 'mobile',
                         desc: 'Optimized emblem for smaller mobile screens.',
+                        format: 'PNG, JPG, WebP or SVG',
                       },
-                    ].map(({ label, field, inputRef, busy, mobile, desc }) => (
+                      {
+                        label: 'Login / Sign In Banner',
+                        field: 'loginModalImage',
+                        inputRef: loginModalImageInputRef,
+                        busy: uploadingLoginModalImage,
+                        type: 'loginModal',
+                        desc: 'Visual image shown on login & register modal popups.',
+                        format: 'PNG, JPG, WebP (Portrait recommended)',
+                        removable: true,
+                      },
+                    ].map(({ label, field, inputRef, busy, type, desc, format, removable }) => (
                       <div key={field} className="rounded-xl border border-stone-200 bg-[#fbfaf8] p-4 flex flex-col justify-between">
                         <div>
-                          <p className="text-xs font-bold text-stone-800">{label}</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-bold text-stone-800">{label}</p>
+                            {removable && settings?.[field]?.url && (
+                              <button
+                                type="button"
+                                onClick={handleRemoveLoginModalImage}
+                                disabled={busy}
+                                className="text-[10px] text-red-500 hover:text-red-700 font-medium underline"
+                              >
+                                Reset to Default
+                              </button>
+                            )}
+                          </div>
                           <p className="mt-0.5 text-[11px] text-stone-500">{desc}</p>
                         </div>
                         <input
                           ref={inputRef}
                           type="file"
                           accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                          onChange={(event) => handleLogoUpload(event, mobile)}
+                          onChange={(event) => handleLogoUpload(event, type)}
                           className="sr-only"
                         />
                         <button
                           type="button"
                           onClick={() => inputRef.current?.click()}
                           disabled={busy}
-                          className="mt-3 min-h-28 w-full flex flex-col items-center justify-center rounded-xl border border-dashed border-[#d8c8b2] bg-white p-3 hover:border-[#8f6d43] hover:bg-[#faf5ee] disabled:opacity-60 transition-all focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30"
+                          className="mt-3 min-h-28 w-full flex flex-col items-center justify-center rounded-xl border border-dashed border-[#d8c8b2] bg-white p-3 hover:border-[#8f6d43] hover:bg-[#faf5ee] disabled:opacity-60 transition-all focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 overflow-hidden relative group"
                         >
                           {settings?.[field]?.url ? (
-                            <img
-                              src={getMediaUrl(settings[field].url)}
-                              alt={`${label} preview`}
-                              className="max-h-16 max-w-full object-contain"
-                            />
+                            <div className="relative w-full h-full flex items-center justify-center">
+                              <img
+                                src={getMediaUrl(settings[field].url)}
+                                alt={`${label} preview`}
+                                className={field === 'loginModalImage' ? 'max-h-24 w-auto object-cover rounded shadow-xs' : 'max-h-16 max-w-full object-contain'}
+                              />
+                              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded transition-opacity text-white text-[10px] font-medium">
+                                Change Image
+                              </div>
+                            </div>
+                          ) : field === 'loginModalImage' ? (
+                            <div className="flex flex-col items-center text-center">
+                              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#faf6f0] text-[#8f6d43] mb-1.5">
+                                <HiOutlinePhotograph className="h-5 w-5" />
+                              </span>
+                              <span className="text-xs font-semibold text-stone-700">Choose custom image</span>
+                              <span className="text-[10px] text-stone-400 mt-0.5">default auth banner in use</span>
+                            </div>
                           ) : (
                             <div className="flex flex-col items-center text-center">
                               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#faf6f0] text-[#8f6d43] mb-1.5">
@@ -837,7 +973,7 @@ export default function SettingsView() {
                           )}
                         </button>
                         <p className="mt-2 text-center text-[10px] text-stone-400">
-                          {busy ? 'Saving logo…' : 'PNG, JPG, WebP or SVG'}
+                          {busy ? 'Saving…' : format}
                         </p>
                       </div>
                     ))}
@@ -1217,82 +1353,430 @@ export default function SettingsView() {
                 </div>
               )}
 
-              {/* Theme Selector Modal Body */}
+              {/* Theme & Button Color Modal Body */}
               {activeModal === 'theme' && (
-                <div className="space-y-4 max-h-[70vh] overflow-y-auto p-5">
+                <div className="space-y-5 max-h-[75vh] overflow-y-auto p-5">
                   <div className="bg-[#faf6f0] border border-[#ebdcc8]/80 rounded-xl p-3.5 text-xs text-stone-700 leading-relaxed">
-                    Choose the active theme for your storefront. The selected theme&apos;s banners, featured showcases, and promotional media will automatically be served across the website.
+                    Choose the active theme for your storefront and customize your global button colors. Action buttons across the entire website and all modals (such as Schedule Appointment, Sign In, Add to Cart, Explore Jewellery, Copy Code) will instantly use your configured color.
                   </div>
 
-                  {loadingThemes ? (
-                    <div className="py-12 flex flex-col items-center justify-center gap-2">
-                      <div className="w-6 h-6 border-2 border-[#8f6d43] border-t-transparent rounded-full animate-spin" />
-                      <span className="text-xs text-stone-500">Loading themes...</span>
+                  {/* ── Section A: Global Storefront Button Styling ── */}
+                  <div className="bg-stone-50/90 border border-stone-200/90 rounded-2xl p-4.5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-2">
+                          <span className="w-3 h-3 rounded-full border border-black/10 shadow-2xs" style={{ backgroundColor: buttonColor }} />
+                          Global Storefront Button Color
+                        </h4>
+                        <p className="text-[11px] text-stone-500 mt-0.5">
+                          Controls the button color across all modals, pages, and interactive actions from one place
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md border border-stone-200 bg-white text-stone-800 shadow-2xs">
+                          {(buttonColor || '#1f3a2b').toUpperCase()}
+                        </span>
+                      </div>
                     </div>
-                  ) : themesList.length === 0 ? (
-                    <div className="py-8 text-center text-xs text-stone-500">
-                      No themes found. Create a theme in Website Themes first.
+
+                    {/* Live Button Preview Card */}
+                    <div className="bg-white border border-stone-200 rounded-xl p-3.5 shadow-2xs space-y-2">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                        Live Storefront Button Preview
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
+                        <button
+                          type="button"
+                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
+                          className="px-4 py-2 rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-default"
+                        >
+                          <span>Schedule Appointment</span>
+                        </button>
+                        <button
+                          type="button"
+                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
+                          className="px-4 py-2 rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-default"
+                        >
+                          <span>Sign In</span>
+                        </button>
+                        <button
+                          type="button"
+                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
+                          className="px-4 py-2 rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-default"
+                        >
+                          <span>EXPLORE JEWELLERY</span>
+                        </button>
+                        <button
+                          type="button"
+                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-semibold shadow-xs flex items-center gap-1.5 cursor-default"
+                        >
+                          <span>Copy Code</span>
+                        </button>
+                      </div>
                     </div>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {themesList.map((t) => {
-                        const isSelected = String(selectedThemeId) === String(t._id);
-                        return (
-                          <div
-                            key={t._id}
-                            onClick={() => setSelectedThemeId(t._id)}
-                            className={`relative cursor-pointer rounded-xl border p-4 transition-all duration-150 flex flex-col justify-between ${
-                              isSelected
-                                ? 'border-[#8f6d43] bg-[#faf6f0]/70 ring-2 ring-[#8f6d43]/20 shadow-xs'
-                                : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50/50'
-                            }`}
-                          >
-                            <div>
-                              <div className="flex items-start justify-between gap-2">
-                                <h4 className="text-sm font-bold text-stone-900">{t.name}</h4>
+
+                    {/* Quick Luxury Presets */}
+                    <div className="space-y-1.5">
+                      <label className="text-[11px] font-semibold text-stone-700">
+                        Quick Luxury Palettes
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                        {LUXURY_BUTTON_PALETTES.map((preset) => {
+                          const isCurrent = (buttonColor || '').toLowerCase() === preset.bg.toLowerCase();
+                          return (
+                            <button
+                              key={preset.name}
+                              type="button"
+                              onClick={() => {
+                                setButtonColor(preset.bg);
+                                setButtonHoverColor(preset.hover);
+                                setButtonTextColor(preset.text);
+                              }}
+                              className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
+                                isCurrent
+                                  ? 'border-stone-900 bg-white ring-2 ring-stone-900/15 shadow-xs'
+                                  : 'border-stone-200 bg-white/70 hover:bg-white hover:border-stone-300'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2">
                                 <span
-                                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                                    t.status === 'active'
-                                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                      : 'bg-stone-100 text-stone-600 border border-stone-200'
-                                  }`}
-                                >
-                                  {t.status}
+                                  className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-2xs"
+                                  style={{ backgroundColor: preset.bg }}
+                                />
+                                <span className="text-[10px] font-bold text-stone-800 truncate">
+                                  {preset.name}
                                 </span>
                               </div>
-                              <p className="mt-1 font-mono text-[11px] text-stone-400">{t.code}</p>
-                              {t.description && (
-                                <p className="mt-2 text-xs text-stone-600 line-clamp-2">
-                                  {t.description}
-                                </p>
-                              )}
-                            </div>
-
-                            <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
-                              <span className="text-[11px] text-stone-500">
-                                {isSelected ? (
-                                  <span className="font-semibold text-[#8f6d43] flex items-center gap-1">
-                                    <HiOutlineCheck className="w-3.5 h-3.5" /> Selected
-                                  </span>
-                                ) : (
-                                  <span className="text-stone-400">Click to select</span>
-                                )}
+                              <span className="font-mono text-[9px] text-stone-400">
+                                {preset.bg}
                               </span>
-                              <div
-                                className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                                  isSelected
-                                    ? 'border-[#8f6d43] bg-[#8f6d43]'
-                                    : 'border-stone-300 bg-white'
-                                }`}
-                              >
-                                {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Custom Color Pickers */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-stone-200/80">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                          Button Background Color
+                        </label>
+                        <div className="flex items-center gap-2 h-9 px-2 rounded-lg border border-stone-200 bg-white shadow-2xs">
+                          <input
+                            type="color"
+                            value={buttonColor}
+                            onChange={(e) => setButtonColor(e.target.value)}
+                            className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0"
+                          />
+                          <input
+                            type="text"
+                            value={buttonColor}
+                            onChange={(e) => setButtonColor(e.target.value)}
+                            className="w-full text-xs font-mono font-medium text-stone-800 outline-none uppercase"
+                            placeholder="#1F3A2B"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                          Button Hover Color
+                        </label>
+                        <div className="flex items-center gap-2 h-9 px-2 rounded-lg border border-stone-200 bg-white shadow-2xs">
+                          <input
+                            type="color"
+                            value={buttonHoverColor}
+                            onChange={(e) => setButtonHoverColor(e.target.value)}
+                            className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0"
+                          />
+                          <input
+                            type="text"
+                            value={buttonHoverColor}
+                            onChange={(e) => setButtonHoverColor(e.target.value)}
+                            className="w-full text-xs font-mono font-medium text-stone-800 outline-none uppercase"
+                            placeholder="#162B20"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                          Button Text Color
+                        </label>
+                        <div className="flex items-center gap-2 h-9 px-2 rounded-lg border border-stone-200 bg-white shadow-2xs">
+                          <input
+                            type="color"
+                            value={buttonTextColor}
+                            onChange={(e) => setButtonTextColor(e.target.value)}
+                            className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0"
+                          />
+                          <input
+                            type="text"
+                            value={buttonTextColor}
+                            onChange={(e) => setButtonTextColor(e.target.value)}
+                            className="w-full text-xs font-mono font-medium text-stone-800 outline-none uppercase"
+                            placeholder="#FFFFFF"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Section A2: Header, Top Bar & Footer Colors ── */}
+                  <div className="rounded-2xl border border-stone-200/80 bg-stone-50/50 p-4 space-y-4">
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800 flex items-center justify-between">
+                        <span>Storefront Header & Footer Colors</span>
+                      </h4>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        Customize background and text colors for the top announcement bar, main header, and footer.
+                      </p>
+                    </div>
+
+                    {/* Live Header & Footer Preview */}
+                    <div className="rounded-xl border border-stone-200 overflow-hidden shadow-2xs text-[11px]">
+                      {/* Top Bar Preview */}
+                      <div
+                        style={{ backgroundColor: topBarBgColor, color: topBarTextColor }}
+                        className="px-3 py-1 flex items-center justify-between transition-colors"
+                      >
+                        <span className="flex items-center gap-1 font-medium text-[10px]">
+                          <span>🎥</span> Virtual Appointment
+                        </span>
+                        <span className="truncate max-w-[200px] text-[10px]">BIS Hallmarked & Certified Jewellery</span>
+                        <span className="text-[10px]">+91 84600-91955</span>
+                      </div>
+
+                      {/* Main Header Preview */}
+                      <div
+                        style={{ backgroundColor: headerBgColor, color: headerTextColor }}
+                        className="px-3 py-2.5 flex items-center justify-between transition-colors"
+                      >
+                        <span className="font-serif font-bold tracking-widest text-xs">NEIRAH</span>
+                        <div className="flex items-center gap-2 text-[10px] opacity-80">
+                          <span>RINGS</span>
+                          <span>EARRINGS</span>
+                          <span>PENDANTS</span>
+                          <span>COLLECTION</span>
+                        </div>
+                        <button
+                          type="button"
+                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
+                          className="px-2.5 py-1 rounded-md text-[10px] font-semibold"
+                        >
+                          Explore
+                        </button>
+                      </div>
+
+                      {/* Footer Preview */}
+                      <div
+                        style={{ backgroundColor: footerBgColor, color: footerTextColor }}
+                        className="px-3 py-2 flex items-center justify-between transition-colors"
+                      >
+                        <span className="font-serif font-semibold text-[10px]">NEIRAH FINE JEWELLERY</span>
+                        <span className="text-[9px] opacity-75">© 2026 Neirah. All rights reserved.</span>
+                      </div>
+                    </div>
+
+                    {/* Pickers Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+                      {/* 1. Top Bar */}
+                      <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
+                        <span className="text-[11px] font-bold text-stone-800 block">Top Announcement Bar</span>
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
+                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
+                            <input
+                              type="color"
+                              value={topBarBgColor}
+                              onChange={(e) => setTopBarBgColor(e.target.value)}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              value={topBarBgColor}
+                              onChange={(e) => setTopBarBgColor(e.target.value)}
+                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Text Color</label>
+                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
+                            <input
+                              type="color"
+                              value={topBarTextColor}
+                              onChange={(e) => setTopBarTextColor(e.target.value)}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              value={topBarTextColor}
+                              onChange={(e) => setTopBarTextColor(e.target.value)}
+                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 2. Main Header */}
+                      <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
+                        <span className="text-[11px] font-bold text-stone-800 block">Main Header & Nav</span>
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
+                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
+                            <input
+                              type="color"
+                              value={headerBgColor}
+                              onChange={(e) => setHeaderBgColor(e.target.value)}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              value={headerBgColor}
+                              onChange={(e) => setHeaderBgColor(e.target.value)}
+                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Text Color</label>
+                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
+                            <input
+                              type="color"
+                              value={headerTextColor}
+                              onChange={(e) => setHeaderTextColor(e.target.value)}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              value={headerTextColor}
+                              onChange={(e) => setHeaderTextColor(e.target.value)}
+                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 3. Footer */}
+                      <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
+                        <span className="text-[11px] font-bold text-stone-800 block">Footer Section</span>
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
+                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
+                            <input
+                              type="color"
+                              value={footerBgColor}
+                              onChange={(e) => setFooterBgColor(e.target.value)}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              value={footerBgColor}
+                              onChange={(e) => setFooterBgColor(e.target.value)}
+                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Text Color</label>
+                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
+                            <input
+                              type="color"
+                              value={footerTextColor}
+                              onChange={(e) => setFooterTextColor(e.target.value)}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              value={footerTextColor}
+                              onChange={(e) => setFooterTextColor(e.target.value)}
+                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Section B: Storefront Active Theme Selector ── */}
+                  <div className="space-y-2.5 pt-1">
+                    <label className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                      Active Storefront Theme
+                    </label>
+
+                    {loadingThemes ? (
+                      <div className="py-12 flex flex-col items-center justify-center gap-2">
+                        <div className="w-6 h-6 border-2 border-[#8f6d43] border-t-transparent rounded-full animate-spin" />
+                        <span className="text-xs text-stone-500">Loading themes...</span>
+                      </div>
+                    ) : themesList.length === 0 ? (
+                      <div className="py-8 text-center text-xs text-stone-500">
+                        No themes found. Create a theme in Website Themes first.
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        {themesList.map((t) => {
+                          const isSelected = String(selectedThemeId) === String(t._id);
+                          return (
+                            <div
+                              key={t._id}
+                              onClick={() => setSelectedThemeId(t._id)}
+                              className={`relative cursor-pointer rounded-xl border p-4 transition-all duration-150 flex flex-col justify-between ${
+                                isSelected
+                                  ? 'border-[#8f6d43] bg-[#faf6f0]/70 ring-2 ring-[#8f6d43]/20 shadow-xs'
+                                  : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50/50'
+                              }`}
+                            >
+                              <div>
+                                <div className="flex items-start justify-between gap-2">
+                                  <h4 className="text-sm font-bold text-stone-900">{t.name}</h4>
+                                  <span
+                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
+                                      t.status === 'active'
+                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                                        : 'bg-stone-100 text-stone-600 border border-stone-200'
+                                    }`}
+                                  >
+                                    {t.status}
+                                  </span>
+                                </div>
+                                <p className="mt-1 font-mono text-[11px] text-stone-400">{t.code}</p>
+                                {t.description && (
+                                  <p className="mt-2 text-xs text-stone-600 line-clamp-2">
+                                    {t.description}
+                                  </p>
+                                )}
+                              </div>
+
+                              <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
+                                <span className="text-[11px] text-stone-500">
+                                  {isSelected ? (
+                                    <span className="font-semibold text-[#8f6d43] flex items-center gap-1">
+                                      <HiOutlineCheck className="w-3.5 h-3.5" /> Selected
+                                    </span>
+                                  ) : (
+                                    <span className="text-stone-400">Click to select</span>
+                                  )}
+                                </span>
+                                <div
+                                  className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                                    isSelected
+                                      ? 'border-[#8f6d43] bg-[#8f6d43]'
+                                      : 'border-stone-300 bg-white'
+                                  }`}
+                                >
+                                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
@@ -1665,9 +2149,10 @@ export default function SettingsView() {
                   type="button"
                   onClick={handleSaveTheme}
                   disabled={savingTheme || !selectedThemeId}
-                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
+                  style={{ backgroundColor: buttonColor || '#1f3a2b', color: buttonTextColor || '#ffffff' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  {savingTheme ? 'Saving…' : 'Apply Theme'}
+                  {savingTheme ? 'Saving…' : 'Apply Theme & Colors'}
                 </button>
               )}
 

@@ -155,9 +155,9 @@ export const ThemeProvider = ({ children }) => {
         #admin-sidebar .sidebar-item-active,
         #admin-sidebar a.sidebar-item-active,
         #admin-sidebar button.sidebar-item-active {
-          background-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.14) !important;
-          color: ${DEFAULT_THEME.primary} !important;
-          border-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.32) !important;
+          background-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.22) !important;
+          color: ${DEFAULT_THEME.dark} !important;
+          border-color: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.38) !important;
           font-weight: 700 !important;
         }
 
@@ -371,9 +371,9 @@ export const ThemeProvider = ({ children }) => {
         #admin-sidebar .sidebar-item-active,
         #admin-sidebar a.sidebar-item-active,
         #admin-sidebar button.sidebar-item-active {
-          background-color: rgba(var(--theme-primary-rgb), 0.14) !important;
-          color: var(--theme-primary) !important;
-          border-color: rgba(var(--theme-primary-rgb), 0.32) !important;
+          background-color: rgba(var(--theme-primary-rgb), 0.22) !important;
+          color: var(--theme-primary-dark, var(--theme-primary)) !important;
+          border-color: rgba(var(--theme-primary-rgb), 0.38) !important;
           font-weight: 700 !important;
         }
 
@@ -382,7 +382,7 @@ export const ThemeProvider = ({ children }) => {
         }
 
         #admin-sidebar .sidebar-item-inactive:hover {
-          background-color: rgba(var(--theme-primary-rgb), 0.07) !important;
+          background-color: rgba(var(--theme-primary-rgb), 0.08) !important;
           color: var(--theme-primary) !important;
         }
 
@@ -393,14 +393,14 @@ export const ThemeProvider = ({ children }) => {
         #admin-sidebar a.hover\\:bg-\\[\\#FAF6F1\\]:hover:not(.sidebar-item-active),
         #admin-sidebar button.hover\\:bg-\\[\\#FAF6F1\\]:hover:not(.sidebar-item-active),
         #admin-sidebar [class*="hover:bg-[#FAF6F1]"]:hover:not(.sidebar-item-active) {
-          background-color: rgba(var(--theme-primary-rgb), 0.07) !important;
+          background-color: rgba(var(--theme-primary-rgb), 0.08) !important;
           color: var(--theme-primary) !important;
         }
 
         #admin-sidebar [class*="bg-[#F5EFE8]"],
         #admin-sidebar [class*="bg-[#f5efe8]"] {
-          background-color: rgba(var(--theme-primary-rgb), 0.14) !important;
-          color: var(--theme-primary) !important;
+          background-color: rgba(var(--theme-primary-rgb), 0.22) !important;
+          color: var(--theme-primary-dark, var(--theme-primary)) !important;
         }
 
         /* ─── 7. DROPDOWNS: HOVER, SELECTED, LISTBOX OPTIONS ─── */

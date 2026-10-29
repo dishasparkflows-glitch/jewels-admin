@@ -268,16 +268,45 @@ export default function FooterSettingsView() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-bold tracking-wider text-stone-500 uppercase mb-1">
-                COPYRIGHT NOTICE
-              </label>
+              <div className="flex items-center justify-between mb-1.5 flex-wrap gap-1">
+                <label className="block text-[10px] font-bold tracking-wider text-stone-600 uppercase">
+                  COPYRIGHT NOTICE
+                </label>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    Auto New Year Rollover ({new Date().getFullYear()})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!copyright.includes('{year}')) {
+                        const replaced = copyright ? copyright.replace(/(©|\(C\)|Copyright)\s*\d{4}/gi, '$1 {year}') : `© {year} Neirah Jewellers. All rights reserved.`;
+                        setCopyright(replaced);
+                      }
+                    }}
+                    title="Insert dynamic {year} token so it updates automatically every new year"
+                    className="px-2 py-0.5 rounded text-[10px] font-semibold bg-stone-100 hover:bg-stone-200 text-stone-700 border border-stone-300 transition-colors cursor-pointer"
+                  >
+                    + Use {'{year}'} Tag
+                  </button>
+                </div>
+              </div>
               <input
                 type="text"
                 value={copyright}
                 onChange={(e) => setCopyright(e.target.value)}
-                placeholder="© 2024 Neirah Jewellers. All rights reserved."
+                placeholder={`© ${new Date().getFullYear()} Neirah Jewellers. All rights reserved.`}
                 className="w-full h-8 px-3 text-xs font-medium rounded-md border border-stone-200 bg-stone-50 text-stone-800 focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#8b6f4e]/30 focus:border-[#8b6f4e] transition-all"
               />
+              <div className="mt-1.5 flex items-center justify-between text-[11px] text-stone-500">
+                <span className="text-[10.5px]">
+                  ⚡ The year automatically updates every New Year on the storefront without manual editing.
+                </span>
+                <span className="text-[10.5px] font-medium text-stone-600">
+                  Live storefront output: <strong className="text-stone-900 font-semibold">{copyright ? copyright.replace(/\{year\}/gi, new Date().getFullYear()).replace(/(©|\(C\)|Copyright)\s*\d{4}/gi, `$1 ${new Date().getFullYear()}`) : `© ${new Date().getFullYear()} Neirah Jewellers. All rights reserved.`}</strong>
+                </span>
+              </div>
             </div>
           </div>
 

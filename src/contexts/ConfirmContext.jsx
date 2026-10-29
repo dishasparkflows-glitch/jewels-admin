@@ -1,7 +1,20 @@
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
 import ConfirmModal from '../components/common/ConfirmModal';
 
-const ConfirmContext = createContext(null);
+// Fallback confirm implementation in case context is accessed outside provider or during Vite HMR re-evaluations
+const fallbackConfirm = async (options) => {
+  if (typeof window !== 'undefined' && window.confirm) {
+    return window.confirm(options?.message || options?.title || 'Are you sure?');
+  }
+  return true;
+};
+
+// Preserve singleton instance across Vite HMR and dynamic import lazy chunks
+const globalKey = '__JEWELS_CONFIRM_CONTEXT__';
+if (!globalThis[globalKey]) {
+  globalThis[globalKey] = createContext(fallbackConfirm);
+}
+const ConfirmContext = globalThis[globalKey];
 
 /**
  * Global Confirm Provider
@@ -71,10 +84,7 @@ export function ConfirmProvider({ children }) {
 
 export function useConfirm() {
   const context = useContext(ConfirmContext);
-  if (!context) {
-    throw new Error('useConfirm must be used within a ConfirmProvider');
-  }
-  return context;
+  return context || fallbackConfirm;
 }
 
 export default ConfirmContext;

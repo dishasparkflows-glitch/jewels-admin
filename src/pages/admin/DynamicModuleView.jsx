@@ -34,6 +34,7 @@ import OrnateSyncModal from '../../components/common/OrnateSyncModal';
 import { deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { openProductPreview } from '../../utils/productPreview';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
 const routeMap = {
   // ─── 1. Diamond Config ───────────────────────────
@@ -224,6 +225,7 @@ const routeMap = {
 
 const DynamicModuleView = () => {
   const confirm = useConfirm();
+  const { openImagePreview } = useImagePreview();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const config = routeMap[pathname] || {
@@ -852,7 +854,7 @@ const DynamicModuleView = () => {
 
   const handleDelete = async (id) => {
     const isConfirmed = await confirm({
-      title: `Delete ${config.title} Record`,
+      title: `Delete ${config.singularTitle || config.title}`,
       message: 'Are you sure you want to delete this record? This action cannot be undone.',
       confirmText: 'Delete',
       cancelText: 'Cancel',
@@ -1407,7 +1409,18 @@ const DynamicModuleView = () => {
                         {/* PRODUCT / ITEM COLUMN */}
                         <td className="py-2.5 px-3 text-stone-900 text-xs">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#8b6f4e]/40 transition-colors">
+                            <div
+                              onClick={(e) => {
+                                if (thumbUrl) {
+                                  e.stopPropagation();
+                                  openImagePreview(thumbUrl, { title: rowLabel });
+                                }
+                              }}
+                              className={`w-10 h-10 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#8b6f4e]/40 transition-colors ${
+                                thumbUrl ? 'cursor-zoom-in' : ''
+                              }`}
+                              title={thumbUrl ? 'Click to preview image' : undefined}
+                            >
                               {thumbUrl ? (
                                 <img
                                   src={thumbUrl}
@@ -1832,13 +1845,20 @@ const DynamicModuleView = () => {
                               </div>
                             ) : hasIcon ? (
                               <div className="flex flex-col items-center justify-center w-full h-full py-1">
-                                <div className="w-16 h-16 rounded-xl border border-stone-100 bg-[#FAF4ED]/50 p-2 flex items-center justify-center overflow-hidden shadow-2xs mb-2">
+                                <div
+                                  onClick={() => iconUrl && openImagePreview(getMediaUrl(iconUrl), { title: `${formData.name || 'Category'} Icon` })}
+                                  className="w-16 h-16 rounded-xl border border-stone-100 bg-[#FAF4ED]/50 p-2 flex items-center justify-center overflow-hidden shadow-2xs mb-2 cursor-pointer group/icon relative hover:border-[#8b6f4e]/50 transition-all"
+                                  title="Click to zoom in"
+                                >
                                   <img
                                     src={getMediaUrl(iconUrl)}
                                     alt="Category Icon"
-                                    className="w-full h-full object-contain"
+                                    className="w-full h-full object-contain transition-transform group-hover/icon:scale-105"
                                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                   />
+                                  <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/icon:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                    <HiOutlineEye className="w-4 h-4" />
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <label className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer">
@@ -1919,13 +1939,20 @@ const DynamicModuleView = () => {
                               </div>
                             ) : hasBanner ? (
                               <div className="flex flex-col items-center justify-center w-full h-full py-1">
-                                <div className="w-full h-20 rounded-lg overflow-hidden border border-stone-200 shadow-2xs mb-2 bg-stone-100">
+                                <div
+                                  onClick={() => bannerUrl && openImagePreview(getMediaUrl(bannerUrl), { title: `${formData.name || 'Category'} Banner` })}
+                                  className="w-full h-20 rounded-lg overflow-hidden border border-stone-200 shadow-2xs mb-2 bg-stone-100 cursor-pointer group/banner relative hover:border-[#8b6f4e]/50 transition-all"
+                                  title="Click to zoom in"
+                                >
                                   <img
                                     src={getMediaUrl(bannerUrl)}
                                     alt="Banner preview"
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-cover transition-transform group-hover/banner:scale-105"
                                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                   />
+                                  <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/banner:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                    <HiOutlineEye className="w-4 h-4" />
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <label className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer">
@@ -2017,13 +2044,20 @@ const DynamicModuleView = () => {
                                     </span>
                                   </div>
                                 ) : (
-                                  <div className="w-full h-20 rounded-lg overflow-hidden border border-stone-200 shadow-2xs mb-2 bg-stone-50 p-1 flex items-center justify-center">
+                                  <div
+                                    onClick={() => sizeChartUrl && openImagePreview(getMediaUrl(sizeChartUrl), { title: `${formData.name || 'Category'} Size Chart` })}
+                                    className="w-full h-20 rounded-lg overflow-hidden border border-stone-200 shadow-2xs mb-2 bg-stone-50 p-1 flex items-center justify-center cursor-pointer group/size relative hover:border-[#8b6f4e]/50 transition-all"
+                                    title="Click to zoom in"
+                                  >
                                     <img
                                       src={getMediaUrl(sizeChartUrl)}
                                       alt="Size Chart preview"
-                                      className="w-full h-full object-contain"
+                                      className="w-full h-full object-contain transition-transform group-hover/size:scale-105"
                                       onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                     />
+                                    <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/size:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                      <HiOutlineEye className="w-4 h-4" />
+                                    </div>
                                   </div>
                                 )}
                                 <div className="flex items-center gap-2">
@@ -2262,18 +2296,39 @@ const DynamicModuleView = () => {
                                 <RxDragHandleDots2 className="w-4 h-4 text-stone-400 shrink-0 cursor-grab" />
 
                                 {/* Thumbnail */}
-                                <div className="w-16 h-11 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden shrink-0">
+                                <div
+                                  onClick={() => {
+                                    if (bannerImg) {
+                                      const allPromoUrls = formData.promoBanners
+                                        .map((b) => getMediaUrl(b.imageUrl || (typeof b.image === 'object' ? b.image?.url : b.image) || ''))
+                                        .filter(Boolean);
+                                      openImagePreview(getMediaUrl(bannerImg), {
+                                        title: `Promo Banner: ${banner.title || 'Untitled'}`,
+                                        gallery: allPromoUrls,
+                                      });
+                                    }
+                                  }}
+                                  className={`w-16 h-11 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden shrink-0 group/p relative ${
+                                    bannerImg ? 'cursor-pointer hover:border-[#8b6f4e]/60 transition-all' : ''
+                                  }`}
+                                  title={bannerImg ? 'Click to view full preview' : undefined}
+                                >
                                   {bannerImg ? (
-                                    <img
-                                      src={getMediaUrl(bannerImg)}
-                                      alt={banner.title || 'Banner'}
-                                      className="w-full h-full object-cover"
-                                      onError={(e) => {
-                                        e.currentTarget.onerror = null;
-                                        e.currentTarget.src =
-                                          'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
-                                      }}
-                                    />
+                                    <>
+                                      <img
+                                        src={getMediaUrl(bannerImg)}
+                                        alt={banner.title || 'Banner'}
+                                        className="w-full h-full object-cover transition-transform group-hover/p:scale-105"
+                                        onError={(e) => {
+                                          e.currentTarget.onerror = null;
+                                          e.currentTarget.src =
+                                            'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
+                                        }}
+                                      />
+                                      <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/p:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                        <HiOutlineEye className="w-4 h-4" />
+                                      </div>
+                                    </>
                                   ) : (
                                     <div className="w-full h-full flex items-center justify-center text-[10px] text-stone-400">
                                       No Img
@@ -2828,15 +2883,32 @@ const DynamicModuleView = () => {
                       return (
                         <div key={idx} className="flex items-center gap-3 p-2.5 rounded-xl border border-stone-200 bg-[#faf7f2]/70">
                           {pImg ? (
-                            <img
-                              src={getMediaUrl(pImg)}
-                              alt={p.title}
-                              className="w-16 h-11 rounded-lg object-cover border border-stone-200 shrink-0"
-                              onError={(e) => {
-                                e.currentTarget.onerror = null;
-                                e.currentTarget.src = 'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
+                            <div
+                              onClick={() => {
+                                const allPromoUrls = viewingRecord.promoBanners
+                                  .map((b) => getMediaUrl(b.image?.url || b.url || (typeof b.image === 'string' ? b.image : '') || ''))
+                                  .filter(Boolean);
+                                openImagePreview(getMediaUrl(pImg), {
+                                  title: `Category Promo: ${p.title || 'Banner'}`,
+                                  gallery: allPromoUrls,
+                                });
                               }}
-                            />
+                              className="w-16 h-11 rounded-lg overflow-hidden border border-stone-200 shrink-0 cursor-pointer group/vd relative hover:border-[#8b6f4e]/60 transition-all"
+                              title="Click to view full preview"
+                            >
+                              <img
+                                src={getMediaUrl(pImg)}
+                                alt={p.title}
+                                className="w-full h-full object-cover transition-transform group-hover/vd:scale-105"
+                                onError={(e) => {
+                                  e.currentTarget.onerror = null;
+                                  e.currentTarget.src = 'https://placehold.co/100x70/f5efe6/8b6f4e?text=Banner';
+                                }}
+                              />
+                              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/vd:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                <HiOutlineEye className="w-4 h-4" />
+                              </div>
+                            </div>
                           ) : (
                             <div className="w-16 h-11 rounded-lg bg-stone-200 flex items-center justify-center text-stone-400 text-xs shrink-0">
                               No Img

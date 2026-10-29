@@ -49,6 +49,7 @@ import ProfileView from './pages/admin/ProfileView';
 import AnalyticsView from './pages/admin/AnalyticsView';
 import StaticPagesView from './pages/admin/StaticPagesView';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ImagePreviewProvider } from './contexts/ImagePreviewContext';
 
 const WebsiteThemesView = lazy(() => import('./pages/admin/WebsiteThemesView'));
 const GalleryView = lazy(() => import('./pages/admin/GalleryView'));
@@ -59,6 +60,7 @@ function App() {
       <AuthProvider>
         <ThemeProvider>
           <ConfirmProvider>
+            <ImagePreviewProvider>
             <Toaster
           position="top-right"
           containerStyle={{
@@ -251,6 +253,7 @@ function App() {
           {/* Root Redirect */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
+            </ImagePreviewProvider>
           </ConfirmProvider>
         </ThemeProvider>
       </AuthProvider>

@@ -38,11 +38,11 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   const isVisible = isMobileViewport ? mobileOpen : isOpen;
 
   const themeRgb = hexToRgb(currentTheme?.primary || '#8b6f4e');
-  const activeBg = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.14)`;
-  const activeBorder = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.32)`;
+  const activeBg = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.22)`;
+  const activeBorder = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.38)`;
   const activeGlow = `0 0 10px rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.55)`;
-  const activeShadow = `0 1px 3px rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.12)`;
-  const activeParentBg = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.08)`;
+  const activeShadow = `0 1px 3px rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.14)`;
+  const activeParentBg = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.10)`;
 
   // Only open catalog submenu by default; other submenus remain closed
   const [openSubmenus, setOpenSubmenus] = useState({
@@ -342,7 +342,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                       isActive
                         ? {
                             backgroundColor: activeBg,
-                            color: currentTheme?.primary || '#8b6f4e',
+                            color: currentTheme?.dark || currentTheme?.primary || '#644d32',
                             borderWidth: '1px',
                             borderStyle: 'solid',
                             borderColor: activeBorder,
@@ -453,7 +453,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                               isChildActive
                                 ? {
                                     backgroundColor: activeBg,
-                                    color: currentTheme?.primary || '#8b6f4e',
+                                    color: currentTheme?.dark || currentTheme?.primary || '#644d32',
                                     borderWidth: '1px',
                                     borderStyle: 'solid',
                                     borderColor: activeBorder,
