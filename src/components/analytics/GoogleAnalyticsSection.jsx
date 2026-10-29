@@ -6,8 +6,7 @@ import {
   HiOutlineGlobeAlt,
   HiOutlineClock,
   HiOutlineRefresh,
-  HiOutlineInformationCircle,
-  HiOutlineShoppingBag,
+    HiOutlineShoppingBag,
   HiOutlineChevronDown,
   HiOutlineSparkles,
 } from 'react-icons/hi';
@@ -16,6 +15,7 @@ import Pagination from '../common/Pagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 const DATE_RANGES = [
+  { label: 'Today', value: 'today' },
   { label: 'Last 7 Days', value: '7daysAgo' },
   { label: 'Last 30 Days', value: '30daysAgo' },
   { label: 'Last 90 Days', value: '90daysAgo' },
@@ -144,21 +144,7 @@ export default function GoogleAnalyticsSection({ isStandalone = false }) {
         </div>
       </div>
 
-      {/* ─── Setup Notice (if GA credentials not yet placed) ─── */}
-      {!isConfigured && (
-        <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 text-amber-900 text-xs">
-          <HiOutlineInformationCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="font-semibold text-amber-900">
-              Google Analytics Data API Ready for Service Account
-            </p>
-            <p className="mt-0.5 text-amber-800 leading-relaxed">
-              The reporting engine is fully built. Once your senior developer supplies the Google Cloud service account JSON or sets <code className="font-mono bg-amber-100/80 px-1 py-0.5 rounded text-[11px]">GA4_PROPERTY_ID</code> in the backend <code className="font-mono bg-amber-100/80 px-1 py-0.5 rounded text-[11px]">.env</code>, live production statistics will replace the demo data below automatically.
-            </p>
-          </div>
-        </div>
-      )}
-
+      
       {/* ─── 4 Summary Cards ─── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Total Users */}
@@ -257,7 +243,7 @@ export default function GoogleAnalyticsSection({ isStandalone = false }) {
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-sm font-semibold text-stone-900">Traffic Trend Over Time</h3>
-              <p className="text-xs text-stone-500">Daily breakdown of page views and visitor activity</p>
+              <p className="text-xs text-stone-500">{range === 'today' ? 'Hourly breakdown of page views and visitor activity' : 'Daily breakdown of page views and visitor activity'}</p>
             </div>
             {hoveredPoint && (
               <div className="text-xs bg-stone-900 text-white px-2.5 py-1 rounded-lg">

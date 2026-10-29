@@ -274,7 +274,7 @@ export default function GalleryView() {
       setItems(data.items || []);
       setCounts(data.counts || {});
       setTotalPages(data.pagination?.totalPages || 1);
-      setTotalItems(data.pagination?.total || data.total || (data.items || []).length);
+      setTotalItems(data.pagination?.totalDocs || (data.items || []).length);
       if (data.themes && (!themes || themes.length === 0)) {
         setThemes(data.themes);
         const active = data.themes.find((t) => t.isLive);

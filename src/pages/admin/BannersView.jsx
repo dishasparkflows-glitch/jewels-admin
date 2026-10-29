@@ -717,6 +717,8 @@ export default function BannersView() {
 
       if (selectedCategory) {
         payloadDisplay.categoryId = selectedCategory;
+      } else if (editingBanner) {
+        payloadDisplay.categoryId = null;
       }
       if (effectiveType === 'collectionbanner') {
         if (collectionGroup) payloadDisplay.collectionGroup = collectionGroup;
@@ -1211,6 +1213,13 @@ export default function BannersView() {
                               {bDesc}
                             </div>
                           )}
+                          {banner.display?.categoryId && (
+                            <div className="mt-1">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-medium bg-[#f5efe6] text-[#8a6d4b] border border-[#e8dccb]">
+                                Category: {banner.display.categoryId?.name || categories.find((c) => c._id === (banner.display.categoryId?._id || banner.display.categoryId))?.name || 'Assigned'}
+                              </span>
+                            </div>
+                          )}
                         </td>
 
                         {/* STATUS */}
@@ -1431,6 +1440,25 @@ export default function BannersView() {
                       />
                     </div>
                   </div>
+
+                  {/* Hero Banner extra options */}
+                  {currentBannerType.key === 'herobanner' && (
+                    <div className="pt-2 border-t border-stone-200/60">
+                      <label className="block text-xs font-semibold text-stone-700 mb-1">
+                        Category <span className="text-[11px] font-normal text-stone-400">(Optional)</span>
+                      </label>
+                      <Dropdown
+                        value={selectedCategory}
+                        onChange={setSelectedCategory}
+                        options={[
+                          { value: '', label: 'Select Category (Optional)' },
+                          ...categories.map((c) => ({ value: c._id, label: c.name })),
+                        ]}
+                        buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                        menuClassName="z-30"
+                      />
+                    </div>
+                  )}
 
                   {/* Collection Banner extra options */}
                   {currentBannerType.key === 'collectionbanner' && (

@@ -1712,10 +1712,10 @@ const DynamicModuleView = () => {
 
             {isCategoryPage ? (
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* ─── TOP ROW: Category Name & Theme ─── */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* ─── TOP ROW: Category Name, Theme & Category Status ─── */}
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-start">
                   {/* Category Name */}
-                  <div>
+                  <div className="sm:col-span-5">
                     <label className="text-xs font-bold text-stone-800 mb-1.5 block">
                       Category Name <span className="text-rose-500 font-bold">*</span>
                     </label>
@@ -1732,7 +1732,7 @@ const DynamicModuleView = () => {
                   </div>
 
                   {/* Theme */}
-                  <div>
+                  <div className="sm:col-span-4">
                     <label className="text-xs font-bold text-stone-800 mb-1.5 block">
                       Theme <span className="text-rose-500 font-bold">*</span>
                     </label>
@@ -1753,6 +1753,38 @@ const DynamicModuleView = () => {
                       size="field"
                       buttonClassName="w-full h-10 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
                     />
+                  </div>
+
+                  {/* Category Status Toggle */}
+                  <div className="sm:col-span-3">
+                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
+                      Category Status
+                    </label>
+                    <div className="h-10 flex items-center justify-between px-3 bg-white border border-stone-200 rounded-xl shadow-2xs">
+                      <span className="text-xs font-bold text-stone-800">
+                        {formData.status === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={formData.status === 'active'}
+                        onClick={() =>
+                          setFormData((prev) => ({
+                            ...prev,
+                            status: prev.status === 'active' ? 'inactive' : 'active',
+                          }))
+                        }
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                          formData.status === 'active' ? 'bg-[#8b6f4e]' : 'bg-stone-300'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            formData.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2292,47 +2324,7 @@ const DynamicModuleView = () => {
                 </div>
 
                 {/* ─── BOTTOM FOOTER BAR ─── */}
-                <div className="pt-4 border-t border-stone-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  {/* Category Status Toggle with Subtitle */}
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <span className="text-xs font-bold text-stone-900 block">
-                        Category Status
-                      </span>
-                      <span className="text-[11px] text-stone-500 font-normal">
-                        Enable or disable this category on the website.
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2.5 shrink-0">
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={formData.status === 'active'}
-                        onClick={() =>
-                          setFormData((prev) => ({
-                            ...prev,
-                            status: prev.status === 'active' ? 'inactive' : 'active',
-                          }))
-                        }
-                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          formData.status === 'active' ? 'bg-[#8b6f4e]' : 'bg-stone-300'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                            formData.status === 'active' ? 'translate-x-5' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
-                      <span className="text-xs font-bold text-stone-800">
-                        {formData.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Cancel & Save Changes Action Buttons */}
-                  <div className="flex items-center justify-end gap-3 shrink-0">
+                <div className="pt-4 border-t border-stone-200/90 flex items-center justify-end gap-3">
                     <button
                       type="button"
                       onClick={() => {
@@ -2355,7 +2347,6 @@ const DynamicModuleView = () => {
                         : 'Save Changes'}
                     </button>
                   </div>
-                </div>
               </form>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">

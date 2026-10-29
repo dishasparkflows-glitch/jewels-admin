@@ -1423,37 +1423,36 @@ export default function OrnateProductEdit() {
                     buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
                   />
                 </div>
-              </div>
 
-              {/* Platform Visibility Checkboxes */}
-              <div className="p-3.5 rounded-xl bg-[#faf8f5] border border-stone-200/80 space-y-2">
-                <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider block">
-                  Platform Visibility
-                </label>
-                <div className="flex items-center gap-6">
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-700 select-none">
-                    <input
-                      type="checkbox"
-                      checked={baseInfo.showInApp}
-                      onChange={(e) =>
-                        setBaseInfo((prev) => ({ ...prev, showInApp: e.target.checked }))
-                      }
-                      className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
-                    />
-                    <span>Show in App</span>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
+                    Platform Visibility
                   </label>
+                  <div className="flex items-center gap-3.5 h-9 px-3 rounded-xl border border-stone-200 bg-[#fdfcfb]">
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-stone-700 select-none">
+                      <input
+                        type="checkbox"
+                        checked={baseInfo.showInApp}
+                        onChange={(e) =>
+                          setBaseInfo((prev) => ({ ...prev, showInApp: e.target.checked }))
+                        }
+                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                      />
+                      <span>App</span>
+                    </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-stone-700 select-none">
-                    <input
-                      type="checkbox"
-                      checked={baseInfo.showOnWeb}
-                      onChange={(e) =>
-                        setBaseInfo((prev) => ({ ...prev, showOnWeb: e.target.checked }))
-                      }
-                      className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
-                    />
-                    <span>Show on Web</span>
-                  </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-stone-700 select-none">
+                      <input
+                        type="checkbox"
+                        checked={baseInfo.showOnWeb}
+                        onChange={(e) =>
+                          setBaseInfo((prev) => ({ ...prev, showOnWeb: e.target.checked }))
+                        }
+                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                      />
+                      <span>Web</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -1469,6 +1468,59 @@ export default function OrnateProductEdit() {
                   placeholder="Describe the inspiration, craftsmanship, and elegance of this jewelry piece..."
                   className="w-full p-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20"
                 />
+              </div>
+
+              {/* Social Proof & Urgency (Demo Metrics) */}
+              <div className="p-4 rounded-xl border border-stone-200 bg-[#fbfaf8] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base" role="img" aria-label="fire">🔥</span>
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
+                      Social Proof & Urgency (Demo Metrics)
+                    </h4>
+                  </div>
+                  <span className="text-[11px] text-stone-400 font-medium">Storefront Product Detail Display</span>
+                </div>
+                <p className="text-xs text-stone-500">
+                  Set product-specific sold and review counts displayed under the title on the storefront.
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      Sold Count
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs">🔥</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={baseInfo.soldCount}
+                        onChange={(e) => setBaseInfo((prev) => ({ ...prev, soldCount: e.target.value }))}
+                        placeholder="e.g. 24"
+                        className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
+                      />
+                    </div>
+                    <span className="text-[10px] text-stone-400 mt-1 block">Displayed as &apos;X sold in last 3 hours&apos;</span>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-700 mb-1">
+                      Review Count
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-xs">★</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={baseInfo.reviewCount}
+                        onChange={(e) => setBaseInfo((prev) => ({ ...prev, reviewCount: e.target.value }))}
+                        placeholder="e.g. 13"
+                        className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
+                      />
+                    </div>
+                    <span className="text-[10px] text-stone-400 mt-1 block">Displayed as &apos;★★★★★ X reviews&apos;</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -465,31 +465,31 @@ export default function Dropdown({
     });
   };
 
-  // Size styling tokens - Default is standard field height h-10 (40px) matching inputs
+  // Size styling tokens - Default is standard field height h-11 matching luxury inputs
   const sizeMap = {
     sm: {
-      button: 'h-8 px-2.5 text-xs rounded-lg gap-1.5',
-      icon: 'w-3.5 h-3.5',
-      option: 'py-1.5 px-2.5 text-xs',
-      menu: 'py-1 rounded-xl',
+      button: 'h-9 px-3 text-xs rounded-xl gap-1.5 font-serif',
+      icon: 'w-3.5 h-3.5 text-[#9c7a4b]',
+      option: 'py-2 px-4 text-xs font-serif',
+      menu: 'p-0 rounded-xl',
     },
     field: {
-      button: 'h-10 px-3.5 text-xs sm:text-[13px] rounded-xl gap-2',
-      icon: 'w-4 h-4',
-      option: 'py-2 px-3.5 text-xs sm:text-[13px]',
-      menu: 'py-1.5 rounded-2xl',
+      button: 'h-11 sm:h-12 px-5 text-[15px] rounded-2xl gap-2 font-serif font-normal',
+      icon: 'w-4 h-4 text-[#9c7a4b]',
+      option: 'py-3 px-5 sm:px-6 text-[15px] font-serif font-normal',
+      menu: 'p-0 rounded-2xl',
     },
     md: {
-      button: 'h-10 px-3.5 text-xs sm:text-sm rounded-xl gap-2',
-      icon: 'w-4 h-4',
-      option: 'py-2.5 px-3.5 text-xs sm:text-sm',
-      menu: 'py-1.5 rounded-2xl',
+      button: 'h-11 sm:h-12 px-5 text-[15px] rounded-2xl gap-2 font-serif font-normal',
+      icon: 'w-4 h-4 text-[#9c7a4b]',
+      option: 'py-3 px-5 sm:px-6 text-[15px] font-serif font-normal',
+      menu: 'p-0 rounded-2xl',
     },
     lg: {
-      button: 'h-12 px-4 text-sm rounded-xl gap-2.5',
-      icon: 'w-4 h-4',
-      option: 'py-3 px-4 text-sm',
-      menu: 'py-2 rounded-2xl',
+      button: 'h-12 px-6 text-base rounded-2xl gap-2.5 font-serif font-normal',
+      icon: 'w-4 h-4 text-[#9c7a4b]',
+      option: 'py-3.5 px-6 text-base font-serif font-normal',
+      menu: 'p-0 rounded-2xl',
     },
   };
   const sizeStyles = sizeMap[size] || sizeMap.field;
@@ -513,13 +513,13 @@ export default function Dropdown({
   // Variant styling tokens
   const variantStyles = {
     default:
-      'bg-white border border-stone-200/90 hover:border-stone-300 focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 shadow-2xs text-stone-800',
+      'bg-white border-[1.5px] border-[#9c7a4b] hover:border-[#86663a] focus:border-[#9c7a4b] focus:ring-2 focus:ring-[#9c7a4b]/20 shadow-2xs text-stone-900',
     input:
-      'bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 shadow-2xs text-stone-900',
+      'bg-white border-[1.5px] border-[#9c7a4b] hover:border-[#86663a] focus:border-[#9c7a4b] focus:ring-2 focus:ring-[#9c7a4b]/20 shadow-2xs text-stone-900',
     minimal:
-      'bg-transparent border border-transparent hover:border-stone-200 focus:border-[#8b6f4e] text-stone-700',
+      'bg-transparent border border-transparent hover:border-[#9c7a4b] focus:border-[#9c7a4b] text-stone-800 font-serif',
     inline:
-      'bg-stone-50/80 border border-stone-200 hover:border-stone-300 text-stone-700',
+      'bg-stone-50/80 border border-stone-200 hover:border-[#9c7a4b] text-stone-800 font-serif',
   }[variant] || variantStyles.default;
 
   // Render status dot if enabled or mapped
@@ -625,19 +625,19 @@ export default function Dropdown({
           }}
           className={`${
             portal ? 'fixed' : 'absolute left-0 w-full z-50'
-          } bg-white border border-stone-200/90 shadow-xl shadow-stone-900/10 backdrop-blur-md overflow-y-auto max-h-60 ${animate ? 'transition-all animate-fadeIn' : ''} ${
+          } bg-white border border-[#e8ded3] rounded-2xl shadow-[0_16px_40px_rgba(40,30,20,0.08)] overflow-hidden max-h-64 py-0 ${animate ? 'transition-all animate-fadeIn' : ''} ${
             sizeStyles.menu
           } ${
             !portal
               ? dropUp
-                ? 'bottom-full mb-1.5 origin-bottom'
-                : 'top-full mt-1.5 origin-top'
+                ? 'bottom-full mb-2 origin-bottom'
+                : 'top-full mt-2 origin-top'
               : dropUp
               ? 'origin-bottom'
               : 'origin-top'
           } ${menuClassName}`}>
           {normalizedOptions.length === 0 ? (
-            <div className="py-3 px-4 text-xs text-stone-400 text-center italic">
+            <div className="py-3.5 px-5 text-xs text-stone-400 font-serif text-center italic">
               No options available
             </div>
           ) : (
@@ -674,17 +674,22 @@ export default function Dropdown({
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => handleSelect(opt)}
                   onMouseEnter={() => setHighlightedIndex(idx)}
-                  className={`w-full flex items-center justify-between text-left transition-colors duration-100 cursor-pointer ${
+                  className={`w-full relative flex items-center justify-between text-left transition-colors duration-150 cursor-pointer ${
                     sizeStyles.option
                   } ${
-                    isHighlighted
-                      ? 'bg-[#f4eee4] text-[#8f6d43] font-semibold ring-1 ring-inset ring-[#8f6d43]/30'
-                      : isSelected
-                      ? 'bg-[#faf6f0] text-[#8f6d43] font-semibold'
-                      : 'text-stone-700 hover:bg-[#fbf9f6] hover:text-[#8f6d43]'
+                    isSelected
+                      ? 'bg-[#f4eae0] text-stone-900 font-serif font-normal'
+                      : isHighlighted
+                      ? 'bg-[#faf5ee] text-stone-900 font-serif font-normal'
+                      : 'text-stone-800 bg-white font-serif font-normal hover:bg-[#faf5ee]'
                   } ${opt.disabled ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''}`}
                 >
-                  <div className="flex items-center gap-2 truncate">
+                  {/* Left Gold Accent Bar on Selected Item */}
+                  {isSelected && (
+                    <span className="absolute left-0 inset-y-0 w-1.5 bg-[#9c7a4b] rounded-r-xs" />
+                  )}
+
+                  <div className="flex items-center gap-2.5 truncate">
                     {opt.icon && <span className="shrink-0 text-stone-400 group-hover:text-stone-600">{renderDropdownIcon(opt.icon, sizeStyles.icon || 'w-4 h-4')}</span>}
                     {showStatusDot && renderStatusDot(opt.value, opt)}
                     <span className="truncate">{opt.label}</span>
@@ -694,11 +699,6 @@ export default function Dropdown({
                       </span>
                     )}
                   </div>
-
-                  {/* Selected Gold Checkmark */}
-                  {isSelected && (
-                    <HiOutlineCheck className="w-4 h-4 text-[#8f6d43] stroke-[2.5] shrink-0 ml-2" />
-                  )}
                 </button>
               );
             })

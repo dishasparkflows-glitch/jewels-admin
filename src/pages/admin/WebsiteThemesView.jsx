@@ -22,6 +22,7 @@ import ConfirmModal from '../../components/common/ConfirmModal';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import DatePicker from '../../components/common/DatePicker';
 import ThemeMediaLibraryTab from './ThemeMediaLibraryTab';
+import ThemeMediaMappingTab from './ThemeMediaMappingTab';
 
 
 
@@ -382,28 +383,29 @@ export default function WebsiteThemesView() {
     const tabs = [
       ['details', 'Theme Details'],
       ['media', 'Media Library'],
+      ['mapping', 'Media Mapping'],
     ];
 
     return (
-      <div className="mx-auto max-w-[1550px] space-y-6 p-4 md:p-8">
+      <div className="space-y-2.5 sm:space-y-3">
         {/* Editor Top Bar */}
-        <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-stone-200 bg-white p-5 shadow-xs">
+        <header className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-stone-200 bg-white p-3.5 sm:p-4 shadow-2xs">
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={() => setEditing(null)}
-              className="rounded-xl border border-stone-200 bg-stone-50 p-2.5 text-stone-600 hover:bg-stone-100 transition cursor-pointer"
+              className="rounded-xl border border-stone-200 bg-stone-50 p-2 text-stone-600 hover:bg-stone-100 transition cursor-pointer"
               aria-label="Back to themes"
             >
-              <HiOutlineArrowLeft className="h-5 w-5" />
+              <HiOutlineArrowLeft className="h-4 w-4" />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl md:text-2xl font-bold text-stone-900">
+                <h1 className="text-lg sm:text-xl font-bold text-stone-900 leading-tight">
                   {editing._id ? `Edit Theme - ${editing.name}` : 'Create New Theme'}
                 </h1>
                 {editing.status && (
-                  <span className={`rounded-full px-3 py-1 text-xs capitalize ${statusClass[editing.status]}`}>
+                  <span className={`rounded-full px-2.5 py-0.5 text-[11px] capitalize font-semibold ${statusClass[editing.status]}`}>
                     {editing.status}
                   </span>
                 )}
@@ -414,14 +416,27 @@ export default function WebsiteThemesView() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            {editing._id && (
+              <button
+                type="button"
+                onClick={() => setThemeToDelete(editing)}
+                disabled={deletingId === editing._id}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white hover:bg-rose-50 px-3.5 py-2 text-xs font-semibold text-rose-600 shadow-2xs transition disabled:opacity-50 cursor-pointer"
+                title="Delete Theme"
+              >
+                <HiOutlineTrash className="h-3.5 w-3.5" />
+                <span>{deletingId === editing._id ? 'Deleting…' : 'Delete Theme'}</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={saveTheme}
               disabled={saving}
-              style={{ backgroundColor: "var(--theme-primary, #8b6f4e)" }} className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:brightness-95 transition disabled:opacity-50 cursor-pointer"
+              style={{ backgroundColor: "var(--theme-primary, #8b6f4e)" }} className="inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 transition disabled:opacity-50 cursor-pointer"
             >
-              <HiOutlineSave className="h-4 w-4" />
+              <HiOutlineSave className="h-3.5 w-3.5" />
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
             {editing._id && !isLive && (
@@ -429,26 +444,24 @@ export default function WebsiteThemesView() {
                 type="button"
                 onClick={() => activateTheme(editing)}
                 disabled={activatingId === editing._id}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 px-4 py-2.5 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
               >
-                <HiOutlineCheck className="h-4 w-4" />
+                <HiOutlineCheck className="h-3.5 w-3.5" />
                 {activatingId === editing._id ? 'Activating…' : 'Activate Theme'}
               </button>
             )}
           </div>
         </header>
 
-
-
         {/* Tab Navigation Strip */}
-        <nav className="flex gap-1.5 overflow-x-auto rounded-2xl border border-stone-200 bg-white p-2 shadow-xs">
+        <nav className="flex gap-1 overflow-x-auto rounded-xl border border-stone-200 bg-white p-1.5 shadow-2xs">
           {tabs.map(([key, label]) => (
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`shrink-0 rounded-xl px-4 py-2.5 text-xs font-semibold transition cursor-pointer ${
+              className={`shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
                 tab === key
-                  ? 'bg-[#8b6f4e] text-white shadow-xs'
+                  ? 'bg-[#8b6f4e] text-white shadow-2xs'
                   : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'
               }`}
               style={
@@ -464,8 +477,8 @@ export default function WebsiteThemesView() {
 
         {/* TAB 1: THEME DETAILS (Includes Identity & Campaign Schedule) */}
         {tab === 'details' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-            <section className="space-y-6 rounded-2xl border border-stone-200 bg-white p-6 shadow-xs w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3 items-start">
+            <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-4 sm:p-5 shadow-2xs w-full">
               <div>
                 <h3 className="font-bold text-stone-900 text-sm">Theme Identity</h3>
                 <p className="mt-0.5 text-xs text-stone-500">
@@ -513,7 +526,7 @@ export default function WebsiteThemesView() {
             </section>
 
             {/* Campaign Schedule & Publish */}
-            <section className="space-y-5 rounded-2xl border border-stone-200 bg-white p-6 shadow-xs w-full">
+            <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-4 sm:p-5 shadow-2xs w-full">
               <div>
                 <h3 className="font-bold text-stone-900 text-sm">Publish or Schedule Campaign</h3>
                 <p className="mt-0.5 text-xs text-stone-500">
@@ -586,17 +599,36 @@ export default function WebsiteThemesView() {
           </div>
         )}
 
-        {/* TAB 2: MEDIA LIBRARY (Comprehensive View - Section 4) */}
-        {tab === 'media' && (
-          <ThemeMediaLibraryTab
-            themeId={editing._id}
-            themeStatus={editing.status}
-            availableBanners={availableBanners}
-            availableFeatured={availableFeatured}
-            categories={categories}
-            onMediaChanged={fetchRelatedData}
+        {/* TAB 2: MEDIA LIBRARY */}
+        {tab === 'media' && <ThemeMediaLibraryTab />}
+
+        {/* TAB 3: MEDIA MAPPING (One-Click Theme Activation & Media Mapping) */}
+        {tab === 'mapping' && (
+          <ThemeMediaMappingTab
+            theme={editing}
+            onThemeUpdated={(updatedTheme) => {
+              setEditing(updatedTheme);
+              fetchThemes();
+            }}
+            onPreview={(t) => {
+              window.open(`http://localhost:5174?previewTheme=${t._id}`, '_blank');
+            }}
           />
         )}
+
+        {/* Delete Confirmation Modal for Editor View */}
+        <ConfirmModal
+          isOpen={!!themeToDelete}
+          title="Delete Theme"
+          message={`Are you sure you want to delete "${themeToDelete?.name || ''}"? Any associated schedules will be cancelled. Media files stored in the database will be preserved.`}
+          confirmText="Delete Theme"
+          type="danger"
+          loading={!!deletingId}
+          onConfirm={() => deleteTheme(themeToDelete)}
+          onCancel={() => {
+            if (!deletingId) setThemeToDelete(null);
+          }}
+        />
 
 
       </div>
@@ -864,105 +896,6 @@ export default function WebsiteThemesView() {
                           })
                         : '28 Oct 2026'}
                     </p>
-                  </div>
-
-                  {/* Actions Row (Compact) */}
-                  <div className="mt-2.5 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openEditor(theme, 'details');
-                      }}
-                      style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
-                      className="flex-1 py-1 px-2.5 flex items-center justify-center rounded-md text-[11px] font-semibold text-white shadow-2xs hover:brightness-95 transition cursor-pointer"
-                      title="Edit Theme"
-                    >
-                      Edit
-                    </button>
-
-                    {/* Three Dots Menu */}
-                    <div className="relative">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveMenuThemeId(activeMenuThemeId === theme._id ? null : theme._id);
-                        }}
-                        className="py-1 px-1.5 rounded-md border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-500 hover:text-stone-800 transition shadow-2xs cursor-pointer flex items-center justify-center"
-                        title="More actions"
-                      >
-                        <HiOutlineDotsVertical className="h-3.5 w-3.5" />
-                      </button>
-
-                      {activeMenuThemeId === theme._id && (
-                        <div
-                          className="absolute right-0 bottom-full mb-1 z-30 w-44 rounded-xl border border-stone-200 bg-white p-1.5 shadow-xl text-xs space-y-0.5"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              duplicateTheme(theme);
-                              setActiveMenuThemeId(null);
-                            }}
-                            className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-stone-700 hover:bg-stone-100 font-medium"
-                          >
-                            <HiOutlineDuplicate className="h-4 w-4" />
-                            Duplicate
-                          </button>
-                          {theme.status !== 'active' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                activateTheme(theme);
-                                setActiveMenuThemeId(null);
-                              }}
-                              className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-emerald-700 hover:bg-emerald-50 font-medium"
-                            >
-                              <HiOutlineCheck className="h-4 w-4" />
-                              Activate
-                            </button>
-                          )}
-                          {theme.status !== 'archived' && theme.status !== 'active' && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                archiveTheme(theme);
-                                setActiveMenuThemeId(null);
-                              }}
-                              className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-stone-600 hover:bg-stone-100 font-medium"
-                            >
-                              Archive
-                            </button>
-                          )}
-                          {theme.publishedSnapshot && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                rollbackTheme(theme);
-                                setActiveMenuThemeId(null);
-                              }}
-                              className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-stone-600 hover:bg-stone-100 font-medium"
-                            >
-                              Restore Snapshot
-                            </button>
-                          )}
-                          <div className="border-t border-stone-100 my-1" />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setThemeToDelete(theme);
-                              setActiveMenuThemeId(null);
-                            }}
-                            className="w-full flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-rose-600 hover:bg-rose-50 font-medium"
-                          >
-                            <HiOutlineTrash className="h-4 w-4" />
-                            Delete
-                          </button>
-                        </div>
-                      )}
-                    </div>
                   </div>
                 </div>
               </article>
