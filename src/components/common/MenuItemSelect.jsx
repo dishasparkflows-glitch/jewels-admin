@@ -200,8 +200,8 @@ export default function MenuItemSelect({
         }}
         onFocus={handleFocus}
         onKeyDown={handleKeyDown}
-        className={`flex min-h-[42px] w-full items-center justify-between gap-2 rounded-xl border bg-[#fdfcfb] px-3.5 py-2.5 text-left text-xs disabled:opacity-50 cursor-pointer ${
-          open ? 'border-[#8f6d43] ring-2 ring-[#8f6d43]/10' : 'border-stone-200 hover:border-stone-300'
+        className={`flex min-h-[42px] h-[42px] w-full items-center justify-between gap-2 rounded-xl border bg-white px-3.5 py-2.5 text-left text-xs sm:text-[13px] disabled:opacity-50 cursor-pointer shadow-2xs transition-all ${
+          open ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20' : 'border-[#d6cfc2] hover:border-[#bdae99]'
         }`}
       >
         <span className={`truncate ${!value.length ? 'text-stone-400' : 'text-stone-800 font-medium'}`}>

@@ -354,24 +354,6 @@ export const ThemeProvider = ({ children }) => {
           border-color: var(--theme-primary) !important;
         }
 
-        [class*="border-[#e8d9c2]"],
-        [class*="border-[#ecd9c2]"],
-        [class*="border-[#e8ddce]"],
-        [class*="border-[#e8ded1]"],
-        [class*="border-[#ede8e1]"],
-        [class*="border-[#EDE8E1]"],
-        [class*="border-[#ebdcc8]"],
-        [class*="border-[#ebdcc9]"],
-        [class*="border-[#ebdccb]"],
-        [class*="border-[#d8c8b2]"],
-        [class*="border-[#f2e7db]"],
-        .border-\\[\\#e8d9c2\\],
-        .border-\\[\\#ecd9c2\\],
-        .border-\\[\\#e8ddce\\],
-        .border-\\[\\#e8ded1\\],
-        .border-\\[\\#ede8e1\\] {
-          border-color: var(--theme-primary-border) !important;
-        }
 
         /* ─── 6. SIDEBAR ACTIVE & HOVER (High Contrast, Luxury Theme-Matched) ─── */
         #admin-sidebar .sidebar-item-active,
@@ -409,24 +391,7 @@ export const ThemeProvider = ({ children }) => {
           color: var(--theme-primary-dark, var(--theme-primary)) !important;
         }
 
-        /* ─── 7. DROPDOWNS: HOVER, SELECTED, LISTBOX OPTIONS ─── */
-        [class*="bg-[#f4eae0]"],
-        [class*="bg-[#f4eee4]"],
-        [class*="bg-[#faf6f0]"],
-        .bg-\\[\\#f4eae0\\],
-        .bg-\\[\\#f4eee4\\],
-        .bg-\\[\\#faf6f0\\] {
-          background-color: rgba(var(--theme-primary-rgb), 0.12) !important;
-          color: var(--theme-primary) !important;
-        }
-
-        [class*="hover:bg-[#fbf9f6]"]:hover,
-        [class*="hover:text-[#8f6d43]"]:hover,
-        .hover\\:bg-\\[\\#fbf9f6\\]:hover {
-          background-color: rgba(var(--theme-primary-rgb), 0.07) !important;
-          color: var(--theme-primary) !important;
-        }
-
+        /* ─── Dropdown Options: Selection & Accents ─── */
         [role="combobox"] ~ div [role="option"]:hover,
         [role="listbox"] [role="option"]:hover,
         [role="listbox"] button:hover {
@@ -440,52 +405,29 @@ export const ThemeProvider = ({ children }) => {
           color: var(--theme-primary) !important;
         }
 
-        /* Dropdown Selected Item Left Accent Bar */
         [role="listbox"] span[class*="bg-[#9c7a4b]"],
         [role="listbox"] span[class*="bg-[#8b6f4e]"],
-        [role="listbox"] span.bg-\\[\\#9c7a4b\\],
+        [role="listbox"] span.bg-\[\#9c7a4b\],
         [role="listbox"] [aria-selected="true"] span.absolute {
           background-color: var(--theme-primary) !important;
         }
 
-        [class*="ring-[#8f6d43]"],
-        .ring-\\[\\#8f6d43\\] {
-          --tw-ring-color: rgba(var(--theme-primary-rgb), 0.3) !important;
+        /* ─── FORMS & MODALS PROTECTION (Clean White & Neutral Slate - Never Tinted) ─── */
+        .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#faf8f5]"],
+        .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#FAF8F5]"],
+        .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#fcfbf9]"],
+        .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#f8f2eb]"],
+        .fixed.inset-0:not(#admin-sidebar) .modal-header,
+        [role="dialog"] [class*="bg-[#faf8f5]"],
+        [role="dialog"] [class*="bg-[#FAF8F5]"],
+        [role="dialog"] [class*="bg-[#fcfbf9]"],
+        [role="dialog"] [class*="bg-[#f8f2eb]"],
+        form [class*="bg-[#faf8f5]"],
+        form [class*="bg-[#fcfbf9]"],
+        dialog [class*="bg-[#faf8f5]"],
+        dialog [class*="bg-[#fcfbf9]"] {
+          background-color: #ffffff !important;
         }
-
-        /* ─── 8. SUBTLE BACKGROUNDS & HOVERS ANYWHERE ─── */
-        [class*="bg-[#f8f2eb]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        [class*="bg-[#faf5ee]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        [class*="bg-[#faf8f5]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        [class*="bg-[#FAF8F5]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        [class*="bg-[#fbf4eb]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        [class*="bg-[#faf3e8]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        [class*="bg-[#faf4ed]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        [class*="bg-[#faf6f1]"]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        .bg-\\[\\#f8f2eb\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        .bg-\\[\\#faf5ee\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        .bg-\\[\\#faf8f5\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        .bg-\\[\\#FAF8F5\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        .bg-\\[\\#fbf4eb\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]),
-        .bg-\\[\\#faf3e8\\]:not(.bg-white):not([class*="bg-white"]):not([class*="hover:"]) {
-          background-color: var(--theme-primary-soft) !important;
-        }
-
-        [class*="hover:bg-[#FAF8F5]"]:hover,
-        [class*="hover:bg-[#faf8f5]"]:hover,
-        [class*="hover:bg-[#faf5ee]"]:hover,
-        [class*="hover:bg-[#f8f2eb]"]:hover,
-        [class*="hover:bg-[#fbf4eb]"]:hover,
-        [class*="hover:bg-[#faf3e8]"]:hover,
-        [class*="hover:bg-[#f4eee4]"]:hover {
-          background-color: var(--theme-primary-soft) !important;
-        }
-
-        [class*="bg-[#f4ece0]"],
-        .bg-\\[\\#f4ece0\\] {
-          background-color: var(--theme-primary-light) !important;
-        }
-
         /* ─── 9. OPACITY-BASED UTILITY CLASSES ─── */
         [class*="bg-[#8b6f4e]/10"],
         [class*="bg-[#8b6c3a]/10"],
@@ -611,14 +553,25 @@ export const ThemeProvider = ({ children }) => {
           color: #ffffff !important;
         }
 
-        /* ─── 14. ROOT & PAGE BACKGROUND SAFEGUARD (Preserve clean luxury default background) ─── */
+                /* ─── 14. ROOT & PAGE BACKGROUND SAFEGUARD ─── */
         html,
         body,
         #root,
         #admin-root-layout,
         .admin-page-bg,
         #admin-root-layout > div {
-          background-color: #fbfaf8 !important;
+          background-color: #f8fafc !important;
+        }
+
+        /* ─── 15. SIDEBAR SCROLLBAR ONLY (Theme color applied strictly to sidebar) ─── */
+        .sidebar-scrollbar::-webkit-scrollbar-thumb {
+          background-color: var(--theme-primary) !important;
+        }
+        .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+          background-color: var(--theme-primary-dark) !important;
+        }
+        .sidebar-scrollbar {
+          scrollbar-color: var(--theme-primary) #f1f5f9 !important;
         }
       `;
     }

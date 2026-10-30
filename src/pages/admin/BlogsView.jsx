@@ -543,6 +543,7 @@ export default function BlogsView() {
                       {/* Actions */}
                       <td className="py-3.5 px-4 text-right">
                         <RowActions
+                          record={blog}
                           onPreview={() => setPreviewBlog(blog)}
                           previewTitle="Preview Article"
                           onEdit={() => navigate(`/blogs/edit/${blog._id}`)}

@@ -35,6 +35,7 @@ import VtoMastersView from './pages/admin/VtoMastersView';
 import AddJewelryProduct from './pages/admin/AddJewelryProduct';
 import OrnateProductsView from './pages/admin/OrnateProductsView';
 import OrnateProductEdit from './pages/admin/OrnateProductEdit';
+import CategoryFiltersView from './pages/admin/CategoryFiltersView';
 import NavigationMenusView from './pages/admin/NavigationMenusView';
 import WhatsAppView from './pages/admin/WhatsAppView';
 import MetalRatesView from './pages/admin/MetalRatesView';
@@ -106,6 +107,7 @@ function App() {
             <Route path="/diamond-config" element={<Navigate to="/diamond-types" replace />} />
             <Route path="/sales-orders" element={<Navigate to="/orders" replace />} />
             <Route path="/orders-sales" element={<Navigate to="/orders" replace />} />
+            <Route path="/customer-hub" element={<Navigate to="/customers" replace />} />
 
             {/* Exact Screenshot Views */}
             <Route path="/cod-sequences" element={<CodSequencesView />} />
@@ -217,6 +219,10 @@ function App() {
             <Route path="/catalog/ornate-products/new" element={<OrnateProductEdit />} />
             <Route path="/ornate-products/add" element={<OrnateProductEdit />} />
             <Route path="/ornate-products/new" element={<OrnateProductEdit />} />
+            {/* Category Filters Dynamic Assignment Module */}
+            <Route path="/catalog/category-filters" element={<CategoryFiltersView />} />
+            <Route path="/category-filters" element={<CategoryFiltersView />} />
+
             {/* Luxury Navigation Menus Module (Matches Exact 4-Screen Design) */}
             <Route path="/catalog/navigation-menus" element={<NavigationMenusView />} />
 

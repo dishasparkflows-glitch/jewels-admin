@@ -24,6 +24,7 @@ import {
   HiOutlineViewGrid,
   HiOutlineGift,
   HiOutlineFolder,
+  HiOutlineFilter,
 } from 'react-icons/hi';
 
 import {
@@ -52,9 +53,6 @@ export const navSections = [
     title: null,
     items: [
       { id: 'dashboard', title: 'Dashboard', path: '/dashboard', icon: HiOutlineHome },
-      { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles, apiEndpoint: '/custom-inquiries' },
-      { id: 'diamonds', title: 'Diamonds', path: '/diamonds', icon: IoDiamondOutline, apiEndpoint: '/diamonds' },
-      { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
 
       // ─── 1. Catalog (Collapsible Submenu) ─────────────────────────────
       {
@@ -66,7 +64,9 @@ export const navSections = [
           { id: 'jewelry-products', title: 'Jewellery Products', path: '/catalog/jewelry-products', icon: IoCubeOutline, apiEndpoint: '/products?productType=gold' },
           { id: 'silver-products', title: 'Silver Products', path: '/catalog/silver-products', icon: IoSparklesOutline, apiEndpoint: '/products?productType=silver' },
           { id: 'ornate-products', title: 'Ornate Products', path: '/catalog/ornate-products', icon: IoLayersOutline, apiEndpoint: '/products?isOrnate=true' },
+          { id: 'diamonds', title: 'Diamonds', path: '/diamonds', icon: IoDiamondOutline, apiEndpoint: '/diamonds' },
           { id: 'categories', title: 'Categories', path: '/catalog/categories', icon: HiOutlineTag, apiEndpoint: '/categories' },
+          { id: 'category-filters', title: 'Category Filters', path: '/catalog/category-filters', icon: HiOutlineFilter, apiEndpoint: '/categories' },
           { id: 'navigation-menus', title: 'Navigation Menus', path: '/catalog/navigation-menus', icon: IoMapOutline, apiEndpoint: '/categories' },
         ],
       },
@@ -181,11 +181,29 @@ export const navSections = [
     id: 'sales-orders',
     title: 'SALES & ORDERS',
     items: [
-      { id: 'orders', title: 'Orders', path: '/orders', icon: HiOutlineShoppingBag, apiEndpoint: '/orders' },
-      { id: 'returns', title: 'Returns', path: '/returns', icon: HiOutlineRefresh, apiEndpoint: '/returns' },
-      { id: 'cod-sequence', title: 'COD Sequence', path: '/cod-sequences', icon: HiOutlineCash, apiEndpoint: '/cod-sequences' },
-      { id: 'customers', title: 'Customers', path: '/customers', icon: HiOutlineUserGroup, apiEndpoint: '/users' },
-      { id: 'appointments', title: 'Appointments', path: '/appointments', icon: HiOutlineCalendar, apiEndpoint: '/appointments' },
+      {
+        id: 'orders',
+        title: 'Orders',
+        path: '/orders',
+        icon: HiOutlineShoppingBag,
+        children: [
+          { id: 'all-orders', title: 'Orders', path: '/orders', icon: HiOutlineShoppingBag, apiEndpoint: '/orders' },
+          { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles, apiEndpoint: '/custom-inquiries' },
+          { id: 'returns', title: 'Returns', path: '/returns', icon: HiOutlineRefresh, apiEndpoint: '/returns' },
+          { id: 'cod-sequence', title: 'COD Sequence', path: '/cod-sequences', icon: HiOutlineCash, apiEndpoint: '/cod-sequences' },
+        ],
+      },
+      {
+        id: 'customer-hub',
+        title: 'Customer Hub',
+        path: '/customers',
+        icon: HiOutlineUserGroup,
+        children: [
+          { id: 'customers', title: 'Customers', path: '/customers', icon: HiOutlineUser, apiEndpoint: '/users' },
+          { id: 'appointments', title: 'Appointments', path: '/appointments', icon: HiOutlineCalendar, apiEndpoint: '/appointments' },
+          { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
+        ],
+      },
     ],
   },
 

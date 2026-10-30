@@ -257,6 +257,11 @@ export default function GroupCard({
             </span>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Product Count Badge */}
+            <span className="px-2 py-0.5 rounded-md bg-stone-100 border border-stone-200/90 text-stone-700 text-[10.5px] font-semibold font-mono tracking-tight">
+              {productCount} {productCount === 1 ? 'Product' : 'Products'}
+            </span>
+
             {isDraftOrApproved ? (
               <>
                 {/* Edit Icon Button */}
@@ -394,11 +399,6 @@ export default function GroupCard({
               <span className="text-[9px] uppercase tracking-wider text-stone-400 mt-1">No Photo</span>
             </div>
           )}
-
-          {/* Product Count Pill Badge */}
-          <span className="absolute top-2 right-2 bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-bold px-2 py-0.5 rounded-md shadow-xs">
-            {productCount} {productCount === 1 ? 'Product' : 'Products'}
-          </span>
         </div>
 
         {/* Group Name */}

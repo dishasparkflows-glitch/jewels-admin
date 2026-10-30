@@ -431,21 +431,9 @@ export default function BirthstonePortfolioView() {
 
                       {/* Month */}
                       <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2.5">
-                          <span
-                            className="w-7 h-7 rounded-md flex items-center justify-center font-bold text-[10px] shadow-2xs border shrink-0"
-                            style={{
-                              backgroundColor: `${item.color}15`,
-                              borderColor: `${item.color}35`,
-                              color: item.color,
-                            }}
-                          >
-                            {item.short}
-                          </span>
-                          <span className="font-semibold text-stone-900 text-xs">
-                            {item.month}
-                          </span>
-                        </div>
+                        <span className="font-semibold text-stone-900 text-xs">
+                          {item.month}
+                        </span>
                       </td>
 
                       {/* Gem Portrait Preview */}
@@ -516,6 +504,9 @@ export default function BirthstonePortfolioView() {
                       {/* Actions */}
                       <td className="py-2.5 pr-4 pl-2 text-right">
                         <RowActions
+                          record={item.dbRecord || item}
+                          detailsEndpoint="/birthstones"
+                          detailsTitle={`${item.month} Birthstone Details`}
                           onPreview={() => setViewingMonth(item)}
                           onEdit={() => handleOpenConfigure(item)}
                           onDelete={() => handleToggleStatus(item)}

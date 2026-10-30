@@ -9,7 +9,6 @@ import {
   HiOutlinePhone,
   HiOutlineX,
   HiOutlineTrash,
-  HiOutlineEye,
   HiOutlineSearch,
   HiOutlineChevronDown,
   HiOutlineChevronRight,
@@ -978,26 +977,6 @@ export default function AppointmentsView() {
                             className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
                           >
                             <HiOutlineXCircle className="w-4 h-4 stroke-2" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setViewingApt({
-                                ...apt,
-                                clientName,
-                                clientEmail,
-                                rawPhone,
-                                countryCode,
-                                service,
-                                displayId,
-                                prefTime,
-                                aptDate,
-                              })
-                            }
-                            title="View Details"
-                            className="w-7 h-7 rounded-lg bg-[#faf4ec] hover:bg-[#f3ebd9] text-[#8b6f4e] border border-[#eadbc7] flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                          >
-                            <HiOutlineEye className="w-4 h-4 stroke-[1.8]" />
                           </button>
                           <button
                             type="button"

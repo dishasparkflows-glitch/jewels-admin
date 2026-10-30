@@ -15,45 +15,47 @@ export default function SearchFilterBar({
   const activePlaceholder = searchPlaceholder || placeholder;
 
   return (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
       {/* Search Input Box */}
       <div className="relative flex-1 w-full sm:max-w-md">
-        <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400 pointer-events-none" />
+        <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
         <input
           type="text"
           value={activeSearch}
           onChange={(e) => onSearchChange?.(e.target.value)}
           placeholder={activePlaceholder}
-          className="w-full pl-8 pr-8 py-1.5 sm:py-1 text-xs rounded-md bg-white border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
+          className="w-full h-[42px] pl-10 pr-9 text-xs sm:text-[13px] rounded-xl bg-white border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs font-medium"
         />
         {activeSearch && (
           <button
             type="button"
             onClick={() => onSearchChange?.('')}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer"
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer p-0.5"
             title="Clear search"
           >
-            <HiOutlineX className="w-3.5 h-3.5" />
+            <HiOutlineX className="w-4 h-4" />
           </button>
         )}
       </div>
 
       {/* Right Controls: Filters button & optional extras */}
-      <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
+      <div className="flex flex-wrap items-center justify-end gap-2.5 w-full sm:w-auto">
         {extraActions}
 
-        <button
-          type="button"
-          onClick={onFilterClick}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border cursor-pointer shadow-2xs ${
-            filterActive
-              ? 'bg-[#8b6f4e] text-white border-[#8b6f4e]'
-              : 'bg-white text-stone-700 border-stone-200/90 hover:bg-stone-50'
-          }`}
-        >
-          <HiOutlineAdjustments className="w-3.5 h-3.5 stroke-2" />
-          <span>Filters</span>
-        </button>
+        {onFilterClick && (
+          <button
+            type="button"
+            onClick={onFilterClick}
+            className={`flex items-center gap-2 h-[42px] px-3.5 sm:px-4 rounded-xl text-xs sm:text-[13px] font-semibold transition-all border cursor-pointer shadow-2xs ${
+              filterActive
+                ? 'bg-[#8b6f4e] text-white border-[#8b6f4e] shadow-xs'
+                : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
+            }`}
+          >
+            <HiOutlineAdjustments className="w-4 h-4 stroke-[2]" />
+            <span>Filters</span>
+          </button>
+        )}
       </div>
     </div>
   );

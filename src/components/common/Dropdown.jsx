@@ -468,28 +468,28 @@ export default function Dropdown({
   // Size styling tokens - Default is standard field height h-11 matching luxury inputs
   const sizeMap = {
     sm: {
-      button: 'h-9 px-3 text-xs rounded-xl gap-1.5 font-serif',
+      button: 'h-9 px-3 text-xs rounded-xl gap-1.5 font-sans',
       icon: 'w-3.5 h-3.5 text-[#9c7a4b]',
-      option: 'py-2 px-4 text-xs font-serif',
+      option: 'py-2 px-3.5 text-xs font-sans',
       menu: 'p-0 rounded-xl',
     },
     field: {
-      button: 'h-11 sm:h-12 px-5 text-[15px] rounded-2xl gap-2 font-serif font-normal',
+      button: 'h-[42px] px-3.5 text-xs sm:text-[13px] rounded-xl gap-2 font-sans font-normal',
       icon: 'w-4 h-4 text-[#9c7a4b]',
-      option: 'py-3 px-5 sm:px-6 text-[15px] font-serif font-normal',
-      menu: 'p-0 rounded-2xl',
+      option: 'py-2.5 px-3.5 sm:px-4 text-xs sm:text-[13px] font-sans font-normal',
+      menu: 'p-0 rounded-xl',
     },
     md: {
-      button: 'h-11 sm:h-12 px-5 text-[15px] rounded-2xl gap-2 font-serif font-normal',
+      button: 'h-[42px] px-3.5 text-xs sm:text-[13px] rounded-xl gap-2 font-sans font-normal',
       icon: 'w-4 h-4 text-[#9c7a4b]',
-      option: 'py-3 px-5 sm:px-6 text-[15px] font-serif font-normal',
-      menu: 'p-0 rounded-2xl',
+      option: 'py-2.5 px-3.5 sm:px-4 text-xs sm:text-[13px] font-sans font-normal',
+      menu: 'p-0 rounded-xl',
     },
     lg: {
-      button: 'h-12 px-6 text-base rounded-2xl gap-2.5 font-serif font-normal',
+      button: 'h-11 px-4 text-sm rounded-xl gap-2.5 font-sans font-normal',
       icon: 'w-4 h-4 text-[#9c7a4b]',
-      option: 'py-3.5 px-6 text-base font-serif font-normal',
-      menu: 'p-0 rounded-2xl',
+      option: 'py-2.5 px-4 text-sm font-sans font-normal',
+      menu: 'p-0 rounded-xl',
     },
   };
   const sizeStyles = sizeMap[size] || sizeMap.field;
@@ -513,13 +513,13 @@ export default function Dropdown({
   // Variant styling tokens
   const variantStyles = {
     default:
-      'bg-white border-[1.5px] border-[#9c7a4b] hover:border-[var(--theme-primary-hover,#86663a)] focus:border-[var(--theme-primary,#9c7a4b)] focus:ring-2 focus:ring-[var(--theme-primary,#9c7a4b)]/20 shadow-2xs text-stone-900',
+      'bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus:border-[var(--theme-primary,#9c7a4b)] focus:ring-2 focus:ring-[var(--theme-primary,#9c7a4b)]/20 shadow-2xs text-stone-900',
     input:
-      'bg-white border-[1.5px] border-[#9c7a4b] hover:border-[var(--theme-primary-hover,#86663a)] focus:border-[var(--theme-primary,#9c7a4b)] focus:ring-2 focus:ring-[var(--theme-primary,#9c7a4b)]/20 shadow-2xs text-stone-900',
+      'bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus:border-[var(--theme-primary,#9c7a4b)] focus:ring-2 focus:ring-[var(--theme-primary,#9c7a4b)]/20 shadow-2xs text-stone-900',
     minimal:
-      'bg-transparent border border-transparent hover:border-[var(--theme-primary,#9c7a4b)] focus:border-[var(--theme-primary,#9c7a4b)] text-stone-800 font-serif',
+      'bg-transparent border border-transparent hover:border-[var(--theme-primary,#9c7a4b)] focus:border-[var(--theme-primary,#9c7a4b)] text-stone-800',
     inline:
-      'bg-stone-50/80 border border-stone-200 hover:border-[var(--theme-primary,#9c7a4b)] text-stone-800 font-serif',
+      'bg-stone-50/80 border border-stone-200 hover:border-[var(--theme-primary,#9c7a4b)] text-stone-800',
   }[variant] || variantStyles.default;
 
   // Render status dot if enabled or mapped
@@ -627,7 +627,7 @@ export default function Dropdown({
           }}
           className={`${
             portal ? 'fixed' : 'absolute left-0 w-full z-50'
-          } bg-white border border-[#e8ded3] rounded-2xl shadow-[0_16px_40px_rgba(40,30,20,0.08)] overflow-hidden max-h-64 py-0 ${animate ? 'transition-all animate-fadeIn' : ''} ${
+          } bg-white border border-[#e8ded3] rounded-xl shadow-[0_16px_40px_rgba(40,30,20,0.08)] overflow-hidden max-h-64 py-0 ${animate ? 'transition-all animate-fadeIn' : ''} ${
             sizeStyles.menu
           } ${
             !portal
@@ -639,7 +639,7 @@ export default function Dropdown({
               : 'origin-top'
           } ${menuClassName}`}>
           {normalizedOptions.length === 0 ? (
-            <div className="py-3.5 px-5 text-xs text-stone-400 font-serif text-center italic">
+            <div className="py-3.5 px-5 text-xs text-stone-400 text-center italic">
               No options available
             </div>
           ) : (
@@ -680,10 +680,10 @@ export default function Dropdown({
                     sizeStyles.option
                   } ${
                     isSelected
-                      ? 'font-serif font-medium'
+                      ? 'font-medium'
                       : isHighlighted
-                      ? 'bg-stone-50 text-stone-900 font-serif font-normal'
-                      : 'text-stone-800 bg-white font-serif font-normal hover:bg-stone-50'
+                      ? 'bg-stone-50 text-stone-900 font-normal'
+                      : 'text-stone-800 bg-white font-normal hover:bg-stone-50'
                   } ${opt.disabled ? 'opacity-40 cursor-not-allowed hover:bg-transparent' : ''}`}
                   style={
                     isSelected

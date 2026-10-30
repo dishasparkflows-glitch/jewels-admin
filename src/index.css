@@ -15,7 +15,7 @@
   html,
   body {
     font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif !important;
-    background-color: #fbfaf8;
+    background-color: #f8fafc;
     color: #1a1a1a;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -115,23 +115,65 @@ label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge"]):not([c
 
 @layer base {
 
-  /* Elegant Thin Scrollbar */
-  ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+  /* Ensure all modal headers and form sub-containers remain clean neutral white/slate (no theme tint) */
+  .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#faf8f5]"],
+  .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#FAF8F5]"],
+  .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#fcfbf9]"],
+  .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#f8f2eb]"],
+  [role="dialog"] [class*="bg-[#faf8f5]"],
+  [role="dialog"] [class*="bg-[#FAF8F5]"],
+  [role="dialog"] [class*="bg-[#fcfbf9]"],
+  [role="dialog"] [class*="bg-[#f8f2eb]"],
+  form [class*="bg-[#faf8f5]"],
+  form [class*="bg-[#fcfbf9]"],
+  dialog [class*="bg-[#faf8f5]"],
+  dialog [class*="bg-[#fcfbf9]"] {
+    background-color: #ffffff !important;
   }
 
-  ::-webkit-scrollbar-track {
-    background: transparent;
+  /* Clean, invisible scrollbars for modals, popups, and forms across the admin portal (removes scrollbar line) */
+  .fixed.inset-0:not(#admin-sidebar) *::-webkit-scrollbar,
+  .fixed.inset-0:not(#admin-sidebar)::-webkit-scrollbar,
+  [role="dialog"] *::-webkit-scrollbar,
+  [role="dialog"]::-webkit-scrollbar,
+  form::-webkit-scrollbar,
+  form *::-webkit-scrollbar {
+    width: 0px !important;
+    height: 0px !important;
+    display: none !important;
   }
 
-  ::-webkit-scrollbar-thumb {
-    background: #e2dcce;
-    border-radius: 4px;
+  .fixed.inset-0:not(#admin-sidebar) *,
+  .fixed.inset-0:not(#admin-sidebar),
+  [role="dialog"] *,
+  [role="dialog"],
+  form,
+  form * {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
   }
 
-  ::-webkit-scrollbar-thumb:hover {
-    background: #c5bba8;
+  .sidebar-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--theme-primary, #8b6f4e) #f1f5f9;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 8px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--theme-primary, #8b6f4e);
+    border-radius: 8px;
+  }
+
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--theme-primary-dark, #785e40);
   }
 }
 
@@ -243,3 +285,4 @@ input[type="radio"] {
 .animate-slide-left-to-right {
   animation: slide-left-to-right 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+

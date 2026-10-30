@@ -356,10 +356,10 @@ export default function ReviewsView() {
           <button
             type="button"
             onClick={handleBulkDelete}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
+            className={`flex items-center gap-2 h-[42px] px-3.5 sm:px-4 rounded-xl text-xs sm:text-[13px] font-semibold transition-all border shadow-2xs cursor-pointer ${
               selectedIds.size > 0
                 ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
-                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
+                : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
             }`}
             title={
               selectedIds.size > 0
@@ -367,7 +367,7 @@ export default function ReviewsView() {
                 : 'Select reviews to delete'
             }
           >
-            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <HiOutlineTrash className="w-4 h-4 stroke-[2]" />
             <span>{selectedIds.size > 0 ? `Delete (${selectedIds.size})` : 'Delete'}</span>
           </button>
         }
@@ -506,6 +506,7 @@ export default function ReviewsView() {
                       {/* Actions: Eye & Three Dots */}
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                         <RowActions
+                          record={rev}
                           onView={() => setViewingReview({ ...rev, reviewerName, reviewerEmail, rating, reviewTitle, reviewComment, dateStr, displayId })}
                           onEdit={() => handleEdit(rev)}
                           onDelete={() => handleDelete(id, reviewTitle || reviewerName)}

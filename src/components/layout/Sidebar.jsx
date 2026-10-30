@@ -211,9 +211,9 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   return (
     <aside
       id="admin-sidebar"
-      className={`fixed top-0 z-50 h-screen bg-[#FDFCFB] flex flex-col justify-between shadow-2xl lg:shadow-xs w-72 max-w-[85vw] lg:w-64 transition-transform duration-300 ease-in-out ${
+      className={`fixed top-0 z-50 h-screen bg-white flex flex-col justify-between shadow-2xl lg:shadow-xs w-72 max-w-[85vw] lg:w-64 transition-transform duration-300 ease-in-out ${
         isRight
-          ? `right-0 border-l border-[#EDE8E1] ${
+          ? `right-0 border-l border-slate-200 ${
               isMobileViewport
                 ? mobileOpen
                   ? 'translate-x-0'
@@ -222,7 +222,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                 ? 'translate-x-0'
                 : 'translate-x-full pointer-events-none lg:hidden'
             }`
-          : `left-0 border-r border-[#EDE8E1] ${
+          : `left-0 border-r border-slate-200 ${
               isMobileViewport
                 ? mobileOpen
                   ? 'translate-x-0'
@@ -234,7 +234,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
       }`}
     >
       {/* ─── Top Brand Header (Matches Screenshot) ────────────── */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-[#EDE8E1]/80 flex-shrink-0 bg-[#FDFCFB]">
+      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/80 flex-shrink-0 bg-white">
         <NavLink
           to="/dashboard"
           onClick={onMobileClose}
@@ -309,11 +309,14 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
       </div>
 
       {/* ─── Navigation Scrollable Area (Exact Portal Hierarchy) ─ */}
-      <nav className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-2 scrollbar-thin scrollbar-thumb-stone-200">
+      <nav className="flex-1 overflow-y-auto px-2.5 py-2.5 space-y-1.5 sidebar-scrollbar"
+        style={{
+          scrollbarColor: `${currentTheme?.primary || 'var(--theme-primary, #8b6f4e)'} #f1f5f9`,
+        }}>
         {navSections.map((section) => (
           <div key={section.id} className="space-y-0.5">
             {section.title && isVisible && (
-              <p className="px-3 pt-3 pb-1 text-[10px] font-bold tracking-widest text-[#A67C52] uppercase">
+              <p className="px-3 pt-3 pb-1 text-[10px] font-bold tracking-widest text-stone-400 uppercase">
                 {section.title}
               </p>
             )}
@@ -333,41 +336,24 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                     key={item.id || item.path}
                     to={item.path}
                     onClick={onMobileClose}
-                    className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13px] transition-all duration-150 cursor-pointer overflow-hidden ${
+                    className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[13px] transition-all duration-150 cursor-pointer overflow-hidden ${
                       isActive
-                        ? 'sidebar-item-active font-bold'
-                        : 'sidebar-item-inactive text-[#443D37] hover:text-[#1C1917] font-medium'
+                        ? 'font-bold text-white shadow-sm'
+                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/70 font-medium'
                     }`}
                     style={
                       isActive
                         ? {
-                            backgroundColor: activeBg,
-                            color: currentTheme?.dark || currentTheme?.primary || '#644d32',
-                            borderWidth: '1px',
-                            borderStyle: 'solid',
-                            borderColor: activeBorder,
-                            boxShadow: activeShadow,
+                            backgroundColor: currentTheme?.primary || 'var(--theme-primary, #0f172a)',
+                            color: '#ffffff',
                           }
                         : {}
                     }
                   >
-                    {/* Active accent vertical line on the side of the button */}
-                    {isActive && (
-                      <span
-                        className="absolute left-0 top-1 bottom-1 w-[4.5px] rounded-r-md transition-all duration-200"
-                        style={{
-                          backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
-                          boxShadow: activeGlow,
-                        }}
-                      />
-                    )}
                     <Icon
-                      className="w-4 h-4 shrink-0 transition-colors"
-                      style={
-                        isActive
-                          ? { color: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }
-                          : { color: '#786e64' }
-                      }
+                      className={`w-4 h-4 shrink-0 transition-colors ${
+                        isActive ? 'text-white' : 'text-stone-500'
+                      }`}
                     />
                     <span className="truncate">{item.title}</span>
                   </NavLink>
@@ -383,58 +369,35 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                   <button
                     type="button"
                     onClick={() => toggleSubmenu(item.id)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-[13px] transition-colors cursor-pointer group relative overflow-hidden ${
+                    className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-[13px] transition-colors cursor-pointer group relative overflow-hidden ${
                       isSubOpen || isAnyChildActive
-                        ? 'font-bold'
-                        : 'sidebar-item-inactive text-[#443D37] hover:text-[#1C1917] font-medium'
+                        ? 'font-semibold text-stone-900 bg-stone-100/70'
+                        : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/60 font-medium'
                     }`}
-                    style={
-                      isSubOpen || isAnyChildActive
-                        ? {
-                            backgroundColor: activeParentBg,
-                            color: currentTheme?.primary || '#8b6f4e',
-                          }
-                        : {}
-                    }
                   >
-                    {/* Collapsed parent with active child gets the indicator line */}
-                    {isAnyChildActive && !isSubOpen && (
-                      <span
-                        className="absolute left-0 top-1.5 bottom-1.5 w-[4.5px] rounded-r-md transition-all duration-200"
-                        style={{
-                          backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
-                          boxShadow: activeGlow,
-                        }}
-                      />
-                    )}
-                    <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="flex items-center gap-3 min-w-0">
                       <Icon
-                        className="w-4 h-4 shrink-0 transition-colors"
+                        className="w-4 h-4 shrink-0 transition-colors text-stone-500 group-hover:text-stone-700"
                         style={
-                          isSubOpen || isAnyChildActive
-                            ? { color: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }
-                            : { color: '#786e64' }
+                          isAnyChildActive
+                            ? { color: currentTheme?.primary || 'var(--theme-primary, #0f172a)' }
+                            : undefined
                         }
                       />
                       <span className="truncate text-left">{item.title}</span>
                     </div>
-                    <span
-                      className="transition-colors shrink-0 ml-1"
-                      style={{
-                        color: isSubOpen || isAnyChildActive ? (currentTheme?.primary || '#8b6f4e') : '#a89d91',
-                      }}
-                    >
+                    <span className="transition-colors shrink-0 ml-1 text-stone-400 group-hover:text-stone-600">
                       {isSubOpen ? (
                         <HiOutlineChevronUp className="w-3.5 h-3.5 stroke-2" />
                       ) : (
-                        <HiOutlineChevronRight className="w-3.5 h-3.5 stroke-2" />
+                        <HiOutlineChevronDown className="w-3.5 h-3.5 stroke-2" />
                       )}
                     </span>
                   </button>
 
                   {/* Submenu Children Items with guideline line */}
                   {isSubOpen && (
-                    <div className="ml-5 pl-3 border-l border-[#EDE8E1] py-1 space-y-0.5 animate-fadeIn">
+                    <div className="ml-4 pl-2.5 border-l border-stone-200/80 py-1 space-y-0.5 animate-fadeIn">
                       {item.children.map((child) => {
                         const ChildIcon = child.icon || Icon;
                         const isChildActive = checkIsChildActive(child.path);
@@ -444,41 +407,24 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                             key={child.id || child.path}
                             to={child.path}
                             onClick={onMobileClose}
-                            className={`relative flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] transition-all duration-150 cursor-pointer overflow-hidden ${
+                            className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-all duration-150 cursor-pointer overflow-hidden ${
                               isChildActive
-                                ? 'sidebar-item-active font-bold'
-                                : 'sidebar-item-inactive text-[#504840] hover:text-[#1C1917] font-normal'
+                                ? 'font-bold text-white shadow-sm'
+                                : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/60 font-medium'
                             }`}
                             style={
                               isChildActive
                                 ? {
-                                    backgroundColor: activeBg,
-                                    color: currentTheme?.dark || currentTheme?.primary || '#644d32',
-                                    borderWidth: '1px',
-                                    borderStyle: 'solid',
-                                    borderColor: activeBorder,
-                                    boxShadow: activeShadow,
+                                    backgroundColor: currentTheme?.primary || 'var(--theme-primary, #0f172a)',
+                                    color: '#ffffff',
                                   }
                                 : {}
                             }
                           >
-                            {/* Active accent vertical line on the side of the button */}
-                            {isChildActive && (
-                              <span
-                                className="absolute left-0 top-1 bottom-1 w-[4.5px] rounded-r-md transition-all duration-200"
-                                style={{
-                                  backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
-                                  boxShadow: activeGlow,
-                                }}
-                              />
-                            )}
                             <ChildIcon
-                              className="w-4 h-4 shrink-0 transition-colors"
-                              style={
-                                isChildActive
-                                  ? { color: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }
-                                  : { color: '#87786B' }
-                              }
+                              className={`w-3.5 h-3.5 shrink-0 transition-colors ${
+                                isChildActive ? 'text-white' : 'text-stone-400'
+                              }`}
                             />
                             <span className="truncate flex-1 text-left">{child.title}</span>
                           </NavLink>
@@ -494,7 +440,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
       </nav>
 
       {/* ─── Bottom User Profile Footer (Matches Screenshot) ──── */}
-      <div className="p-3 border-t border-[#EDE8E1]/80 flex-shrink-0 bg-[#FDFCFB]">
+      <div className="p-3 border-t border-slate-200/80 flex-shrink-0 bg-white">
         {(() => {
           const isProfileActive =
             location.pathname === '/profile' ||
@@ -511,7 +457,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
               className={`flex items-center justify-between p-2 rounded-xl border transition-all cursor-pointer group ${
                 isProfileActive
                   ? 'sidebar-item-active'
-                  : 'border-[#EDE8E1] bg-white hover:bg-[#FAF6F1]'
+                  : 'border-slate-200/80 bg-white hover:bg-slate-50'
               }`}
               style={
                 isProfileActive

@@ -1,27 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { HiOutlineEye, HiOutlineDotsVertical, HiOutlinePencil, HiOutlineTrash, HiOutlineExternalLink } from 'react-icons/hi';
-
-export function ViewActionButton({
-  onClick,
-  title = 'View Details',
-  className = '',
-  iconClassName = 'w-3.5 h-3.5 stroke-[2]',
-  disabled = false,
-  ...props
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      disabled={disabled}
-      className={`w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
-      {...props}
-    >
-      <HiOutlineEye className={iconClassName} />
-    </button>
-  );
-}
+import { HiOutlineDotsVertical, HiOutlinePencil, HiOutlineTrash, HiOutlineExternalLink } from 'react-icons/hi';
 
 export function EditActionButton({
   onClick,
@@ -67,6 +45,11 @@ export function DeleteActionButton({
   );
 }
 
+// Deprecated no-op export so any leftover import does not break
+export function ViewActionButton() {
+  return null;
+}
+
 export default function RowActions({
   onView,
   onPreview,
@@ -87,8 +70,6 @@ export default function RowActions({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef(null);
 
-  const handleView = onView || onPreview;
-  const activeViewTitle = previewTitle || viewTitle;
   const activeEditLabel = editLabel || editTitle;
   const activeDeleteLabel = deleteLabel || deleteTitle;
 
@@ -117,17 +98,12 @@ export default function RowActions({
         </button>
       )}
 
-      {/* View / Preview Action (Eye button) */}
-      {handleView && (
-        <ViewActionButton onClick={handleView} title={activeViewTitle} />
-      )}
-
       {/* Edit Action (Pencil button - Soft Blue tint with vivid blue icon) */}
       {onEdit && (
         <EditActionButton onClick={onEdit} title={activeEditLabel} />
       )}
 
-      {/* Delete Action (Trash button - Matching user screenshot: soft warm rose with vivid red icon) */}
+      {/* Delete Action (Trash button - Soft warm rose with vivid red icon) */}
       {onDelete && (
         <DeleteActionButton onClick={onDelete} title={activeDeleteLabel} />
       )}

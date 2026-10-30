@@ -917,19 +917,19 @@ export default function BannersView() {
                 key={card.key}
                 onClick={() => navigate(`${basePath}/${card.key}`)}
                 style={{ backgroundColor: '#ffffff' }}
-                className="bg-white rounded-xl sm:rounded-2xl border border-stone-200/90 p-4 sm:p-5 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between hover:border-stone-300 hover:shadow-md hover:shadow-stone-200/40 hover:bg-stone-50/50 hover:-translate-y-0.5"
+                className="bg-white rounded-xl sm:rounded-2xl border border-[#8b6f4e]/35 p-4 sm:p-5 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between hover:border-[#8b6f4e] hover:shadow-md hover:-translate-y-0.5 shadow-2xs"
               >
                 <div>
                   {/* Top row: Icon and Count Badge */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-stone-100/90 border border-stone-200/80 flex items-center justify-center text-stone-700 shrink-0 group-hover:scale-105 transition-all">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#faf6f0] border border-[#8b6f4e]/20 flex items-center justify-center text-[#8b6f4e] shrink-0 group-hover:scale-105 group-hover:bg-[#8b6f4e] group-hover:text-white transition-all">
                       <CardIcon className="w-5 h-5 stroke-[1.8]" />
                     </div>
 
                     <span
                       className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold tracking-wide ${
                         count > 0
-                          ? 'bg-stone-100 text-stone-700 border border-stone-200'
+                          ? 'bg-[#faf6f0] text-stone-700 border border-[#8b6f4e]/30'
                           : 'bg-stone-50 text-stone-400 border border-stone-200/60'
                       }`}
                     >
@@ -938,7 +938,7 @@ export default function BannersView() {
                   </div>
 
                   {/* Title */}
-                  <h3 className="text-sm sm:text-base font-bold text-stone-900 group-hover:text-stone-800 transition-colors leading-snug">
+                  <h3 className="text-sm sm:text-base font-bold text-stone-900 group-hover:text-[#8b6f4e] transition-colors leading-snug">
                     {card.label}
                   </h3>
 
@@ -949,7 +949,7 @@ export default function BannersView() {
                 </div>
 
                 {/* Bottom link */}
-                <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-[11px] font-semibold text-stone-400 group-hover:text-stone-700 transition-colors">
+                <div className="pt-3 mt-3 border-t border-stone-100 flex items-center justify-between text-[11px] font-semibold text-stone-400 group-hover:text-[#8b6f4e] transition-colors">
                   <span>Manage</span>
                   <HiOutlineChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                 </div>
@@ -984,17 +984,7 @@ export default function BannersView() {
           <span className="text-stone-900 font-semibold">{currentBannerType.label}</span>
         </div>
 
-        {/* Back to Banner Types Button */}
-        <div>
-          <button
-            type="button"
-            onClick={() => navigate(basePath)}
-            className="inline-flex items-center gap-2 text-xs font-semibold text-stone-600 hover:text-stone-900 transition-colors py-1 cursor-pointer group"
-          >
-            <HiOutlineArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
-            <span>Back to Banner Types</span>
-          </button>
-        </div>
+
 
         {/* Header: Icon + Title + Description & + Add Button */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -1375,9 +1365,9 @@ export default function BannersView() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="bg-[#faf8f5] px-5 sm:px-6 py-4 border-b border-stone-150 flex items-center justify-between shrink-0">
+              <div className="bg-white px-5 sm:px-6 py-4 border-b border-stone-200 flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-[#e8d8c0] flex items-center justify-center text-[#8a6d4b] shadow-2xs shrink-0">
+                  <div className="w-10 h-10 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-center text-stone-700 shadow-2xs shrink-0">
                     <TypeIcon className="w-5 h-5 stroke-[1.8]" />
                   </div>
                   <div>
@@ -1403,7 +1393,7 @@ export default function BannersView() {
               {/* Modal Body (Scrollable) */}
               <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 scrollbar-thin">
                 {/* 1. Banner Details Card (Link & Open in Removed) */}
-                <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
+                <div className="bg-[#f8fafc] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
                   <div className="flex items-center gap-2 text-stone-800">
                     <HiOutlinePhotograph className="w-4 h-4 text-[#8a6d4b]" />
                     <h3 className="text-xs font-bold uppercase tracking-wider">
@@ -1521,7 +1511,7 @@ export default function BannersView() {
                 </div>
 
                 {/* 2. Banner Images & Theme Placement Media Card */}
-                <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
+                <div className="bg-[#f8fafc] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
                   {/* Top: Website Theme Selector & Direct Browse in Gallery Action */}
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-stone-200/70">
                     <div>
@@ -1682,7 +1672,7 @@ export default function BannersView() {
                 </div>
 
                 {/* 3. Display Settings Card (Status, Display Order, Show On) */}
-                <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
+                <div className="bg-[#f8fafc] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
                   <div className="flex items-center gap-2 text-stone-800">
                     <HiOutlineAdjustments className="w-4 h-4 text-[#8a6d4b]" />
                     <h3 className="text-xs font-bold uppercase tracking-wider">

@@ -1,37 +1,17 @@
-import api from '../api/axios';
-
 /**
- * Resolves any image URL (Cloudflare R2 private S3 URL, local relative path, or external CDN)
- * into a fully loadable public URL that browser <img> tags can render without auth issues.
+ * Returns the media/image URL directly as provided by Cloudflare.
+ * @param {string|object} url
+ * @returns {string}
  */
 export function getMediaUrl(url) {
-  if (!url || typeof url !== 'string') return '';
-
-  const trimmed = url.trim();
-  if (!trimmed || trimmed.includes('example.com')) return '';
-
-  const backendBase = (api.defaults?.baseURL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
-
-  const r2Base = 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev';
-
-  // If it's a proxy streaming endpoint from Cloudflare R2 (e.g. /api/upload/file/<key> or https://api.neirah.in/api/upload/file/<key>)
-  if (trimmed.includes('/api/upload/file/')) {
-    const key = trimmed.split('/api/upload/file/')[1];
-    return `${r2Base}/${key}`;
+  if (!url) return '';
+  if (typeof url === 'object') {
+    return (url.url || url.src || '').trim();
   }
-
-  // If it's a private Cloudflare R2 S3 API URL (e.g. https://telecrm...r2.cloudflarestorage.com/<key>)
-  if (trimmed.includes('r2.cloudflarestorage.com/')) {
-    const key = trimmed.split('r2.cloudflarestorage.com/')[1];
-    return `${r2Base}/${key}`;
-  }
-
-  // If it's a relative URL (/api/upload/... or /uploads/... or /featured/...)
-  if (trimmed.startsWith('/')) {
-    return `${backendBase}${trimmed}`;
-  }
-
-  return trimmed;
+  if (typeof url !== 'string') return '';
+  return url.trim();
 }
+
+export const getImageUrl = getMediaUrl;
 
 export default getMediaUrl;

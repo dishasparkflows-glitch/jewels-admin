@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   HiOutlineChevronRight,
   HiOutlineUpload,
@@ -41,24 +42,39 @@ import StatCards from '../../components/common/StatCards';
 import ImageCompressionDemo from '../../components/common/ImageCompressionDemo';
 
 const LUXURY_BUTTON_PALETTES = [
-  { name: 'Emerald Luxury', bg: '#1f3a2b', hover: '#162b20', text: '#ffffff' },
+  {
+    name: 'Dark Emerald',
+    bg: '#1f3a2b',
+    hover: '#162b20',
+    text: '#ffffff',
+    storefrontColors: {
+      topBarBgColor: '#1f3a2b',
+      topBarTextColor: '#ffffff',
+      headerBgColor: '#f7f4ee',
+      headerTextColor: '#252923',
+      footerBgColor: '#142820',
+      footerTextColor: '#e9dfc8',
+    },
+  },
   { name: 'Warm Gold', bg: '#8b6f4e', hover: '#755c3e', text: '#ffffff' },
   { name: 'Champagne Ochre', bg: '#c58b32', hover: '#a87325', text: '#ffffff' },
   { name: 'Velvet Plum', bg: '#4a1525', hover: '#3b0e1b', text: '#ffffff' },
   { name: 'Midnight Onyx', bg: '#1a1a1a', hover: '#0d0d0d', text: '#ffffff' },
   { name: 'Classic Navy', bg: '#132238', hover: '#0c1624', text: '#ffffff' },
 ];
+const DEFAULT_BUTTON_PALETTE = LUXURY_BUTTON_PALETTES.find((palette) => palette.name === 'Warm Gold');
 
 const DEFAULT_HEADER_FOOTER_COLORS = {
-  topBarBgColor: '#60574d',
+  topBarBgColor: '#201e1b',
   topBarTextColor: '#ffffff',
-  headerBgColor: '#22201e',
+  headerBgColor: '#201e1b',
   headerTextColor: '#ffffff',
   footerBgColor: '#0f0d0b',
   footerTextColor: '#c8b89e',
 };
 
 export default function SettingsView() {
+  const navigate = useNavigate();
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,14 +88,15 @@ export default function SettingsView() {
   const [themesList, setThemesList] = useState([]);
   const [loadingThemes, setLoadingThemes] = useState(false);
   const [savingTheme, setSavingTheme] = useState(false);
+  const [resettingButtonColors, setResettingButtonColors] = useState(false);
 
   // Storefront Button Colors state
-  const [buttonColor, setButtonColor] = useState('#1f3a2b');
-  const [buttonHoverColor, setButtonHoverColor] = useState('#162b20');
+  const [buttonColor, setButtonColor] = useState('#8b6f4e');
+  const [buttonHoverColor, setButtonHoverColor] = useState('#755c3e');
   const [buttonTextColor, setButtonTextColor] = useState('#ffffff');
-  const [topBarBgColor, setTopBarBgColor] = useState('#60574d');
+  const [topBarBgColor, setTopBarBgColor] = useState('#201e1b');
   const [topBarTextColor, setTopBarTextColor] = useState('#ffffff');
-  const [headerBgColor, setHeaderBgColor] = useState('#22201e');
+  const [headerBgColor, setHeaderBgColor] = useState('#201e1b');
   const [headerTextColor, setHeaderTextColor] = useState('#ffffff');
   const [footerBgColor, setFooterBgColor] = useState('#0f0d0b');
   const [footerTextColor, setFooterTextColor] = useState('#c8b89e');
@@ -183,13 +200,14 @@ export default function SettingsView() {
         });
       }
 
+      const bDetails = data.businessDetails || {};
       setBusinessForm({
-        companyName: data.companyName ?? '',
-        emailAddress: data.emailAddress ?? '',
-        mobileNumber: data.mobileNumber ?? '',
-        storeAddress: data.storeAddress ?? '',
-        gstCode: data.gstCode ?? '',
-        panCode: data.panCode ?? '',
+        companyName: bDetails.companyName ?? data.companyName ?? '',
+        emailAddress: bDetails.emailAddress ?? data.emailAddress ?? '',
+        mobileNumber: bDetails.mobileNumber ?? data.mobileNumber ?? '',
+        storeAddress: bDetails.storeAddress ?? data.storeAddress ?? '',
+        gstCode: bDetails.gstCode ?? data.gstCode ?? '',
+        panCode: bDetails.panCode ?? data.panCode ?? '',
         returnPeriodDays: data.returnPeriodDays ?? '',
         returnPolicy: data.returnPolicy ?? '',
         shippingPolicy: data.shippingPolicy ?? '',
@@ -209,12 +227,12 @@ export default function SettingsView() {
         if (themeName) setSelectedThemeName(themeName);
       }
       const colors = data.themeColors || {};
-      setButtonColor(colors.buttonColor || data.buttonColor || '#1f3a2b');
-      setButtonHoverColor(colors.buttonHoverColor || data.buttonHoverColor || '#162b20');
+      setButtonColor(colors.buttonColor || data.buttonColor || '#8b6f4e');
+      setButtonHoverColor(colors.buttonHoverColor || data.buttonHoverColor || '#755c3e');
       setButtonTextColor(colors.buttonTextColor || data.buttonTextColor || '#ffffff');
-      setTopBarBgColor(colors.topBarBgColor || '#60574d');
+      setTopBarBgColor(colors.topBarBgColor || '#201e1b');
       setTopBarTextColor(colors.topBarTextColor || '#ffffff');
-      setHeaderBgColor(colors.headerBgColor || '#22201e');
+      setHeaderBgColor(colors.headerBgColor || '#201e1b');
       setHeaderTextColor(colors.headerTextColor || '#ffffff');
       setFooterBgColor(colors.footerBgColor || '#0f0d0b');
       setFooterTextColor(colors.footerTextColor || '#c8b89e');
@@ -250,13 +268,14 @@ export default function SettingsView() {
   const closeModal = () => {
     // Reset forms to saved settings on cancel
     if (settings) {
+      const bDetails = settings.businessDetails || {};
       setBusinessForm({
-        companyName: settings.companyName ?? '',
-        emailAddress: settings.emailAddress ?? '',
-        mobileNumber: settings.mobileNumber ?? '',
-        storeAddress: settings.storeAddress ?? '',
-        gstCode: settings.gstCode ?? '',
-        panCode: settings.panCode ?? '',
+        companyName: bDetails.companyName ?? settings.companyName ?? '',
+        emailAddress: bDetails.emailAddress ?? settings.emailAddress ?? '',
+        mobileNumber: bDetails.mobileNumber ?? settings.mobileNumber ?? '',
+        storeAddress: bDetails.storeAddress ?? settings.storeAddress ?? '',
+        gstCode: bDetails.gstCode ?? settings.gstCode ?? '',
+        panCode: bDetails.panCode ?? settings.panCode ?? '',
         returnPeriodDays: settings.returnPeriodDays ?? '',
         returnPolicy: settings.returnPolicy ?? '',
         shippingPolicy: settings.shippingPolicy ?? '',
@@ -272,12 +291,12 @@ export default function SettingsView() {
       const initialThemeId = typeof settings.currentThemeId === 'object' ? settings.currentThemeId?._id : settings.currentThemeId;
       setSelectedThemeId(initialThemeId || '');
       const colors = settings.themeColors || {};
-      setButtonColor(colors.buttonColor || settings.buttonColor || '#1f3a2b');
-      setButtonHoverColor(colors.buttonHoverColor || settings.buttonHoverColor || '#162b20');
+      setButtonColor(colors.buttonColor || settings.buttonColor || '#8b6f4e');
+      setButtonHoverColor(colors.buttonHoverColor || settings.buttonHoverColor || '#755c3e');
       setButtonTextColor(colors.buttonTextColor || settings.buttonTextColor || '#ffffff');
-      setTopBarBgColor(colors.topBarBgColor || '#60574d');
+      setTopBarBgColor(colors.topBarBgColor || '#201e1b');
       setTopBarTextColor(colors.topBarTextColor || '#ffffff');
-      setHeaderBgColor(colors.headerBgColor || '#22201e');
+      setHeaderBgColor(colors.headerBgColor || '#201e1b');
       setHeaderTextColor(colors.headerTextColor || '#ffffff');
       setFooterBgColor(colors.footerBgColor || '#0f0d0b');
       setFooterTextColor(colors.footerTextColor || '#c8b89e');
@@ -443,12 +462,14 @@ export default function SettingsView() {
     try {
       setSavingBusiness(true);
       const payload = {
-        companyName: businessForm.companyName,
-        emailAddress: businessForm.emailAddress,
-        mobileNumber: businessForm.mobileNumber,
-        storeAddress: businessForm.storeAddress,
-        gstCode: businessForm.gstCode,
-        panCode: businessForm.panCode,
+        businessDetails: {
+          companyName: businessForm.companyName,
+          emailAddress: businessForm.emailAddress,
+          mobileNumber: businessForm.mobileNumber,
+          storeAddress: businessForm.storeAddress,
+          gstCode: businessForm.gstCode,
+          panCode: businessForm.panCode,
+        },
         returnPeriodDays: businessForm.returnPeriodDays === '' ? undefined : Number(businessForm.returnPeriodDays),
         returnPolicy: businessForm.returnPolicy,
         shippingPolicy: businessForm.shippingPolicy,
@@ -524,16 +545,32 @@ export default function SettingsView() {
     toast.success('Header & footer colors reset to defaults');
   };
 
+  const handleResetButtonColors = async () => {
+    try {
+      setResettingButtonColors(true);
+      const colors = {
+        buttonColor: DEFAULT_BUTTON_PALETTE.bg,
+        buttonHoverColor: DEFAULT_BUTTON_PALETTE.hover,
+        buttonTextColor: DEFAULT_BUTTON_PALETTE.text,
+      };
+      const res = await api.put('/settings', { themeColors: colors });
+      setSettings(res.data?.data || settings);
+      setButtonColor(colors.buttonColor);
+      setButtonHoverColor(colors.buttonHoverColor);
+      setButtonTextColor(colors.buttonTextColor);
+      toast.success('Button colors reset to the Warm Gold default');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to reset button colors');
+    } finally {
+      setResettingButtonColors(false);
+    }
+  };
+
   // Save Storefront Theme
   const handleSaveTheme = async () => {
-    if (!selectedThemeId) {
-      toast.error('Please select a theme');
-      return;
-    }
     try {
       setSavingTheme(true);
-      const res = await api.put('/settings', {
-        currentThemeId: selectedThemeId,
+      const payload = {
         themeColors: {
           buttonColor,
           buttonHoverColor,
@@ -545,20 +582,19 @@ export default function SettingsView() {
           footerBgColor,
           footerTextColor,
         },
-        buttonColor,
-        buttonHoverColor,
-        buttonTextColor,
-      });
+      };
+      if (selectedThemeId) payload.currentThemeId = selectedThemeId;
+      const res = await api.put('/settings', payload);
       const updated = res.data?.data || {};
       setSettings(updated);
-      const themeObj = updated.currentThemeId;
+      const themeObj = updated.currentThemeId || settings?.currentThemeId;
       const themeName =
         (typeof themeObj === 'object' && themeObj?.name) ||
         themesList.find((t) => String(t._id) === String(selectedThemeId))?.name ||
         '';
-      setSelectedThemeName(themeName);
+      if (themeName) setSelectedThemeName(themeName);
       setActiveModal(null);
-      toast.success('Storefront theme & colors updated successfully');
+      toast.success(selectedThemeId ? 'Storefront theme & colors updated successfully' : 'Storefront colors updated successfully');
     } catch (err) {
       console.error('Failed to save theme:', err);
       toast.error(err.response?.data?.message || 'Failed to update theme');
@@ -705,7 +741,7 @@ export default function SettingsView() {
       subtitle: 'Manage active website theme, button colors, and header/footer styling from one place.',
       icon: HiOutlineColorSwatch,
       badgeText: selectedThemeName
-        ? `Active: ${selectedThemeName} · Button: ${(buttonColor || '#1f3a2b').toUpperCase()}`
+        ? `Active: ${selectedThemeName} · Button: ${(buttonColor || '#8b6f4e').toUpperCase()}`
         : `Colors Configured`,
       hasPreview: false,
     },
@@ -732,6 +768,11 @@ export default function SettingsView() {
       b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const buttonColorsMatchWarmGold =
+    buttonColor.toLowerCase() === DEFAULT_BUTTON_PALETTE.bg.toLowerCase() &&
+    buttonHoverColor.toLowerCase() === DEFAULT_BUTTON_PALETTE.hover.toLowerCase() &&
+    buttonTextColor.toLowerCase() === DEFAULT_BUTTON_PALETTE.text.toLowerCase();
 
   return (
     <div className="space-y-4">
@@ -784,7 +825,7 @@ export default function SettingsView() {
             <div
               key={box.id}
               onClick={() => handleOpenModal(box.id)}
-              className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white p-4 shadow-2xs hover:border-[#8f6d43]/60 hover:shadow-md transition-all duration-200 cursor-pointer"
+              className="group relative flex flex-col justify-between rounded-xl border border-[#8b6f4e]/35 bg-white p-4 shadow-2xs hover:border-[#8b6f4e] hover:shadow-md transition-all duration-200 cursor-pointer"
             >
               <div>
                 {/* Top Row: Icon + Right Chevron */}
@@ -857,7 +898,7 @@ export default function SettingsView() {
           <div
             className={`relative flex flex-col w-full my-auto rounded-2xl bg-white border border-stone-200 shadow-2xl overflow-hidden transition-all duration-200 ${
               activeModal === 'theme'
-                ? 'max-w-5xl lg:max-w-6xl'
+              ? 'max-w-5xl lg:max-w-6xl h-[92vh] max-h-[920px]'
                 : activeModal === 'compression'
                 ? 'max-w-4xl'
                 : activeModal === 'business' || activeModal === 'logos'
@@ -866,7 +907,7 @@ export default function SettingsView() {
             }`}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 bg-[#fdfcfb]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-stone-100 bg-[#fdfcfb] shrink-0">
               <div>
                 <h2 className="text-base font-bold text-stone-900 tracking-tight">
                   {activeModal === 'logos' && 'Website Logos & Auth Banner'}
@@ -900,7 +941,7 @@ export default function SettingsView() {
             </div>
 
             {/* Modal Body */}
-            <div className="p-5 sm:p-6 overflow-y-auto max-h-[calc(85vh-130px)] space-y-4">
+            <div className={`${activeModal === 'theme' ? 'flex-1 min-h-0 overflow-hidden p-0' : 'p-5 sm:p-6 overflow-y-auto max-h-[calc(85vh-130px)]'} space-y-4`}>
               {/* 1. Website Logos Modal */}
               {activeModal === 'logos' && (
                 <div className="space-y-4">
@@ -1377,10 +1418,10 @@ export default function SettingsView() {
 
               {/* Theme & Button Color Modal Body */}
               {activeModal === 'theme' && (
-                <div className="space-y-6 max-h-[82vh] overflow-y-auto p-6 sm:p-7">
+                <div className="h-full min-h-0 overflow-y-auto p-4 sm:p-5 lg:p-6 space-y-4 scrollbar-thin">
 
                   {/* ── Section A: Global Storefront Button Styling ── */}
-                  <div className="bg-stone-50/90 border border-stone-200/90 rounded-2xl p-4.5 space-y-4">
+                  <div className="bg-stone-50/90 border border-stone-200/90 rounded-2xl p-4 sm:p-5 space-y-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-2">
@@ -1390,11 +1431,6 @@ export default function SettingsView() {
                         <p className="text-[11px] text-stone-500 mt-0.5">
                           Controls the button color across all modals, pages, and interactive actions from one place
                         </p>
-                      </div>
-                      <div className="text-right">
-                        <span className="font-mono text-xs font-bold px-2.5 py-1 rounded-md border border-stone-200 bg-white text-stone-800 shadow-2xs">
-                          {(buttonColor || '#1f3a2b').toUpperCase()}
-                        </span>
                       </div>
                     </div>
 
@@ -1407,39 +1443,60 @@ export default function SettingsView() {
                         <button
                           type="button"
                           style={{ backgroundColor: buttonColor, color: buttonTextColor }}
-                          className="px-4 py-2 rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-default"
+                          className="px-4 py-2 rounded-lg text-xs font-semibold shadow-xs cursor-default"
                         >
-                          <span>Schedule Appointment</span>
+                          Primary Button
                         </button>
                         <button
                           type="button"
-                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
-                          className="px-4 py-2 rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-default"
+                          style={{ backgroundColor: buttonHoverColor, color: buttonTextColor }}
+                          className="px-4 py-2 rounded-lg text-xs font-semibold shadow-xs cursor-default"
                         >
-                          <span>Sign In</span>
+                          Hover State
                         </button>
                         <button
                           type="button"
-                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
-                          className="px-4 py-2 rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-default"
+                          style={{ backgroundColor: '#f4efe7', color: buttonColor }}
+                          className="px-4 py-2 rounded-lg text-xs font-semibold cursor-default"
                         >
-                          <span>EXPLORE JEWELLERY</span>
+                          Secondary Button
                         </button>
                         <button
                           type="button"
-                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
-                          className="px-3 py-1.5 rounded-lg text-[11px] font-semibold shadow-xs flex items-center gap-1.5 cursor-default"
+                          style={{ borderColor: buttonColor, color: buttonColor }}
+                          className="px-4 py-2 rounded-lg border text-xs font-semibold cursor-default"
                         >
-                          <span>Copy Code</span>
+                          Outline Button
+                        </button>
+                        <button
+                          type="button"
+                          style={{ color: buttonColor }}
+                          className="px-3 py-2 text-xs font-semibold cursor-default"
+                        >
+                          Text Button →
                         </button>
                       </div>
                     </div>
 
                     {/* Quick Luxury Presets */}
-                    <div className="space-y-1.5">
-                      <label className="text-[11px] font-semibold text-stone-700">
-                        Quick Luxury Palettes
-                      </label>
+                    <div className="space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                          <label className="text-[11px] font-semibold text-stone-700">Quick Luxury Palettes</label>
+                          <p className="text-[10px] text-stone-500">Warm Gold is the built-in default and stays available as your reset option.</p>
+                        </div>
+                        <div className="flex items-center gap-2 self-start sm:self-auto">
+                          <button
+                            type="button"
+                            onClick={handleResetButtonColors}
+                            disabled={resettingButtonColors || buttonColorsMatchWarmGold}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 active:scale-95 border border-stone-200 rounded-lg shadow-2xs transition-all cursor-pointer disabled:cursor-default disabled:opacity-60"
+                          >
+                            <HiOutlineRefresh className="w-3.5 h-3.5 text-stone-500" />
+                            {resettingButtonColors ? 'Resetting…' : 'Reset to Default'}
+                          </button>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
                         {LUXURY_BUTTON_PALETTES.map((preset) => {
                           const isCurrent = (buttonColor || '').toLowerCase() === preset.bg.toLowerCase();
@@ -1447,10 +1504,19 @@ export default function SettingsView() {
                             <button
                               key={preset.name}
                               type="button"
+                              aria-pressed={isCurrent}
                               onClick={() => {
                                 setButtonColor(preset.bg);
                                 setButtonHoverColor(preset.hover);
                                 setButtonTextColor(preset.text);
+                                if (preset.storefrontColors) {
+                                  setTopBarBgColor(preset.storefrontColors.topBarBgColor);
+                                  setTopBarTextColor(preset.storefrontColors.topBarTextColor);
+                                  setHeaderBgColor(preset.storefrontColors.headerBgColor);
+                                  setHeaderTextColor(preset.storefrontColors.headerTextColor);
+                                  setFooterBgColor(preset.storefrontColors.footerBgColor);
+                                  setFooterTextColor(preset.storefrontColors.footerTextColor);
+                                }
                               }}
                               className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
                                 isCurrent
@@ -1467,8 +1533,10 @@ export default function SettingsView() {
                                   {preset.name}
                                 </span>
                               </div>
-                              <span className="font-mono text-[9px] text-stone-400">
-                                {preset.bg}
+                              <span className="flex items-center gap-1" aria-hidden="true">
+                                {[preset.bg, preset.hover, preset.text].map((color) => (
+                                  <span key={color} className="h-3.5 flex-1 rounded-sm border border-black/5" style={{ backgroundColor: color }} />
+                                ))}
                               </span>
                             </button>
                           );
@@ -1558,10 +1626,10 @@ export default function SettingsView() {
                         type="button"
                         onClick={handleResetHeaderFooterDefaults}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 active:scale-95 border border-stone-200 rounded-lg shadow-2xs transition-all cursor-pointer self-start sm:self-auto shrink-0"
-                        title="Reset all header and footer colors to luxury defaults"
+                        title="Reset header and footer colors to the Warm Gold defaults"
                       >
                         <HiOutlineRefresh className="w-3.5 h-3.5 text-stone-500" />
-                        <span>Reset to Defaults</span>
+                        <span>Reset to Default</span>
                       </button>
                     </div>
 
@@ -1771,10 +1839,18 @@ export default function SettingsView() {
                   </div>
 
                   {/* ── Section B: Storefront Active Theme Selector ── */}
-                  <div className="space-y-2.5 pt-1">
-                    <label className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                      Active Storefront Theme
-                    </label>
+                  <div className="rounded-2xl border border-stone-200/80 bg-white p-4 sm:p-5 space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
+                      <div>
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">Active Storefront Theme</h4>
+                        <p className="mt-0.5 text-[11px] text-stone-500">Choose which theme the storefront should use.</p>
+                      </div>
+                      {!loadingThemes && themesList.length > 0 && (
+                        <span className="text-[10px] font-semibold text-stone-500 bg-stone-50 border border-stone-200 rounded-full px-2.5 py-1">
+                          {themesList.length} {themesList.length === 1 ? 'theme' : 'themes'} available
+                        </span>
+                      )}
+                    </div>
 
                     {loadingThemes ? (
                       <div className="py-12 flex flex-col items-center justify-center gap-2">
@@ -1782,18 +1858,39 @@ export default function SettingsView() {
                         <span className="text-xs text-stone-500">Loading themes...</span>
                       </div>
                     ) : themesList.length === 0 ? (
-                      <div className="py-8 text-center text-xs text-stone-500">
-                        No themes found. Create a theme in Website Themes first.
+                      <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50/70 px-4 py-8 text-center">
+                        <HiOutlineColorSwatch className="mx-auto h-7 w-7 text-stone-400" />
+                        <p className="mt-2 text-sm font-semibold text-stone-800">No storefront themes yet</p>
+                        <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-stone-500">
+                          Create a theme first, then return here to select it and apply your color settings.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => { setActiveModal(null); navigate('/website/themes'); }}
+                          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#8f6d43] px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[#7a5c36]"
+                        >
+                          <HiOutlineExternalLink className="h-3.5 w-3.5" />
+                          Go to Website Themes
+                        </button>
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
                         {themesList.map((t) => {
                           const isSelected = String(selectedThemeId) === String(t._id);
                           return (
-                            <div
+                              <div
+                                role="button"
+                                tabIndex={0}
+                                aria-pressed={isSelected}
                               key={t._id}
                               onClick={() => setSelectedThemeId(t._id)}
-                              className={`relative cursor-pointer rounded-xl border p-4 transition-all duration-150 flex flex-col justify-between ${
+                              onKeyDown={(event) => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  setSelectedThemeId(t._id);
+                                }
+                              }}
+                              className={`relative w-full text-left cursor-pointer rounded-xl border p-4 transition-all duration-150 flex flex-col justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8f6d43] ${
                                 isSelected
                                   ? 'border-[#8f6d43] bg-[#faf6f0]/70 ring-2 ring-[#8f6d43]/20 shadow-xs'
                                   : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50/50'
@@ -2160,7 +2257,7 @@ export default function SettingsView() {
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-stone-100 bg-stone-50/70">
+            <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-stone-100 bg-stone-50/70 shrink-0">
               <button
                 type="button"
                 onClick={closeModal}
@@ -2217,11 +2314,11 @@ export default function SettingsView() {
                 <button
                   type="button"
                   onClick={handleSaveTheme}
-                  disabled={savingTheme || !selectedThemeId}
-                  style={{ backgroundColor: buttonColor || '#1f3a2b', color: buttonTextColor || '#ffffff' }}
+                  disabled={savingTheme}
+                  style={{ backgroundColor: buttonColor || '#8b6f4e', color: buttonTextColor || '#ffffff' }}
                   className="rounded-lg px-5 py-2 text-xs font-semibold shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  {savingTheme ? 'Saving…' : 'Apply Theme & Colors'}
+                  {savingTheme ? 'Saving…' : selectedThemeId ? 'Apply Theme & Colors' : 'Save Storefront Colors'}
                 </button>
               )}
 

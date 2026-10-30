@@ -462,6 +462,7 @@ export default function MetalRatesView() {
                         onClick={(e) => e.stopPropagation()}
                       >
                         <RowActions
+                          record={item}
                           onPreview={() => setViewingRecord(item)}
                           onEdit={openEditModal}
                           previewTitle="View Rate Details"

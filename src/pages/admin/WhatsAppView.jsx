@@ -24,7 +24,7 @@ import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
-import { ViewActionButton, DeleteActionButton } from '../../components/common/RowActions';
+import { DeleteActionButton } from '../../components/common/RowActions';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
@@ -639,10 +639,6 @@ export default function WhatsAppView() {
                           {/* Actions */}
                           <td className="py-3.5 px-4 align-middle whitespace-nowrap text-right pr-5">
                             <div className="inline-flex items-center gap-2 justify-end">
-                              <ViewActionButton
-                                onClick={() => setPreviewTemplate(tmpl)}
-                                title="Preview Template"
-                              />
                               <button
                                 type="button"
                                 onClick={() => {
@@ -722,16 +718,15 @@ export default function WhatsAppView() {
                 <thead>
                   <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
                     <th className="py-3 px-4 w-[20%]">Recipient</th>
-                    <th className="py-3 px-4 w-[40%]">Template / Message</th>
+                    <th className="py-3 px-4 w-[45%]">Template / Message</th>
                     <th className="py-3 px-4 w-[15%]">Status</th>
-                    <th className="py-3 px-4 w-[15%]">Sent Time</th>
-                    <th className="py-3 px-4 w-[10%] text-right pr-5">Action</th>
+                    <th className="py-3 px-4 w-[20%]">Sent Time</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100 text-xs">
                   {(!paginatedMessages || paginatedMessages.length === 0) ? (
                     <tr>
-                      <td colSpan="5" className="py-12 text-center text-stone-400">
+                      <td colSpan="4" className="py-12 text-center text-stone-400">
                         <HiOutlineChatAlt2 className="w-9 h-9 mx-auto mb-2 stroke-1" />
                         <p className="text-xs font-semibold text-stone-600">No sent messages recorded</p>
                       </td>
@@ -791,24 +786,6 @@ export default function WhatsAppView() {
                               <span className="text-xs font-medium text-stone-800">{date}</span>
                               <span className="text-[11px] text-stone-400 mt-0.5">{time}</span>
                             </div>
-                          </td>
-                          <td className="py-3.5 px-4 align-middle whitespace-nowrap text-right pr-5">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setPreviewTemplate({
-                                  name: msg.templateName,
-                                  body: msg.renderedPreview || msg.message,
-                                  category: 'UTILITY',
-                                  language: 'English',
-                                  status: 'APPROVED',
-                                });
-                              }}
-                              className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                              title="View message preview"
-                            >
-                              <HiOutlineEye className="w-3.5 h-3.5" />
-                            </button>
                           </td>
                         </tr>
                       );

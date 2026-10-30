@@ -1040,14 +1040,6 @@ export default function GalleryView() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setPreviewItem(item)}
-                        className="rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition"
-                        title="Inspect Full Image"
-                      >
-                        <HiOutlineEye className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
                         onClick={() => setDeleteConfirmItem(item)}
                         className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700 transition cursor-pointer"
                         title="Remove Media Item"
@@ -1129,15 +1121,6 @@ export default function GalleryView() {
 
                   {/* Action Buttons Row */}
                   <div className="mt-2.5 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100">
-                    <button
-                      type="button"
-                      onClick={() => setPreviewItem(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 transition shadow-2xs cursor-pointer"
-                      title="Inspect Image"
-                    >
-                      <HiOutlineEye className="h-3.5 w-3.5" />
-                    </button>
-
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(item)}

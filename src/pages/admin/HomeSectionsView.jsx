@@ -511,120 +511,6 @@ export default function HomeSectionsView() {
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />
 
-      {/* ─── Search & Filters Bar (Single Slim Row, Space-Saving) ─── */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-        <div className="flex-1">
-          <SearchFilterBar
-            search={search}
-            onSearchChange={setSearch}
-            placeholder="Search sections by title, slug, or subtitle..."
-            onFilterClick={() => setShowTypeDrawer((prev) => !prev)}
-            filterActive={typeFilter !== 'all' || placementFilter !== 'all' || statusFilter !== 'all' || showTypeDrawer}
-            extraActions={
-              <button
-                type="button"
-                onClick={handleBulkDelete}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
-                  selectedIds.length > 0
-                    ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
-                    : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
-                }`}
-                title={
-                  selectedIds.length > 0
-                    ? `Delete ${selectedIds.length} selected section${selectedIds.length > 1 ? 's' : ''}`
-                    : 'Select sections to delete'
-                }
-              >
-                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
-                <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
-              </button>
-            }
-          />
-        </div>
-
-        {/* Compact Dropdown Filters Row */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
-          <Dropdown
-            value={typeFilter}
-            onChange={(val) => setTypeFilter(val)}
-            options={[
-              { value: 'all', label: 'All Types' },
-              ...SECTION_TYPES.map((t) => ({ value: t.value, label: t.label })),
-            ]}
-            size="sm"
-            placeholder="All Types"
-            buttonClassName="h-7.5 px-2.5 rounded-md text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 shadow-2xs"
-          />
-
-          <Dropdown
-            value={placementFilter}
-            onChange={(val) => setPlacementFilter(val)}
-            options={[
-              { value: 'all', label: 'All Placements' },
-              { value: 'home_top', label: 'Home Top' },
-              { value: 'home_middle', label: 'Home Middle' },
-              { value: 'home_bottom', label: 'Home Bottom' },
-            ]}
-            size="sm"
-            placeholder="All Placements"
-            buttonClassName="h-7.5 px-2.5 rounded-md text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 shadow-2xs"
-          />
-
-          <Dropdown
-            value={statusFilter}
-            onChange={(val) => setStatusFilter(val)}
-            options={[
-              { value: 'all', label: 'All Status' },
-              { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
-              { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
-            ]}
-            showStatusDot
-            size="sm"
-            placeholder="All Status"
-            buttonClassName="h-7.5 px-2.5 rounded-md text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 shadow-2xs"
-          />
-        </div>
-      </div>
-
-      {/* Optional Quick Type Chips Drawer (Toggled by Filters button) */}
-      {showTypeDrawer && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 text-xs animate-fadeIn">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400 mr-1 shrink-0">
-            Type:
-          </span>
-          <button
-            type="button"
-            onClick={() => setTypeFilter('all')}
-            className={`px-2.5 py-0.5 rounded-md text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
-              typeFilter === 'all'
-                ? 'bg-[#8b6f4e] text-white border-[#8b6f4e] shadow-2xs'
-                : 'bg-white text-stone-600 border-stone-200/80 hover:bg-stone-50'
-            }`}
-          >
-            All ({sections.length})
-          </button>
-          {SECTION_TYPES.map((t) => {
-            const count = sections.filter((s) => s.sectionType === t.value).length;
-            const isSelected = typeFilter === t.value;
-            return (
-              <button
-                key={t.value}
-                type="button"
-                onClick={() => setTypeFilter(isSelected ? 'all' : t.value)}
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-semibold transition-all border cursor-pointer shrink-0 ${
-                  isSelected
-                    ? 'bg-stone-900 text-white border-stone-900 shadow-2xs'
-                    : 'bg-white text-stone-600 border-stone-200/80 hover:bg-stone-50'
-                }`}
-              >
-                <span>{t.label}</span>
-                {count > 0 && <span className="text-[10px] opacity-75">({count})</span>}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* ─── Main Sections Table Card ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         {loading ? (
@@ -641,7 +527,7 @@ export default function HomeSectionsView() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-stone-200/80 bg-white text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                   <th className="py-2 pl-4 pr-1 w-8 text-center">
                     <input
                       type="checkbox"
@@ -842,6 +728,7 @@ export default function HomeSectionsView() {
                       {/* Actions */}
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
+                          record={sec}
                           onView={() => handleOpenView(sec)}
                           onEdit={() => handleOpenEdit(sec)}
                           onDelete={() => handleDelete(sec)}

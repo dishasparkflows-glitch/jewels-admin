@@ -18,7 +18,7 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import { ViewActionButton, DeleteActionButton } from '../../components/common/RowActions';
+import { DeleteActionButton } from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import StatCards from '../../components/common/StatCards';
 import Pagination from '../../components/common/Pagination';
@@ -494,16 +494,10 @@ export default function CustomInquiriesView() {
                         )}
                       </td>
 
-                      {/* Actions: View, Confirm, Cancel, Delete */}
+                      {/* Actions: Confirm, Cancel, Delete */}
                       <td className="py-3 pr-5 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* 1. View Eye Button */}
-                          <ViewActionButton
-                            onClick={() => setViewingInquiry(inq)}
-                            title="View inquiry details"
-                          />
-
-                          {/* 2. Confirm Blue Check Button (Triggers Confirm Modal) */}
+                          {/* Confirm Blue Check Button (Triggers Confirm Modal) */}
                           <button
                             type="button"
                             onClick={() => setConfirmModalInquiry(inq)}

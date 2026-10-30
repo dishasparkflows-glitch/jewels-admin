@@ -1218,6 +1218,8 @@ export default function OrnateProductsView() {
                       <div className="pt-2 mt-2 border-t border-stone-100 flex items-center justify-between">
                         <span className="text-xs font-extrabold text-stone-900">{money(price)}</span>
                         <RowActions
+                          record={p}
+                          detailsEndpoint="/products"
                           onOpenWebsite={() => openProductPreview(p)}
                           onView={() => setViewingProduct(p)}
                           onEdit={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
@@ -1328,6 +1330,8 @@ export default function OrnateProductsView() {
                             <td className="p-3">{renderStatusBadge(p)}</td>
                             <td className="p-3 text-right">
                               <RowActions
+                                record={p}
+                                detailsEndpoint="/products"
                                 onOpenWebsite={() => openProductPreview(p)}
                             onView={() => setViewingProduct(p)}
                                 onEdit={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
