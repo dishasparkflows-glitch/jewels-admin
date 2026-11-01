@@ -20,7 +20,6 @@ export default function CategoryFiltersView() {
   const [filterSearch, setFilterSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [openActionId, setOpenActionId] = useState(null);
-  const [openDefaultValueId, setOpenDefaultValueId] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editTitleId, setEditTitleId] = useState(null);
   const [tempTitle, setTempTitle] = useState('');
@@ -30,7 +29,6 @@ export default function CategoryFiltersView() {
     const handleClickOutside = (e) => {
       if (!e.target.closest('[data-dropdown-container]')) {
         setOpenActionId(null);
-        setOpenDefaultValueId(null);
       }
     };
 
@@ -38,7 +36,6 @@ export default function CategoryFiltersView() {
       if (e.key === 'Escape') {
         setShowAddModal(false);
         setOpenActionId(null);
-        setOpenDefaultValueId(null);
         setEditTitleId(null);
       }
     };
@@ -91,7 +88,6 @@ export default function CategoryFiltersView() {
           enabled: c.enabled !== false,
           order: i + 1,
           customTitle: c.customTitle || undefined,
-          defaultValue: c.defaultValue || selectedFilter.defaultValue || selectedFilter.title,
         })),
       };
 
@@ -159,16 +155,6 @@ export default function CategoryFiltersView() {
     const reindexed = next.map((c, i) => ({ ...c, order: i + 1 }));
     saveCategoryChanges(reindexed, 'Category display order updated');
     setOpenActionId(null);
-  };
-
-  // Set default value for a category
-  const handleSetDefaultValue = (categoryId, val) => {
-    if (!selectedFilter?.categories) return;
-    const nextCategories = selectedFilter.categories.map((c) =>
-      c.categoryId === categoryId ? { ...c, defaultValue: val } : c
-    );
-    saveCategoryChanges(nextCategories, 'Default value updated');
-    setOpenDefaultValueId(null);
   };
 
   // Save custom title for a category
@@ -432,53 +418,8 @@ export default function CategoryFiltersView() {
                         </div>
                       </div>
 
-                      {/* Middle & Right: Default Value Dropdown + Switch + 3-Dots */}
+                      {/* Middle & Right: Switch + 3-Dots */}
                       <div className="flex items-center gap-4 sm:shrink-0 self-end sm:self-center">
-                        {/* Default Value Dropdown Box */}
-                        <div className="flex flex-col items-start gap-1" data-dropdown-container>
-                          <span className="text-[11px] text-stone-400 font-normal">
-                            Default Value
-                          </span>
-                          <div className="relative">
-                            <button
-                              type="button"
-                              onClick={() => setOpenDefaultValueId(openDefaultValueId === cat.categoryId ? null : cat.categoryId)}
-                              className="h-9 w-44 sm:w-56 px-3 rounded-lg border border-stone-200 bg-white hover:border-stone-300 flex items-center justify-between text-xs text-stone-700 shadow-2xs transition cursor-pointer"
-                            >
-                              <span className="truncate">
-                                {cat.defaultValue || selectedFilter?.defaultValue || selectedFilter?.title}
-                              </span>
-                              <HiOutlineChevronDown className="w-3.5 h-3.5 text-stone-400 shrink-0 ml-1.5" />
-                            </button>
-
-                            {/* Dropdown Options */}
-                            {openDefaultValueId === cat.categoryId && (
-                              <div className="absolute left-0 mt-1 w-56 rounded-xl border border-stone-200 bg-white shadow-lg py-1.5 z-30 animate-in fade-in zoom-in-95 duration-100">
-                                <button
-                                  type="button"
-                                  onClick={() => handleSetDefaultValue(cat.categoryId, selectedFilter?.title)}
-                                  className="w-full text-left px-3 py-1.5 text-xs text-stone-700 hover:bg-[#F9F7F4] flex items-center justify-between cursor-pointer"
-                                >
-                                  <span>{selectedFilter?.title} (Default)</span>
-                                  {(!cat.defaultValue || cat.defaultValue === selectedFilter?.title) && (
-                                    <HiOutlineCheck className="w-3.5 h-3.5 text-[#8c6b45]" />
-                                  )}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleSetDefaultValue(cat.categoryId, 'All')}
-                                  className="w-full text-left px-3 py-1.5 text-xs text-stone-700 hover:bg-[#F9F7F4] flex items-center justify-between cursor-pointer"
-                                >
-                                  <span>All</span>
-                                  {cat.defaultValue === 'All' && (
-                                    <HiOutlineCheck className="w-3.5 h-3.5 text-[#8c6b45]" />
-                                  )}
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
                         {/* Toggle Switch */}
                         <button
                           type="button"
