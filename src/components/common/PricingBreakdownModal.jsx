@@ -1,11 +1,7 @@
 import React from 'react';
-import {
-  HiOutlineX,
-  HiOutlineCalculator,
-  HiOutlineRefresh,
-  HiOutlineInformationCircle,
-} from 'react-icons/hi';
+import { HiOutlineCalculator, HiOutlineInformationCircle } from 'react-icons/hi';
 import Modal from './Modal';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function PricingBreakdownModal({
   isOpen,
@@ -14,24 +10,79 @@ export default function PricingBreakdownModal({
   breakdown,
   loading,
   error,
-  onRecalculate,
-  onApplyToVariant,
+  specs,
 }) {
   if (!isOpen) return null;
 
+  let theme = null;
+  try {
+    theme = useTheme()?.currentTheme;
+  } catch (e) {
+    // Fallback if rendered outside ThemeProvider
+  }
+
   const combination =
     variant?.combination ||
-    [variant?.diamondType, variant?.diamondColor, variant?.diamondClarity, variant?.purity, variant?.caratWeight ? `${variant.caratWeight}ct` : '']
+    [
+      variant?.diamondType,
+      variant?.diamondColor,
+      variant?.diamondClarity,
+      variant?.purity,
+      variant?.caratWeight ? `${variant.caratWeight}ct` : '',
+    ]
       .filter(Boolean)
       .join(' • ') ||
-    'Jewellery Variant';
+    '';
 
-  const sku = variant?.sku || '—';
+  const sku = variant?.sku || '';
 
   const formatINR = (val) => {
     const num = Number(val || 0);
     return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
+
+  // 1. Metal
+  const effectiveWeight = Number(breakdown?.effectiveWeight || variant?.metalWeight || variant?.weight || 0);
+  const baseWeight = Number(specs?.metalWeight || variant?.baseWeight || 0);
+  const metalRate = Number(
+    breakdown?.metalRate ||
+    variant?.metalRate ||
+    (effectiveWeight > 0 ? (breakdown?.metalCost || 0) / effectiveWeight : 0)
+  );
+  const metalCost = Number(breakdown?.metalCost ?? (effectiveWeight * metalRate));
+
+  // 2. Center Diamond
+  const centerCarat = Number(variant?.caratWeight || variant?.centerDiamondWeight || 1);
+  const centerCost = Number(breakdown?.centerDiamondCost ?? variant?.centerDiamondCost ?? 0);
+  const centerRate = centerCarat > 0 ? Math.round(centerCost / centerCarat) : Number(variant?.centerDiamondRate || 0);
+
+  // 3. Side Diamonds
+  const sideCost = Number(breakdown?.sideDiamondCost ?? variant?.sideDiamondCost ?? 0);
+  const sideWeight = Number(
+    variant?.sideDiamondWeight ||
+    variant?.sideDiamonds?.[0]?.caratWeight ||
+    (Array.isArray(variant?.sideDiamonds)
+      ? variant.sideDiamonds.reduce((sum, s) => sum + Number(s.caratWeight || 0), 0)
+      : 0)
+  );
+  const sideRate = sideWeight > 0 ? Math.round(sideCost / sideWeight) : Number(variant?.sideDiamonds?.[0]?.priceINR || 0);
+
+  // 4. Labour / Making Charge
+  const labourCost = Number(breakdown?.totalMakingCharge ?? variant?.computedMakingCharge ?? variant?.labourCharge ?? 0);
+  const labourRate = Number(specs?.baseLabourCharge || (effectiveWeight > 0 ? Math.round(labourCost / effectiveWeight) : 0));
+
+  // 5. Certificate Charge
+  const certCost = Number(breakdown?.certificateCharge ?? specs?.certificateCharge ?? 0);
+
+  // 6. Subtotal
+  const subtotal = Math.round(((metalCost + centerCost + sideCost + labourCost + certCost) + Number.EPSILON) * 100) / 100;
+
+  // 7. GST
+  const gstPercent = Number(breakdown?.appliedGst ?? 3);
+  const gstAmount = Number(breakdown?.gstAmount ?? Math.round(((subtotal * gstPercent / 100) + Number.EPSILON) * 100) / 100);
+
+  // 8. Final Price
+  const finalPrice = Number(breakdown?.finalPrice ?? Math.round(((subtotal + gstAmount) + Number.EPSILON) * 100) / 100);
 
   return (
     <Modal
@@ -39,157 +90,186 @@ export default function PricingBreakdownModal({
       onClose={onClose}
       title={
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center">
+          <div
+            style={{
+              backgroundColor: theme?.soft || 'var(--theme-primary-soft, #faf5ee)',
+              borderColor: theme?.border || 'var(--theme-primary-border, #e8d8c0)',
+              color: theme?.primary || 'var(--theme-primary, #8b6f4e)',
+            }}
+            className="w-8 h-8 rounded-lg border flex items-center justify-center shrink-0"
+          >
             <HiOutlineCalculator className="w-4 h-4 stroke-[2]" />
           </div>
-          <div>
-            <h3 className="font-bold text-base text-stone-900">Pricing Breakdown & Calculation</h3>
-          </div>
-        </div>
-      }
-      subtitle={
-        <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-stone-500">
-          <span className="font-semibold text-stone-800">{combination}</span>
-          <span>&bull;</span>
-          <span className="font-mono bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded border border-stone-200">
-            {sku}
+          <span className="font-bold text-base text-stone-900 tracking-tight">
+            PRICING BREAKDOWN
           </span>
         </div>
       }
-      maxWidth="max-w-xl"
-      className="!p-0"
+      subtitle={
+        (combination || sku) ? (
+          <div className="flex flex-wrap items-center gap-1.5 mt-1 text-xs text-stone-500 font-medium pl-10.5">
+            <span>{combination}</span>
+            {sku && (
+              <>
+                <span>&bull;</span>
+                <span className="font-mono bg-stone-100 text-stone-700 px-1.5 py-0.5 rounded text-[11px] border border-stone-200">
+                  {sku}
+                </span>
+              </>
+            )}
+          </div>
+        ) : null
+      }
+      maxWidth="max-w-md sm:max-w-lg"
+      className="p-5 sm:p-6"
     >
-      <div className="p-5 sm:p-6 space-y-5">
+      <div className="space-y-4 pt-1">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 space-y-3">
-            <div className="w-8 h-8 border-3 border-[#8b6f4e] border-t-transparent rounded-full animate-spin" />
+            <div
+              style={{
+                borderColor: theme?.primary || 'var(--theme-primary, #8b6f4e)',
+                borderTopColor: 'transparent',
+              }}
+              className="w-8 h-8 border-3 rounded-full animate-spin"
+            />
             <p className="text-xs font-semibold text-stone-500">Calculating pricing from master rates…</p>
           </div>
         ) : error ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-3">
+          <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 space-y-2">
             <div className="flex items-center gap-2 text-rose-800 font-bold text-xs">
               <HiOutlineInformationCircle className="w-4 h-4 text-rose-600" />
               <span>Calculation Failed</span>
             </div>
             <p className="text-xs text-rose-700">{error}</p>
-            {onRecalculate && (
-              <button
-                type="button"
-                onClick={onRecalculate}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-rose-200 text-rose-800 text-xs font-semibold hover:bg-rose-100 transition-colors cursor-pointer"
-              >
-                <HiOutlineRefresh className="w-3.5 h-3.5" />
-                Retry Calculation
-              </button>
-            )}
           </div>
-        ) : breakdown ? (
+        ) : (
           <div className="space-y-4">
-            {/* Top Total Price Banner */}
-            <div className="rounded-2xl border border-[#e8ded1] bg-gradient-to-br from-[#faf8f5] to-[#f5ede3] p-4.5 sm:p-5 shadow-2xs flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold tracking-wider uppercase text-[#8b6f4e]">Calculated Final Price</p>
-                <h4 className="text-2xl font-bold font-mono text-stone-900 mt-0.5">
-                  {formatINR(breakdown.finalPrice)}
-                </h4>
-              </div>
-              <div className="text-right space-y-1">
-                <span className="inline-block px-2.5 py-1 rounded-full text-[11px] font-bold bg-white/80 border border-[#e8ded1] text-stone-700 shadow-2xs">
-                  Weight: {breakdown.effectiveWeight} g
-                </span>
-                <p className="text-[10px] text-stone-500 font-medium">
-                  GST: {breakdown.appliedGst}% included
-                </p>
-              </div>
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-stone-200/80 text-[11px] font-bold text-stone-400 uppercase tracking-wider">
+                    <th className="pb-2.5 text-left font-semibold">ITEM</th>
+                    <th className="pb-2.5 text-center font-semibold">CALCULATION</th>
+                    <th className="pb-2.5 text-right font-semibold">AMOUNT</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {/* Metal Cost */}
+                  <tr>
+                    <td className="py-3 pr-2">
+                      <p className="font-bold text-stone-800 text-xs">Metal Cost</p>
+                      <p className="text-[11px] text-stone-400 mt-0.5">
+                        Eff. Weight: {effectiveWeight}g {baseWeight > 0 ? `(Base: ${baseWeight}g)` : ''}
+                      </p>
+                    </td>
+                    <td className="py-3 px-2 text-center text-xs text-stone-600 font-mono">
+                      {effectiveWeight} &times; {formatINR(metalRate)}
+                    </td>
+                    <td className="py-3 pl-2 text-right font-mono font-bold text-stone-900 text-xs sm:text-sm">
+                      {formatINR(metalCost)}
+                    </td>
+                  </tr>
+
+                  {/* Center Diamond */}
+                  {centerCost > 0 && (
+                    <tr>
+                      <td className="py-3 pr-2">
+                        <p className="font-bold text-stone-800 text-xs">Center Diamond</p>
+                        <p className="text-[11px] text-stone-400 mt-0.5">Carat: {centerCarat} ct</p>
+                      </td>
+                      <td className="py-3 px-2 text-center text-xs text-stone-600 font-mono">
+                        {centerCarat} ct &times; {formatINR(centerRate)}
+                      </td>
+                      <td className="py-3 pl-2 text-right font-mono font-bold text-stone-900 text-xs sm:text-sm">
+                        {formatINR(centerCost)}
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Side Diamonds */}
+                  {sideCost > 0 && (
+                    <tr>
+                      <td className="py-3 pr-2">
+                        <p className="font-bold text-stone-800 text-xs">Side Diamonds</p>
+                        {sideWeight > 0 && (
+                          <p className="text-[11px] text-stone-400 mt-0.5">{sideWeight} ct</p>
+                        )}
+                      </td>
+                      <td className="py-3 px-2 text-center text-xs text-stone-600 font-mono">
+                        {sideWeight > 0 ? `${sideWeight} ct × ${formatINR(sideRate)}` : 'Accent diamonds'}
+                      </td>
+                      <td className="py-3 pl-2 text-right font-mono font-bold text-stone-900 text-xs sm:text-sm">
+                        {formatINR(sideCost)}
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Labour Charge */}
+                  <tr>
+                    <td className="py-3 pr-2">
+                      <p className="font-bold text-stone-800 text-xs">Labour Charge</p>
+                      <p className="text-[11px] text-stone-400 mt-0.5">Based on {effectiveWeight}g</p>
+                    </td>
+                    <td className="py-3 px-2 text-center text-xs text-stone-600 font-mono">
+                      {effectiveWeight} &times; {formatINR(labourRate)}
+                    </td>
+                    <td className="py-3 pl-2 text-right font-mono font-bold text-stone-900 text-xs sm:text-sm">
+                      {formatINR(labourCost)}
+                    </td>
+                  </tr>
+
+                  {/* Certificate Charge */}
+                  {certCost > 0 && (
+                    <tr>
+                      <td className="py-3 pr-2">
+                        <p className="font-bold text-stone-800 text-xs">Certificate Charge</p>
+                        <p className="text-[11px] text-stone-400 mt-0.5">Flat Charge</p>
+                      </td>
+                      <td className="py-3 px-2 text-center text-xs text-stone-600 font-mono">Flat</td>
+                      <td className="py-3 pl-2 text-right font-mono font-bold text-stone-900 text-xs sm:text-sm">
+                        {formatINR(certCost)}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
             </div>
 
-            {/* Breakdown Items Grid */}
-            <div className="rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs divide-y divide-stone-100 text-xs">
-              {/* Metal Cost */}
-              <div className="p-3.5 flex items-center justify-between hover:bg-stone-50/50 transition-colors">
-                <div>
-                  <p className="font-bold text-stone-800">Metal Cost</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">
-                    {breakdown.effectiveWeight} g &times; {formatINR(breakdown.metalRate)}/g
-                  </p>
-                </div>
-                <span className="font-mono font-bold text-stone-900 text-sm">
-                  {formatINR(breakdown.metalCost)}
-                </span>
+            {/* Bottom Summary & GST Breakdown */}
+            <div className="border-t border-stone-200 pt-3.5 space-y-2">
+              {/* Subtotal */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-stone-700">Subtotal</span>
+                <span className="font-mono font-bold text-stone-900 text-xs sm:text-sm">{formatINR(subtotal)}</span>
               </div>
 
-              {/* Center Diamond Cost */}
-              <div className="p-3.5 flex items-center justify-between hover:bg-stone-50/50 transition-colors">
-                <div>
-                  <p className="font-bold text-stone-800">Center Diamond Cost</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">Primary diamond master rate</p>
-                </div>
-                <span className="font-mono font-bold text-stone-900 text-sm">
-                  {formatINR(breakdown.centerDiamondCost)}
-                </span>
+              {/* GST with details */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-stone-700">GST ({gstPercent}%)</span>
+                <span className="font-mono font-bold text-stone-700 text-xs sm:text-sm">+{formatINR(gstAmount)}</span>
               </div>
 
-              {/* Side Diamond Cost */}
-              {Number(breakdown.sideDiamondCost || 0) > 0 && (
-                <div className="p-3.5 flex items-center justify-between hover:bg-stone-50/50 transition-colors">
-                  <div>
-                    <p className="font-bold text-stone-800">Side Diamond Cost</p>
-                    <p className="text-[11px] text-stone-400 mt-0.5">Accent diamonds master rate</p>
-                  </div>
-                  <span className="font-mono font-bold text-stone-900 text-sm">
-                    {formatINR(breakdown.sideDiamondCost)}
-                  </span>
-                </div>
-              )}
-
-              {/* Total Diamond Cost */}
-              <div className="p-3.5 flex items-center justify-between bg-stone-50/30">
-                <div>
-                  <p className="font-bold text-stone-700">Total Diamond Cost</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">Center + Side diamonds combined</p>
-                </div>
-                <span className="font-mono font-bold text-[#8b6f4e] text-sm">
-                  {formatINR(breakdown.diamondCost)}
-                </span>
+              {/* User Selected Theme Color Final Price Pill */}
+              <div
+                style={{
+                  backgroundColor: theme?.primary || 'var(--theme-primary, #8b6f4e)',
+                }}
+                className="mt-2.5 text-white rounded-xl px-5 py-3.5 flex items-center justify-between shadow-md transition-colors"
+              >
+                <span className="text-xs font-bold tracking-wider uppercase text-white/90">FINAL PRICE</span>
+                <span className="text-lg sm:text-xl font-bold font-mono text-white">{formatINR(finalPrice)}</span>
               </div>
 
-              {/* Total Making Charge / Labour */}
-              <div className="p-3.5 flex items-center justify-between hover:bg-stone-50/50 transition-colors">
-                <div>
-                  <p className="font-bold text-stone-800">Labour / Making Charge</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">Manufacturing & craftsmanship</p>
-                </div>
-                <span className="font-mono font-bold text-stone-900 text-sm">
-                  {formatINR(breakdown.totalMakingCharge)}
-                </span>
-              </div>
-
-              {/* Certificate Charge */}
-              <div className="p-3.5 flex items-center justify-between hover:bg-stone-50/50 transition-colors">
-                <div>
-                  <p className="font-bold text-stone-800">Certificate Charge</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">Authenticity & grading certification</p>
-                </div>
-                <span className="font-mono font-bold text-stone-900 text-sm">
-                  {formatINR(breakdown.certificateCharge)}
-                </span>
-              </div>
-
-              {/* GST Amount */}
-              <div className="p-3.5 flex items-center justify-between hover:bg-stone-50/50 transition-colors">
-                <div>
-                  <p className="font-bold text-stone-800">GST ({breakdown.appliedGst}%)</p>
-                  <p className="text-[11px] text-stone-400 mt-0.5">Applicable jewellery tax</p>
-                </div>
-                <span className="font-mono font-bold text-stone-900 text-sm">
-                  {formatINR(breakdown.gstAmount)}
-                </span>
-              </div>
+              {/* Footnote */}
+              <p className="text-center text-[10px] text-stone-400 pt-1 font-medium">
+                Calculation: (Metal + Stone + Labour) + GST = Final Price
+              </p>
             </div>
           </div>
-        ) : null}
+        )}
       </div>
     </Modal>
   );
 }
-

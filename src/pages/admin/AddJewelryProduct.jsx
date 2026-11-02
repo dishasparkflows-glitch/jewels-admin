@@ -6838,8 +6838,7 @@ export default function AddJewelryProduct() {
         breakdown={breakdownData}
         loading={breakdownLoading}
         error={breakdownError}
-        onRecalculate={() => breakdownVariant && handleOpenPriceBreakdown(breakdownVariant)}
-        onApplyToVariant={handleApplyBreakdownToVariant}
+        specs={specs}
       />
     </div>
   );
