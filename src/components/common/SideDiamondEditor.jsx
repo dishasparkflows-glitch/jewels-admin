@@ -32,6 +32,41 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
   const selectedShapes = [...new Set(rows.map((r) => resolveEntityId(r.diamondShapeId, 'shapes')))].filter(Boolean);
   const shapesKey = selectedShapes.slice().sort().join(',');
 
+  const getMasterRate = (r, ratesList = rates) => {
+    if (!ratesList || ratesList.length === 0) return null;
+    const rTypeId = resolveEntityId(r.diamondTypeId, 'types');
+    const rShapeId = resolveEntityId(r.diamondShapeId, 'shapes');
+    const rColorId = resolveEntityId(r.diamondColorId, 'colors');
+    const rClarityId = resolveEntityId(r.diamondClarityId, 'clarities');
+
+    const matches = ratesList.filter((m) => {
+      const mTypeId = id(m.diamondTypeId);
+      const mShapeId = id(m.diamondShapeId);
+      const mColorId = id(m.diamondColorId);
+      const mClarityId = id(m.diamondClarityId);
+
+      const typeMatch = mTypeId === rTypeId || String(m.diamondTypeId?.name || '').toLowerCase() === String(r.diamondTypeId).toLowerCase();
+      const shapeMatch = mShapeId === rShapeId || String(m.diamondShapeId?.name || '').toLowerCase() === String(r.diamondShapeId).toLowerCase();
+      const colorMatch = !rColorId || mColorId === rColorId || String(m.diamondColorId?.name || '').toLowerCase() === String(r.diamondColorId).toLowerCase();
+      const clarityMatch = !rClarityId || mClarityId === rClarityId || String(m.diamondClarityId?.name || '').toLowerCase() === String(r.diamondClarityId).toLowerCase();
+
+      const hasSizeFilter = Number(r.sizeFrom) > 0 || Number(r.sizeTo) > 0;
+      const sizeMatch = hasSizeFilter
+        ? Number(m.sizeFrom) === Number(r.sizeFrom) && Number(m.sizeTo) === Number(r.sizeTo)
+        : true;
+
+      return (
+        typeMatch &&
+        shapeMatch &&
+        colorMatch &&
+        clarityMatch &&
+        sizeMatch
+      );
+    });
+
+    return matches.length >= 1 ? Number(matches[0].priceINR) : null;
+  };
+
   const autoFillRow = (r, ratesList = rates) => {
     if (!r.diamondShapeId || !ratesList || ratesList.length === 0) return r;
 
@@ -82,6 +117,14 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
       }
     }
 
+    if (updated.rateSource !== 'manual') {
+      const masterPrice = matched.priceINR !== undefined && matched.priceINR !== null ? Number(matched.priceINR) : null;
+      if (masterPrice !== null && (isEmpty(updated.priceINR) || Number(updated.priceINR) === 0 || Number(updated.priceINR) !== masterPrice)) {
+        updated.priceINR = masterPrice;
+        changed = true;
+      }
+    }
+
     return changed ? updated : r;
   };
 
@@ -103,7 +146,13 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
           const currentRows = rowsRef.current || [];
           let anyChanged = false;
           const filled = currentRows.map((r) => {
-            const nextR = autoFillRow(r, items);
+            let nextR = autoFillRow(r, items);
+            if (nextR.rateSource !== 'manual') {
+              const masterRate = getMasterRate(nextR, items);
+              if (masterRate !== null && Number(nextR.priceINR) !== Number(masterRate)) {
+                nextR = { ...nextR, priceINR: masterRate };
+              }
+            }
             if (nextR !== r) anyChanged = true;
             return nextR;
           });
@@ -129,7 +178,7 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
     caratWeight: '',
     sizeFrom: '',
     sizeTo: '',
-    priceINR: 0,
+    priceINR: '',
     rateSource: 'master',
   });
 
@@ -141,7 +190,15 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
     onChange([
       ...rows,
       ...(source.length
-        ? source.map(({ _id, ...r }) => ({ ...r, diamondTypeId: type, priceINR: 0, rateSource: 'master' }))
+        ? source.map(({ _id, ...r }) => {
+            let nextR = { ...r, diamondTypeId: type, rateSource: 'master' };
+            nextR = autoFillRow(nextR, rates);
+            const masterRate = getMasterRate(nextR, rates);
+            return {
+              ...nextR,
+              priceINR: masterRate !== null ? masterRate : (nextR.priceINR || ''),
+            };
+          })
         : [blank(type)]),
     ]);
   };
@@ -154,10 +211,14 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
         [...physical, 'diamondColorId', 'diamondClarityId'].forEach((field) => {
           next[field] = previous[field] ?? '';
         });
-      } else {
-        next = autoFillRow(next, rates);
       }
-      return { ...next, priceINR: '', rateSource: 'manual' };
+      next = autoFillRow(next, rates);
+      const masterRate = getMasterRate(next, rates);
+      return {
+        ...next,
+        priceINR: masterRate !== null ? masterRate : '',
+        rateSource: 'master',
+      };
     });
     onChange([...rows, ...copies]);
   };
@@ -165,6 +226,19 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
   const positionOf = (index) => {
     const curType = resolveEntityId(rows[index].diamondTypeId, 'types') || id(rows[index].diamondTypeId);
     return rows.slice(0, index).filter((r) => (resolveEntityId(r.diamondTypeId, 'types') || id(r.diamondTypeId)) === curType).length;
+  };
+
+  const resetToMaster = (index) => {
+    const updated = rows.map((r, i) => {
+      if (i !== index) return r;
+      const masterRate = getMasterRate(r, rates);
+      return {
+        ...r,
+        rateSource: 'master',
+        priceINR: masterRate !== null ? masterRate : 0,
+      };
+    });
+    onChange(updated);
   };
 
   const update = (index, key, value) => {
@@ -180,11 +254,27 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
       let nextR = {
         ...r,
         [key]: value,
-        ...(key === 'priceINR' ? { rateSource: value === '' || Number(value) > 0 ? 'manual' : 'master' } : {}),
       };
 
-      if (['diamondShapeId', 'diamondColorId', 'diamondClarityId'].includes(key) && rates.length > 0) {
+      if (key === 'priceINR') {
+        if (value === '0' || value === 0) {
+          const masterRate = getMasterRate(nextR, rates);
+          nextR.rateSource = 'master';
+          nextR.priceINR = masterRate !== null ? masterRate : 0;
+        } else {
+          nextR.rateSource = 'manual';
+          nextR.priceINR = value;
+        }
+      }
+
+      if (['diamondShapeId', 'diamondColorId', 'diamondClarityId', 'sizeFrom', 'sizeTo'].includes(key) && rates.length > 0) {
         nextR = autoFillRow(nextR, rates);
+        if (nextR.rateSource !== 'manual') {
+          const masterRate = getMasterRate(nextR, rates);
+          if (masterRate !== null) {
+            nextR.priceINR = masterRate;
+          }
+        }
       }
 
       return nextR;
@@ -208,38 +298,14 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
   };
 
   const rateFor = (r) => {
-    if (r.rateSource === 'manual' && r.priceINR === '') return 0;
-    if (r.rateSource !== 'master' && Number(r.priceINR) > 0) return Number(r.priceINR);
-    const rTypeId = resolveEntityId(r.diamondTypeId, 'types');
-    const rShapeId = resolveEntityId(r.diamondShapeId, 'shapes');
-    const rColorId = resolveEntityId(r.diamondColorId, 'colors');
-    const rClarityId = resolveEntityId(r.diamondClarityId, 'clarities');
-
-    const matches = rates.filter((m) => {
-      const mTypeId = id(m.diamondTypeId);
-      const mShapeId = id(m.diamondShapeId);
-      const mColorId = id(m.diamondColorId);
-      const mClarityId = id(m.diamondClarityId);
-
-      const typeMatch = mTypeId === rTypeId || String(m.diamondTypeId?.name || '').toLowerCase() === String(r.diamondTypeId).toLowerCase();
-      const shapeMatch = mShapeId === rShapeId || String(m.diamondShapeId?.name || '').toLowerCase() === String(r.diamondShapeId).toLowerCase();
-      const colorMatch = mColorId === rColorId || String(m.diamondColorId?.name || '').toLowerCase() === String(r.diamondColorId).toLowerCase();
-      const clarityMatch = mClarityId === rClarityId || String(m.diamondClarityId?.name || '').toLowerCase() === String(r.diamondClarityId).toLowerCase();
-
-      const hasSizeFilter = Number(r.sizeFrom) > 0 || Number(r.sizeTo) > 0;
-      const sizeMatch = hasSizeFilter
-        ? Number(m.sizeFrom) === Number(r.sizeFrom) && Number(m.sizeTo) === Number(r.sizeTo)
-        : true;
-
-      return (
-        typeMatch &&
-        shapeMatch &&
-        colorMatch &&
-        clarityMatch &&
-        sizeMatch
-      );
-    });
-    return matches.length >= 1 ? Number(matches[0].priceINR) : null;
+    if (r.rateSource === 'manual') {
+      if (r.priceINR === '' || r.priceINR === null || r.priceINR === undefined) return 0;
+      return Number(r.priceINR);
+    }
+    if (r.priceINR !== '' && r.priceINR !== null && r.priceINR !== undefined && Number(r.priceINR) > 0) {
+      return Number(r.priceINR);
+    }
+    return getMasterRate(r, rates);
   };
 
   return (
@@ -356,16 +422,38 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
                       </td>
                       {/* Rate/Ct */}
                       <td className="p-2">
-                        <input
-                          aria-label="priceINR"
-                          placeholder={rate !== null ? String(rate) : 'Rate/Ct'}
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={r.rateSource === 'master' ? (r.priceINR === '' || Number(r.priceINR) === 0 ? 0 : r.priceINR) : (r.priceINR ?? '')}
-                          onChange={(e) => update(index, 'priceINR', e.target.value)}
-                          className="w-24 rounded border border-stone-200 p-2 text-xs"
-                        />
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            aria-label="priceINR"
+                            placeholder={rate !== null ? String(rate) : 'Rate/Ct'}
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={
+                              r.rateSource === 'manual'
+                                ? (r.priceINR ?? '')
+                                : (r.priceINR !== '' && r.priceINR !== null && r.priceINR !== undefined && Number(r.priceINR) > 0
+                                    ? r.priceINR
+                                    : (rate !== null ? rate : ''))
+                            }
+                            onChange={(e) => update(index, 'priceINR', e.target.value)}
+                            className={`w-24 rounded border p-2 text-xs transition-colors ${
+                              r.rateSource === 'manual'
+                                ? 'border-amber-400 bg-amber-50/40 text-stone-900 font-medium focus:border-amber-500 focus:ring-amber-500'
+                                : 'border-stone-200 bg-white text-stone-900 focus:border-[#8b6f4e] focus:ring-[#8b6f4e]'
+                            }`}
+                          />
+                          {r.rateSource === 'manual' && (
+                            <button
+                              type="button"
+                              onClick={() => resetToMaster(index)}
+                              title="Reset to live master rate"
+                              className="text-[10px] text-amber-700 hover:text-amber-900 underline font-medium cursor-pointer whitespace-nowrap"
+                            >
+                              Reset
+                            </button>
+                          )}
+                        </div>
                       </td>
                       <td className="p-2 whitespace-nowrap">
                         {rate === null ? (
@@ -375,7 +463,14 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
                             <span className="font-semibold text-stone-900">
                               {money(rate * Number(r.caratWeight || 0))}
                             </span>
-                            <small className="block text-stone-500 font-medium">{money(rate)} / ct</small>
+                            <div className="flex items-center gap-1.5">
+                              <small className="block text-stone-500 font-medium">{money(rate)} / ct</small>
+                              {r.rateSource === 'manual' && (
+                                <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
+                                  Custom
+                                </span>
+                              )}
+                            </div>
                           </>
                         )}
                       </td>

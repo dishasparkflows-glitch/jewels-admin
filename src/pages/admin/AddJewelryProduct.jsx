@@ -41,7 +41,10 @@ import {
   HiOutlineChevronDown,
   HiOutlineChevronUp,
   HiOutlineCurrencyRupee,
+  HiOutlineCalculator,
 } from 'react-icons/hi';
+import PricingBreakdownModal from '../../components/common/PricingBreakdownModal';
+import { calculateEffectiveWeight, calculateProductPriceAPI } from '../../utils/pricingCalculation';
 import {
   IoDiamondOutline,
   IoSparklesOutline,
@@ -2075,6 +2078,111 @@ export default function AddJewelryProduct() {
     );
   };
 
+  // ─── Pricing Breakdown & Calculation Modal State ─────────────
+  const [breakdownModalOpen, setBreakdownModalOpen] = useState(false);
+  const [breakdownVariant, setBreakdownVariant] = useState(null);
+  const [breakdownData, setBreakdownData] = useState(null);
+  const [breakdownLoading, setBreakdownLoading] = useState(false);
+  const [breakdownError, setBreakdownError] = useState('');
+
+  const handleOpenPriceBreakdown = async (v) => {
+    setBreakdownVariant(v);
+    setBreakdownModalOpen(true);
+    setBreakdownError('');
+    setBreakdownLoading(true);
+
+    if (v.metalCost !== undefined && v.diamondCost !== undefined && v.computedGst !== undefined) {
+      setBreakdownData({
+        metalCost: v.metalCost,
+        metalRate: v.metalRate || 0,
+        centerDiamondCost: v.centerDiamondCost || 0,
+        sideDiamondCost: v.sideDiamondCost || 0,
+        diamondCost: v.diamondCost || 0,
+        totalMakingCharge: v.computedMakingCharge || v.labourCharge || 0,
+        certificateCharge: v.certificateCharge || Number(specs.certificateCharge || 0),
+        gstAmount: v.computedGst || 0,
+        finalPrice: v.priceRaw || v.price || 0,
+        effectiveWeight: Number(v.weight || v.metalWeight || 0),
+        appliedGst: Number(gstPercentage || 3),
+      });
+    }
+
+    try {
+      const payload = {
+        metalWeight: parseFloat(v.weight || v.metalWeight || specs.metalWeight || 0),
+        metalPurityId: v.metalPurityId || v.metalPurity?._id || v.metalPurity,
+        centerDiamonds: (v.diamondTypeId || v.centerDiamondWeight || v.caratWeight) ? [
+          {
+            diamondTypeId: v.diamondTypeId?._id || v.diamondTypeId,
+            diamondShapeId: v.diamondShapeId?._id || v.diamondShapeId || centerRows[0]?.diamondShapeId,
+            diamondClarityId: v.diamondClarityId?._id || v.diamondClarityId,
+            diamondColorId: v.diamondColorId?._id || v.diamondColorId,
+            caratWeight: parseFloat(v.caratWeight || v.centerDiamondWeight || centerRows[0]?.carat || 0),
+          }
+        ] : [],
+        sideDiamonds: (v.sideDiamonds || sideRows || []).map((s) => ({
+          diamondTypeId: s.diamondTypeId?._id || s.diamondTypeId,
+          diamondShapeId: s.diamondShapeId?._id || s.diamondShapeId,
+          diamondClarityId: s.diamondClarityId?._id || s.diamondClarityId,
+          diamondColorId: s.diamondColorId?._id || s.diamondColorId,
+          sizeFrom: s.sizeFrom,
+          sizeTo: s.sizeTo,
+          pieces: s.pieces,
+          caratWeight: s.caratWeight,
+          priceINR: s.priceINR,
+        })),
+        labourCharge: parseFloat(v.labourCharge || specs.baseLabourCharge || 0),
+        gstPercentage: parseFloat(gstPercentage || 3),
+        shippingCharge: 0,
+        certificateCharge: parseFloat(specs.certificateCharge || 0),
+        isCalculated: true,
+        baseCarat: parseFloat(specs.baseCarat || 1),
+        __debugVariant: v,
+      };
+
+      const result = await calculateProductPriceAPI(payload);
+      if (result) {
+        setBreakdownData(result);
+      }
+    } catch (err) {
+      console.error('Pricing calculation API error:', err);
+      if (!v.metalCost) {
+        setBreakdownError(err.response?.data?.message || err.response?.data?.error || err.message || 'Pricing calculation failed');
+      }
+    } finally {
+      setBreakdownLoading(false);
+    }
+  };
+
+  const handleApplyBreakdownToVariant = (data) => {
+    if (!breakdownVariant || !data) return;
+    setVariants((prev) =>
+      prev.map((v) => {
+        if (v.id === breakdownVariant.id) {
+          return {
+            ...v,
+            price: String(data.finalPrice),
+            priceRaw: data.finalPrice,
+            weight: String(data.effectiveWeight),
+            metalWeight: data.effectiveWeight,
+            metalCost: data.metalCost,
+            metalRate: data.metalRate,
+            diamondCost: data.diamondCost,
+            centerDiamondCost: data.centerDiamondCost,
+            sideDiamondCost: data.sideDiamondCost,
+            labourCharge: data.totalMakingCharge,
+            computedMakingCharge: data.totalMakingCharge,
+            computedGst: data.gstAmount,
+            certificateCharge: data.certificateCharge,
+          };
+        }
+        return v;
+      })
+    );
+    toast.success('Variant pricing updated successfully!');
+    setBreakdownModalOpen(false);
+  };
+
   // ─── Step 5: Care & Specifications State & Handlers ─────────
   const [careSections, setCareSections] = useState([]);
   const [draggedCareIndex, setDraggedCareIndex] = useState(null);
@@ -3730,8 +3838,18 @@ export default function AddJewelryProduct() {
                                 </td>
 
                                 {/* Final Price */}
-                                <td className="py-2.5 px-2.5 text-right font-mono font-bold text-xs text-stone-900" title={breakdownText}>
-                                  <span>₹{Number(v.priceRaw || v.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                <td className="py-2.5 px-2.5 text-right font-mono font-bold text-xs text-stone-900 whitespace-nowrap" title={breakdownText}>
+                                  <div className="inline-flex items-center justify-end gap-1.5">
+                                    <span>₹{Number(v.priceRaw || v.price || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleOpenPriceBreakdown(v)}
+                                      title="Calculate & View Price Breakdown"
+                                      className="w-5 h-5 rounded border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                                    >
+                                      <HiOutlineCalculator className="w-3.5 h-3.5 stroke-[1.8]" />
+                                    </button>
+                                  </div>
                                 </td>
 
                                 {/* Other Amount */}
@@ -6711,6 +6829,18 @@ export default function AddJewelryProduct() {
           </div>
         </div>, document.body)
       )}
+
+      {/* Pricing Breakdown & Live Calculation Modal */}
+      <PricingBreakdownModal
+        isOpen={breakdownModalOpen}
+        onClose={() => setBreakdownModalOpen(false)}
+        variant={breakdownVariant}
+        breakdown={breakdownData}
+        loading={breakdownLoading}
+        error={breakdownError}
+        onRecalculate={() => breakdownVariant && handleOpenPriceBreakdown(breakdownVariant)}
+        onApplyToVariant={handleApplyBreakdownToVariant}
+      />
     </div>
   );
 }
