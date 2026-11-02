@@ -13,6 +13,8 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import RowActions from '../../components/common/RowActions';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
 
 export default function CurrenciesView() {
   const confirm = useConfirm();
@@ -214,6 +216,15 @@ export default function CurrenciesView() {
     });
   }, [currencies, search]);
 
+  const {
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+  } = usePagination(filteredCurrencies);
+
   // Format Date helpers matching Screenshot
   const formatTime = (dateStr) => {
     if (!dateStr) return '11:30';
@@ -333,7 +344,8 @@ export default function CurrenciesView() {
                   </td>
                 </tr>
               ) : (
-                filteredCurrencies.map((item, idx) => {
+                paginatedItems.map((item, idx) => {
+                  const serialNumber = (currentPage - 1) * pageSize + idx + 1;
                   const isBase = item.settings?.isBaseCurrency;
                   const useLive = item.settings?.useLiveRate;
                   const inrRate = item.exchangeRate?.inrRate || 1;
@@ -347,7 +359,7 @@ export default function CurrenciesView() {
                     >
                       {/* Sr No */}
                       <td className="py-3.5 pl-4 pr-2 text-center text-xs font-semibold text-stone-400 whitespace-nowrap">
-                        {idx + 1}
+                        {serialNumber}
                       </td>
 
                       {/* Currency (Code + Name) */}
@@ -452,6 +464,19 @@ export default function CurrenciesView() {
             </tbody>
           </table>
         </div>
+
+        {/* Luxury Common Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={totalItems}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="currencies"
+        />
       </div>
 
       {/* ─── Modal: Add / Edit Currency ─── */}

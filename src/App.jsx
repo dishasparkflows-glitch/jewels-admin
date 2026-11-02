@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { lazy, Suspense } from 'react';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster, ToastBar } from 'react-hot-toast';
+import { HiOutlineX } from 'react-icons/hi';
 import { AuthProvider } from './contexts/AuthContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
@@ -63,25 +64,50 @@ function App() {
           <ConfirmProvider>
             <ImagePreviewProvider>
             <Toaster
-          position="top-right"
-          containerStyle={{
-            top: 20,
-            right: 20,
-            zIndex: 999999,
-          }}
-          toastOptions={{
-            duration: 4000,
-            style: {
-              background: '#1b1b1b',
-              color: '#fff',
-              borderRadius: '12px',
-              padding: '12px 18px',
-              fontSize: '13px',
-              border: '1px solid #333',
-              boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
-            },
-          }}
-        />
+              position="top-right"
+              containerStyle={{
+                top: 20,
+                right: 20,
+                zIndex: 999999,
+              }}
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#1b1b1b',
+                  color: '#fff',
+                  borderRadius: '12px',
+                  padding: '10px 14px',
+                  fontSize: '13px',
+                  border: '1px solid #333',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.3)',
+                },
+              }}
+            >
+              {(t) => (
+                <ToastBar toast={t}>
+                  {({ icon, message }) => (
+                    <div className="flex items-center gap-2 w-full">
+                      {icon}
+                      <div className="flex-1 text-xs sm:text-[13px] font-medium leading-snug">{message}</div>
+                      {t.type !== 'loading' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toast.dismiss(t.id);
+                          }}
+                          className="ml-1 p-1 rounded-md text-stone-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer shrink-0"
+                          title="Close"
+                          aria-label="Close notification"
+                        >
+                          <HiOutlineX className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </ToastBar>
+              )}
+            </Toaster>
 
         <Routes>
           {/* Public Login Route */}

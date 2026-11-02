@@ -6,7 +6,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { createProductId, deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
+import { createProductId, deleteUploadedFile, uploadWithPresignedUrl, uploadFilesWithPresignedUrls, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import {
@@ -29,7 +29,9 @@ import {
   HiOutlineChevronUp,
   HiOutlineChevronDown,
   HiOutlineQuestionMarkCircle,
+  HiOutlineExternalLink,
 } from 'react-icons/hi';
+import { openProductPreview } from '../../utils/productPreview';
 import {
   IoDiamondOutline,
   IoColorPaletteOutline,
@@ -92,6 +94,21 @@ export default function OrnateProductEdit() {
   const [activeStep, setActiveStep] = useState(1);
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
+  const [productRecord, setProductRecord] = useState(null);
+
+  const handleViewOnWebsite = async () => {
+    if (!id) return;
+    const opened = await openProductPreview(productRecord || {
+      _id: id,
+      basicInfo: {
+        title: baseInfo.title,
+        slug: productRecord?.basicInfo?.slug || productRecord?.slug,
+      },
+    });
+    if (!opened) {
+      toast.error('Could not determine storefront product URL.');
+    }
+  };
   const [uploadingImage, setUploadingImage] = useState(false);
   const [previewModalImage, setPreviewModalImage] = useState(null);
   const [previewModalGallery, setPreviewModalGallery] = useState([]);
@@ -336,6 +353,7 @@ export default function OrnateProductEdit() {
         const product = res.data?.data || res.data;
 
         if (product) {
+          setProductRecord(product);
           // Populate Base Information
           setBaseInfo({
             title: product.basicInfo?.title || '',
@@ -438,6 +456,12 @@ export default function OrnateProductEdit() {
             setVariantMedia((prev) => ({ ...prev, ...mediaMap }));
             if (loadedColors.length > 0) {
               setSelectedColors((prev) => Array.from(new Set([...prev, ...loadedColors])));
+            }
+            const colorsWithMedia = Object.keys(mediaMap).filter(
+              (cName) => (mediaMap[cName]?.media?.length > 0) || Boolean(mediaMap[cName]?.swatchIcon)
+            );
+            if (colorsWithMedia.length > 0) {
+              setExpandedColors((prev) => Array.from(new Set([...prev, ...colorsWithMedia])));
             }
           }
 
@@ -567,11 +591,35 @@ export default function OrnateProductEdit() {
     });
   };
 
+  // Auto-expand any color box that contains images/media or a swatch icon
+  useEffect(() => {
+    const colorsWithMedia = Object.keys(variantMedia).filter(
+      (cName) => (variantMedia[cName]?.media?.length > 0) || Boolean(variantMedia[cName]?.swatchIcon)
+    );
+    if (colorsWithMedia.length > 0) {
+      setExpandedColors((prev) => {
+        const next = [...prev];
+        let changed = false;
+        colorsWithMedia.forEach((c) => {
+          if (!next.some((existing) => existing.toLowerCase() === c.toLowerCase())) {
+            next.push(c);
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [variantMedia]);
+
+  const isColorExpanded = (colorName) => {
+    return expandedColors.some((c) => c?.toLowerCase() === colorName?.toLowerCase());
+  };
+
   // Toggle Variant Accordion Expansion (allows multiple open simultaneously)
   const handleToggleExpand = (colorName) => {
     setExpandedColors((prev) =>
-      prev.includes(colorName)
-        ? prev.filter((c) => c !== colorName)
+      prev.some((c) => c?.toLowerCase() === colorName?.toLowerCase())
+        ? prev.filter((c) => c?.toLowerCase() !== colorName?.toLowerCase())
         : [...prev, colorName]
     );
   };
@@ -603,6 +651,7 @@ export default function OrnateProductEdit() {
           },
         }));
         setSelectedColors((prev) => Array.from(new Set([...prev, colorName])));
+        setExpandedColors((prev) => Array.from(new Set([...prev, colorName])));
         const savingsText = res.wasCompressed ? ` (optimized ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)})` : '';
         toast.success(`${colorName} swatch icon uploaded${savingsText}!`, { id: `swatch-${colorName}` });
       }
@@ -623,21 +672,20 @@ export default function OrnateProductEdit() {
     try {
       setUploadingVariantColor(colorName);
       toast.loading(`Optimizing & uploading ${files.length} media file(s)...`, { id: `vmed-${colorName}` });
-      const uploadedList = [];
 
-      for (const file of files) {
-        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-        if (res.fileUrl) {
-          uploadedList.push({
-            id: `vmed-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
-            url: res.fileUrl,
-            key: res.key,
-            mediaType: file.type.startsWith('video') || file.name.endsWith('.mp4') ? 'video' : 'image',
-            name: res.name || file.name,
-            size: res.size ? formatBytes(res.size) : undefined,
-          });
-        }
-      }
+      const uploadedResults = await uploadFilesWithPresignedUrls(files, 'products', null, { productId: mediaProductId });
+
+      const uploadedList = uploadedResults.map((res, i) => {
+        const file = files[i];
+        return {
+          id: `vmed-${Date.now()}-${i}-${Math.random().toString(36).substr(2, 6)}`,
+          url: res.fileUrl,
+          key: res.key,
+          mediaType: file.type?.startsWith('video') || file.name?.endsWith('.mp4') ? 'video' : 'image',
+          name: res.name || file.name,
+          size: res.size ? formatBytes(res.size) : undefined,
+        };
+      });
 
       if (uploadedList.length > 0) {
         setVariantMedia((prev) => ({
@@ -648,6 +696,7 @@ export default function OrnateProductEdit() {
           },
         }));
         setSelectedColors((prev) => Array.from(new Set([...prev, colorName])));
+        setExpandedColors((prev) => Array.from(new Set([...prev, colorName])));
         toast.success(`Uploaded & optimized ${uploadedList.length} media file(s) for ${colorName}!`, { id: `vmed-${colorName}` });
       }
     } catch (err) {
@@ -714,21 +763,17 @@ export default function OrnateProductEdit() {
     try {
       setUploadingImage(true);
       toast.loading(`Optimizing & uploading ${files.length} image(s)...`, { id: 'ornate-img-upload' });
-      const newImages = [];
 
-      for (const file of files) {
-        const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-        if (res.fileUrl) {
-          newImages.push({
-            id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            url: res.fileUrl,
-            key: res.key,
-            isPrimary: ornateImages.length === 0 && newImages.length === 0,
-            name: res.name || file.name,
-            size: res.size ? formatBytes(res.size) : undefined,
-          });
-        }
-      }
+      const uploadedResults = await uploadFilesWithPresignedUrls(files, 'products', null, { productId: mediaProductId });
+
+      const newImages = uploadedResults.map((res, i) => ({
+        id: `img-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`,
+        url: res.fileUrl,
+        key: res.key,
+        isPrimary: ornateImages.length === 0 && i === 0,
+        name: res.name || files[i].name,
+        size: res.size ? formatBytes(res.size) : undefined,
+      }));
 
       if (newImages.length > 0) {
         setOrnateImages((prev) => [...prev, ...newImages]);
@@ -1131,6 +1176,7 @@ export default function OrnateProductEdit() {
 
       if (isEditMode) {
         await api.put(`/products/${id}`, payload);
+        setProductRecord((prev) => ({ ...(prev || {}), ...payload }));
         toast.success('Ornate ERP product updated successfully!');
       } else {
         const createRes = await api.post('/products', payload);
@@ -1204,23 +1250,34 @@ export default function OrnateProductEdit() {
           </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight">
-                {isEditMode ? 'Refine the details of ERP product' : 'Add New Ornate Product'}
+              <h1 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight max-w-[550px] truncate" title={baseInfo.title}>
+                {isEditMode ? (baseInfo.title || 'Refine the details of ERP product') : 'Add New Ornate Product'}
               </h1>
-              {erpDetails.barcodeNumber && (
+              {(erpDetails.barcodeNumber || erpDetails.labelNumber || erpDetails.uniqueLabelId) && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/70">
-                  Barcode: {erpDetails.barcodeNumber}
+                  {erpDetails.barcodeNumber ? `Barcode: ${erpDetails.barcodeNumber}` : `Label: ${erpDetails.labelNumber || erpDetails.uniqueLabelId}`}
                 </span>
               )}
             </div>
             <p className="text-[11px] text-stone-500 font-medium">
-              ERP SKU: <span className="font-mono text-stone-700">{erpDetails.labelNumber || '—'}</span> &bull; Variety: <span className="text-stone-700">{erpDetails.varietyName || '—'}</span> &bull; Metal: <span className="text-stone-700">{erpDetails.metalName || '—'}</span>
+              ERP SKU: <span className="font-mono text-stone-700">{erpDetails.labelNumber || erpDetails.uniqueLabelId || '—'}</span> &bull; Variety: <span className="text-stone-700">{erpDetails.varietyName || '—'}</span> &bull; Metal: <span className="text-stone-700">{erpDetails.metalName || '—'}</span>
             </p>
           </div>
         </div>
 
         {/* Action Buttons */}
         <div className="flex flex-wrap items-center gap-2 self-start sm:self-end md:self-auto">
+          {isEditMode && (
+            <button
+              type="button"
+              onClick={handleViewOnWebsite}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 text-xs font-semibold text-[#8b6f4e] bg-white border border-[#d6cfc2] rounded-full hover:bg-[#faf6f0] active:scale-[0.98] transition-all shadow-2xs cursor-pointer"
+              title="View on website"
+            >
+              <HiOutlineExternalLink className="w-3.5 h-3.5 text-[#8b6f4e]" />
+              <span>View on website</span>
+            </button>
+          )}
           <button
             type="button"
             onClick={() => handleSaveProduct('draft')}
@@ -1717,10 +1774,10 @@ export default function OrnateProductEdit() {
             </div>
 
             {/* 2-Column Grid of Variant Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
               {colorOptions.map((col) => {
                 const isSelected = isColorSelected(col.name);
-                const isExpanded = expandedColors.includes(col.name);
+                const isExpanded = isColorExpanded(col.name);
                 const vData = variantMedia[col.name] || { swatchIcon: '', media: [] };
                 const mediaCount = vData.media?.length || 0;
                 const isUploadingSwatch = uploadingSwatchColor === col.name;
@@ -1738,11 +1795,11 @@ export default function OrnateProductEdit() {
                     }`}
                   >
                     {/* Card Top Row */}
-                    <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                    <div className="p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3">
                       {/* Left side: Checkbox + 3D Swatch Sphere + Color Name + Selected Badge */}
                       <div
                         onClick={() => handleToggleColor(col.name)}
-                        className="flex items-center gap-3 cursor-pointer select-none min-w-0"
+                        className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none shrink-0"
                       >
                         {/* Checkbox */}
                         <div
@@ -1765,7 +1822,7 @@ export default function OrnateProductEdit() {
                         />
 
                         {/* Color Name */}
-                        <span className="text-sm font-bold text-stone-900 truncate">
+                        <span className="text-sm font-bold text-stone-900 whitespace-nowrap">
                           {col.name}
                         </span>
 
@@ -1777,24 +1834,37 @@ export default function OrnateProductEdit() {
                         )}
                       </div>
 
-                      <ColorStatusToggle name={col.name} disabled={!isSelected} status={variantMedia[col.name]?.status} onChange={(status) => setVariantMedia((previous) => ({ ...previous, [col.name]: { ...previous[col.name], status } }))} />
-                      {/* Right side: Manage media button with chevron */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleExpand(col.name);
-                        }}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
-                      >
-                        <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
-                        <span>Manage media ({mediaCount})</span>
-                        {isExpanded ? (
-                          <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
-                        ) : (
-                          <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
-                        )}
-                      </button>
+                      {/* Right side: Status Toggle + Manage Media */}
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                        <ColorStatusToggle
+                          name={col.name}
+                          disabled={!isSelected}
+                          status={variantMedia[col.name]?.status}
+                          onChange={(status) =>
+                            setVariantMedia((previous) => ({
+                              ...previous,
+                              [col.name]: { ...previous[col.name], status },
+                            }))
+                          }
+                        />
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleExpand(col.name);
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
+                        >
+                          <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                          <span>Manage media ({mediaCount})</span>
+                          {isExpanded ? (
+                            <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
+                          ) : (
+                            <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Accordion Expand Area */}
@@ -2003,7 +2073,7 @@ export default function OrnateProductEdit() {
               {(() => {
                 const colName = 'General';
                 const isSelected = isColorSelected(colName);
-                const isExpanded = expandedColors.includes(colName);
+                const isExpanded = isColorExpanded(colName);
                 const vData = variantMedia[colName] || { swatchIcon: '', media: [] };
                 const mediaCount = vData.media?.length || 0;
                 const isUploadingSwatch = uploadingSwatchColor === colName;
@@ -2021,11 +2091,11 @@ export default function OrnateProductEdit() {
                     }`}
                   >
                     {/* Card Top Row */}
-                    <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                    <div className="p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3">
                       {/* Left side: Checkbox + Swatch Sphere + Name + Selected Badge */}
                       <div
                         onClick={() => handleToggleColor(colName)}
-                        className="flex items-center gap-3 cursor-pointer select-none min-w-0"
+                        className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none shrink-0"
                       >
                         {/* Checkbox */}
                         <div
@@ -2048,11 +2118,11 @@ export default function OrnateProductEdit() {
                         />
 
                         {/* Color / Variant Name */}
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-sm font-bold text-stone-900 truncate">
+                        <div className="flex flex-col shrink-0">
+                          <span className="text-sm font-bold text-stone-900 whitespace-nowrap">
                             General Images
                           </span>
-                          <span className="text-[10px] text-stone-400 font-medium">
+                          <span className="text-[10px] text-stone-400 font-medium whitespace-nowrap">
                             (No metal color)
                           </span>
                         </div>
@@ -2065,24 +2135,37 @@ export default function OrnateProductEdit() {
                         )}
                       </div>
 
-                      <ColorStatusToggle name={colName} disabled={!isSelected} status={variantMedia[colName]?.status} onChange={(status) => setVariantMedia((previous) => ({ ...previous, [colName]: { ...previous[colName], status } }))} />
-                      {/* Right side: Manage media button with chevron */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleExpand(colName);
-                        }}
-                        className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
-                      >
-                        <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
-                        <span>Manage media ({mediaCount})</span>
-                        {isExpanded ? (
-                          <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
-                        ) : (
-                          <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
-                        )}
-                      </button>
+                      {/* Right side: Status Toggle + Manage Media */}
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                        <ColorStatusToggle
+                          name={colName}
+                          disabled={!isSelected}
+                          status={variantMedia[colName]?.status}
+                          onChange={(status) =>
+                            setVariantMedia((previous) => ({
+                              ...previous,
+                              [colName]: { ...previous[colName], status },
+                            }))
+                          }
+                        />
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleExpand(colName);
+                          }}
+                          className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
+                        >
+                          <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                          <span>Manage media ({mediaCount})</span>
+                          {isExpanded ? (
+                            <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
+                          ) : (
+                            <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
+                          )}
+                        </button>
+                      </div>
                     </div>
 
                     {/* Accordion Expand Area */}
@@ -2563,27 +2646,6 @@ export default function OrnateProductEdit() {
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200/70" title="All uploaded photos are automatically optimized to high-fidelity WebP at upload time">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Auto-Compression Active
-                </span>
-                <label
-                  htmlFor="ornate-gallery-upload-input"
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#faf5ee] text-[#8b6f4e] hover:bg-[#f3ebd9] border border-[#d9c4a8]/70 transition-all cursor-pointer ${
-                    uploadingImage ? 'opacity-60 pointer-events-none' : ''
-                  }`}
-                >
-                  <HiOutlineUpload className="w-3.5 h-3.5" />
-                  <span>{uploadingImage ? 'Optimizing & Uploading...' : 'Upload Images'}</span>
-                  <input
-                    id="ornate-gallery-upload-input"
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageFileUpload}
-                    className="hidden"
-                  />
-                </label>
                 <span className="text-xs font-bold text-stone-500 bg-stone-100 px-2.5 py-1 rounded-lg">
                   {ornateImages.length} Image{ornateImages.length === 1 ? '' : 's'}
                 </span>
@@ -2595,7 +2657,7 @@ export default function OrnateProductEdit() {
               <div className="p-8 text-center rounded-xl border border-dashed border-stone-200 bg-stone-50/60">
                 <HiOutlinePhotograph className="w-8 h-8 text-stone-300 mx-auto mb-2" />
                 <p className="text-xs font-semibold text-stone-600">No synchronized ERP gallery images found</p>
-                <p className="text-[11px] text-stone-400 mt-0.5">Images are automatically synchronized from the ERP FTP system or uploaded above.</p>
+                <p className="text-[11px] text-stone-400 mt-0.5">Images are automatically synchronized from the ERP FTP system.</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
@@ -2648,17 +2710,7 @@ export default function OrnateProductEdit() {
                           <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" />
                         </button>
                       )}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveImage(img.id);
-                        }}
-                        title="Delete image"
-                        className="w-7 h-7 rounded-lg bg-red-600/90 text-white hover:bg-red-600 flex items-center justify-center transition-transform active:scale-90 cursor-pointer"
-                      >
-                        <HiOutlineTrash className="w-3.5 h-3.5" />
-                      </button>
+                      
                     </div>
                   </div>
                 ))}

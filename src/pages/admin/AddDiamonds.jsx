@@ -18,12 +18,13 @@ import { diamondsAPI } from '../../api/services';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import { DeleteActionButton } from '../../components/common/RowActions';
-
-
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function AddDiamonds() {
   const navigate = useNavigate();
+  const { currentTheme } = useTheme();
   const fileInputRef = useRef(null);
+  const rowFileInputRefs = useRef({});
 
   // Attributes lookups (loaded from API)
   const [types, setTypes] = useState([]);
@@ -32,6 +33,9 @@ export default function AddDiamonds() {
   const [clarities, setClarities] = useState([]);
   const [loadingLookups, setLoadingLookups] = useState(true);
 
+  // Price Master Matrix (Loaded from /center-diamond-prices/lookup)
+  const [pricingMatrix, setPricingMatrix] = useState([]);
+
   // Card 1: Diamond Information
   const [selectedType, setSelectedType] = useState('');
   const [selectedShape, setSelectedShape] = useState('');
@@ -39,6 +43,7 @@ export default function AddDiamonds() {
   const [selectedClarity, setSelectedClarity] = useState('');
   const [globalImage, setGlobalImage] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadingRowId, setUploadingRowId] = useState(null);
 
   // Card 2: Carat Weight Configuration
   const [caratInput, setCaratInput] = useState('');
@@ -48,6 +53,7 @@ export default function AddDiamonds() {
   const [variants, setVariants] = useState([]);
   const [bulkRate, setBulkRate] = useState('');
   const [publishing, setPublishing] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
 
   // Fetch Lookups from API
   useEffect(() => {
@@ -76,32 +82,132 @@ export default function AddDiamonds() {
     fetchLookups();
   }, []);
 
-  // Helper to generate a standardized SKU
+  // Fetch Center Diamond Price Lookup Matrix
+  useEffect(() => {
+    api
+      .get('/center-diamond-prices/lookup')
+      .then((res) => {
+        setPricingMatrix(res.data?.data || []);
+      })
+      .catch((err) => {
+        console.warn('Failed to load center diamond price matrix:', err);
+      });
+  }, []);
+
+  // Helper matching functions for center diamond pricing master
+  const lookupMatrixRate = (type, shape, color, clarity, carat) => {
+    if (!pricingMatrix || pricingMatrix.length === 0) return 0;
+    const ct = parseFloat(carat) || 0;
+    const typeLower = String(type || '').trim().toLowerCase();
+    const shapeLower = String(shape || '').trim().toLowerCase();
+    const colorLower = String(color || '').trim().toLowerCase();
+    const clarityLower = String(clarity || '').trim().toLowerCase();
+
+    const match = pricingMatrix.find((p) => {
+      const pTypeName = (p.diamondTypeId?.name || '').trim().toLowerCase();
+      const pShapeName = (p.diamondShapeId?.name || '').trim().toLowerCase();
+      const pColorName = (p.diamondColorId?.name || '').trim().toLowerCase();
+      const pClarityName = (p.diamondClarityId?.name || '').trim().toLowerCase();
+
+      const isType = pTypeName === typeLower || (!pTypeName && !typeLower);
+      const isShape = pShapeName === shapeLower || (!pShapeName && !shapeLower);
+      const isColor = pColorName === colorLower || pColorName.split(/[-/\s]+/).includes(colorLower);
+      const isClarity = pClarityName === clarityLower;
+      const isSize = ct >= (p.sizeFrom || 0) && ct <= (p.sizeTo || 0);
+
+      return isType && isShape && isColor && isClarity && isSize;
+    });
+
+    return match?.priceINR || 0;
+  };
+
+  // Helper to generate a standardized deterministic SKU (Formula 3)
   const generateSku = (type, shape, color, clarity, carat) => {
-    const typeCode = String(type || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
-    const shapeCode = String(shape || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
-    const colorCode = String(color || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
-    const clarityCode = String(clarity || '').replace(/[^a-zA-Z0-9]/g, '').slice(0, 3).toUpperCase();
+    const typePrefix = type ? type.trim().split(/\s+/)[0].toUpperCase() : 'NATURAL';
+    const shapePrefix = shape ? shape.trim().toUpperCase() : 'ROUND';
+    const colorCode = color ? color.trim().toUpperCase() : 'D-E';
+    const clarityCode = clarity ? clarity.trim().toUpperCase() : 'VS';
     const caratCode = Number(carat).toFixed(2);
-    const rand = Math.floor(100 + Math.random() * 900);
-    return `DIA-${typeCode}-${shapeCode}-${colorCode}-${clarityCode}-${caratCode}-${rand}`;
+    return `RJ-${typePrefix}-${caratCode}-${shapePrefix}-${colorCode}-${clarityCode}`;
   };
 
-  // Helper to generate Title
+  // Helper to generate Title (Formula 4)
   const generateTitle = (type, shape, color, clarity, carat) => {
-    return `${type} ${shape} ${color} ${clarity} ${Number(carat).toFixed(2)} ct`;
+    const caratCode = Number(carat).toFixed(2);
+    const shapeTitle = shape ? shape.charAt(0).toUpperCase() + shape.slice(1).toLowerCase() : 'Round';
+    const typeTitle = type || 'Natural Diamond';
+    return `${caratCode} Carat ${shapeTitle} ${typeTitle} Diamond`;
   };
 
-  // Add a Carat Weight
+  // Batch Validation against MongoDB
+  useEffect(() => {
+    if (variants.length === 0) return;
+
+    const typeObj = types.find((t) => t.name === selectedType);
+    const shapeObj = shapes.find((s) => s.name === selectedShape);
+    const colorObj = colors.find((c) => c.name === selectedColor);
+    const clarityObj = clarities.find((cl) => cl.name === selectedClarity);
+
+    let cancelled = false;
+    const checkBatch = async () => {
+      setIsValidating(true);
+      try {
+        const payload = variants.map((v) => ({
+          carat: v.carat,
+          sku: v.sku,
+          typeId: typeObj?._id,
+          shapeId: shapeObj?._id,
+          colorId: colorObj?._id,
+          clarityId: clarityObj?._id,
+        }));
+
+        const res = await api.post('/diamonds/validate', { diamonds: payload });
+        if (cancelled) return;
+        const existing = res.data?.data?.existingDiamonds || [];
+
+        setVariants((prev) =>
+          prev.map((v) => {
+            const match = existing.find(
+              (e) =>
+                e.sku === v.sku ||
+                (parseFloat(e.carat) === parseFloat(v.carat) &&
+                  String(e.typeId?._id || e.typeId) === String(typeObj?._id) &&
+                  String(e.shapeId?._id || e.shapeId) === String(shapeObj?._id) &&
+                  String(e.colorId?._id || e.colorId) === String(colorObj?._id) &&
+                  String(e.clarityId?._id || e.clarityId) === String(clarityObj?._id))
+            );
+
+            if (match) {
+              return {
+                ...v,
+                _id: match._id,
+                isSaved: true,
+                image: match.image?.url ? { url: match.image.url } : v.image,
+              };
+            }
+            return { ...v, isSaved: false, _id: undefined };
+          })
+        );
+      } catch (err) {
+        console.warn('Batch validation check skipped:', err);
+      } finally {
+        if (!cancelled) setIsValidating(false);
+      }
+    };
+
+    checkBatch();
+    return () => {
+      cancelled = true;
+    };
+  }, [variants.length, selectedType, selectedShape, selectedColor, selectedClarity, types, shapes, colors, clarities]);
+
+  // Add a Carat Weight (Formula 1 & 5 Auto-Compute)
   const handleAddCarat = (value) => {
     if (!selectedType || !selectedShape || !selectedColor || !selectedClarity) {
       toast.error('Select diamond type, shape, color, and clarity first');
       return;
     }
-    if (bulkRate === '' || !Number.isFinite(Number(bulkRate)) || Number(bulkRate) < 0) {
-      toast.error('Enter the rate per carat before adding a weight');
-      return;
-    }
+
     const num = parseFloat(value !== undefined ? value : caratInput);
     if (isNaN(num) || num <= 0) {
       toast.error('Please enter a valid carat weight (e.g. 1.05)');
@@ -114,13 +220,21 @@ export default function AddDiamonds() {
       return;
     }
 
+    // Auto-lookup master rate from CenterDiamondPrice pricingMatrix (Formula 5)
+    const matrixRate = lookupMatrixRate(selectedType, selectedShape, selectedColor, selectedClarity, rounded);
+    const defaultRate = matrixRate > 0 ? matrixRate : (Number(bulkRate) || 0);
+    const price = Math.round(rounded * defaultRate);
+
     const nextWeights = [...caratWeights, rounded].sort((a, b) => a - b);
     setCaratWeights(nextWeights);
     setCaratInput('');
 
+    // If rate was discovered from matrix, update bulkRate display placeholder
+    if (matrixRate > 0 && !bulkRate) {
+      setBulkRate(String(matrixRate));
+    }
+
     // Generate/append new variant
-    const defaultRate = Number(bulkRate);
-    const price = Math.round(rounded * defaultRate);
     const newVariant = {
       id: `${rounded}-${Date.now()}`,
       carat: rounded,
@@ -134,6 +248,8 @@ export default function AddDiamonds() {
       price: price,
       image: globalImage ? { url: globalImage } : null,
       status: 'active',
+      isSaved: false,
+      isMatrixPriced: matrixRate > 0,
     };
 
     setVariants((prev) => [...prev, newVariant]);
@@ -153,15 +269,23 @@ export default function AddDiamonds() {
     const cl = clarityVal !== undefined ? clarityVal : selectedClarity;
 
     setVariants((prev) =>
-      prev.map((v) => ({
-        ...v,
-        type: t,
-        shape: s,
-        color: c,
-        clarity: cl,
-        sku: generateSku(t, s, c, cl, v.carat),
-        title: generateTitle(t, s, c, cl, v.carat),
-      }))
+      prev.map((v) => {
+        const matrixRate = lookupMatrixRate(t, s, c, cl, v.carat);
+        const rate = matrixRate > 0 ? matrixRate : v.rate;
+        const price = Math.round(v.carat * rate);
+        return {
+          ...v,
+          type: t,
+          shape: s,
+          color: c,
+          clarity: cl,
+          rate,
+          price,
+          sku: generateSku(t, s, c, cl, v.carat),
+          title: generateTitle(t, s, c, cl, v.carat),
+          isMatrixPriced: matrixRate > 0,
+        };
+      })
     );
   };
 
@@ -180,7 +304,7 @@ export default function AddDiamonds() {
       setVariants((prev) =>
         prev.map((v) => ({
           ...v,
-          image: { url },
+          image: v.hasCustomImage ? v.image : { url },
         }))
       );
       toast.success('Global diamond image uploaded');
@@ -191,6 +315,43 @@ export default function AddDiamonds() {
       setIsUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  // Handle Variant-Specific Image Upload
+  const handleRowImageUpload = async (variantId, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setUploadingRowId(variantId);
+      const res = await uploadWithPresignedUrl(file, 'diamonds');
+      const url = res.fileUrl;
+
+      setVariants((prev) =>
+        prev.map((v) =>
+          v.id === variantId
+            ? { ...v, image: { url }, hasCustomImage: true }
+            : v
+        )
+      );
+      toast.success('Custom diamond image uploaded');
+    } catch (err) {
+      console.error('Failed to upload custom stone image:', err);
+      toast.error('Failed to upload image');
+    } finally {
+      setUploadingRowId(null);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleRemoveRowImage = (variantId) => {
+    setVariants((prev) =>
+      prev.map((v) =>
+        v.id === variantId
+          ? { ...v, image: globalImage ? { url: globalImage } : null, hasCustomImage: false }
+          : v
+      )
+    );
   };
 
   // Apply Bulk Rate to all variants
@@ -211,18 +372,27 @@ export default function AddDiamonds() {
     toast.success(`Applied ₹ ${r.toLocaleString()} / ct to all variants`);
   };
 
-  // Update a single variant field
+  // Two-Way Reactive Calculation (Formula 2)
   const handleUpdateVariant = (id, field, value) => {
     setVariants((prev) =>
       prev.map((v) => {
         if (v.id !== id) return v;
         const updated = { ...v, [field]: value };
+        const ct = parseFloat(updated.carat) || 0;
+
         if (field === 'rate') {
           const r = parseFloat(value) || 0;
-          updated.price = Math.round(v.carat * r);
+          updated.price = Math.round(ct * r);
         } else if (field === 'price') {
           const p = parseFloat(value) || 0;
-          updated.rate = v.carat ? Math.round(p / v.carat) : 0;
+          if (ct > 0) {
+            updated.rate = Math.round(p / ct);
+          }
+        } else if (field === 'carat') {
+          const r = parseFloat(updated.rate) || 0;
+          updated.price = Math.round(ct * r);
+          updated.sku = generateSku(updated.type, updated.shape, updated.color, updated.clarity, ct);
+          updated.title = generateTitle(updated.type, updated.shape, updated.color, updated.clarity, ct);
         }
         return updated;
       })
@@ -238,7 +408,7 @@ export default function AddDiamonds() {
     }
   };
 
-  // Publish All Variants
+  // Publish All Variants (Step 5: Bulk Write Upsert Execution)
   const handlePublishVariants = async () => {
     if (variants.length === 0) {
       toast.error('Please add at least one carat weight to generate variants');
@@ -259,6 +429,7 @@ export default function AddDiamonds() {
       setPublishing(true);
 
       const payload = variants.map((v) => ({
+        ...(v._id ? { _id: v._id } : {}),
         sku: v.sku.trim(),
         title: v.title.trim(),
         carat: Number(v.carat),
@@ -285,14 +456,17 @@ export default function AddDiamonds() {
 
   return (
     <div className="space-y-6 pb-20 max-w-[1400px] mx-auto font-sans">
-      {/* ─── Top Header (Matches Exact User Screenshot) ─── */}
+      {/* ─── Top Header ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight">
-            Add Diamonds
+          <h1 className="text-2xl font-bold text-stone-900 tracking-tight flex items-center gap-2">
+            <span>Add Diamonds</span>
+            <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#fbf5ed] text-[#8b6f4e] border border-[#e8d7be]">
+              Rapid Matrix Generator
+            </span>
           </h1>
           <p className="text-[13px] text-stone-500 mt-0.5">
-            Configure variants to instantly generate your diamond stock.
+            Configure 4Cs and carats to auto-lookup master rates and spawn stock inventory.
           </p>
         </div>
 
@@ -301,7 +475,7 @@ export default function AddDiamonds() {
           <button
             type="button"
             onClick={() => navigate('/diamonds')}
-            className="px-6 py-2 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-[13px] font-semibold rounded-xl transition-all shadow-2xs hover:shadow-xs active:scale-98"
+            className="px-6 py-2 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-[13px] font-semibold rounded-xl transition-all shadow-2xs hover:shadow-xs active:scale-98 cursor-pointer"
           >
             Cancel
           </button>
@@ -328,20 +502,27 @@ export default function AddDiamonds() {
         </div>
       </div>
 
-      {/* ─── Card 1: 1. Diamond Information (Matches Screenshot 100%) ─── */}
+      {/* ─── Card 1: 1. Diamond Information ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs p-6 space-y-5">
-        {/* Card Header with Diamond Icon */}
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shadow-2xs">
-            <IoDiamondOutline className="w-4 h-4" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-[#faf5ee] border border-[#ebdcc9] flex items-center justify-center text-[#8b6f4e] shadow-2xs">
+              <IoDiamondOutline className="w-4 h-4" />
+            </div>
+            <h2 className="text-base font-bold text-stone-900 tracking-tight">
+              1. Diamond Information
+            </h2>
           </div>
-          <h2 className="text-base font-bold text-stone-900 tracking-tight">
-            1. Diamond Information
-          </h2>
+          {pricingMatrix.length > 0 && (
+            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1">
+              <HiOutlineSparkles className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Price Master Connected ({pricingMatrix.length} rules)</span>
+            </span>
+          )}
         </div>
 
-        {/* 5-Column Grid Fields */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+        {/* 5-Column Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 items-start">
           {/* 1. Diamond Type */}
           <div className="space-y-1.5">
             <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">
@@ -414,7 +595,7 @@ export default function AddDiamonds() {
             />
           </div>
 
-          {/* 5. Global Image (Optional) Upload Button */}
+          {/* 5. Global Image (Optional) */}
           <div className="space-y-1.5">
             <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">
               GLOBAL IMAGE (OPTIONAL)
@@ -438,7 +619,7 @@ export default function AddDiamonds() {
                 <button
                   type="button"
                   onClick={() => setGlobalImage('')}
-                  className="p-1 text-stone-400 hover:text-rose-600 rounded transition-colors"
+                  className="p-1 text-stone-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
                   title="Remove image"
                 >
                   <HiOutlineX className="w-4 h-4" />
@@ -465,9 +646,8 @@ export default function AddDiamonds() {
         </div>
       </div>
 
-      {/* ─── Card 2: 2. Carat Weight Configuration (Matches Screenshot 100%) ─── */}
+      {/* ─── Card 2: 2. Carat Weight Configuration ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs p-6 space-y-4">
-        {/* Card Header with List Details Icon */}
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs">
             <TbListDetails className="w-4 h-4" />
@@ -477,39 +657,71 @@ export default function AddDiamonds() {
           </h2>
         </div>
 
-        {/* Input Row: CARAT WEIGHTS input + '+' button */}
-        <div className="space-y-1.5">
-          <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-            CARAT WEIGHTS
-          </label>
-          <div className="flex items-center gap-2 max-w-xs">
-            <div className="relative flex-1">
+        {/* Input Row: RATE / CARAT + CARAT WEIGHTS input + '+' button */}
+        <div className="flex flex-wrap items-end gap-3">
+          {/* Rate Per Carat Input */}
+          <div className="space-y-1.5 w-full sm:w-56">
+            <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+              RATE / CARAT (₹) <span className="text-stone-400 text-[10px] lowercase font-normal">(auto-lookup)</span>
+            </label>
+            <div className="relative">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-stone-400">₹</span>
               <input
                 type="number"
-                step="0.01"
-                min="0.01"
-                value={caratInput}
-                onChange={(e) => setCaratInput(e.target.value)}
+                min="0"
+                value={bulkRate}
+                onChange={(e) => setBulkRate(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault();
                     handleAddCarat();
                   }
                 }}
-                placeholder="e.g. 1.05"
-                className="w-full px-3.5 py-2 text-xs bg-white border border-stone-200/90 rounded-xl focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 font-semibold text-stone-800 placeholder-stone-400"
+                placeholder="Auto or enter e.g. 45000"
+                className="w-full pl-7 pr-3.5 py-2 text-xs bg-white border border-stone-200/90 rounded-xl focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 font-semibold text-stone-800 placeholder-stone-400"
               />
             </div>
+          </div>
 
-            {/* '+' button with rounded square border */}
-            <button
-              type="button"
-              onClick={() => handleAddCarat()}
-              className="w-9 h-9 flex items-center justify-center rounded-xl border border-stone-300 hover:border-[#8b6f4e] hover:bg-[#faf5ee] text-stone-700 hover:text-[#8b6f4e] transition-all cursor-pointer font-bold"
-              title="Add Carat Weight"
-            >
-              <HiOutlinePlus className="w-4 h-4" />
-            </button>
+          {/* Carat Weight Input + '+' Button */}
+          <div className="space-y-1.5 w-full sm:w-56">
+            <label className="block text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+              CARAT WEIGHT (CT) <span className="text-rose-500">*</span>
+            </label>
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={caratInput}
+                  onChange={(e) => setCaratInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleAddCarat();
+                    }
+                  }}
+                  placeholder="e.g. 1.05"
+                  className="w-full px-3.5 py-2 text-xs bg-white border border-stone-200/90 rounded-xl focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 font-semibold text-stone-800 placeholder-stone-400"
+                />
+              </div>
+
+              {/* '+' button filled with user selected theme */}
+              <button
+                type="button"
+                onClick={() => handleAddCarat()}
+                style={{
+                  backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
+                  borderColor: currentTheme?.border || currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
+                  color: '#ffffff',
+                }}
+                className="w-9 h-9 flex items-center justify-center rounded-xl bg-[#8b6f4e] hover:bg-[#785e42] text-white shadow-2xs hover:shadow-xs transition-all cursor-pointer font-bold active:scale-95 shrink-0"
+                title="Add Carat Weight"
+              >
+                <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -526,7 +738,7 @@ export default function AddDiamonds() {
                 <button
                   type="button"
                   onClick={() => handleRemoveCarat(w)}
-                  className="hover:text-rose-600 transition-colors ml-0.5"
+                  className="hover:text-rose-600 transition-colors ml-0.5 cursor-pointer"
                   title={`Remove ${w} ct`}
                 >
                   <HiOutlineX className="w-3.5 h-3.5" />
@@ -547,9 +759,14 @@ export default function AddDiamonds() {
               <span className="px-2.5 py-0.5 text-xs bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d7be] rounded-full font-semibold">
                 {variants.length} {variants.length === 1 ? 'Variant' : 'Variants'}
               </span>
+              {isValidating && (
+                <span className="text-[11px] text-stone-400 font-normal animate-pulse">
+                  Validating with inventory...
+                </span>
+              )}
             </h3>
             <p className="text-[13px] text-stone-500 mt-0.5">
-              Review and adjust rates, prices, and SKUs before publishing to stock inventory.
+              Two-way reactive editing: changing Rate/ct recalculates Total Price, and vice-versa.
             </p>
           </div>
 
@@ -595,109 +812,173 @@ export default function AddDiamonds() {
               <thead>
                 <tr className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
                   <th className="w-10 pb-1 text-center">#</th>
-                  <th className="pb-1 min-w-[220px]">SKU</th>
+                  <th className="pb-1 w-16 text-center">IMAGE</th>
+                  <th className="pb-1 min-w-[210px]">SKU (DETERMINISTIC)</th>
                   <th className="pb-1 min-w-[240px]">DIAMOND TITLE</th>
-                  <th className="pb-1 w-24 text-center">CARAT</th>
-                  <th className="pb-1 min-w-[140px]">RATE / CT (₹)</th>
-                  <th className="pb-1 min-w-[140px]">PRICE (₹)</th>
-                  <th className="pb-1 w-20 text-center">STATUS</th>
+                  <th className="pb-1 w-20 text-center">CARAT</th>
+                  <th className="pb-1 min-w-[130px]">RATE / CT (₹)</th>
+                  <th className="pb-1 min-w-[130px]">TOTAL PRICE (₹)</th>
+                  <th className="pb-1 w-28 text-center">INVENTORY</th>
+                  <th className="pb-1 w-16 text-center">STATUS</th>
                   <th className="pb-1 w-16 text-right pr-2">ACTION</th>
                 </tr>
               </thead>
               <tbody>
-                {variants.map((v, index) => (
-                  <tr key={v.id} className="group hover:bg-stone-50/50 transition-colors">
-                    {/* # */}
-                    <td className="text-center align-middle">
-                      <span className="w-7 h-7 rounded-lg bg-stone-50 border border-stone-200/80 inline-flex items-center justify-center text-xs font-semibold text-stone-600">
-                        {index + 1}
-                      </span>
-                    </td>
+                {variants.map((v, index) => {
+                  const displayImg = v.image?.url || globalImage;
+                  return (
+                    <tr
+                      key={v.id}
+                      className={`group transition-colors ${
+                        v.isSaved
+                          ? 'bg-blue-50/20 hover:bg-blue-50/40'
+                          : 'hover:bg-stone-50/50'
+                      }`}
+                    >
+                      {/* # */}
+                      <td className="text-center align-middle">
+                        <span className="w-7 h-7 rounded-lg bg-stone-50 border border-stone-200/80 inline-flex items-center justify-center text-xs font-semibold text-stone-600">
+                          {index + 1}
+                        </span>
+                      </td>
 
-                    {/* SKU */}
-                    <td className="align-middle px-2">
-                      <input
-                        type="text"
-                        value={v.sku}
-                        onChange={(e) => handleUpdateVariant(v.id, 'sku', e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-stone-200/90 rounded-xl font-mono text-stone-800 focus:outline-hidden focus:border-[#8b6f4e]"
-                      />
-                    </td>
-
-                    {/* Title */}
-                    <td className="align-middle px-2">
-                      <input
-                        type="text"
-                        value={v.title}
-                        onChange={(e) => handleUpdateVariant(v.id, 'title', e.target.value)}
-                        className="w-full px-3 py-1.5 text-xs bg-white border border-stone-200/90 rounded-xl font-medium text-stone-800 focus:outline-hidden focus:border-[#8b6f4e]"
-                      />
-                    </td>
-
-                    {/* Carat */}
-                    <td className="text-center align-middle px-2">
-                      <span className="inline-block px-2.5 py-1 text-xs font-bold bg-[#fbf5ed] text-[#8b6f4e] border border-[#e8d7be] rounded-lg">
-                        {v.carat} ct
-                      </span>
-                    </td>
-
-                    {/* Rate */}
-                    <td className="align-middle px-2">
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400">₹</span>
+                      {/* Diamond Image Thumbnail / Upload */}
+                      <td className="text-center align-middle px-1">
                         <input
-                          type="number"
-                          value={v.rate}
-                          onChange={(e) => handleUpdateVariant(v.id, 'rate', e.target.value)}
-                          className="w-full pl-6 pr-2.5 py-1.5 text-xs bg-white border border-stone-200/90 rounded-xl font-semibold text-stone-800 focus:outline-hidden focus:border-[#8b6f4e]"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          ref={(el) => (rowFileInputRefs.current[v.id] = el)}
+                          onChange={(e) => handleRowImageUpload(v.id, e)}
                         />
-                      </div>
-                    </td>
+                        <div className="relative inline-block group/img">
+                          {displayImg ? (
+                            <img
+                              src={displayImg}
+                              alt={v.title}
+                              className="w-9 h-9 rounded-lg object-cover border border-stone-200 mx-auto shadow-2xs"
+                            />
+                          ) : (
+                            <div className="w-9 h-9 rounded-lg bg-stone-100 border border-dashed border-stone-300 flex items-center justify-center text-stone-400 mx-auto">
+                              <HiOutlinePhotograph className="w-4 h-4" />
+                            </div>
+                          )}
 
-                    {/* Price */}
-                    <td className="align-middle px-2">
-                      <div className="relative">
-                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400">₹</span>
+                          {/* Hover Upload Button */}
+                          <button
+                            type="button"
+                            onClick={() => rowFileInputRefs.current[v.id]?.click()}
+                            disabled={uploadingRowId === v.id}
+                            className="absolute inset-0 bg-black/60 rounded-lg text-white opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-[10px]"
+                            title="Upload Stone Image"
+                          >
+                            {uploadingRowId === v.id ? (
+                              <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <HiOutlineCloudUpload className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* SKU (Formula 3) */}
+                      <td className="align-middle px-2">
                         <input
-                          type="number"
-                          value={v.price}
-                          onChange={(e) => handleUpdateVariant(v.id, 'price', e.target.value)}
-                          className="w-full pl-6 pr-2.5 py-1.5 text-xs bg-white border border-stone-200/90 rounded-xl font-bold text-stone-900 focus:outline-hidden focus:border-[#8b6f4e]"
+                          type="text"
+                          value={v.sku}
+                          onChange={(e) => handleUpdateVariant(v.id, 'sku', e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs bg-white border border-stone-200/90 rounded-xl font-mono text-stone-800 focus:outline-hidden focus:border-[#8b6f4e]"
                         />
-                      </div>
-                    </td>
+                      </td>
 
-                    {/* Status Toggle */}
-                    <td className="text-center align-middle px-2">
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={v.status === 'active'}
-                        onClick={() =>
-                          handleUpdateVariant(v.id, 'status', v.status === 'active' ? 'inactive' : 'active')
-                        }
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                          v.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
-                        }`}
-                        title={v.status === 'active' ? 'Active' : 'Inactive'}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                            v.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                      {/* Title (Formula 4) */}
+                      <td className="align-middle px-2">
+                        <input
+                          type="text"
+                          value={v.title}
+                          onChange={(e) => handleUpdateVariant(v.id, 'title', e.target.value)}
+                          className="w-full px-3 py-1.5 text-xs bg-white border border-stone-200/90 rounded-xl font-medium text-stone-800 focus:outline-hidden focus:border-[#8b6f4e]"
+                        />
+                      </td>
+
+                      {/* Carat */}
+                      <td className="text-center align-middle px-2">
+                        <span className="inline-block px-2.5 py-1 text-xs font-bold bg-[#fbf5ed] text-[#8b6f4e] border border-[#e8d7be] rounded-lg">
+                          {v.carat} ct
+                        </span>
+                      </td>
+
+                      {/* Rate (Formula 2 Reactive) */}
+                      <td className="align-middle px-2">
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400">₹</span>
+                          <input
+                            type="number"
+                            value={v.rate}
+                            onChange={(e) => handleUpdateVariant(v.id, 'rate', e.target.value)}
+                            className="w-full pl-6 pr-2.5 py-1.5 text-xs bg-white border border-stone-200/90 rounded-xl font-semibold text-stone-800 focus:outline-hidden focus:border-[#8b6f4e]"
+                          />
+                        </div>
+                      </td>
+
+                      {/* Total Price (Formula 1 & 2 Reactive) */}
+                      <td className="align-middle px-2">
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400">₹</span>
+                          <input
+                            type="number"
+                            value={v.price}
+                            onChange={(e) => handleUpdateVariant(v.id, 'price', e.target.value)}
+                            className="w-full pl-6 pr-2.5 py-1.5 text-xs bg-white border border-stone-200/90 rounded-xl font-bold text-stone-900 focus:outline-hidden focus:border-[#8b6f4e]"
+                          />
+                        </div>
+                      </td>
+
+                      {/* Inventory Validation Status */}
+                      <td className="text-center align-middle px-2">
+                        {v.isSaved ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            Already Added
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            New Stone
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Status Toggle */}
+                      <td className="text-center align-middle px-2">
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={v.status === 'active'}
+                          onClick={() =>
+                            handleUpdateVariant(v.id, 'status', v.status === 'active' ? 'inactive' : 'active')
+                          }
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                            v.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
                           }`}
-                        />
-                      </button>
-                    </td>
+                          title={v.status === 'active' ? 'Active' : 'Inactive'}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                              v.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </td>
 
-                    {/* Action */}
-                    <td className="text-right align-middle pr-2">
-                      <DeleteActionButton
-                        onClick={() => handleRemoveVariant(v.id)}
-                        title="Remove Variant"
-                      />
-                    </td>
-                  </tr>
-                ))}
+                      {/* Action */}
+                      <td className="text-right align-middle pr-2">
+                        <DeleteActionButton
+                          onClick={() => handleRemoveVariant(v.id)}
+                          title="Remove Variant"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           )}

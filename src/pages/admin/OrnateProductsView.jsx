@@ -712,7 +712,7 @@ export default function OrnateProductsView() {
 
       {/* ─── 4. Main Tab Content ─── */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-7 gap-3">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="bg-white border border-stone-200 rounded-2xl p-4 space-y-3 animate-pulse">
               <div className="h-32 bg-stone-100 rounded-xl" />
@@ -814,7 +814,7 @@ export default function OrnateProductsView() {
                 <div
                   className={
                     viewMode === 'grid'
-                      ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
+                      ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-7 gap-3'
                       : 'space-y-3'
                   }
                 >
@@ -1081,7 +1081,7 @@ export default function OrnateProductsView() {
                   setAdminPageSize(newSize);
                   setPage(1);
                 }}
-                pageSizeOptions={[10, 25, 50, 100]}
+                pageSizeOptions={[10, 14, 25, 28, 50, 100]}
               />
           </div>
         )
@@ -1132,7 +1132,7 @@ export default function OrnateProductsView() {
 
             {/* Ungrouped Grid / List */}
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-7 gap-3">
                 {products.map((p) => {
                   const isSelected = selectedIds.has(p._id);
                   const imgUrl = getProductImage(p);
@@ -1154,40 +1154,14 @@ export default function OrnateProductsView() {
                           onChange={() => toggleSelectOne(p._id)}
                           className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer"
                         />
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={(e) => handleToggleProductVisibility(p, 'web', e)}
-                            disabled={updatingVisibilityId === `${p._id}-web`}
-                            title={p.inweb !== false && p.visibility?.web !== false ? 'Web: Visible (Click to Hide)' : 'Web: Hidden (Click to Show)'}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
-                              p.inweb !== false && p.visibility?.web !== false
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-stone-50 text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-100'
-                            }`}
-                          >
-                            🌐 Web
-                          </button>
-                          <button
-                            type="button"
-                            onClick={(e) => handleToggleProductVisibility(p, 'app', e)}
-                            disabled={updatingVisibilityId === `${p._id}-app`}
-                            title={p.inapp !== false && p.visibility?.app !== false ? 'App: Visible (Click to Hide)' : 'App: Hidden (Click to Show)'}
-                            className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors cursor-pointer ${
-                              p.inapp !== false && p.visibility?.app !== false
-                                ? 'bg-sky-50 text-sky-700 border-sky-200 hover:bg-sky-100'
-                                : 'bg-stone-50 text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-100'
-                            }`}
-                          >
-                            📱 App
-                          </button>
+                        <div>
                           {renderStatusBadge(p)}
                         </div>
                       </div>
 
                       <div
                         onClick={() => setViewingProduct(p)}
-                        className="h-36 w-full flex items-center justify-center p-2 rounded-xl bg-stone-50/60 my-1 cursor-pointer overflow-hidden"
+                        className="h-28 sm:h-32 w-full flex items-center justify-center p-1.5 rounded-xl bg-stone-50/60 my-1 cursor-pointer overflow-hidden"
                       >
                         {imgUrl ? (
                           <img
@@ -1359,7 +1333,7 @@ export default function OrnateProductsView() {
                   setAdminPageSize(newSize);
                   setPage(1);
                 }}
-                pageSizeOptions={[10, 25, 50, 100]}
+                pageSizeOptions={[10, 14, 25, 28, 50, 100]}
               />
             </div>
           </div>

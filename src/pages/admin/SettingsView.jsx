@@ -118,9 +118,6 @@ export default function SettingsView() {
     storeAddress: '',
     gstCode: '',
     panCode: '',
-    returnPeriodDays: '',
-    returnPolicy: '',
-    shippingPolicy: '',
     certificateImageUrl: '',
   });
 
@@ -129,6 +126,7 @@ export default function SettingsView() {
     bankName: '',
     bankAccountNumber: '',
     ifscCode: '',
+    paymentProvider: 'razorpay',
   });
 
   const [showAccountRaw, setShowAccountRaw] = useState(false);
@@ -208,9 +206,6 @@ export default function SettingsView() {
         storeAddress: bDetails.storeAddress ?? data.storeAddress ?? '',
         gstCode: bDetails.gstCode ?? data.gstCode ?? '',
         panCode: bDetails.panCode ?? data.panCode ?? '',
-        returnPeriodDays: data.returnPeriodDays ?? '',
-        returnPolicy: data.returnPolicy ?? '',
-        shippingPolicy: data.shippingPolicy ?? '',
         certificateImageUrl: data.certificateImage?.url ?? '',
       });
 
@@ -218,6 +213,7 @@ export default function SettingsView() {
         bankName: data.bankDetails?.bankName ?? data.bankName ?? '',
         bankAccountNumber: data.bankDetails?.bankAccountNumber ?? data.bankAccountNumber ?? '',
         ifscCode: data.bankDetails?.ifscCode ?? data.ifscCode ?? '',
+        paymentProvider: data.paymentProvider ?? 'razorpay',
       });
 
       if (data.currentThemeId) {
@@ -276,15 +272,13 @@ export default function SettingsView() {
         storeAddress: bDetails.storeAddress ?? settings.storeAddress ?? '',
         gstCode: bDetails.gstCode ?? settings.gstCode ?? '',
         panCode: bDetails.panCode ?? settings.panCode ?? '',
-        returnPeriodDays: settings.returnPeriodDays ?? '',
-        returnPolicy: settings.returnPolicy ?? '',
-        shippingPolicy: settings.shippingPolicy ?? '',
         certificateImageUrl: settings.certificateImage?.url ?? '',
       });
       setMonetaryForm({
         bankName: settings.bankDetails?.bankName ?? settings.bankName ?? '',
         bankAccountNumber: settings.bankDetails?.bankAccountNumber ?? settings.bankAccountNumber ?? '',
         ifscCode: settings.bankDetails?.ifscCode ?? settings.ifscCode ?? '',
+        paymentProvider: settings.paymentProvider ?? 'razorpay',
       });
       setTrustBadges(Array.isArray(settings.trustBadges) ? settings.trustBadges : []);
       setImageCompression({ ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(settings.mediaCompression || {}) });
@@ -470,9 +464,6 @@ export default function SettingsView() {
           gstCode: businessForm.gstCode,
           panCode: businessForm.panCode,
         },
-        returnPeriodDays: businessForm.returnPeriodDays === '' ? undefined : Number(businessForm.returnPeriodDays),
-        returnPolicy: businessForm.returnPolicy,
-        shippingPolicy: businessForm.shippingPolicy,
         certificateImage: {
           url: businessForm.certificateImageUrl,
         },
@@ -502,6 +493,7 @@ export default function SettingsView() {
         bankName: monetaryForm.bankName,
         bankAccountNumber: monetaryForm.bankAccountNumber,
         ifscCode: monetaryForm.ifscCode,
+        paymentProvider: monetaryForm.paymentProvider || 'razorpay',
       };
 
       const res = await api.put('/settings', payload);
@@ -667,9 +659,9 @@ export default function SettingsView() {
       color: 'green',
     },
     {
-      label: 'Return Period',
-      value: businessForm.returnPeriodDays !== '' ? `${businessForm.returnPeriodDays} Days` : 'Not configured',
-      icon: HiOutlineRefresh,
+      label: 'Tax & Compliance',
+      value: businessForm.gstCode ? `GST: ${businessForm.gstCode}` : 'PAN / GST Ready',
+      icon: HiOutlineShieldCheck,
       color: 'peach',
     },
     {
@@ -716,7 +708,7 @@ export default function SettingsView() {
     {
       id: 'business',
       title: 'Business & Identity',
-      subtitle: 'Store legal details, registered address, GST, PAN, and customer policies.',
+      subtitle: 'Store legal details, registered address, GST, and PAN numbers.',
       icon: HiOutlineOfficeBuilding,
       badgeText: `${businessForm.companyName || 'Neirah Jewellers'} · ${
         businessForm.gstCode ? `GST: ${businessForm.gstCode}` : 'Identity active'
@@ -1283,41 +1275,10 @@ export default function SettingsView() {
                         className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
                       />
                     </div>
-                    <div>
-                      <label className="block text-xs font-bold text-stone-900 mb-1">
-                        Return Period (Days)
-                      </label>
-                      <input
-                        type="number"
-                        value={businessForm.returnPeriodDays}
-                        onChange={(e) => setBusinessForm({ ...businessForm, returnPeriodDays: e.target.value })}
-                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-stone-900 mb-1">
-                        Return Policy Summary
-                      </label>
-                      <input
-                        type="text"
-                        value={businessForm.returnPolicy}
-                        onChange={(e) => setBusinessForm({ ...businessForm, returnPolicy: e.target.value })}
-                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
-                      />
-                    </div>
+
                   </div>
 
-                  {/* Shipping Policy */}
-                  <div>
-                    <label className="block text-xs font-bold text-stone-900 mb-1">Shipping Policy</label>
-                    <textarea
-                      rows={3}
-                      placeholder="Describe your standard shipping and delivery timelines..."
-                      value={businessForm.shippingPolicy}
-                      onChange={(e) => setBusinessForm({ ...businessForm, shippingPolicy: e.target.value })}
-                      className="w-full p-2.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] resize-none"
-                    />
-                  </div>
+
 
                   {/* Certificate of Authenticity */}
                   <div>
@@ -1401,6 +1362,23 @@ export default function SettingsView() {
                         )}
                       </button>
                     </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-stone-900 mb-1">
+                      Online Payment Provider (Active Gateway)
+                    </label>
+                    <select
+                      value={monetaryForm.paymentProvider || 'razorpay'}
+                      onChange={(e) => setMonetaryForm({ ...monetaryForm, paymentProvider: e.target.value })}
+                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                    >
+                      <option value="razorpay">Razorpay (Cards, UPI, NetBanking)</option>
+                      <option value="ccavenue">CCAvenue (Cards, NetBanking, Wallets)</option>
+                    </select>
+                    <p className="mt-1 text-[11px] text-stone-500">
+                      Storefront orders will automatically process online checkout via this provider.
+                    </p>
                   </div>
 
                   <div>

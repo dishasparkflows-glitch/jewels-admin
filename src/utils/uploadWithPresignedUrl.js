@@ -57,7 +57,7 @@ export async function getUploadCompressionSettings() {
   return uploadCompressionSettingsRequest;
 }
 
-const getGlobalCompressionOptions = (preset, settings) => ({
+export const getGlobalCompressionOptions = (preset, settings) => ({
   ...preset,
   quality: settings.quality / 100,
   maxWidth: settings.maxDimension,
@@ -260,8 +260,10 @@ export async function uploadWithPresignedUrl(file, moduleName = 'banner', onProg
 
 /** Request upload URLs for a selection in one backend call with parallel upload-time compression, then PUT files to R2. */
 export async function uploadFilesWithPresignedUrls(files, moduleName = 'products', onProgress = null, options = {}) {
-  const rawFiles = Array.from(files || []);
-  if (!rawFiles.length) return [];
+  const rawItems = Array.from(files || []);
+  if (!rawItems.length) return [];
+
+  const rawFiles = rawItems.map((item) => (item && item.file ? item.file : item));
 
   const uploadSettings = await getUploadCompressionSettings();
   const shouldCompress = options.compress !== false && options.compression !== false && uploadSettings.enabled;
@@ -271,9 +273,20 @@ export async function uploadFilesWithPresignedUrls(files, moduleName = 'products
     ...(options.compressionOptions || {}),
   };
 
-  // Parallel upload-time compression before requesting presigned URLs
+  // Parallel upload-time compression / preparation before requesting presigned URLs
   const selectedFiles = await Promise.all(
-    rawFiles.map(async (file) => {
+    rawFiles.map(async (file, index) => {
+      if (options.onFileCompressing) {
+        options.onFileCompressing(file, index, rawItems[index]);
+      }
+      if (typeof options.prepareFile === 'function') {
+        try {
+          const prepared = await options.prepareFile(file, index, rawItems[index]);
+          if (prepared) return prepared;
+        } catch (prepErr) {
+          console.warn('[uploadFilesWithPresignedUrls] Custom prepareFile error:', prepErr);
+        }
+      }
       if (shouldCompress && isCompressibleImage(file)) {
         try {
           return await compressImageFile(file, compressionOpts);
@@ -314,6 +327,9 @@ export async function uploadFilesWithPresignedUrls(files, moduleName = 'products
     if (!upload?.uploadUrl || !upload?.key) {
       throw new Error(`Failed to obtain upload URL for ${file.name}`);
     }
+    if (options.onFileUploading) {
+      options.onFileUploading(file, index, upload, rawItems[index]);
+    }
     await axios.put(upload.uploadUrl, file, {
       headers: { 'Content-Type': upload.contentType || fileContentType(file) },
       onUploadProgress: (event) => {
@@ -333,7 +349,7 @@ export async function uploadFilesWithPresignedUrls(files, moduleName = 'products
       wasCompressed: Boolean(file.wasCompressed),
       savingsPercent: file.savingsPercent || 0,
     };
-    options.onFileUploaded?.(result, file, index, originalFile);
+    options.onFileUploaded?.(result, file, index, originalFile, rawItems[index]);
     return result;
   }));
 }

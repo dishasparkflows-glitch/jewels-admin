@@ -369,7 +369,8 @@ export default function TopAnnouncementView() {
               aria-checked={settings.isEnabled}
               disabled={savingSettings}
               onClick={() => handleToggleGlobal(!settings.isEnabled)}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${settings.isEnabled ? 'bg-emerald-500' : 'bg-stone-300'
+              style={settings.isEnabled ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${settings.isEnabled ? '' : 'bg-stone-300'
                 }`}
             >
               <span
@@ -586,7 +587,8 @@ export default function TopAnnouncementView() {
                           role="switch"
                           aria-checked={item.isActive}
                           onClick={() => handleToggleStatus(item)}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${item.isActive ? 'bg-emerald-500' : 'bg-stone-300'
+                          style={item.isActive ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${item.isActive ? '' : 'bg-stone-300'
                             }`}
                           title={`Click to set ${item.isActive ? 'Inactive' : 'Active'}`}
                         >
@@ -738,7 +740,8 @@ export default function TopAnnouncementView() {
               role="switch"
               aria-checked={formData.isActive}
               onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${formData.isActive ? 'bg-emerald-500' : 'bg-stone-300'
+              style={formData.isActive ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${formData.isActive ? '' : 'bg-stone-300'
                 }`}
             >
               <span

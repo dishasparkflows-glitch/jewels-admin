@@ -5,9 +5,21 @@ import { selectedMenuIds } from '../../utils/menuItems';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import axios from 'axios';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
-import { createProductId, deleteUploadedFile, deleteUploadedFiles, getUploadCompressionSettings, uploadWithPresignedUrl, uploadFilesWithPresignedUrls, getUploadedObjectKey } from '../../utils/uploadWithPresignedUrl';
+import {
+  createProductId,
+  deleteUploadedFile,
+  getUploadCompressionSettings,
+  uploadWithPresignedUrl,
+  uploadFilesWithPresignedUrls,
+  getUploadedObjectKey,
+  compressImageFile,
+  isCompressibleImage,
+  COMPRESSION_PRESETS,
+  getGlobalCompressionOptions,
+} from '../../utils/uploadWithPresignedUrl';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import Dropdown from '../../components/common/Dropdown';
 import { getMediaUrl } from '../../utils/imageUrl';
@@ -24,13 +36,10 @@ import {
   HiOutlineMinus,
   HiOutlineCheck,
   HiOutlineEye,
-  HiOutlineShoppingBag,
-  HiOutlineShieldCheck,
   HiOutlinePhotograph,
   HiOutlineStar,
   HiOutlineVideoCamera,
   HiOutlineCube,
-  HiOutlineQuestionMarkCircle,
   HiOutlineX,
   HiOutlineAdjustments,
   HiOutlineChevronRight,
@@ -38,17 +47,14 @@ import {
   HiOutlineCheckCircle,
   HiOutlineLink,
   HiOutlineExternalLink,
-  HiOutlineChevronDown,
   HiOutlineChevronUp,
-  HiOutlineCurrencyRupee,
   HiOutlineCalculator,
 } from 'react-icons/hi';
 import PricingBreakdownModal from '../../components/common/PricingBreakdownModal';
-import { calculateEffectiveWeight, calculateProductPriceAPI } from '../../utils/pricingCalculation';
+import { calculateProductPriceAPI } from '../../utils/pricingCalculation';
 import {
   IoDiamondOutline,
   IoSparklesOutline,
-  IoCheckmarkCircle,
   IoColorPaletteOutline,
 } from 'react-icons/io5';
 import { TbListDetails } from 'react-icons/tb';
@@ -101,6 +107,21 @@ const VTO_ENV_OPTIONS = [
 const formatMediaSize = (bytes = 0) => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+};
+
+const isSizeInKb = (sizeOrBytes) => {
+  if (sizeOrBytes == null || sizeOrBytes === '') return false;
+  if (typeof sizeOrBytes === 'number') {
+    return sizeOrBytes > 0 && sizeOrBytes < 1024 * 1024; // Less than 1 MB is in KB
+  }
+  if (typeof sizeOrBytes === 'string') {
+    const s = sizeOrBytes.trim().toLowerCase();
+    if (s.endsWith('kb') || s.includes(' kb')) return true;
+    if (s.endsWith('mb') || s.includes(' mb')) return false;
+    const num = parseFloat(s);
+    return !isNaN(num) && num > 0 && num < 1024 * 1024;
+  }
+  return false;
 };
 
 const compressImageAsset = async (asset, quality, format = 'image/webp') => {
@@ -610,7 +631,8 @@ export default function AddJewelryProduct() {
   const [apiCenterRates, setApiCenterRates] = useState([]);
   const [sideRows, setSideRows] = useState([]);
   const [automaticPricing, setAutomaticPricing] = useState(true);
-  const [baseCarat, setBaseCarat] = useState('1');
+  const [baseCarat, setBaseCarat] = useState('');
+  const [baseCaratManuallyEdited, setBaseCaratManuallyEdited] = useState(false);
   const [gstPercentage, setGstPercentage] = useState('3');
   const [computingPrices, setComputingPrices] = useState(false);
 
@@ -741,6 +763,16 @@ export default function AddJewelryProduct() {
     apiCenterRates,
   ]);
 
+  // Auto-derive Base Carat benchmark from center diamonds if not manually customized
+  useEffect(() => {
+    if (!baseCaratManuallyEdited && centerDiamondCarats.length > 0) {
+      const minCarat = centerDiamondCarats[0];
+      if (minCarat > 0) {
+        setBaseCarat(String(minCarat));
+      }
+    }
+  }, [centerDiamondCarats, baseCaratManuallyEdited]);
+
   const handleAddCarat = () => {
     const val = parseFloat(caratInput.trim());
     if (isNaN(val) || val <= 0) {
@@ -826,6 +858,63 @@ export default function AddJewelryProduct() {
   const [compressingMedia, setCompressingMedia] = useState(false);
   const [pendingCompressionDeletes, setPendingCompressionDeletes] = useState([]);
   const [viewingCompressionMedia, setViewingCompressionMedia] = useState(null);
+  const fetchedFileInfoKeysRef = useRef(new Set());
+
+  // Auto-fetch file sizes from backend if any media image is missing size
+  useEffect(() => {
+    if (isSilverProduct) return;
+    const currentImages = mediaImages[activeMediaColor] || [];
+    const missing = currentImages.filter((img) => {
+      const k = img.key || img.url;
+      return k && !img.size && !img.fileSize && !fetchedFileInfoKeysRef.current.has(k);
+    });
+    if (missing.length === 0) return;
+
+    // Immediately mark as requested to prevent duplicate requests across renders
+    missing.forEach((img) => {
+      if (img.key) fetchedFileInfoKeysRef.current.add(img.key);
+      if (img.url) fetchedFileInfoKeysRef.current.add(img.url);
+    });
+
+    let cancelled = false;
+    api.post('/upload/file-info', {
+      keys: missing.map((img) => img.key || img.url),
+    }).then((res) => {
+      if (cancelled || !res.data) return;
+      const raw = res.data?.data !== undefined ? res.data.data : res.data;
+      const list = Array.isArray(raw) ? raw : [raw];
+      const map = {};
+      list.forEach((item) => {
+        if (!item) return;
+        if (item.key) map[item.key] = item;
+        if (item.requestedKey) map[item.requestedKey] = item;
+      });
+
+      setMediaImages((prev) => {
+        const colorList = prev[activeMediaColor] || [];
+        let hasChanges = false;
+        const updated = colorList.map((img) => {
+          const meta = (img.key && map[img.key]) ||
+            (img.url && map[img.url]) ||
+            list.find((m) => m && m.key && ((img.key && img.key === m.key) || (img.url && img.url.includes(m.key))));
+          if (meta && meta.fileSize) {
+            hasChanges = true;
+            return {
+              ...img,
+              fileSize: meta.fileSize,
+              size: meta.size,
+              allowCompression: meta.allowCompression,
+            };
+          }
+          return img;
+        });
+        if (!hasChanges) return prev;
+        return { ...prev, [activeMediaColor]: updated };
+      });
+    }).catch(() => {});
+
+    return () => { cancelled = true; };
+  }, [activeMediaColor, mediaImages, isSilverProduct]);
 
   // Staged Upload Media (Local load -> Compression Confirmation -> Direct Cloudflare R2 Upload)
   const [stagedUploadFiles, setStagedUploadFiles] = useState([]);
@@ -892,8 +981,8 @@ export default function AddJewelryProduct() {
   const [silverColors, setSilverColors] = useState([]);
   const [silverVariantMedia, setSilverVariantMedia] = useState({});
   const [expandedSilverColors, setExpandedSilverColors] = useState([]);
-  const [uploadingSilverVariantColor, setUploadingSilverVariantColor] = useState(null);
   const [uploadingSilverSwatchColor, setUploadingSilverSwatchColor] = useState(null);
+  const [uploadingSilverVariantColor, setUploadingSilverVariantColor] = useState(null);
   const [previewModalImage, setPreviewModalImage] = useState(null);
   const [previewModalGallery, setPreviewModalGallery] = useState([]);
   const [previewModalIndex, setPreviewModalIndex] = useState(0);
@@ -1069,10 +1158,34 @@ export default function AddJewelryProduct() {
     });
   };
 
+  // Auto-expand any silver color box that contains images/media or a swatch icon
+  useEffect(() => {
+    const sColorsWithMedia = Object.keys(silverVariantMedia).filter(
+      (cName) => (silverVariantMedia[cName]?.media?.length > 0) || Boolean(silverVariantMedia[cName]?.swatchIcon)
+    );
+    if (sColorsWithMedia.length > 0) {
+      setExpandedSilverColors((prev) => {
+        const next = [...prev];
+        let changed = false;
+        sColorsWithMedia.forEach((c) => {
+          if (!next.some((existing) => existing.toLowerCase() === c.toLowerCase())) {
+            next.push(c);
+            changed = true;
+          }
+        });
+        return changed ? next : prev;
+      });
+    }
+  }, [silverVariantMedia]);
+
+  const isSilverColorExpanded = (colorName) => {
+    return expandedSilverColors.some((c) => c?.toLowerCase() === colorName?.toLowerCase());
+  };
+
   const handleToggleSilverExpand = (colorName) => {
     setExpandedSilverColors((prev) =>
-      prev.includes(colorName)
-        ? prev.filter((c) => c !== colorName)
+      prev.some((c) => c?.toLowerCase() === colorName?.toLowerCase())
+        ? prev.filter((c) => c?.toLowerCase() !== colorName?.toLowerCase())
         : [...prev, colorName]
     );
   };
@@ -1103,6 +1216,7 @@ export default function AddJewelryProduct() {
           },
         }));
         setSilverColors((prev) => Array.from(new Set([...prev, colorName])));
+        setExpandedSilverColors((prev) => Array.from(new Set([...prev, colorName])));
         const savingsText = res.wasCompressed ? ` (optimized ${formatMediaSize(res.originalSize)} → ${formatMediaSize(res.compressedSize)})` : '';
         toast.success(`${colorName} swatch icon uploaded${savingsText}!`);
       }
@@ -1284,11 +1398,16 @@ export default function AddJewelryProduct() {
           url: item.url,
           key: item.key || '',
           mediaType: 'image',
+          ...(item.fileSize ? { fileSize: item.fileSize } : {}),
+          ...(item.size ? { size: item.size } : {}),
+          ...(item.allowCompression !== undefined ? { allowCompression: item.allowCompression } : {}),
         }));
         const videos = (latestVideos[colorName] || []).filter((item) => item?.url).map((item) => ({
           url: item.url,
           key: item.key || '',
           mediaType: 'video',
+          ...(item.fileSize ? { fileSize: item.fileSize } : {}),
+          ...(item.size ? { size: item.size } : {}),
         }));
         const vto = vtoConfigs[colorName] || {};
         const hasVto = Boolean(vto.isConfigured && vto.overlayUrl);
@@ -1371,30 +1490,40 @@ export default function AddJewelryProduct() {
     const toastId = 'staged-upload-toast';
     toast.loading(`Starting upload for ${stagedUploadFiles.length} file(s)...`, { id: toastId });
 
+    if (isSilver) setUploadingSilverVariantColor(targetColor);
     try {
+      const uploadSettings = await getUploadCompressionSettings();
+      const preset = COMPRESSION_PRESETS.products || COMPRESSION_PRESETS.general;
+      const compressionOpts = getGlobalCompressionOptions(preset, uploadSettings);
+
+      // --- STEP 1: Client-Side Preparation & Compression ---
+      const preparedFiles = [];
       for (let i = 0; i < stagedUploadFiles.length; i++) {
         const item = stagedUploadFiles[i];
         totalOriginalBytes += item.size;
 
-        const currentPct = Math.round((i / stagedUploadFiles.length) * 100);
-        setUploadProcessingPercent(currentPct);
-
         let fileToUpload = item.file;
         let wasCompressed = false;
 
-        // Image uploads use the saved global compression policy in uploadWithPresignedUrl.
-        // Keep optional video encoding local to this upload batch.
-        if (item.isImage && imageUploadPolicy.enabled) {
+        if (item.isImage && imageUploadPolicy.enabled && uploadSettings.enabled && isCompressibleImage(item.file)) {
           setStagedUploadFiles((prev) =>
             prev.map((f, idx) => (idx === i ? { ...f, status: 'compressing' } : f))
           );
           setUploadProcessingStep(`Optimizing image ${i + 1} of ${stagedUploadFiles.length}: ${item.name}`);
           toast.loading(`Optimizing image (${i + 1}/${stagedUploadFiles.length}): ${item.name}...`, { id: toastId });
+          try {
+            fileToUpload = await compressImageFile(item.file, compressionOpts);
+            wasCompressed = Boolean(fileToUpload.wasCompressed);
+          } catch (compErr) {
+            console.warn(`[handleConfirmStagedUpload] Image compression skipped for ${item.name}:`, compErr);
+            fileToUpload = item.file;
+          }
         } else if (item.isVideo && uploadCompressVideos) {
           setStagedUploadFiles((prev) =>
             prev.map((f, idx) => (idx === i ? { ...f, status: 'compressing' } : f))
           );
           setUploadProcessingStep(`Encoding video ${i + 1} of ${stagedUploadFiles.length}: ${item.name}`);
+          toast.loading(`Encoding video (${i + 1}/${stagedUploadFiles.length}): ${item.name}...`, { id: toastId });
           try {
             fileToUpload = await compressLocalVideoFile(item.file, 0.82);
             wasCompressed = Boolean(fileToUpload.wasCompressed);
@@ -1404,31 +1533,74 @@ export default function AddJewelryProduct() {
           }
         }
 
-        // --- STEP 2: Direct Upload to Cloudflare R2 ---
+        preparedFiles.push({ item, fileToUpload, wasCompressed });
+      }
+
+      // --- STEP 2: Request Presigned Upload URLs in a Single Batch Request ---
+      setUploadProcessingStep(`Requesting upload URLs for ${preparedFiles.length} file(s)...`);
+      toast.loading(`Requesting upload URLs for ${preparedFiles.length} file(s)...`, { id: toastId });
+
+      const fileContentType = (file) => {
+        const rawType = (file.type || '').split(';')[0].trim().toLowerCase();
+        return rawType || (
+          /\.png$/i.test(file.name) ? 'image/png'
+            : /\.webp$/i.test(file.name) ? 'image/webp'
+              : /\.mp4$/i.test(file.name) ? 'video/mp4'
+                : /\.webm$/i.test(file.name) ? 'video/webm'
+                  : /\.(mov|m4v)$/i.test(file.name) ? 'video/quicktime'
+                    : 'image/jpeg'
+        );
+      };
+
+      const filesPayload = preparedFiles.map(({ fileToUpload }) => ({
+        name: fileToUpload.name,
+        contentType: fileContentType(fileToUpload),
+      }));
+
+      const presignedRes = await api.post('/upload/presigned-url', {
+        module: 'products',
+        productId: mediaProductId,
+        files: filesPayload,
+      });
+
+      const uploadSlots = presignedRes.data?.data;
+      if (!Array.isArray(uploadSlots) || uploadSlots.length !== preparedFiles.length) {
+        throw new Error('Failed to obtain presigned upload URLs from server');
+      }
+
+      // --- STEP 3: Direct PUT Upload to Cloudflare R2 ---
+      for (let i = 0; i < preparedFiles.length; i++) {
+        const { item, fileToUpload, wasCompressed } = preparedFiles[i];
+        const slot = uploadSlots[i];
+        const contentType = slot.contentType || filesPayload[i].contentType;
+
         setStagedUploadFiles((prev) =>
           prev.map((f, idx) => (idx === i ? { ...f, status: 'uploading' } : f))
         );
-        setUploadProcessingStep(`Uploading to Cloudflare ${i + 1} of ${stagedUploadFiles.length}: ${fileToUpload.name}`);
-        toast.loading(`Uploading to Cloudflare (${i + 1}/${stagedUploadFiles.length}): ${fileToUpload.name}...`, { id: toastId });
+        const currentPct = Math.round((i / preparedFiles.length) * 100);
+        setUploadProcessingPercent(currentPct);
+        setUploadProcessingStep(`Uploading to Cloudflare ${i + 1} of ${preparedFiles.length}: ${fileToUpload.name}`);
+        toast.loading(`Uploading to Cloudflare (${i + 1}/${preparedFiles.length}): ${fileToUpload.name}...`, { id: toastId });
 
-        const uploadRes = await uploadWithPresignedUrl(fileToUpload, 'products', null, {
-          productId: mediaProductId,
+        await axios.put(slot.uploadUrl, fileToUpload, {
+          headers: { 'Content-Type': contentType },
         });
-        totalCompressedBytes += uploadRes.size || fileToUpload.size;
-        wasCompressed = wasCompressed || uploadRes.wasCompressed;
 
-        const displaySize = formatMediaSize(uploadRes.size || fileToUpload.size);
+        const finalUrl = slot.fileUrl || slot.url;
+        totalCompressedBytes += fileToUpload.size;
+
+        const displaySize = formatMediaSize(fileToUpload.size);
         const mediaRecord = {
           id: `${item.isVideo ? 'vid' : 'img'}-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`,
-          url: uploadRes.fileUrl,
-          key: uploadRes.key,
-          name: uploadRes.name || fileToUpload.name,
-          title: uploadRes.name || fileToUpload.name,
+          url: finalUrl,
+          key: slot.key,
+          name: slot.name || fileToUpload.name,
+          title: slot.name || fileToUpload.name,
           size: displaySize,
-          fileSize: uploadRes.size || fileToUpload.size,
+          fileSize: fileToUpload.size,
           uploadedAt,
           mediaType: item.isVideo ? 'video' : 'image',
-          wasCompressed,
+          wasCompressed: Boolean(wasCompressed || fileToUpload.wasCompressed),
         };
 
         newMediaItems.push({ item, mediaRecord, isVideo: item.isVideo });
@@ -1504,6 +1676,7 @@ export default function AddJewelryProduct() {
       console.error('[handleConfirmStagedUpload] Upload failed:', err);
       toast.error(`Upload error: ${err.message}`, { id: toastId });
     } finally {
+      if (isSilver) setUploadingSilverVariantColor(null);
       setIsProcessingUpload(false);
       setUploadProcessingStep('');
       setUploadProcessingPercent(0);
@@ -1550,8 +1723,6 @@ export default function AddJewelryProduct() {
     if (e.target) e.target.value = '';
   };
 
-  const handleImageUpload = (e, colorName = activeMediaColor) => handleMixedMediaUpload(e, colorName);
-  const handleVideoUpload = (e, colorName = activeMediaColor) => handleMixedMediaUpload(e, colorName);
 
   // Handle VTO Overlay PNG Upload inside Studio Modal
   const handleVtoAssetUpload = async (e) => {
@@ -1629,7 +1800,7 @@ export default function AddJewelryProduct() {
     const isImagesOnly = compressionTab === 'images';
 
     const imagesToCompress = !isVideosOnly
-      ? (mediaImages[activeMediaColor] || []).filter((image) => selectedCompressionIds.includes(image.id))
+      ? (mediaImages[activeMediaColor] || []).filter((image) => selectedCompressionIds.includes(image.id) && !isSizeInKb(image.fileSize || image.size))
       : [];
     const videosToCompress = !isImagesOnly
       ? (mediaVideos[activeMediaColor] || []).filter((video) => selectedCompressionIds.includes(video.id))
@@ -1844,20 +2015,6 @@ export default function AddJewelryProduct() {
     toast.success('Alignment reset to defaults');
   };
 
-  // Remove a color from product media list
-  const handleRemoveColor = (colorName) => {
-    if (productColors.length <= 1) {
-      toast.error('You must keep at least one metal color for the product.');
-      return;
-    }
-    const filtered = productColors.filter((c) => c !== colorName);
-    setProductColors(filtered);
-    if (activeMediaColor === colorName) {
-      setActiveMediaColor(filtered[0]);
-    }
-    toast.success(`Removed ${colorName} from product showcase`);
-  };
-
   // Add a metal color to product media list
   const handleAddColor = (colorName) => {
     if (productColors.includes(colorName)) {
@@ -1892,27 +2049,6 @@ export default function AddJewelryProduct() {
     }
     setIsAddColorModalOpen(false);
     toast.success(`Added ${colorName} to product media`);
-  };
-
-  // Create custom metal color via backend API
-  const handleCreateCustomColor = async () => {
-    const name = customColorInput.name.trim();
-    if (!name) {
-      toast.error('Please enter a color name.');
-      return;
-    }
-    try {
-      const res = await api.post('/metal-colors', {
-        name,
-        colorCode: customColorInput.code,
-      });
-      const created = res.data?.data || { name, code: customColorInput.code };
-      setColorsList((prev) => [...prev, { name: created.name, code: created.colorCode || customColorInput.code }]);
-      handleAddColor(created.name);
-      setCustomColorInput({ name: '', code: '#1f2937' });
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not create metal color');
-    }
   };
 
   // ─── Step 3: Specifications & Pricing ───────────────────
@@ -1995,9 +2131,6 @@ export default function AddJewelryProduct() {
     status: 'approved',
   });
 
-  // Right column active preview thumbnail selection
-  const [previewImage, setPreviewImage] = useState('');
-
   // Toggle Purity selection
   const handleTogglePurity = (purity) => {
     setSelectedPurities((prev) => {
@@ -2039,7 +2172,7 @@ export default function AddJewelryProduct() {
   };
   const pricingInput = () => ({
     basicInfo: { sku: basicDetails.sku },
-    pricing: { baseCarat: Number(baseCarat), gstPercentage: Number(gstPercentage), baseLabourCharge: Number(specs.baseLabourCharge), certificateCharge: Number(specs.certificateCharge), otherAmountPercentage: Number(specs.otherAmountPercentage) },
+    pricing: { baseCarat: Number(baseCarat || centerDiamondCarats[0] || 1), gstPercentage: Number(gstPercentage), baseLabourCharge: Number(specs.baseLabourCharge), certificateCharge: Number(specs.certificateCharge), otherAmountPercentage: Number(specs.otherAmountPercentage) },
     specifications: { metalWeight: Number(specs.metalWeight) },
     metalPurityIds: selectedPurities.map((name) => masterId(purityMasterList, name)),
     metalColorIds: selectedColors.map((name) => masterId(colorsList, name)),
@@ -2136,7 +2269,7 @@ export default function AddJewelryProduct() {
         shippingCharge: 0,
         certificateCharge: parseFloat(specs.certificateCharge || 0),
         isCalculated: true,
-        baseCarat: parseFloat(specs.baseCarat || 1),
+        baseCarat: parseFloat(baseCarat || centerDiamondCarats[0] || 1),
         __debugVariant: v,
       };
 
@@ -2152,35 +2285,6 @@ export default function AddJewelryProduct() {
     } finally {
       setBreakdownLoading(false);
     }
-  };
-
-  const handleApplyBreakdownToVariant = (data) => {
-    if (!breakdownVariant || !data) return;
-    setVariants((prev) =>
-      prev.map((v) => {
-        if (v.id === breakdownVariant.id) {
-          return {
-            ...v,
-            price: String(data.finalPrice),
-            priceRaw: data.finalPrice,
-            weight: String(data.effectiveWeight),
-            metalWeight: data.effectiveWeight,
-            metalCost: data.metalCost,
-            metalRate: data.metalRate,
-            diamondCost: data.diamondCost,
-            centerDiamondCost: data.centerDiamondCost,
-            sideDiamondCost: data.sideDiamondCost,
-            labourCharge: data.totalMakingCharge,
-            computedMakingCharge: data.totalMakingCharge,
-            computedGst: data.gstAmount,
-            certificateCharge: data.certificateCharge,
-          };
-        }
-        return v;
-      })
-    );
-    toast.success('Variant pricing updated successfully!');
-    setBreakdownModalOpen(false);
   };
 
   // ─── Step 5: Care & Specifications State & Handlers ─────────
@@ -2262,21 +2366,34 @@ export default function AddJewelryProduct() {
       const rowImages = Array.isArray(row.images) ? row.images : [];
       imagesByColor[colorName] = rowImages
         .filter((item) => item?.url && item.mediaType !== 'video')
-        .map((item, index) => ({
-          id: item.key || item._id || colorName + '-image-' + index,
-          url: item.url,
-          key: item.key,
-          name: item.name || '',
-          isPrimary: index === 0,
-        }));
+        .map((item, index) => {
+          const fileSize = item.fileSize || item.sizeInBytes || null;
+          const sizeStr = item.size || (fileSize ? formatMediaSize(fileSize) : '');
+          return {
+            id: item.key || item._id || colorName + '-image-' + index,
+            url: item.url,
+            key: item.key,
+            name: item.name || '',
+            fileSize,
+            size: sizeStr,
+            allowCompression: item.allowCompression !== undefined ? item.allowCompression : (fileSize ? !isSizeInKb(fileSize) : true),
+            isPrimary: index === 0,
+          };
+        });
       videosByColor[colorName] = rowImages
         .filter((item) => item?.url && item.mediaType === 'video')
-        .map((item, index) => ({
-          id: item.key || item._id || colorName + '-video-' + index,
-          url: item.url,
-          key: item.key,
-          title: item.title || '',
-        }));
+        .map((item, index) => {
+          const fileSize = item.fileSize || item.sizeInBytes || null;
+          const sizeStr = item.size || (fileSize ? formatMediaSize(fileSize) : '');
+          return {
+            id: item.key || item._id || colorName + '-video-' + index,
+            url: item.url,
+            key: item.key,
+            title: item.title || '',
+            fileSize,
+            size: sizeStr,
+          };
+        });
       if (row.vtoImage?.url) {
         vtoByColor[colorName] = {
           isConfigured: true,
@@ -2326,7 +2443,8 @@ export default function AddJewelryProduct() {
     setCenterDiamondShape(firstCenter.shape || '');
     setCenterDiamondColors(unique(centerNames.map((row) => row.color)));
     setCenterDiamondClarities(unique(centerNames.map((row) => row.clarity)));
-    setCenterDiamondCarats(unique(centerNames.map((row) => Number(row.carat)).filter(Number.isFinite)));
+    const loadedCenterCarats = unique(centerNames.map((row) => Number(row.carat)).filter(Number.isFinite)).sort((a, b) => a - b);
+    setCenterDiamondCarats(loadedCenterCarats);
     setCustomComboRates(Object.fromEntries(centerNames.filter((row) => row.rateSource === 'manual' || (!row.rateSource && row.rate > 0)).map((row) => [
       [row.type, row.shape, row.color, row.clarity, row.carat].join('-'),
       row.rate,
@@ -2339,7 +2457,20 @@ export default function AddJewelryProduct() {
       caratWeight: firstCenter.carat == null ? '' : String(firstCenter.carat),
     });
     setAutomaticPricing(productRecord.productType !== 'silver' && !productRecord.isOrnate);
-    setBaseCarat(String(productRecord.pricing?.baseCarat ?? 1));
+    const savedBaseCarat = productRecord.pricing?.baseCarat;
+    const minCenterCt = loadedCenterCarats[0];
+    if (savedBaseCarat !== undefined && savedBaseCarat !== null && Number(savedBaseCarat) > 0) {
+      if (Number(savedBaseCarat) === 1 && minCenterCt && minCenterCt > 1 && !loadedCenterCarats.includes(1)) {
+        setBaseCarat(String(minCenterCt));
+        setBaseCaratManuallyEdited(false);
+      } else {
+        setBaseCarat(String(savedBaseCarat));
+        setBaseCaratManuallyEdited(true);
+      }
+    } else {
+      setBaseCarat(String(minCenterCt || 1));
+      setBaseCaratManuallyEdited(false);
+    }
     setGstPercentage(String(productRecord.pricing?.gstPercentage ?? 3));
     setSideRows((productRecord.sideDiamondRows || []).map((row) => ({ ...row, rateSource: row.rateSource || (row.priceINR ? 'manual' : 'master') })));
     const sideRow = (Array.isArray(productRecord.sideDiamondRows) ? productRecord.sideDiamondRows : [])[0];
@@ -2381,7 +2512,9 @@ export default function AddJewelryProduct() {
             if (!sColors.includes(cName)) sColors.push(cName);
             sMedia[cName] = {
               status: ci.status ?? 'active',
-              swatchIcon: ci.variantIcon?.url || ci.variantIcon || '',
+              swatchIcon: typeof ci.variantIcon === 'string'
+                ? ci.variantIcon.trim()
+                : (typeof ci.variantIcon?.url === 'string' ? ci.variantIcon.url.trim() : ''),
               media: Array.isArray(ci.images)
                 ? ci.images.map((img, idx) => ({
                     id: img._id || img.key || `img-${idx}`,
@@ -2400,6 +2533,12 @@ export default function AddJewelryProduct() {
       }
       setSilverColors(unique(sColors));
       setSilverVariantMedia(sMedia);
+      const sColorsWithMedia = Object.keys(sMedia).filter(
+        (cName) => (sMedia[cName]?.media?.length > 0) || Boolean(sMedia[cName]?.swatchIcon)
+      );
+      if (sColorsWithMedia.length > 0) {
+        setExpandedSilverColors((prev) => Array.from(new Set([...prev, ...sColorsWithMedia])));
+      }
     }
     setSpecs({
       metalWeight: String(productRecord.specifications?.metalWeight ?? ''),
@@ -2441,11 +2580,6 @@ export default function AddJewelryProduct() {
       stockStatus: productRecord.stockStatus || '',
       status: productRecord.status || 'approved',
     });
-    setPreviewImage(
-      productRecord.colorImages?.flatMap((color) => color.images || []).find((image) => image?.url)?.url ||
-      productRecord.ornate?.ornateImages?.[0]?.url ||
-      ''
-    );
     hydratedProductId.current = productId;
     setProductLoading(false);
   }, [productId, productRecord, mastersLoaded, colorsList, puritiesList, diamondMasters]);
@@ -2680,7 +2814,7 @@ export default function AddJewelryProduct() {
         toast.error('Product title and SKU are required to publish this product');
         return;
       }
-      const activeSlug = seo.slug?.trim() || undefined;
+      const activeSlug = seo.slug?.trim() || (activeTitle ? activeTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : undefined);
       const activeDesc = basicDetails.description || '';
       const numberValue = (value) => value === '' || value === null || value === undefined ? undefined : Number(value);
       if (!isDraft && !isSilverProduct) {
@@ -2748,6 +2882,9 @@ export default function AddJewelryProduct() {
         url: item.url,
         key: item.key || '',
         mediaType,
+        ...(item.fileSize ? { fileSize: item.fileSize } : {}),
+        ...(item.size ? { size: item.size } : {}),
+        ...(item.allowCompression !== undefined ? { allowCompression: item.allowCompression } : {}),
       });
       const mediaColorNames = productColors.length
         ? productColors
@@ -2854,13 +2991,13 @@ export default function AddJewelryProduct() {
         }),
         ...(!isSilverProduct ? {
           ...(metalWeightNum ? {
-            baseCarat: Number(baseCarat),
+            baseCarat: Number(baseCarat || centerDiamondCarats[0] || 1),
             gstPercentage: Number(gstPercentage),
             baseLabourCharge: numberValue(specs.baseLabourCharge),
             certificateCharge: numberValue(specs.certificateCharge),
             otherAmountPercentage: numberValue(specs.otherAmountPercentage),
           } : (!isDraft ? {
-            baseCarat: Number(baseCarat),
+            baseCarat: Number(baseCarat || centerDiamondCarats[0] || 1),
             gstPercentage: Number(gstPercentage),
           } : {})),
         } : {}),
@@ -2882,7 +3019,11 @@ export default function AddJewelryProduct() {
             return {
               status: vData.status ?? 'active',
               ...(matched?.id || matched?._id ? { metalColorId: matched.id || matched._id } : {}),
-              ...(vData.swatchIcon ? { variantIcon: { url: vData.swatchIcon } } : {}),
+              ...(typeof vData.swatchIcon === 'string' && vData.swatchIcon.trim()
+                ? { variantIcon: { url: vData.swatchIcon.trim(), key: vData.swatchIconKey || '' } }
+                : (vData.swatchIcon?.url && typeof vData.swatchIcon.url === 'string' && vData.swatchIcon.url.trim()
+                  ? { variantIcon: { url: vData.swatchIcon.url.trim(), key: vData.swatchIconKey || vData.swatchIcon.key || '' } }
+                  : {})),
               images: (vData.media || []).map((m) => ({
                 url: typeof m === 'string' ? m : m.url,
                 key: m.key || '',
@@ -2968,7 +3109,6 @@ export default function AddJewelryProduct() {
 
   // Save the current product storing details and keeping status field as it is.
   const handleSave = async () => handlePublish('preserve');
-  const handleSaveDraft = async () => handlePublish('draft');
 
   // Stepper labels
   const steps = [
@@ -3035,18 +3175,42 @@ export default function AddJewelryProduct() {
           </button>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight">
+              <h1 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight max-w-[550px] truncate" title={basicDetails.title}>
                 {productId
-                  ? `Edit ${isSilverProduct ? 'Silver' : 'Jewelry'} Product`
+                  ? (basicDetails.title || `Edit ${isSilverProduct ? 'Silver' : 'Jewelry'} Product`)
                   : `Add ${isSilverProduct ? 'Silver' : 'Jewelry'} Product`}
               </h1>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#ebdcc9]">
-                Barcode: {ornate.barcode || '—'}
-              </span>
+              {(basicDetails.isOrnate || productRecord?.isOrnate) && (
+                (productRecord?.ornate?.barcode || productRecord?.barcode || ornate.barcode) ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#ebdcc9]">
+                    Barcode: {productRecord?.ornate?.barcode || productRecord?.barcode || ornate.barcode}
+                  </span>
+                ) : (productRecord?.ornate?.tagNo || ornate.tagNo) ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-mono font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#ebdcc9]">
+                    Label: {productRecord?.ornate?.tagNo || ornate.tagNo}
+                  </span>
+                ) : null
+              )}
             </div>
             <p className="text-xs text-stone-500 font-medium mt-0.5">
-              ERP SKU: <span className="font-mono text-stone-800 font-semibold">{ornate.tagNo || '—'}</span>
-              &bull; Metal: <span className="text-stone-800 font-semibold">{[...new Set(variants.map((variant) => variant.color).filter(Boolean))].join(', ') || '—'}</span>
+              {basicDetails.isOrnate || productRecord?.isOrnate ? (
+                <>
+                  ERP SKU: <span className="font-mono text-stone-800 font-semibold">{productRecord?.ornate?.tagNo || ornate.tagNo || '—'}</span>
+                  {(productRecord?.ornate?.barcode || productRecord?.barcode || ornate.barcode) && (
+                    <> &bull; Barcode: <span className="font-mono text-stone-800 font-semibold">{productRecord?.ornate?.barcode || productRecord?.barcode || ornate.barcode}</span></>
+                  )}
+                </>
+              ) : (
+                <>
+                  SKU: <span className="font-mono text-stone-800 font-semibold">{basicDetails.sku || productRecord?.basicInfo?.sku || '—'}</span>
+                  {(() => {
+                    const matchedCat = categoryOptions.find((c) => String(c.value) === String(basicDetails.category));
+                    return matchedCat?.label ? (
+                      <> &bull; Category: <span className="text-stone-800 font-semibold">{matchedCat.label}</span></>
+                    ) : null;
+                  })()}
+                </>
+              )}
             </p>
           </div>
         </div>
@@ -3430,18 +3594,63 @@ export default function AddJewelryProduct() {
                     <p className="text-[10px] text-stone-400">Set the base metal weight and applicable charges for these variants.</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pl-7">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pl-7">
                   <label className="space-y-1.5">
-                    <span className="text-[11px] font-bold text-stone-700">Metal Weight (g)</span>
-                    <input type="number" min="0" step="0.001" value={specs.metalWeight} onChange={(e) => setSpecs((prev) => ({ ...prev, metalWeight: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
+                    <span className="text-[11px] font-bold text-stone-700">Metal Weight (g) (14KT)</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.001"
+                      value={specs.metalWeight}
+                      onChange={(e) => setSpecs((prev) => ({ ...prev, metalWeight: e.target.value }))}
+                      placeholder="e.g. 1.91"
+                      className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                    />
+                  </label>
+                  <label className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-stone-700">Base Carat (ct)</span>
+                      {centerDiamondCarats.length > 0 && Number(baseCarat) === Number(centerDiamondCarats[0]) && (
+                        <span className="text-[9px] font-semibold text-[#8b6f4e] bg-[#faf5ee] border border-[#e8d8c0] px-1.5 py-0.5 rounded">
+                          Auto
+                        </span>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={baseCarat}
+                      onChange={(e) => {
+                        setBaseCarat(e.target.value);
+                        setBaseCaratManuallyEdited(true);
+                      }}
+                      placeholder={centerDiamondCarats[0] ? String(centerDiamondCarats[0]) : '1'}
+                      className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                      title="Prong scaling benchmark carat (defaults to first/minimum center stone carat)"
+                    />
                   </label>
                   <label className="space-y-1.5">
                     <span className="text-[11px] font-bold text-stone-700">Making Charge (₹/g)</span>
-                    <input type="number" min="0" value={specs.baseLabourCharge} onChange={(e) => setSpecs((prev) => ({ ...prev, baseLabourCharge: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
+                    <input
+                      type="number"
+                      min="0"
+                      value={specs.baseLabourCharge}
+                      onChange={(e) => setSpecs((prev) => ({ ...prev, baseLabourCharge: e.target.value }))}
+                      placeholder="e.g. 2000"
+                      className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                    />
                   </label>
                   <label className="space-y-1.5">
                     <span className="text-[11px] font-bold text-stone-700">Certificate Charge (₹)</span>
-                    <input type="number" min="0" value={specs.certificateCharge} onChange={(e) => setSpecs((prev) => ({ ...prev, certificateCharge: e.target.value }))} className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]" />
+                    <input
+                      type="number"
+                      min="0"
+                      value={specs.certificateCharge}
+                      onChange={(e) => setSpecs((prev) => ({ ...prev, certificateCharge: e.target.value }))}
+                      placeholder="e.g. 1000"
+                      className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                    />
                   </label>
                 </div>
               </div>
@@ -3924,10 +4133,10 @@ export default function AddJewelryProduct() {
 
 
               {/* 2-Column Grid of Variant Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 items-start">
                 {silverColorOptions.map((col) => {
                   const isSelected = isSilverColorSelected(col.name);
-                  const isExpanded = expandedSilverColors.includes(col.name);
+                  const isExpanded = isSilverColorExpanded(col.name);
                   const vData = silverVariantMedia[col.name] || { swatchIcon: '', media: [] };
                   const mediaCount = vData.media?.length || 0;
                   const isUploadingSwatch = uploadingSilverSwatchColor === col.name;
@@ -3945,11 +4154,11 @@ export default function AddJewelryProduct() {
                       }`}
                     >
                       {/* Card Top Row */}
-                      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                      <div className="p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3">
                         {/* Left side: Checkbox + 3D Swatch Sphere + Color Name + Selected Badge */}
                         <div
                           onClick={() => handleToggleSilverColor(col.name)}
-                          className="flex items-center gap-3 cursor-pointer select-none min-w-0"
+                          className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none shrink-0"
                         >
                           {/* Checkbox */}
                           <div
@@ -3972,7 +4181,7 @@ export default function AddJewelryProduct() {
                           />
 
                           {/* Color Name */}
-                          <span className="text-sm font-bold text-stone-900 truncate">
+                          <span className="text-sm font-bold text-stone-900 whitespace-nowrap">
                             {col.name}
                           </span>
 
@@ -3984,24 +4193,37 @@ export default function AddJewelryProduct() {
                           )}
                         </div>
 
-                        <ColorStatusToggle name={col.name} disabled={!isSelected} status={silverVariantMedia[col.name]?.status} onChange={(status) => setSilverVariantMedia((previous) => ({ ...previous, [col.name]: { ...previous[col.name], status } }))} />
-                      {/* Right side: Manage media button with chevron */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleSilverExpand(col.name);
-                          }}
-                          className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
-                        >
-                          <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
-                          <span>Manage media ({mediaCount})</span>
-                          {isExpanded ? (
-                            <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
-                          ) : (
-                            <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
-                          )}
-                        </button>
+                        {/* Right side: Status Toggle + Manage Media */}
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                          <ColorStatusToggle
+                            name={col.name}
+                            disabled={!isSelected}
+                            status={silverVariantMedia[col.name]?.status}
+                            onChange={(status) =>
+                              setSilverVariantMedia((previous) => ({
+                                ...previous,
+                                [col.name]: { ...previous[col.name], status },
+                              }))
+                            }
+                          />
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleSilverExpand(col.name);
+                            }}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
+                          >
+                            <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                            <span>Manage media ({mediaCount})</span>
+                            {isExpanded ? (
+                              <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
+                            ) : (
+                              <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       {/* Accordion Expand Area */}
@@ -4091,16 +4313,23 @@ export default function AddJewelryProduct() {
 
                             {/* ── Sub-card 2: Product images & videos ── */}
                             <div className="w-full sm:flex-1 flex flex-col space-y-1.5">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold text-stone-800">
-                                  Product images &amp; videos
-                                </span>
-                                <span
-                                  className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                                  title="Upload product photos and MP4 videos specifically for this color finish"
-                                >
-                                  ?
-                                </span>
+                              <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-stone-800">
+                                    Product images &amp; videos
+                                  </span>
+                                  <span
+                                    className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
+                                    title="Upload product photos and MP4 videos specifically for this color finish"
+                                  >
+                                    ?
+                                  </span>
+                                </div>
+                                {vData.media && vData.media.length > 0 && (
+                                  <span className="text-[11px] font-semibold text-[#8b6f4e] bg-[#faf5ee] px-2 py-0.5 rounded-full border border-[#ecd9c2]">
+                                    {vData.media.length} media item{vData.media.length === 1 ? '' : 's'}
+                                  </span>
+                                )}
                               </div>
 
                               <input
@@ -4166,18 +4395,7 @@ export default function AddJewelryProduct() {
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
-                                    <span>{vData.media.length} media item(s)</span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        document.getElementById(`silver-media-upload-${col.name}`)?.click()
-                                      }
-                                      className="text-[#8b6f4e] hover:underline font-semibold cursor-pointer"
-                                    >
-                                      + Upload more
-                                    </button>
-                                  </div>
+
                                 </div>
                               ) : (
                                 <div
@@ -4210,7 +4428,7 @@ export default function AddJewelryProduct() {
                 {(() => {
                   const colName = 'General';
                   const isSelected = isSilverColorSelected(colName);
-                  const isExpanded = expandedSilverColors.includes(colName);
+                  const isExpanded = isSilverColorExpanded(colName);
                   const vData = silverVariantMedia[colName] || { swatchIcon: '', media: [] };
                   const mediaCount = vData.media?.length || 0;
                   const isUploadingSwatch = uploadingSilverSwatchColor === colName;
@@ -4228,11 +4446,11 @@ export default function AddJewelryProduct() {
                       }`}
                     >
                       {/* Card Top Row */}
-                      <div className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                      <div className="p-3 sm:p-4 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3">
                         {/* Left side: Checkbox + Swatch Sphere + Name + Selected Badge */}
                         <div
                           onClick={() => handleToggleSilverColor(colName)}
-                          className="flex items-center gap-3 cursor-pointer select-none min-w-0"
+                          className="flex items-center gap-2.5 sm:gap-3 cursor-pointer select-none shrink-0"
                         >
                           {/* Checkbox */}
                           <div
@@ -4255,11 +4473,11 @@ export default function AddJewelryProduct() {
                           />
 
                           {/* Color / Variant Name */}
-                          <div className="flex flex-col min-w-0">
-                            <span className="text-sm font-bold text-stone-900 truncate">
+                          <div className="flex flex-col shrink-0">
+                            <span className="text-sm font-bold text-stone-900 whitespace-nowrap">
                               General Images
                             </span>
-                            <span className="text-[10px] text-stone-400 font-medium">
+                            <span className="text-[10px] text-stone-400 font-medium whitespace-nowrap">
                               (No metal color)
                             </span>
                           </div>
@@ -4272,24 +4490,37 @@ export default function AddJewelryProduct() {
                           )}
                         </div>
 
-                        <ColorStatusToggle name={colName} disabled={!isSelected} status={silverVariantMedia[colName]?.status} onChange={(status) => setSilverVariantMedia((previous) => ({ ...previous, [colName]: { ...previous[colName], status } }))} />
-                      {/* Right side: Manage media button with chevron */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleToggleSilverExpand(colName);
-                          }}
-                          className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
-                        >
-                          <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
-                          <span>Manage media ({mediaCount})</span>
-                          {isExpanded ? (
-                            <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
-                          ) : (
-                            <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
-                          )}
-                        </button>
+                        {/* Right side: Status Toggle + Manage Media */}
+                        <div className="flex items-center gap-2 sm:gap-3 shrink-0 ml-auto">
+                          <ColorStatusToggle
+                            name={colName}
+                            disabled={!isSelected}
+                            status={silverVariantMedia[colName]?.status}
+                            onChange={(status) =>
+                              setSilverVariantMedia((previous) => ({
+                                ...previous,
+                                [colName]: { ...previous[colName], status },
+                              }))
+                            }
+                          />
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleToggleSilverExpand(colName);
+                            }}
+                            className="flex items-center gap-1.5 text-xs font-semibold text-stone-700 hover:text-[#8b6f4e] transition-colors py-1 px-2 rounded-lg hover:bg-stone-100/60 cursor-pointer shrink-0"
+                          >
+                            <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
+                            <span>Manage media ({mediaCount})</span>
+                            {isExpanded ? (
+                              <HiOutlineChevronUp className="w-4 h-4 text-stone-500" />
+                            ) : (
+                              <HiOutlineChevronRight className="w-4 h-4 text-stone-500" />
+                            )}
+                          </button>
+                        </div>
                       </div>
 
                       {/* Accordion Expand Area */}
@@ -4379,16 +4610,23 @@ export default function AddJewelryProduct() {
 
                             {/* ── Sub-card 2: Product images & videos ── */}
                             <div className="w-full sm:flex-1 flex flex-col space-y-1.5">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold text-stone-800">
-                                  Product images &amp; videos
-                                </span>
-                                <span
-                                  className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                                  title="Upload product photos and MP4 videos for general view without assigning a metal color"
-                                >
-                                  ?
-                                </span>
+                              <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-xs font-bold text-stone-800">
+                                    Product images &amp; videos
+                                  </span>
+                                  <span
+                                    className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
+                                    title="Upload product photos and MP4 videos for general view without assigning a metal color"
+                                  >
+                                    ?
+                                  </span>
+                                </div>
+                                {vData.media && vData.media.length > 0 && (
+                                  <span className="text-[11px] font-semibold text-[#8b6f4e] bg-[#faf5ee] px-2 py-0.5 rounded-full border border-[#ecd9c2]">
+                                    {vData.media.length} media item{vData.media.length === 1 ? '' : 's'}
+                                  </span>
+                                )}
                               </div>
 
                               <input
@@ -4454,18 +4692,7 @@ export default function AddJewelryProduct() {
                                     </div>
                                   </div>
 
-                                  <div className="flex items-center justify-between text-[11px] text-stone-500 pt-1 border-t border-stone-100">
-                                    <span>{vData.media.length} media item(s)</span>
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        document.getElementById(`silver-media-upload-${colName}`)?.click()
-                                      }
-                                      className="text-[#8b6f4e] hover:underline font-semibold cursor-pointer"
-                                    >
-                                      + Upload more
-                                    </button>
-                                  </div>
+
                                 </div>
                               ) : (
                                 <div
@@ -4773,6 +5000,25 @@ export default function AddJewelryProduct() {
                                 </button>
                               )}
 
+                              {/* File Size Badge (Top Right, shifts left on hover to reveal delete button) */}
+                              {(img.size || img.fileSize) && (
+                                <span
+                                  className={`absolute top-2 right-2 group-hover:right-9 transition-all z-10 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold font-mono shadow-xs backdrop-blur-xs flex items-center gap-1 border ${
+                                    isSizeInKb(img.fileSize || img.size)
+                                      ? 'bg-emerald-50/95 text-emerald-800 border-emerald-200'
+                                      : 'bg-amber-50/95 text-amber-800 border-amber-200'
+                                  }`}
+                                  title={
+                                    isSizeInKb(img.fileSize || img.size)
+                                      ? `${img.size || formatMediaSize(img.fileSize)} — Size is in KB (Compression not allowed)`
+                                      : `${img.size || formatMediaSize(img.fileSize)} — Size is in MB (Eligible for compression)`
+                                  }
+                                >
+                                  <span className={`w-1.5 h-1.5 rounded-full ${isSizeInKb(img.fileSize || img.size) ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                                  {img.size || formatMediaSize(img.fileSize)}
+                                </span>
+                              )}
+
                               {/* Image Order Badge (Bottom Left) */}
                               <span className="absolute bottom-2 left-2 z-10 px-1.5 py-0.5 rounded text-[9.5px] font-bold font-mono bg-stone-900/60 text-white backdrop-blur-xs">
                                 #{i + 1}
@@ -4809,6 +5055,13 @@ export default function AddJewelryProduct() {
                               <HiOutlineVideoCamera className="w-3 h-3" />
                               Video
                             </span>
+
+                            {/* Video Size Badge */}
+                            {(vid.size || vid.fileSize) && (
+                              <span className="absolute top-2 right-2 group-hover:right-9 transition-all z-10 px-1.5 py-0.5 rounded-md text-[9.5px] font-bold font-mono bg-black/75 text-stone-200 border border-white/10 backdrop-blur-xs shadow-xs">
+                                {vid.size || formatMediaSize(vid.fileSize)}
+                              </span>
+                            )}
 
                             {/* Center Play Icon Overlay */}
                             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -5021,23 +5274,32 @@ export default function AddJewelryProduct() {
                                       )}
 
                                       {/* Selection Checkbox */}
-                                      <button
-                                        type="button"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setSelectedCompressionIds((ids) =>
-                                            ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id]
-                                          );
-                                        }}
-                                        className={`absolute left-1.5 top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-md border text-xs shadow-xs transition-all cursor-pointer ${
-                                          isSelected
-                                            ? 'border-[#a58054] bg-[#a58054] text-white'
-                                            : 'border-stone-300 bg-white/95 hover:bg-white text-transparent'
-                                        }`}
-                                        aria-label={`${isSelected ? 'Deselect' : 'Select'} ${item.name || 'media'}`}
-                                      >
-                                        <HiOutlineCheck className="h-3.5 w-3.5 stroke-[3]" />
-                                      </button>
+                                      {isSizeInKb(originalSize || item.size) ? (
+                                        <span
+                                          className="absolute left-1.5 top-1.5 z-10 flex h-5 px-1.5 items-center justify-center rounded-md border border-stone-200 bg-stone-100/90 text-[8.5px] font-bold text-stone-500 shadow-xs cursor-not-allowed"
+                                          title="File is in KB — already optimal. Compression not allowed."
+                                        >
+                                          In KB
+                                        </span>
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setSelectedCompressionIds((ids) =>
+                                              ids.includes(item.id) ? ids.filter((id) => id !== item.id) : [...ids, item.id]
+                                            );
+                                          }}
+                                          className={`absolute left-1.5 top-1.5 z-10 flex h-5 w-5 items-center justify-center rounded-md border text-xs shadow-xs transition-all cursor-pointer ${
+                                            isSelected
+                                              ? 'border-[#a58054] bg-[#a58054] text-white'
+                                              : 'border-stone-300 bg-white/95 hover:bg-white text-transparent'
+                                          }`}
+                                          aria-label={`${isSelected ? 'Deselect' : 'Select'} ${item.name || 'media'}`}
+                                        >
+                                          <HiOutlineCheck className="h-3.5 w-3.5 stroke-[3]" />
+                                        </button>
+                                      )}
 
                                       {/* Status / Type Badge */}
                                       <span
@@ -5128,7 +5390,6 @@ export default function AddJewelryProduct() {
                                 className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-slate-800"
                               >
                                 <option value="image/webp">WebP (Recommended)</option>
-                                <option value="image/jpeg">JPEG</option>
                               </select>
                             </label>
                           )}
@@ -5206,429 +5467,6 @@ export default function AddJewelryProduct() {
                         {compressingMedia ? 'Compressing media…' : 'Compress & apply'}
                       </button>
                     </div>
-                  </div>
-                </div>,
-                document.body
-              )}
-
-              {/* ─── Staged Media Upload & Compression Modal ───────────── */}
-              {showUploadModal && createPortal(
-                <div
-                  className="fixed inset-0 z-[75] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-2 sm:p-4 md:p-6 backdrop-blur-sm cursor-pointer"
-                  onClick={handleCloseUploadModal}
-                >
-                  <div
-                    className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl sm:rounded-3xl border border-stone-200 bg-white shadow-2xl cursor-default"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100 bg-[#fdfcfb]">
-                      <div className="flex items-center gap-3">
-                        <span className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#b38e63] to-[#8b6f4e] text-white shadow-xs">
-                          <IoSparklesOutline className="h-5 w-5" />
-                        </span>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                              Optimize &amp; Upload Media
-                            </h3>
-                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#f6eee2] text-[#8b6f4e] border border-[#dfcfbd]">
-                              {stagedUploadColor || 'General'}
-                            </span>
-                          </div>
-                          <p className="text-[11px] sm:text-xs text-slate-500">
-                            Images follow the global compression policy from System Settings.
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={handleCloseUploadModal}
-                        disabled={isProcessingUpload}
-                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition cursor-pointer disabled:opacity-40"
-                        aria-label="Close upload modal"
-                      >
-                        <HiOutlineX className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    {/* Progress Bar during processing */}
-                    {isProcessingUpload && (
-                      <div className="bg-[#faf5ee] border-b border-[#ebdccb] px-4 py-2.5 sm:px-6">
-                        <div className="flex items-center justify-between text-xs font-semibold text-stone-700 mb-1.5">
-                          <span className="flex items-center gap-2">
-                            <span className="w-2.5 h-2.5 rounded-full bg-[#8b6f4e] animate-ping" />
-                            {uploadProcessingStep || 'Processing upload...'}
-                          </span>
-                          <span className="text-[#8b6f4e] font-bold">{uploadProcessingPercent}%</span>
-                        </div>
-                        <div className="w-full bg-stone-200 rounded-full h-2 overflow-hidden">
-                          <div
-                            className="bg-gradient-to-r from-[#b38e63] to-[#8b6f4e] h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${uploadProcessingPercent}%` }}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Modal Body */}
-                    <div className="flex-1 overflow-y-auto max-h-[calc(92vh-190px)] p-4 sm:p-6 space-y-6">
-                      {/* Staged Files Preview Grid */}
-                      <div>
-                        <div className="flex items-center justify-between mb-2.5">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600">
-                            Files Loaded in Memory ({stagedUploadFiles.length})
-                          </h4>
-                          <span className="text-xs font-semibold text-stone-500">
-                            Raw Total: {formatMediaSize(totalStagedBytes)}
-                          </span>
-                        </div>
-
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                          {stagedUploadFiles.map((item) => (
-                            <div
-                              key={item.id}
-                              className="relative rounded-xl border border-stone-200 bg-stone-50 overflow-hidden group shadow-2xs flex flex-col"
-                            >
-                              {/* Media Preview */}
-                              <div className="h-28 w-full bg-stone-100 flex items-center justify-center overflow-hidden relative">
-                                {item.isVideo ? (
-                                  <video
-                                    src={item.previewUrl}
-                                    className="w-full h-full object-cover"
-                                    muted
-                                    playsInline
-                                  />
-                                ) : (
-                                  <img
-                                    src={item.previewUrl}
-                                    alt={item.name}
-                                    className="w-full h-full object-cover"
-                                  />
-                                )}
-
-                                {/* Media Type Tag */}
-                                <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-black/60 text-white backdrop-blur-xs">
-                                  {item.isVideo ? 'Video' : 'Image'}
-                                </span>
-
-                                {/* Status Indicator */}
-                                {item.status === 'compressing' && (
-                                  <span className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[10px] font-semibold animate-pulse">
-                                    Compressing...
-                                  </span>
-                                )}
-                                {item.status === 'uploading' && (
-                                  <span className="absolute inset-0 bg-blue-900/50 flex items-center justify-center text-white text-[10px] font-semibold animate-pulse">
-                                    Uploading R2...
-                                  </span>
-                                )}
-                                {item.status === 'done' && (
-                                  <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white flex items-center gap-1 shadow-xs">
-                                    <HiOutlineCheck className="w-3 h-3" /> Done
-                                  </span>
-                                )}
-
-                                {!isProcessingUpload && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleRemoveStagedFile(item.id)}
-                                    className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/50 hover:bg-red-600 text-white opacity-80 hover:opacity-100 transition shadow-xs cursor-pointer"
-                                    title="Remove from upload batch"
-                                  >
-                                    <HiOutlineX className="w-3 h-3" />
-                                  </button>
-                                )}
-                              </div>
-
-                              {/* File Meta */}
-                              <div className="p-2 bg-white flex flex-col justify-between flex-1 border-t border-stone-100">
-                                <p className="text-[11px] font-medium text-stone-800 truncate" title={item.name}>
-                                  {item.name}
-                                </p>
-                                <div className="flex items-center justify-between text-[10px] text-stone-500 mt-1">
-                                  <span>{item.formattedSize}</span>
-                                  <span className="text-[9.5px] uppercase text-stone-400 font-mono">
-                                    {item.file.name.split('.').pop()}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Global Image Compression Policy */}
-                      <div className="border border-[#ecd9c6] bg-[#fbf9f6] rounded-2xl p-4 sm:p-5 space-y-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">Automatic image compression</h4>
-                            <p className="mt-1 text-[11px] text-stone-600">
-                              {imageUploadPolicy.enabled
-                                ? `${imageUploadPolicy.format === 'image/webp' ? 'WebP' : 'JPEG'} at ${imageUploadPolicy.quality}% quality · maximum ${imageUploadPolicy.maxDimension}px`
-                                : 'Disabled in System Settings; images will upload at their original size.'}
-                            </p>
-                          </div>
-                          <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-                            Set globally in Settings
-                          </span>
-                        </div>
-
-                        {stagedUploadFiles.some((f) => f.isVideo) && (
-                          <div className="flex items-center justify-between border-t border-[#ebdccb] pt-3">
-                            <div>
-                              <p className="text-xs font-bold text-stone-800">Encode videos to WebM VP9</p>
-                              <p className="text-[10.5px] text-stone-500">Compress videos in the browser before upload.</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={uploadCompressVideos}
-                                onChange={(e) => setUploadCompressVideos(e.target.checked)}
-                                disabled={isProcessingUpload}
-                                className="sr-only peer"
-                              />
-                              <div className="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8b6f4e]" />
-                            </label>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Upload behavior */}
-                      <p className="text-[11px] text-stone-500 text-center italic">
-                        💡 Images use the saved global quality and dimension limit automatically. The original image is kept only when optimization would make it larger.
-                      </p>
-                    </div>
-
-                    {/* Footer Actions */}
-                    <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-t border-stone-200 bg-stone-50">
-                      <button
-                        type="button"
-                        disabled={isProcessingUpload}
-                        onClick={handleCloseUploadModal}
-                        className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 rounded-xl transition cursor-pointer disabled:opacity-40"
-                      >
-                        Cancel &amp; Discard
-                      </button>
-
-                      <div className="w-full sm:w-auto flex items-center gap-2">
-                        <button
-                          type="button"
-                          disabled={isProcessingUpload || stagedUploadFiles.length === 0}
-                          onClick={handleConfirmStagedUpload}
-                          className="flex-1 sm:flex-none px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-[#b38e63] to-[#8b6f4e] hover:from-[#a07c52] hover:to-[#7a6042] rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40"
-                        >
-                          <IoSparklesOutline className="w-4 h-4" />
-                          <span>
-                            {isProcessingUpload
-                              ? 'Optimizing & Uploading...'
-                              : `Upload to Cloudflare (${stagedUploadFiles.length})`}
-                          </span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>,
-                document.body
-              )}
-
-              {/* ─── Compression Media Detail Popup Modal ─────────────── */}
-              {viewingCompressionMedia && createPortal(
-                <div
-                  className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-6 animate-fadeIn"
-                  onClick={() => setViewingCompressionMedia(null)}
-                >
-                  <div
-                    className={`relative flex flex-col max-h-[92vh] w-full ${
-                      viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i)
-                        ? 'max-w-3xl'
-                        : 'max-w-2xl'
-                    } overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl`}
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Header */}
-                    {(() => {
-                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
-
-                      return (
-                        <div className="flex items-center justify-between border-b border-stone-100 px-5 py-3.5 sm:px-6">
-                          <div className="flex items-center gap-2.5 min-w-0">
-                            <div className="w-8 h-8 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center shrink-0">
-                              {isVideo ? <HiOutlineVideoCamera className="w-4 h-4" /> : <HiOutlinePhotograph className="w-4 h-4" />}
-                            </div>
-                            <div className="min-w-0">
-                              <h4 className="text-sm font-bold text-stone-900 truncate">
-                                {viewingCompressionMedia.name || viewingCompressionMedia.title || (isVideo ? 'Product Video' : 'Product Image')}
-                              </h4>
-                              <p className="text-[10px] text-stone-400">
-                                {isVideo ? 'High-definition video inspection' : 'Compression details and high-resolution inspection'}
-                              </p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => setViewingCompressionMedia(null)}
-                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 text-stone-500 hover:bg-stone-50 transition cursor-pointer"
-                            aria-label="Close"
-                          >
-                            <HiOutlineX className="h-4 w-4" />
-                          </button>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Main Image / Video View Area */}
-                    {(() => {
-                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
-                      const mediaSrc = getMediaUrl(viewingCompressionMedia.url) || viewingCompressionMedia.url;
-
-                      return (
-                        <div className={`relative flex-1 bg-[#fdfcfb] p-4 flex flex-col items-center justify-center overflow-hidden ${
-                          isVideo ? 'min-h-[320px] max-h-[75vh]' : 'min-h-[260px] max-h-[52vh]'
-                        }`}>
-                          {isVideo ? (
-                            <video
-                              src={mediaSrc}
-                              controls
-                              autoPlay
-                              muted
-                              playsInline
-                              className="max-h-[70vh] w-auto max-w-full rounded-xl shadow-xs"
-                            />
-                          ) : (
-                            <img
-                              src={mediaSrc}
-                              alt={viewingCompressionMedia.name || 'Preview'}
-                              className="max-h-[48vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
-                            />
-                          )}
-
-                      {/* Previous / Next Arrows to flip between media items */}
-                      {(() => {
-                        const allMediaItems = [
-                          ...(mediaImages[activeMediaColor] || []).map((img) => ({ ...img, mediaType: 'image' })),
-                          ...(mediaVideos[activeMediaColor] || []).map((vid) => ({ ...vid, mediaType: 'video' })),
-                        ];
-                        const list = compressionTab === 'images'
-                          ? allMediaItems.filter((m) => m.mediaType === 'image')
-                          : compressionTab === 'videos'
-                          ? allMediaItems.filter((m) => m.mediaType === 'video')
-                          : allMediaItems;
-
-                        const currentIndex = list.findIndex((item) => item.id === viewingCompressionMedia.id);
-                        const hasPrev = currentIndex > 0;
-                        const hasNext = currentIndex >= 0 && currentIndex < list.length - 1;
-
-                        return (
-                          <>
-                            {hasPrev && (
-                              <button
-                                type="button"
-                                onClick={() => setViewingCompressionMedia(list[currentIndex - 1])}
-                                className="absolute left-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-md border border-stone-200 hover:bg-white transition cursor-pointer"
-                                title="Previous"
-                              >
-                                <HiOutlineChevronLeft className="w-4 h-4" />
-                              </button>
-                            )}
-                            {hasNext && (
-                              <button
-                                type="button"
-                                onClick={() => setViewingCompressionMedia(list[currentIndex + 1])}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-md border border-stone-200 hover:bg-white transition cursor-pointer"
-                                title="Next"
-                              >
-                                <HiOutlineChevronRight className="w-4 h-4" />
-                              </button>
-                            )}
-                          </>
-                        );
-                      })()}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Stats Breakdown and Actions */}
-                    {(() => {
-                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
-                      if (isVideo) return null;
-
-                      const preview = compressionPreviews[viewingCompressionMedia.id];
-                      const origSize = preview?.originalSize || viewingCompressionMedia.fileSize || 0;
-                      const compSize = preview?.compressedSize || 0;
-                      const savings = origSize && compSize ? Math.max(0, Math.round((1 - compSize / origSize) * 100)) : 0;
-                      const isSelected = selectedCompressionIds.includes(viewingCompressionMedia.id);
-
-                      return (
-                        <div className="border-t border-stone-100 bg-white p-4 sm:p-5 space-y-3">
-                          <div className="grid grid-cols-3 gap-2.5 rounded-2xl bg-stone-50 p-3 border border-stone-100 text-center">
-                            <div>
-                              <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Original Size</span>
-                              <strong className="text-xs sm:text-sm font-bold text-stone-800">
-                                {origSize ? formatMediaSize(origSize) : viewingCompressionMedia.size || '—'}
-                              </strong>
-                            </div>
-                            <div className="border-x border-stone-200 px-2">
-                              <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Compressed</span>
-                              <strong className="text-xs sm:text-sm font-bold text-emerald-600">
-                                {compSize ? formatMediaSize(compSize) : isVideo ? 'Direct asset' : previewingCompression ? 'Calculating…' : 'Ready'}
-                              </strong>
-                            </div>
-                            <div>
-                              <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Savings</span>
-                              <strong className={`text-xs sm:text-sm font-bold ${savings > 0 ? 'text-emerald-600' : 'text-stone-600'}`}>
-                                {savings > 0 ? `~${savings}%` : 'Optimal'}
-                              </strong>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedCompressionIds((ids) =>
-                                  ids.includes(viewingCompressionMedia.id)
-                                    ? ids.filter((id) => id !== viewingCompressionMedia.id)
-                                    : [...ids, viewingCompressionMedia.id]
-                                );
-                              }}
-                              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
-                                isSelected
-                                  ? 'border-[#a58054] bg-[#faf5ee] text-[#8b6f4e]'
-                                  : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
-                              }`}
-                            >
-                              <HiOutlineCheck className={`w-4 h-4 ${isSelected ? 'text-[#8b6f4e]' : 'text-stone-400'}`} />
-                              <span>{isSelected ? 'Selected for compression' : 'Include in compression'}</span>
-                            </button>
-
-                            <div className="flex items-center gap-2">
-                              {!isVideo && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const allUrls = (mediaImages[activeMediaColor] || []).map((img) => img.url);
-                                    handleOpenImagePreview(viewingCompressionMedia.url, allUrls);
-                                  }}
-                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 transition cursor-pointer"
-                                >
-                                  <HiOutlineEye className="w-3.5 h-3.5" />
-                                  <span>Full Zoom</span>
-                                </button>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => setViewingCompressionMedia(null)}
-                                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#a58054] hover:bg-[#8b6f4e] transition cursor-pointer"
-                              >
-                                Done
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
                   </div>
                 </div>,
                 document.body
@@ -6091,29 +5929,9 @@ export default function AddJewelryProduct() {
                 </div>
 
                 <div className="space-y-4">
-                  {/* Row 1: Ornate Price, Cost Price, Markup %, Calculated Price, Sale Price */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                    {/* 1. ORNATE PRICE (₹) */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
-                        <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                          ORNATE PRICE (₹)
-                        </label>
-                        <span className="px-1.5 py-0.5 text-[9px] font-bold rounded border border-amber-300 text-amber-700 bg-amber-50 uppercase tracking-wider whitespace-nowrap">
-                          SYNCED (LOCKED)
-                        </span>
-                      </div>
-                      <input
-                        type="number"
-                        value={pricing.ornatePrice}
-                        readOnly
-                        disabled
-                        className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-bold rounded-xl border border-stone-200 bg-stone-50/70 text-stone-700 cursor-not-allowed select-none"
-                      />
-                      <p className="text-[10px] text-stone-400 mt-1">Price from Ornate ERP (Read-only)</p>
-                    </div>
-
-                    {/* 2. COST PRICE (₹) */}
+                  {/* Row 1: Cost Price, Markup %, Calculated Price, Sale Price */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* 1. COST PRICE (₹) */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
                         <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
@@ -6146,10 +5964,13 @@ export default function AddJewelryProduct() {
 
                     {/* 4. CALCULATED PRICE (₹) */}
                     <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                      <div className="flex items-center justify-between gap-1.5 min-h-[20px] flex-wrap">
                         <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                           CALCULATED PRICE (₹)
                         </label>
+                        <span className="text-[10px] font-semibold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-md border border-stone-200">
+                          Formula: Cost + Markup %
+                        </span>
                       </div>
                       <input
                         type="number"
@@ -6157,6 +5978,14 @@ export default function AddJewelryProduct() {
                         onChange={(e) => setPricing((prev) => ({ ...prev, calculatedPrice: e.target.value }))}
                         className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-bold text-stone-900 bg-stone-50/70 border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                       />
+                      <div className="flex items-center justify-between text-[10px] text-stone-400 mt-1 flex-wrap gap-1">
+                        <span>Auto-computed base price</span>
+                        {pricing.costPrice && pricing.markupPercentage ? (
+                          <span className="text-stone-600 font-medium">
+                            ₹{Number(pricing.costPrice).toLocaleString('en-IN')} + {pricing.markupPercentage}% = <strong className="text-stone-900 font-bold">₹{Number(pricing.calculatedPrice || 0).toLocaleString('en-IN')}</strong>
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
 
                     {/* 5. SALE PRICE (₹) */}
@@ -6193,10 +6022,13 @@ export default function AddJewelryProduct() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <div className="flex items-center justify-between gap-1.5 min-h-[20px]">
+                      <div className="flex items-center justify-between gap-1.5 min-h-[20px] flex-wrap">
                         <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                           MRP PRICE (₹)
                         </label>
+                        <span className="text-[10px] font-semibold text-[#8b6f4e] bg-[#faf5ee] px-2 py-0.5 rounded-md border border-[#ecd9c2]">
+                          Formula: Sale Price + MRP Markup %
+                        </span>
                       </div>
                       <input
                         type="number"
@@ -6204,7 +6036,14 @@ export default function AddJewelryProduct() {
                         onChange={(e) => setPricing((prev) => ({ ...prev, mrp: e.target.value }))}
                         className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                       />
-                      <p className="text-[10px] text-stone-400 mt-1">Customer list price (strikethrough)</p>
+                      <div className="flex items-center justify-between text-[10px] text-stone-400 mt-1 flex-wrap gap-1">
+                        <span>Customer list price (strikethrough)</span>
+                        {pricing.salePrice && pricing.mrpMarkupPercentage ? (
+                          <span className="text-[#8b6f4e] font-medium bg-[#faf5ee]/90 px-1.5 py-0.5 rounded border border-[#ecd9c2]">
+                            ₹{Number(pricing.salePrice).toLocaleString('en-IN')} + {pricing.mrpMarkupPercentage}% = <strong className="text-stone-900 font-bold">₹{Number(pricing.mrp || 0).toLocaleString('en-IN')}</strong>
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -6829,6 +6668,429 @@ export default function AddJewelryProduct() {
           </div>
         </div>, document.body)
       )}
+
+              {/* ─── Staged Media Upload & Compression Modal ───────────── */}
+              {showUploadModal && createPortal(
+                <div
+                  className="fixed inset-0 z-[75] flex items-center justify-center overflow-y-auto bg-slate-950/80 p-2 sm:p-4 md:p-6 backdrop-blur-sm cursor-pointer"
+                  onClick={handleCloseUploadModal}
+                >
+                  <div
+                    className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl sm:rounded-3xl border border-stone-200 bg-white shadow-2xl cursor-default"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-3.5 sm:px-6 sm:py-4 border-b border-stone-100 bg-[#fdfcfb]">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-to-br from-[#b38e63] to-[#8b6f4e] text-white shadow-xs">
+                          <IoSparklesOutline className="h-5 w-5" />
+                        </span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900">
+                              Optimize &amp; Upload Media
+                            </h3>
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#f6eee2] text-[#8b6f4e] border border-[#dfcfbd]">
+                              {stagedUploadColor || 'General'}
+                            </span>
+                          </div>
+                          <p className="text-[11px] sm:text-xs text-slate-500">
+                            Images follow the global compression policy from System Settings.
+                          </p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={handleCloseUploadModal}
+                        disabled={isProcessingUpload}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 text-stone-600 hover:bg-stone-50 transition cursor-pointer disabled:opacity-40"
+                        aria-label="Close upload modal"
+                      >
+                        <HiOutlineX className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Progress Bar during processing */}
+                    {isProcessingUpload && (
+                      <div className="bg-[#faf5ee] border-b border-[#ebdccb] px-4 py-2.5 sm:px-6">
+                        <div className="flex items-center justify-between text-xs font-semibold text-stone-700 mb-1.5">
+                          <span className="flex items-center gap-2">
+                            <span className="w-2.5 h-2.5 rounded-full bg-[#8b6f4e] animate-ping" />
+                            {uploadProcessingStep || 'Processing upload...'}
+                          </span>
+                          <span className="text-[#8b6f4e] font-bold">{uploadProcessingPercent}%</span>
+                        </div>
+                        <div className="w-full bg-stone-200 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-gradient-to-r from-[#b38e63] to-[#8b6f4e] h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProcessingPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Modal Body */}
+                    <div className="flex-1 overflow-y-auto max-h-[calc(92vh-190px)] p-4 sm:p-6 space-y-6">
+                      {/* Staged Files Preview Grid */}
+                      <div>
+                        <div className="flex items-center justify-between mb-2.5">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-stone-600">
+                            Files Loaded in Memory ({stagedUploadFiles.length})
+                          </h4>
+                          <span className="text-xs font-semibold text-stone-500">
+                            Raw Total: {formatMediaSize(totalStagedBytes)}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                          {stagedUploadFiles.map((item) => (
+                            <div
+                              key={item.id}
+                              className="relative rounded-xl border border-stone-200 bg-stone-50 overflow-hidden group shadow-2xs flex flex-col"
+                            >
+                              {/* Media Preview */}
+                              <div className="h-28 w-full bg-stone-100 flex items-center justify-center overflow-hidden relative">
+                                {item.isVideo ? (
+                                  <video
+                                    src={item.previewUrl}
+                                    className="w-full h-full object-cover"
+                                    muted
+                                    playsInline
+                                  />
+                                ) : (
+                                  <img
+                                    src={item.previewUrl}
+                                    alt={item.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                )}
+
+                                {/* Media Type Tag */}
+                                <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-black/60 text-white backdrop-blur-xs">
+                                  {item.isVideo ? 'Video' : 'Image'}
+                                </span>
+
+                                {/* Status Indicator */}
+                                {item.status === 'compressing' && (
+                                  <span className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-[10px] font-semibold animate-pulse">
+                                    Compressing...
+                                  </span>
+                                )}
+                                {item.status === 'uploading' && (
+                                  <span className="absolute inset-0 bg-blue-900/50 flex items-center justify-center text-white text-[10px] font-semibold animate-pulse">
+                                    Uploading R2...
+                                  </span>
+                                )}
+                                {item.status === 'done' && (
+                                  <span className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-600 text-white flex items-center gap-1 shadow-xs">
+                                    <HiOutlineCheck className="w-3 h-3" /> Done
+                                  </span>
+                                )}
+
+                                {!isProcessingUpload && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleRemoveStagedFile(item.id)}
+                                    className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/50 hover:bg-red-600 text-white opacity-80 hover:opacity-100 transition shadow-xs cursor-pointer"
+                                    title="Remove from upload batch"
+                                  >
+                                    <HiOutlineX className="w-3 h-3" />
+                                  </button>
+                                )}
+                              </div>
+
+                              {/* File Meta */}
+                              <div className="p-2 bg-white flex flex-col justify-between flex-1 border-t border-stone-100">
+                                <p className="text-[11px] font-medium text-stone-800 truncate" title={item.name}>
+                                  {item.name}
+                                </p>
+                                <div className="flex items-center justify-between text-[10px] text-stone-500 mt-1">
+                                  <span>{item.formattedSize}</span>
+                                  <span className="text-[9.5px] uppercase text-stone-400 font-mono">
+                                    {item.file.name.split('.').pop()}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Global Image Compression Policy */}
+                      <div className="border border-[#ecd9c6] bg-[#fbf9f6] rounded-2xl p-4 sm:p-5 space-y-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">Automatic image compression</h4>
+                            <p className="mt-1 text-[11px] text-stone-600">
+                              {imageUploadPolicy.enabled
+                                ? `${imageUploadPolicy.format === 'image/webp' ? 'WebP' : 'JPEG'} at ${imageUploadPolicy.quality}% quality · maximum ${imageUploadPolicy.maxDimension}px`
+                                : 'Disabled in System Settings; images will upload at their original size.'}
+                            </p>
+                          </div>
+                          <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+                            Set globally in Settings
+                          </span>
+                        </div>
+
+                        {stagedUploadFiles.some((f) => f.isVideo) && (
+                          <div className="flex items-center justify-between border-t border-[#ebdccb] pt-3">
+                            <div>
+                              <p className="text-xs font-bold text-stone-800">Encode videos to WebM VP9</p>
+                              <p className="text-[10.5px] text-stone-500">Compress videos in the browser before upload.</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={uploadCompressVideos}
+                                onChange={(e) => setUploadCompressVideos(e.target.checked)}
+                                disabled={isProcessingUpload}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8b6f4e]" />
+                            </label>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Upload behavior */}
+                      <p className="text-[11px] text-stone-500 text-center italic">
+                        💡 Images use the saved global quality and dimension limit automatically. The original image is kept only when optimization would make it larger.
+                      </p>
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className="flex flex-col-reverse sm:flex-row items-center justify-between gap-3 px-4 py-3.5 sm:px-6 sm:py-4 border-t border-stone-200 bg-stone-50">
+                      <button
+                        type="button"
+                        disabled={isProcessingUpload}
+                        onClick={handleCloseUploadModal}
+                        className="w-full sm:w-auto px-4 py-2.5 text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-200/60 rounded-xl transition cursor-pointer disabled:opacity-40"
+                      >
+                        Cancel &amp; Discard
+                      </button>
+
+                      <div className="w-full sm:w-auto flex items-center gap-2">
+                        <button
+                          type="button"
+                          disabled={isProcessingUpload || stagedUploadFiles.length === 0}
+                          onClick={handleConfirmStagedUpload}
+                          className="flex-1 sm:flex-none px-5 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-[#b38e63] to-[#8b6f4e] hover:from-[#a07c52] hover:to-[#7a6042] rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-40"
+                        >
+                          <IoSparklesOutline className="w-4 h-4" />
+                          <span>
+                            {isProcessingUpload
+                              ? 'Optimizing & Uploading...'
+                              : `Upload to Cloudflare (${stagedUploadFiles.length})`}
+                          </span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>,
+                document.body
+              )}
+
+              {/* ─── Compression Media Detail Popup Modal ─────────────── */}
+              {viewingCompressionMedia && createPortal(
+                <div
+                  className="fixed inset-0 z-[80] flex items-center justify-center bg-black/75 backdrop-blur-xs p-3 sm:p-6 animate-fadeIn"
+                  onClick={() => setViewingCompressionMedia(null)}
+                >
+                  <div
+                    className={`relative flex flex-col max-h-[92vh] w-full ${
+                      viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i)
+                        ? 'max-w-3xl'
+                        : 'max-w-2xl'
+                    } overflow-hidden rounded-3xl border border-stone-200 bg-white shadow-2xl`}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Header */}
+                    {(() => {
+                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
+
+                      return (
+                        <div className="flex items-center justify-between border-b border-stone-100 px-5 py-3.5 sm:px-6">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div className="w-8 h-8 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center shrink-0">
+                              {isVideo ? <HiOutlineVideoCamera className="w-4 h-4" /> : <HiOutlinePhotograph className="w-4 h-4" />}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-sm font-bold text-stone-900 truncate">
+                                {viewingCompressionMedia.name || viewingCompressionMedia.title || (isVideo ? 'Product Video' : 'Product Image')}
+                              </h4>
+                              <p className="text-[10px] text-stone-400">
+                                {isVideo ? 'High-definition video inspection' : 'Compression details and high-resolution inspection'}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setViewingCompressionMedia(null)}
+                            className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 text-stone-500 hover:bg-stone-50 transition cursor-pointer"
+                            aria-label="Close"
+                          >
+                            <HiOutlineX className="h-4 w-4" />
+                          </button>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Main Image / Video View Area */}
+                    {(() => {
+                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
+                      const mediaSrc = getMediaUrl(viewingCompressionMedia.url) || viewingCompressionMedia.url;
+
+                      return (
+                        <div className={`relative flex-1 bg-[#fdfcfb] p-4 flex flex-col items-center justify-center overflow-hidden ${
+                          isVideo ? 'min-h-[320px] max-h-[75vh]' : 'min-h-[260px] max-h-[52vh]'
+                        }`}>
+                          {isVideo ? (
+                            <video
+                              src={mediaSrc}
+                              controls
+                              autoPlay
+                              muted
+                              playsInline
+                              className="max-h-[70vh] w-auto max-w-full rounded-xl shadow-xs"
+                            />
+                          ) : (
+                            <img
+                              src={mediaSrc}
+                              alt={viewingCompressionMedia.name || 'Preview'}
+                              className="max-h-[48vh] w-auto max-w-full object-contain rounded-xl shadow-xs"
+                            />
+                          )}
+
+                      {/* Previous / Next Arrows to flip between media items */}
+                      {(() => {
+                        const allMediaItems = [
+                          ...(mediaImages[activeMediaColor] || []).map((img) => ({ ...img, mediaType: 'image' })),
+                          ...(mediaVideos[activeMediaColor] || []).map((vid) => ({ ...vid, mediaType: 'video' })),
+                        ];
+                        const list = compressionTab === 'images'
+                          ? allMediaItems.filter((m) => m.mediaType === 'image')
+                          : compressionTab === 'videos'
+                          ? allMediaItems.filter((m) => m.mediaType === 'video')
+                          : allMediaItems;
+
+                        const currentIndex = list.findIndex((item) => item.id === viewingCompressionMedia.id);
+                        const hasPrev = currentIndex > 0;
+                        const hasNext = currentIndex >= 0 && currentIndex < list.length - 1;
+
+                        return (
+                          <>
+                            {hasPrev && (
+                              <button
+                                type="button"
+                                onClick={() => setViewingCompressionMedia(list[currentIndex - 1])}
+                                className="absolute left-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-md border border-stone-200 hover:bg-white transition cursor-pointer"
+                                title="Previous"
+                              >
+                                <HiOutlineChevronLeft className="w-4 h-4" />
+                              </button>
+                            )}
+                            {hasNext && (
+                              <button
+                                type="button"
+                                onClick={() => setViewingCompressionMedia(list[currentIndex + 1])}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 text-stone-700 shadow-md border border-stone-200 hover:bg-white transition cursor-pointer"
+                                title="Next"
+                              >
+                                <HiOutlineChevronRight className="w-4 h-4" />
+                              </button>
+                            )}
+                          </>
+                        );
+                      })()}
+                        </div>
+                      );
+                    })()}
+
+                    {/* Stats Breakdown and Actions */}
+                    {(() => {
+                      const isVideo = viewingCompressionMedia.mediaType === 'video' || viewingCompressionMedia.url?.match(/\.(mp4|webm|mov|m4v)/i);
+                      if (isVideo) return null;
+
+                      const preview = compressionPreviews[viewingCompressionMedia.id];
+                      const origSize = preview?.originalSize || viewingCompressionMedia.fileSize || 0;
+                      const compSize = preview?.compressedSize || 0;
+                      const savings = origSize && compSize ? Math.max(0, Math.round((1 - compSize / origSize) * 100)) : 0;
+                      const isSelected = selectedCompressionIds.includes(viewingCompressionMedia.id);
+
+                      return (
+                        <div className="border-t border-stone-100 bg-white p-4 sm:p-5 space-y-3">
+                          <div className="grid grid-cols-3 gap-2.5 rounded-2xl bg-stone-50 p-3 border border-stone-100 text-center">
+                            <div>
+                              <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Original Size</span>
+                              <strong className="text-xs sm:text-sm font-bold text-stone-800">
+                                {origSize ? formatMediaSize(origSize) : viewingCompressionMedia.size || '—'}
+                              </strong>
+                            </div>
+                            <div className="border-x border-stone-200 px-2">
+                              <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Compressed</span>
+                              <strong className="text-xs sm:text-sm font-bold text-emerald-600">
+                                {compSize ? formatMediaSize(compSize) : isVideo ? 'Direct asset' : previewingCompression ? 'Calculating…' : 'Ready'}
+                              </strong>
+                            </div>
+                            <div>
+                              <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">Savings</span>
+                              <strong className={`text-xs sm:text-sm font-bold ${savings > 0 ? 'text-emerald-600' : 'text-stone-600'}`}>
+                                {savings > 0 ? `~${savings}%` : 'Optimal'}
+                              </strong>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-2 pt-1 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setSelectedCompressionIds((ids) =>
+                                  ids.includes(viewingCompressionMedia.id)
+                                    ? ids.filter((id) => id !== viewingCompressionMedia.id)
+                                    : [...ids, viewingCompressionMedia.id]
+                                );
+                              }}
+                              className={`inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold border transition cursor-pointer ${
+                                isSelected
+                                  ? 'border-[#a58054] bg-[#faf5ee] text-[#8b6f4e]'
+                                  : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                              }`}
+                            >
+                              <HiOutlineCheck className={`w-4 h-4 ${isSelected ? 'text-[#8b6f4e]' : 'text-stone-400'}`} />
+                              <span>{isSelected ? 'Selected for compression' : 'Include in compression'}</span>
+                            </button>
+
+                            <div className="flex items-center gap-2">
+                              {!isVideo && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const allUrls = (mediaImages[activeMediaColor] || []).map((img) => img.url);
+                                    handleOpenImagePreview(viewingCompressionMedia.url, allUrls);
+                                  }}
+                                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-stone-700 bg-stone-100 hover:bg-stone-200 transition cursor-pointer"
+                                >
+                                  <HiOutlineEye className="w-3.5 h-3.5" />
+                                  <span>Full Zoom</span>
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setViewingCompressionMedia(null)}
+                                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#a58054] hover:bg-[#8b6f4e] transition cursor-pointer"
+                              >
+                                Done
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>,
+                document.body
+              )}
 
       {/* Pricing Breakdown & Live Calculation Modal */}
       <PricingBreakdownModal

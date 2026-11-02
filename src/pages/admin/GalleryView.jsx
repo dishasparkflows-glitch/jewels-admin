@@ -34,7 +34,7 @@ import {
 import { IoDiamondOutline, IoSparklesOutline, IoLayersOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { galleryAPI } from '../../api/services';
-import { uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
+import { uploadWithPresignedUrl, uploadFilesWithPresignedUrls, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
 
@@ -226,11 +226,12 @@ export default function GalleryView() {
   const [uploadType, setUploadType] = useState('herobanner');
   const [uploadPlatform, setUploadPlatform] = useState('common'); // 'web' | 'app' | 'common'
 
-  // Selected file
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [filePreviewUrl, setFilePreviewUrl] = useState('');
+  // Selected files (supports single and multiple file uploads)
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadProgressText, setUploadProgressText] = useState('');
 
   const fileInputRef = useRef(null);
 
@@ -323,66 +324,123 @@ export default function GalleryView() {
     }
   }, [uploadModalOpen, previewItem, deleteConfirmItem, editingItem, isUploading, isDeleting, isUpdating]);
 
-  // ─── File Selection ─────────────────────────────────────────
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please choose a valid image file (JPG, PNG, WebP).');
-      return;
+  // ─── File Selection & Drag-and-Drop ─────────────────────────
+  const addFiles = (filesList) => {
+    const rawFiles = Array.from(filesList || []);
+    if (!rawFiles.length) return;
+
+    const validImages = [];
+    rawFiles.forEach((file) => {
+      const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif|svg)$/i.test(file.name);
+      if (isImg) {
+        validImages.push({
+          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          file,
+          name: file.name,
+          size: file.size,
+          previewUrl: URL.createObjectURL(file),
+        });
+      } else {
+        toast.error(`"${file.name}" is not a supported image file.`);
+      }
+    });
+
+    if (validImages.length > 0) {
+      setSelectedFiles((prev) => [...prev, ...validImages]);
     }
-    setSelectedFile(file);
-    setFilePreviewUrl(URL.createObjectURL(file));
   };
 
-  // ─── Upload & Assign Action ─────────────────────────────────
+  const removeFile = (id) => {
+    setSelectedFiles((prev) => {
+      const target = prev.find((item) => item.id === id);
+      if (target?.previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((item) => item.id !== id);
+    });
+  };
+
+  const resetUploadModal = () => {
+    selectedFiles.forEach((f) => {
+      if (f.previewUrl?.startsWith('blob:')) {
+        URL.revokeObjectURL(f.previewUrl);
+      }
+    });
+    setSelectedFiles([]);
+    setIsDragging(false);
+    setIsUploading(false);
+    setUploadProgress(0);
+    setUploadProgressText('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // ─── Upload & Assign Action (Batch / Multi-file Support) ─────
   const handleUploadAndAssign = async (e) => {
     e?.preventDefault();
 
-    if (!selectedFile) {
-      toast.error('Please select an image file to upload.');
+    if (!selectedFiles.length) {
+      toast.error('Please select at least one image file to upload.');
       return;
     }
 
     try {
       setIsUploading(true);
-      setUploadProgress(20);
+      setUploadProgress(5);
+      const total = selectedFiles.length;
+      setUploadProgressText(`Preparing to upload ${total} image${total > 1 ? 's' : ''}...`);
 
-      // Upload file directly to S3 / Cloud Storage
-      const uploadRes = await uploadWithPresignedUrl(
-        selectedFile,
+      const rawFiles = selectedFiles.map((item) => item.file);
+      const uploadResults = await uploadFilesWithPresignedUrls(
+        rawFiles,
         'website-themes',
-        (prog) => setUploadProgress(20 + Math.floor(prog * 0.6))
+        (index, subProg) => {
+          const overall = Math.round(((index + subProg / 100) / total) * 80);
+          setUploadProgress(Math.max(5, overall));
+        },
+        {
+          onFileUploading: (file, index) => {
+            setUploadProgressText(`Uploading image ${index + 1} of ${total}: ${file.name}...`);
+          },
+        }
       );
 
+      const uploadedImages = uploadResults.map((uploadRes) => ({
+        url: uploadRes.fileUrl,
+        key: uploadRes.key || '',
+      }));
+
       setUploadProgress(85);
+      setUploadProgressText('Assigning images to theme...');
 
       await galleryAPI.uploadAssign({
         themeId: uploadThemeId || undefined,
         placement: uploadType,
-        image: { url: uploadRes.fileUrl, key: uploadRes.key },
+        images: uploadedImages,
         platform: uploadPlatform,
         status: 'active',
       });
 
       setUploadProgress(100);
-      toast.success('Image successfully uploaded and assigned to theme!');
+      toast.success(
+        total === 1
+          ? 'Image successfully uploaded and assigned to theme!'
+          : `${total} images successfully uploaded and stored as separate gallery items!`
+      );
       resetUploadModal();
       setUploadModalOpen(false);
       await fetchGallery();
     } catch (err) {
       console.error('Upload & assignment failed:', err);
-      toast.error(err.response?.data?.message || 'Failed to upload and assign image.');
+      toast.error(err.response?.data?.message || err.message || 'Failed to upload and assign images.');
     } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      setUploadProgressText('');
     }
   };
 
-  const resetUploadModal = () => {
-    setSelectedFile(null);
-    setFilePreviewUrl('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  const resetUploadModal_orig = () => {
+    resetUploadModal();
   };
 
   // ─── Delete / Unassign Action ───────────────────────────────
@@ -1307,58 +1365,155 @@ export default function GalleryView() {
                   </div>
                 </div>
 
-                {/* STEP 4: FILE UPLOAD ZONE */}
+                {/* STEP 4: FILE UPLOAD ZONE (Multi-file Support) */}
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-stone-800">
-                    4. Upload Image File <span className="text-rose-500">*</span>
-                  </label>
-
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-stone-300 bg-stone-50/70 p-6 text-center hover:border-[#8b6c3a] hover:bg-stone-50 transition cursor-pointer"
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      onChange={handleFileChange}
-                      className="hidden"
-                    />
-
-                    {filePreviewUrl ? (
-                      <div className="flex flex-col items-center">
-                        <img
-                          src={filePreviewUrl}
-                          alt="Preview"
-                          className="max-h-48 rounded-xl object-contain border border-stone-200 shadow-xs"
-                        />
-                        <div className="mt-3 flex items-center gap-2">
-                          <span className="text-xs font-semibold text-stone-800">{selectedFile?.name}</span>
-                          <span className="text-[11px] text-stone-400">({formatBytes(selectedFile?.size)})</span>
-                        </div>
-                        <span className="mt-1 text-[11px] text-[#8b6c3a] font-bold">Click to change file</span>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#8b6c3a]/10 text-[#8b6c3a]">
-                          <HiOutlineUpload className="h-6 w-6" />
-                        </div>
-                        <p className="mt-2 text-xs font-bold text-stone-800">
-                          Click or drag and drop image here
-                        </p>
-                        <p className="mt-1 text-[11px] text-stone-400">
-                          Recommended format: WebP, PNG, JPG. Automatically compressed and optimized.
-                        </p>
-                      </>
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-stone-800">
+                      4. Upload Image File{selectedFiles.length > 1 ? 's' : ''} <span className="text-rose-500">*</span>
+                    </label>
+                    {selectedFiles.length > 0 && (
+                      <span className="text-[11px] font-semibold text-[#8b6c3a]">
+                        {selectedFiles.length} {selectedFiles.length === 1 ? 'image' : 'images'} selected ({formatBytes(selectedFiles.reduce((sum, f) => sum + f.size, 0))})
+                      </span>
                     )}
                   </div>
+
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => {
+                      addFiles(e.target.files);
+                      if (e.target) e.target.value = '';
+                    }}
+                    className="hidden"
+                  />
+
+                  {selectedFiles.length === 0 ? (
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDragging(true);
+                      }}
+                      onDragLeave={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDragging(false);
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setIsDragging(false);
+                        addFiles(e.dataTransfer.files);
+                      }}
+                      className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-all ${
+                        isDragging
+                          ? 'border-[#8b6c3a] bg-[#faf5ee] scale-[0.99]'
+                          : 'border-stone-300 bg-stone-50/70 hover:border-[#8b6c3a] hover:bg-stone-50'
+                      }`}
+                    >
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#8b6c3a]/10 text-[#8b6c3a]">
+                        <HiOutlineUpload className="h-6 w-6" />
+                      </div>
+                      <p className="mt-2 text-xs font-bold text-stone-800">
+                        Click or drag and drop images here
+                      </p>
+                      <p className="mt-1 text-[11px] text-stone-400">
+                        Select single or multiple images (WebP, PNG, JPG). Each image is stored as an individual record.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-stone-200 bg-stone-50/60 p-3 space-y-3">
+                      {/* Grid of staged thumbnails */}
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-0.5">
+                        {selectedFiles.map((item, idx) => (
+                          <div
+                            key={item.id}
+                            className="group relative flex flex-col rounded-xl border border-stone-200 bg-white overflow-hidden shadow-2xs"
+                          >
+                            <div className="relative aspect-video w-full bg-stone-100 flex items-center justify-center overflow-hidden">
+                              <img
+                                src={item.previewUrl}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white backdrop-blur-xs">
+                                #{idx + 1}
+                              </span>
+                              {!isUploading && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeFile(item.id);
+                                  }}
+                                  className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
+                                  title="Remove image"
+                                >
+                                  <HiOutlineX className="w-3 h-3 stroke-[3]" />
+                                </button>
+                              )}
+                            </div>
+                            <div className="p-1.5 flex items-center justify-between text-[10px] text-stone-500 bg-white">
+                              <span className="truncate max-w-[95px] font-medium text-stone-700" title={item.name}>
+                                {item.name}
+                              </span>
+                              <span className="shrink-0 text-stone-400 font-mono text-[9.5px]">
+                                {formatBytes(item.size)}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* + Add More button inside the grid */}
+                        {!isUploading && (
+                          <div
+                            onClick={() => fileInputRef.current?.click()}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            onDrop={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              addFiles(e.dataTransfer.files);
+                            }}
+                            className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6c3a] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors cursor-pointer aspect-video p-2 text-center"
+                          >
+                            <HiOutlineUpload className="w-5 h-5 text-[#8b6c3a] mb-0.5" />
+                            <span className="text-[11px] font-bold text-stone-700">+ Add More</span>
+                            <span className="text-[9.5px] text-stone-400">or drop here</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Summary & Clear action */}
+                      {!isUploading && (
+                        <div className="flex items-center justify-between pt-1 border-t border-stone-200/60 text-[11px]">
+                          <span className="text-stone-500 font-medium">
+                            {selectedFiles.length} image{selectedFiles.length === 1 ? '' : 's'} ready to upload
+                          </span>
+                          <button
+                            type="button"
+                            onClick={resetUploadModal}
+                            className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
+                          >
+                            Clear all
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {/* Upload Progress Bar */}
                 {isUploading && (
                   <div className="space-y-1.5 rounded-xl border border-stone-200 bg-stone-50 p-3">
                     <div className="flex justify-between text-xs font-semibold text-stone-700">
-                      <span>Uploading and assigning image…</span>
+                      <span>{uploadProgressText || 'Uploading and assigning images…'}</span>
                       <span>{uploadProgress}%</span>
                     </div>
                     <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
@@ -1376,13 +1531,13 @@ export default function GalleryView() {
                     type="button"
                     onClick={() => setUploadModalOpen(false)}
                     disabled={isUploading}
-                    className="rounded-xl border border-stone-200 px-4 py-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition cursor-pointer"
+                    className="rounded-xl border border-stone-200 px-4 py-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition cursor-pointer disabled:opacity-50"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    disabled={isUploading || !selectedFile}
+                    disabled={isUploading || selectedFiles.length === 0}
                     className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#8b6c3a] to-[#765a2d] px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-[#8b6c3a]/20 hover:from-[#765a2d] transition cursor-pointer disabled:opacity-50"
                   >
                     {isUploading ? (
@@ -1393,7 +1548,9 @@ export default function GalleryView() {
                     ) : (
                       <>
                         <HiOutlineUpload className="h-4 w-4" />
-                        Upload & Assign Image
+                        {selectedFiles.length > 1
+                          ? `Upload & Assign ${selectedFiles.length} Images`
+                          : 'Upload & Assign Image'}
                       </>
                     )}
                   </button>

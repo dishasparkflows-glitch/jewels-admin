@@ -7,7 +7,7 @@ export default function ImageUploadDropzone({
   label,
   required = false,
   value = '',
-  alt = 'Image Preview',
+  alt = 'Media Preview',
   heightClass = 'h-28 sm:h-32',
   onFileSelect,
   onChooseGallery,
@@ -15,8 +15,8 @@ export default function ImageUploadDropzone({
   uploading = false,
   uploadProgress = 0,
   disabled = false,
-  chooseButtonText = 'Choose Image',
-  accept = 'image/jpeg,image/png,image/webp,image/*',
+  chooseButtonText = 'Choose Media',
+  accept = 'image/jpeg,image/png,image/webp,image/*,video/mp4,video/webm',
   className = '',
 }) {
   const fileInputRef = useRef(null);
@@ -43,8 +43,10 @@ export default function ImageUploadDropzone({
     if (e.target) e.target.value = '';
   };
 
+  const isVideo = typeof value === 'string' && /\\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(value);
+
   return (
-    <div className={`space-y-1.5 ${className}`}>
+    <div className={`space-y-1.5 \${className}`}>
       {label && (
         <label className="block text-xs font-semibold text-stone-700">
           {label} {required && <span className="text-red-500">*</span>}
@@ -53,13 +55,24 @@ export default function ImageUploadDropzone({
 
       {value ? (
         <div
-          className={`relative rounded-xl border border-stone-200 overflow-hidden bg-stone-900 ${heightClass} group shadow-2xs`}
+          className={`relative rounded-xl border border-stone-200 overflow-hidden bg-stone-900 \${heightClass} group shadow-2xs`}
         >
-          <img
-            src={getMediaUrl(value)}
-            alt={alt}
-            className="w-full h-full object-cover"
-          />
+          {isVideo ? (
+            <video
+              src={getMediaUrl(value)}
+              className="w-full h-full object-cover"
+              autoPlay
+              loop
+              muted
+              playsInline
+            />
+          ) : (
+            <img
+              src={getMediaUrl(value)}
+              alt={alt}
+              className="w-full h-full object-cover"
+            />
+          )}
           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
             {onChooseGallery && (
               <button
@@ -86,7 +99,7 @@ export default function ImageUploadDropzone({
         <div
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          className={`border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all ${heightClass} flex flex-col items-center justify-center group shadow-2xs ${
+          className={`border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all \${heightClass} flex flex-col items-center justify-center group shadow-2xs \${
             disabled ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
@@ -97,7 +110,7 @@ export default function ImageUploadDropzone({
                 style={{ borderTopColor: 'var(--theme-primary, #8b6f4e)' }}
               />
               <p className="text-[11px] text-stone-500 font-medium">
-                Uploading & compressing... {uploadProgress}%
+                Uploading... {uploadProgress ? `\${uploadProgress}%` : ''}
               </p>
             </div>
           ) : (
@@ -141,4 +154,3 @@ export default function ImageUploadDropzone({
     </div>
   );
 }
-

@@ -1386,11 +1386,7 @@ const DynamicModuleView = () => {
                       <tr
                         key={row._id || row.id}
                         onClick={() => {
-                          if (isProductCatalogPage) {
-                            handleEditProductRecord(row);
-                          } else {
-                            setViewingRecord(row);
-                          }
+                          handleEditProductRecord(row);
                         }}
                         className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
                       >
@@ -1657,13 +1653,7 @@ const DynamicModuleView = () => {
                           <RowActions
                             record={row}
                             detailsEndpoint={config.endpoint}
-                            onView={() => {
-                              if (isProductCatalogPage) {
-                                handleEditProductRecord(row);
-                              } else {
-                                setViewingRecord(row);
-                              }
-                            }}
+                            onView={() => handleEditProductRecord(row)}
                             onOpenWebsite={isProductCatalogPage ? () => openProductPreview(row) : undefined}
                             onEdit={() => handleEditProductRecord(row)}
                             onDelete={() => handleDelete(row._id || row.id, rowLabel)}

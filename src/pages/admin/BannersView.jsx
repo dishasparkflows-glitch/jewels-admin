@@ -686,7 +686,7 @@ export default function BannersView() {
   };
 
   // Submit banner from Modal
-  const handleSaveBanner = async (saveStatus = 'active') => {
+  const handleSaveBanner = async (saveStatus = null) => {
     if (!title.trim()) {
       toast.error('Please enter a banner title');
       return;
@@ -729,7 +729,7 @@ export default function BannersView() {
         content: payloadContent,
         display: payloadDisplay,
         mediaType: 'image',
-        status: saveStatus,
+        status: typeof saveStatus === 'string' ? saveStatus : formStatus,
         themeId: themeId || undefined,
       };
 
@@ -1136,7 +1136,7 @@ export default function BannersView() {
                   paginatedItems.map((banner) => {
                     const bTitle = banner.content?.title || banner.title || 'Untitled Banner';
                     const bDesc = banner.content?.description || banner.content?.subtitle || banner.subtitle || '';
-                    const assetUrl = banner.image?.url || (banner.collectionImages?.[0]?.url);
+                    const assetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url);
                     const isPublished = banner.status === 'active';
                     const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);
                     const isSelected = selectedIds.includes(banner._id);
@@ -1686,26 +1686,39 @@ export default function BannersView() {
                       <label className="block text-xs font-semibold text-stone-700">
                         Status <span className="text-red-500">*</span>
                       </label>
-                      <Dropdown
-                        value={formStatus}
-                        onChange={setFormStatus}
-                        options={[
-                          { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
-                          { value: 'inactive', label: 'Draft', dotColor: 'bg-stone-400' },
-                        ]}
-                        renderTrigger={(selected) => (
-                          <div className="flex items-center gap-2 w-full text-xs font-medium text-stone-800">
-                            <span
-                              className={`w-2 h-2 rounded-full ${
-                                selected?.value === 'active' ? 'bg-emerald-500' : 'bg-stone-400'
-                              }`}
-                            />
-                            <span>{selected?.label || 'Select Status'}</span>
-                          </div>
-                        )}
-                        buttonClassName="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
-                        menuClassName="z-30"
-                      />
+                      <div
+                        onClick={() => setFormStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
+                        className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white flex items-center justify-between shadow-2xs cursor-pointer select-none hover:border-stone-300 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              formStatus === 'active' ? 'bg-emerald-500' : 'bg-stone-400'
+                            }`}
+                          />
+                          <span className="text-xs font-semibold text-stone-800">
+                            {formStatus === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={formStatus === 'active'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFormStatus((prev) => (prev === 'active' ? 'inactive' : 'active'));
+                          }}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            formStatus === 'active' ? 'bg-[#8b6f4e]' : 'bg-stone-300'
+                          }`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                              formStatus === 'active' ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Display Order */}
