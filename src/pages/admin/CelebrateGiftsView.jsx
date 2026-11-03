@@ -11,7 +11,10 @@ import {
   HiOutlineCheck,
   HiOutlineArrowUp,
   HiOutlineArrowDown,
-  } from 'react-icons/hi';
+  HiOutlineEye,
+  HiOutlineGift,
+  HiOutlineMenuAlt4,
+} from 'react-icons/hi';
 import { IoCubeOutline, IoDiamondOutline, IoLayersOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -32,10 +35,12 @@ import useCategoryLookup from '../../hooks/useCategoryLookup';
 import ProductPickerModal from '../../components/common/ProductPickerModal';
 import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
 export default function CelebrateGiftsView() {
   const confirm = useConfirm();
-  const [placementFilter, setPlacementFilter] = useState('all'); // 'all' | 'Celebrate' | 'Gifts'
+  const { openImagePreview } = useImagePreview();
+  const [placementFilter, setPlacementFilter] = useState('Celebrate'); // 'Celebrate' | 'Gifts' | 'all'
   const [search, setSearch] = useState('');
   const [featuredItems, setFeaturedItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -177,7 +182,12 @@ export default function CelebrateGiftsView() {
   // Filtered featured items (Search query + placement filter, NO active/inactive filter)
   const filteredItems = useMemo(() => {
     return featuredItems.filter((item) => {
-      if (placementFilter !== 'all' && item.placement !== placementFilter) return false;
+      if (
+        placementFilter !== 'all' &&
+        (!item.placement || item.placement.toLowerCase() !== placementFilter.toLowerCase())
+      ) {
+        return false;
+      }
       if (search.trim()) {
         const q = search.toLowerCase();
         return (
@@ -192,37 +202,74 @@ export default function CelebrateGiftsView() {
   const {
     totalItems,
     paginatedItems,
-  } = usePagination(filteredItems, pageSize, serverTotal);
+  } = usePagination(filteredItems, pageSize);
 
   // Quick stat cards
   const activeCount = useMemo(() => featuredItems.filter(i => i.status === 'active').length, [featuredItems]);
   const celebrateCount = useMemo(() => featuredItems.filter(i => i.placement === 'Celebrate').length, [featuredItems]);
   const giftsCount = useMemo(() => featuredItems.filter(i => i.placement === 'Gifts').length, [featuredItems]);
 
+  // Placement Showcase Tabs
+  const SHOWCASE_TABS = [
+    {
+      key: 'Celebrate',
+      label: 'Celebrate',
+      icon: HiOutlinePhotograph,
+      count: celebrateCount,
+    },
+    {
+      key: 'Gifts',
+      label: 'Gifts',
+      icon: HiOutlineGift,
+      count: giftsCount,
+    },
+    {
+      key: 'all',
+      label: 'All Showcases',
+      icon: IoLayersOutline,
+      count: featuredItems.length,
+    },
+  ];
+
   const statCardsData = [
+    {
+      label: 'Celebrate Campaigns',
+      value: celebrateCount,
+      icon: HiOutlinePhotograph,
+      color: 'peach',
+      active: placementFilter === 'Celebrate',
+      onClick: () => {
+        setPlacementFilter('Celebrate');
+        setCurrentPage(1);
+      },
+    },
+    {
+      label: 'Curated Gifts',
+      value: giftsCount,
+      icon: HiOutlineGift,
+      color: 'gold',
+      active: placementFilter === 'Gifts',
+      onClick: () => {
+        setPlacementFilter('Gifts');
+        setCurrentPage(1);
+      },
+    },
     {
       label: 'Total Showcases',
       value: featuredItems.length,
-      icon: IoCubeOutline,
+      icon: IoLayersOutline,
       color: 'bronze',
+      active: placementFilter === 'all',
+      onClick: () => {
+        setPlacementFilter('all');
+        setCurrentPage(1);
+      },
     },
     {
       label: 'Active Displays',
       value: activeCount,
       icon: HiOutlineCheck,
       color: 'green',
-    },
-    {
-      label: 'Celebrate Campaigns',
-      value: celebrateCount,
-      icon: HiOutlinePhotograph,
-      color: 'peach',
-    },
-    {
-      label: 'Curated Gifts',
-      value: giftsCount,
-      icon: HiOutlineTag,
-      color: 'gold',
     },
   ];
 
@@ -265,6 +312,55 @@ export default function CelebrateGiftsView() {
       ? item.productIds.map((p) => (typeof p === 'object' ? p : { _id: String(p) }))
       : [];
     setSelectedProducts(loadedProducts);
+
+    // If item has _id, fetch single item to guarantee freshly populated products
+    if (item._id) {
+      api.get(`/featured/${item._id}`)
+        .then((res) => {
+          const fresh = res.data?.data;
+          if (fresh) {
+            const freshProds = Array.isArray(fresh.products) && fresh.products.length > 0
+              ? fresh.products
+              : Array.isArray(fresh.productIds)
+              ? fresh.productIds.map((p) => (typeof p === 'object' ? p : { _id: String(p) }))
+              : [];
+            if (freshProds.length > 0) {
+              setSelectedProducts(freshProds);
+            }
+          }
+        })
+        .catch(() => {});
+    }
+
+    // If any product only has _id (missing title/sku), enrich from lookup
+    const hasStubs = loadedProducts.some(
+      (p) => !p.title && !p.basicInfo?.title && !p.name && (p._id || p.id)
+    );
+    if (hasStubs) {
+      api.get('/products/lookup?limit=100')
+        .then((res) => {
+          const lookupItems = res.data?.data || [];
+          const lookupMap = new Map(lookupItems.map((l) => [String(l._id || l.id), l]));
+          setSelectedProducts((prev) =>
+            prev.map((p) => {
+              const matched = lookupMap.get(String(p._id || p.id || p.productId));
+              return matched
+                ? {
+                    ...matched,
+                    ...p,
+                    title: matched.title || p.title || p.basicInfo?.title,
+                    sku: matched.sku || p.sku || p.basicInfo?.sku,
+                    basicInfo: matched.basicInfo || p.basicInfo,
+                    thumbnail: matched.thumbnail || p.thumbnail,
+                    price: matched.price || p.price,
+                  }
+                : p;
+            })
+          );
+        })
+        .catch(() => {});
+    }
+
     fetchThemesLookup();
     setIsModalOpen(true);
   };
@@ -336,7 +432,6 @@ export default function CelebrateGiftsView() {
           key: imagePublicId || '',
         } : null,
         status,
-        products: selectedProducts.map((p) => String(p._id || p.id || p.productId || p)),
         productIds: selectedProducts.map((p) => String(p._id || p.id || p.productId || p)),
         productCount: selectedProducts.length,
       };
@@ -435,7 +530,12 @@ export default function CelebrateGiftsView() {
 
   // Open Reorder Modal
   const openReorderModal = () => {
-    setReorderingItems([...featuredItems]);
+    const listToReorder = placementFilter !== 'all'
+      ? featuredItems.filter(
+          (i) => i.placement && i.placement.toLowerCase() === placementFilter.toLowerCase()
+        )
+      : [...featuredItems];
+    setReorderingItems(listToReorder);
     setIsReorderModalOpen(true);
   };
 
@@ -454,7 +554,7 @@ export default function CelebrateGiftsView() {
     try {
       setSavingReorder(true);
       const payload = reorderingItems.map((item, index) => ({
-        id: item._id,
+        _id: item._id,
         order: index,
       }));
       await api.put('/featured/reorder', { items: payload });
@@ -477,17 +577,73 @@ export default function CelebrateGiftsView() {
         title="Celebrate & Gifts"
         subtitle="Configure promotional product showcases, seasonal gift curations and storefront groupings."
         onAdd={openAddModal}
-        addLabel="Add Showcase"
-        exportData={featuredItems}
-        exportFileName="celebrate_gifts_export"
+        addLabel={
+          placementFilter === 'Celebrate'
+            ? 'Add Celebrate Showcase'
+            : placementFilter === 'Gifts'
+            ? 'Add Gift Showcase'
+            : 'Add Showcase'
+        }
+        exportData={filteredItems}
+        exportFileName={`celebrate_gifts_${placementFilter.toLowerCase()}_export`}
       />
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />
 
-      {/* ─── Showcase Table Card ─── */}
+      {/* ─── Showcase Table Card with Dedicated Tabs ─── */}
       <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
-        {/* Top Search & Filter Toolbar */}
+        {/* ─── Prominent Placement Tabs Header (Celebrate & Gifts) ─── */}
+        <div className="border-b border-stone-200 bg-[#fbfaf8] px-4 sm:px-6 pt-2.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 sm:gap-6 -mb-px overflow-x-auto">
+            {SHOWCASE_TABS.map((tab) => {
+              const isActive = placementFilter === tab.key;
+              const Icon = tab.icon;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => {
+                    setPlacementFilter(tab.key);
+                    setCurrentPage(1);
+                    setSelectedIds([]);
+                  }}
+                  className={`flex items-center gap-2 pb-3 pt-1.5 text-xs sm:text-sm font-semibold border-b-2 transition-all cursor-pointer whitespace-nowrap ${
+                    isActive
+                      ? 'border-[#8b6f4e] text-stone-900 font-bold'
+                      : 'border-transparent text-stone-500 hover:text-stone-800 hover:border-stone-300'
+                  }`}
+                >
+                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#8b6f4e]' : 'text-stone-400'}`} />
+                  <span>{tab.label}</span>
+                  <span
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full transition-colors ${
+                      isActive
+                        ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                        : 'bg-stone-200/80 text-stone-600'
+                    }`}
+                  >
+                    {tab.count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center gap-2 pb-2.5">
+            <button
+              type="button"
+              onClick={openReorderModal}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#8b6f4e] bg-[#fbf7f0] hover:bg-[#f3ebd9] border border-[#e5d7c3] transition-all cursor-pointer shadow-2xs active:scale-95"
+              title="Reorder showcases"
+            >
+              <HiOutlineMenuAlt4 className="w-3.5 h-3.5 stroke-2" />
+              <span>Reorder {placementFilter !== 'all' ? placementFilter : ''}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Top Search & Actions Toolbar */}
         <div className="p-3.5 sm:p-4 border-b border-stone-200/80 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 bg-white">
           <div className="flex-1 w-full sm:max-w-md">
             <div className="relative">
@@ -496,7 +652,7 @@ export default function CelebrateGiftsView() {
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search showcases by name or placement..."
+                placeholder={`Search ${placementFilter !== 'all' ? placementFilter : 'all'} showcases by name...`}
                 className="w-full pl-9 pr-8 py-2 text-xs rounded-lg bg-[#fbfaf8] hover:bg-white focus:bg-white border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
               />
               {search && (
@@ -514,48 +670,21 @@ export default function CelebrateGiftsView() {
 
           <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2">
             {/* Delete button if selected */}
-            <button
-              type="button"
-              onClick={handleBulkDelete}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-2xs cursor-pointer ${
-                selectedIds.length > 0
-                  ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
-                  : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
-              }`}
-              title={
-                selectedIds.length > 0
-                  ? `Delete ${selectedIds.length} selected item${selectedIds.length > 1 ? 's' : ''}`
-                  : 'Select items to delete'
-              }
-            >
-              <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
-              <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
-            </button>
-
-            {/* Placement Filter Pills */}
-            <div className="flex items-center gap-1 p-0.5 bg-stone-100 rounded-lg border border-stone-200/80">
-              {['all', 'Celebrate', 'Gifts'].map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setPlacementFilter(tab)}
-                  className={`px-3 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider transition-all cursor-pointer ${
-                    placementFilter === tab
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-500 hover:text-stone-800'
-                  }`}
-                >
-                  {tab === 'all' ? 'All' : tab}
-                </button>
-              ))}
+            {selectedIds.length > 0 && (
               <button
                 type="button"
-                onClick={openReorderModal}
-                className="px-2.5 py-1 rounded-md text-[11px] font-semibold uppercase tracking-wider text-[#8f6d43] hover:bg-[#faf5ee] transition-all cursor-pointer ml-0.5"
+                onClick={handleBulkDelete}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-2xs cursor-pointer bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50"
+                title={`Delete ${selectedIds.length} selected item${selectedIds.length > 1 ? 's' : ''}`}
               >
-                Reorder
+                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+                <span>Delete ({selectedIds.length})</span>
               </button>
-            </div>
+            )}
+
+            <span className="text-xs text-stone-500 font-medium">
+              Showing <strong>{filteredItems.length}</strong> {placementFilter !== 'all' ? placementFilter : ''} showcase{filteredItems.length === 1 ? '' : 's'}
+            </span>
           </div>
         </div>
 
@@ -621,14 +750,24 @@ export default function CelebrateGiftsView() {
                     {/* Cover Preview */}
                     <td className="py-2.5 px-3 whitespace-nowrap">
                       <div
-                        onClick={() => openViewModal(item)}
-                        className="w-11 h-8 rounded-md overflow-hidden bg-stone-100 border border-stone-200/80 cursor-pointer hover:opacity-90 flex items-center justify-center shadow-2xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (item.image?.url) {
+                            openImagePreview(getMediaUrl(item.image.url), {
+                              title: `${item.name || item.categoryId?.name || 'Campaign'} Cover Image`,
+                            });
+                          } else {
+                            openViewModal(item);
+                          }
+                        }}
+                        className="w-11 h-8 rounded-md overflow-hidden bg-stone-100 border border-stone-200/80 cursor-pointer hover:border-[var(--theme-primary,#8b6f4e)] hover:scale-105 flex items-center justify-center shadow-2xs transition-all group"
+                        title={item.image?.url ? 'Click to view full image preview' : 'No image'}
                       >
                         {item.image?.url ? (
                           <img
                             src={getMediaUrl(item.image.url)}
                             alt={item.name}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover group-hover:opacity-95"
                           />
                         ) : (
                           <HiOutlinePhotograph className="w-4 h-4 text-stone-400" />
@@ -933,13 +1072,30 @@ export default function CelebrateGiftsView() {
                       {selectedProducts.map((prod, idx) => {
                         const key = prod._id || prod.id || prod.productId || idx;
                         const thumb =
-                          prod.thumbnail ||
+                          (typeof prod.thumbnail === 'string' ? prod.thumbnail : prod.thumbnail?.url) ||
+                          prod.image?.url ||
+                          (typeof prod.image === 'string' ? prod.image : '') ||
                           prod.colorImages?.[0]?.images?.[0]?.url ||
                           prod.images?.[0]?.url ||
-                          prod.image?.url;
-                        const pTitle = prod.basicInfo?.title || 'Untitled Jewelry';
-                        const price = Number(prod.pricing?.salePrice || prod.pricing?.sellingPrice || 0);
-                        const sku = prod.basicInfo?.sku || prod.ornate?.tagNo || '';
+                          '';
+                        const pTitle =
+                          prod.title ||
+                          prod.basicInfo?.title ||
+                          prod.name ||
+                          'Untitled Jewelry';
+                        const sku =
+                          prod.sku ||
+                          prod.basicInfo?.sku ||
+                          prod.ornate?.tagNo ||
+                          prod.ornate?.itemCode ||
+                          '';
+                        const price = Number(
+                          prod.price ||
+                          prod.salePrice ||
+                          prod.pricing?.salePrice ||
+                          prod.pricing?.sellingPrice ||
+                          0
+                        );
 
                         return (
                           <div
@@ -958,8 +1114,14 @@ export default function CelebrateGiftsView() {
                                 {pTitle}
                               </h5>
                               <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5">
-                                {price > 0 && <span className="font-bold text-stone-900">₹{price.toLocaleString('en-IN')}</span>}
-                                {sku && <span className="font-mono text-stone-400 truncate">SKU: {sku}</span>}
+                                {sku && (
+                                  <span className="font-mono text-stone-600 bg-stone-100 px-1.5 py-0.5 rounded text-[9.5px] font-medium truncate">
+                                    SKU: {sku}
+                                  </span>
+                                )}
+                                {price > 0 && (
+                                  <span className="font-bold text-stone-900">₹{price.toLocaleString('en-IN')}</span>
+                                )}
                               </div>
                             </div>
                             <button
@@ -1043,9 +1205,14 @@ export default function CelebrateGiftsView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100">
-              <h3 className="text-base font-bold text-stone-900">
-                Reorder {placementFilter === 'all' ? '' : `${placementFilter} `}Showcases
-              </h3>
+              <div>
+                <h3 className="text-base font-bold text-stone-900">
+                  Reorder {placementFilter === 'all' ? '' : `${placementFilter} `}Showcases
+                </h3>
+                <p className="text-[11px] text-stone-500 mt-0.5">
+                  Showing {reorderingItems.length} {placementFilter !== 'all' ? placementFilter.toLowerCase() : ''} showcase{reorderingItems.length === 1 ? '' : 's'}
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsReorderModalOpen(false)}
@@ -1060,13 +1227,18 @@ export default function CelebrateGiftsView() {
                   key={item._id}
                   className="flex items-center justify-between p-3 rounded-xl border border-stone-200 bg-stone-50"
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 text-center text-xs font-bold text-stone-400">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="w-6 text-center text-xs font-bold text-stone-400 shrink-0">
                       {idx + 1}
                     </span>
-                    <span className="text-xs font-bold text-stone-800">
+                    <span className="text-xs font-bold text-stone-800 truncate">
                       {item.name}
                     </span>
+                    {placementFilter === 'all' && (
+                      <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-stone-200/60 text-stone-600 shrink-0">
+                        {item.placement}
+                      </span>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -1122,11 +1294,21 @@ export default function CelebrateGiftsView() {
           >
             <div className="relative aspect-[16/9] w-full bg-stone-100 overflow-hidden flex items-center justify-center">
               {viewingItem.image?.url ? (
-                <img
-                  src={getMediaUrl(viewingItem.image.url)}
-                  alt={viewingItem.name}
-                  className="w-full h-full object-cover"
-                />
+                <div
+                  onClick={() => openImagePreview(getMediaUrl(viewingItem.image.url), { title: `${viewingItem.name || 'Campaign'} Cover Image` })}
+                  className="w-full h-full cursor-pointer group relative"
+                  title="Click to zoom in"
+                >
+                  <img
+                    src={getMediaUrl(viewingItem.image.url)}
+                    alt={viewingItem.name}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white gap-1.5 text-xs font-semibold">
+                    <HiOutlineEye className="w-4 h-4" />
+                    <span>Click to view full preview</span>
+                  </div>
+                </div>
               ) : (
                 <div className="flex flex-col items-center justify-center text-stone-400">
                   <HiOutlinePhotograph className="w-12 h-12 stroke-1 mb-1" />

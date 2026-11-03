@@ -1,7 +1,13 @@
 /* eslint-disable react/prop-types */
 import React, { useRef } from 'react';
-import { HiOutlinePhotograph } from 'react-icons/hi';
+import {
+  HiOutlinePhotograph,
+  HiOutlineEye,
+  HiOutlineUpload,
+  HiOutlineTrash,
+} from 'react-icons/hi';
 import { getMediaUrl } from '../../utils/imageUrl';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
 export default function ImageUploadDropzone({
   label,
@@ -20,6 +26,7 @@ export default function ImageUploadDropzone({
   className = '',
 }) {
   const fileInputRef = useRef(null);
+  const { openImagePreview } = useImagePreview();
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -43,10 +50,18 @@ export default function ImageUploadDropzone({
     if (e.target) e.target.value = '';
   };
 
-  const isVideo = typeof value === 'string' && /\\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(value);
+  const handlePreviewClick = (e) => {
+    e?.stopPropagation?.();
+    if (!value) return;
+    openImagePreview(getMediaUrl(value), {
+      title: label || alt || 'Image Preview',
+    });
+  };
+
+  const isVideo = typeof value === 'string' && /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(value);
 
   return (
-    <div className={`space-y-1.5 \${className}`}>
+    <div className={`space-y-1.5 ${className}`}>
       {label && (
         <label className="block text-xs font-semibold text-stone-700">
           {label} {required && <span className="text-red-500">*</span>}
@@ -54,52 +69,108 @@ export default function ImageUploadDropzone({
       )}
 
       {value ? (
-        <div
-          className={`relative rounded-xl border border-stone-200 overflow-hidden bg-stone-900 \${heightClass} group shadow-2xs`}
-        >
-          {isVideo ? (
-            <video
-              src={getMediaUrl(value)}
-              className="w-full h-full object-cover"
-              autoPlay
-              loop
-              muted
-              playsInline
-            />
-          ) : (
-            <img
-              src={getMediaUrl(value)}
-              alt={alt}
-              className="w-full h-full object-cover"
-            />
-          )}
-          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2">
-            {onChooseGallery && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-3 bg-stone-50/80 border border-stone-200/90 rounded-2xl shadow-2xs">
+          {/* ─── Compact Image Box with Click-to-Preview ─── */}
+          <div
+            onClick={handlePreviewClick}
+            className="w-32 h-32 sm:w-36 sm:h-36 rounded-xl border border-stone-200 bg-stone-900 overflow-hidden relative group cursor-pointer shrink-0 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] hover:shadow-md transition-all"
+            title="Click to view full preview"
+          >
+            {isVideo ? (
+              <video
+                src={getMediaUrl(value)}
+                className="w-full h-full object-cover"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+            ) : (
+              <img
+                src={getMediaUrl(value)}
+                alt={alt}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+              />
+            )}
+
+            {/* Hover overlay with Eye Icon */}
+            <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 pointer-events-none">
+              <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shadow-xs">
+                <HiOutlineEye className="w-4 h-4 text-white" />
+              </div>
+              <span className="text-[10px] font-semibold tracking-wide">Preview</span>
+            </div>
+          </div>
+
+          {/* ─── Image Details & Action Controls ─── */}
+          <div className="flex-1 min-w-0 space-y-2.5">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="text-xs font-bold text-stone-800 truncate">
+                  {label || 'Image'} Uploaded
+                </span>
+              </div>
+              <p className="text-[11px] text-stone-500 mt-0.5">
+                Click the image box to open a high-resolution preview.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 pt-0.5">
+              {/* Full Preview Button */}
               <button
                 type="button"
-                onClick={onChooseGallery}
-                style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
-                className="px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer shadow-2xs"
+                onClick={handlePreviewClick}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-xs font-semibold text-stone-700 hover:text-stone-900 shadow-2xs transition-colors cursor-pointer"
               >
-                {chooseButtonText}
+                <HiOutlineEye className="w-3.5 h-3.5 text-stone-500" />
+                <span>View Full Size</span>
               </button>
-            )}
-            {onRemove && (
-              <button
-                type="button"
-                onClick={onRemove}
-                className="px-3 py-1.5 rounded-lg bg-red-700 text-white text-xs font-semibold hover:bg-red-800 shadow-xs shadow-red-900/20 transition-colors cursor-pointer shadow-2xs"
-              >
-                Remove
-              </button>
-            )}
+
+              {/* Choose from Media Gallery */}
+              {onChooseGallery && (
+                <button
+                  type="button"
+                  onClick={onChooseGallery}
+                  style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-white text-xs font-semibold hover:opacity-90 shadow-2xs transition-opacity cursor-pointer"
+                >
+                  <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                  <span>{chooseButtonText}</span>
+                </button>
+              )}
+
+              {/* Replace / Upload New File */}
+              {onFileSelect && (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-xs font-semibold text-stone-700 hover:text-stone-900 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <HiOutlineUpload className="w-3.5 h-3.5 text-stone-500" />
+                  <span>Replace</span>
+                </button>
+              )}
+
+              {/* Remove Image */}
+              {onRemove && (
+                <button
+                  type="button"
+                  onClick={onRemove}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-xs font-semibold text-red-700 shadow-2xs transition-colors cursor-pointer"
+                >
+                  <HiOutlineTrash className="w-3.5 h-3.5" />
+                  <span>Remove</span>
+                </button>
+              )}
+            </div>
           </div>
         </div>
       ) : (
         <div
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          className={`border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all \${heightClass} flex flex-col items-center justify-center group shadow-2xs \${
+          className={`border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all ${heightClass} flex flex-col items-center justify-center group shadow-2xs ${
             disabled ? 'opacity-50 cursor-not-allowed' : ''
           }`}
         >
@@ -110,7 +181,7 @@ export default function ImageUploadDropzone({
                 style={{ borderTopColor: 'var(--theme-primary, #8b6f4e)' }}
               />
               <p className="text-[11px] text-stone-500 font-medium">
-                Uploading... {uploadProgress ? `\${uploadProgress}%` : ''}
+                Uploading... {uploadProgress ? `${uploadProgress}%` : ''}
               </p>
             </div>
           ) : (

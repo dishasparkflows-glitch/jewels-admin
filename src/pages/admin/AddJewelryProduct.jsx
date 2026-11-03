@@ -2436,6 +2436,8 @@ export default function AddJewelryProduct() {
       })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
+      soldCount: productRecord.demoMetrics?.soldCount ?? '',
+      reviewCount: productRecord.demoMetrics?.reviewCount ?? '',
     });
     const savedPurities = Array.isArray(productRecord.metalPurityIds)
       ? productRecord.metalPurityIds.map((purity) => resolveName(purity, puritiesList))
@@ -3052,8 +3054,14 @@ export default function AddJewelryProduct() {
         productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
         isOrnate: Boolean(basicDetails.isOrnate),
         demoMetrics: {
-          soldCount: basicDetails.soldCount !== '' ? Number(basicDetails.soldCount) : 0,
-          reviewCount: basicDetails.reviewCount !== '' ? Number(basicDetails.reviewCount) : 0,
+          soldCount:
+            basicDetails.soldCount !== '' && basicDetails.soldCount !== undefined && basicDetails.soldCount !== null
+              ? Number(basicDetails.soldCount)
+              : (productRecord?.demoMetrics?.soldCount ?? 0),
+          reviewCount:
+            basicDetails.reviewCount !== '' && basicDetails.reviewCount !== undefined && basicDetails.reviewCount !== null
+              ? Number(basicDetails.reviewCount)
+              : (productRecord?.demoMetrics?.reviewCount ?? 0),
         },
         gender: genderArr,
         basicInfo: compactObject({
@@ -3116,6 +3124,28 @@ export default function AddJewelryProduct() {
 
   // Save the current product storing details and keeping status field as it is.
   const handleSave = async () => handlePublish('preserve');
+
+  const [togglingStatus, setTogglingStatus] = useState(false);
+  const currentStatus = productRecord?.status || 'approved';
+
+  const handleToggleStatus = async () => {
+    if (!productId || togglingStatus) return;
+    const nextStatus = currentStatus === 'approved' ? 'draft' : 'approved';
+    try {
+      setTogglingStatus(true);
+      await api.patch(`/products/${productId}/status`, { status: nextStatus });
+      setProductRecord((prev) => (prev ? { ...prev, status: nextStatus } : prev));
+      toast.success(
+        nextStatus === 'approved'
+          ? 'Product published successfully!'
+          : 'Product moved to draft successfully!'
+      );
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Could not update status');
+    } finally {
+      setTogglingStatus(false);
+    }
+  };
 
   // Stepper labels
   const steps = [
@@ -3235,24 +3265,50 @@ export default function AddJewelryProduct() {
               <span>View on website</span>
             </button>
           )}
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-stone-800 bg-white border border-[#d6cfc2] rounded-xl hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer disabled:opacity-50"
-          >
-            <HiOutlineDocumentText className="w-4 h-4 text-stone-600" />
-            <span>Save</span>
-          </button>
+
+          {productId ? (
+            <button
+              type="button"
+              onClick={handleToggleStatus}
+              disabled={saving || togglingStatus}
+              className={`flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-xl border transition-all active:scale-[0.98] cursor-pointer shadow-2xs disabled:opacity-50 ${
+                currentStatus === 'approved'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
+                  : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+              }`}
+              title={`Current status is ${currentStatus === 'approved' ? 'Published' : 'Draft'}. Click to switch to ${currentStatus === 'approved' ? 'Draft' : 'Published'}`}
+            >
+              <span
+                className={`w-2 h-2 rounded-full ${
+                  currentStatus === 'approved' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                }`}
+              />
+              <span>{togglingStatus ? 'Switching...' : (currentStatus === 'approved' ? 'Published' : 'Draft')}</span>
+              <span className="text-[10px] font-medium opacity-60 underline ml-0.5">
+                (Switch to {currentStatus === 'approved' ? 'Draft' : 'Published'})
+              </span>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => handlePublish('approved')}
+              disabled={saving}
+              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
+            >
+              <HiOutlineCheckCircle className="w-4 h-4" />
+              <span>Publish</span>
+            </button>
+          )}
 
           <button
             type="button"
-            onClick={() => handlePublish('approved')}
-            disabled={saving}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
+            onClick={handleSave}
+            disabled={saving || togglingStatus}
+            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-stone-800 bg-white border border-[#d6cfc2] rounded-xl hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+            title="Save changes (status remains unchanged)"
           >
-            <HiOutlineCheckCircle className="w-4 h-4" />
-            <span>{productId ? 'Publish Changes' : 'Publish'}</span>
+            <HiOutlineDocumentText className="w-4 h-4 text-stone-600" />
+            <span>{saving ? 'Saving...' : 'Save'}</span>
           </button>
 
           <button

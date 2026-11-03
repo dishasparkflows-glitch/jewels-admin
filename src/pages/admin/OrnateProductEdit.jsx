@@ -1061,8 +1061,14 @@ export default function OrnateProductEdit() {
           web: Boolean(baseInfo.showOnWeb),
         },
         demoMetrics: {
-          soldCount: baseInfo.soldCount !== '' ? Number(baseInfo.soldCount) : 0,
-          reviewCount: baseInfo.reviewCount !== '' ? Number(baseInfo.reviewCount) : 0,
+          soldCount:
+            baseInfo.soldCount !== '' && baseInfo.soldCount !== undefined && baseInfo.soldCount !== null
+              ? Number(baseInfo.soldCount)
+              : (product?.demoMetrics?.soldCount ?? 0),
+          reviewCount:
+            baseInfo.reviewCount !== '' && baseInfo.reviewCount !== undefined && baseInfo.reviewCount !== null
+              ? Number(baseInfo.reviewCount)
+              : (product?.demoMetrics?.reviewCount ?? 0),
         },
         isOrnate: true,
         productType: 'silver',

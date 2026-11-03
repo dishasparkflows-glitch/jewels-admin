@@ -245,13 +245,7 @@ export default function InstagramPostsView() {
     if (!isConfirmed) return;
 
     try {
-      try {
-        await api.post('/instagram-posts/bulk-delete', { ids: selectedIds });
-      } catch (bulkErr) {
-        await Promise.allSettled(
-          selectedIds.map((id) => api.delete(`/instagram-posts/${id}`))
-        );
-      }
+      await api.post('/instagram-posts/bulk-delete', { ids: selectedIds });
       toast.success(`${count} post${count > 1 ? 's' : ''} deleted successfully`);
       setSelectedIds([]);
       fetchPosts();
@@ -307,22 +301,10 @@ export default function InstagramPostsView() {
       setSavingOrder(true);
       const itemsToUpdate = posts.map((p, idx) => ({
         _id: p._id,
-        id: p._id,
         order: idx + 1,
       }));
 
-      try {
-        await api.put('/instagram-posts/reorder', { items: itemsToUpdate });
-      } catch (reorderErr) {
-        // Fallback: update individual items
-        await Promise.all(
-          itemsToUpdate.map((item) =>
-            api.put(`/instagram-posts/${item._id}`, {
-              order: item.order,
-            })
-          )
-        );
-      }
+      await api.put('/instagram-posts/reorder', { items: itemsToUpdate });
 
       toast.success('Instagram posts order saved successfully');
       setOriginalPosts(posts);
