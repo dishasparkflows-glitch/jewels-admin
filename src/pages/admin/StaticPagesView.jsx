@@ -442,9 +442,8 @@ export default function StaticPagesView() {
                       status: formData.status === 'published' ? 'draft' : 'published',
                     })
                   }
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    formData.status === 'published' ? 'bg-[#0c4a3e]' : 'bg-stone-300'
-                  }`}
+                  style={formData.status === 'published' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${formData.status === 'published' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${

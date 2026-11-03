@@ -493,9 +493,8 @@ export default function VtoMastersView() {
                   <button
                     type="button"
                     onClick={() => setStatus(status === 'active' ? 'inactive' : 'active')}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${
-                      status === 'active' ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                    }`}
+                    style={status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${

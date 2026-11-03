@@ -426,9 +426,8 @@ export default function CategoryFiltersView() {
                           role="switch"
                           aria-checked={cat.enabled}
                           onClick={() => handleToggleCategory(cat.categoryId)}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                            cat.enabled ? 'bg-[#8c6b45]' : 'bg-stone-300'
-                          }`}
+                          style={cat.enabled ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${cat.enabled ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                         >
                           <span
                             aria-hidden="true"

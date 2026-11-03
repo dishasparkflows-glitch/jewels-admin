@@ -210,9 +210,8 @@ export default function GroupCard({
                   e.stopPropagation();
                   onToggleStatus?.(group);
                 }}
-                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6f4e] ${
-                  isActive ? 'bg-[#8b6f4e]' : 'bg-stone-300'
-                }`}
+                style={isActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--theme-primary,#855836)] ${isActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                 title={isActive ? 'Click to deactivate group' : 'Click to activate group'}
               >
                 <span
@@ -269,9 +268,8 @@ export default function GroupCard({
               e.stopPropagation();
               onToggleStatus?.(group);
             }}
-            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-              isActive ? 'bg-[#8b6f4e]' : 'bg-stone-300'
-            }`}
+            style={isActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
             title={isActive ? 'Click to deactivate group' : 'Click to activate group'}
           >
             <span

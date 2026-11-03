@@ -1057,9 +1057,8 @@ export default function GalleryView() {
                       title={`Click to set ${item.status === 'active' ? 'inactive' : 'active'}`}
                     >
                       <div
-                        className={`relative inline-flex h-4.5 w-8 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${
-                          item.status === 'active' ? 'bg-[#8b6f4e]' : 'bg-stone-300'
-                        }`}
+                        style={item.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                        className={`relative inline-flex h-4.5 w-8 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${item.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                       >
                         <span
                           className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
@@ -1835,9 +1834,8 @@ export default function GalleryView() {
                     className="inline-flex items-center gap-2 cursor-pointer"
                   >
                     <div
-                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
-                        editStatus === 'active' ? 'bg-[#8b6c3a]' : 'bg-stone-300'
-                      }`}
+                      style={editStatus === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${editStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                     >
                       <span
                         className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition ${

@@ -708,9 +708,8 @@ export default function HomeSectionsView() {
                           <button
                             type="button"
                             onClick={() => handleToggleStatus(sec)}
-                            className={`relative inline-flex h-4 w-7.5 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                              sec.status === 'active' ? 'bg-[#16a34a]' : 'bg-stone-300'
-                            }`}
+                            style={sec.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                            className={`relative inline-flex h-4 w-7.5 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${sec.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                             title={`Click to mark ${sec.status === 'active' ? 'Inactive' : 'Active'}`}
                           >
                             <span

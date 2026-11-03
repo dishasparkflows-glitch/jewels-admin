@@ -1779,9 +1779,8 @@ const DynamicModuleView = () => {
                             status: prev.status === 'active' ? 'inactive' : 'active',
                           }))
                         }
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          formData.status === 'active' ? 'bg-[#8b6f4e]' : 'bg-stone-300'
-                        }`}
+                        style={formData.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formData.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                       >
                         <span
                           className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${

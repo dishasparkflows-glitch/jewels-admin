@@ -458,9 +458,8 @@ export default function DiamondClaritiesView() {
                             role="switch"
                             aria-checked={c.status === 'active'}
                             onClick={() => handleToggleStatus(c)}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                              c.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
-                            }`}
+                            style={c.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${c.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                             title={`Click to set ${c.status === 'active' ? 'Inactive' : 'Active'}`}
                           >
                             <span
@@ -610,9 +609,8 @@ export default function DiamondClaritiesView() {
                     role="switch"
                     aria-checked={clarityStatus === 'active'}
                     onClick={() => setClarityStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                      clarityStatus === 'active' ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                    }`}
+                    style={clarityStatus === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${clarityStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                   >
                     <span
                       className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${

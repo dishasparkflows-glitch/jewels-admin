@@ -682,9 +682,8 @@ export default function BirthstonePortfolioView() {
                 <button
                   type="button"
                   onClick={() => setFormIsActive(!formIsActive)}
-                  className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none ${
-                    formIsActive ? 'bg-[#8b6f4e]' : 'bg-stone-300'
-                  }`}
+                  style={formIsActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none ${formIsActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                 >
                   <span
                     className={`block w-5 h-5 rounded-full bg-white shadow-xs transition-transform absolute top-0.5 ${

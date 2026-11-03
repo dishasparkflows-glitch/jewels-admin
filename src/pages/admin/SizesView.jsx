@@ -537,9 +537,8 @@ export default function SizesView() {
                         <button
                           type="button"
                           onClick={() => handleToggleVisibility(s)}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${
-                            s.status === 'active' ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                          }`}
+                          style={s.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${s.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                           title={`Click to set ${s.status === 'active' ? 'inactive' : 'active'}`}
                         >
                           <span

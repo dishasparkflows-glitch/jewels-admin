@@ -931,9 +931,8 @@ export default function AddDiamonds() {
                           onClick={() =>
                             handleUpdateVariant(v.id, 'status', v.status === 'active' ? 'inactive' : 'active')
                           }
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                            v.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
-                          }`}
+                          style={v.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${v.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                           title={v.status === 'active' ? 'Active' : 'Inactive'}
                         >
                           <span

@@ -429,9 +429,8 @@ export default function DiamondSizesView() {
                             role="switch"
                             aria-checked={s.status === 'active'}
                             onClick={() => handleToggleStatus(s)}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                              s.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
-                            }`}
+                            style={s.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${s.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                             title={`Click to set ${s.status === 'active' ? 'Inactive' : 'Active'}`}
                           >
                             <span
@@ -569,9 +568,8 @@ export default function DiamondSizesView() {
                     role="switch"
                     aria-checked={sizeStatus === 'active'}
                     onClick={() => setSizeStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                      sizeStatus === 'active' ? 'bg-[#8f6d43]' : 'bg-stone-300'
-                    }`}
+                    style={sizeStatus === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${sizeStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                   >
                     <span
                       className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
