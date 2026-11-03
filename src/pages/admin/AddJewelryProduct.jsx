@@ -49,6 +49,8 @@ import {
   HiOutlineExternalLink,
   HiOutlineChevronUp,
   HiOutlineCalculator,
+  HiOutlineGlobeAlt,
+  HiOutlineLockClosed,
 } from 'react-icons/hi';
 import PricingBreakdownModal from '../../components/common/PricingBreakdownModal';
 import { calculateProductPriceAPI } from '../../utils/pricingCalculation';
@@ -3289,11 +3291,11 @@ export default function AddJewelryProduct() {
             <button
               type="button"
               onClick={() => openProductPreview(productRecord || { _id: productId })}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-[#785e40] bg-white border border-[#d6cfc2] rounded-xl hover:bg-[#faf7f2] active:scale-[0.98] transition-all shadow-2xs cursor-pointer"
-              title="Open this product on the storefront"
+              className="group inline-flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold text-stone-700 hover:text-[#785e40] bg-white border border-stone-200 hover:border-stone-300 rounded-lg hover:bg-stone-50 active:scale-95 transition-all cursor-pointer shadow-2xs"
+              title="Preview product on storefront"
             >
-              <HiOutlineExternalLink className="w-4 h-4" />
-              <span>View on website</span>
+              <HiOutlineExternalLink className="w-3.5 h-3.5 text-stone-500 group-hover:text-[#8b6f4e]" />
+              <span>View</span>
             </button>
           )}
 
@@ -3302,21 +3304,34 @@ export default function AddJewelryProduct() {
               type="button"
               onClick={handleToggleStatus}
               disabled={saving || togglingStatus}
-              className={`flex items-center gap-2 px-3 py-2 text-xs font-bold rounded-xl border transition-all active:scale-[0.98] cursor-pointer shadow-2xs disabled:opacity-50 ${
+              className={`inline-flex items-center gap-1.5 h-8 px-2.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs disabled:opacity-50 active:scale-95 select-none ${
                 currentStatus === 'approved'
-                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100 hover:border-emerald-300'
-                  : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100 hover:border-amber-300'
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200 hover:bg-emerald-100'
+                  : 'bg-amber-50 text-amber-800 border-amber-200 hover:bg-amber-100'
               }`}
-              title={`Current status is ${currentStatus === 'approved' ? 'Published' : 'Draft'}. Click to switch to ${currentStatus === 'approved' ? 'Draft' : 'Published'}`}
+              title={
+                currentStatus === 'approved'
+                  ? 'Status: Live on Website. Click to switch to Draft.'
+                  : 'Status: Draft (Hidden). Click to publish.'
+              }
             >
+              {currentStatus === 'approved' ? (
+                <HiOutlineGlobeAlt className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+              ) : (
+                <HiOutlineLockClosed className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+              )}
+              <span>{togglingStatus ? 'Updating...' : (currentStatus === 'approved' ? 'Live' : 'Draft')}</span>
+              {/* Mini switch track */}
               <span
-                className={`w-2 h-2 rounded-full ${
-                  currentStatus === 'approved' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'
+                className={`relative inline-flex h-3.5 w-6 shrink-0 items-center rounded-full transition-colors p-0.5 ml-0.5 ${
+                  currentStatus === 'approved' ? 'bg-emerald-500' : 'bg-stone-300'
                 }`}
-              />
-              <span>{togglingStatus ? 'Switching...' : (currentStatus === 'approved' ? 'Published' : 'Draft')}</span>
-              <span className="text-[10px] font-medium opacity-60 underline ml-0.5">
-                (Switch to {currentStatus === 'approved' ? 'Draft' : 'Published'})
+              >
+                <span
+                  className={`inline-block h-2.5 w-2.5 transform rounded-full bg-white shadow-xs transition duration-150 ${
+                    currentStatus === 'approved' ? 'translate-x-2.5' : 'translate-x-0'
+                  }`}
+                />
               </span>
             </button>
           ) : (
@@ -3324,9 +3339,9 @@ export default function AddJewelryProduct() {
               type="button"
               onClick={() => handlePublish('approved')}
               disabled={saving}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
+              className="inline-flex items-center gap-1 h-8 px-3 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-95 rounded-lg transition-all shadow-xs cursor-pointer disabled:opacity-50"
             >
-              <HiOutlineCheckCircle className="w-4 h-4" />
+              <HiOutlineCheckCircle className="w-3.5 h-3.5" />
               <span>Publish</span>
             </button>
           )}
@@ -3335,10 +3350,14 @@ export default function AddJewelryProduct() {
             type="button"
             onClick={handleSave}
             disabled={saving || togglingStatus}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-stone-800 bg-white border border-[#d6cfc2] rounded-xl hover:bg-stone-50 active:scale-[0.98] transition-all shadow-2xs cursor-pointer disabled:opacity-50"
-            title="Save changes (status remains unchanged)"
+            className="inline-flex items-center gap-1.5 h-8 px-3 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:border-stone-300 rounded-lg hover:bg-stone-50 active:scale-95 transition-all shadow-2xs cursor-pointer disabled:opacity-50"
+            title="Save changes"
           >
-            <HiOutlineDocumentText className="w-4 h-4 text-stone-600" />
+            {saving ? (
+              <span className="w-3 h-3 border-2 border-stone-500 border-t-transparent rounded-full animate-spin shrink-0" />
+            ) : (
+              <HiOutlineCheck className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5] shrink-0" />
+            )}
             <span>{saving ? 'Saving...' : 'Save'}</span>
           </button>
 
