@@ -1136,7 +1136,7 @@ export default function OrnateProductsView() {
                 {products.map((p) => {
                   const isSelected = selectedIds.has(p._id);
                   const imgUrl = getProductImage(p);
-                  const title = p.basicInfo?.title || p.name || 'Ornate Jewellery';
+                  const title = p.basicInfo?.title || 'Ornate Jewellery';
                   const sku = p.basicInfo?.sku || p.ornate?.tagNo || '—';
                   const price = p.pricing?.salePrice ?? 0;
 
@@ -1431,7 +1431,7 @@ export default function OrnateProductsView() {
                   Ornate ERP Product Detail
                 </span>
                 <h3 className="text-base font-bold text-stone-900">
-                  {viewingProduct.basicInfo?.title || viewingProduct.name || 'Ornate Product'}
+                  {viewingProduct.basicInfo?.title || 'Ornate Product'}
                 </h3>
               </div>
               <button

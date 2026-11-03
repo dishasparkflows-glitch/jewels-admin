@@ -118,6 +118,8 @@ export default function SettingsView() {
     storeAddress: '',
     gstCode: '',
     panCode: '',
+    playStoreUrl: '',
+    appStoreUrl: '',
     certificateImageUrl: '',
   });
 
@@ -200,19 +202,21 @@ export default function SettingsView() {
 
       const bDetails = data.businessDetails || {};
       setBusinessForm({
-        companyName: bDetails.companyName ?? data.companyName ?? '',
-        emailAddress: bDetails.emailAddress ?? data.emailAddress ?? '',
-        mobileNumber: bDetails.mobileNumber ?? data.mobileNumber ?? '',
-        storeAddress: bDetails.storeAddress ?? data.storeAddress ?? '',
-        gstCode: bDetails.gstCode ?? data.gstCode ?? '',
-        panCode: bDetails.panCode ?? data.panCode ?? '',
+        companyName: bDetails.companyName ?? '',
+        emailAddress: bDetails.emailAddress ?? '',
+        mobileNumber: bDetails.mobileNumber ?? '',
+        storeAddress: bDetails.storeAddress ?? '',
+        gstCode: bDetails.gstCode ?? '',
+        panCode: bDetails.panCode ?? '',
+        playStoreUrl: bDetails.playStoreUrl ?? data.playStoreUrl ?? '',
+        appStoreUrl: bDetails.appStoreUrl ?? data.appStoreUrl ?? '',
         certificateImageUrl: data.certificateImage?.url ?? '',
       });
 
       setMonetaryForm({
-        bankName: data.bankDetails?.bankName ?? data.bankName ?? '',
-        bankAccountNumber: data.bankDetails?.bankAccountNumber ?? data.bankAccountNumber ?? '',
-        ifscCode: data.bankDetails?.ifscCode ?? data.ifscCode ?? '',
+        bankName: data.bankDetails?.bankName ?? '',
+        bankAccountNumber: data.bankDetails?.bankAccountNumber ?? '',
+        ifscCode: data.bankDetails?.ifscCode ?? '',
         paymentProvider: data.paymentProvider ?? 'razorpay',
       });
 
@@ -223,9 +227,9 @@ export default function SettingsView() {
         if (themeName) setSelectedThemeName(themeName);
       }
       const colors = data.themeColors || {};
-      setButtonColor(colors.buttonColor || data.buttonColor || '#8b6f4e');
-      setButtonHoverColor(colors.buttonHoverColor || data.buttonHoverColor || '#755c3e');
-      setButtonTextColor(colors.buttonTextColor || data.buttonTextColor || '#ffffff');
+      setButtonColor(colors.buttonColor || '#8b6f4e');
+      setButtonHoverColor(colors.buttonHoverColor || '#755c3e');
+      setButtonTextColor(colors.buttonTextColor || '#ffffff');
       setTopBarBgColor(colors.topBarBgColor || '#201e1b');
       setTopBarTextColor(colors.topBarTextColor || '#ffffff');
       setHeaderBgColor(colors.headerBgColor || '#201e1b');
@@ -266,18 +270,20 @@ export default function SettingsView() {
     if (settings) {
       const bDetails = settings.businessDetails || {};
       setBusinessForm({
-        companyName: bDetails.companyName ?? settings.companyName ?? '',
-        emailAddress: bDetails.emailAddress ?? settings.emailAddress ?? '',
-        mobileNumber: bDetails.mobileNumber ?? settings.mobileNumber ?? '',
-        storeAddress: bDetails.storeAddress ?? settings.storeAddress ?? '',
-        gstCode: bDetails.gstCode ?? settings.gstCode ?? '',
-        panCode: bDetails.panCode ?? settings.panCode ?? '',
+        companyName: bDetails.companyName ?? '',
+        emailAddress: bDetails.emailAddress ?? '',
+        mobileNumber: bDetails.mobileNumber ?? '',
+        storeAddress: bDetails.storeAddress ?? '',
+        gstCode: bDetails.gstCode ?? '',
+        panCode: bDetails.panCode ?? '',
+        playStoreUrl: bDetails.playStoreUrl ?? settings.playStoreUrl ?? '',
+        appStoreUrl: bDetails.appStoreUrl ?? settings.appStoreUrl ?? '',
         certificateImageUrl: settings.certificateImage?.url ?? '',
       });
       setMonetaryForm({
-        bankName: settings.bankDetails?.bankName ?? settings.bankName ?? '',
-        bankAccountNumber: settings.bankDetails?.bankAccountNumber ?? settings.bankAccountNumber ?? '',
-        ifscCode: settings.bankDetails?.ifscCode ?? settings.ifscCode ?? '',
+        bankName: settings.bankDetails?.bankName ?? '',
+        bankAccountNumber: settings.bankDetails?.bankAccountNumber ?? '',
+        ifscCode: settings.bankDetails?.ifscCode ?? '',
         paymentProvider: settings.paymentProvider ?? 'razorpay',
       });
       setTrustBadges(Array.isArray(settings.trustBadges) ? settings.trustBadges : []);
@@ -285,9 +291,9 @@ export default function SettingsView() {
       const initialThemeId = typeof settings.currentThemeId === 'object' ? settings.currentThemeId?._id : settings.currentThemeId;
       setSelectedThemeId(initialThemeId || '');
       const colors = settings.themeColors || {};
-      setButtonColor(colors.buttonColor || settings.buttonColor || '#8b6f4e');
-      setButtonHoverColor(colors.buttonHoverColor || settings.buttonHoverColor || '#755c3e');
-      setButtonTextColor(colors.buttonTextColor || settings.buttonTextColor || '#ffffff');
+      setButtonColor(colors.buttonColor || '#8b6f4e');
+      setButtonHoverColor(colors.buttonHoverColor || '#755c3e');
+      setButtonTextColor(colors.buttonTextColor || '#ffffff');
       setTopBarBgColor(colors.topBarBgColor || '#201e1b');
       setTopBarTextColor(colors.topBarTextColor || '#ffffff');
       setHeaderBgColor(colors.headerBgColor || '#201e1b');
@@ -463,7 +469,11 @@ export default function SettingsView() {
           storeAddress: businessForm.storeAddress,
           gstCode: businessForm.gstCode,
           panCode: businessForm.panCode,
+          playStoreUrl: businessForm.playStoreUrl,
+          appStoreUrl: businessForm.appStoreUrl,
         },
+        playStoreUrl: businessForm.playStoreUrl,
+        appStoreUrl: businessForm.appStoreUrl,
         certificateImage: {
           url: businessForm.certificateImageUrl,
         },
@@ -1273,6 +1283,26 @@ export default function SettingsView() {
                         value={businessForm.panCode}
                         onChange={(e) => setBusinessForm({ ...businessForm, panCode: e.target.value })}
                         className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">Google Play Store URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://play.google.com/store/apps/details?id=..."
+                        value={businessForm.playStoreUrl}
+                        onChange={(e) => setBusinessForm({ ...businessForm, playStoreUrl: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">Apple App Store URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://apps.apple.com/app/..."
+                        value={businessForm.appStoreUrl}
+                        onChange={(e) => setBusinessForm({ ...businessForm, appStoreUrl: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
                       />
                     </div>
 

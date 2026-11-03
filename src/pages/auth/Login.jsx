@@ -23,7 +23,7 @@ const Login = () => {
     setLoading(true);
     try {
       const data = await login(form.email.trim(), form.password);
-      toast.success(`Welcome back, ${data.user.firstName}!`, { icon: '✨' });
+      toast.success(`Welcome back, ${data.user?.profile?.firstName || 'Admin'}!`, { icon: '✨' });
       navigate('/dashboard');
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Authentication failed');

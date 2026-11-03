@@ -83,7 +83,7 @@ export default function CreateGroupModal({
   const filteredProducts = ungroupedProducts.filter((p) => {
     if (!search.trim()) return true;
     const term = search.toLowerCase().trim();
-    const title = p.basicInfo?.title || p.name || '';
+    const title = p.basicInfo?.title || '';
     const sku = p.basicInfo?.sku || '';
     const tag = p.ornate?.tagNo || '';
     const barcode = p.ornate?.barcode || '';
@@ -232,12 +232,12 @@ export default function CreateGroupModal({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-semibold text-stone-800 truncate">
-                        {p.basicInfo?.title || p.name || 'Ornate Product'}
+                        {p.basicInfo?.title || 'Ornate Product'}
                       </p>
                       <div className="flex items-center gap-2 text-[10px] text-stone-500 font-mono">
                         <span>Tag: {p.ornate?.tagNo || '—'}</span>
                         <span>•</span>
-                        <span>Barcode: {p.ornate?.barcode || p.barcode || '—'}</span>
+                        <span>Barcode: {p.ornate?.barcode || '—'}</span>
                         <span>•</span>
                         <span>SKU: {p.basicInfo?.sku || '—'}</span>
                       </div>

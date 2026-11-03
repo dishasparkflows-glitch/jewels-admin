@@ -565,7 +565,7 @@ export default function AddJewelryProduct() {
     title: '',
     sku: '',
     category: '',
-    gender: '',
+    gender: [],
     description: '',
     isOrnate: false,
     soldCount: '',
@@ -586,12 +586,14 @@ export default function AddJewelryProduct() {
       sku: basicInfo.sku || '',
       category: categoryId ? String(categoryId) : '',
       gender: (() => {
-        const rawGender = basicInfo.gender ?? productRecord.gender ?? '';
-        const first = Array.isArray(rawGender) ? (rawGender[0] || '') : (rawGender || '');
-        const matched = ['Female', 'Male', 'Unisex', 'Kids'].find(
-          (opt) => opt.toLowerCase() === String(first).trim().toLowerCase()
-        );
-        return matched || first;
+        const rawGender = basicInfo.gender ?? productRecord.gender ?? [];
+        const arr = Array.isArray(rawGender) ? rawGender : (rawGender ? [rawGender] : []);
+        return arr.map((g) => {
+          const matched = ['Female', 'Male', 'Unisex', 'Kids'].find(
+            (opt) => opt.toLowerCase() === String(g).trim().toLowerCase()
+          );
+          return matched || g;
+        }).filter(Boolean);
       })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
@@ -2423,12 +2425,14 @@ export default function AddJewelryProduct() {
       sku: basicInfo.sku || '',
       category: categoryId ? String(categoryId) : '',
       gender: (() => {
-        const rawGender = basicInfo.gender ?? productRecord.gender ?? '';
-        const first = Array.isArray(rawGender) ? (rawGender[0] || '') : (rawGender || '');
-        const matched = ['Female', 'Male', 'Unisex', 'Kids'].find(
-          (opt) => opt.toLowerCase() === String(first).trim().toLowerCase()
-        );
-        return matched || first;
+        const rawGender = basicInfo.gender ?? productRecord.gender ?? [];
+        const arr = Array.isArray(rawGender) ? rawGender : (rawGender ? [rawGender] : []);
+        return arr.map((g) => {
+          const matched = ['Female', 'Male', 'Unisex', 'Kids'].find(
+            (opt) => opt.toLowerCase() === String(g).trim().toLowerCase()
+          );
+          return matched || g;
+        }).filter(Boolean);
       })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
@@ -3040,7 +3044,10 @@ export default function AddJewelryProduct() {
               return matched?.id || matched?._id;
             }).filter(Boolean)
         : [];
-      const payload = {
+        const genderArr = Array.isArray(basicDetails.gender)
+          ? basicDetails.gender.filter(Boolean)
+          : (basicDetails.gender ? [basicDetails.gender] : []);
+        const payload = {
         ...(!productId ? { _id: draftProductId } : {}),
         productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
         isOrnate: Boolean(basicDetails.isOrnate),
@@ -3048,13 +3055,13 @@ export default function AddJewelryProduct() {
           soldCount: basicDetails.soldCount !== '' ? Number(basicDetails.soldCount) : 0,
           reviewCount: basicDetails.reviewCount !== '' ? Number(basicDetails.reviewCount) : 0,
         },
-        ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
+        gender: genderArr,
         basicInfo: compactObject({
           title: activeTitle,
           sku: activeSku || undefined,
           slug: activeSlug,
           description: activeDesc,
-          ...(basicDetails.gender ? { gender: [basicDetails.gender] } : {}),
+          gender: genderArr,
         }),
         status: statusOverride === 'preserve'
           ? (productRecord?.status || seo.status || (productId ? 'approved' : 'draft'))
@@ -3406,9 +3413,10 @@ export default function AddJewelryProduct() {
                   <Dropdown
                     size="field"
                     variant="input"
+                    multiple
                     value={basicDetails.gender}
                     onChange={(val) =>
-                      setBasicDetails((prev) => ({ ...prev, gender: val }))
+                      setBasicDetails((prev) => ({ ...prev, gender: Array.isArray(val) ? val : [val].filter(Boolean) }))
                     }
                     placeholder="Select Gender"
                     options={[

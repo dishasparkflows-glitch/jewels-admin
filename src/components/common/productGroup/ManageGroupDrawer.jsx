@@ -291,7 +291,7 @@ export default function ManageGroupDrawer({
     if (search.trim()) {
       const term = search.toLowerCase().trim();
       list = list.filter((p) => {
-        const title = p.basicInfo?.title || p.name || '';
+        const title = p.basicInfo?.title || '';
         const sku = p.basicInfo?.sku || '';
         const tag = p.ornate?.tagNo || '';
         const barcode = p.ornate?.barcode || '';
@@ -307,8 +307,8 @@ export default function ManageGroupDrawer({
     list.sort((a, b) => {
       const priceA = Number(a.pricing?.salePrice || a.pricing?.mrp || 0);
       const priceB = Number(b.pricing?.salePrice || b.pricing?.mrp || 0);
-      const titleA = a.basicInfo?.title || a.name || '';
-      const titleB = b.basicInfo?.title || b.name || '';
+      const titleA = a.basicInfo?.title || '';
+      const titleB = b.basicInfo?.title || '';
 
       if (sortBy === 'price_asc') return priceA - priceB;
       if (sortBy === 'price_desc') return priceB - priceA;
@@ -850,7 +850,7 @@ export default function ManageGroupDrawer({
                                           img &&
                                           setPreviewImage({
                                             url: img,
-                                            title: p.basicInfo?.title || p.name || 'Ornate Product',
+                                            title: p.basicInfo?.title || 'Ornate Product',
                                             tag: p.ornate?.tagNo,
                                             sku: p.basicInfo?.sku,
                                           })
@@ -866,7 +866,7 @@ export default function ManageGroupDrawer({
                                       <div className="min-w-0">
                                         <div className="flex items-center gap-1.5">
                                           <p className="font-bold text-stone-900 truncate">
-                                            {p.basicInfo?.title || p.name || 'Ornate Product'}
+                                            {p.basicInfo?.title || 'Ornate Product'}
                                           </p>
                                           {isPrimary && (
                                             <span className="px-1.5 py-0.2 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-bold rounded">
@@ -1042,7 +1042,7 @@ export default function ManageGroupDrawer({
                                 <p className="truncate" title={`Tag: ${p.ornate?.tagNo || '—'} · SKU: ${p.basicInfo?.sku || '—'}`}>
                                   Tag: <span className="font-semibold text-stone-800">{p.ornate?.tagNo || '—'}</span> · SKU: <span className="font-semibold text-stone-800">{p.basicInfo?.sku || '—'}</span>
                                 </p>
-                                <p className="truncate text-stone-600" title={`Barcode: ${p.ornate?.barcode || p.barcode || '—'}`}>
+                                <p className="truncate text-stone-600" title={`Barcode: ${p.ornate?.barcode || '—'}`}>
                                   Barcode: <span className="font-semibold text-stone-800">{p.ornate?.barcode || p.barcode || '—'}</span>
                                 </p>
                               </div>
@@ -1337,7 +1337,7 @@ export default function ManageGroupDrawer({
                           {p.basicInfo?.title || 'Ornate Product'}
                         </p>
                         <p className="text-[10px] text-stone-500 font-mono truncate" title={`Tag: ${p.ornate?.tagNo || '—'} · Barcode: ${p.ornate?.barcode || p.barcode || '—'} · SKU: ${p.basicInfo?.sku || '—'}`}>
-                          Tag: {p.ornate?.tagNo || '—'} · Barcode: {p.ornate?.barcode || p.barcode || '—'} · SKU: {p.basicInfo?.sku || '—'}
+                          Tag: {p.ornate?.tagNo || '—'} · Barcode: {p.ornate?.barcode || '—'} · SKU: {p.basicInfo?.sku || '—'}
                         </p>
                       </div>
                       <span className="text-xs font-bold text-stone-800 shrink-0">

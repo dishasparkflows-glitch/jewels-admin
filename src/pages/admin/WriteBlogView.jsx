@@ -1,18 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate, useParams, Link } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import {
   HiOutlineArrowLeft,
   HiOutlinePhotograph,
   HiOutlinePencil,
   HiOutlineX,
   HiOutlineClock,
-  HiOutlineCalendar,
-  HiOutlineEye,
-  HiOutlineUpload,
-  HiOutlineTrash,
-  HiOutlineCheck,
   HiOutlineSparkles,
-  HiOutlineExternalLink,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { blogsAPI, blogCategoriesAPI } from '../../api/services';
@@ -36,22 +30,6 @@ const formatDateForInput = (d) => {
     const date = new Date(d);
     if (isNaN(date.getTime())) return '';
     return date.toISOString().split('T')[0];
-  } catch {
-    return '';
-  }
-};
-
-// Helper to format Date for luxury display (e.g. 20 Oct 2026)
-const formatDisplayDate = (d) => {
-  if (!d) return '';
-  try {
-    const date = new Date(d);
-    if (isNaN(date.getTime())) return '';
-    return date.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
   } catch {
     return '';
   }
@@ -106,7 +84,6 @@ export default function WriteBlogView() {
     tags: ['care tips', 'gold jewellery', 'diamond'],
     metaTitle: '',
     metaDescription: '',
-    allowComments: true,
     showInHomepage: true,
   });
 
@@ -145,12 +122,16 @@ export default function WriteBlogView() {
               : blog.image || { url: '', key: '', alt: '', name: '', size: '' };
 
           setFormData({
-            title: blog.title || '',
-            slug: blog.slug || '',
+            title: blog.basicInfo?.title || blog.title || '',
+            slug: blog.basicInfo?.slug || blog.slug || '',
             blogCategory: blog.blogCategory?._id || blog.blogCategory || '',
-            description: blog.description || '',
-            shortDescription: blog.shortDescription || '',
-            image: imgObj,
+            description: blog.basicInfo?.description || blog.description || '',
+            shortDescription: blog.basicInfo?.shortDescription || blog.shortDescription || '',
+            image: {
+              url: imgObj.url || '',
+              key: imgObj.key || '',
+              alt: imgObj.alt || '',
+            },
             readTime: blog.readTime || '1 min read',
             status: blog.status || 'active',
             publishDate: formatDateForInput(blog.publishDate || blog.createdAt || new Date()),
@@ -160,9 +141,8 @@ export default function WriteBlogView() {
               : blog.tags
               ? blog.tags.split(',').map((t) => t.trim()).filter(Boolean)
               : [],
-            metaTitle: blog.metaTitle || blog.title || '',
-            metaDescription: blog.metaDescription || blog.shortDescription || '',
-            allowComments: blog.allowComments !== undefined ? blog.allowComments : true,
+            metaTitle: blog.seo?.metaTitle || blog.metaTitle || blog.basicInfo?.title || blog.title || '',
+            metaDescription: blog.seo?.metaDescription || blog.metaDescription || blog.basicInfo?.shortDescription || blog.shortDescription || '',
             showInHomepage: blog.showInHomepage !== undefined ? blog.showInHomepage : true,
           });
         }
@@ -282,17 +262,38 @@ export default function WriteBlogView() {
       return;
     }
 
+    const generatedSlug =
+      formData.slug ||
+      formData.title
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '');
+
     const payload = {
-      ...formData,
+      blogCategory: formData.blogCategory,
+      basicInfo: {
+        title: formData.title.trim(),
+        slug: generatedSlug,
+        description: formData.description,
+        shortDescription: formData.shortDescription,
+        readTime: formData.readTime || '3 min read',
+        publishDate: formData.publishDate ? new Date(formData.publishDate) : new Date(),
+        author: formData.author || 'Neirah Atelier',
+      },
+      seo: {
+        metaTitle: formData.metaTitle || formData.title,
+        metaDescription: formData.metaDescription || formData.shortDescription,
+        metaKeywords: formData.tags || [],
+      },
+      image: {
+        url: formData.image?.url || '',
+        key: formData.image?.key || '',
+        alt: formData.image?.alt || '',
+      },
       status: targetStatus,
       tags: formData.tags,
-      slug:
-        formData.slug ||
-        formData.title
-          .toLowerCase()
-          .trim()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, ''),
+      showInHomepage: formData.showInHomepage !== undefined ? formData.showInHomepage : true,
     };
 
     try {
@@ -682,22 +683,6 @@ export default function WriteBlogView() {
                 </div>
               </div>
             )}
-
-            {/* Change Image Button */}
-            <button
-              type="button"
-              disabled={uploadingImage}
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full py-2.5 px-3 bg-[#faf8f5] hover:bg-[#f3ede3] border border-stone-200/90 rounded-xl text-xs font-bold text-[#8b6f4e] flex flex-col items-center justify-center gap-0.5 transition-colors cursor-pointer disabled:opacity-50"
-            >
-              <div className="flex items-center gap-1.5">
-                <HiOutlineUpload className="w-4 h-4" />
-                <span>{uploadingImage ? 'Uploading...' : formData.image?.url ? 'Change Image' : 'Select Image'}</span>
-              </div>
-              <span className="text-[10px] text-stone-400 font-normal">
-                JPG, PNG, WebP (Max 5 MB)
-              </span>
-            </button>
           </div>
 
           {/* ─── 2. Article Information Card ─── */}
@@ -752,8 +737,8 @@ export default function WriteBlogView() {
                 onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
                 showStatusDot
                 options={[
-                  { value: 'active', label: 'Active (Published to Store)', dotColor: 'bg-emerald-500' },
-                  { value: 'inactive', label: 'Draft / Hidden', dotColor: 'bg-stone-400' },
+                  { value: 'active', label: 'Published', dotColor: 'bg-emerald-500' },
+                  { value: 'inactive', label: 'Draft', dotColor: 'bg-stone-400' },
                 ]}
                 buttonClassName="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-white shadow-2xs hover:border-[#8b6f4e]"
                 menuClassName="z-[60]"

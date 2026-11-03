@@ -41,12 +41,9 @@ export default function SyncPreviewModal({
 
   const productOptions = useMemo(() => {
     return products.map((p) => {
-      const productName = (p.basicInfo?.title || p.title || p.name || 'Unnamed Product').trim();
+      const productName = (p.basicInfo?.title || 'Unnamed Product').trim();
       const barcode = (
         p.ornate?.barcode ||
-        p.barcode ||
-        p.barcodeNo ||
-        p.basicInfo?.barcode ||
         p.ornate?.tagNo ||
         p.basicInfo?.sku ||
         ''

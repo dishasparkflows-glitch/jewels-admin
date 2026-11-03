@@ -485,7 +485,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                         }
                   }
                 >
-                  {user?.firstName?.[0] || 'S'}
+                  {user?.profile?.firstName?.[0] || 'S'}
                 </div>
                 {isVisible && (
                   <div className="flex flex-col min-w-0 text-left">
@@ -497,10 +497,10 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                           : { color: '#1C1917' }
                       }
                     >
-                      {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
+                      {user?.profile?.firstName ? `${user.profile.firstName} ${user.profile.lastName || ''}` : 'Super Admin'}
                     </span>
                     <span className="text-[10px] text-stone-400 truncate">
-                      {user?.email || 'superadmin@jewels.com'}
+                      {user?.auth?.email || 'superadmin@jewels.com'}
                     </span>
                   </div>
                 )}

@@ -12,8 +12,7 @@ const slugify = (text) =>
 export const getProductPreviewUrl = (product) => {
   const slug =
     product?.basicInfo?.slug ||
-    product?.slug ||
-    slugify(product?.basicInfo?.title || product?.title || product?.name);
+    slugify(product?.basicInfo?.title);
 
   if (!slug) return null;
   return `${STOREFRONT_URL}/product/${encodeURIComponent(slug)}`;
@@ -22,8 +21,7 @@ export const getProductPreviewUrl = (product) => {
 export const openProductPreview = async (product) => {
   let slug =
     product?.basicInfo?.slug ||
-    product?.slug ||
-    slugify(product?.basicInfo?.title || product?.title || product?.name);
+    slugify(product?.basicInfo?.title);
 
   const id = product?._id || product?.id;
 
@@ -33,8 +31,7 @@ export const openProductPreview = async (product) => {
       const data = res.data?.data;
       slug =
         data?.basicInfo?.slug ||
-        data?.slug ||
-        slugify(data?.basicInfo?.title || data?.title || data?.name);
+        slugify(data?.basicInfo?.title);
     } catch (_) {}
   }
 

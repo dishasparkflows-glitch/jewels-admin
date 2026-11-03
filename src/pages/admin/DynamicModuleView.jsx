@@ -3213,7 +3213,7 @@ const DynamicModuleView = () => {
                     Product Demo Metrics
                   </h3>
                   <p className="text-[11px] text-stone-500 truncate max-w-[260px]">
-                    {editingMetricsProduct.basicInfo?.title || editingMetricsProduct.title}
+                    {editingMetricsProduct.basicInfo?.title || ''}
                   </p>
                 </div>
               </div>

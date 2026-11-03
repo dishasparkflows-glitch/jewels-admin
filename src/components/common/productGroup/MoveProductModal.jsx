@@ -38,15 +38,12 @@ const getAutoGroupName = (p) => {
   if (!p) return 'New Common Group';
   const itemName = (
     p.basicInfo?.title ||
-    p.title ||
-    p.name ||
     p.ornate?.customGroupName ||
     p.ornate?.itemCode ||
     'Product'
   ).trim();
   const identifier = (
     p.ornate?.barcode ||
-    p.barcode ||
     p.ornate?.tagNo ||
     p.basicInfo?.sku ||
     ''

@@ -165,11 +165,11 @@ export default function CustomersView() {
     if (!search.trim()) return users;
     const q = search.toLowerCase();
     return users.filter((u) => {
-      const firstName = u.profile?.firstName || u.firstName || '';
-      const lastName = u.profile?.lastName || u.lastName || '';
+      const firstName = u.profile?.firstName || '';
+      const lastName = u.profile?.lastName || '';
       const fullName = `${firstName} ${lastName}`.toLowerCase();
-      const email = (u.auth?.email || u.email || '').toLowerCase();
-      const phone = (u.profile?.phone || u.phone || '').toLowerCase();
+      const email = (u.auth?.email || '').toLowerCase();
+      const phone = (u.profile?.phone || '').toLowerCase();
       const idStr = String(u.customId || u._id || '').toLowerCase();
       return fullName.includes(q) || email.includes(q) || phone.includes(q) || idStr.includes(q);
     });
@@ -201,13 +201,13 @@ export default function CustomersView() {
   const allSelected = paginatedItems.length > 0 && paginatedItems.every((u) => selectedIds.has(u._id || u.id));
 
   const getInitials = (user) => {
-    const firstName = user.profile?.firstName || user.firstName;
-    const lastName = user.profile?.lastName || user.lastName;
+    const firstName = user.profile?.firstName;
+    const lastName = user.profile?.lastName;
     if (firstName && lastName) {
       return `${firstName[0]}${lastName[0]}`.toUpperCase();
     }
     if (firstName) return firstName.slice(0, 2).toUpperCase();
-    const email = user.auth?.email || user.email || 'CU';
+    const email = user.auth?.email || 'CU';
     return email.slice(0, 2).toUpperCase();
   };
 
@@ -344,11 +344,11 @@ export default function CustomersView() {
                   const id = client._id || client.id || `row_${idx}`;
                   const isSelected = selectedIds.has(id);
                   const initials = getInitials(client);
-                  const firstName = client.profile?.firstName || client.firstName || '';
-                  const lastName = client.profile?.lastName || client.lastName || '';
-                  const fullName = firstName ? `${firstName} ${lastName}`.trim() : (client.email || 'Client');
-                  const email = client.auth?.email || client.email || '—';
-                  const phone = client.profile?.phone || client.phone || '—';
+                  const firstName = client.profile?.firstName || '';
+                  const lastName = client.profile?.lastName || '';
+                  const fullName = firstName ? `${firstName} ${lastName}`.trim() : (client.auth?.email || 'Client');
+                  const email = client.auth?.email || '—';
+                  const phone = client.profile?.phone || '—';
                   const orders = Number(client.statistics?.ordersCount ?? client.ordersCount) || 0;
                   const ltv = Number(client.statistics?.lifetimeValue ?? client.lifetimeValue) || 0;
                   const joinedDate = formatJoinedDate(client.createdAt || client.meta?.createdAt, idx);

@@ -91,19 +91,27 @@ export default function BlogsView() {
   // Filtered blogs
   const filteredBlogs = useMemo(() => {
     return blogs.filter((blog) => {
+      const bTitle = blog.basicInfo?.title || blog.title || '';
+      const bSlug = blog.basicInfo?.slug || blog.slug || '';
+      const bShortDesc = blog.basicInfo?.shortDescription || blog.shortDescription || '';
+      const bDesc = blog.basicInfo?.description || blog.description || '';
+
       const matchesSearch =
         !search ||
-        blog.title?.toLowerCase().includes(search.toLowerCase()) ||
-        blog.slug?.toLowerCase().includes(search.toLowerCase()) ||
-        blog.shortDescription?.toLowerCase().includes(search.toLowerCase()) ||
-        blog.description?.toLowerCase().includes(search.toLowerCase());
+        bTitle.toLowerCase().includes(search.toLowerCase()) ||
+        bSlug.toLowerCase().includes(search.toLowerCase()) ||
+        bShortDesc.toLowerCase().includes(search.toLowerCase()) ||
+        bDesc.toLowerCase().includes(search.toLowerCase());
 
       const matchesCategory =
         categoryFilter === 'all' ||
         (blog.blogCategory?._id || blog.blogCategory) === categoryFilter;
 
       const matchesStatus =
-        statusFilter === 'all' || blog.status === statusFilter;
+        statusFilter === 'all' ||
+        (statusFilter === 'published'
+          ? (blog.status === 'active' || blog.status === 'published')
+          : (blog.status === 'inactive' || blog.status === 'draft'));
 
       return matchesSearch && matchesCategory && matchesStatus;
     });
@@ -123,12 +131,12 @@ export default function BlogsView() {
   // Stats calculation
   const stats = useMemo(() => {
     const total = blogs.length;
-    const active = blogs.filter((b) => b.status === 'active').length;
-    const inactive = blogs.filter((b) => b.status === 'inactive').length;
+    const published = blogs.filter((b) => b.status === 'active' || b.status === 'published').length;
+    const draft = blogs.filter((b) => b.status === 'inactive' || b.status === 'draft').length;
     return [
       { label: 'Total Articles', value: total, color: 'text-stone-900' },
-      { label: 'Published / Active', value: active, color: 'text-emerald-700' },
-      { label: 'Drafts / Inactive', value: inactive, color: 'text-amber-700' },
+      { label: 'Published', value: published, color: 'text-emerald-700' },
+      { label: 'Drafts', value: draft, color: 'text-amber-700' },
       { label: 'Categories Available', value: categories.length, color: 'text-[#8b6f4e]' },
     ];
   }, [blogs, categories]);
@@ -163,15 +171,15 @@ export default function BlogsView() {
   const handleOpenEdit = (blog) => {
     setEditingBlog(blog);
     setFormData({
-      title: blog.title || '',
-      slug: blog.slug || '',
+      title: blog.basicInfo?.title || blog.title || '',
+      slug: blog.basicInfo?.slug || blog.slug || '',
       blogCategory: blog.blogCategory?._id || blog.blogCategory || '',
-      description: blog.description || '',
-      shortDescription: blog.shortDescription || '',
+      description: blog.basicInfo?.description || blog.description || '',
+      shortDescription: blog.basicInfo?.shortDescription || blog.shortDescription || '',
       image: typeof blog.image === 'string' ? { url: blog.image, key: '', alt: '' } : blog.image || { url: '', key: '', alt: '' },
-      readTime: blog.readTime || '3 min read',
+      readTime: blog.basicInfo?.readTime || blog.readTime || '3 min read',
       status: blog.status || 'active',
-      author: blog.author || 'Neirah Editorial',
+      author: blog.basicInfo?.author || blog.author || 'Neirah Editorial',
       tags: Array.isArray(blog.tags) ? blog.tags.join(', ') : blog.tags || '',
     });
     setIsModalOpen(true);
@@ -248,7 +256,21 @@ export default function BlogsView() {
       : [];
 
     const payload = {
-      ...formData,
+      blogCategory: formData.blogCategory,
+      basicInfo: {
+        title: formData.title.trim(),
+        slug: formData.slug || formData.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+/, ''),
+        description: formData.description,
+        shortDescription: formData.shortDescription || '',
+        readTime: formData.readTime || '3 min read',
+        author: formData.author || 'Neirah Editorial',
+      },
+      image: {
+        url: formData.image?.url || '',
+        key: formData.image?.key || '',
+        alt: formData.image?.alt || '',
+      },
+      status: formData.status || 'active',
       tags: processedTags,
     };
 
@@ -273,10 +295,11 @@ export default function BlogsView() {
 
   // Quick Toggle Status
   const handleToggleStatus = async (blog) => {
-    const newStatus = blog.status === 'active' ? 'inactive' : 'active';
+    const isCurrentlyPublished = blog.status === 'active' || blog.status === 'published';
+    const newStatus = isCurrentlyPublished ? 'inactive' : 'active';
     try {
       await blogsAPI.update(blog._id, { status: newStatus });
-      toast.success(`Article set to ${newStatus}`);
+      toast.success(newStatus === 'active' ? 'Article published' : 'Article set to draft');
       setBlogs((prev) =>
         prev.map((b) => (b._id === blog._id ? { ...b, status: newStatus } : b))
       );
@@ -288,9 +311,10 @@ export default function BlogsView() {
 
   // Delete Blog
   const handleDelete = async (blog) => {
+    const blogTitle = blog.basicInfo?.title || blog.title || 'this article';
     const isConfirmed = await confirm({
       title: 'Delete Blog Post',
-      message: `Are you sure you want to delete "${blog.title}"? This article will be unlinked and moved to trash.`,
+      message: `Are you sure you want to delete "${blogTitle}"? This article will be unlinked and moved to trash.`,
       confirmText: 'Delete Post',
       cancelText: 'Cancel',
       type: 'danger',
@@ -385,30 +409,30 @@ export default function BlogsView() {
             <button
               type="button"
               onClick={() => {
-                setStatusFilter('active');
+                setStatusFilter('published');
                 setCurrentPage(1);
               }}
               className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                statusFilter === 'active'
+                statusFilter === 'published'
                   ? 'bg-emerald-600 text-white shadow-2xs font-semibold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Active
+              Published
             </button>
             <button
               type="button"
               onClick={() => {
-                setStatusFilter('inactive');
+                setStatusFilter('draft');
                 setCurrentPage(1);
               }}
               className={`px-2.5 py-1 rounded-lg font-medium transition-colors cursor-pointer ${
-                statusFilter === 'inactive'
+                statusFilter === 'draft'
                   ? 'bg-amber-600 text-white shadow-2xs font-semibold'
                   : 'text-stone-600 hover:text-stone-900'
               }`}
             >
-              Inactive
+              Draft
             </button>
           </div>
         </div>
@@ -463,6 +487,10 @@ export default function BlogsView() {
                       })
                     : '-';
 
+                  const blogTitle = blog.basicInfo?.title || blog.title || '';
+                  const blogSlug = blog.basicInfo?.slug || blog.slug || '';
+                  const blogReadTime = blog.basicInfo?.readTime || blog.readTime || '3 min read';
+
                   return (
                     <tr key={blog._id} className="hover:bg-stone-50/70 transition-colors">
                       {/* Image & Title */}
@@ -471,7 +499,7 @@ export default function BlogsView() {
                           {imageUrl ? (
                             <img
                               src={imageUrl}
-                              alt={blog.title}
+                              alt={blogTitle}
                               className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0 shadow-2xs"
                             />
                           ) : (
@@ -484,10 +512,10 @@ export default function BlogsView() {
                             className="min-w-0 cursor-pointer group/title"
                           >
                             <p className="font-bold text-stone-900 group-hover/title:text-[#8b6f4e] transition-colors truncate leading-snug">
-                              {blog.title}
+                              {blogTitle}
                             </p>
                             <p className="text-[11px] text-stone-400 font-mono truncate">
-                              /{blog.slug}
+                              /{blogSlug}
                             </p>
                           </div>
                         </div>
@@ -505,7 +533,7 @@ export default function BlogsView() {
                       <td className="py-3.5 px-4 text-xs font-medium text-stone-600">
                         <div className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-stone-100/80 text-stone-700">
                           <HiOutlineClock className="w-3.5 h-3.5 text-stone-400" />
-                          <span>{blog.readTime || '3 min read'}</span>
+                          <span>{blogReadTime}</span>
                         </div>
                       </td>
 
@@ -514,19 +542,21 @@ export default function BlogsView() {
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(blog)}
-                          title="Toggle Status"
+                          title="Click to toggle status (Published / Draft)"
                           className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer transition-colors ${
-                            blog.status === 'active'
+                            blog.status === 'active' || blog.status === 'published'
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                              : 'bg-stone-100 text-stone-500 border border-stone-200'
+                              : 'bg-stone-100 text-stone-600 border border-stone-200'
                           }`}
                         >
                           <span
                             className={`w-1.5 h-1.5 rounded-full ${
-                              blog.status === 'active' ? 'bg-emerald-500' : 'bg-stone-400'
+                              blog.status === 'active' || blog.status === 'published' ? 'bg-emerald-500' : 'bg-stone-400'
                             }`}
                           />
-                          <span className="capitalize">{blog.status}</span>
+                          <span>
+                            {blog.status === 'active' || blog.status === 'published' ? 'Published' : 'Draft'}
+                          </span>
                         </button>
                       </td>
 
@@ -810,8 +840,8 @@ export default function BlogsView() {
                     value={formData.status}
                     onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
                     options={[
-                      { value: 'active', label: 'Active (Published to Store)', dotColor: 'bg-emerald-500' },
-                      { value: 'inactive', label: 'Inactive (Draft / Hidden)', dotColor: 'bg-stone-400' },
+                      { value: 'active', label: 'Published', dotColor: 'bg-emerald-500' },
+                      { value: 'inactive', label: 'Draft', dotColor: 'bg-stone-400' },
                     ]}
                     showStatusDot
                     buttonClassName="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] font-semibold text-stone-800 bg-white shadow-2xs hover:border-[#8b6f4e] focus:border-[#8b6f4e]"
@@ -894,13 +924,13 @@ export default function BlogsView() {
               </span>
 
               <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 leading-tight">
-                {previewBlog.title}
+                {previewBlog.basicInfo?.title || previewBlog.title}
               </h1>
 
               <div className="flex items-center justify-center gap-4 text-xs text-stone-500 font-medium pt-1">
-                <span>By {previewBlog.author || 'Neirah Editorial'}</span>
+                <span>By {previewBlog.basicInfo?.author || previewBlog.author || 'Neirah Editorial'}</span>
                 <span>•</span>
-                <span>{previewBlog.readTime || '3 min read'}</span>
+                <span>{previewBlog.basicInfo?.readTime || previewBlog.readTime || '3 min read'}</span>
                 <span>•</span>
                 <span>
                   {previewBlog.meta?.createdAt
@@ -923,23 +953,23 @@ export default function BlogsView() {
               <div className="rounded-2xl overflow-hidden shadow-md max-h-[420px]">
                 <img
                   src={previewBlog.image?.url || previewBlog.image}
-                  alt={previewBlog.title}
+                  alt={previewBlog.basicInfo?.title || previewBlog.title}
                   className="w-full h-full object-cover"
                 />
               </div>
             )}
 
             {/* Short Excerpt */}
-            {previewBlog.shortDescription && (
+            {(previewBlog.basicInfo?.shortDescription || previewBlog.shortDescription) && (
               <p className="text-base text-stone-600 font-medium italic border-l-4 border-[#8b6f4e] pl-4 py-1 bg-stone-50 rounded-r-lg">
-                {previewBlog.shortDescription}
+                {previewBlog.basicInfo?.shortDescription || previewBlog.shortDescription}
               </p>
             )}
 
             {/* Rich Content Render */}
             <div
               className="prose prose-stone max-w-none text-stone-800 leading-relaxed text-sm sm:text-base border-t border-stone-100 pt-6"
-              dangerouslySetInnerHTML={{ __html: previewBlog.description || '<p>No content</p>' }}
+              dangerouslySetInnerHTML={{ __html: previewBlog.basicInfo?.description || previewBlog.description || '<p>No content</p>' }}
             />
 
             {/* Tags */}

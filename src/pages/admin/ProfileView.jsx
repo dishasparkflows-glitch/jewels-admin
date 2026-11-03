@@ -37,11 +37,11 @@ export default function ProfileView() {
 
   // Profile Form State
   const [profileData, setProfileData] = useState({
-    firstName: user?.firstName || '',
-    lastName: user?.lastName || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    bio: user?.bio || '',
+    firstName: user?.profile?.firstName || '',
+    lastName: user?.profile?.lastName || '',
+    email: user?.auth?.email || '',
+    phone: user?.profile?.phone || '',
+    bio: user?.profile?.bio || '',
   });
   const [profileSaving, setProfileSaving] = useState(false);
 
@@ -58,11 +58,11 @@ export default function ProfileView() {
   useEffect(() => {
     if (user) {
       setProfileData({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        bio: user.bio || '',
+        firstName: user.profile?.firstName || '',
+        lastName: user.profile?.lastName || '',
+        email: user.auth?.email || '',
+        phone: user.profile?.phone || '',
+        bio: user.profile?.bio || '',
       });
     }
   }, [user]);
@@ -209,13 +209,13 @@ export default function ProfileView() {
                 color: currentTheme.primary,
               }}
             >
-              {user?.firstName?.[0] || 'S'}
+              {user?.profile?.firstName?.[0] || 'S'}
             </div>
 
             <div>
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="text-xl sm:text-2xl font-bold text-stone-900 leading-tight">
-                  {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
+                  {user?.profile?.firstName ? `${user.profile.firstName} ${user.profile.lastName || ''}` : 'Super Admin'}
                 </h1>
                 <span
                   className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider uppercase border transition-colors"
@@ -230,7 +230,7 @@ export default function ProfileView() {
                 </span>
               </div>
               <p className="text-xs sm:text-sm text-stone-500 mt-1 flex items-center gap-2">
-                <span>{user?.email || 'admin@jewels.com'}</span>
+                <span>{user?.auth?.email || 'admin@jewels.com'}</span>
                 <span className="text-stone-300">•</span>
                 <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />

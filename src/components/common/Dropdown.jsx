@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useLayoutEffect, useId, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useId, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 
 const MenuLayer = ({ enabled, children }) => enabled ? createPortal(children, document.body) : children;
@@ -105,6 +105,7 @@ export default function Dropdown({
   prefixIcon,
   name,
   id,
+  multiple = false,
 }) {
   const isForcedDown = openDownward || direction === 'down';
   const isForcedUp = openUpward || direction === 'up';
@@ -146,13 +147,45 @@ export default function Dropdown({
     };
   });
 
-  // Find currently selected option
+  // Normalize selected values for multiple select
+  const selectedValues = useMemo(() => {
+    if (!multiple) return [];
+    if (Array.isArray(value)) return value;
+    if (value !== undefined && value !== null && value !== '') return [value];
+    return [];
+  }, [multiple, value]);
+
+  const selectedOptions = useMemo(() => {
+    if (!multiple) return [];
+    return normalizedOptions.filter((opt) =>
+      selectedValues.some(
+        (val) =>
+          String(val).toLowerCase() === String(opt.value).toLowerCase() ||
+          String(val).toLowerCase() === String(opt.label).toLowerCase()
+      )
+    );
+  }, [multiple, normalizedOptions, selectedValues]);
+
+  // Find currently selected option (for single-select)
   const selectedIndex = normalizedOptions.findIndex(
     (opt) =>
       String(opt.value) === String(value) ||
       (value && String(opt.label).toLowerCase() === String(value).toLowerCase())
   );
   const selectedOption = selectedIndex >= 0 ? normalizedOptions[selectedIndex] : null;
+
+  const displayText = useMemo(() => {
+    if (multiple) {
+      if (selectedOptions.length === 0) return placeholder;
+      if (selectedOptions.length <= 2) {
+        return selectedOptions.map((o) => o.label).join(', ');
+      }
+      return `${selectedOptions.length} items selected`;
+    }
+    return selectedOption ? selectedOption.label : placeholder;
+  }, [multiple, selectedOptions, selectedOption, placeholder]);
+
+  const hasSelection = multiple ? selectedOptions.length > 0 : Boolean(selectedOption);
 
   // Sync highlightedIndex when dropdown opens
   useEffect(() => {
@@ -284,6 +317,29 @@ export default function Dropdown({
   const handleSelect = useCallback(
     (option) => {
       if (!option || option.disabled) return;
+      if (multiple) {
+        const isCurrentlySelected = selectedValues.some(
+          (v) =>
+            String(v).toLowerCase() === String(option.value).toLowerCase() ||
+            String(v).toLowerCase() === String(option.label).toLowerCase()
+        );
+        const nextValues = isCurrentlySelected
+          ? selectedValues.filter(
+              (v) =>
+                String(v).toLowerCase() !== String(option.value).toLowerCase() &&
+                String(v).toLowerCase() !== String(option.label).toLowerCase()
+            )
+          : [...selectedValues, option.value];
+
+        if (onChange) {
+          onChange(nextValues, option.raw);
+          if (name) {
+            onChange({ target: { name, value: nextValues } }, option.raw);
+          }
+        }
+        return;
+      }
+
       setIsOpen(false);
       setHighlightedIndex(-1);
       hasKeyboardNavigatedRef.current = false;
@@ -294,7 +350,7 @@ export default function Dropdown({
         }
       }
     },
-    [onChange, name]
+    [multiple, selectedValues, onChange, name]
   );
 
   // Type-ahead quick search
@@ -596,10 +652,10 @@ export default function Dropdown({
           {showStatusDot && value && renderStatusDot(value, selectedOption)}
           <span
             className={`truncate ${
-              !selectedOption ? 'text-stone-400 font-normal' : 'text-stone-900 font-medium'
+              !hasSelection ? 'text-stone-400 font-normal' : 'text-stone-900 font-medium'
             }`}
           >
-            {selectedOption ? selectedOption.label : placeholder}
+            {displayText}
           </span>
         </span>
 
@@ -643,8 +699,16 @@ export default function Dropdown({
               No options available
             </div>
           ) : (
-            normalizedOptions.map((opt, idx) => {
-              const isSelected = String(opt.value) === String(value);
+            <>
+            {normalizedOptions.map((opt, idx) => {
+              const isSelected = multiple
+                ? selectedValues.some(
+                    (val) =>
+                      String(val).toLowerCase() === String(opt.value).toLowerCase() ||
+                      String(val).toLowerCase() === String(opt.label).toLowerCase()
+                  )
+                : String(opt.value) === String(value) ||
+                  (value && String(opt.label).toLowerCase() === String(value).toLowerCase());
               const isHighlighted = highlightedIndex === idx;
 
               if (renderOption) {
@@ -707,6 +771,18 @@ export default function Dropdown({
                   )}
 
                   <div className="flex items-center gap-2.5 truncate">
+                    {multiple && (
+                      <span
+                        className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0 ${
+                          isSelected
+                            ? 'border-[var(--theme-primary,#8b6f4e)] bg-[var(--theme-primary,#8b6f4e)] text-white'
+                            : 'border-stone-300 bg-white'
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {isSelected && <HiOutlineCheck className="w-3 h-3 stroke-[3]" />}
+                      </span>
+                    )}
                     {opt.icon && <span className="shrink-0 text-stone-400 group-hover:text-stone-600">{renderDropdownIcon(opt.icon, sizeStyles.icon || 'w-4 h-4')}</span>}
                     {showStatusDot && renderStatusDot(opt.value, opt)}
                     <span className="truncate">{opt.label}</span>
@@ -718,7 +794,29 @@ export default function Dropdown({
                   </div>
                 </button>
               );
-            })
+            })}
+            {multiple && normalizedOptions.length > 0 && (
+              <div className="flex items-center justify-between border-t border-stone-100 px-3.5 py-2 text-xs text-stone-500 bg-stone-50/80 sticky bottom-0">
+                <span>{selectedOptions.length} selected</span>
+                {selectedOptions.length > 0 && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onChange?.([], null);
+                      if (name) {
+                        onChange?.({ target: { name, value: [] } }, null);
+                      }
+                    }}
+                    className="text-[var(--theme-primary,#8b6f4e)] font-semibold hover:underline cursor-pointer text-[11px]"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+            )}
+            </>
           )}
         </div>
         </MenuLayer>

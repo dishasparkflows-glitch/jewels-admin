@@ -218,12 +218,12 @@ const Header = ({ onMobileToggle }) => {
                 color: currentTheme.primary,
               }}
             >
-              {user?.firstName?.[0] || 'S'}
+              {user?.profile?.firstName?.[0] || 'S'}
             </div>
 
             <div className="text-left hidden sm:block">
               <p className="text-xs font-bold text-stone-900 leading-tight group-hover:text-black">
-                {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
+                {user?.profile?.firstName ? `${user.profile.firstName} ${user.profile.lastName || ''}` : 'Super Admin'}
               </p>
               <span className="text-[9px] uppercase tracking-wider font-bold text-stone-400 leading-tight block">
                 {user?.role ? user.role.toUpperCase() : 'SUPER_ADMIN'}
@@ -252,14 +252,14 @@ const Header = ({ onMobileToggle }) => {
                       color: currentTheme.primary,
                     }}
                   >
-                    {user?.firstName?.[0] || 'S'}
+                    {user?.profile?.firstName?.[0] || 'S'}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-xs font-bold text-stone-900 truncate">
-                      {user?.firstName ? `${user.firstName} ${user.lastName || ''}` : 'Super Admin'}
+                      {user?.profile?.firstName ? `${user.profile.firstName} ${user.profile.lastName || ''}` : 'Super Admin'}
                     </p>
                     <p className="text-[11px] text-stone-400 truncate">
-                      {user?.email || 'admin@jewels.com'}
+                      {user?.auth?.email || 'admin@jewels.com'}
                     </p>
                     <span
                       className="inline-block mt-1 px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider"

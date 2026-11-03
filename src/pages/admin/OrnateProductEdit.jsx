@@ -244,7 +244,7 @@ export default function OrnateProductEdit() {
     category: '',
     categoryTag: '',
     menuItem: [],
-    targetGender: '',
+    targetGender: [],
     status: 'draft',
     stockStatus: '',
     showInApp: false,
@@ -363,12 +363,14 @@ export default function OrnateProductEdit() {
             categoryTag: (Array.isArray(product.promoBanner) && product.promoBanner[0]) || product.categoryTag || '',
             menuItem: selectedMenuIds(product),
             targetGender: (() => {
-              const raw = product.basicInfo?.gender ?? product.gender ?? '';
-              const first = (Array.isArray(raw) && raw[0]) || raw || '';
-              const matched = GENDER_OPTIONS.find(
-                (opt) => opt.value.toLowerCase() === String(first).trim().toLowerCase()
-              );
-              return matched ? matched.value : first;
+              const raw = product.basicInfo?.gender ?? product.gender ?? [];
+              const arr = Array.isArray(raw) ? raw : (raw ? [raw] : []);
+              return arr.map((g) => {
+                const matched = GENDER_OPTIONS.find(
+                  (opt) => opt.value.toLowerCase() === String(g).trim().toLowerCase()
+                );
+                return matched ? matched.value : g;
+              }).filter(Boolean);
             })(),
             status: product.status || 'draft',
             stockStatus: product.stockStatus || '',
@@ -475,17 +477,17 @@ export default function OrnateProductEdit() {
 
           // Populate Classification & ERP Details
           setErpDetails({
-            customGroupName: product.ornate?.customGroupName || product.customGroupName || product.groupName || '',
+            customGroupName: product.ornate?.customGroupName || '',
             itemName: product.ornate?.itemCode || product.basicInfo?.title || '',
-            groupName: product.ornate?.groupName || product.groupName || '',
+            groupName: product.ornate?.groupName || '',
             varietyName: product.varietyName || '',
             metalName: product.ornate?.metalName || '',
             uniqueLabelId: product.ornate?.itemCode || '',
-            barcodeNumber: product.ornate?.barcode || product.barcodeNo || product.barcode || '',
+            barcodeNumber: product.ornate?.barcode || '',
             labelNumber: product.ornate?.tagNo || '',
-            remark: product.ornate?.remark || product.remark || product.basicInfo?.remark || '',
-            companyCode: product.ornate?.companyCode || product.companyCode || '',
-            carat: product.ornate?.carat || product.carat || product.specifications?.caratCategory || '',
+            remark: product.ornate?.remark || product.basicInfo?.remark || '',
+            companyCode: product.ornate?.companyCode || '',
+            carat: product.ornate?.carat || product.specifications?.caratCategory || '',
           });
 
           // Populate Images
@@ -1049,7 +1051,9 @@ export default function OrnateProductEdit() {
         categoryIds: baseInfo.category ? [baseInfo.category] : [],
         promoBanner: baseInfo.categoryTag ? [baseInfo.categoryTag] : [],
         menuItemIds: baseInfo.menuItem,
-        gender: baseInfo.targetGender ? [baseInfo.targetGender] : [],
+        gender: Array.isArray(baseInfo.targetGender)
+          ? baseInfo.targetGender.filter(Boolean)
+          : (baseInfo.targetGender ? [baseInfo.targetGender] : []),
         status: activeStatus,
         stockStatus: baseInfo.stockStatus || undefined,
         visibility: {
@@ -1144,7 +1148,9 @@ export default function OrnateProductEdit() {
             : (erpDetails.labelNumber ? `${baseInfo.title.trim()}-${erpDetails.labelNumber}` : baseInfo.title.trim())
           ).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''),
           description: baseInfo.description,
-          ...(baseInfo.targetGender ? { gender: [baseInfo.targetGender] } : {}),
+          gender: Array.isArray(baseInfo.targetGender)
+            ? baseInfo.targetGender.filter(Boolean)
+            : (baseInfo.targetGender ? [baseInfo.targetGender] : []),
         },
         pricing: {
           mrp: Number(pricing.mrp) || Number(pricing.salePrice) || 0,
@@ -1444,8 +1450,9 @@ export default function OrnateProductEdit() {
                     Target Gender
                   </label>
                   <Dropdown
+                    multiple
                     value={baseInfo.targetGender}
-                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, targetGender: val }))}
+                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, targetGender: Array.isArray(val) ? val : [val].filter(Boolean) }))}
                     options={GENDER_OPTIONS}
                     placeholder="Select Gender"
                     size="sm"

@@ -937,9 +937,9 @@ export default function CelebrateGiftsView() {
                           prod.colorImages?.[0]?.images?.[0]?.url ||
                           prod.images?.[0]?.url ||
                           prod.image?.url;
-                        const pTitle = prod.title || prod.name || prod.basicInfo?.title || 'Untitled Jewelry';
-                        const price = Number(prod.price || prod.salePrice || prod.pricing?.sellingPrice || 0);
-                        const sku = prod.sku || prod.basicInfo?.sku || prod.ornate?.tagNo || '';
+                        const pTitle = prod.basicInfo?.title || 'Untitled Jewelry';
+                        const price = Number(prod.pricing?.salePrice || prod.pricing?.sellingPrice || 0);
+                        const sku = prod.basicInfo?.sku || prod.ornate?.tagNo || '';
 
                         return (
                           <div

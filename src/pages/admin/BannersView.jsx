@@ -825,7 +825,7 @@ export default function BannersView() {
   // Delete a banner
   const handleDelete = async (banner, e) => {
     e?.stopPropagation();
-    const bannerTitle = banner.content?.title || banner.title || 'Banner';
+    const bannerTitle = banner.content?.title || 'Banner';
     const isConfirmed = await confirm({
       title: 'Delete Banner',
       message: `Are you sure you want to delete "${bannerTitle}"? This cannot be undone.`,
@@ -1134,8 +1134,8 @@ export default function BannersView() {
                   </tr>
                 ) : (
                   paginatedItems.map((banner) => {
-                    const bTitle = banner.content?.title || banner.title || 'Untitled Banner';
-                    const bDesc = banner.content?.description || banner.content?.subtitle || banner.subtitle || '';
+                    const bTitle = banner.content?.title || 'Untitled Banner';
+                    const bDesc = banner.content?.description || banner.content?.subtitle || '';
                     const assetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url);
                     const isPublished = banner.status === 'active';
                     const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);
