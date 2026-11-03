@@ -377,6 +377,9 @@ export default function AddJewelryProduct() {
   const [saving, setSaving] = useState(false);
   const [menuItemIds, setMenuItemIds] = useState([]);
   const [autoOpenMenu, setAutoOpenMenu] = useState(false);
+  const [selectedSizeIds, setSelectedSizeIds] = useState([]);
+  const [categorySizes, setCategorySizes] = useState([]);
+  const [loadingSizes, setLoadingSizes] = useState(false);
 
   // Ensure document body scroll is always active and never locked
   useEffect(() => {
@@ -600,7 +603,34 @@ export default function AddJewelryProduct() {
       soldCount: productRecord.demoMetrics?.soldCount ?? '',
       reviewCount: productRecord.demoMetrics?.reviewCount ?? '',
     });
+
+    const rawSizes = productRecord.sizeIds || productRecord.sizes || [];
+    const sizeIdArr = Array.isArray(rawSizes)
+      ? rawSizes.map((s) => String(s && typeof s === 'object' ? (s._id || s.id) : s)).filter(Boolean)
+      : [];
+    setSelectedSizeIds(sizeIdArr);
   }, [productRecord]);
+
+  // Fetch sizes whenever selected category changes
+  useEffect(() => {
+    if (!basicDetails.category) {
+      setCategorySizes([]);
+      return;
+    }
+    setLoadingSizes(true);
+    api.get(`/sizes/lookup?categoryId=${basicDetails.category}`)
+      .then((res) => {
+        const items = res.data?.data?.items || res.data?.data || [];
+        setCategorySizes(Array.isArray(items) ? items : []);
+      })
+      .catch((err) => {
+        console.warn('Failed to load sizes for category:', err);
+        setCategorySizes([]);
+      })
+      .finally(() => {
+        setLoadingSizes(false);
+      });
+  }, [basicDetails.category]);
 
   const selectedCategory = useMemo(
     () => categoryList.find((category) => String(category._id) === String(basicDetails.category)),
@@ -3075,6 +3105,7 @@ export default function AddJewelryProduct() {
           ? (productRecord?.status || seo.status || (productId ? 'approved' : 'draft'))
           : (statusOverride === 'draft' ? 'draft' : 'approved'),
         ...(categoryId ? { categoryIds: [categoryId] } : {}),
+        sizeIds: selectedSizeIds || [],
         ...(menuItemIds && menuItemIds.length ? { menuItemIds } : {}),
         ...(Object.keys(pricingData).length ? { pricing: pricingData } : {}),
         ...(Object.keys(specificationData).length ? { specifications: specificationData } : {}),
@@ -3484,6 +3515,79 @@ export default function AddJewelryProduct() {
                     className="w-full"
                   />
                 </div>
+
+                {/* Available Sizes for Selected Category */}
+                {basicDetails.category && (
+                  <div className="sm:col-span-2 space-y-2 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 shadow-2xs">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">📏</span>
+                        <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                          Available Sizes
+                        </h4>
+                        {categorySizes.length > 0 && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf5ee] text-[#8b6f4e] border border-[#d9c4a8]/60">
+                            {selectedSizeIds.length} of {categorySizes.length} Selected
+                          </span>
+                        )}
+                      </div>
+                      {categorySizes.length > 0 && (
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSizeIds(categorySizes.map((s) => String(s._id)))}
+                            className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                          >
+                            Select All
+                          </button>
+                          <span className="text-stone-300">|</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedSizeIds([])}
+                            className="text-[11px] font-semibold text-stone-400 hover:text-stone-600 cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {loadingSizes ? (
+                      <p className="text-xs text-stone-400 font-medium py-2">Loading sizes for category...</p>
+                    ) : categorySizes.length === 0 ? (
+                      <p className="text-xs text-stone-400 font-medium py-1">
+                        No sizes configured for this category yet. You can add them under Catalog &rarr; Size.
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-2 pt-1">
+                        {categorySizes.map((size) => {
+                          const sizeIdStr = String(size._id);
+                          const isChecked = selectedSizeIds.includes(sizeIdStr);
+                          return (
+                            <button
+                              type="button"
+                              key={sizeIdStr}
+                              onClick={() => {
+                                setSelectedSizeIds((prev) =>
+                                  isChecked
+                                    ? prev.filter((id) => id !== sizeIdStr)
+                                    : [...prev, sizeIdStr]
+                                );
+                              }}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                                isChecked
+                                  ? 'bg-[#8b6f4e] text-white border-[#8b6f4e] shadow-xs'
+                                  : 'bg-white text-stone-700 border-stone-200 hover:border-stone-300'
+                              }`}
+                            >
+                              {size.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div className="sm:col-span-2 space-y-1.5">
                   <label className="text-xs font-bold text-stone-900">Luxury Description</label>
