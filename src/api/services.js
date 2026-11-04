@@ -45,7 +45,6 @@ export const homeSectionsAPI = {
   toggleStatus: (id) => api.patch(`/home-sections/${id}/toggle-status`),
   reorder: (items) => api.put('/home-sections/reorder', { items }),
   bulkDelete: (ids) => api.post('/home-sections/bulk-delete', { ids }),
-  getPublic: (params) => api.get('/home-sections/public', { params }),
 };
 
 // ─── Website theme management ─────────────────────────
@@ -88,7 +87,6 @@ export const topAnnouncementsAPI = {
   toggleStatus: (id) => api.patch(`/top-announcements/${id}/toggle-status`),
   duplicate: (id) => api.post(`/top-announcements/${id}/duplicate`),
   reorder: (items) => api.put('/top-announcements/reorder', { items }),
-  getPublic: () => api.get('/top-announcements/public'),
 };
 
 // ─── Diamonds ─────────────────────────────────────
@@ -97,7 +95,6 @@ export const diamondsAPI = {
   getById: (id) => api.get(`/diamonds/${id}`),
   getBySku: (sku) => api.get(`/diamonds/sku/${sku}`),
   getAttributes: () => api.get('/diamonds/attributes'),
-  getOptions: () => api.get('/diamonds/attributes'),
   getLookup: (params) => api.get('/diamonds/lookup', { params }),
   create: (data) => api.post('/diamonds', data),
   bulkCreate: (items) => api.post('/diamonds/bulk', { items }),
