@@ -158,6 +158,7 @@ const routeMap = {
     singularTitle: 'Category',
     fields: [
       { name: 'name', label: 'Category Name', type: 'text', required: true, placeholder: 'e.g. Rings, Necklaces' },
+      { name: 'type', label: 'Category Type', type: 'select', default: 'category', options: [{ value: 'category', label: 'Category' }, { value: 'collection', label: 'Collection' }] },
       { name: 'icon', label: 'Icon', type: 'icon', placeholder: 'Upload Icon' },
       { name: 'banner', label: 'Banner', type: 'banner', placeholder: 'Upload Banner' },
     ],
@@ -332,7 +333,25 @@ const DynamicModuleView = () => {
       navigate('/catalog/ornate-products/add');
     } else {
       setEditingRecord(null);
-      const defaults = isCategoryPage ? { promoBanners: [], status: 'active', themeId: '', sizeChart: '', sizeChartKey: '', iconKey: '', bannerKey: '' } : {};
+      const defaults = isCategoryPage
+        ? {
+            promoBanners: [],
+            status: 'active',
+            themeId: '',
+            type: 'category',
+            sizeChart: '',
+            sizeChartKey: '',
+            iconKey: '',
+            bannerKey: '',
+            sizingConfig: {
+              isScalable: false,
+              sizeLabel: 'Size',
+              baseSize: 7.0,
+              stepSize: 1.0,
+              percentPerStep: 2.5,
+            },
+          }
+        : {};
       setPendingThemeImages({});
       (config.fields || []).forEach((f) => {
         if (f.default !== undefined) defaults[f.name] = f.default;
@@ -350,6 +369,26 @@ const DynamicModuleView = () => {
     if (isCategoryPage) {
       initial.status = row.status ?? 'active';
       initial.themeId = row.themeId?._id || row.themeId || '';
+      initial.type = row.type || 'category';
+
+      const isRing = String(row.name || '').toLowerCase().includes('ring') && !String(row.name || '').toLowerCase().includes('earring');
+      const isBangle = String(row.name || '').toLowerCase().includes('bangle');
+      const isNecklace = String(row.name || '').toLowerCase().includes('necklace');
+      const isBracelet = !isBangle && String(row.name || '').toLowerCase().includes('bracelet');
+
+      const defaultIsScalable = Boolean(row.sizingConfig?.isScalable ?? (isRing || isBangle || isBracelet || isNecklace));
+      const defaultLabel = row.sizingConfig?.sizeLabel || (isRing ? 'Size (US)' : isBangle ? 'Bangle Size' : (isBracelet || isNecklace) ? 'Length (Inch)' : 'Size');
+      const defaultBase = row.sizingConfig?.baseSize !== undefined ? Number(row.sizingConfig.baseSize) : (isBangle ? 2.4 : isNecklace ? 16.0 : 7.0);
+      const defaultStep = row.sizingConfig?.stepSize !== undefined ? Number(row.sizingConfig.stepSize) : (isBangle ? 0.2 : isNecklace ? 2.0 : isBracelet ? 0.5 : 1.0);
+      const defaultPercent = row.sizingConfig?.percentPerStep !== undefined ? Number(row.sizingConfig.percentPerStep) : (isBangle ? 4.0 : isNecklace ? 10.0 : isBracelet ? 3.0 : 2.5);
+
+      initial.sizingConfig = {
+        isScalable: defaultIsScalable,
+        sizeLabel: defaultLabel,
+        baseSize: defaultBase,
+        stepSize: defaultStep,
+        percentPerStep: defaultPercent,
+      };
     }
     if (config.fields) {
       config.fields.forEach((f) => {
@@ -739,6 +778,8 @@ const DynamicModuleView = () => {
       // Ensure proper structure for categories
       if (cleanEndpoint === '/categories') {
         payload.themeId = payload.themeId || null;
+        payload.type = (payload.type || 'category').toLowerCase();
+        delete payload.categoryType;
         const iconVal = typeof payload.icon === 'object' ? (payload.icon?.url || '') : (payload.icon || '');
         const iconKey = payload.iconKey || (typeof payload.icon === 'object' ? payload.icon?.key : '') || '';
         payload.icon = { url: (iconVal || '').trim(), key: (iconKey || '').trim() };
@@ -754,6 +795,15 @@ const DynamicModuleView = () => {
         delete payload.iconKey;
         delete payload.bannerKey;
         delete payload.sizeChartKey;
+        if (payload.sizingConfig) {
+          payload.sizingConfig = {
+            isScalable: Boolean(payload.sizingConfig.isScalable),
+            sizeLabel: (payload.sizingConfig.sizeLabel || 'Size').trim(),
+            baseSize: Number(payload.sizingConfig.baseSize ?? 7.0),
+            stepSize: Number(payload.sizingConfig.stepSize ?? 1.0) || 1.0,
+            percentPerStep: Number(payload.sizingConfig.percentPerStep ?? 2.5),
+          };
+        }
         if (Array.isArray(payload.promoBanners)) {
           payload.promoBanners = payload.promoBanners.map((b, idx) => ({
             _id: b._id,
@@ -1533,9 +1583,18 @@ const DynamicModuleView = () => {
                               )}
                               {row.ratePerCarat && `₹${Number(row.ratePerCarat).toLocaleString('en-IN')}/ct`}
                               {row.rate && !row.ratePerCarat && `₹${Number(row.rate).toLocaleString('en-IN')}/ct`}
-                              {typeName && (
+                              {!isCategoryPage && typeName && (
                                 <span className="capitalize px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 text-[10px]">
                                   {typeName}
+                                </span>
+                              )}
+                              {isCategoryPage && (
+                                <span className={`px-2 py-0.5 rounded text-[10px] font-semibold border capitalize ${
+                                  String(row.type || '').toLowerCase() === 'collection'
+                                    ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                    : 'bg-stone-100 text-stone-700 border-stone-200'
+                                }`}>
+                                  {row.type ? (row.type.charAt(0).toUpperCase() + row.type.slice(1)) : 'Category'}
                                 </span>
                               )}
                               {row.banner && (row.banner.url || (typeof row.banner === 'string' && row.banner)) && (
@@ -1552,6 +1611,14 @@ const DynamicModuleView = () => {
                                 <span className="px-1.5 py-0.5 rounded bg-purple-50 text-purple-700 border border-purple-200/60 text-[10px] font-medium flex items-center gap-1">
                                   <HiOutlineSparkles className="w-3 h-3 text-purple-500" />
                                   {row.promoBanners.length} Promo Banner{row.promoBanners.length > 1 ? 's' : ''}
+                                </span>
+                              )}
+                              {isCategoryPage && row.sizingConfig?.isScalable && (
+                                <span
+                                  className="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200/60 text-[10px] font-medium"
+                                  title={`Base ${row.sizingConfig.baseSize}, Step ${row.sizingConfig.stepSize}, ±${row.sizingConfig.percentPerStep}%`}
+                                >
+                                  📏 Scalable ({row.sizingConfig.sizeLabel || 'Size'})
                                 </span>
                               )}
                             </div>
@@ -1717,10 +1784,10 @@ const DynamicModuleView = () => {
 
             {isCategoryPage ? (
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* ─── TOP ROW: Category Name, Theme & Category Status ─── */}
+                {/* ─── TOP ROW: Category Name, Theme, Category Type & Category Status ─── */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-start">
                   {/* Category Name */}
-                  <div className="sm:col-span-5">
+                  <div className="sm:col-span-4">
                     <label className="text-xs font-bold text-stone-800 mb-1.5 block">
                       Category Name <span className="text-rose-500 font-bold">*</span>
                     </label>
@@ -1737,7 +1804,7 @@ const DynamicModuleView = () => {
                   </div>
 
                   {/* Theme */}
-                  <div className="sm:col-span-4">
+                  <div className="sm:col-span-3">
                     <label className="text-xs font-bold text-stone-800 mb-1.5 block">
                       Theme <span className="text-rose-500 font-bold">*</span>
                     </label>
@@ -1760,8 +1827,28 @@ const DynamicModuleView = () => {
                     />
                   </div>
 
-                  {/* Category Status Toggle */}
+                  {/* Category Type */}
                   <div className="sm:col-span-3">
+                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
+                      Category Type
+                    </label>
+                    <Dropdown
+                      value={formData.type || 'category'}
+                      onChange={(val) =>
+                        setFormData((prev) => ({ ...prev, type: val }))
+                      }
+                      options={[
+                        { value: 'category', label: 'Category' },
+                        { value: 'collection', label: 'Collection' },
+                      ]}
+                      placeholder="Select Category Type"
+                      size="field"
+                      buttonClassName="w-full h-10 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
+                    />
+                  </div>
+
+                  {/* Category Status Toggle */}
+                  <div className="sm:col-span-2">
                     <label className="text-xs font-bold text-stone-800 mb-1.5 block">
                       Category Status
                     </label>
@@ -2367,6 +2454,250 @@ const DynamicModuleView = () => {
                       )}
                     </div>
                   </div>
+                </div>
+
+                {/* ─── JEWELRY SIZING ENGINE CONFIGURATION CARD ─── */}
+                <div className="bg-[#FAF9F6]/60 rounded-2xl border border-stone-200/90 p-4 sm:p-5 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-700 shrink-0 shadow-2xs text-base">
+                        📏
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-stone-900 leading-tight">
+                          Jewelry Sizing Engine Configuration
+                        </h4>
+                        <p className="text-[11px] text-stone-500 font-normal mt-0.5">
+                          Configure whether size selection dynamically adjusts gold weight and final pricing.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Enable Sizing Scale Toggle */}
+                    <div className="flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-stone-200 shadow-2xs">
+                      <span className="text-xs font-bold text-stone-800">
+                        {formData.sizingConfig?.isScalable ? 'Size Scales Gold Weight' : 'Fixed Gold Weight (No Scaling)'}
+                      </span>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={Boolean(formData.sizingConfig?.isScalable)}
+                        onClick={() => {
+                          const nextVal = !formData.sizingConfig?.isScalable;
+                          setFormData((prev) => ({
+                            ...prev,
+                            sizingConfig: {
+                              ...(prev.sizingConfig || {}),
+                              isScalable: nextVal,
+                            },
+                          }));
+                        }}
+                        style={formData.sizingConfig?.isScalable ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formData.sizingConfig?.isScalable ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            formData.sizingConfig?.isScalable ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {formData.sizingConfig?.isScalable ? (
+                    <div className="space-y-3.5 pt-2 border-t border-stone-200/60">
+                      {/* 1-Click Presets */}
+                      <div className="space-y-1.5">
+                        <label className="text-[11px] font-bold text-stone-600 uppercase tracking-wider block">
+                          Quick Presets:
+                        </label>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                sizingConfig: {
+                                  isScalable: true,
+                                  sizeLabel: 'Size (US)',
+                                  baseSize: 7.0,
+                                  stepSize: 1.0,
+                                  percentPerStep: 2.5,
+                                },
+                              }));
+                            }}
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[#8b6f4e] cursor-pointer transition-colors"
+                          >
+                            💍 Rings (US 7.0 · Step 1.0 · ±2.5%)
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                sizingConfig: {
+                                  isScalable: true,
+                                  sizeLabel: 'Bangle Size',
+                                  baseSize: 2.4,
+                                  stepSize: 0.2,
+                                  percentPerStep: 4.0,
+                                },
+                              }));
+                            }}
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[#8b6f4e] cursor-pointer transition-colors"
+                          >
+                            ⭕ Bangles (2.4 · Step 0.2 · ±4.0%)
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                sizingConfig: {
+                                  isScalable: true,
+                                  sizeLabel: 'Length (Inch)',
+                                  baseSize: 7.0,
+                                  stepSize: 0.5,
+                                  percentPerStep: 3.0,
+                                },
+                              }));
+                            }}
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[#8b6f4e] cursor-pointer transition-colors"
+                          >
+                            ✨ Bracelets (7.0" · Step 0.5" · ±3.0%)
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFormData((prev) => ({
+                                ...prev,
+                                sizingConfig: {
+                                  isScalable: true,
+                                  sizeLabel: 'Length (Inch)',
+                                  baseSize: 16.0,
+                                  stepSize: 2.0,
+                                  percentPerStep: 10.0,
+                                },
+                              }));
+                            }}
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[#8b6f4e] cursor-pointer transition-colors"
+                          >
+                            📿 Necklaces (16.0" · Step 2.0" · ±10.0%)
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Input Fields */}
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div>
+                          <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                            Storefront Size Label
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Size (US), Bangle Size"
+                            value={formData.sizingConfig?.sizeLabel || ''}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                sizingConfig: {
+                                  ...(prev.sizingConfig || {}),
+                                  sizeLabel: e.target.value,
+                                },
+                              }))
+                            }
+                            className="w-full h-9 px-3 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                            CAD Base Size
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            placeholder="e.g. 7.0 or 2.4"
+                            value={formData.sizingConfig?.baseSize ?? 7.0}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                sizingConfig: {
+                                  ...(prev.sizingConfig || {}),
+                                  baseSize: parseFloat(e.target.value) || 0,
+                                },
+                              }))
+                            }
+                            className="w-full h-9 px-3 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                            Step Size Increment
+                          </label>
+                          <input
+                            type="number"
+                            step="0.1"
+                            placeholder="e.g. 1.0 or 0.2"
+                            value={formData.sizingConfig?.stepSize ?? 1.0}
+                            onChange={(e) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                sizingConfig: {
+                                  ...(prev.sizingConfig || {}),
+                                  stepSize: parseFloat(e.target.value) || 0,
+                                },
+                              }))
+                            }
+                            className="w-full h-9 px-3 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="text-[11px] font-bold text-stone-700 block mb-1">
+                            Weight Change % / Step
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              step="0.1"
+                              placeholder="e.g. 2.5"
+                              value={formData.sizingConfig?.percentPerStep ?? 2.5}
+                              onChange={(e) =>
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  sizingConfig: {
+                                    ...(prev.sizingConfig || {}),
+                                    percentPerStep: parseFloat(e.target.value) || 0,
+                                  },
+                                }))
+                              }
+                              className="w-full h-9 pl-3 pr-7 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                            />
+                            <span className="absolute right-2.5 top-2 text-xs font-bold text-stone-400 pointer-events-none">
+                              %
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Formula preview */}
+                      <div className="bg-amber-50/60 border border-amber-200/60 rounded-xl px-3 py-2 text-[11px] text-amber-900 flex items-center gap-2">
+                        <span>ℹ️</span>
+                        <span>
+                          <strong>Formula:</strong> Every <strong>{formData.sizingConfig?.stepSize || 1.0}</strong> step difference from base <strong>{formData.sizingConfig?.baseSize || 7.0}</strong> will adjust metal weight by <strong>±{formData.sizingConfig?.percentPerStep || 2.5}%</strong>.
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="pt-2 border-t border-stone-200/60 text-xs text-stone-500 italic">
+                      Fixed gold weight mode active: All sizes will use the exact base metal weight entered on the product (standard for Earrings, Pendants, Brooches, Nose Pins).
+                    </div>
+                  )}
                 </div>
 
                 {/* ─── BOTTOM FOOTER BAR ─── */}

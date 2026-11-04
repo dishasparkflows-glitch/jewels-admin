@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlineTrash, HiOutlinePlus } from 'react-icons/hi';
 import Dropdown from './Dropdown';
 import api from '../../api/axios';
 
@@ -336,16 +336,20 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
       )}
       {enabled.map((type) => (
         <div key={type} className="space-y-3">
-          <div className="flex justify-between">
-            <h4 className="text-xs font-bold uppercase">
-              {types.find((t) => id(t) === type)?.name || 'Diamond type'}
-            </h4>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
+              <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">
+                {types.find((t) => id(t) === type)?.name || 'Diamond type'}
+              </h4>
+            </div>
             <button
               type="button"
-              className="inline-flex items-center gap-1.5 rounded-lg border border-[#8b6f4e] bg-[#8b6f4e] px-3 py-2 text-xs font-semibold text-white hover:bg-[#785e40] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#8b6f4e] focus-visible:ring-offset-2"
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#765b3d] active:scale-95 transition-all shadow-xs hover:shadow cursor-pointer"
               onClick={addRow}
             >
-              + Add Row
+              <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
+              <span>Add Row</span>
             </button>
           </div>
           <div className="overflow-x-auto border rounded-xl">

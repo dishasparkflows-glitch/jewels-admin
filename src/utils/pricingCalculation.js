@@ -1,10 +1,10 @@
 import api from '../api/axios';
 
-// --- NEW LOGIC: PROGRESSIVE PERCENTAGE INCREASE WITH 5% EXTRA WEIGHT ADDED GLOBALLY ---
+// --- METAL WEIGHT CALCULATION (14KT BASE PURITY SCALING + CENTER DIAMOND PRONG ALLOWANCE) ---
 export const calculateEffectiveWeight = (metalWeight, metalPurity, centerDiamondCarat = 0, baseCarat = 1) => {
   const baseWeight = parseFloat(metalWeight) || 0;
   if (!metalPurity) {
-    return Math.round(((baseWeight * 1.05) + Number.EPSILON) * 1000) / 1000;
+    return Math.round((baseWeight + Number.EPSILON) * 1000) / 1000;
   }
 
   const karat = typeof metalPurity === 'object' ? (metalPurity.karat || 0) : Number(metalPurity || 0);
@@ -25,26 +25,17 @@ export const calculateEffectiveWeight = (metalWeight, metalPurity, centerDiamond
     const extraWeight = caratVal > 0 ? (caratVal - baseCaratVal) * (karatWeight * 0.08) : 0;
 
     const finalWeightWithCarat = karatWeight + extraWeight;
-    const finalWeightWith5Percent = finalWeightWithCarat * 1.05;
-    return Math.round((finalWeightWith5Percent + Number.EPSILON) * 1000) / 1000;
+    return Math.round((finalWeightWithCarat + Number.EPSILON) * 1000) / 1000;
   }
 
-  return Math.round(((baseWeight * 1.05) + Number.EPSILON) * 1000) / 1000;
+  return Math.round((baseWeight + Number.EPSILON) * 1000) / 1000;
 };
 
 /**
  * Call the backend /products/calculate API endpoint
  */
 export async function calculateProductPriceAPI(payload) {
-  try {
-    const response = await api.post('/products/calculate', payload);
-    return response.data?.data ?? response.data;
-  } catch (error) {
-    if (error.response?.status === 404) {
-      const fallback = await api.post('/admin/product/calculate', payload);
-      return fallback.data?.data ?? fallback.data;
-    }
-    throw error;
-  }
+  const response = await api.post('/products/calculate', payload);
+  return response.data?.data ?? response.data;
 }
 

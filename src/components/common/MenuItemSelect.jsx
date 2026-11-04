@@ -230,7 +230,7 @@ export default function MenuItemSelect({
               className="w-full rounded-lg border border-stone-200 py-1.5 pl-8 pr-2 text-xs outline-none focus:border-[#8b6f4e]"
             />
           </div>
-          <div className="max-h-72 overflow-y-auto overscroll-contain p-2">
+          <div className="max-h-96 overflow-y-auto overscroll-contain p-3 space-y-3">
             {loading ? (
               <p role="status" className="p-3 text-xs text-stone-500">
                 Loading menu items…
@@ -249,38 +249,63 @@ export default function MenuItemSelect({
             ) : (
               <>
                 {visible.map((category) => (
-                  <section key={category._id} className="mb-3 last:mb-0">
-                    <h3 className="rounded-md bg-stone-50 px-2 py-1.5 text-[10px] font-bold uppercase tracking-widest text-stone-600">
-                      {category.name}
-                      {category.status === 'inactive' ? ' (hidden)' : ''}
-                    </h3>
-                    {category.sections.map((section) => (
-                      <div key={section._id} className="mt-2">
-                        <h4 className="px-2 py-1 text-[9px] font-bold uppercase tracking-widest text-[#8b6f4e]">
-                          {section.title}
-                          {section.status === 'inactive' ? ' (hidden)' : ''}
-                        </h4>
-                        {section.items.map((item) => (
-                          <label
-                            key={item._id}
-                            className="flex cursor-pointer items-start gap-2 rounded-lg px-2 py-2 text-xs text-stone-700 hover:bg-[#faf6f0] transition-colors"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={value.includes(item._id)}
-                              onChange={() => toggle(item._id)}
-                              className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-[#8b6f4e]"
-                            />
-                            <span>
-                              {item.title}
-                              {item.status === 'inactive' && (
-                                <span className="ml-1 text-stone-400">(hidden)</span>
+                  <section key={category._id} className="space-y-2.5">
+                    <div className="flex items-center justify-between rounded-lg bg-stone-100/70 px-2.5 py-1.5 border border-stone-200/50">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-stone-700">
+                        {category.name}
+                        {category.status === 'inactive' && (
+                          <span className="ml-1 text-stone-400 font-normal">(hidden)</span>
+                        )}
+                      </span>
+                      <span className="text-[10px] text-stone-400 font-medium">
+                        {category.sections.reduce((acc, s) => acc + s.items.length, 0)} items
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 p-0.5 items-start">
+                      {category.sections.map((section) => (
+                        <div key={section._id} className="space-y-1.5 bg-stone-50/50 p-2.5 rounded-xl border border-stone-200/60">
+                          <div className="flex items-center justify-between px-1 pb-1 border-b border-stone-200/70">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-[#8b6f4e]">
+                              {section.title}
+                              {section.status === 'inactive' && (
+                                <span className="ml-1 text-stone-400 font-normal text-[9px]">(hidden)</span>
                               )}
                             </span>
-                          </label>
-                        ))}
-                      </div>
-                    ))}
+                            <span className="text-[10px] text-stone-400 font-medium">
+                              {section.items.length}
+                            </span>
+                          </div>
+                          <div className="space-y-1.5 pt-1">
+                            {section.items.map((item) => {
+                              const isSelected = value.includes(item._id);
+                              return (
+                                <label
+                                  key={item._id}
+                                  className={`flex cursor-pointer items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs transition-all border select-none ${
+                                    isSelected
+                                      ? 'bg-[#8b6f4e]/10 border-[#8b6f4e]/40 text-[#8b6f4e] font-semibold shadow-2xs'
+                                      : 'bg-white border-stone-200/70 text-stone-700 hover:border-[#8b6f4e]/30 hover:bg-[#faf8f5]'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggle(item._id)}
+                                    className="h-3.5 w-3.5 shrink-0 rounded accent-[#8b6f4e] cursor-pointer"
+                                  />
+                                  <span className="truncate flex-1" title={item.title}>
+                                    {item.title}
+                                    {item.status === 'inactive' && (
+                                      <span className="ml-1 text-stone-400 font-normal text-[10px]">(hidden)</span>
+                                    )}
+                                  </span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </section>
                 ))}
                 {!visible.length && (
@@ -291,21 +316,23 @@ export default function MenuItemSelect({
                   </p>
                 )}
                 {!!missingIds.length && (
-                  <div className="border-t border-stone-100 pt-2">
-                    <p className="px-2 text-[10px] text-stone-500">
-                      Previously selected items no longer available
+                  <div className="border-t border-stone-200/60 pt-2.5">
+                    <p className="px-2 text-[10px] text-amber-600 font-medium">
+                      Previously selected items no longer available:
                     </p>
-                    {missingIds.map((itemId) => (
-                      <label key={itemId} className="flex items-center gap-2 p-2 text-xs">
-                        <input
-                          type="checkbox"
-                          checked
-                          onChange={() => toggle(itemId)}
-                          className="accent-[#8b6f4e]"
-                        />
-                        Unavailable item
-                      </label>
-                    ))}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 mt-1">
+                      {missingIds.map((itemId) => (
+                        <label key={itemId} className="flex cursor-pointer items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs border border-amber-200 bg-amber-50/50 text-amber-800">
+                          <input
+                            type="checkbox"
+                            checked
+                            onChange={() => toggle(itemId)}
+                            className="h-3.5 w-3.5 shrink-0 rounded accent-[#8b6f4e]"
+                          />
+                          <span className="truncate">Unavailable item</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                 )}
               </>

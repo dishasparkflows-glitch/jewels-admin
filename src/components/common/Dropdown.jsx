@@ -136,6 +136,7 @@ export default function Dropdown({
         dotColor: opt.dotColor,
         badge: opt.badge,
         disabled: Boolean(opt.disabled),
+        isHeader: Boolean(opt.isHeader),
         raw: opt,
       };
     }
@@ -701,6 +702,17 @@ export default function Dropdown({
           ) : (
             <>
             {normalizedOptions.map((opt, idx) => {
+              if (opt.isHeader) {
+                return (
+                  <div
+                    key={`header-${opt.value || idx}`}
+                    className="px-3 py-1.5 text-[10px] font-bold text-stone-400 uppercase tracking-wider bg-stone-50/90 border-y border-stone-100 first:border-t-0 select-none"
+                  >
+                    {opt.label}
+                  </div>
+                );
+              }
+
               const isSelected = multiple
                 ? selectedValues.some(
                     (val) =>
@@ -792,6 +804,15 @@ export default function Dropdown({
                       </span>
                     )}
                   </div>
+                  {opt.badge && (
+                    <span className={`text-[9.5px] font-semibold px-2 py-0.5 rounded-md border shrink-0 ml-2 ${
+                      opt.badge === 'Collection'
+                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                        : 'bg-[#faf5ee] text-[#8b6f4e] border-[#e8d8c0]'
+                    }`}>
+                      {opt.badge}
+                    </span>
+                  )}
                 </button>
               );
             })}

@@ -225,7 +225,13 @@ export default function OrnateProductEdit() {
   const [dragOverCareIndex, setDragOverCareIndex] = useState(null);
 
   // Dropdown options loaded from backend
-  const { categoryOptions: categories } = useCategoryLookup();
+  const {
+    categories: rawCategoryList,
+    regularCategories,
+    collectionCategories,
+    categoryOnlyOptions,
+  } = useCategoryLookup();
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState([]);
 
   // ─── 1. Base Information ───────────────────────────────────
   const [baseInfo, setBaseInfo] = useState({
@@ -236,8 +242,8 @@ export default function OrnateProductEdit() {
     targetGender: [],
     status: 'draft',
     stockStatus: '',
-    showInApp: false,
-    showOnWeb: false,
+    showInApp: true,
+    showOnWeb: true,
     description: '',
     soldCount: '',
     reviewCount: '',
@@ -384,12 +390,19 @@ export default function OrnateProductEdit() {
 
         if (product) {
           setProductRecord(product);
+          const rawCatList = product.categoryIds || product.category || [];
+          const allCatIds = (Array.isArray(rawCatList) ? rawCatList : [rawCatList])
+            .map((c) => String(c && typeof c === 'object' ? (c._id || c.id) : c))
+            .filter(Boolean);
+          const regMatch = allCatIds.find((id) => regularCategories.some((r) => String(r._id) === id));
+          const collIds = allCatIds.filter((id) => collectionCategories.some((c) => String(c._id) === id));
+          const primaryCat = regMatch || allCatIds.find((id) => !collIds.includes(id)) || allCatIds[0] || '';
+          setSelectedCollectionIds(collIds);
+
           // Populate Base Information
           setBaseInfo({
             title: product.basicInfo?.title || '',
-            category: Array.isArray(product.categoryIds)
-              ? (product.categoryIds[0]?._id || product.categoryIds[0] || '')
-              : (product.categoryIds?._id || product.categoryIds || ''),
+            category: primaryCat,
             categoryTag: (Array.isArray(product.promoBanner) && product.promoBanner[0]) || product.categoryTag || '',
             menuItem: selectedMenuIds(product),
             targetGender: (() => {
@@ -1078,7 +1091,7 @@ export default function OrnateProductEdit() {
       const payload = {
         ...(!isEditMode ? { _id: draftProductId } : {}),
         // Product identity and copy live in basicInfo.
-        categoryIds: baseInfo.category ? [baseInfo.category] : [],
+        categoryIds: [...new Set([baseInfo.category, ...(selectedCollectionIds || [])].filter(Boolean))],
         promoBanner: baseInfo.categoryTag ? [baseInfo.categoryTag] : [],
         menuItemIds: baseInfo.menuItem,
         gender: Array.isArray(baseInfo.targetGender)
@@ -1462,21 +1475,57 @@ export default function OrnateProductEdit() {
 
               {/* Category & Category Tag Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                    Category
-                  </label>
-                  <Dropdown
-                    value={baseInfo.category}
-                    onChange={(val) => {
-                      setBaseInfo((prev) => ({ ...prev, category: val, menuItem: val === prev.category ? prev.menuItem : [] }));
-                      if (val) setAutoOpenMenu(true);
-                    }}
-                    options={categories}
-                    placeholder="Select Category"
-                    size="sm"
-                    buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
-                  />
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                      Category
+                    </label>
+                    <Dropdown
+                      value={baseInfo.category}
+                      onChange={(val) => {
+                        setBaseInfo((prev) => ({ ...prev, category: val, menuItem: val === prev.category ? prev.menuItem : [] }));
+                        if (val) setAutoOpenMenu(true);
+                      }}
+                      options={categoryOnlyOptions}
+                      placeholder="Select Category"
+                      size="sm"
+                      buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
+                    />
+                  </div>
+
+                  {collectionCategories.length > 0 && (
+                    <div className="pt-2.5 border-t border-stone-200/80 space-y-2">
+                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                        COLLECTIONS (SELECT MULTIPLE)
+                      </label>
+                      <div className="space-y-2">
+                        {collectionCategories.map((col) => {
+                          const colId = String(col._id);
+                          const isChecked = selectedCollectionIds.includes(colId);
+                          return (
+                            <label
+                              key={colId}
+                              className="flex items-center gap-2.5 cursor-pointer text-xs sm:text-[13px] font-medium text-stone-700 select-none hover:text-stone-900 transition-colors"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setSelectedCollectionIds((prev) => [...new Set([...prev, colId])]);
+                                  } else {
+                                    setSelectedCollectionIds((prev) => prev.filter((id) => id !== colId));
+                                  }
+                                }}
+                                className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                              />
+                              <span>{col.name || col.title}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -1567,7 +1616,7 @@ export default function OrnateProductEdit() {
                         onChange={(e) =>
                           setBaseInfo((prev) => ({ ...prev, showInApp: e.target.checked }))
                         }
-                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
                       />
                       <span>App</span>
                     </label>
@@ -1579,7 +1628,7 @@ export default function OrnateProductEdit() {
                         onChange={(e) =>
                           setBaseInfo((prev) => ({ ...prev, showOnWeb: e.target.checked }))
                         }
-                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
                       />
                       <span>Web</span>
                     </label>
@@ -1617,9 +1666,12 @@ export default function OrnateProductEdit() {
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Sold Count
-                    </label>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
+                      <label className="text-xs font-bold text-stone-700">
+                        Sold Count
+                      </label>
+                      <span className="text-[10px] text-stone-400 font-medium">· Displayed as &apos;X sold in last 3 hours&apos;</span>
+                    </div>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs">🔥</span>
                       <input
@@ -1631,13 +1683,15 @@ export default function OrnateProductEdit() {
                         className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
                       />
                     </div>
-                    <span className="text-[10px] text-stone-400 mt-1 block">Displayed as &apos;X sold in last 3 hours&apos;</span>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-stone-700 mb-1">
-                      Review Count
-                    </label>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
+                      <label className="text-xs font-bold text-stone-700">
+                        Review Count
+                      </label>
+                      <span className="text-[10px] text-stone-400 font-medium">· Displayed as &apos;★★★★★ X reviews&apos;</span>
+                    </div>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-xs">★</span>
                       <input
@@ -1649,7 +1703,6 @@ export default function OrnateProductEdit() {
                         className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
                       />
                     </div>
-                    <span className="text-[10px] text-stone-400 mt-1 block">Displayed as &apos;★★★★★ X reviews&apos;</span>
                   </div>
                 </div>
               </div>

@@ -1,8 +1,9 @@
 import SideDiamondEditor from '../../components/common/SideDiamondEditor';
+import CategorySelect from '../../components/common/CategorySelect';
 import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -364,15 +365,14 @@ export default function AddJewelryProduct() {
   const [mastersLoaded, setMastersLoaded] = useState(false);
   const hydratedProductId = useRef('');
 
-  const { categories: categoryList } = useCategoryLookup();
-
-  const categoryOptions = useMemo(
-    () => (Array.isArray(categoryList) ? categoryList : []).map((category) => ({
-      value: typeof category === 'string' ? category : category._id,
-      label: typeof category === 'string' ? category : category.name || category.title || '',
-    })),
-    [categoryList]
-  );
+  const {
+    categories: categoryList = [],
+    categoryOptions = [],
+    regularCategories = [],
+    collectionCategories = [],
+    categoryOnlyOptions = [],
+  } = useCategoryLookup() || {};
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState([]);
 
   // Active wizard step: 1 = Basic, 2 = Variants, 3 = Specifications & Pricing, 4 = Product Media.
   const [activeStep, setActiveStep] = useState(1);
@@ -575,6 +575,8 @@ export default function AddJewelryProduct() {
     isOrnate: false,
     soldCount: '',
     reviewCount: '',
+    showInApp: true,
+    showOnWeb: true,
   });
 
   // Immediately hydrate Step 1 (Basic Details) as soon as productRecord is fetched without waiting for diamond masters
@@ -582,9 +584,16 @@ export default function AddJewelryProduct() {
     if (!productRecord) return;
     const basicInfo = productRecord.basicInfo || {};
     const categoryValues = productRecord.categoryIds || productRecord.category || [];
-    const categoryRef = Array.isArray(categoryValues) ? categoryValues[0] : categoryValues;
-    const categoryId = categoryRef && typeof categoryRef === 'object' ? categoryRef._id : categoryRef;
+    const rawCatList = Array.isArray(categoryValues) ? categoryValues : [categoryValues].filter(Boolean);
+    const allCatIds = rawCatList
+      .map((c) => String(c && typeof c === 'object' ? (c._id || c.id) : c))
+      .filter(Boolean);
 
+    const regMatch = allCatIds.find((id) => (regularCategories || []).some((r) => String(r?._id) === id));
+    const collIds = allCatIds.filter((id) => (collectionCategories || []).some((c) => String(c?._id) === id));
+    const categoryId = regMatch || allCatIds.find((id) => !collIds.includes(id)) || allCatIds[0] || '';
+
+    setSelectedCollectionIds(collIds);
     setMenuItemIds(selectedMenuIds(productRecord));
     setBasicDetails({
       title: basicInfo.title || '',
@@ -604,6 +613,8 @@ export default function AddJewelryProduct() {
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
       soldCount: productRecord.demoMetrics?.soldCount ?? '',
       reviewCount: productRecord.demoMetrics?.reviewCount ?? '',
+      showInApp: productRecord.visibility?.app !== false && productRecord.inapp !== false,
+      showOnWeb: productRecord.visibility?.web !== false && productRecord.inweb !== false,
     });
 
     const rawSizes = productRecord.sizeIds || productRecord.sizes || [];
@@ -611,7 +622,7 @@ export default function AddJewelryProduct() {
       ? rawSizes.map((s) => String(s && typeof s === 'object' ? (s._id || s.id) : s)).filter(Boolean)
       : [];
     setSelectedSizeIds(sizeIdArr);
-  }, [productRecord]);
+  }, [productRecord, regularCategories, collectionCategories]);
 
   // Fetch sizes whenever selected category changes
   useEffect(() => {
@@ -870,6 +881,27 @@ export default function AddJewelryProduct() {
 
   // ─── Step 2: Preview Variants ───────────────────────────
   const [variants, setVariants] = useState([]);
+  const [variantPurityFilter, setVariantPurityFilter] = useState('ALL');
+
+  // KT / Purity Grouping for Preview Variants table
+  const purityGroups = useMemo(() => {
+    const map = new Map();
+    variants.forEach((v, index) => {
+      const key = v.purity || 'Other Purity';
+      if (!map.has(key)) {
+        map.set(key, { purity: key, items: [] });
+      }
+      map.get(key).items.push({ v, index });
+    });
+    return Array.from(map.values());
+  }, [variants]);
+
+  const displayedPurityGroups = useMemo(() => {
+    if (variantPurityFilter === 'ALL' || !purityGroups.some((g) => g.purity === variantPurityFilter)) {
+      return purityGroups;
+    }
+    return purityGroups.filter((g) => g.purity === variantPurityFilter);
+  }, [purityGroups, variantPurityFilter]);
 
   // ─── Step 4: Product Media & VTO State ────────────────
   const [productColors, setProductColors] = useState([]);
@@ -2161,6 +2193,7 @@ export default function AddJewelryProduct() {
     slug: '',
     metaTitle: '',
     metaDescription: '',
+    keywords: '',
     stockStatus: '',
     status: 'approved',
   });
@@ -2256,49 +2289,84 @@ export default function AddJewelryProduct() {
     setBreakdownVariant(v);
     setBreakdownModalOpen(true);
     setBreakdownError('');
-    setBreakdownLoading(true);
 
-    if (v.metalCost !== undefined && v.diamondCost !== undefined && v.computedGst !== undefined) {
+    // Rule 3: Use the Variant's Pre-Computed Values directly
+    const hasPrecomputed = v.metalCost !== undefined || v.priceRaw !== undefined || v.price !== undefined;
+    if (hasPrecomputed) {
+      const effWeight = Number(v.metalWeight ?? v.weight ?? 0);
+      const mCost = Number(v.metalCost || 0);
+      const mRate = Number(v.metalRate || (effWeight > 0 && mCost > 0 ? mCost / effWeight : 0));
+      const cCost = Number(v.centerDiamondCost || 0);
+      const cWeight = Number(v.centerDiamondWeight || 0);
+      const cRate = Number(v.centerDiamondRate || (cWeight > 0 && cCost > 0 ? cCost / cWeight : 0));
+      const sCost = Number(v.sideDiamondCost || 0);
+      const sWeight = Number(v.sideDiamondWeight || 0);
+      const sRate = Number(sWeight > 0 && sCost > 0 ? sCost / sWeight : (v.sideDiamonds?.[0]?.priceINR || 0));
+      const labour = Number(v.computedMakingCharge ?? v.labourCharge ?? (effWeight * Number(specs.baseLabourCharge || 0)));
+      const cert = Number(v.certificateCharge ?? specs.certificateCharge ?? 0);
+      const sub = Number(v.subtotal || (mCost + cCost + sCost + labour + cert));
+      const gstPct = Number(gstPercentage || 3);
+      const gst = Number(v.computedGst || (sub * gstPct / 100));
+      const final = Number(v.priceRaw ?? v.price ?? (sub + gst));
+
       setBreakdownData({
-        metalCost: v.metalCost,
-        metalRate: v.metalRate || 0,
-        centerDiamondCost: v.centerDiamondCost || 0,
-        sideDiamondCost: v.sideDiamondCost || 0,
-        diamondCost: v.diamondCost || 0,
-        totalMakingCharge: v.computedMakingCharge || v.labourCharge || 0,
-        certificateCharge: v.certificateCharge || Number(specs.certificateCharge || 0),
-        gstAmount: v.computedGst || 0,
-        finalPrice: v.priceRaw || v.price || 0,
-        effectiveWeight: Number(v.weight || v.metalWeight || 0),
-        appliedGst: Number(gstPercentage || 3),
+        metalCost: mCost,
+        metalRate: mRate,
+        centerDiamondCost: cCost,
+        centerDiamondWeight: cWeight,
+        centerDiamondRate: cRate,
+        sideDiamondCost: sCost,
+        sideDiamondWeight: sWeight,
+        sideDiamondRate: sRate,
+        diamondCost: Number(v.diamondCost || (cCost + sCost)),
+        totalMakingCharge: labour,
+        certificateCharge: cert,
+        subtotal: sub,
+        gstAmount: gst,
+        finalPrice: final,
+        effectiveWeight: effWeight,
+        appliedGst: gstPct,
       });
+      setBreakdownLoading(false);
+      return;
     }
 
+    // Fallback recalculation only if no precomputed data exists
+    setBreakdownLoading(true);
     try {
+      // Rule 1: Find only the matching side diamond row for this variant's quality
+      const matchingSide = (sideRows || []).find((s) =>
+        ['diamondTypeId', 'diamondColorId', 'diamondClarityId'].every(
+          (k) => !s[k] || !v[k] || String(s[k]) === String(v[k])
+        )
+      ) || sideRows[0];
+
       const payload = {
         metalWeight: parseFloat(v.weight || v.metalWeight || specs.metalWeight || 0),
         metalPurityId: v.metalPurityId || v.metalPurity?._id || v.metalPurity,
-        centerDiamonds: (v.diamondTypeId || v.centerDiamondWeight || v.caratWeight) ? [
+        // Rule 2: Never treat accent diamond weight as center diamond
+        centerDiamonds: (centerDiamondCombinations.length && (v.centerDiamondWeight || v.caratWeight)) ? [
           {
             diamondTypeId: v.diamondTypeId?._id || v.diamondTypeId,
             diamondShapeId: v.diamondShapeId?._id || v.diamondShapeId || centerRows[0]?.diamondShapeId,
             diamondClarityId: v.diamondClarityId?._id || v.diamondClarityId,
             diamondColorId: v.diamondColorId?._id || v.diamondColorId,
-            caratWeight: parseFloat(v.caratWeight || v.centerDiamondWeight || centerRows[0]?.carat || 0),
+            caratWeight: parseFloat(v.centerDiamondWeight || v.caratWeight || centerRows[0]?.carat || 0),
           }
         ] : [],
-        sideDiamonds: (v.sideDiamonds || sideRows || []).map((s) => ({
-          diamondTypeId: s.diamondTypeId?._id || s.diamondTypeId,
-          diamondShapeId: s.diamondShapeId?._id || s.diamondShapeId,
-          diamondClarityId: s.diamondClarityId?._id || s.diamondClarityId,
-          diamondColorId: s.diamondColorId?._id || s.diamondColorId,
-          sizeFrom: s.sizeFrom,
-          sizeTo: s.sizeTo,
-          pieces: s.pieces,
-          caratWeight: s.caratWeight,
-          priceINR: s.priceINR,
-        })),
-        labourCharge: parseFloat(v.labourCharge || specs.baseLabourCharge || 0),
+        // Rule 1: Never sum all side diamond rows; pass only matching row
+        sideDiamonds: matchingSide ? [{
+          diamondTypeId: matchingSide.diamondTypeId?._id || matchingSide.diamondTypeId,
+          diamondShapeId: matchingSide.diamondShapeId?._id || matchingSide.diamondShapeId,
+          diamondClarityId: matchingSide.diamondClarityId?._id || matchingSide.diamondClarityId,
+          diamondColorId: matchingSide.diamondColorId?._id || matchingSide.diamondColorId,
+          sizeFrom: matchingSide.sizeFrom,
+          sizeTo: matchingSide.sizeTo,
+          pieces: matchingSide.pieces,
+          caratWeight: matchingSide.caratWeight,
+          priceINR: matchingSide.priceINR,
+        }] : [],
+        labourCharge: parseFloat(specs.baseLabourCharge || 0),
         gstPercentage: parseFloat(gstPercentage || 3),
         shippingCharge: 0,
         certificateCharge: parseFloat(specs.certificateCharge || 0),
@@ -2313,9 +2381,7 @@ export default function AddJewelryProduct() {
       }
     } catch (err) {
       console.error('Pricing calculation API error:', err);
-      if (!v.metalCost) {
-        setBreakdownError(err.response?.data?.message || err.response?.data?.error || err.message || 'Pricing calculation failed');
-      }
+      setBreakdownError(err.response?.data?.message || err.response?.data?.error || err.message || 'Pricing calculation failed');
     } finally {
       setBreakdownLoading(false);
     }
@@ -2342,8 +2408,16 @@ export default function AddJewelryProduct() {
     const basicInfo = productRecord.basicInfo || {};
     const productPricing = productRecord.pricing || {};
     const categoryValues = productRecord.categoryIds || productRecord.category || [];
-    const categoryRef = Array.isArray(categoryValues) ? categoryValues[0] : categoryValues;
-    const categoryId = categoryRef && typeof categoryRef === 'object' ? categoryRef._id : categoryRef;
+    const rawCatList = Array.isArray(categoryValues) ? categoryValues : [categoryValues].filter(Boolean);
+    const allCatIds = rawCatList
+      .map((c) => String(c && typeof c === 'object' ? (c._id || c.id) : c))
+      .filter(Boolean);
+
+    const regMatch = allCatIds.find((id) => (regularCategories || []).some((r) => String(r?._id) === id));
+    const collIds = allCatIds.filter((id) => (collectionCategories || []).some((c) => String(c?._id) === id));
+    const categoryId = regMatch || allCatIds.find((id) => !collIds.includes(id)) || allCatIds[0] || '';
+
+    setSelectedCollectionIds(collIds);
     const productMetalColors = productRecord.metalColorIds || productRecord.metalColors || [];
     const colorOptions = [...colorsList, ...productMetalColors];
     const variantRecords = Array.isArray(productRecord.variants) ? productRecord.variants : [];
@@ -2615,12 +2689,13 @@ export default function AddJewelryProduct() {
       slug: basicInfo.slug || '',
       metaTitle: productRecord.seo?.metaTitle || '',
       metaDescription: productRecord.seo?.metaDescription || '',
+      keywords: productRecord.seo?.keywords || '',
       stockStatus: productRecord.stockStatus || '',
       status: productRecord.status || 'approved',
     });
     hydratedProductId.current = productId;
     setProductLoading(false);
-  }, [productId, productRecord, mastersLoaded, colorsList, puritiesList, diamondMasters]);
+  }, [productId, productRecord, mastersLoaded, colorsList, puritiesList, diamondMasters, regularCategories, collectionCategories]);
 
   // Add Care Section
   const handleAddCareSection = () => {
@@ -3046,6 +3121,7 @@ export default function AddJewelryProduct() {
       const seoData = compactObject({
         metaTitle: seo.metaTitle?.trim(),
         metaDescription: seo.metaDescription?.trim(),
+        keywords: seo.keywords?.trim(),
       });
       const silverColorImageRows = isSilverProduct
         ? Array.from(new Set([
@@ -3085,6 +3161,10 @@ export default function AddJewelryProduct() {
         ...(!productId ? { _id: draftProductId } : {}),
         productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
         isOrnate: Boolean(basicDetails.isOrnate),
+        visibility: {
+          app: Boolean(basicDetails.showInApp),
+          web: Boolean(basicDetails.showOnWeb),
+        },
         demoMetrics: {
           soldCount:
             basicDetails.soldCount !== '' && basicDetails.soldCount !== undefined && basicDetails.soldCount !== null
@@ -3106,7 +3186,7 @@ export default function AddJewelryProduct() {
         status: statusOverride === 'preserve'
           ? (productRecord?.status || seo.status || (productId ? 'approved' : 'draft'))
           : (statusOverride === 'draft' ? 'draft' : 'approved'),
-        ...(categoryId ? { categoryIds: [categoryId] } : {}),
+        ...(categoryId ? { categoryIds: [...new Set([categoryId, ...(selectedCollectionIds || [])].filter(Boolean))] } : {}),
         sizeIds: selectedSizeIds || [],
         ...(menuItemIds && menuItemIds.length ? { menuItemIds } : {}),
         ...(Object.keys(pricingData).length ? { pricing: pricingData } : {}),
@@ -3274,7 +3354,7 @@ export default function AddJewelryProduct() {
                 <>
                   SKU: <span className="font-mono text-stone-800 font-semibold">{basicDetails.sku || productRecord?.basicInfo?.sku || '—'}</span>
                   {(() => {
-                    const matchedCat = categoryOptions.find((c) => String(c.value) === String(basicDetails.category));
+                    const matchedCat = (categoryOptions || []).find((c) => String(c?.value) === String(basicDetails.category));
                     return matchedCat?.label ? (
                       <> &bull; Category: <span className="text-stone-800 font-semibold">{matchedCat.label}</span></>
                     ) : null;
@@ -3449,9 +3529,9 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-                <div className="sm:col-span-2 space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 items-start">
+                <div className="sm:col-span-3 space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
                     Product Title <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
@@ -3461,12 +3541,12 @@ export default function AddJewelryProduct() {
                       setBasicDetails((prev) => ({ ...prev, title: e.target.value }))
                     }
                     placeholder="e.g. Royal Diamond Solitaire Ring"
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                    className="w-full h-[42px] px-3.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
                     Master SKU Prefix <span className="text-rose-500 font-bold">*</span>
                   </label>
                   <input
@@ -3476,46 +3556,43 @@ export default function AddJewelryProduct() {
                       setBasicDetails((prev) => ({ ...prev, sku: e.target.value.toUpperCase() }))
                     }
                     placeholder="NR-RING-001"
-                    className="w-full px-3.5 py-2.5 text-xs font-mono uppercase font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                    className="w-full h-[42px] px-3.5 text-xs font-mono uppercase font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
-                    Category <span className="text-rose-500 font-bold">*</span>
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                    Platform Visibility
                   </label>
-                  <Dropdown
-                    size="field"
-                    variant="input"
-                    value={basicDetails.category}
-                    onChange={(val) => {
-                      if (val !== basicDetails.category) setMenuItemIds([]);
-                      setBasicDetails((prev) => ({ ...prev, category: val }));
-                      if (val) setAutoOpenMenu(true);
-                    }}
-                    placeholder="Select Category"
-                    options={categoryOptions}
-                    className="w-full"
-                  />
+                  <div className="flex items-center gap-5 h-[42px] px-3.5 rounded-xl border border-[#d6cfc2] bg-white shadow-2xs">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs sm:text-[13px] font-medium text-stone-700 select-none">
+                      <input
+                        type="checkbox"
+                        checked={basicDetails.showInApp}
+                        onChange={(e) =>
+                          setBasicDetails((prev) => ({ ...prev, showInApp: e.target.checked }))
+                        }
+                        className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                      />
+                      <span>App</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer text-xs sm:text-[13px] font-medium text-stone-700 select-none">
+                      <input
+                        type="checkbox"
+                        checked={basicDetails.showOnWeb}
+                        onChange={(e) =>
+                          setBasicDetails((prev) => ({ ...prev, showOnWeb: e.target.checked }))
+                        }
+                        className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                      />
+                      <span>Web</span>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900">Menu Items</label>
-                  <MenuItemSelect
-                    key={basicDetails.category}
-                    categoryId={basicDetails.category}
-                    value={menuItemIds}
-                    onChange={setMenuItemIds}
-                    disabled={saving}
-                    autoOpen={autoOpenMenu}
-                    onOpenChange={(isOpen) => {
-                      if (!isOpen) setAutoOpenMenu(false);
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900">Gender Target</label>
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">Gender Target</label>
                   <Dropdown
                     size="field"
                     variant="input"
@@ -3535,9 +3612,46 @@ export default function AddJewelryProduct() {
                   />
                 </div>
 
+                <div className="space-y-1.5 sm:col-span-1">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                    Category <span className="text-rose-500 font-bold">*</span>
+                  </label>
+                  <CategorySelect
+                    categoryId={basicDetails.category}
+                    selectedCollectionIds={selectedCollectionIds}
+                    categories={categoryList}
+                    onChangeCategory={(catId) => {
+                      if (catId !== basicDetails.category) setMenuItemIds([]);
+                      setBasicDetails((prev) => ({
+                        ...prev,
+                        category: catId,
+                      }));
+                      if (catId) setAutoOpenMenu(true);
+                    }}
+                    onChangeCollections={setSelectedCollectionIds}
+                    placeholder="Select Category"
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">Menu Items</label>
+                  <MenuItemSelect
+                    key={basicDetails.category}
+                    categoryId={basicDetails.category}
+                    value={menuItemIds}
+                    onChange={setMenuItemIds}
+                    disabled={saving}
+                    autoOpen={autoOpenMenu}
+                    onOpenChange={(isOpen) => {
+                      if (!isOpen) setAutoOpenMenu(false);
+                    }}
+                  />
+                </div>
+
                 {/* Available Sizes for Selected Category */}
                 {basicDetails.category && (
-                  <div className="sm:col-span-2 space-y-2 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 shadow-2xs">
+                  <div className="sm:col-span-3 space-y-2 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 shadow-2xs">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm">📏</span>
@@ -3608,7 +3722,7 @@ export default function AddJewelryProduct() {
                   </div>
                 )}
 
-                <div className="sm:col-span-2 space-y-1.5">
+                <div className="sm:col-span-3 space-y-1.5">
                   <label className="text-xs font-bold text-stone-900">Luxury Description</label>
                   <textarea
                     rows={4}
@@ -3622,7 +3736,7 @@ export default function AddJewelryProduct() {
                 </div>
 
                 {/* Social Proof & Urgency (Demo Metrics) */}
-                <div className="sm:col-span-2 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 space-y-3 shadow-2xs">
+                <div className="sm:col-span-3 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 space-y-3 shadow-2xs">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-base">🔥</span>
@@ -3637,9 +3751,12 @@ export default function AddJewelryProduct() {
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">
-                        Sold Count
-                      </label>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
+                        <label className="text-xs font-bold text-stone-700">
+                          Sold Count
+                        </label>
+                        <span className="text-[10px] text-stone-400 font-medium">· Displayed as &apos;X sold in last 3 hours&apos;</span>
+                      </div>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs">🔥</span>
                         <input
@@ -3651,13 +3768,15 @@ export default function AddJewelryProduct() {
                           className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
                         />
                       </div>
-                      <span className="text-[10px] text-stone-400 mt-1 block">Displayed as &apos;X sold in last 3 hours&apos;</span>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">
-                        Review Count
-                      </label>
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
+                        <label className="text-xs font-bold text-stone-700">
+                          Review Count
+                        </label>
+                        <span className="text-[10px] text-stone-400 font-medium">· Displayed as &apos;★★★★★ X reviews&apos;</span>
+                      </div>
                       <div className="relative">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-xs">★</span>
                         <input
@@ -3669,7 +3788,6 @@ export default function AddJewelryProduct() {
                           className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
                         />
                       </div>
-                      <span className="text-[10px] text-stone-400 mt-1 block">Displayed as &apos;★★★★★ X reviews&apos;</span>
                     </div>
                   </div>
                 </div>
@@ -4128,6 +4246,40 @@ export default function AddJewelryProduct() {
 
                 </div>
 
+                {/* Quick Karat / Purity Break Tabs */}
+                {purityGroups.length > 1 && (
+                  <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                    <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider mr-1">
+                      Karat Filter:
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setVariantPurityFilter('ALL')}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        variantPurityFilter === 'ALL'
+                          ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                          : 'bg-[#faf5ee] text-stone-700 hover:bg-[#f2e8dc] border border-[#e8d8c0]'
+                      }`}
+                    >
+                      All Purities ({variants.length})
+                    </button>
+                    {purityGroups.map((g) => (
+                      <button
+                        type="button"
+                        key={g.purity}
+                        onClick={() => setVariantPurityFilter(g.purity)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          variantPurityFilter === g.purity
+                            ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                            : 'bg-[#faf5ee] text-stone-700 hover:bg-[#f2e8dc] border border-[#e8d8c0]'
+                        }`}
+                      >
+                        {g.purity} ({g.items.length})
+                      </button>
+                    ))}
+                  </div>
+                )}
+
                 {/* Variants Table */}
                 <div className="border border-stone-200/90 rounded-xl overflow-hidden shadow-2xs bg-white">
                   <div className="overflow-x-auto">
@@ -4166,11 +4318,29 @@ export default function AddJewelryProduct() {
                             </td>
                           </tr>
                         ) : (
-                          variants.map((v, variantIndex) => {
+                          displayedPurityGroups.map((group) => {
+                            return (
+                              <Fragment key={group.purity}>
+                                {/* KT / Purity Group Header Break */}
+                                <tr className="bg-gradient-to-r from-[#faf5ee] via-[#f5ede0] to-[#faf5ee] border-y-2 border-[#d9c4a8]/80">
+                                  <td colSpan={8} className="py-2 px-3">
+                                    <div className="flex items-center gap-2">
+                                      <span className="w-2.5 h-2.5 rounded-full bg-[#8b6f4e] ring-2 ring-[#8b6f4e]/30 shadow-2xs" />
+                                      <span className="font-bold text-xs text-stone-900 uppercase tracking-wide flex items-center gap-2">
+                                        <span>{group.purity}</span>
+                                        <span className="text-[10px] font-semibold text-[#8b6f4e] bg-white px-2 py-0.5 rounded-full border border-[#d9c4a8]">
+                                          {group.items.length} {group.items.length === 1 ? 'Variant' : 'Variants'}
+                                        </span>
+                                      </span>
+                                    </div>
+                                  </td>
+                                </tr>
+
+                                {group.items.map(({ v, index: variantIndex }) => {
                             const detailsList = [
-                              v.diamondType || v.diamondDetails?.type || diamondMasters.types.find((item) => String(item._id) === String(v.diamondTypeId?._id || v.diamondTypeId))?.name,
-                              v.diamondColor || v.diamondDetails?.color || diamondMasters.colors.find((item) => String(item._id) === String(v.diamondColorId?._id || v.diamondColorId))?.name,
-                              v.diamondClarity || v.diamondDetails?.clarity || diamondMasters.clarities.find((item) => String(item._id) === String(v.diamondClarityId?._id || v.diamondClarityId))?.name,
+                              v.diamondType || v.diamondDetails?.type || (diamondMasters?.types || []).find((item) => String(item?._id) === String(v.diamondTypeId?._id || v.diamondTypeId))?.name,
+                              v.diamondColor || v.diamondDetails?.color || (diamondMasters?.colors || []).find((item) => String(item?._id) === String(v.diamondColorId?._id || v.diamondColorId))?.name,
+                              v.diamondClarity || v.diamondDetails?.clarity || (diamondMasters?.clarities || []).find((item) => String(item?._id) === String(v.diamondClarityId?._id || v.diamondClarityId))?.name,
                               v.purity,
                               (v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight) ? `${v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight}ct` : '',
                             ].filter(Boolean);
@@ -4272,9 +4442,12 @@ export default function AddJewelryProduct() {
                                 </td>
                               </tr>
                             );
-                          })
-                        )}
-                      </tbody>
+                          })}
+                        </Fragment>
+                      );
+                    })
+                  )}
+                </tbody>
                     </table>
                   </div>
                 </div>
@@ -6665,6 +6838,20 @@ export default function AddJewelryProduct() {
                     value={seo.metaDescription}
                     onChange={(e) => setSeo((prev) => ({ ...prev, metaDescription: e.target.value }))}
                     className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs leading-relaxed placeholder:text-stone-400"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-stone-900">Keywords</label>
+                    <span className="text-[11px] text-stone-400 font-normal">Comma separated</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={seo.keywords}
+                    onChange={(e) => setSeo((prev) => ({ ...prev, keywords: e.target.value }))}
+                    placeholder="e.g. diamond stud earrings, lab grown diamond, gold earrings"
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
                   />
                 </div>
               </div>

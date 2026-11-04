@@ -30,11 +30,11 @@ const formatDate = (dateStr) => {
 };
 
 const formatSchedule = (item) => {
-  const start = formatDate(item.startDate) || formatDate(new Date());
-  if (item.hasNoEndDate || !item.endDate) {
+  const start = formatDate(item.date?.start || item.startDate) || formatDate(new Date());
+  if (item.hasNoEndDate || !(item.date?.end || item.endDate)) {
     return `${start} - No end`;
   }
-  const end = formatDate(item.endDate);
+  const end = formatDate(item.date?.end || item.endDate);
   return `${start} - ${end}`;
 };
 
@@ -70,8 +70,10 @@ export default function TopAnnouncementView() {
     link: '',
     isActive: true,
     hasNoEndDate: true,
-    startDate: toInputDate(new Date()),
-    endDate: '',
+    date: {
+      start: toInputDate(new Date()),
+      end: '',
+    },
   });
 
   // Fetch data
@@ -160,8 +162,10 @@ export default function TopAnnouncementView() {
       link: '',
       isActive: true,
       hasNoEndDate: true,
-      startDate: toInputDate(new Date()),
-      endDate: '',
+      date: {
+        start: toInputDate(new Date()),
+        end: '',
+      },
     });
     setIsModalOpen(true);
   };
@@ -169,13 +173,17 @@ export default function TopAnnouncementView() {
   // Open modal for Edit
   const handleOpenEdit = (item) => {
     setEditingItem(item);
+    const startVal = item.date?.start || item.startDate;
+    const endVal = item.date?.end || item.endDate;
     setFormData({
       message: item.message || '',
       link: item.link || '',
       isActive: item.isActive ?? true,
       hasNoEndDate: item.hasNoEndDate ?? true,
-      startDate: toInputDate(item.startDate) || toInputDate(new Date()),
-      endDate: toInputDate(item.endDate) || '',
+      date: {
+        start: toInputDate(startVal) || toInputDate(new Date()),
+        end: toInputDate(endVal) || '',
+      },
     });
     setIsModalOpen(true);
   };
@@ -195,8 +203,10 @@ export default function TopAnnouncementView() {
         link: formData.link.trim(),
         isActive: formData.isActive,
         hasNoEndDate: formData.hasNoEndDate,
-        startDate: formData.startDate ? new Date(formData.startDate) : new Date(),
-        endDate: formData.hasNoEndDate ? null : (formData.endDate ? new Date(formData.endDate) : null),
+        date: {
+          start: formData.date?.start ? new Date(formData.date.start) : new Date(),
+          end: formData.hasNoEndDate ? null : (formData.date?.end ? new Date(formData.date.end) : null),
+        },
       };
 
       if (editingItem) {
@@ -775,8 +785,8 @@ export default function TopAnnouncementView() {
                   Start Date
                 </label>
                 <DatePicker
-                  value={formData.startDate}
-                  onChange={(val) => setFormData({ ...formData, startDate: val })}
+                  value={formData.date?.start}
+                  onChange={(val) => setFormData({ ...formData, date: { ...formData.date, start: val } })}
                   direction="up"
                   placeholder="Select start date"
                 />
@@ -788,10 +798,10 @@ export default function TopAnnouncementView() {
                 </label>
                 <DatePicker
                   disabled={formData.hasNoEndDate}
-                  value={formData.endDate}
-                  onChange={(val) => setFormData({ ...formData, endDate: val })}
+                  value={formData.date?.end}
+                  onChange={(val) => setFormData({ ...formData, date: { ...formData.date, end: val } })}
                   direction="up"
-                  minDate={formData.startDate}
+                  minDate={formData.date?.start}
                   placeholder="Select end date"
                 />
               </div>

@@ -59,6 +59,8 @@ export default function CelebrateGiftsView() {
   // Form State
   const [title, setTitle] = useState('');
   const [placement, setPlacement] = useState('Celebrate');
+  const [platform, setPlatform] = useState('web');
+  const [order, setOrder] = useState(0);
   const [categoryId, setCategoryId] = useState('');
   const [menuItemIds, setMenuItemIds] = useState([]);
   const [imageUrl, setImageUrl] = useState('');
@@ -182,9 +184,10 @@ export default function CelebrateGiftsView() {
   // Filtered featured items (Search query + placement filter, NO active/inactive filter)
   const filteredItems = useMemo(() => {
     return featuredItems.filter((item) => {
+      const itemType = (item.display?.type || 'Celebrate').toLowerCase();
       if (
         placementFilter !== 'all' &&
-        (!item.placement || item.placement.toLowerCase() !== placementFilter.toLowerCase())
+        itemType !== placementFilter.toLowerCase()
       ) {
         return false;
       }
@@ -192,7 +195,7 @@ export default function CelebrateGiftsView() {
         const q = search.toLowerCase();
         return (
           (item.name && item.name.toLowerCase().includes(q)) ||
-          (item.placement && item.placement.toLowerCase().includes(q))
+          itemType.includes(q)
         );
       }
       return true;
@@ -206,8 +209,8 @@ export default function CelebrateGiftsView() {
 
   // Quick stat cards
   const activeCount = useMemo(() => featuredItems.filter(i => i.status === 'active').length, [featuredItems]);
-  const celebrateCount = useMemo(() => featuredItems.filter(i => i.placement === 'Celebrate').length, [featuredItems]);
-  const giftsCount = useMemo(() => featuredItems.filter(i => i.placement === 'Gifts').length, [featuredItems]);
+  const celebrateCount = useMemo(() => featuredItems.filter(i => (i.display?.type || 'Celebrate') === 'Celebrate').length, [featuredItems]);
+  const giftsCount = useMemo(() => featuredItems.filter(i => (i.display?.type || 'Celebrate') === 'Gifts').length, [featuredItems]);
 
   // Placement Showcase Tabs
   const SHOWCASE_TABS = [
@@ -278,6 +281,8 @@ export default function CelebrateGiftsView() {
     setEditingItem(null);
     setTitle('');
     setPlacement(placementFilter === 'Gifts' ? 'Gifts' : 'Celebrate');
+    setPlatform('web');
+    setOrder(0);
     setCategoryId('');
     setMenuItemIds([]);
     setImageUrl('');
@@ -294,7 +299,9 @@ export default function CelebrateGiftsView() {
   const openEditModal = (item) => {
     setEditingItem(item);
     setTitle(item.name || '');
-    setPlacement(item.placement || 'Celebrate');
+    setPlacement(item.display?.type || 'Celebrate');
+    setPlatform(item.display?.platform || 'web');
+    setOrder(typeof item.display?.order === 'number' ? item.display.order : 0);
     const catId = item.categoryId?._id || item.categoryId || '';
     const mIds = Array.isArray(item.menuItemIds)
       ? item.menuItemIds.map((m) => (typeof m === 'object' && m?._id ? m._id : m))
@@ -421,10 +428,15 @@ export default function CelebrateGiftsView() {
 
     try {
       setSubmitting(true);
+      const effectivePlacement = placement || (placementFilter !== 'all' ? placementFilter : 'Celebrate');
       const payload = {
         themeId: themeId || null,
         name: effectiveTitle,
-        placement: placement || (placementFilter !== 'all' ? placementFilter : 'Celebrate'),
+        display: {
+          type: effectivePlacement,
+          platform: platform || 'web',
+          order: Number(order) || 0,
+        },
         categoryId: categoryId || null,
         menuItemIds: Array.isArray(menuItemIds) ? menuItemIds : [],
         image: imageUrl ? {
@@ -433,7 +445,6 @@ export default function CelebrateGiftsView() {
         } : null,
         status,
         productIds: selectedProducts.map((p) => String(p._id || p.id || p.productId || p)),
-        productCount: selectedProducts.length,
       };
 
       let saveResponse;
@@ -532,7 +543,7 @@ export default function CelebrateGiftsView() {
   const openReorderModal = () => {
     const listToReorder = placementFilter !== 'all'
       ? featuredItems.filter(
-          (i) => i.placement && i.placement.toLowerCase() === placementFilter.toLowerCase()
+          (i) => (i.display?.type || '').toLowerCase() === placementFilter.toLowerCase()
         )
       : [...featuredItems];
     setReorderingItems(listToReorder);
@@ -555,7 +566,10 @@ export default function CelebrateGiftsView() {
       setSavingReorder(true);
       const payload = reorderingItems.map((item, index) => ({
         _id: item._id,
-        order: index,
+        display: {
+          ...(item.display || {}),
+          order: index,
+        },
       }));
       await api.put('/featured/reorder', { items: payload });
       toast.success('Order saved successfully');
@@ -791,18 +805,23 @@ export default function CelebrateGiftsView() {
                       )}
                     </td>
 
-                    {/* Placement */}
+                    {/* Placement / Display */}
                     <td className="py-2.5 px-3 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
-                        {item.placement || 'Celebrate'}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2]">
+                          {item.display?.type || 'Celebrate'}
+                        </span>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-stone-600 border border-stone-200 uppercase">
+                          {item.display?.platform || item.platform || 'web'}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Curated Products Count */}
                     <td className="py-2.5 px-3 whitespace-nowrap">
                       <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-100 text-stone-700">
                         <IoCubeOutline className="w-3 h-3 text-stone-500" />
-                        <span>{item.productCount || 0} Products</span>
+                        <span>{item.productCount || item.productIds?.length || item.products?.length || 0} Products</span>
                       </span>
                     </td>
 
@@ -872,43 +891,119 @@ export default function CelebrateGiftsView() {
 
             {/* Modal Form */}
             <form onSubmit={handleSaveGroup} className="p-6 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto">
-              {/* GROUP TITLE */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
-                    GROUP TITLE
-                  </label>
-                  <span className="text-[10px] font-medium text-stone-400">Optional</span>
+              {/* GROUP TITLE & SHOWCASE STATUS */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* GROUP TITLE */}
+                <div className="sm:col-span-2">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
+                      GROUP TITLE
+                    </label>
+                    <span className="text-[10px] font-medium text-stone-400">Optional</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Wedding Bestsellers"
+                    className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
+                  />
                 </div>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Wedding Bestsellers"
-                  className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
-                />
-              </div>
 
-              {/* PLACEMENT */}
-              <div>
-                <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
-                  PLACEMENT
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {['Celebrate', 'Gifts'].map((opt) => (
+                {/* SHOWCASE STATUS */}
+                <div>
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
+                    SHOWCASE STATUS
+                  </label>
+                  <div className="flex items-center gap-2.5 h-[42px] px-3.5 rounded-xl border border-stone-200 bg-stone-50/60">
                     <button
-                      key={opt}
                       type="button"
-                      onClick={() => setPlacement(opt)}
-                      className={`py-2 px-3 rounded-xl border text-xs font-semibold tracking-wide transition-all cursor-pointer ${
-                        placement === opt
-                          ? 'bg-[#8f6d43] border-[#8f6d43] text-white shadow-xs'
-                          : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                      role="switch"
+                      aria-checked={status === 'active'}
+                      onClick={() => setStatus(status === 'active' ? 'inactive' : 'active')}
+                      style={status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${
+                        status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
                       }`}
                     >
-                      {opt}
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          status === 'active' ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
                     </button>
-                  ))}
+                    <span className="text-xs font-semibold text-stone-700 select-none">
+                      {status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DISPLAY CONFIG: BANNER TYPE, PLATFORM & ORDER */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {/* BANNER TYPE */}
+                <div>
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
+                    BANNER TYPE *
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {['Celebrate', 'Gifts'].map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setPlacement(opt)}
+                        className={`py-2 px-2 rounded-xl border text-xs font-semibold tracking-wide transition-all cursor-pointer text-center ${
+                          placement === opt
+                            ? 'bg-[#8f6d43] border-[#8f6d43] text-white shadow-xs'
+                            : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                        }`}
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* PLATFORM */}
+                <div>
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
+                    PLATFORM
+                  </label>
+                  <div className="grid grid-cols-3 gap-1">
+                    {[
+                      { key: 'web', label: 'Web' },
+                      { key: 'mobile', label: 'Mobile' },
+                      { key: 'common', label: 'All' },
+                    ].map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setPlatform(opt.key)}
+                        className={`py-2 px-1 rounded-xl border text-[11px] font-semibold tracking-wide transition-all cursor-pointer text-center ${
+                          platform === opt.key
+                            ? 'bg-[#8f6d43] border-[#8f6d43] text-white shadow-xs'
+                            : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* DISPLAY ORDER */}
+                <div>
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
+                    DISPLAY ORDER
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={order}
+                    onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)}
+                    placeholder="0"
+                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
+                  />
                 </div>
               </div>
 
@@ -1144,29 +1239,6 @@ export default function CelebrateGiftsView() {
                 )}
               </div>
 
-              {/* Status Select */}
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-xs font-bold text-stone-700 uppercase tracking-wide">
-                  Showcase Status
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setStatus(status === 'active' ? 'inactive' : 'active')}
-                    style={status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        status === 'active' ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                  <span className="text-xs font-semibold text-stone-700 w-16">
-                    {status === 'active' ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              </div>
 
               {/* Modal Footer (Exact Match to Screenshot 2) */}
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-100">
@@ -1236,7 +1308,7 @@ export default function CelebrateGiftsView() {
                     </span>
                     {placementFilter === 'all' && (
                       <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold uppercase tracking-wider bg-stone-200/60 text-stone-600 shrink-0">
-                        {item.placement}
+                        {item.display?.type || 'Celebrate'}
                       </span>
                     )}
                   </div>
@@ -1333,14 +1405,16 @@ export default function CelebrateGiftsView() {
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-stone-500 mb-4">
-                <span>Placement: <strong>{viewingItem.placement}</strong></span>
+                <span>Banner Type: <strong>{viewingItem.display?.type || 'Celebrate'}</strong></span>
+                <span>Platform: <strong className="uppercase">{viewingItem.display?.platform || 'web'}</strong></span>
+                <span>Order: <strong>{typeof viewingItem.display?.order === 'number' ? viewingItem.display.order : 0}</strong></span>
                 {viewingItem.categoryId?.name && (
                   <span>Category: <strong className="text-[#8f6d43]">{viewingItem.categoryId.name}</strong></span>
                 )}
                 {Array.isArray(viewingItem.menuItemIds) && viewingItem.menuItemIds.length > 0 && (
                   <span>Menu Items: <strong>{viewingItem.menuItemIds.map((m) => m?.title || m?.name || m).join(', ')}</strong></span>
                 )}
-                <span>Products: <strong>{viewingItem.productCount || 0}</strong></span>
+                <span>Products: <strong>{viewingItem.productCount || viewingItem.productIds?.length || viewingItem.products?.length || 0}</strong></span>
                 <span>Created: <strong>{formatDate(viewingItem.meta?.createdAt)}</strong></span>
               </div>
               <div className="flex justify-end pt-3 border-t border-stone-100">

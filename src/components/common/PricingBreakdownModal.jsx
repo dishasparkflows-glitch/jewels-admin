@@ -31,7 +31,7 @@ export default function PricingBreakdownModal({
       variant?.caratWeight ? `${variant.caratWeight}ct` : '',
     ]
       .filter(Boolean)
-      .join(' • ') ||
+      .join(' · ') ||
     '';
 
   const sku = variant?.sku || '';
@@ -47,42 +47,47 @@ export default function PricingBreakdownModal({
   const metalRate = Number(
     breakdown?.metalRate ||
     variant?.metalRate ||
-    (effectiveWeight > 0 ? (breakdown?.metalCost || 0) / effectiveWeight : 0)
+    (effectiveWeight > 0 && (breakdown?.metalCost || variant?.metalCost) ? (breakdown?.metalCost || variant?.metalCost) / effectiveWeight : 0)
   );
-  const metalCost = Number(breakdown?.metalCost ?? (effectiveWeight * metalRate));
+  const metalCost = Number(breakdown?.metalCost ?? variant?.metalCost ?? (effectiveWeight * metalRate));
 
-  // 2. Center Diamond
-  const centerCarat = Number(variant?.caratWeight || variant?.centerDiamondWeight || 1);
+  // 2. Center Diamond (Rule 2: Never treat accent diamond weight as center diamond)
   const centerCost = Number(breakdown?.centerDiamondCost ?? variant?.centerDiamondCost ?? 0);
-  const centerRate = centerCarat > 0 ? Math.round(centerCost / centerCarat) : Number(variant?.centerDiamondRate || 0);
+  const centerCarat = centerCost > 0 ? Number(breakdown?.centerDiamondWeight ?? variant?.centerDiamondWeight ?? (variant?.center ? variant?.caratWeight : 0)) : 0;
+  const centerRate = (centerCarat > 0 && centerCost > 0)
+    ? Number(breakdown?.centerDiamondRate || variant?.centerDiamondRate || Math.round(centerCost / centerCarat))
+    : 0;
 
-  // 3. Side Diamonds
+  // 3. Side Diamonds (Rule 1: Matching quality only)
   const sideCost = Number(breakdown?.sideDiamondCost ?? variant?.sideDiamondCost ?? 0);
   const sideWeight = Number(
+    breakdown?.sideDiamondWeight ||
     variant?.sideDiamondWeight ||
-    variant?.sideDiamonds?.[0]?.caratWeight ||
+    (!centerCost && variant?.caratWeight ? variant.caratWeight : 0) ||
     (Array.isArray(variant?.sideDiamonds)
       ? variant.sideDiamonds.reduce((sum, s) => sum + Number(s.caratWeight || 0), 0)
       : 0)
   );
-  const sideRate = sideWeight > 0 ? Math.round(sideCost / sideWeight) : Number(variant?.sideDiamonds?.[0]?.priceINR || 0);
+  const sideRate = (sideWeight > 0 && sideCost > 0)
+    ? Number(breakdown?.sideDiamondRate || Math.round(sideCost / sideWeight))
+    : Number(variant?.sideDiamonds?.[0]?.priceINR || 0);
 
   // 4. Labour / Making Charge
   const labourCost = Number(breakdown?.totalMakingCharge ?? variant?.computedMakingCharge ?? variant?.labourCharge ?? 0);
-  const labourRate = Number(specs?.baseLabourCharge || (effectiveWeight > 0 ? Math.round(labourCost / effectiveWeight) : 0));
+  const labourRate = Number(specs?.baseLabourCharge || (effectiveWeight > 0 && labourCost > 0 ? Math.round(labourCost / effectiveWeight) : 0));
 
   // 5. Certificate Charge
-  const certCost = Number(breakdown?.certificateCharge ?? specs?.certificateCharge ?? 0);
+  const certCost = Number(breakdown?.certificateCharge ?? variant?.certificateCharge ?? specs?.certificateCharge ?? 0);
 
   // 6. Subtotal
-  const subtotal = Math.round(((metalCost + centerCost + sideCost + labourCost + certCost) + Number.EPSILON) * 100) / 100;
+  const subtotal = Number(breakdown?.subtotal ?? (Math.round(((metalCost + centerCost + sideCost + labourCost + certCost) + Number.EPSILON) * 100) / 100));
 
   // 7. GST
-  const gstPercent = Number(breakdown?.appliedGst ?? 3);
-  const gstAmount = Number(breakdown?.gstAmount ?? Math.round(((subtotal * gstPercent / 100) + Number.EPSILON) * 100) / 100);
+  const gstPercent = Number(breakdown?.appliedGst ?? specs?.gstPercentage ?? 3);
+  const gstAmount = Number(breakdown?.gstAmount ?? variant?.computedGst ?? (Math.round(((subtotal * gstPercent / 100) + Number.EPSILON) * 100) / 100));
 
   // 8. Final Price
-  const finalPrice = Number(breakdown?.finalPrice ?? Math.round(((subtotal + gstAmount) + Number.EPSILON) * 100) / 100);
+  const finalPrice = Number(breakdown?.finalPrice ?? variant?.priceRaw ?? variant?.price ?? (Math.round(((subtotal + gstAmount) + Number.EPSILON) * 100) / 100));
 
   return (
     <Modal
@@ -172,7 +177,7 @@ export default function PricingBreakdownModal({
                     </td>
                   </tr>
 
-                  {/* Center Diamond */}
+                  {/* Center Diamond (Only show if Center Diamond Cost > 0) */}
                   {centerCost > 0 && (
                     <tr>
                       <td className="py-3 pr-2">
@@ -188,7 +193,7 @@ export default function PricingBreakdownModal({
                     </tr>
                   )}
 
-                  {/* Side Diamonds */}
+                  {/* Side Diamonds (Only show if Side Diamond Cost > 0) */}
                   {sideCost > 0 && (
                     <tr>
                       <td className="py-3 pr-2">
@@ -220,7 +225,7 @@ export default function PricingBreakdownModal({
                     </td>
                   </tr>
 
-                  {/* Certificate Charge */}
+                  {/* Certificate Charge (Only show if Certificate Charge > 0) */}
                   {certCost > 0 && (
                     <tr>
                       <td className="py-3 pr-2">
