@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import ColorStatusToggle from '../../components/common/ColorStatusToggle';
+import CategorySelect from '../../components/common/CategorySelect';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -1291,7 +1292,9 @@ export default function OrnateProductEdit() {
   }
 
   return (
-    <div className="space-y-4 pb-12 font-sans text-stone-800 animate-fadeIn">
+    <div className="space-y-4 pb-12 font-sans text-stone-800">
+      {/* ─── Sticky Header & Stepper Wizard Bar ─── */}
+      <div className="sticky top-14 z-20 bg-[#f8fafc]/95 backdrop-blur-md pt-0.5 pb-2.5 space-y-3">
       {/* ─── Top Bar (Title & Actions) ──────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200/90 shadow-2xs">
         <div className="flex items-center gap-3">
@@ -1435,6 +1438,7 @@ export default function OrnateProductEdit() {
           })}
         </div>
       </div>
+      </div>
 
       {/* ─── TAB CONTENT PANELS ─────────────────────────────────────── */}
       <div className="w-full space-y-4">
@@ -1473,166 +1477,117 @@ export default function OrnateProductEdit() {
                 />
               </div>
 
-              {/* Category & Category Tag Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                      Category
-                    </label>
-                    <Dropdown
-                      value={baseInfo.category}
-                      onChange={(val) => {
-                        setBaseInfo((prev) => ({ ...prev, category: val, menuItem: val === prev.category ? prev.menuItem : [] }));
-                        if (val) setAutoOpenMenu(true);
-                      }}
-                      options={categoryOnlyOptions}
-                      placeholder="Select Category"
-                      size="sm"
-                      buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
-                    />
-                  </div>
-
-                  {collectionCategories.length > 0 && (
-                    <div className="pt-2.5 border-t border-stone-200/80 space-y-2">
-                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                        COLLECTIONS (SELECT MULTIPLE)
-                      </label>
-                      <div className="space-y-2">
-                        {collectionCategories.map((col) => {
-                          const colId = String(col._id);
-                          const isChecked = selectedCollectionIds.includes(colId);
-                          return (
-                            <label
-                              key={colId}
-                              className="flex items-center gap-2.5 cursor-pointer text-xs sm:text-[13px] font-medium text-stone-700 select-none hover:text-stone-900 transition-colors"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setSelectedCollectionIds((prev) => [...new Set([...prev, colId])]);
-                                  } else {
-                                    setSelectedCollectionIds((prev) => prev.filter((id) => id !== colId));
-                                  }
-                                }}
-                                className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
-                              />
-                              <span>{col.name || col.title}</span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider flex items-center gap-1">
-                    <span>Category Tag</span>
-                  </label>
-                  <Dropdown
-                    value={baseInfo.categoryTag}
-                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, categoryTag: val }))}
-                    options={CATEGORY_TAG_OPTIONS}
-                    placeholder="Select category tag"
-                    size="sm"
-                    buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
-                  />
-                </div>
-              </div>
-
-              {/* Menu Items, Gender, GST, Status, Stock Status Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
-                    Menu Items
-                  </label>
-                  <MenuItemSelect
-                    key={baseInfo.category}
-                    categoryId={baseInfo.category}
-                    value={baseInfo.menuItem}
-                    onChange={(value) => setBaseInfo((previous) => ({ ...previous, menuItem: value }))}
-                    autoOpen={autoOpenMenu}
-                    onOpenChange={(isOpen) => {
-                      if (!isOpen) setAutoOpenMenu(false);
-                    }}
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
-                    Target Gender
-                  </label>
-                  <Dropdown
-                    multiple
-                    value={baseInfo.targetGender}
-                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, targetGender: Array.isArray(val) ? val : [val].filter(Boolean) }))}
-                    options={GENDER_OPTIONS}
-                    placeholder="Select Gender"
-                    size="sm"
-                    buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
-                    Approval Status
-                  </label>
-                  <Dropdown
-                    value={baseInfo.status}
-                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, status: val }))}
-                    options={STATUS_OPTIONS}
-                    placeholder="Draft (Hidden)"
-                    size="sm"
-                    buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
-                    Stock Status
-                  </label>
-                  <Dropdown
-                    value={baseInfo.stockStatus}
-                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, stockStatus: val }))}
-                    options={STOCK_STATUS_OPTIONS}
-                    placeholder="Select stock status"
-                    size="sm"
-                    buttonClassName="w-full h-9 rounded-xl border border-stone-200 bg-[#fdfcfb]"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-stone-700 uppercase tracking-wider">
+              {/* Row: Platform Visibility, Gender Target, Stock Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
                     Platform Visibility
                   </label>
-                  <div className="flex items-center gap-3.5 h-9 px-3 rounded-xl border border-stone-200 bg-[#fdfcfb]">
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-stone-700 select-none">
+                  <div className="flex items-center gap-5 h-[42px] px-3.5 rounded-xl border border-[#d6cfc2] bg-white shadow-2xs">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs sm:text-[13px] font-medium text-stone-700 select-none">
                       <input
                         type="checkbox"
                         checked={baseInfo.showInApp}
                         onChange={(e) =>
                           setBaseInfo((prev) => ({ ...prev, showInApp: e.target.checked }))
                         }
-                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                        className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
                       />
                       <span>App</span>
                     </label>
 
-                    <label className="flex items-center gap-1.5 cursor-pointer text-xs font-semibold text-stone-700 select-none">
+                    <label className="flex items-center gap-2 cursor-pointer text-xs sm:text-[13px] font-medium text-stone-700 select-none">
                       <input
                         type="checkbox"
                         checked={baseInfo.showOnWeb}
                         onChange={(e) =>
                           setBaseInfo((prev) => ({ ...prev, showOnWeb: e.target.checked }))
                         }
-                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                        className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
                       />
                       <span>Web</span>
                     </label>
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                    Gender Target
+                  </label>
+                  <Dropdown
+                    size="field"
+                    variant="input"
+                    multiple
+                    value={baseInfo.targetGender}
+                    onChange={(val) =>
+                      setBaseInfo((prev) => ({
+                        ...prev,
+                        targetGender: Array.isArray(val) ? val : [val].filter(Boolean),
+                      }))
+                    }
+                    options={GENDER_OPTIONS}
+                    placeholder="Select Gender"
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                    Stock Status
+                  </label>
+                  <Dropdown
+                    size="field"
+                    variant="input"
+                    value={baseInfo.stockStatus}
+                    onChange={(val) => setBaseInfo((prev) => ({ ...prev, stockStatus: val }))}
+                    options={STOCK_STATUS_OPTIONS}
+                    placeholder="Select stock status"
+                    className="w-full"
+                  />
+                </div>
+              </div>
+
+              {/* Row: Category * & Menu Items (Exact same layout as Silver Products) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-1.5 sm:col-span-1">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                    Category <span className="text-rose-500 font-bold">*</span>
+                  </label>
+                  <CategorySelect
+                    categoryId={baseInfo.category}
+                    selectedCollectionIds={selectedCollectionIds}
+                    categories={rawCategoryList}
+                    onChangeCategory={(catId) => {
+                      if (catId !== baseInfo.category) {
+                        setBaseInfo((prev) => ({ ...prev, menuItem: [] }));
+                      }
+                      setBaseInfo((prev) => ({
+                        ...prev,
+                        category: catId,
+                      }));
+                      if (catId) setAutoOpenMenu(true);
+                    }}
+                    onChangeCollections={setSelectedCollectionIds}
+                    placeholder="Select Category"
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="sm:col-span-2 space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                    Menu Items
+                  </label>
+                  <MenuItemSelect
+                    key={baseInfo.category}
+                    categoryId={baseInfo.category}
+                    value={baseInfo.menuItem}
+                    onChange={(value) => setBaseInfo((prev) => ({ ...prev, menuItem: value }))}
+                    disabled={saving}
+                    autoOpen={autoOpenMenu}
+                    onOpenChange={(isOpen) => {
+                      if (!isOpen) setAutoOpenMenu(false);
+                    }}
+                  />
                 </div>
               </div>
 

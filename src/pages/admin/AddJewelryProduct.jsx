@@ -2927,7 +2927,7 @@ export default function AddJewelryProduct() {
         toast.error('Product title and SKU are required to publish this product');
         return;
       }
-      const activeSlug = seo.slug?.trim() || (activeTitle ? activeTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : undefined);
+      const activeSlug = productRecord?.basicInfo?.slug || (activeTitle ? activeTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') : undefined);
       const activeDesc = basicDetails.description || '';
       const numberValue = (value) => value === '' || value === null || value === undefined ? undefined : Number(value);
       if (!isDraft && !isSilverProduct) {
@@ -3311,8 +3311,10 @@ export default function AddJewelryProduct() {
   }
 
   return (
-    <div className="space-y-4 pb-8 font-sans text-stone-800 animate-fadeIn">
-      {/* ─── Top Bar (Title & Actions Matching Screenshot) ───────── */}
+    <div className="space-y-4 pb-8 font-sans text-stone-800">
+      {/* ─── Sticky Header & Stepper Wizard Bar ─────────── */}
+      <div className="sticky top-14 z-20 bg-[#f8fafc]/95 backdrop-blur-md pt-0.5 pb-2.5 space-y-3">
+        {/* ─── Top Bar (Title & Actions Matching Screenshot) ───────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-[#eee8df] shadow-2xs">
         <div className="flex items-center gap-3">
           <button
@@ -3506,6 +3508,7 @@ export default function AddJewelryProduct() {
             );
           })}
         </div>
+      </div>
       </div>
 
       {/* ─── Main Content (Full Width) ─────────────────────────── */}
@@ -3899,7 +3902,7 @@ export default function AddJewelryProduct() {
                     <p className="text-[10px] text-stone-400">Set the base metal weight and applicable charges for these variants.</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pl-7">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pl-7">
                   <label className="space-y-1.5">
                     <span className="text-[11px] font-bold text-stone-700">Metal Weight (g) (14KT)</span>
                     <input
@@ -3910,29 +3913,6 @@ export default function AddJewelryProduct() {
                       onChange={(e) => setSpecs((prev) => ({ ...prev, metalWeight: e.target.value }))}
                       placeholder="e.g. 1.91"
                       className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]"
-                    />
-                  </label>
-                  <label className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-stone-700">Base Carat (ct)</span>
-                      {centerDiamondCarats.length > 0 && Number(baseCarat) === Number(centerDiamondCarats[0]) && (
-                        <span className="text-[9px] font-semibold text-[#8b6f4e] bg-[#faf5ee] border border-[#e8d8c0] px-1.5 py-0.5 rounded">
-                          Auto
-                        </span>
-                      )}
-                    </div>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={baseCarat}
-                      onChange={(e) => {
-                        setBaseCarat(e.target.value);
-                        setBaseCaratManuallyEdited(true);
-                      }}
-                      placeholder={centerDiamondCarats[0] ? String(centerDiamondCarats[0]) : '1'}
-                      className="w-full px-3 py-2 text-xs text-stone-900 bg-white border border-[#d6cfc2] rounded-lg focus:outline-none focus:border-[#8b6f4e]"
-                      title="Prong scaling benchmark carat (defaults to first/minimum center stone carat)"
                     />
                   </label>
                   <label className="space-y-1.5">
@@ -4231,7 +4211,7 @@ export default function AddJewelryProduct() {
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span aria-live="polite" className="rounded-full border border-[#e8d8c0] bg-[#faf5ee] px-3 py-1.5 text-xs font-semibold text-[#8b6f4e]">
+                    <span aria-live="polite" className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-semibold text-stone-700">
                       Total Variants: {variants.length}
                     </span>
                     <label className="flex items-center gap-2 text-[10px] font-semibold text-stone-500">
@@ -4258,7 +4238,7 @@ export default function AddJewelryProduct() {
                       className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                         variantPurityFilter === 'ALL'
                           ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                          : 'bg-[#faf5ee] text-stone-700 hover:bg-[#f2e8dc] border border-[#e8d8c0]'
+                          : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200'
                       }`}
                     >
                       All Purities ({variants.length})
@@ -4271,7 +4251,7 @@ export default function AddJewelryProduct() {
                         className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
                           variantPurityFilter === g.purity
                             ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                            : 'bg-[#faf5ee] text-stone-700 hover:bg-[#f2e8dc] border border-[#e8d8c0]'
+                            : 'bg-stone-50 text-stone-700 hover:bg-stone-100 border border-stone-200'
                         }`}
                       >
                         {g.purity} ({g.items.length})
@@ -4304,7 +4284,6 @@ export default function AddJewelryProduct() {
                           <tr>
                             <td colSpan={8} className="py-12 text-center">
                               <div className="flex flex-col items-center justify-center space-y-1.5 text-stone-400">
-                                <span className="text-2xl">✨</span>
                                 <p className="font-semibold text-xs text-stone-700">No variants generated yet</p>
                                 <button
                                   type="button"
@@ -4322,17 +4301,11 @@ export default function AddJewelryProduct() {
                             return (
                               <Fragment key={group.purity}>
                                 {/* KT / Purity Group Header Break */}
-                                <tr className="bg-gradient-to-r from-[#faf5ee] via-[#f5ede0] to-[#faf5ee] border-y-2 border-[#d9c4a8]/80">
+                                <tr className="bg-stone-50/60 border-y border-stone-200">
                                   <td colSpan={8} className="py-2 px-3">
-                                    <div className="flex items-center gap-2">
-                                      <span className="w-2.5 h-2.5 rounded-full bg-[#8b6f4e] ring-2 ring-[#8b6f4e]/30 shadow-2xs" />
-                                      <span className="font-bold text-xs text-stone-900 uppercase tracking-wide flex items-center gap-2">
-                                        <span>{group.purity}</span>
-                                        <span className="text-[10px] font-semibold text-[#8b6f4e] bg-white px-2 py-0.5 rounded-full border border-[#d9c4a8]">
-                                          {group.items.length} {group.items.length === 1 ? 'Variant' : 'Variants'}
-                                        </span>
-                                      </span>
-                                    </div>
+                                    <span className="font-bold text-xs text-stone-700 uppercase tracking-wide">
+                                      {group.purity}
+                                    </span>
                                   </td>
                                 </tr>
 
@@ -4356,7 +4329,7 @@ export default function AddJewelryProduct() {
                                     {detailsList.map((tag, idx) => (
                                       <span
                                         key={idx}
-                                        className="inline-flex px-2 py-0.5 text-[9.5px] font-semibold text-stone-700 bg-[#faf5ee] border border-[#e8d8c0] rounded-md shadow-2xs"
+                                        className="inline-flex px-2 py-0.5 text-[9.5px] font-medium text-stone-700 bg-stone-50 border border-stone-200 rounded-md"
                                       >
                                         {tag}
                                       </span>
@@ -6805,22 +6778,12 @@ export default function AddJewelryProduct() {
                     SEO Configuration
                   </h3>
                   <p className="text-xs text-stone-500">
-                    Optimize search engine rankings, meta titles, and URL slug.
+                    Optimize search engine rankings, meta titles, and descriptions.
                   </p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900">URL Slug</label>
-                  <input
-                    type="text"
-                    value={seo.slug}
-                    onChange={(e) => setSeo((prev) => ({ ...prev, slug: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
-                  />
-                </div>
-
                 <div className="space-y-1.5">
                   <label className="text-xs font-bold text-stone-900">Meta Title</label>
                   <input

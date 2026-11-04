@@ -3,7 +3,9 @@ import { lazy, Suspense } from 'react';
 import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { HiOutlineX } from 'react-icons/hi';
 import { AuthProvider } from './contexts/AuthContext';
+import { ThemeProvider } from './contexts/ThemeContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
+import { ImagePreviewProvider } from './contexts/ImagePreviewContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminLayout from './components/layout/AdminLayout';
 // Lazy-loaded Admin Page Views for dynamic code-splitting & fast build

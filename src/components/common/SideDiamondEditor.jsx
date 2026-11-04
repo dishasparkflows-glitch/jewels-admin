@@ -326,16 +326,24 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
           </button>
         ))}
       </div>
-      <p className="text-xs text-stone-500">
-        Select one or more types. Physical specifications sync across corresponding rows; rates stay independent. Enter 0 for a live master rate. Side-only rows are alternative quality options.
-      </p>
       {error && (
         <p className="text-xs text-amber-700">
           Master preview unavailable. Compute Variants will validate rates on the server.
         </p>
       )}
-      {enabled.map((type) => (
-        <div key={type} className="space-y-3">
+      {enabled.map((type) => {
+        const typeRows = rows.filter(
+          (r) => resolveEntityId(r.diamondTypeId, 'types') === type || id(r.diamondTypeId) === type
+        );
+        const totalPieces = typeRows.reduce((sum, r) => sum + (parseInt(r.pieces, 10) || 0), 0);
+        const totalCarats = typeRows.reduce((sum, r) => sum + (parseFloat(r.caratWeight) || 0), 0);
+        const totalPrice = typeRows.reduce((sum, r) => {
+          const rate = rateFor(r);
+          return sum + (rate !== null ? rate * (parseFloat(r.caratWeight) || 0) : 0);
+        }, 0);
+
+        return (
+          <div key={type} className="space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
@@ -493,10 +501,35 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
                   );
                 })}
               </tbody>
+              {typeRows.length > 0 && (
+                <tfoot className="border-t-2 border-stone-200 bg-[#faf8f5]/90">
+                  <tr className="text-xs">
+                    <td colSpan={3} className="p-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                        TOTAL SIDE DIAMONDS
+                      </span>
+                    </td>
+                    <td className="p-2.5 font-bold text-stone-900 whitespace-nowrap">
+                      {totalPieces} Pcs
+                    </td>
+                    <td className="p-2.5 font-bold text-stone-900 whitespace-nowrap">
+                      {totalCarats.toFixed(3)} ct
+                    </td>
+                    <td className="p-2.5 text-stone-400 font-medium whitespace-nowrap">
+                      —
+                    </td>
+                    <td className="p-2.5 font-bold text-[#8b6f4e] whitespace-nowrap">
+                      {money(totalPrice)}
+                    </td>
+                    <td className="p-2.5" />
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </div>
-      ))}
+      );
+    })}
     </section>
   );
 }
