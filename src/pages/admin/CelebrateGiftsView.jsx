@@ -58,6 +58,7 @@ export default function CelebrateGiftsView() {
 
   // Form State
   const [title, setTitle] = useState('');
+  const [slug, setSlug] = useState('');
   const [placement, setPlacement] = useState('Celebrate');
   const [platform, setPlatform] = useState('web');
   const [order, setOrder] = useState(0);
@@ -280,6 +281,7 @@ export default function CelebrateGiftsView() {
   const openAddModal = () => {
     setEditingItem(null);
     setTitle('');
+    setSlug('');
     setPlacement(placementFilter === 'Gifts' ? 'Gifts' : 'Celebrate');
     setPlatform('web');
     setOrder(0);
@@ -295,10 +297,24 @@ export default function CelebrateGiftsView() {
     setIsModalOpen(true);
   };
 
+  const handleTitleChange = (val) => {
+    setTitle(val);
+    if (!editingItem) {
+      setSlug(
+        val
+          .toLowerCase()
+          .trim()
+          .replace(/[\s\W-]+/g, '-')
+          .replace(/^-+|-+$/g, '')
+      );
+    }
+  };
+
   // Open Edit Modal
   const openEditModal = (item) => {
     setEditingItem(item);
     setTitle(item.name || '');
+    setSlug(item.slug || '');
     setPlacement(item.display?.type || 'Celebrate');
     setPlatform(item.display?.platform || 'web');
     setOrder(typeof item.display?.order === 'number' ? item.display.order : 0);
@@ -432,6 +448,7 @@ export default function CelebrateGiftsView() {
       const payload = {
         themeId: themeId || null,
         name: effectiveTitle,
+        slug: slug.trim() || undefined,
         display: {
           type: effectivePlacement,
           platform: platform || 'web',
@@ -792,6 +809,9 @@ export default function CelebrateGiftsView() {
                     {/* Showcase Name */}
                     <td className="py-2.5 px-3 font-bold text-stone-900 text-xs max-w-xs">
                       <div className="truncate">{item.name || item.categoryId?.name || 'Untitled Group'}</div>
+                      {item.slug && (
+                        <div className="text-[10px] text-stone-400 font-mono truncate">/{item.slug}</div>
+                      )}
                       {(item.categoryId?.name || (Array.isArray(item.menuItemIds) && item.menuItemIds.length > 0)) && (
                         <div className="text-[10.5px] text-stone-400 font-normal truncate mt-0.5 flex items-center gap-1.5">
                           {item.categoryId?.name && (
@@ -891,22 +911,39 @@ export default function CelebrateGiftsView() {
 
             {/* Modal Form */}
             <form onSubmit={handleSaveGroup} className="p-6 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto">
-              {/* GROUP TITLE & SHOWCASE STATUS */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* GROUP TITLE, SLUG & SHOWCASE STATUS */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 {/* GROUP TITLE */}
                 <div className="sm:col-span-2">
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
                       GROUP TITLE
                     </label>
-                    <span className="text-[10px] font-medium text-stone-400">Optional</span>
+                    <span className="text-[10px] font-medium text-stone-400">Unique</span>
                   </div>
                   <input
                     type="text"
                     value={title}
-                    onChange={(e) => setTitle(e.target.value)}
+                    onChange={(e) => handleTitleChange(e.target.value)}
                     placeholder="e.g. Wedding Bestsellers"
                     className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
+                  />
+                </div>
+
+                {/* URL SLUG */}
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
+                      URL SLUG
+                    </label>
+                    <span className="text-[10px] font-medium text-stone-400">Unique</span>
+                  </div>
+                  <input
+                    type="text"
+                    value={slug}
+                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[\s\W-]+/g, '-'))}
+                    placeholder="e.g. wedding-bestsellers"
+                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-xs font-mono text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
                   />
                 </div>
 

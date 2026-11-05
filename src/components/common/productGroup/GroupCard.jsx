@@ -55,6 +55,38 @@ export default function GroupCard({
     getProductImageUrl(group.representative) ||
     getProductImageUrl(group.firstProduct);
 
+  const formatMoney = (val) => {
+    if (val == null || val === '' || isNaN(Number(val))) return '₹0';
+    return `₹${Number(val).toLocaleString('en-IN')}`;
+  };
+
+  const salePrice = Number(
+    group.salePrice ??
+    group.representative?.pricing?.salePrice ??
+    group.firstProduct?.pricing?.salePrice ??
+    group.representativePrice ??
+    group.minPrice ??
+    0
+  );
+  const mrp = Number(
+    group.mrp ??
+    group.representative?.pricing?.mrp ??
+    group.firstProduct?.pricing?.mrp ??
+    0
+  );
+  const minPrice = Number(group.minPrice ?? 0);
+  const maxPrice = Number(group.maxPrice ?? 0);
+  const hasDiscount = mrp > salePrice && salePrice > 0;
+
+  let priceDisplay = null;
+  if (productCount > 1 && minPrice > 0 && maxPrice > minPrice) {
+    priceDisplay = `${formatMoney(minPrice)} – ${formatMoney(maxPrice)}`;
+  } else if (salePrice > 0) {
+    priceDisplay = formatMoney(salePrice);
+  } else if (minPrice > 0) {
+    priceDisplay = formatMoney(minPrice);
+  }
+
   if (viewMode === 'list') {
     return (
       <article
@@ -114,6 +146,21 @@ export default function GroupCard({
         <div className="text-center shrink-0 px-4">
           <p className="text-[10px] text-stone-400 uppercase font-semibold">Total Products</p>
           <p className="text-lg font-bold text-stone-900">{productCount}</p>
+        </div>
+
+        {/* Sale Price */}
+        <div className="text-right shrink-0 px-4 min-w-[120px]">
+          <p className="text-[10px] text-stone-400 uppercase font-semibold">Sale Price</p>
+          <div className="flex items-baseline justify-end gap-1.5">
+            <span className="text-sm font-bold text-stone-900">
+              {priceDisplay || <span className="text-xs text-stone-400 font-normal">No price</span>}
+            </span>
+            {hasDiscount && (
+              <span className="text-xs text-stone-400 line-through">
+                {formatMoney(mrp)}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Actions */}
@@ -309,6 +356,23 @@ export default function GroupCard({
         >
           {group.groupName}
         </h3>
+
+        {/* Sale Price Display */}
+        <div className="mt-1.5 pt-1 border-t border-stone-50 flex items-baseline justify-between gap-1">
+          <div className="flex items-baseline gap-1.5 flex-wrap min-w-0">
+            <span className="text-xs sm:text-[12.5px] font-extrabold text-stone-900 tracking-tight">
+              {priceDisplay || <span className="text-[10.5px] font-normal text-stone-400 italic">No price</span>}
+            </span>
+            {hasDiscount && (
+              <span className="text-[10px] text-stone-400 line-through">
+                {formatMoney(mrp)}
+              </span>
+            )}
+          </div>
+          <span className="text-[9px] uppercase tracking-wider font-semibold text-stone-500 bg-stone-100 px-1 py-0.5 rounded shrink-0">
+            {productCount > 1 && minPrice !== maxPrice ? 'Range' : 'Sale Price'}
+          </span>
+        </div>
       </div>
 
       {/* Card Footer: Product Count Badge & Actions */}

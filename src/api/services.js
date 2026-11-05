@@ -163,6 +163,17 @@ export const staticPagesAPI = {
 };
 
 
+// ─── VTO Masters ──────────────────────────────────
+export const vtoMastersAPI = {
+  getAll: (params) => api.get('/vto-masters', { params }),
+  getLookup: (params) => api.get('/vto-masters/lookup', { params }),
+  getById: (id) => api.get(`/vto-masters/${id}`),
+  getByBodyPart: (bodyPart) => api.get(`/vto-masters/part/${bodyPart}`),
+  create: (data) => api.post('/vto-masters', data),
+  update: (id, data) => api.put(`/vto-masters/${id}`, data),
+  delete: (id) => api.delete(`/vto-masters/${id}`),
+};
+
 // --- Media & Theme Gallery -------------------------
 export const galleryAPI = {
   getAll: (params) => api.get('/gallery', { params }),

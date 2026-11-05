@@ -55,13 +55,7 @@ const AnalyticsView = lazy(() => import('./pages/admin/AnalyticsView'));
 const StaticPagesView = lazy(() => import('./pages/admin/StaticPagesView'));
 const WebsiteThemesView = lazy(() => import('./pages/admin/WebsiteThemesView'));
 const GalleryView = lazy(() => import('./pages/admin/GalleryView'));
-
-const AdminPageLoader = () => (
-  <div className="min-h-[50vh] flex flex-col items-center justify-center p-8 text-stone-400 gap-3">
-    <div className="w-8 h-8 border-2 border-stone-300 border-t-[#8b6f4e] rounded-full animate-spin" />
-    <span className="text-xs uppercase tracking-widest text-stone-400 font-medium">Loading view...</span>
-  </div>
-);
+import CuteLoader from './components/common/CuteLoader';
 
 function App() {
   return (
@@ -116,7 +110,7 @@ function App() {
               )}
             </Toaster>
 
-        <Suspense fallback={<AdminPageLoader />}>
+        <Suspense fallback={<CuteLoader text="Loading luxury portal..." />}>
         <Routes>
           {/* Public Login Route */}
           <Route path="/login" element={<Login />} />

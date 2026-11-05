@@ -687,24 +687,38 @@ export default function BannersView() {
 
   // Submit banner from Modal
   const handleSaveBanner = async (saveStatus = null) => {
-    if (!title.trim()) {
-      toast.error('Please enter a banner title');
-      return;
+    const effectiveType = typeKey || editingBanner?.display?.type || currentBannerType?.key || 'herobanner';
+    const isCategoryBanner = effectiveType === 'categorybanner';
+    const selectedCatObj = categories.find((c) => String(c._id) === String(selectedCategory));
+
+    if (isCategoryBanner) {
+      if (!selectedCategory) {
+        toast.error('Please select a target category');
+        return;
+      }
+    } else {
+      if (!title.trim()) {
+        toast.error('Please enter a banner title');
+        return;
+      }
     }
 
     try {
       setSubmitting(true);
-      const effectiveType = typeKey || editingBanner?.display?.type || 'herobanner';
 
       let platform = 'web';
       if (showOnDesktop && showOnMobile) platform = 'common';
       else if (showOnDesktop && !showOnMobile) platform = 'web';
       else if (!showOnDesktop && showOnMobile) platform = 'mobile';
 
+      const effectiveTitle = isCategoryBanner
+        ? (title.trim() || selectedCatObj?.name || 'Category Banner')
+        : title.trim();
+
       const payloadContent = {
-        title: title.trim(),
+        title: effectiveTitle,
       };
-      if (description.trim()) {
+      if (!isCategoryBanner && description.trim()) {
         payloadContent.description = description.trim();
         payloadContent.subtitle = description.trim();
       }
@@ -739,10 +753,12 @@ export default function BannersView() {
         payload.image = null;
       }
 
-      if (mobileImageUrl) {
-        payload.mobileImage = { url: mobileImageUrl, key: mobileImageKey || undefined };
-      } else if (editingBanner?.mobileImage?.url) {
-        payload.mobileImage = null;
+      if (!isCategoryBanner) {
+        if (mobileImageUrl) {
+          payload.mobileImage = { url: mobileImageUrl, key: mobileImageKey || undefined };
+        } else if (editingBanner?.mobileImage?.url) {
+          payload.mobileImage = null;
+        }
       }
 
       if (effectiveType === 'collectionbanner' && collectionImages.length > 0) {
@@ -1105,7 +1121,9 @@ export default function BannersView() {
                     />
                   </th>
                   <th className="py-3.5 px-4 whitespace-nowrap">PREVIEW</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">TITLE</th>
+                  <th className="py-3.5 px-4 whitespace-nowrap">
+                    {currentBannerType.key === 'categorybanner' ? 'CATEGORY' : 'TITLE'}
+                  </th>
                   <th className="py-3.5 px-4 whitespace-nowrap">STATUS</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">DEVICES</th>
                   <th className="py-3.5 px-4 whitespace-nowrap">ORDER</th>
@@ -1134,7 +1152,9 @@ export default function BannersView() {
                   </tr>
                 ) : (
                   paginatedItems.map((banner) => {
-                    const bTitle = banner.content?.title || 'Untitled Banner';
+                    const bTitle = currentBannerType.key === 'categorybanner'
+                      ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || 'Category Banner')
+                      : (banner.content?.title || 'Untitled Banner');
                     const bDesc = banner.content?.description || banner.content?.subtitle || '';
                     const assetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url);
                     const isPublished = banner.status === 'active';
@@ -1401,100 +1421,10 @@ export default function BannersView() {
                     </h3>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Title */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-stone-700">
-                        Title <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        placeholder="Enter banner title"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all placeholder:text-stone-400"
-                      />
-                    </div>
-
-                    {/* Description */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-stone-700">
-                        Description
-                      </label>
-                      <input
-                        type="text"
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        placeholder="Enter short description (optional)"
-                        className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all placeholder:text-stone-400"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Hero Banner extra options */}
-                  {currentBannerType.key === 'herobanner' && (
-                    <div className="pt-2 border-t border-stone-200/60">
+                  {currentBannerType.key === 'categorybanner' ? (
+                    <div>
                       <label className="block text-xs font-semibold text-stone-700 mb-1">
-                        Category <span className="text-[11px] font-normal text-stone-400">(Optional)</span>
-                      </label>
-                      <Dropdown
-                        value={selectedCategory}
-                        onChange={setSelectedCategory}
-                        options={[
-                          { value: '', label: 'Select Category (Optional)' },
-                          ...categories.map((c) => ({ value: c._id, label: c.name })),
-                        ]}
-                        buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
-                        menuClassName="z-30"
-                      />
-                    </div>
-                  )}
-
-                  {/* Collection Banner extra options */}
-                  {currentBannerType.key === 'collectionbanner' && (
-                    <div className="pt-2 border-t border-stone-200/60 space-y-3">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-semibold text-stone-700 mb-1">
-                            Collection Group
-                          </label>
-                          <Dropdown
-                            value={collectionGroup}
-                            onChange={setCollectionGroup}
-                            options={[
-                              { value: 'gold', label: 'Gold Collection' },
-                              { value: 'silver', label: 'Silver Collection' },
-                              { value: 'spiritual', label: 'Spiritual Collection' },
-                            ]}
-                            buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
-                            menuClassName="z-30"
-                          />
-                        </div>
-
-                        <div>
-                          <label className="block text-xs font-semibold text-stone-700 mb-1">
-                            Associated Category
-                          </label>
-                          <Dropdown
-                            value={selectedCategory}
-                            onChange={setSelectedCategory}
-                            options={[
-                              { value: '', label: 'Select Category (Optional)' },
-                              ...categories.map((c) => ({ value: c._id, label: c.name })),
-                            ]}
-                            buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
-                            menuClassName="z-30"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Category Banner extra options */}
-                  {currentBannerType.key === 'categorybanner' && (
-                    <div className="pt-2 border-t border-stone-200/60">
-                      <label className="block text-xs font-semibold text-stone-700 mb-1">
-                        Category
+                        Category <span className="text-red-500">*</span>
                       </label>
                       <Dropdown
                         value={selectedCategory}
@@ -1507,6 +1437,97 @@ export default function BannersView() {
                         menuClassName="z-30"
                       />
                     </div>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Title */}
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold text-stone-700">
+                            Title <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Enter banner title"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all placeholder:text-stone-400"
+                          />
+                        </div>
+
+                        {/* Description */}
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold text-stone-700">
+                            Description
+                          </label>
+                          <input
+                            type="text"
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Enter short description (optional)"
+                            className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all placeholder:text-stone-400"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Hero Banner extra options */}
+                      {currentBannerType.key === 'herobanner' && (
+                        <div className="pt-2 border-t border-stone-200/60">
+                          <label className="block text-xs font-semibold text-stone-700 mb-1">
+                            Category <span className="text-[11px] font-normal text-stone-400">(Optional)</span>
+                          </label>
+                          <Dropdown
+                            value={selectedCategory}
+                            onChange={setSelectedCategory}
+                            options={[
+                              { value: '', label: 'Select Category (Optional)' },
+                              ...categories.map((c) => ({ value: c._id, label: c.name })),
+                            ]}
+                            buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                            menuClassName="z-30"
+                          />
+                        </div>
+                      )}
+
+                      {/* Collection Banner extra options */}
+                      {currentBannerType.key === 'collectionbanner' && (
+                        <div className="pt-2 border-t border-stone-200/60 space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                                Collection Group
+                              </label>
+                              <Dropdown
+                                value={collectionGroup}
+                                onChange={setCollectionGroup}
+                                options={[
+                                  { value: 'gold', label: 'Gold Collection' },
+                                  { value: 'silver', label: 'Silver Collection' },
+                                  { value: 'spiritual', label: 'Spiritual Collection' },
+                                ]}
+                                buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                                menuClassName="z-30"
+                              />
+                            </div>
+
+                            <div>
+                              <label className="block text-xs font-semibold text-stone-700 mb-1">
+                                Associated Category
+                              </label>
+                              <Dropdown
+                                value={selectedCategory}
+                                onChange={setSelectedCategory}
+                                options={[
+                                  { value: '', label: 'Select Category (Optional)' },
+                                  ...categories.map((c) => ({ value: c._id, label: c.name })),
+                                ]}
+                                buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                                menuClassName="z-30"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
 
@@ -1555,28 +1576,38 @@ export default function BannersView() {
                   </div>
 
                   {/* Desktop and Mobile Banner Upload Boxes matching screenshot */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <ImageUploadDropzone
-                      label="Desktop Banner"
-                      required
-                      value={imageUrl}
-                      alt="Desktop Banner"
-                      uploading={isUploadingDesktop}
-                      onFileSelect={(file) => handleFileUpload(file, 'desktop')}
-                      onChooseGallery={() => openMediaPicker('desktop')}
-                      onRemove={() => handleRemoveUploadedImage('desktop')}
-                    />
+                  <div className={`grid gap-4 ${currentBannerType.key === 'categorybanner' ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                    <div>
+                      <ImageUploadDropzone
+                        label="Desktop Banner"
+                        required
+                        value={imageUrl}
+                        alt="Desktop Banner"
+                        uploading={isUploadingDesktop}
+                        onFileSelect={(file) => handleFileUpload(file, 'desktop')}
+                        onChooseGallery={() => openMediaPicker('desktop')}
+                        onRemove={() => handleRemoveUploadedImage('desktop')}
+                      />
+                      {currentBannerType.key === 'categorybanner' && (
+                        <p className="text-[11px] text-stone-500 mt-1.5 flex flex-wrap items-center gap-1">
+                          <span className="font-semibold text-stone-700">Recommended Size:</span>
+                          <span>1920 × 360 px (or 1920 × 400 px, 16:3 or 21:9 ratio). Displays full width capped at 360px height.</span>
+                        </p>
+                      )}
+                    </div>
 
-                    <ImageUploadDropzone
-                      label="Mobile Banner"
-                      required
-                      value={mobileImageUrl}
-                      alt="Mobile Banner"
-                      uploading={isUploadingMobile}
-                      onFileSelect={(file) => handleFileUpload(file, 'mobile')}
-                      onChooseGallery={() => openMediaPicker('mobile')}
-                      onRemove={() => handleRemoveUploadedImage('mobile')}
-                    />
+                    {currentBannerType.key !== 'categorybanner' && (
+                      <ImageUploadDropzone
+                        label="Mobile Banner"
+                        required
+                        value={mobileImageUrl}
+                        alt="Mobile Banner"
+                        uploading={isUploadingMobile}
+                        onFileSelect={(file) => handleFileUpload(file, 'mobile')}
+                        onChooseGallery={() => openMediaPicker('mobile')}
+                        onRemove={() => handleRemoveUploadedImage('mobile')}
+                      />
+                    )}
                   </div>
 
                   {/* Collection Banners Grid Slots (4 items) */}

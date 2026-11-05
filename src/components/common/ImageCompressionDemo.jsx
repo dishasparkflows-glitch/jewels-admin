@@ -19,8 +19,6 @@ const QUALITY_PRESETS = [
   { value: 95, label: '95% Ultra Fidelity', tag: 'Max' },
 ];
 
-const DEFAULT_DEMO_URL = '/featured/raw_5mb_jewelry.jpg';
-
 export default function ImageCompressionDemo({
   quality = 82,
   format = 'image/webp',
@@ -29,11 +27,11 @@ export default function ImageCompressionDemo({
 }) {
   const [sourceFile, setSourceFile] = useState(null);
   const [originalStats, setOriginalStats] = useState({
-    width: 5120,
-    height: 2858,
-    size: 4948396,
-    url: DEFAULT_DEMO_URL,
-    name: '5.0 MB Raw Jewelry Photo',
+    width: 1920,
+    height: 1080,
+    size: 200000,
+    url: '',
+    name: 'Sample Jewelry Photo',
   });
   const [compressedStats, setCompressedStats] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -43,36 +41,25 @@ export default function ImageCompressionDemo({
   const compressedUrlRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
-  // Helper to load the 5MB raw demo image as File/Blob
+  // Helper to generate a demo image on canvas as File/Blob
   const loadDemoFile = useCallback(async () => {
-    try {
-      const res = await fetch(DEFAULT_DEMO_URL);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      return new File([blob], 'raw_5mb_jewelry.jpg', { type: blob.type || 'image/jpeg' });
-    } catch {
-      // Fallback: draw image to canvas if direct fetch is blocked
-      return new Promise((resolve, reject) => {
-        const img = new Image();
-        img.crossOrigin = 'anonymous';
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          canvas.width = img.naturalWidth || 5120;
-          canvas.height = img.naturalHeight || 2858;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          canvas.toBlob((blob) => {
-            if (blob) {
-              resolve(new File([blob], 'raw_5mb_jewelry.jpg', { type: 'image/jpeg' }));
-            } else {
-              reject(new Error('Canvas export failed'));
-            }
-          }, 'image/jpeg', 0.98);
-        };
-        img.onerror = reject;
-        img.src = DEFAULT_DEMO_URL;
-      });
-    }
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1920;
+      canvas.height = 1080;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#1c1917';
+        ctx.fillRect(0, 0, 1920, 1080);
+        ctx.fillStyle = '#8b6f4e';
+        ctx.font = 'bold 48px serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Neirah Luxury Jewelry Sample', 960, 540);
+      }
+      canvas.toBlob((blob) => {
+        resolve(new File([blob], 'demo_jewelry.jpg', { type: 'image/jpeg' }));
+      }, 'image/jpeg', 0.95);
+    });
   }, []);
 
   // Load the 5MB demo file on mount

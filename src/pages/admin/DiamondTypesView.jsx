@@ -445,7 +445,7 @@ export default function DiamondTypesView() {
                   return (
                     <tr
                       key={t._id}
-                      onClick={() => setViewingType(t)}
+                      onClick={() => handleOpenEdit(t)}
                       className={`transition-colors cursor-pointer group ${
                         selectedIds.includes(t._id) ? 'bg-[#fcfaf7]' : 'hover:bg-[#faf7f2]'
                       }`}
@@ -517,10 +517,10 @@ export default function DiamondTypesView() {
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                         <RowActions
                           record={t}
-                          onView={() => setViewingType(t)}
+                          onView={() => handleOpenEdit(t)}
                           onEdit={() => handleOpenEdit(t)}
                           onDelete={() => handleDelete(t._id, t.name)}
-                          viewTitle="View Details"
+                          viewTitle="Edit Diamond Type"
                         />
                       </td>
                     </tr>

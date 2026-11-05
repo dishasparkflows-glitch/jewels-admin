@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { useTheme } from '../../contexts/ThemeContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import ErrorBoundary from '../common/ErrorBoundary';
+import CuteLoader from '../common/CuteLoader';
+import CuteTopProgressBar from '../common/CuteTopProgressBar';
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -44,6 +46,9 @@ const AdminLayout = () => {
 
   return (
     <div id="admin-root-layout" className="min-h-screen bg-[#f8fafc] text-stone-900 relative admin-page-bg" style={{ backgroundColor: "#f8fafc" }}>
+      {/* Sleek Golden Shimmer Progress Bar across the top on menu transitions */}
+      <CuteTopProgressBar />
+
       {/* Mobile backdrop */}
       {mobileSidebarOpen && (
         <div
@@ -63,7 +68,9 @@ const AdminLayout = () => {
 
         <main className="flex-1 min-w-0 w-full px-3 sm:px-5 py-2.5 sm:py-3.5 max-w-[1600px] mx-auto">
           <ErrorBoundary>
-            <Outlet />
+            <Suspense fallback={<CuteLoader text="Loading view..." />}>
+              <Outlet />
+            </Suspense>
           </ErrorBoundary>
         </main>
       </div>
@@ -72,4 +79,3 @@ const AdminLayout = () => {
 };
 
 export default AdminLayout;
-

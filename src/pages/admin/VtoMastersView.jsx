@@ -279,7 +279,11 @@ export default function VtoMastersView() {
               {/* Top Details */}
               <div>
                 {/* Header Row: Icon + Title/Env + Active Badge */}
-                <div className="flex items-center justify-between gap-1.5">
+                <div
+                  onClick={() => openEditModal(key, master)}
+                  className="flex items-center justify-between gap-1.5 cursor-pointer hover:opacity-85 transition-opacity"
+                  title="Click to edit VTO master"
+                >
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-[#faf5ee] border border-[#ebdccb] flex items-center justify-center text-[#8f6d43] flex-shrink-0 shadow-2xs">
                       <IoSparklesOutline className="w-3.5 h-3.5 text-[#8f6d43]" />

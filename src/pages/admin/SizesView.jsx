@@ -20,6 +20,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import CuteLoader from '../../components/common/CuteLoader';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
@@ -467,11 +468,7 @@ export default function SizesView() {
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
-                <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
-                    Loading sizes...
-                  </td>
-                </tr>
+                <CuteLoader variant="table" colSpan={6} text="Loading jewelry sizes..." />
               ) : filteredSizes.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="py-8 text-center text-stone-400">
@@ -494,7 +491,7 @@ export default function SizesView() {
                   return (
                     <tr
                       key={s._id}
-                      onClick={() => setViewingSize(s)}
+                      onClick={() => handleOpenEdit(s)}
                       className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
                     >
                       <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
@@ -558,10 +555,10 @@ export default function SizesView() {
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                         <RowActions
                           record={s}
-                          onView={() => setViewingSize(s)}
+                          onView={() => handleOpenEdit(s)}
                           onEdit={() => handleOpenEdit(s)}
                           onDelete={() => handleDelete(s._id, s.name)}
-                          viewTitle="View Details"
+                          viewTitle="Edit Size"
                         />
                       </td>
                     </tr>

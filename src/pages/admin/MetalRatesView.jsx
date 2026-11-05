@@ -390,7 +390,7 @@ export default function MetalRatesView() {
                   return (
                     <tr
                       key={item.id}
-                      onClick={() => setViewingRecord(item)}
+                      onClick={() => openEditModal()}
                       className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]' : ''
                       }`}
@@ -463,7 +463,7 @@ export default function MetalRatesView() {
                       >
                         <RowActions
                           record={item}
-                          onPreview={() => setViewingRecord(item)}
+                          onPreview={openEditModal}
                           onEdit={openEditModal}
                           previewTitle="View Rate Details"
                           editTitle="Edit Rates"

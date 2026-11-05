@@ -234,6 +234,54 @@ label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge"]):not([c
   animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+/* ─── Cute Diamond Loader Animations ─── */
+@keyframes cuteBob {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-7px) rotate(2deg);
+  }
+}
+
+@keyframes cuteTwinkle {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(0.65) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(45deg);
+  }
+}
+
+@keyframes cuteHalo {
+  0%, 100% {
+    transform: scale(0.97);
+    box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.2);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow: 0 0 20px 4px rgba(212, 175, 55, 0.32);
+  }
+}
+
+.animate-cute-bob {
+  animation: cuteBob 2.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.animate-cute-twinkle {
+  animation: cuteTwinkle 1.8s ease-in-out infinite;
+}
+
+.animate-cute-twinkle-delay {
+  animation: cuteTwinkle 1.8s ease-in-out 0.9s infinite;
+}
+
+.animate-cute-halo {
+  animation: cuteHalo 2.5s ease-in-out infinite;
+}
+
 /* Universal "No Img" Fallback Image Styling */
 img.no-img-fallback {
   object-fit: contain !important;

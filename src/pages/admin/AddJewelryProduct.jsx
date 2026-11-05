@@ -1394,13 +1394,13 @@ export default function AddJewelryProduct() {
   const vtoMastersFetchedRef = useRef(false);
 
   useEffect(() => {
-    // Call /vto-masters API when user enters Step 4 (Product Media) or opens VTO Studio
-    if ((activeStep !== 4 && !isVtoStudioOpen) || vtoMastersFetchedRef.current) return;
+    // Call /vto-masters/lookup API when user enters Step 3 (Product Media) or opens VTO Studio
+    if ((activeStep !== 3 && activeStep !== 4 && !isVtoStudioOpen) || vtoMastersFetchedRef.current) return;
 
     const fetchVtoMasters = async () => {
       try {
         vtoMastersFetchedRef.current = true;
-        const res = await api.get('/vto-masters');
+        const res = await api.get('/vto-masters/lookup');
         const items = res.data?.data?.items || res.data?.data || [];
         if (Array.isArray(items)) {
           const map = {};

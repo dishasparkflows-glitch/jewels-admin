@@ -19,6 +19,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import CuteLoader from '../../components/common/CuteLoader';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 /**
@@ -337,11 +338,7 @@ export default function MetalColorsView() {
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
-                <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
-                    Loading colors...
-                  </td>
-                </tr>
+                <CuteLoader variant="table" colSpan={6} text="Loading metal colors..." />
               ) : filteredColors.length === 0 ? (
                 <tr>
                   <td colSpan="6" className="py-8 text-center text-stone-400">
@@ -355,7 +352,7 @@ export default function MetalColorsView() {
                   return (
                     <tr
                       key={c._id}
-                      onClick={() => setViewingColor(c)}
+                      onClick={() => handleOpenEdit(c)}
                       className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
                     >
                       <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
@@ -395,10 +392,10 @@ export default function MetalColorsView() {
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                         <RowActions
                           record={c}
-                          onView={() => setViewingColor(c)}
+                          onView={() => handleOpenEdit(c)}
                           onEdit={() => handleOpenEdit(c)}
                           onDelete={() => handleDelete(c._id, c.name)}
-                          viewTitle="View Details"
+                          viewTitle="Edit Color"
                         />
                       </td>
                     </tr>

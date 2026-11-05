@@ -415,7 +415,7 @@ export default function DiamondClaritiesView() {
                   return (
                     <tr
                       key={c._id}
-                      onClick={() => setViewingClarity(c)}
+                      onClick={() => handleOpenEdit(c)}
                       className={`transition-colors cursor-pointer group ${
                         selectedIds.includes(c._id) ? 'bg-[#fcfaf7]' : 'hover:bg-[#faf7f2]'
                       }`}
@@ -489,10 +489,10 @@ export default function DiamondClaritiesView() {
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                         <RowActions
                           record={c}
-                          onView={() => setViewingClarity(c)}
+                          onView={() => handleOpenEdit(c)}
                           onEdit={() => handleOpenEdit(c)}
                           onDelete={() => handleDelete(c._id, c.name)}
-                          viewTitle="View Details"
+                          viewTitle="Edit Clarity"
                         />
                       </td>
                     </tr>

@@ -58,10 +58,17 @@ export default function Pagination({
     ];
   };
 
+  const scrollToTop = () => {
+    try {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (_) {}
+  };
+
   const handlePageClick = (page) => {
     if (page === '...' || page === safeCurrentPage) return;
     if (page >= 1 && page <= totalPages) {
       onPageChange?.(page);
+      scrollToTop();
     }
   };
 
@@ -100,6 +107,7 @@ export default function Pagination({
                 setAdminPageSize(num);
                 onPageSizeChange?.(num);
                 onPageChange?.(1);
+                scrollToTop();
               }}
               options={effectivePageSizeOptions.map((opt) => ({ value: opt, label: String(opt) }))}
               placeholder={String(pageSize)}

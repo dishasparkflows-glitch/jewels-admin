@@ -412,7 +412,7 @@ export default function DiamondShapesView() {
                   return (
                     <tr
                       key={s._id}
-                      onClick={() => setViewingShape(s)}
+                      onClick={() => handleOpenEdit(s)}
                       className={`transition-colors cursor-pointer group ${
                         selectedIds.includes(s._id) ? 'bg-[#fcfaf7]' : 'hover:bg-[#faf7f2]'
                       }`}
@@ -486,10 +486,10 @@ export default function DiamondShapesView() {
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                         <RowActions
                           record={s}
-                          onView={() => setViewingShape(s)}
+                          onView={() => handleOpenEdit(s)}
                           onEdit={() => handleOpenEdit(s)}
                           onDelete={() => handleDelete(s._id, s.name)}
-                          viewTitle="View Details"
+                          viewTitle="Edit Shape"
                         />
                       </td>
                     </tr>

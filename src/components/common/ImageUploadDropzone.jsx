@@ -117,16 +117,6 @@ export default function ImageUploadDropzone({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
-              {/* Full Preview Button */}
-              <button
-                type="button"
-                onClick={handlePreviewClick}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-xs font-semibold text-stone-700 hover:text-stone-900 shadow-2xs transition-colors cursor-pointer"
-              >
-                <HiOutlineEye className="w-3.5 h-3.5 text-stone-500" />
-                <span>View Full Size</span>
-              </button>
-
               {/* Choose from Media Gallery */}
               {onChooseGallery && (
                 <button
