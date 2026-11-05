@@ -263,6 +263,31 @@ export default function BirthstonePortfolioView() {
     }
   };
 
+  // Delete Birthstone with common confirmation modal
+  const handleDelete = async (item) => {
+    const isConfirmed = await confirm({
+      title: 'Delete Birthstone',
+      message: `Are you sure you want to delete the "${item.month}" birthstone configuration?\nThis action cannot be undone.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      if (item.dbRecord?._id) {
+        await api.delete(`/birthstones/${item.dbRecord._id}`);
+        toast.success(`${item.month} birthstone deleted successfully`);
+        fetchBirthstones();
+      } else {
+        toast.error('No custom birthstone record found to delete');
+      }
+    } catch (err) {
+      console.error('Delete birthstone failed:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete birthstone');
+    }
+  };
+
   // Export handlers
   const handleExport = (format) => {
     const dataToExport = filteredMonths.map((m) => ({
@@ -409,7 +434,7 @@ export default function BirthstonePortfolioView() {
                   return (
                     <tr
                       key={item._id}
-                      onClick={() => setViewingMonth(item)}
+                      onClick={() => handleOpenConfigure(item)}
                       className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]' : ''
                       }`}
@@ -439,9 +464,9 @@ export default function BirthstonePortfolioView() {
                       {/* Gem Portrait Preview */}
                       <td className="py-2.5 px-3">
                         <div
-                          onClick={() => setViewingMonth(item)}
+                          onClick={() => handleOpenConfigure(item)}
                           className="w-7 h-7 rounded-md border border-stone-200/90 bg-[#faf8f5] flex items-center justify-center p-0.5 cursor-pointer hover:border-[#8b6f4e] transition-colors shadow-2xs group relative"
-                          title="Click to view full portrait"
+                          title="Click to edit birthstone"
                         >
                           {item.imageUrl ? (
                             <img
@@ -502,15 +527,15 @@ export default function BirthstonePortfolioView() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-2.5 pr-4 pl-2 text-right">
+                      <td className="py-2.5 pr-4 pl-2 text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={item.dbRecord || item}
                           detailsEndpoint="/birthstones"
                           detailsTitle={`${item.month} Birthstone Details`}
-                          onPreview={() => setViewingMonth(item)}
+                          onPreview={() => handleOpenConfigure(item)}
                           onEdit={() => handleOpenConfigure(item)}
-                          onDelete={() => handleToggleStatus(item)}
-                          deleteLabel={item.isActive ? 'Deactivate' : 'Activate'}
+                          onDelete={() => handleDelete(item)}
+                          deleteTitle={`Delete ${item.month}`}
                         />
                       </td>
                     </tr>

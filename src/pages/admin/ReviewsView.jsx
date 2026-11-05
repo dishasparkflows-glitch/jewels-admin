@@ -427,7 +427,7 @@ export default function ReviewsView() {
                   return (
                     <tr
                       key={id}
-                      onClick={() => setViewingReview({ ...rev, reviewerName, reviewerEmail, rating, reviewTitle, reviewComment, dateStr, displayId })}
+                      onClick={() => handleEdit(rev)}
                       className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]/40' : ''
                       }`}
@@ -479,14 +479,17 @@ export default function ReviewsView() {
 
                       {/* Feedback & Testimonial */}
                       <td className="py-2.5 px-3">
-                        <div className="max-w-md space-y-0.5">
+                        <div className="max-w-xl lg:max-w-2xl space-y-1">
                           {reviewTitle && (
-                            <p className="font-bold text-stone-900 text-xs sm:text-[13px]">
+                            <p className="font-semibold text-stone-900 text-xs sm:text-[13px] leading-snug">
                               {reviewTitle}
                             </p>
                           )}
-                          <p className="text-stone-600 text-xs italic line-clamp-1 leading-relaxed">
-                            &quot;{reviewComment}&quot;
+                          <p
+                            className="text-stone-600 text-xs font-normal leading-relaxed line-clamp-2"
+                            title={reviewComment}
+                          >
+                            {reviewComment}
                           </p>
                         </div>
                       </td>
@@ -504,10 +507,10 @@ export default function ReviewsView() {
                       </td>
 
                       {/* Actions: Eye & Three Dots */}
-                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={rev}
-                          onView={() => setViewingReview({ ...rev, reviewerName, reviewerEmail, rating, reviewTitle, reviewComment, dateStr, displayId })}
+                          onView={() => handleEdit(rev)}
                           onEdit={() => handleEdit(rev)}
                           onDelete={() => handleDelete(id, reviewTitle || reviewerName)}
                           viewTitle="View full testimonial"
@@ -786,8 +789,8 @@ export default function ReviewsView() {
               </div>
               <div>
                 <span className="text-xs font-bold text-stone-500 block mb-1">Testimonial</span>
-                <p className="text-stone-800 text-xs sm:text-[13px] italic leading-relaxed bg-white p-3.5 rounded-xl border border-stone-200 shadow-2xs">
-                  &quot;{viewingReview.reviewComment}&quot;
+                <p className="text-stone-800 text-xs sm:text-[13px] font-normal leading-relaxed bg-white p-3.5 rounded-xl border border-stone-200 shadow-2xs whitespace-pre-line">
+                  {viewingReview.reviewComment}
                 </p>
               </div>
               {viewingReview.image?.url && (

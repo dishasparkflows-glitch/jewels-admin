@@ -761,7 +761,7 @@ export default function CelebrateGiftsView() {
                 paginatedItems.map((item, idx) => (
                   <tr
                     key={item._id}
-                    onClick={() => openViewModal(item)}
+                    onClick={() => openEditModal(item)}
                     className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
                   >
                     <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
@@ -854,10 +854,10 @@ export default function CelebrateGiftsView() {
                     <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
                       <RowActions
                         record={item}
-                        onView={() => openViewModal(item)}
+                        onView={() => openEditModal(item)}
                         onEdit={() => openEditModal(item)}
                         onDelete={() => handleDelete(item._id)}
-                        viewTitle="View Showcase"
+                        viewTitle="Edit Showcase"
                       />
                     </td>
                   </tr>

@@ -326,7 +326,11 @@ export default function BlogCategoriesView() {
                 </tr>
               ) : (
                 paginatedItems.map((category) => (
-                  <tr key={category._id} className="hover:bg-stone-50/70 transition-colors">
+                  <tr
+                    key={category._id}
+                    onClick={() => handleOpenEdit(category)}
+                    className="hover:bg-stone-50/70 transition-colors cursor-pointer"
+                  >
                     <td className="py-3.5 px-4 font-semibold text-stone-900">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-lg bg-[#faf6f0] border border-[#e8ddce] flex items-center justify-center text-[#8b6f4e] font-bold text-xs">
@@ -341,7 +345,7 @@ export default function BlogCategoriesView() {
                     <td className="py-3.5 px-4 text-stone-600 max-w-xs truncate">
                       {category.description || <span className="text-stone-300 italic">No description</span>}
                     </td>
-                    <td className="py-3.5 px-4 text-center">
+                    <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => handleToggleStatus(category)}
@@ -363,7 +367,7 @@ export default function BlogCategoriesView() {
                     <td className="py-3.5 px-4 text-center text-xs font-mono text-stone-600">
                       {category.order ?? 0}
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                       <RowActions
                         onEdit={() => handleOpenEdit(category)}
                         onDelete={() => handleDelete(category)}

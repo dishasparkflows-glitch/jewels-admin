@@ -520,7 +520,7 @@ export default function BeforeAfterView() {
                           Before
                         </span>
                         <div
-                          onClick={() => handleOpenView(item)}
+                          onClick={() => handleOpenEdit(item)}
                           className="relative aspect-[3/4] rounded-lg overflow-hidden bg-stone-50 border border-stone-200/80 shadow-2xs flex items-center justify-center cursor-pointer group/img"
                         >
                           {item.beforeImage?.url ? (
@@ -544,7 +544,7 @@ export default function BeforeAfterView() {
                           After
                         </span>
                         <div
-                          onClick={() => handleOpenView(item)}
+                          onClick={() => handleOpenEdit(item)}
                           className="relative aspect-[3/4] rounded-lg overflow-hidden bg-stone-50 border border-stone-200/80 shadow-2xs flex items-center justify-center cursor-pointer group/img"
                         >
                           {item.afterImage?.url ? (
@@ -638,7 +638,7 @@ export default function BeforeAfterView() {
                   return (
                     <tr
                       key={item._id}
-                      onClick={() => handleOpenView(item)}
+                      onClick={() => handleOpenEdit(item)}
                       className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]/40' : ''
                       }`}
@@ -718,7 +718,7 @@ export default function BeforeAfterView() {
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={item}
-                          onView={() => handleOpenView(item)}
+                          onView={() => handleOpenEdit(item)}
                           onEdit={() => handleOpenEdit(item)}
                           onDelete={() => handleDelete(item._id, item.alt)}
                           viewTitle="View Details"

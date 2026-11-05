@@ -38,6 +38,7 @@ export default function SizesView() {
   const [viewingSize, setViewingSize] = useState(null);
   const [sizeName, setSizeName] = useState('');
   const [categoryId, setCategoryId] = useState('');
+  const [sizeStatus, setSizeStatus] = useState('active');
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch all Sizes and Categories from API
@@ -242,6 +243,7 @@ export default function SizesView() {
     setEditingSize(null);
     setSizeName('');
     setCategoryId(categories[0]?._id || '');
+    setSizeStatus('active');
     setIsModalOpen(true);
   };
 
@@ -250,6 +252,7 @@ export default function SizesView() {
     setEditingSize(s);
     setSizeName(s.name || '');
     setCategoryId(s.categoryId?._id || s.categoryId || s.category?._id || s.category || categories[0]?._id || '');
+    setSizeStatus(s.status || 'active');
     setIsModalOpen(true);
   };
 
@@ -258,14 +261,14 @@ export default function SizesView() {
     try {
       const nextStatus = sizeItem.status === 'active' ? 'inactive' : 'active';
       await api.put(`/sizes/${sizeItem._id}`, { status: nextStatus });
-      toast.success(`${sizeItem.name} visibility set to ${nextStatus}`);
+      toast.success(`${sizeItem.name} status set to ${nextStatus}`);
       setSizes((prev) =>
         prev.map((item) =>
           item._id === sizeItem._id ? { ...item, status: nextStatus } : item
         )
       );
     } catch (err) {
-      toast.error('Failed to update visibility');
+      toast.error('Failed to update status');
     }
   };
 
@@ -350,7 +353,7 @@ export default function SizesView() {
       const payload = {
         name: sizeName.trim(),
         categoryId,
-        status: 'active',
+        status: sizeStatus,
       };
 
       if (editingSize?._id) {
@@ -461,7 +464,7 @@ export default function SizesView() {
                 </th>
                 <th className="py-2 px-3 whitespace-nowrap">SIZE</th>
                 <th className="py-2 px-3 whitespace-nowrap">CATEGORY</th>
-                <th className="py-2 px-3 whitespace-nowrap">VISIBILITY</th>
+                <th className="py-2 px-3 whitespace-nowrap">STATUS</th>
                 <th className="py-2 px-3 whitespace-nowrap">CREATED DATE</th>
                 <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
@@ -529,21 +532,36 @@ export default function SizesView() {
                         })()}
                       </td>
 
-                      {/* Visibility Toggle */}
+                      {/* Status Toggle */}
                       <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => handleToggleVisibility(s)}
-                          style={s.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${s.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                          title={`Click to set ${s.status === 'active' ? 'inactive' : 'active'}`}
-                        >
-                          <span
-                            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-xs transition-transform ${
-                              s.status === 'active' ? 'translate-x-4.5' : 'translate-x-1'
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={s.status === 'active'}
+                            onClick={() => handleToggleVisibility(s)}
+                            style={s.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                              s.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
                             }`}
-                          />
-                        </button>
+                            title={`Click to set ${s.status === 'active' ? 'Inactive' : 'Active'}`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                s.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              s.status === 'active'
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-stone-100 text-stone-500 border border-stone-200'
+                            }`}
+                          >
+                            {s.status === 'active' ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
                       </td>
 
                       {/* Created Date */}
@@ -644,6 +662,35 @@ export default function SizesView() {
                   placeholder="Select Category"
                   buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900"
                 />
+              </div>
+
+              {/* Status Toggle */}
+              <div className="flex items-center justify-between p-3 rounded-xl border border-stone-200 bg-stone-50/60">
+                <div>
+                  <span className="text-xs font-bold text-stone-800 block">Status</span>
+                  <span className="text-[11px] text-stone-400">
+                    Control visibility across storefront size filters
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={sizeStatus === 'active'}
+                    onClick={() => setSizeStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
+                    style={sizeStatus === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${sizeStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
+                  >
+                    <span
+                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                        sizeStatus === 'active' ? 'translate-x-5' : 'translate-x-0'
+                      }`}
+                    />
+                  </button>
+                  <span className="text-xs font-bold text-stone-800">
+                    {sizeStatus === 'active' ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
               </div>
 
               {/* Modal Footer Actions (Matches Screenshot 2) */}

@@ -334,7 +334,7 @@ export default function CodSequencesView() {
                   return (
                     <tr
                       key={id}
-                      onClick={() => setViewingItem({ ...row, formattedDeposit })}
+                      onClick={() => handleOpenEdit(row)}
                       className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]/40' : ''
                       }`}
@@ -394,7 +394,7 @@ export default function CodSequencesView() {
                       </td>
 
                       {/* Actions: Eye & Three Dots */}
-                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={row}
                           onView={() => setViewingItem({ ...row, formattedDeposit })}

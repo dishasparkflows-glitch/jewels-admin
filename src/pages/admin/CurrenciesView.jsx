@@ -355,7 +355,8 @@ export default function CurrenciesView() {
                   return (
                     <tr
                       key={item._id}
-                      className="hover:bg-[#faf8f5]/60 transition-colors group"
+                      onClick={() => openEditModal(item)}
+                      className="hover:bg-[#faf8f5]/60 transition-colors cursor-pointer group"
                     >
                       {/* Sr No */}
                       <td className="py-3.5 pl-4 pr-2 text-center text-xs font-semibold text-stone-400 whitespace-nowrap">
@@ -434,7 +435,7 @@ export default function CurrenciesView() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 pr-4 pl-2 text-right whitespace-nowrap">
+                      <td className="py-3.5 pr-4 pl-2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="inline-flex items-center gap-1.5 justify-end">
                           {/* Live sync single rate */}
                           {!isBase && useLive && (

@@ -1164,10 +1164,14 @@ export default function BannersView() {
                     return (
                       <tr
                         key={banner._id}
-                        className={`hover:bg-[#faf8f5]/60 transition-colors ${isSelected ? 'bg-[#fcfaf7]' : ''}`}
+                        onClick={() => {
+                          populateFormWithBanner(banner);
+                          setIsFormModalOpen(true);
+                        }}
+                        className={`hover:bg-[#faf8f5]/60 transition-colors cursor-pointer ${isSelected ? 'bg-[#fcfaf7]' : ''}`}
                       >
                         {/* Checkbox */}
-                        <td className="py-3.5 px-4">
+                        <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={isSelected}

@@ -37,6 +37,8 @@ import { galleryAPI } from '../../api/services';
 import { uploadWithPresignedUrl, uploadFilesWithPresignedUrls, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
+import { useConfirm } from '../../contexts/ConfirmContext';
+import { DeleteActionButton, EditActionButton } from '../../components/common/RowActions';
 
 const BANNER_TYPES = [
   { key: 'all', label: 'All Media', icon: HiOutlinePhotograph },
@@ -200,6 +202,7 @@ export default function GalleryView() {
   const [loading, setLoading] = useState(true);
 
   // ─── Filter & View State ────────────────────────────────────
+  const confirm = useConfirm();
   const [selectedTheme, setSelectedTheme] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedPlatform, setSelectedPlatform] = useState('all'); // 'all' | 'web' | 'mobile' | 'common'
@@ -210,7 +213,6 @@ export default function GalleryView() {
   // ─── Modals State ───────────────────────────────────────────
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState(null);
-  const [deleteConfirmItem, setDeleteConfirmItem] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
   // ─── Edit Modal State ───────────────────────────────────────
@@ -303,7 +305,7 @@ export default function GalleryView() {
 
   // ─── Modal Scroll Lock & ESC Key Handling ───────────────────
   useEffect(() => {
-    if (uploadModalOpen || previewItem || deleteConfirmItem || editingItem) {
+    if (uploadModalOpen || previewItem || editingItem) {
       const prevOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
 
@@ -311,7 +313,6 @@ export default function GalleryView() {
         if (e.key === 'Escape') {
           if (!isUploading && uploadModalOpen) setUploadModalOpen(false);
           if (previewItem) setPreviewItem(null);
-          if (!isDeleting && deleteConfirmItem) setDeleteConfirmItem(null);
           if (!isUpdating && editingItem) setEditingItem(null);
         }
       };
@@ -322,7 +323,7 @@ export default function GalleryView() {
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [uploadModalOpen, previewItem, deleteConfirmItem, editingItem, isUploading, isDeleting, isUpdating]);
+  }, [uploadModalOpen, previewItem, editingItem, isUploading, isUpdating]);
 
   // ─── File Selection & Drag-and-Drop ─────────────────────────
   const addFiles = (filesList) => {
@@ -444,13 +445,21 @@ export default function GalleryView() {
   };
 
   // ─── Delete / Unassign Action ───────────────────────────────
-  const handleDeleteItem = async () => {
-    if (!deleteConfirmItem) return;
+  const handleDeleteItem = async (item) => {
+    if (!item) return;
+    const isConfirmed = await confirm({
+      title: 'Remove Media Item',
+      message: `Are you sure you want to remove "${item.typeLabel || item.placement || 'this media item'}"?\nThis image will be unassigned from its banner and theme.`,
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
     try {
       setIsDeleting(true);
-      await galleryAPI.deleteItem(deleteConfirmItem.id);
+      await galleryAPI.deleteItem(item.id);
       toast.success('Media item removed successfully.');
-      setDeleteConfirmItem(null);
       await fetchGallery();
     } catch (err) {
       console.error('Delete failed:', err);
@@ -1087,22 +1096,14 @@ export default function GalleryView() {
                       >
                         <HiOutlineClipboardCopy className="h-3.5 w-3.5" />
                       </button>
-                      <button
-                        type="button"
+                      <EditActionButton
                         onClick={() => handleOpenEdit(item)}
-                        className="rounded-md p-1.5 text-stone-400 hover:bg-amber-50 hover:text-[#8b6f4e] transition"
                         title="Edit Details"
-                      >
-                        <HiOutlinePencil className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteConfirmItem(item)}
-                        className="rounded-md p-1.5 text-red-500 hover:bg-red-50 hover:text-red-700 transition cursor-pointer"
+                      />
+                      <DeleteActionButton
+                        onClick={() => handleDeleteItem(item)}
                         title="Remove Media Item"
-                      >
-                        <HiOutlineTrash className="h-3.5 w-3.5" />
-                      </button>
+                      />
                     </div>
                   </td>
                 </tr>
@@ -1177,20 +1178,20 @@ export default function GalleryView() {
                   </div>
 
                   {/* Action Buttons Row */}
-                  <div className="mt-2.5 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100">
+                  <div className="mt-2.5 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 transition shadow-2xs cursor-pointer"
+                      className="flex-1 py-1 flex items-center justify-center rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
                       title="Edit Media Item"
                     >
-                      <HiOutlinePencil className="h-3.5 w-3.5" />
+                      <HiOutlinePencil className="h-3.5 w-3.5 stroke-[2]" />
                     </button>
 
                     <button
                       type="button"
                       onClick={() => copyToClipboard(item.url)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 transition shadow-2xs cursor-pointer"
+                      className="flex-1 py-1 flex items-center justify-center rounded-lg border border-stone-200/90 bg-white hover:bg-stone-50 active:scale-95 text-stone-600 transition shadow-2xs cursor-pointer"
                       title="Copy Image URL"
                     >
                       <HiOutlineClipboardCopy className="h-3.5 w-3.5" />
@@ -1198,11 +1199,11 @@ export default function GalleryView() {
 
                     <button
                       type="button"
-                      onClick={() => setDeleteConfirmItem(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-stone-200/90 bg-white hover:bg-red-50 text-red-600 hover:text-red-700 transition shadow-2xs cursor-pointer"
+                      onClick={() => handleDeleteItem(item)}
+                      className="flex-1 py-1 flex items-center justify-center rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 transition-all shadow-2xs cursor-pointer"
                       title="Remove Media Item"
                     >
-                      <HiOutlineTrash className="h-3.5 w-3.5" />
+                      <HiOutlineTrash className="h-3.5 w-3.5 stroke-[2]" />
                     </button>
                   </div>
                 </div>
@@ -1657,60 +1658,7 @@ export default function GalleryView() {
           document.body
         )}
 
-      {/* ─── 7. DELETE CONFIRMATION MODAL ───────────────────────── */}
-      {deleteConfirmItem &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn"
-            onClick={() => {
-              if (!isDeleting) setDeleteConfirmItem(null);
-            }}
-          >
-            <div
-              className="relative w-full max-w-md rounded-3xl border border-stone-200 bg-white p-6 shadow-2xl animate-scaleUp"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-red-50 border border-red-200 text-red-700">
-                <HiOutlineTrash className="h-6 w-6" />
-              </div>
-              <h3 className="mt-4 text-base font-bold text-stone-900">Remove Media Item</h3>
-              <p className="mt-1.5 text-xs text-stone-500">
-                Are you sure you want to remove &ldquo;{deleteConfirmItem.typeLabel || deleteConfirmItem.placement}&rdquo;?
-                This image will be unassigned from its banner and theme.
-              </p>
-
-              <div className="mt-6 flex items-center justify-end gap-3">
-                <button
-                  type="button"
-                  onClick={() => setDeleteConfirmItem(null)}
-                  disabled={isDeleting}
-                  className="rounded-xl border border-stone-200 px-4 py-2 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDeleteItem}
-                  disabled={isDeleting}
-                  className="inline-flex items-center gap-2 rounded-xl bg-red-700 px-4 py-2 text-xs font-semibold text-white hover:bg-red-800 transition cursor-pointer disabled:opacity-50 shadow-sm shadow-red-900/20"
-                >
-                  {isDeleting ? (
-                    <>
-                      <div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                      Removing…
-                    </>
-                  ) : (
-                    'Confirm Delete'
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
-      {/* ─── 8. EDIT GALLERY ITEM MODAL ────────────────────────── */}
+      {/* ─── 7. EDIT GALLERY ITEM MODAL ────────────────────────── */}
       {editingItem &&
         createPortal(
           <div

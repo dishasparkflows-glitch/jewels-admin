@@ -406,7 +406,11 @@ export default function DiamondsView() {
               </thead>
               <tbody>
                 {diamonds.map((item) => (
-                  <tr key={item._id} className="group hover:bg-stone-50/60 transition-colors">
+                  <tr
+                    key={item._id}
+                    onClick={() => handleOpenEdit(item)}
+                    className="group hover:bg-[#faf7f2] transition-colors cursor-pointer"
+                  >
                     {/* Image */}
                     <td className="pl-2 align-middle">
                       <div className="w-10 h-10 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex items-center justify-center text-stone-400">
@@ -471,12 +475,15 @@ export default function DiamondsView() {
                     </td>
 
                     {/* Status */}
-                    <td className="text-center align-middle px-2">
+                    <td className="text-center align-middle px-2" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         role="switch"
                         aria-checked={item.status === 'active'}
-                        onClick={() => handleToggleStatus(item)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleStatus(item);
+                        }}
                         style={item.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
                         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${item.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                         title={item.status === 'active' ? 'Active' : 'Inactive'}
@@ -490,7 +497,7 @@ export default function DiamondsView() {
                     </td>
 
                     {/* Actions */}
-                    <td className="text-right align-middle pr-2">
+                    <td className="text-right align-middle pr-2" onClick={(e) => e.stopPropagation()}>
                       <RowActions
                         onEdit={() => handleOpenEdit(item)}
                         onDelete={() => handleDelete(item)}

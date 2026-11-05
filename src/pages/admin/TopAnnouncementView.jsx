@@ -403,8 +403,8 @@ export default function TopAnnouncementView() {
       </div>
 
       {/* ─── Live Preview Banner Card (Matches User Screenshot) ─── */}
-      <div className="bg-[#fbf4eb] border border-[#ecdcc3] rounded-2xl px-5 py-3.5 shadow-2xs transition-all relative overflow-hidden">
-        <div className="flex items-center justify-between gap-4">
+      <div className="bg-[#fbf4eb] border border-[#ecdcc3] rounded-xl px-4 py-2 shadow-2xs transition-all relative overflow-hidden">
+        <div className="flex items-center justify-between gap-3">
           {/* Prev Arrow */}
           <button
             type="button"
@@ -416,18 +416,18 @@ export default function TopAnnouncementView() {
               }
             }}
             disabled={activeAnnouncements.length <= 1}
-            className="w-8 h-8 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-200/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-6 h-6 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-200/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
             title="Previous preview message"
           >
-            <HiOutlineChevronLeft className="w-4 h-4" />
+            <HiOutlineChevronLeft className="w-3.5 h-3.5" />
           </button>
 
           {/* Center Announcement Content with Directional Slide Animation */}
-          <div className="flex-1 text-center py-0.5 h-7 overflow-hidden flex items-center justify-center relative">
+          <div className="flex-1 text-center h-5 overflow-hidden flex items-center justify-center relative">
             {activeAnnouncements.length > 0 ? (
               <div
                 key={`${previewIndex}-${settings.displayDirection}`}
-                className={`inline-flex items-center justify-center gap-2 font-medium text-[13px] text-stone-800 ${
+                className={`inline-flex items-center justify-center gap-1.5 font-medium text-xs text-stone-800 ${
                   settings.displayDirection === 'vertical'
                     ? 'animate-slide-top-to-bottom'
                     : 'animate-slide-left-to-right'
@@ -436,25 +436,25 @@ export default function TopAnnouncementView() {
                 <span>{activeAnnouncements[previewIndex]?.message}</span>
               </div>
             ) : (
-              <span className="text-[13px] text-stone-400 italic">
+              <span className="text-xs text-stone-400 italic">
                 No active announcements to display. Add or activate one below.
               </span>
             )}
           </div>
 
           {/* Right Pagination dots & Next Arrow */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Pagination Dots */}
             {activeAnnouncements.length > 1 && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 {activeAnnouncements.map((_, dotIdx) => (
                   <button
                     key={dotIdx}
                     type="button"
                     onClick={() => setPreviewIndex(dotIdx)}
                     className={`rounded-full transition-all duration-300 ${dotIdx === previewIndex
-                        ? 'w-2 h-2 bg-[#8b6f4e]'
-                        : 'w-1.5 h-1.5 bg-[#dfcfbb] hover:bg-[#bfa78a]'
+                        ? 'w-1.5 h-1.5 bg-[#8b6f4e]'
+                        : 'w-1 h-1 bg-[#dfcfbb] hover:bg-[#bfa78a]'
                       }`}
                     title={`Slide ${dotIdx + 1}`}
                   />
@@ -471,10 +471,10 @@ export default function TopAnnouncementView() {
                 }
               }}
               disabled={activeAnnouncements.length <= 1}
-              className="w-8 h-8 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-200/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+              className="w-6 h-6 rounded-full flex items-center justify-center text-stone-600 hover:text-stone-900 hover:bg-stone-200/50 transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
               title="Next preview message"
             >
-              <HiOutlineChevronRight className="w-4 h-4" />
+              <HiOutlineChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
@@ -482,7 +482,7 @@ export default function TopAnnouncementView() {
         {/* Disabled Overlay Banner indicator */}
         {!settings.isEnabled && (
           <div className="absolute top-1 right-2">
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 bg-stone-200 text-stone-600 rounded-md">
+            <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.5 bg-stone-200 text-stone-600 rounded">
               Bar Disabled
             </span>
           </div>
@@ -552,11 +552,12 @@ export default function TopAnnouncementView() {
                       onDragStart={(e) => handleDragStart(e, index)}
                       onDragOver={(e) => handleDragOver(e, index)}
                       onDragEnd={handleDragEnd}
-                      className={`group transition-all duration-200 ${isDragging ? 'opacity-40 scale-[0.99]' : 'opacity-100'
+                      onClick={() => handleOpenEdit(item)}
+                      className={`group transition-all duration-200 cursor-pointer hover:bg-stone-50/70 ${isDragging ? 'opacity-40 scale-[0.99]' : 'opacity-100'
                         }`}
                     >
                       {/* Drag Handle */}
-                      <td className="pl-2 pr-1 align-middle">
+                      <td className="pl-2 pr-1 align-middle" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           className="p-1 text-stone-300 hover:text-stone-600 cursor-grab active:cursor-grabbing rounded transition-colors"
@@ -591,7 +592,7 @@ export default function TopAnnouncementView() {
                       </td>
 
                       {/* Status Toggle Switch */}
-                      <td className="text-center align-middle px-2">
+                      <td className="text-center align-middle px-2" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           role="switch"
@@ -618,7 +619,7 @@ export default function TopAnnouncementView() {
                       </td>
 
                       {/* Actions */}
-                      <td className="text-right align-middle pr-2 pl-2">
+                      <td className="text-right align-middle pr-2 pl-2" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           onEdit={() => handleOpenEdit(item)}
                           editTitle="Edit Announcement"

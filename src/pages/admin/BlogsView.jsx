@@ -492,7 +492,11 @@ export default function BlogsView() {
                   const blogReadTime = blog.basicInfo?.readTime || blog.readTime || '3 min read';
 
                   return (
-                    <tr key={blog._id} className="hover:bg-stone-50/70 transition-colors">
+                    <tr
+                      key={blog._id}
+                      onClick={() => navigate(`/blogs/edit/${blog._id}`)}
+                      className="hover:bg-stone-50/70 transition-colors cursor-pointer"
+                    >
                       {/* Image & Title */}
                       <td className="py-3.5 px-4 font-semibold text-stone-900 max-w-sm">
                         <div className="flex items-center gap-3">
@@ -538,7 +542,7 @@ export default function BlogsView() {
                       </td>
 
                       {/* Status */}
-                      <td className="py-3.5 px-4 text-center">
+                      <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(blog)}
@@ -571,7 +575,7 @@ export default function BlogsView() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 px-4 text-right">
+                      <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={blog}
                           onPreview={() => setPreviewBlog(blog)}
