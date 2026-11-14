@@ -188,8 +188,8 @@ export const navSections = [
         icon: HiOutlineShoppingBag,
         children: [
           { id: 'all-orders', title: 'Orders', path: '/orders', icon: HiOutlineShoppingBag, apiEndpoint: '/orders' },
-          { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles, apiEndpoint: '/custom-inquiries' },
           { id: 'returns', title: 'Returns', path: '/returns', icon: HiOutlineRefresh, apiEndpoint: '/returns' },
+          { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles, apiEndpoint: '/custom-inquiries' },
           { id: 'cod-sequence', title: 'COD Sequence', path: '/cod-sequences', icon: HiOutlineCash, apiEndpoint: '/cod-sequences' },
         ],
       },

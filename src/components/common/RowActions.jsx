@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { HiOutlineDotsVertical, HiOutlinePencil, HiOutlineTrash, HiOutlineExternalLink } from 'react-icons/hi';
+import { HiOutlineDotsVertical, HiOutlinePencil, HiOutlineTrash, HiOutlineExternalLink, HiOutlineEye } from 'react-icons/hi';
 
 export function EditActionButton({
   onClick,
@@ -19,6 +19,28 @@ export function EditActionButton({
       {...props}
     >
       <HiOutlinePencil className={iconClassName} />
+    </button>
+  );
+}
+
+export function ViewActionButton({
+  onClick,
+  title = 'View Details',
+  className = '',
+  iconClassName = 'w-3.5 h-3.5 stroke-[2]',
+  disabled = false,
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className={`w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf5ed] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
+      {...props}
+    >
+      <HiOutlineEye className={iconClassName} />
     </button>
   );
 }
@@ -45,10 +67,7 @@ export function DeleteActionButton({
   );
 }
 
-// Deprecated no-op export so any leftover import does not break
-export function ViewActionButton() {
-  return null;
-}
+
 
 export default function RowActions({
   onView,
@@ -96,6 +115,11 @@ export default function RowActions({
         >
           <HiOutlineExternalLink className="w-3.5 h-3.5 stroke-[2]" />
         </button>
+      )}
+
+      {/* View Action (Eye button - Soft gold/amber tint with #8b6f4e icon) */}
+      {onView && !onEdit && (
+        <ViewActionButton onClick={onView} title={viewTitle} />
       )}
 
       {/* Edit Action (Pencil button - Soft Blue tint with vivid blue icon) */}
