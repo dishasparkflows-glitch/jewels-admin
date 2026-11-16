@@ -1,20 +1,17 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   HiOutlineArrowLeft,
   HiOutlineCheck,
-  HiOutlineDuplicate,
   HiOutlinePhotograph,
   HiOutlinePlus,
   HiOutlineSave,
   HiOutlineShieldCheck,
   HiOutlineTrash,
   HiOutlineX,
-  HiOutlineDotsVertical,
   HiOutlineSearch,
-      HiOutlineColorSwatch,
-      HiOutlineClock,
+  HiOutlineColorSwatch,
+  HiOutlineClock,
   HiOutlineCheckCircle,
-  HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { websiteThemesAPI, bannersAPI, featuredAPI, categoriesAPI } from '../../api/services';
@@ -23,6 +20,9 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import DatePicker from '../../components/common/DatePicker';
 import ThemeMediaLibraryTab from './ThemeMediaLibraryTab';
 import ThemeMediaMappingTab from './ThemeMediaMappingTab';
+import Pagination from '../../components/common/Pagination';
+import usePagination from '../../hooks/usePagination';
+import { useAdminPageSize } from '../../utils/adminPagination';
 
 
 
@@ -146,8 +146,11 @@ export default function WebsiteThemesView() {
     }
   }, []);
 
-  // Fetch related database records
+  const relatedDataLoaded = useRef(false);
+
+  // Fetch related database records (lazy-loaded only when admin creates or edits a theme)
   const fetchRelatedData = useCallback(async () => {
+    if (relatedDataLoaded.current) return;
     try {
       const [bannersRes, featRes, catRes] = await Promise.all([
         bannersAPI.getAll({ limit: 100 }),
@@ -157,15 +160,16 @@ export default function WebsiteThemesView() {
       setAvailableBanners(getData(bannersRes) || []);
       setAvailableFeatured(getData(featRes) || []);
       setCategories(getData(catRes) || []);
+      relatedDataLoaded.current = true;
     } catch (err) {
       console.error('Failed to load related data:', err);
     }
   }, []);
 
+  // On list page, only load themes list (no extra APIs)
   useEffect(() => {
     fetchThemes();
-    fetchRelatedData();
-  }, [fetchThemes, fetchRelatedData]);
+  }, [fetchThemes]);
 
 
 
@@ -181,11 +185,26 @@ export default function WebsiteThemesView() {
     });
   }, [themes, filter, search]);
 
+  const [pageSize, setPageSize] = useAdminPageSize(10);
+  const {
+    currentPage,
+    setCurrentPage,
+    totalItems,
+    paginatedItems,
+  } = usePagination(visibleThemes, pageSize);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, search, setCurrentPage]);
+
   const updateConfig = (updater) =>
     setEditing((current) => ({ ...current, config: updater(current.config) }));
 
   // Open theme editor
   const openEditor = async (theme = null, initialTab = 'details') => {
+    // Lazily fetch related data (banners, featured, categories) only when opening the editor
+    fetchRelatedData();
+
     if (!theme) {
       setEditing(emptyTheme());
       setTab('details');
@@ -600,7 +619,12 @@ export default function WebsiteThemesView() {
         )}
 
         {/* TAB 2: MEDIA LIBRARY */}
-        {tab === 'media' && <ThemeMediaLibraryTab />}
+        {tab === 'media' && (
+          <ThemeMediaLibraryTab
+            theme={editing}
+            themeId={editing?._id}
+          />
+        )}
 
         {/* TAB 3: MEDIA MAPPING (One-Click Theme Activation & Media Mapping) */}
         {tab === 'mapping' && (
@@ -654,17 +678,6 @@ export default function WebsiteThemesView() {
 
         {/* Header Actions */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={fetchThemes}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-lg text-xs font-semibold shadow-2xs transition cursor-pointer"
-            title="Refresh Themes"
-          >
-            <HiOutlineRefresh className={`w-3.5 h-3.5 stroke-2 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-
           <button
             type="button"
             onClick={() => openEditor(null)}
@@ -827,80 +840,106 @@ export default function WebsiteThemesView() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-2.5 sm:gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-          {visibleThemes.map((theme) => {
-            // Pick banner image for card cover
-            const heroBanner =
-              availableBanners.find((b) => b.display?.type === 'herobanner' && b.image?.url) ||
-              availableBanners[0];
-            const coverUrl = heroBanner?.image?.url || '';
+        <div className="space-y-3">
+          <div className="grid grid-cols-1 gap-2.5 sm:gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+            {paginatedItems.map((theme) => {
+              // Pick cover image or theme brand gradient for card cover
+              const coverUrl =
+                theme.coverImage?.url ||
+                theme.coverImage ||
+                theme.thumbnail ||
+                theme.image ||
+                theme.config?.bannerSelections?.[0]?.bannerId?.image?.url ||
+                '';
+              const themePrimary = theme.config?.colors?.primary || '#8B6C3A';
+              const themeSecondary = theme.config?.colors?.secondary || '#EADCC8';
+              const fallbackGradient = `linear-gradient(135deg, ${themeSecondary}, ${themePrimary})`;
 
-            return (
-              <article
-                key={theme._id}
-                onClick={() => openEditor(theme, 'details')}
-                className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs hover:border-stone-300 transition-all overflow-hidden cursor-pointer"
-              >
-                {/* Cover Image Header (16:10 aspect ratio matching Media Gallery) */}
-                <div
-                  className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden bg-cover bg-center"
-                  style={{
-                    backgroundImage: coverUrl
-                      ? `linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.45) 100%), url("${coverUrl}")`
-                      : 'linear-gradient(135deg, #EADCC8, #8B6C3A)',
-                  }}
+              return (
+                <article
+                  key={theme._id}
+                  onClick={() => openEditor(theme, 'details')}
+                  className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs hover:border-stone-300 transition-all overflow-hidden cursor-pointer"
                 >
-                  {/* Top-Left: Code Badge */}
-                  <div className="absolute left-2 top-2 z-10">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-medium text-white shadow-xs font-mono">
-                      {theme.code}
-                    </span>
+                  {/* Cover Image Header (16:10 aspect ratio matching Media Gallery) */}
+                  <div
+                    className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden bg-cover bg-center"
+                    style={{
+                      backgroundImage: coverUrl
+                        ? `linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.45) 100%), url("${coverUrl}")`
+                        : fallbackGradient,
+                    }}
+                  >
+                    {/* Top-Left: Code Badge */}
+                    <div className="absolute left-2 top-2 z-10">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-medium text-white shadow-xs font-mono">
+                        {theme.code}
+                      </span>
+                    </div>
+
+                    {/* Top-Right: Status Badge */}
+                    <div className="absolute right-2 top-2 z-10">
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize shadow-xs backdrop-blur-md ${
+                          theme.status === 'active'
+                            ? 'bg-emerald-600/90 text-white'
+                            : theme.status === 'scheduled'
+                            ? 'bg-sky-600/90 text-white'
+                            : theme.status === 'archived'
+                            ? 'bg-stone-600/90 text-white'
+                            : 'bg-amber-600/90 text-white'
+                        }`}
+                      >
+                        {theme.status === 'active' && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
+                        )}
+                        <span>{theme.status}</span>
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Top-Right: Status Badge */}
-                  <div className="absolute right-2 top-2 z-10">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize shadow-xs backdrop-blur-md ${
-                        theme.status === 'active'
-                          ? 'bg-emerald-600/90 text-white'
-                          : theme.status === 'scheduled'
-                          ? 'bg-sky-600/90 text-white'
-                          : theme.status === 'archived'
-                          ? 'bg-stone-600/90 text-white'
-                          : 'bg-amber-600/90 text-white'
-                      }`}
-                    >
-                      {theme.status === 'active' && (
-                        <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                      )}
-                      <span>{theme.status}</span>
-                    </span>
+                  {/* Card Content (Compact padding matching Media Gallery) */}
+                  <div className="p-2.5 flex flex-col justify-between flex-1">
+                    <div>
+                      <h4
+                        className="text-xs font-bold text-stone-900 group-hover:text-[var(--theme-primary,#8b6f4e)] transition truncate"
+                        title={theme.name}
+                      >
+                        {theme.name}
+                      </h4>
+                      <p className="mt-0.5 text-[10px] text-stone-400 font-normal">
+                        Last updated: {theme.meta?.updatedAt
+                          ? new Date(theme.meta.updatedAt).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })
+                          : '28 Oct 2026'}
+                      </p>
+                    </div>
                   </div>
-                </div>
+                </article>
+              );
+            })}
+          </div>
 
-                {/* Card Content (Compact padding matching Media Gallery) */}
-                <div className="p-2.5 flex flex-col justify-between flex-1">
-                  <div>
-                    <h4
-                      className="text-xs font-bold text-stone-900 group-hover:text-[var(--theme-primary,#8b6f4e)] transition truncate"
-                      title={theme.name}
-                    >
-                      {theme.name}
-                    </h4>
-                    <p className="mt-0.5 text-[10px] text-stone-400 font-normal">
-                      Last updated: {theme.meta?.updatedAt
-                        ? new Date(theme.meta.updatedAt).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })
-                        : '28 Oct 2026'}
-                    </p>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+          {/* 5. Pagination Footer */}
+          {totalItems > 0 && (
+            <div className="rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden bg-white">
+              <Pagination
+                currentPage={currentPage}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(newSize);
+                  setCurrentPage(1);
+                }}
+                itemLabel="themes"
+                className="border-t-0"
+              />
+            </div>
+          )}
         </div>
       )}
 

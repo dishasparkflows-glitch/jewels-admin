@@ -1,10 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineTag,
-  HiOutlinePlus,
-  HiOutlineCheck,
-  HiOutlineX,
-  HiOutlineFilter,
   HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
@@ -12,7 +8,6 @@ import { blogCategoriesAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
-import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Modal from '../../components/common/Modal';
 import Pagination from '../../components/common/Pagination';

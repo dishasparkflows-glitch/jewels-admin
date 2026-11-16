@@ -6,7 +6,6 @@ import {
   HiOutlineColorSwatch,
   HiOutlineTrash,
   HiOutlineX,
-  HiOutlineTag,
   HiOutlinePhotograph,
   HiOutlineCheck,
   HiOutlineArrowUp,
@@ -25,7 +24,6 @@ import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
-import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';

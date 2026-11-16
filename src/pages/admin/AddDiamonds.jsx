@@ -1,13 +1,10 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HiOutlinePhotograph,
   HiOutlineCloudUpload,
-  HiOutlineTrash,
   HiOutlinePlus,
   HiOutlineX,
-  HiOutlineCheck,
-  HiOutlineArrowLeft,
   HiOutlineSparkles,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';

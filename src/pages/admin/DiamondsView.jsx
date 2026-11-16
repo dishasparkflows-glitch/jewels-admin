@@ -5,11 +5,9 @@ import {
   HiOutlineSearch,
   HiOutlinePlus,
   HiOutlineTrash,
-  HiOutlinePencil,
   HiOutlineRefresh,
   HiOutlineX,
   HiOutlineCloudUpload,
-  HiOutlinePhotograph,
   HiOutlineCheck,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';

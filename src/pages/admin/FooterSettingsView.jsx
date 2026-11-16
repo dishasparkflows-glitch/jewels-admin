@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   HiOutlineInformationCircle,
   HiOutlinePlus,
-  HiOutlineTrash,
-  HiOutlineSave,
   HiOutlineLink,
   HiOutlineCheck,
   HiOutlineExternalLink,
@@ -15,7 +13,7 @@ import api from '../../api/axios';
 import Dropdown from '../../components/common/Dropdown';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
-import RowActions, { DeleteActionButton } from '../../components/common/RowActions';
+import { DeleteActionButton } from '../../components/common/RowActions';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 

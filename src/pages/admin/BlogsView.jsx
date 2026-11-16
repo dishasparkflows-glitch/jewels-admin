@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlineDocumentText,
-  HiOutlinePlus,
   HiOutlinePhotograph,
   HiOutlineClock,
   HiOutlineTag,
-  HiOutlineEye,
-  HiOutlineTrash,
-  HiOutlinePencil,
   HiOutlineRefresh,
-  HiOutlineUpload,
-  HiOutlineX,
   HiOutlineSparkles,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';

@@ -14,7 +14,6 @@ import {
   deleteUploadedFile,
   getUploadCompressionSettings,
   uploadWithPresignedUrl,
-  uploadFilesWithPresignedUrls,
   getUploadedObjectKey,
   compressImageFile,
   isCompressibleImage,

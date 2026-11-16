@@ -2,8 +2,6 @@ import React from 'react';
 import {
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
-  HiOutlineChevronDoubleLeft,
-  HiOutlineChevronDoubleRight,
 } from 'react-icons/hi';
 import Dropdown from './Dropdown';
 import { setAdminPageSize } from '../../utils/adminPagination';
@@ -113,6 +111,7 @@ export default function Pagination({
               placeholder={String(pageSize)}
               size="sm"
               openUpward
+              portal
               className="w-16 sm:w-18"
               buttonClassName="h-7 px-2 text-xs font-semibold rounded-md bg-white border-stone-200 shadow-2xs min-w-[50px]"
             />

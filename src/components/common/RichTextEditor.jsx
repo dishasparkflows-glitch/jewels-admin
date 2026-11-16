@@ -4,7 +4,6 @@ import {
   HiOutlineLink,
   HiOutlinePhotograph,
   HiOutlineEye,
-  HiOutlineCode,
   HiOutlineSparkles,
   HiOutlineVideoCamera,
   HiOutlineTable,
@@ -20,24 +19,9 @@ import {
   MdFormatAlignLeft,
   MdFormatAlignCenter,
   MdFormatAlignRight,
-  MdFormatAlignJustify,
-  MdFormatClear,
-  MdUndo,
-  MdRedo,
-  MdHorizontalRule,
 } from 'react-icons/md';
 import toast from 'react-hot-toast';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
-
-const LUXURY_COLORS = [
-  { name: 'Charcoal', hex: '#1c1917' },
-  { name: 'Warm Gold', hex: '#b58838' },
-  { name: 'Deep Bronze', hex: '#8b6f4e' },
-  { name: 'Burgundy', hex: '#881337' },
-  { name: 'Emerald', hex: '#065f46' },
-  { name: 'Sapphire', hex: '#1e3a8a' },
-  { name: 'Muted Slate', hex: '#64748b' },
-];
 
 export default function RichTextEditor({
   value = '',
@@ -50,7 +34,6 @@ export default function RichTextEditor({
   const fileInputRef = useRef(null);
   const [isHtmlMode, setIsHtmlMode] = useState(false);
   const [htmlContent, setHtmlContent] = useState(value || '');
-  const [showColorPicker, setShowColorPicker] = useState(false);
   const [showLinkModal, setShowLinkModal] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');

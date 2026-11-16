@@ -3,21 +3,16 @@ import { createPortal } from 'react-dom';
 import {
   HiOutlineFolder,
   HiOutlinePlus,
-  HiOutlinePencil,
-  HiOutlineTrash,
   HiOutlineChevronRight,
   HiOutlineChevronDown,
   HiOutlineChevronUp,
   HiOutlineSearch,
-  HiOutlineExternalLink,
   HiOutlineEye,
-  HiOutlineDesktopComputer,
   HiOutlineX,
   HiOutlinePhotograph,
   HiOutlineCheck,
   HiOutlineSparkles,
   HiOutlineUpload,
-  HiDotsHorizontal,
 } from 'react-icons/hi';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';

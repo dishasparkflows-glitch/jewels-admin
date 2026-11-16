@@ -186,3 +186,18 @@ export const galleryAPI = {
   getBanners: (params) => api.get('/gallery/banners', { params }),
   deleteItem: (id, params) => api.delete('/gallery/' + id, { params }),
 };
+
+// ─── Shiprocket Logistics ──────────────────────────
+export const logisticsAPI = {
+  getCourierRates: (orderId) => api.get(`/admin/logistics/rates/${orderId}`),
+  createShipment: (orderId, data) => api.post(`/admin/logistics/create-shipment/${orderId}`, data),
+  assignAwb: (orderId, data) => api.post(`/admin/logistics/assign-awb/${orderId}`, data),
+  getLabel: (orderId) => api.get(`/admin/logistics/label/${orderId}`),
+  getManifest: (orderId) => api.get(`/admin/logistics/manifest/${orderId}`),
+  trackOrder: (orderId) => api.get(`/admin/logistics/track/${orderId}`),
+  cancelShipment: (orderId) => api.post('/admin/logistics/cancel', { orderId }),
+  createReturnShipment: (returnId, data) => api.post(`/admin/logistics/create-return-shipment/${returnId}`, data),
+  getReturnLabel: (returnId) => api.get(`/admin/logistics/return-label/${returnId}`),
+  trackReturn: (returnId) => api.get(`/admin/logistics/track-return/${returnId}`),
+};
+

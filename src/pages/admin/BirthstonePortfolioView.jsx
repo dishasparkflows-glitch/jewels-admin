@@ -4,12 +4,10 @@ import {
   HiOutlineCalendar,
   HiOutlinePhotograph,
   HiOutlineUpload,
-  HiOutlineRefresh,
   HiOutlineX,
-  HiOutlineCheck,
   HiOutlineSparkles,
 } from 'react-icons/hi';
-import { IoDiamondOutline, IoSparklesOutline } from 'react-icons/io5';
+import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';

@@ -11,8 +11,6 @@ import {
   HiOutlineRefresh,
   HiOutlineEye,
   HiOutlinePencil,
-  HiOutlinePencilAlt,
-  HiOutlineMenuAlt4,
   HiOutlineX,
   HiOutlineCheck,
   HiOutlineUpload,
@@ -24,8 +22,12 @@ import {
   HiOutlineCheckCircle,
   HiOutlineTruck,
   HiOutlineCreditCard,
+  HiOutlinePrinter,
+  HiOutlineDocumentText,
+  HiOutlineTag,
 } from 'react-icons/hi';
-import { IoDiamondOutline } from 'react-icons/io5';
+import { logisticsAPI } from '../../api/services';
+import { ShiprocketDispatchModal, ShiprocketTrackingModal } from '../../components/common/ShiprocketModals';
 import { RxDragHandleDots2 } from 'react-icons/rx';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -264,6 +266,74 @@ const DynamicModuleView = () => {
   const [orderStatusTab, setOrderStatusTab] = useState('pending');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
+
+  // Shiprocket Logistics states
+  const [shiprocketDispatchOpen, setShiprocketDispatchOpen] = useState(false);
+  const [shiprocketTrackingOpen, setShiprocketTrackingOpen] = useState(false);
+  const [shiprocketTrackingOrderId, setShiprocketTrackingOrderId] = useState(null);
+
+  const handleOpenDispatchModal = (record) => {
+    setViewingRecord(record);
+    setShiprocketDispatchOpen(true);
+  };
+
+  const handleOpenTracking = (orderId) => {
+    setShiprocketTrackingOrderId(orderId);
+    setShiprocketTrackingOpen(true);
+  };
+
+  const handlePrintLabel = async (orderId, existingUrl) => {
+    try {
+      if (existingUrl) {
+        window.open(existingUrl, '_blank');
+        return;
+      }
+      const res = await logisticsAPI.getLabel(orderId);
+      const url = res?.data?.data?.labelUrl || res?.data?.labelUrl;
+      if (url) window.open(url, '_blank');
+      else toast.error('Label URL not generated yet');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to open shipping label');
+    }
+  };
+
+  const handleDownloadManifest = async (orderId, existingUrl) => {
+    try {
+      if (existingUrl) {
+        window.open(existingUrl, '_blank');
+        return;
+      }
+      const res = await logisticsAPI.getManifest(orderId);
+      const url = res?.data?.data?.manifestUrl || res?.data?.manifestUrl;
+      if (url) window.open(url, '_blank');
+      else toast.error('Manifest URL not generated yet');
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to open manifest');
+    }
+  };
+
+  const handleCancelShipment = async (orderId) => {
+    const isConfirmed = await confirm({
+      title: 'Cancel Shiprocket Shipment',
+      message: 'Are you sure you want to cancel this courier shipment and AWB in Shiprocket?',
+      confirmText: 'Cancel Shipment',
+      cancelText: 'Keep Active',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      await logisticsAPI.cancelShipment(orderId);
+      toast.success('Shiprocket shipment cancelled');
+      setViewingRecord((prev) => (prev ? {
+        ...prev,
+        shiprocketInfo: { ...(prev.shiprocketInfo || {}), status: 'cancelled' },
+      } : null));
+      fetchItems();
+    } catch (err) {
+      toast.error(err.response?.data?.message || err.message || 'Failed to cancel shipment');
+    }
+  };
 
   // Demo Metrics Quick Edit Modal state
   const [editingMetricsProduct, setEditingMetricsProduct] = useState(null);
@@ -1776,6 +1846,29 @@ const DynamicModuleView = () => {
                                     </span>
                                   )}
                                 </div>
+                                {row.coupon?.code && (
+                                  <div className="flex items-center gap-1 text-[10.5px] text-emerald-700 pt-0.5 flex-wrap">
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 font-mono font-bold text-[10px] border border-emerald-200">
+                                      <HiOutlineTag className="w-2.5 h-2.5 text-emerald-600" />
+                                      {row.coupon.code}
+                                    </span>
+                                    {row.coupon?.discountType === 'Percentage' && Number(row.coupon?.discountValue) > 0 && (
+                                      <span className="text-[10px] text-emerald-600 font-semibold">
+                                        ({row.coupon.discountValue}% off)
+                                      </span>
+                                    )}
+                                    {row.coupon?.discountType === 'Fixed' && Number(row.coupon?.discountValue) > 0 && (
+                                      <span className="text-[10px] text-emerald-600 font-semibold">
+                                        (₹{Number(row.coupon.discountValue).toLocaleString('en-IN')} off)
+                                      </span>
+                                    )}
+                                    {Number(row.pricing?.discount || row.coupon?.discountAmount) > 0 && (
+                                      <span className="text-[10px] text-emerald-600 font-medium">
+                                        (-₹{Number(row.pricing?.discount || row.coupon.discountAmount).toLocaleString('en-IN')})
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </td>
                           </>
@@ -3628,6 +3721,29 @@ const DynamicModuleView = () => {
                         <span>₹{Number(viewingRecord.pricing.subtotal).toLocaleString('en-IN')}</span>
                       </div>
                     )}
+                    {(Number(viewingRecord.pricing?.discount) > 0 || viewingRecord.coupon?.code) && (
+                      <div className="flex items-center justify-between text-emerald-700 font-medium text-xs">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span>Discount</span>
+                          {viewingRecord.coupon?.code && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/70 text-emerald-800 font-mono font-bold text-[10.5px] tracking-wide border border-emerald-300 shadow-2xs">
+                              <HiOutlineTag className="w-3 h-3 text-emerald-600" />
+                              <span>{viewingRecord.coupon.code}</span>
+                            </span>
+                          )}
+                          {viewingRecord.coupon?.discountType === 'Percentage' && Number(viewingRecord.coupon?.discountValue) > 0 ? (
+                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded border border-emerald-200">
+                              {viewingRecord.coupon.discountValue}% OFF
+                            </span>
+                          ) : viewingRecord.coupon?.discountType === 'Fixed' && Number(viewingRecord.coupon?.discountValue) > 0 ? (
+                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded border border-emerald-200">
+                              ₹{Number(viewingRecord.coupon.discountValue).toLocaleString('en-IN')} OFF
+                            </span>
+                          ) : null}
+                        </div>
+                        <span className="font-semibold">-₹{Number(viewingRecord.pricing?.discount || viewingRecord.coupon?.discountAmount || 0).toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
                     {viewingRecord.pricing?.tax !== undefined && (
                       <div className="flex justify-between text-stone-600">
                         <span>Estimated Tax</span>
@@ -3638,12 +3754,6 @@ const DynamicModuleView = () => {
                       <div className="flex justify-between text-stone-600">
                         <span>Shipping</span>
                         <span>{viewingRecord.pricing.shipping === 0 ? 'FREE' : `₹${Number(viewingRecord.pricing.shipping).toLocaleString('en-IN')}`}</span>
-                      </div>
-                    )}
-                    {viewingRecord.pricing?.discount > 0 && (
-                      <div className="flex justify-between text-emerald-600 font-medium">
-                        <span>Discount</span>
-                        <span>-₹{Number(viewingRecord.pricing.discount).toLocaleString('en-IN')}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-stone-900 font-bold text-sm pt-2 border-t border-stone-200">
@@ -3657,6 +3767,103 @@ const DynamicModuleView = () => {
                       <span className="capitalize font-semibold text-stone-800">
                         {viewingRecord.payment.method || 'Online'} ({viewingRecord.payment.status || 'Pending'})
                       </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* ─── Shiprocket Logistics Fulfillment Section ─── */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-br from-stone-50 to-stone-100/80 border border-stone-200/90 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-lg bg-[#8b6f4e] text-white flex items-center justify-center shadow-2xs">
+                        <HiOutlineTruck className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                          <span>Shiprocket Logistics v2</span>
+                          {viewingRecord.shiprocketInfo?.awbCode && (
+                            <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-semibold uppercase">
+                              {viewingRecord.shiprocketInfo.status || 'Active'}
+                            </span>
+                          )}
+                        </h4>
+                        <p className="text-[10.5px] text-stone-500">
+                          Multi-carrier fulfillment, live tracking &amp; label dispatch
+                        </p>
+                      </div>
+                    </div>
+
+                    {viewingRecord.shiprocketInfo?.awbCode ? (
+                      <span className="px-2.5 py-1 rounded-lg bg-stone-900 text-white font-mono text-[11px] font-bold tracking-wider">
+                        AWB: {viewingRecord.shiprocketInfo.awbCode}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenDispatchModal(viewingRecord)}
+                        className="px-3.5 py-1.5 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg shadow-2xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
+                      >
+                        <HiOutlineTruck className="w-4 h-4" />
+                        <span>Dispatch via Shiprocket</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {viewingRecord.shiprocketInfo?.awbCode && (
+                    <div className="pt-2 border-t border-stone-200/70 space-y-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
+                        <div className="bg-white p-2 rounded-lg border border-stone-200/80">
+                          <span className="text-[10px] text-stone-400 block font-medium">Assigned Courier</span>
+                          <span className="font-bold text-stone-800">{viewingRecord.shiprocketInfo.courierName || 'Shiprocket Partner'}</span>
+                        </div>
+                        <div className="bg-white p-2 rounded-lg border border-stone-200/80">
+                          <span className="text-[10px] text-stone-400 block font-medium">Pickup Date</span>
+                          <span className="font-semibold text-stone-700">{viewingRecord.shiprocketInfo.pickupScheduledDate || 'Immediate'}</span>
+                        </div>
+                        <div className="bg-white p-2 rounded-lg border border-stone-200/80 col-span-2 sm:col-span-1">
+                          <span className="text-[10px] text-stone-400 block font-medium">Shipment ID</span>
+                          <span className="font-mono text-stone-700 truncate block">{viewingRecord.shiprocketInfo.shiprocketShipmentId || viewingRecord.shiprocketInfo.shiprocketOrderId || '—'}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-wrap pt-1">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenTracking(viewingRecord._id || viewingRecord.id)}
+                          className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                        >
+                          <HiOutlineTruck className="w-3.5 h-3.5" />
+                          <span>Track Live Scans</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handlePrintLabel(viewingRecord._id || viewingRecord.id, viewingRecord.shiprocketInfo?.labelUrl)}
+                          className="px-3 py-1.5 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                        >
+                          <HiOutlinePrinter className="w-3.5 h-3.5 text-stone-600" />
+                          <span>Shipping Label</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadManifest(viewingRecord._id || viewingRecord.id, viewingRecord.shiprocketInfo?.manifestUrl)}
+                          className="px-3 py-1.5 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
+                        >
+                          <HiOutlineDocumentText className="w-3.5 h-3.5 text-stone-600" />
+                          <span>Manifest</span>
+                        </button>
+
+                        {viewingRecord.shiprocketInfo.status !== 'cancelled' && (
+                          <button
+                            type="button"
+                            onClick={() => handleCancelShipment(viewingRecord._id || viewingRecord.id)}
+                            className="px-2.5 py-1.5 text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-medium ml-auto transition cursor-pointer"
+                          >
+                            Cancel AWB
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -4402,6 +4609,36 @@ const DynamicModuleView = () => {
           </div>
         </div>, document.body)
       )}
+
+      {/* Shiprocket Forward Dispatch Modal */}
+      <ShiprocketDispatchModal
+        isOpen={shiprocketDispatchOpen}
+        onClose={() => setShiprocketDispatchOpen(false)}
+        order={viewingRecord}
+        onSuccess={(updatedInfo) => {
+          setViewingRecord((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  shiprocketInfo: updatedInfo,
+                  orderStatus: prev.orderStatus === 'pending' ? 'processing' : prev.orderStatus,
+                }
+              : null
+          );
+          fetchItems();
+        }}
+      />
+
+      {/* Shiprocket Live Tracking Modal */}
+      <ShiprocketTrackingModal
+        isOpen={shiprocketTrackingOpen}
+        onClose={() => {
+          setShiprocketTrackingOpen(false);
+          setShiprocketTrackingOrderId(null);
+        }}
+        orderId={shiprocketTrackingOrderId}
+        awbCode={viewingRecord?.shiprocketInfo?.awbCode}
+      />
 
     </div>
   );

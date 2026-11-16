@@ -4,11 +4,8 @@ import {
   HiOutlinePlus,
   HiOutlineUpload,
   HiOutlineDownload,
-  HiOutlineTrash,
   HiOutlineCheck,
-  HiOutlineRefresh,
 } from 'react-icons/hi';
-import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Dropdown from '../../components/common/Dropdown';

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { getNoImageSvg } from '../../utils/imageFallback';
 
 /**
  * Clean, luxury "No Img" placeholder box matching user design:

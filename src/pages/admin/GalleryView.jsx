@@ -4,37 +4,27 @@ import {
   HiOutlinePhotograph,
   HiOutlineUpload,
   HiOutlineSearch,
-  HiOutlineFilter,
   HiOutlineEye,
   HiOutlineTrash,
   HiOutlineExternalLink,
-  HiOutlineCheck,
   HiOutlineX,
   HiOutlineSparkles,
   HiOutlineTag,
   HiOutlineRefresh,
-  HiOutlineColorSwatch,
   HiOutlineDeviceMobile,
   HiOutlineDesktopComputer,
   HiOutlineViewGrid,
   HiOutlineViewList,
   HiOutlineCalendar,
   HiOutlinePlus,
-  HiOutlineDownload,
   HiOutlineClipboardCopy,
-  HiOutlineInformationCircle,
   HiOutlineGift,
-  HiOutlineCode,
-  HiOutlineArrowRight,
-  HiOutlineClock,
-  HiOutlineChevronDown,
-  HiOutlineChevronRight,
   HiOutlinePencil,
 } from 'react-icons/hi';
 import { IoDiamondOutline, IoSparklesOutline, IoLayersOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { galleryAPI } from '../../api/services';
-import { uploadWithPresignedUrl, uploadFilesWithPresignedUrls, formatBytes } from '../../utils/uploadWithPresignedUrl';
+import { uploadFilesWithPresignedUrls, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -53,124 +43,20 @@ const BANNER_TYPES = [
   { key: 'asset', label: 'Media Assets', icon: HiOutlinePhotograph },
 ];
 
-const DEMO_GALLERY_ITEMS = [
-  {
-    id: 'demo-1',
-    fileName: 'ring-hero-01.jpg',
-    name: 'ring-hero-01.jpg',
-    url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1200&q=80',
-    type: 'celebrate',
-    typeLabel: 'Celebrate & Gifts',
-    platform: 'web',
-    width: 1920,
-    height: 1080,
-    size: 2516582,
-    status: 'active',
-  },
-  {
-    id: 'demo-2',
-    fileName: 'collection-ring-02.jpg',
-    name: 'collection-ring-02.jpg',
-    url: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&w=1200&q=80',
-    type: 'asset',
-    typeLabel: 'Media Library Asset',
-    platform: 'common',
-    width: 1920,
-    height: 1080,
-    size: 1887436,
-    status: 'active',
-  },
-  {
-    id: 'demo-3',
-    fileName: 'necklace-banner.jpg',
-    name: 'necklace-banner.jpg',
-    url: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=1200&q=80',
-    type: 'asset',
-    typeLabel: 'Media Library Asset',
-    platform: 'common',
-    width: 1920,
-    height: 1080,
-    size: 2202009,
-    status: 'active',
-  },
-  {
-    id: 'demo-4',
-    fileName: 'pendant-collection.jpg',
-    name: 'pendant-collection.jpg',
-    url: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=1200&q=80',
-    type: 'celebrate',
-    typeLabel: 'Celebrate & Gifts',
-    platform: 'web',
-    width: 1920,
-    height: 1080,
-    size: 1992294,
-    status: 'active',
-  },
-  {
-    id: 'demo-5',
-    fileName: 'earrings-hero.jpg',
-    name: 'earrings-hero.jpg',
-    url: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?auto=format&fit=crop&w=1200&q=80',
-    type: 'herobanner',
-    typeLabel: 'Hero Banner',
-    platform: 'web',
-    width: 1920,
-    height: 1080,
-    size: 1782579,
-    status: 'active',
-  },
-  {
-    id: 'demo-6',
-    fileName: 'bracelet-collection.jpg',
-    name: 'bracelet-collection.jpg',
-    url: 'https://images.unsplash.com/photo-1611591475152-473523dd665e?auto=format&fit=crop&w=1200&q=80',
-    type: 'collectionbanner',
-    typeLabel: 'Collection Banner',
-    platform: 'app',
-    width: 1920,
-    height: 1080,
-    size: 2097152,
-    status: 'active',
-  },
-  {
-    id: 'demo-7',
-    fileName: 'diwali-offer.jpg',
-    name: 'diwali-offer.jpg',
-    url: 'https://images.unsplash.com/photo-1602751584552-8ba73aad10e1?auto=format&fit=crop&w=1200&q=80',
-    type: 'offerbanner',
-    typeLabel: 'Offer Banner',
-    platform: 'web',
-    width: 1920,
-    height: 1080,
-    size: 2411724,
-    status: 'active',
-  },
-  {
-    id: 'demo-8',
-    fileName: 'rings-category.jpg',
-    name: 'rings-category.jpg',
-    url: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1200&q=80',
-    type: 'categorybanner',
-    typeLabel: 'Category Banner',
-    platform: 'common',
-    width: 1920,
-    height: 1080,
-    size: 1677721,
-    status: 'active',
-  },
-];
-
 function getMediaDisplayInfo(item) {
+  if (!item) return { fileName: 'media.jpg' };
   let fileName = item.fileName || item.name;
-  if (!fileName && item.key) {
-    fileName = item.key.split('/').pop();
+  const key = item.key || item.image?.key;
+  if (!fileName && key) {
+    fileName = key.split('/').pop();
   }
-  if (!fileName && item.url) {
+  const url = item.url || item.image?.url;
+  if (!fileName && url) {
     try {
-      const urlObj = new URL(item.url);
+      const urlObj = new URL(url);
       fileName = urlObj.pathname.split('/').pop();
     } catch {
-      fileName = item.url.split('/').pop()?.split('?')[0];
+      fileName = url.split('/').pop()?.split('?')[0];
     }
   }
   if (!fileName || fileName.length > 40 || /^[a-f0-9-]{24,}/i.test(fileName)) {
@@ -274,7 +160,28 @@ export default function GalleryView() {
         limit: pageSize,
       });
       const data = res.data?.data || {};
-      setItems(data.items || []);
+      const rawItems = data.items || [];
+      const normalizedItems = rawItems.map((item) => {
+        const url = item.url || item.image?.url || '';
+        const key = item.key || item.image?.key || '';
+        const placement = item.placement || item.type || 'herobanner';
+        const bt = BANNER_TYPES.find((b) => b.key === placement);
+        const typeLabel = item.typeLabel || bt?.label || placement;
+        const themeObj = typeof item.themeId === 'object' && item.themeId !== null ? item.themeId : null;
+        const themeName = item.themeName || themeObj?.name || 'Global / Unassigned';
+        const isThemeLive = item.isThemeLive !== undefined ? item.isThemeLive : (themeObj?.status === 'active');
+        return {
+          ...item,
+          id: item.id || item._id,
+          url,
+          key,
+          type: placement,
+          typeLabel,
+          themeName,
+          isThemeLive,
+        };
+      });
+      setItems(normalizedItems);
       setCounts(data.counts || {});
       setTotalPages(data.pagination?.totalPages || 1);
       setTotalItems(data.pagination?.totalDocs || (data.items || []).length);
@@ -447,6 +354,11 @@ export default function GalleryView() {
   // ─── Delete / Unassign Action ───────────────────────────────
   const handleDeleteItem = async (item) => {
     if (!item) return;
+    if (String(item.id || '').startsWith('demo-')) {
+      setItems((prev) => prev.filter((i) => i.id !== item.id));
+      toast.success('Media item removed successfully.');
+      return;
+    }
     const isConfirmed = await confirm({
       title: 'Remove Media Item',
       message: `Are you sure you want to remove "${item.typeLabel || item.placement || 'this media item'}"?\nThis image will be unassigned from its banner and theme.`,
@@ -622,23 +534,17 @@ export default function GalleryView() {
   ], []);
 
   const displayCounts = {
-    total: counts.total || (items.length > 0 ? items.length : 20),
-    herobanner: counts.herobanner || (items.length > 0 ? 0 : 3),
-    collectionbanner: counts.collectionbanner || (items.length > 0 ? 0 : 4),
-    categorybanner: counts.categorybanner || 0,
-    offerbanner: counts.offerbanner || 0,
-    celebrate: counts.celebrate || (items.length > 0 ? 0 : 8),
+    total: counts.total ?? items.length ?? 0,
+    herobanner: counts.herobanner ?? 0,
+    collectionbanner: counts.collectionbanner ?? 0,
+    categorybanner: counts.categorybanner ?? 0,
+    offerbanner: counts.offerbanner ?? 0,
+    celebrate: counts.celebrate ?? 0,
   };
 
   const effectiveItems = useMemo(() => {
-    if (items.length > 0) return items;
-    return DEMO_GALLERY_ITEMS.filter((item) => {
-      if (selectedType !== 'all' && item.type !== selectedType) return false;
-      if (selectedPlatform !== 'all' && item.platform !== selectedPlatform && item.platform !== 'common') return false;
-      if (search && !item.fileName.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-  }, [items, selectedType, selectedPlatform, search]);
+    return items;
+  }, [items]);
 
   const displayTabs = [
     { key: 'all', label: 'All Media', icon: HiOutlinePhotograph, count: displayCounts.total },
@@ -1127,7 +1033,11 @@ export default function GalleryView() {
                 className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs transition-all overflow-hidden"
               >
                 {/* Image Media Box (16:10 aspect ratio) */}
-                <div className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden">
+                <div
+                  onClick={() => setPreviewItem(item)}
+                  className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden cursor-pointer group/media"
+                  title="Click to preview image"
+                >
                   <img
                     src={item.url}
                     alt={fileName}
@@ -1135,8 +1045,16 @@ export default function GalleryView() {
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
 
+                  {/* Hover Overlay with Eye Icon */}
+                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center">
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-semibold shadow-lg">
+                      <HiOutlineEye className="w-4 h-4" />
+                      <span>Preview</span>
+                    </span>
+                  </div>
+
                   {/* Top-Left: Placement Badge */}
-                  <div className="absolute left-2 top-2 z-10">
+                  <div className="absolute left-2 top-2 z-10 pointer-events-none">
                     <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-medium text-white shadow-xs">
                       <Icon className="h-2.5 w-2.5" />
                       <span>{item.typeLabel || 'Media Library Asset'}</span>
@@ -1144,7 +1062,7 @@ export default function GalleryView() {
                   </div>
 
                   {/* Top-Right: Platform Badge */}
-                  <div className="absolute right-2 top-2 z-10">
+                  <div className="absolute right-2 top-2 z-10 pointer-events-none">
                     <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-medium text-white shadow-xs">
                       {item.platform === 'common' ? (
                         <>
@@ -1635,14 +1553,6 @@ export default function GalleryView() {
 
                   {/* Actions in Inspector */}
                   <div className="space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(previewItem.url)}
-                      className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-stone-200 bg-white px-4 py-2.5 text-xs font-semibold text-stone-800 hover:bg-stone-50 transition cursor-pointer"
-                    >
-                      <HiOutlineClipboardCopy className="h-4 w-4" />
-                      Copy Image CDN URL
-                    </button>
                     <a
                       href={previewItem.url}
                       target="_blank"

@@ -15,8 +15,6 @@ import {
   HiOutlineGift,
   HiOutlineSparkles,
   HiOutlineViewGrid,
-  HiOutlineExclamation,
-  HiOutlineArrowRight,
   HiOutlineInformationCircle,
   HiOutlineUpload,
   HiOutlineEye,

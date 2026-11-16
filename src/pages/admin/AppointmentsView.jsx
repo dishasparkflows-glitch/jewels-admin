@@ -6,12 +6,10 @@ import {
   HiOutlineCheckCircle,
   HiOutlineXCircle,
   HiOutlineFlag,
-  HiOutlinePhone,
   HiOutlineX,
   HiOutlineTrash,
   HiOutlineSearch,
   HiOutlineChevronDown,
-  HiOutlineChevronRight,
   HiOutlineAdjustments,
   HiOutlinePlus,
 } from 'react-icons/hi';

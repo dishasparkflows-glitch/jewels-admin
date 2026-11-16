@@ -2,12 +2,9 @@ import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlinePlus,
-  HiOutlinePencil,
   HiOutlineTrash,
   HiOutlineX,
-  HiOutlineSearch,
   HiOutlineTicket,
-  HiOutlineCalendar,
   HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';

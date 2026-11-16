@@ -17,7 +17,6 @@ import {
   HiOutlineCog,
   HiOutlineSpeakerphone,
   HiOutlineBookOpen,
-  HiOutlineDocumentReport,
   HiOutlineTrendingUp,
   HiOutlineUser,
   HiOutlineDocumentText,
@@ -127,6 +126,37 @@ export const navSections = [
     ],
   },
 
+  // ─── Sales & Orders Section ──────────────────────────────────────────
+  {
+    id: 'sales-orders',
+    title: 'SALES & ORDERS',
+    items: [
+      {
+        id: 'orders',
+        title: 'Orders',
+        path: '/orders',
+        icon: HiOutlineShoppingBag,
+        children: [
+          { id: 'all-orders', title: 'Orders', path: '/orders', icon: HiOutlineShoppingBag, apiEndpoint: '/orders' },
+          { id: 'returns', title: 'Returns', path: '/returns', icon: HiOutlineRefresh, apiEndpoint: '/returns' },
+          { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles, apiEndpoint: '/custom-inquiries' },
+          { id: 'cod-sequence', title: 'COD Sequence', path: '/cod-sequences', icon: HiOutlineCash, apiEndpoint: '/cod-sequences' },
+        ],
+      },
+      {
+        id: 'customer-hub',
+        title: 'Customer Hub',
+        path: '/customers',
+        icon: HiOutlineUserGroup,
+        children: [
+          { id: 'customers', title: 'Customers', path: '/customers', icon: HiOutlineUser, apiEndpoint: '/users' },
+          { id: 'appointments', title: 'Appointments', path: '/appointments', icon: HiOutlineCalendar, apiEndpoint: '/appointments' },
+          { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
+        ],
+      },
+    ],
+  },
+
   // ─── Marketing Section (Grouped Submenus) ───────────────────────────
   {
     id: 'marketing',
@@ -183,37 +213,6 @@ export const navSections = [
           { id: 'gallery', title: 'Media Gallery', path: '/gallery', icon: HiOutlinePhotograph, apiEndpoint: '/gallery' },
           { id: 'static-pages', title: 'Static Pages', path: '/static-pages', icon: HiOutlineDocumentText, apiEndpoint: '/static-pages' },
           { id: 'website-themes', title: 'Themes', path: '/website/themes', icon: HiOutlineColorSwatch, apiEndpoint: '/website/themes' },
-        ],
-      },
-    ],
-  },
-
-  // ─── Sales & Orders Section ──────────────────────────────────────────
-  {
-    id: 'sales-orders',
-    title: 'SALES & ORDERS',
-    items: [
-      {
-        id: 'orders',
-        title: 'Orders',
-        path: '/orders',
-        icon: HiOutlineShoppingBag,
-        children: [
-          { id: 'all-orders', title: 'Orders', path: '/orders', icon: HiOutlineShoppingBag, apiEndpoint: '/orders' },
-          { id: 'returns', title: 'Returns', path: '/returns', icon: HiOutlineRefresh, apiEndpoint: '/returns' },
-          { id: 'custom-inquiries', title: 'Custom Inquiries', path: '/custom-inquiries', icon: HiOutlineSparkles, apiEndpoint: '/custom-inquiries' },
-          { id: 'cod-sequence', title: 'COD Sequence', path: '/cod-sequences', icon: HiOutlineCash, apiEndpoint: '/cod-sequences' },
-        ],
-      },
-      {
-        id: 'customer-hub',
-        title: 'Customer Hub',
-        path: '/customers',
-        icon: HiOutlineUserGroup,
-        children: [
-          { id: 'customers', title: 'Customers', path: '/customers', icon: HiOutlineUser, apiEndpoint: '/users' },
-          { id: 'appointments', title: 'Appointments', path: '/appointments', icon: HiOutlineCalendar, apiEndpoint: '/appointments' },
-          { id: 'reviews', title: 'Reviews', path: '/reviews', icon: HiOutlineChatAlt2 },
         ],
       },
     ],

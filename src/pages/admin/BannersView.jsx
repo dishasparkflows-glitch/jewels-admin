@@ -17,7 +17,6 @@ import {
       HiOutlineColorSwatch,
   HiOutlineCode,
   HiOutlineDotsHorizontal,
-    HiOutlineArrowLeft,
   HiOutlineDesktopComputer,
   HiOutlineDuplicate,
     HiOutlineAdjustments,

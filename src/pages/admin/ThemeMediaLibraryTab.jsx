@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
@@ -8,81 +8,205 @@ import {
   HiOutlineX,
   HiOutlineDesktopComputer,
   HiOutlineDeviceMobile,
+  HiOutlineUpload,
+  HiOutlineClipboardCopy,
+  HiOutlineCheck,
 } from 'react-icons/hi';
 import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { galleryAPI } from '../../api/services';
+import Pagination from '../../components/common/Pagination';
+import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+
+const PLACEMENT_LABELS = {
+  herobanner: 'Hero Banner',
+  collectionbanner: 'Collection Banner',
+  categorybanner: 'Category Banner',
+  offerbanner: 'Offer Banner',
+  celebrate: 'Celebrate & Gifts',
+  mobileappbanner: 'Mobile App Banner',
+  bookappointbanner: 'Appointment Banner',
+  customizebanner: 'Custom Banner',
+  websitebanner: 'Website Banner',
+  asset: 'Media Library Asset',
+};
+
+function getPlacementLabel(placement) {
+  if (!placement) return 'Media';
+  const lower = String(placement).toLowerCase();
+  return PLACEMENT_LABELS[lower] || placement;
+}
 
 function getMediaFileName(item) {
+  if (!item) return 'media-asset.webp';
   let fileName = item.fileName || item.name;
-  if (!fileName && item.key) {
-    fileName = item.key.split('/').pop();
+  const key = item.key || item.image?.key;
+  if (!fileName && key) {
+    fileName = key.split('/').pop();
   }
-  if (!fileName && item.url) {
+  const url = item.url || item.image?.url;
+  if (!fileName && url) {
     try {
-      const urlObj = new URL(item.url);
+      const urlObj = new URL(url);
       fileName = urlObj.pathname.split('/').pop();
     } catch {
-      fileName = item.url.split('/').pop()?.split('?')[0];
+      fileName = url.split('/').pop()?.split('?')[0];
     }
   }
   return fileName || 'media-asset.webp';
 }
 
-export default function ThemeMediaLibraryTab() {
+export default function ThemeMediaLibraryTab({ theme, themeId }) {
+  const currentThemeId = themeId || theme?._id;
+  const currentThemeName = theme?.name || '';
+
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Lightbox preview
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+
+  // Lightbox preview & copy status
   const [previewItem, setPreviewItem] = useState(null);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
-  // ─── Fetch Media from Gallery List API ───────────────────
-  const fetchGalleryMedia = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await galleryAPI.getAll({
-        search: search.trim() || undefined,
-        limit: 100,
-      });
+  const fileInputRef = useRef(null);
 
-      const data = res.data?.data || res.data || {};
-      setItems(data.items || []);
-    } catch (err) {
-      console.error('Failed to load gallery media list:', err);
-      toast.error('Could not load gallery media');
-    } finally {
-      setLoading(false);
-    }
-  }, [search]);
+  // ─── Fetch Media from Gallery List API (ThemeId Wise with Pagination) ───
+  const fetchGalleryMedia = useCallback(
+    async (targetPage = page, targetPageSize = pageSize) => {
+      try {
+        setLoading(true);
+        const params = {
+          themeId: currentThemeId || undefined,
+          page: targetPage,
+          limit: targetPageSize,
+          search: search.trim() || undefined,
+        };
 
+        const res = await galleryAPI.getAll(params);
+        const data = res.data?.data || res.data || {};
+        const fetchedItems = data.items || [];
+
+        setItems(fetchedItems);
+        setTotalPages(data.pagination?.totalPages || 1);
+        setTotalItems(
+          data.pagination?.totalItems ??
+            data.pagination?.totalDocs ??
+            data.total ??
+            fetchedItems.length
+        );
+      } catch (err) {
+        console.error('Failed to load gallery media list:', err);
+        toast.error('Could not load gallery media');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentThemeId, page, pageSize, search]
+  );
+
+  // On mount and when page or pageSize changes
   useEffect(() => {
-    fetchGalleryMedia();
-  }, [fetchGalleryMedia]);
+    fetchGalleryMedia(page, pageSize);
+  }, [fetchGalleryMedia, page, pageSize]);
+
+  // Reset to page 1 on search or theme change
+  useEffect(() => {
+    setPage(1);
+  }, [search, currentThemeId]);
+
+  // ─── Handle Upload Media for This Theme ───
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    setUploading(true);
+    const toastId = toast.loading(
+      `Uploading ${files.length} image${files.length > 1 ? 's' : ''} for ${currentThemeName || 'this theme'}…`
+    );
+
+    try {
+      let successCount = 0;
+      for (const file of files) {
+        // 1. Upload file via presigned URL with auto-compression
+        const upload = await uploadWithPresignedUrl(file, 'website-themes');
+
+        // 2. Register media in Gallery with themeId
+        await galleryAPI.create({
+          themeId: currentThemeId || null,
+          placement: 'asset',
+          platform: 'common',
+          image: {
+            url: upload.fileUrl,
+            key: upload.key || '',
+          },
+          status: 'active',
+        });
+        successCount++;
+      }
+
+      toast.success(
+        `Successfully uploaded ${successCount} media asset${successCount > 1 ? 's' : ''}!`,
+        { id: toastId }
+      );
+
+      // Re-fetch gallery on page 1
+      setPage(1);
+      fetchGalleryMedia(1, pageSize);
+    } catch (err) {
+      console.error('Failed to upload theme media:', err);
+      toast.error(err.response?.data?.message || 'Upload failed. Please try again.', {
+        id: toastId,
+      });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  // Copy media URL to clipboard
+  const handleCopyUrl = (url) => {
+    if (!url) return;
+    navigator.clipboard.writeText(url);
+    setCopiedUrl(true);
+    toast.success('Image URL copied to clipboard');
+    setTimeout(() => setCopiedUrl(false), 2000);
+  };
 
   return (
-    <div className="space-y-2.5 sm:space-y-3">
+    <div className="space-y-3">
       {/* ─── 1. TOP HEADER BAR ─── */}
       <div className="rounded-xl border border-stone-200 bg-white p-3.5 sm:p-4 shadow-2xs">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
               Theme Media Library
             </h2>
+            {currentThemeName && (
+              <span className="text-xs font-medium text-stone-500">
+                · {currentThemeName}
+              </span>
+            )}
             <span className="inline-flex items-center rounded-full bg-stone-100 px-2.5 py-0.5 text-xs font-semibold text-stone-700">
-              {items.length} Items
+              {totalItems} {totalItems === 1 ? 'Item' : 'Items'}
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             {/* Search Input */}
-            <div className="relative w-full sm:w-64">
+            <div className="relative w-full sm:w-60">
               <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search media..."
+                placeholder="Search theme media..."
                 className="w-full h-9 pl-9 pr-8 rounded-xl border border-stone-200 bg-white text-xs text-stone-800 outline-none transition focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 placeholder:text-stone-400"
               />
               {search && (
@@ -99,40 +223,73 @@ export default function ThemeMediaLibraryTab() {
             {/* Refresh Button */}
             <button
               type="button"
-              onClick={fetchGalleryMedia}
-              disabled={loading}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold shadow-2xs transition cursor-pointer"
+              onClick={() => fetchGalleryMedia(page, pageSize)}
+              disabled={loading || uploading}
+              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
               title="Refresh Media Gallery"
             >
               <HiOutlineRefresh className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               <span className="hidden sm:inline">Refresh</span>
             </button>
+
+            {/* Hidden File Input */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileUpload}
+              multiple
+              accept="image/*"
+              className="hidden"
+            />
+
+            {/* Upload Media Button */}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading || loading}
+              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#8b6f4e] hover:bg-[#785e41] text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"
+              title="Upload new media for this theme"
+            >
+              <HiOutlineUpload className={`h-3.5 w-3.5 ${uploading ? 'animate-bounce' : ''}`} />
+              <span>{uploading ? 'Uploading…' : 'Upload Media'}</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* ─── 2. MEDIA GRID: Display only media, nothing extra ─── */}
+      {/* ─── 2. MEDIA GRID ─── */}
       {loading ? (
         <div className="rounded-2xl border border-stone-200 bg-white p-20 text-center text-xs text-stone-500 space-y-2">
           <HiOutlineRefresh className="h-6 w-6 animate-spin mx-auto text-[#8b6f4e]" />
-          <p>Loading media gallery assets…</p>
+          <p>Loading {currentThemeName ? `${currentThemeName} ` : ''}media gallery assets…</p>
         </div>
       ) : items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-16 text-center space-y-2">
+        <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-14 text-center space-y-3">
           <HiOutlinePhotograph className="mx-auto h-10 w-10 text-stone-300" />
           <h3 className="text-sm font-bold text-stone-800">No media found</h3>
           <p className="text-xs text-stone-500 max-w-sm mx-auto">
             {search
               ? `No media matches "${search}". Try clearing search.`
-              : 'No media assets available in the gallery.'}
+              : `No media assets have been assigned to ${currentThemeName || 'this theme'} yet.`}
           </p>
+          {!search && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e41] text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"
+            >
+              <HiOutlineUpload className="h-4 w-4" />
+              Upload Media for {currentThemeName || 'This Theme'}
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
           {items.map((item) => {
             const fileName = getMediaFileName(item);
             const mediaUrl = item.url || item.image?.url;
-            const placementLabel = item.typeLabel || item.placement || 'Media';
+            const placementLabel = item.typeLabel || getPlacementLabel(item.placement);
             const platform = item.platform || 'common';
 
             return (
@@ -200,7 +357,26 @@ export default function ThemeMediaLibraryTab() {
         </div>
       )}
 
-      {/* ─── 3. LIGHTBOX PREVIEW MODAL ─── */}
+      {/* ─── 3. PAGINATION FOOTER ─── */}
+      {totalItems > 0 && (
+        <div className="rounded-xl border border-stone-200 shadow-2xs">
+          <Pagination
+            currentPage={page}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(1);
+            }}
+            pageSizeOptions={[10, 20, 40, 60]}
+            showPageSize={true}
+            itemLabel="theme assets"
+          />
+        </div>
+      )}
+
+      {/* ─── 4. LIGHTBOX PREVIEW MODAL ─── */}
       {previewItem &&
         createPortal(
           <div
@@ -217,18 +393,50 @@ export default function ThemeMediaLibraryTab() {
                     {getMediaFileName(previewItem)}
                   </h3>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-stone-500">
-                    <span>{previewItem.typeLabel || previewItem.placement}</span>
+                    <span>{previewItem.typeLabel || getPlacementLabel(previewItem.placement)}</span>
                     <span>·</span>
                     <span className="uppercase">{previewItem.platform || 'common'}</span>
+                    {(previewItem.themeName || previewItem.themeId?.name || currentThemeName) && (
+                      <>
+                        <span>·</span>
+                        <span className="text-[#8b6f4e] font-medium">
+                          {previewItem.themeName || previewItem.themeId?.name || currentThemeName}
+                        </span>
+                      </>
+                    )}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setPreviewItem(null)}
-                  className="rounded-xl border border-stone-200 p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition cursor-pointer"
-                >
-                  <HiOutlineX className="h-5 w-5" />
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleCopyUrl(previewItem.url || previewItem.image?.url)
+                    }
+                    className="flex items-center gap-1.5 rounded-xl border border-stone-200 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition cursor-pointer"
+                    title="Copy Image URL"
+                  >
+                    {copiedUrl ? (
+                      <>
+                        <HiOutlineCheck className="h-4 w-4 text-emerald-600" />
+                        <span className="text-emerald-600">Copied!</span>
+                      </>
+                    ) : (
+                      <>
+                        <HiOutlineClipboardCopy className="h-4 w-4 text-stone-500" />
+                        <span>Copy URL</span>
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPreviewItem(null)}
+                    className="rounded-xl border border-stone-200 p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition cursor-pointer"
+                  >
+                    <HiOutlineX className="h-5 w-5" />
+                  </button>
+                </div>
               </div>
 
               <div className="flex items-center justify-center overflow-auto max-h-[70vh] bg-stone-950 rounded-xl p-2">

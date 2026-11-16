@@ -1,14 +1,8 @@
 import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  HiOutlinePlus,
-  HiOutlinePencil,
   HiOutlineTrash,
-  HiOutlineEye,
   HiOutlineX,
-  HiOutlineSearch,
-  HiOutlineChevronLeft,
-  HiOutlineChevronRight,
   HiOutlineSparkles,
   HiOutlineCube,
 } from 'react-icons/hi';

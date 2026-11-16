@@ -8,7 +8,6 @@ import {
   HiOutlineChevronLeft,
   HiOutlineChevronRight,
   HiOutlineExternalLink,
-  HiOutlineDownload,
 } from 'react-icons/hi';
 
 /**

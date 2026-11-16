@@ -2,14 +2,9 @@ import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
-  HiOutlinePencil,
   HiOutlineTrash,
   HiOutlineEye,
   HiOutlineX,
-  HiOutlineSearch,
-  HiOutlineChevronLeft,
-  HiOutlineChevronRight,
-  HiOutlineCloudUpload,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';

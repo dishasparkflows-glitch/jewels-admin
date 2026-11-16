@@ -2,13 +2,10 @@ import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineRefresh,
-  HiOutlinePencil,
-  HiOutlineTrash,
   HiOutlineSearch,
   HiOutlineX,
-  HiOutlineCheck,
 } from 'react-icons/hi';
-import { TbCurrencyDollar, TbCoins } from 'react-icons/tb';
+import { TbCoins } from 'react-icons/tb';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useConfirm } from '../../contexts/ConfirmContext';

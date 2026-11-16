@@ -217,10 +217,16 @@ export default function Dropdown({
       resolvedZIndex = Math.max(Number(customZMatch[1]), 100000);
     }
 
+    const targetWidth = Math.max(Math.round(rect.width), 70);
+    let left = Math.round(rect.left);
+    if (left + targetWidth > window.innerWidth - 8) {
+      left = Math.max(8, window.innerWidth - targetWidth - 8);
+    }
+
     setMenuPosition({
       position: 'fixed',
-      left: Math.round(rect.left),
-      width: Math.round(rect.width),
+      left,
+      width: targetWidth,
       top: shouldDropUp ? 'auto' : Math.round(rect.bottom + 6),
       bottom: shouldDropUp ? Math.round(window.innerHeight - rect.top + 6) : 'auto',
       margin: 0,

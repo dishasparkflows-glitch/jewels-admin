@@ -1,12 +1,9 @@
 import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  HiOutlinePlus,
-  HiOutlinePencil,
   HiOutlineTrash,
   HiOutlineEye,
   HiOutlineX,
-  HiOutlineSearch,
   HiOutlineCloudUpload,
   HiOutlineSparkles,
 } from 'react-icons/hi';
@@ -14,7 +11,7 @@ import { TbCircleOff } from 'react-icons/tb';
 import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { uploadWithPresignedUrl, deleteUploadedFile } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import Pagination from '../../components/common/Pagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -280,6 +277,9 @@ export default function GemstoneShapesView() {
       setIsUploading(true);
       const res = await uploadWithPresignedUrl(file, 'gemstone-shapes');
       if (res?.url) {
+        if (shapeImage?.key) {
+          deleteUploadedFile(shapeImage);
+        }
         setShapeImage({ url: res.url, key: res.key });
         toast.success('Shape icon uploaded');
       }
@@ -304,7 +304,7 @@ export default function GemstoneShapesView() {
       const payload = {
         name: name.trim(),
         code: code.trim() || name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-'),
-        ...(shapeImage ? { image: shapeImage } : {}),
+        image: shapeImage || null,
       };
 
       if (editingShape) {
@@ -342,6 +342,7 @@ export default function GemstoneShapesView() {
 
   // Delete Shape
   const handleDelete = async (id, itemName) => {
+    const targetItem = shapes.find((s) => s._id === id);
     const confirmed = await confirm({
       title: 'Delete Gemstone Shape',
       message: `Are you sure you want to delete gemstone shape "${itemName || 'this shape'}"? This action cannot be undone.`,
@@ -353,12 +354,15 @@ export default function GemstoneShapesView() {
 
     try {
       await api.delete(`/gemstone-shapes/${id}`);
+      if (targetItem?.image) {
+        deleteUploadedFile(targetItem.image);
+      }
       toast.success(`Gemstone shape "${itemName || ''}" deleted`);
       fetchShapes(currentPage, pageSize);
       setSelectedIds((prev) => prev.filter((i) => i !== id));
     } catch (err) {
       console.error(err);
-      toast.error('Failed to delete gemstone shape');
+      toast.error(err.response?.data?.message || 'Failed to delete gemstone shape');
     }
   };
 
@@ -629,7 +633,7 @@ export default function GemstoneShapesView() {
                   <label className="block text-xs font-bold text-stone-800">Shape Icon</label>
                   <div className="flex items-center gap-3">
                     <VisualShapeBadge name={name} imageUrl={shapeImage?.url} className="w-12 h-12" />
-                    <div>
+                    <div className="flex items-center gap-2 flex-wrap">
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -649,6 +653,19 @@ export default function GemstoneShapesView() {
                         <HiOutlineCloudUpload className="h-4 w-4" />
                         {isUploading ? 'Uploading...' : 'Custom SVG / PNG'}
                       </button>
+                      {shapeImage && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (shapeImage) deleteUploadedFile(shapeImage);
+                            setShapeImage(null);
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-medium flex items-center gap-1 transition cursor-pointer"
+                        >
+                          <HiOutlineTrash className="h-3.5 w-3.5" />
+                          <span>Remove</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -4,8 +4,6 @@ import {
   HiOutlineSwitchHorizontal,
   HiOutlinePlus,
   HiOutlineSparkles,
-  HiOutlineCollection,
-  HiOutlineCheck,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import Modal from '../Modal';
@@ -78,12 +76,6 @@ export default function MoveProductModal({
   }, [products]);
 
   const count = targetProducts.length || productIds.length || 0;
-  const isSourceAllSelected = Boolean(
-    sourceGroup &&
-      sourceGroup.productIds &&
-      count >= (sourceGroup.productIds.length || 0)
-  );
-
   // Compute auto-generated group name: itemname + barcode
   useEffect(() => {
     if (!isOpen) return;
