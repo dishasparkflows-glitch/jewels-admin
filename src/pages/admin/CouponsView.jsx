@@ -8,6 +8,7 @@ import {
   HiOutlineSearch,
   HiOutlineTicket,
   HiOutlineCalendar,
+  HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -30,6 +31,7 @@ export default function CouponsView() {
   const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [validityTab, setValidityTab] = useState('active');
+  const [runningCron, setRunningCron] = useState(false);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -82,6 +84,34 @@ export default function CouponsView() {
   useEffect(() => {
     fetchCoupons(currentPage, pageSize, validityTab);
   }, [currentPage, pageSize, validityTab]);
+
+  const handleRunCron = async () => {
+    const isConfirmed = await confirm({
+      title: 'Run Expiry Cron Job',
+      message:
+        'Do you want to run the expiration cron job now? This will immediately scan all coupons and offers, marking any past their validity date as expired.',
+      confirmText: 'Run Cron Now',
+      cancelText: 'Cancel',
+      type: 'info',
+    });
+
+    if (!isConfirmed) return;
+
+    try {
+      setRunningCron(true);
+      const res = await api.post('/coupons/run-cron');
+      const message = res.data?.message || 'Expiry cron ran successfully!';
+      toast.success(message, { duration: 4500 });
+      await fetchCoupons(currentPage, pageSize, validityTab);
+    } catch (err) {
+      console.error('Failed to run expiration cron:', err);
+      toast.error(
+        err.response?.data?.message || 'Failed to run expiration cron. Please try again.'
+      );
+    } finally {
+      setRunningCron(false);
+    }
+  };
 
   // Filter coupons by search query
   const filteredCoupons = useMemo(() => {
@@ -333,6 +363,18 @@ export default function CouponsView() {
         subtitle="Manage promotional discount codes, validity rules and order promotions."
         onAdd={handleOpenAdd}
         addLabel="Add Coupon"
+        extraActions={
+          <button
+            type="button"
+            disabled={runningCron || loading}
+            onClick={handleRunCron}
+            className="flex items-center gap-2 h-[42px] px-3.5 sm:px-4 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 active:scale-[0.98] text-stone-700 hover:text-stone-900 text-xs sm:text-[13px] font-semibold transition-all shadow-2xs hover:shadow-xs cursor-pointer disabled:opacity-50"
+            title="Run cron function to immediately check and expire past offers/coupons"
+          >
+            <HiOutlineRefresh className={`w-4 h-4 text-[#8b6f4e] ${runningCron ? 'animate-spin' : ''}`} />
+            <span>{runningCron ? 'Running Cron...' : 'Run Expiry Cron'}</span>
+          </button>
+        }
         exportData={coupons}
         exportFileName="coupons_export"
       />
@@ -622,6 +664,7 @@ export default function CouponsView() {
                   options={categorySelectOptions}
                   placeholder={categoriesLoading ? 'Loading categories…' : 'Select a category (optional)'}
                   disabled={categoriesLoading}
+                  portal={true}
                   buttonClassName="h-10 w-full rounded-xl text-xs sm:text-[13px] font-medium border border-[#d6cfc2] hover:border-[#bdae99]"
                 />
               </div>
@@ -639,6 +682,7 @@ export default function CouponsView() {
                       { value: 'Percentage', label: 'Percentage %' },
                       { value: 'Fixed', label: 'Fixed Amount (₹)' },
                     ]}
+                    portal={true}
                     buttonClassName="h-10 rounded-xl text-xs sm:text-[13px] font-medium border border-[#d6cfc2] hover:border-[#bdae99]"
                   />
                 </div>

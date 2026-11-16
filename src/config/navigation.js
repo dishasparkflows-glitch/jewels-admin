@@ -112,6 +112,18 @@ export const navSections = [
           { id: 'diamond-size', title: 'Diamond Size', path: '/diamond-size', icon: IoDiamondOutline, apiEndpoint: '/diamond-sizes' },
         ],
       },
+
+      // ─── 5. Gemstone Config ─
+      {
+        id: 'gemstone-config',
+        title: 'Gemstone Config',
+        path: '/gemstone-config',
+        icon: IoSparklesOutline,
+        children: [
+          { id: 'gemstone-types', title: 'Gemstone Types', path: '/gemstone-types', icon: IoSparklesOutline, apiEndpoint: '/gemstone-types' },
+          { id: 'gemstone-shapes', title: 'Gemstone Shapes', path: '/gemstone-shapes', icon: TbCircleOff, apiEndpoint: '/gemstone-shapes' },
+        ],
+      },
     ],
   },
 
@@ -130,7 +142,7 @@ export const navSections = [
           { id: 'home-sections', title: 'Home Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
           { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
           { id: 'top-announcement', title: 'Top Announcement', path: '/top-announcements', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
-          { id: 'footer-management', title: 'Footer Management', path: '/footer-settings', icon: HiOutlineTemplate, apiEndpoint: '/footer-settings' },
+          // { id: 'footer-management', title: 'Footer Management', path: '/footer-settings', icon: HiOutlineTemplate, apiEndpoint: '/footer-settings' },
         ],
       },
 

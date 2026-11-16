@@ -32,7 +32,7 @@ export const notificationsAPI = {
 // ─── Upload ───────────────────────────────────────
 export const uploadAPI = {
   getPresignedUrl: (data) => api.post('/upload/presigned-url', data),
-  delete: (filepath) => api.delete('/upload', { data: { filepath } }),
+  delete: (key) => api.delete('/upload', { data: typeof key === 'object' ? key : { key } }),
 };
 
 // ─── Home Sections ────────────────────────────────

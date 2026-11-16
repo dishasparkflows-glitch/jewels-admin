@@ -679,7 +679,6 @@ export default function WriteBlogView() {
                 </div>
                 <div>
                   <p className="text-xs font-bold text-stone-800">Upload Featured Image</p>
-                  <p className="text-[10px] text-stone-400 mt-0.5">PNG, JPG, WebP up to 5MB</p>
                 </div>
               </div>
             )}

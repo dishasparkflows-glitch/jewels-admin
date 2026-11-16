@@ -32,6 +32,8 @@ const DiamondShapesView = lazy(() => import('./pages/admin/DiamondShapesView'));
 const DiamondColorsView = lazy(() => import('./pages/admin/DiamondColorsView'));
 const DiamondClaritiesView = lazy(() => import('./pages/admin/DiamondClaritiesView'));
 const DiamondSizesView = lazy(() => import('./pages/admin/DiamondSizesView'));
+const GemstoneTypesView = lazy(() => import('./pages/admin/GemstoneTypesView'));
+const GemstoneShapesView = lazy(() => import('./pages/admin/GemstoneShapesView'));
 const MetalPuritiesView = lazy(() => import('./pages/admin/MetalPuritiesView'));
 const MetalColorsView = lazy(() => import('./pages/admin/MetalColorsView'));
 const SizesView = lazy(() => import('./pages/admin/SizesView'));
@@ -217,6 +219,13 @@ function App() {
             <Route path="/diamond-config/clarity" element={<DiamondClaritiesView />} />
             <Route path="/diamond-size" element={<DiamondSizesView />} />
             <Route path="/diamond-config/size" element={<DiamondSizesView />} />
+
+            {/* Gemstone Config */}
+            <Route path="/gemstone-types" element={<GemstoneTypesView />} />
+            <Route path="/gemstone-config" element={<Navigate to="/gemstone-types" replace />} />
+            <Route path="/gemstone-config/types" element={<GemstoneTypesView />} />
+            <Route path="/gemstone-shapes" element={<GemstoneShapesView />} />
+            <Route path="/gemstone-config/shapes" element={<GemstoneShapesView />} />
             <Route path="/metal-purity" element={<MetalPuritiesView />} />
             <Route path="/product-config/metal-purity" element={<MetalPuritiesView />} />
             <Route path="/metal-color" element={<MetalColorsView />} />

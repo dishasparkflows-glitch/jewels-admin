@@ -570,7 +570,6 @@ export default function RichTextEditor({
               <div className="p-4 border-2 border-dashed border-stone-200 rounded-xl bg-stone-50/50 text-center space-y-2">
                 <HiOutlinePhotograph className="w-8 h-8 text-[#8b6f4e] mx-auto" />
                 <p className="text-xs font-semibold text-stone-700">Upload Image File</p>
-                <p className="text-[11px] text-stone-500">PNG, JPG, WEBP up to 10MB</p>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}

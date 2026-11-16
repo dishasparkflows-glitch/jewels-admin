@@ -1404,13 +1404,15 @@ export default function NavigationMenusView() {
                           data: { ...prev.data, title: e.target.value },
                         }))
                       }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
+                      className="w-full h-[42px] rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-xs sm:text-[13px] text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#85583f] transition-all shadow-2xs"
                     />
                   </label>
 
-                  <div className="grid grid-cols-2 gap-3 items-end">
-                    <label className="block space-y-1 text-xs">
-                      <span className="font-semibold text-stone-700">Display Order</span>
+                  <div className="grid grid-cols-2 gap-3 items-start">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Display Order
+                      </label>
                       <input
                         type="number"
                         min="0"
@@ -1421,27 +1423,56 @@ export default function NavigationMenusView() {
                             data: { ...prev.data, order: e.target.value },
                           }))
                         }
-                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
+                        className="w-full h-[42px] rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-xs sm:text-[13px] text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#85583f] transition-all shadow-2xs"
                       />
-                    </label>
+                    </div>
 
-                    <div>
-                      <Dropdown
-                        label="Visibility"
-                        value={sectionModal.data?.status || 'active'}
-                        onChange={(val) =>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Visibility
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
                           setSectionModal((prev) => ({
                             ...prev,
-                            data: { ...prev.data, status: val },
+                            data: {
+                              ...prev.data,
+                              status: (prev.data?.status || 'active') === 'active' ? 'inactive' : 'active',
+                            },
                           }))
                         }
-                        options={[
-                          { value: 'active', label: 'Visible', dotColor: 'bg-emerald-500' },
-                          { value: 'inactive', label: 'Hidden', dotColor: 'bg-stone-400' },
-                        ]}
-                        showStatusDot
-                        size="field"
-                      />
+                        style={{ backgroundColor: '#ffffff' }}
+                        className="w-full h-[42px] px-3.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50/80 flex items-center justify-between transition-all cursor-pointer shadow-2xs select-none"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`w-2 h-2 rounded-full shrink-0 ${
+                              (sectionModal.data?.status || 'active') === 'active'
+                                ? 'bg-emerald-500'
+                                : 'bg-stone-400'
+                            }`}
+                          />
+                          <span className="font-semibold text-xs sm:text-[13px] text-stone-700 truncate">
+                            {(sectionModal.data?.status || 'active') === 'active' ? 'Visible' : 'Hidden'}
+                          </span>
+                        </div>
+                        <div
+                          className={`w-9 h-5 rounded-full transition-colors p-0.5 relative shrink-0 ${
+                            (sectionModal.data?.status || 'active') === 'active'
+                              ? 'bg-emerald-500'
+                              : 'bg-stone-300'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform transform ${
+                              (sectionModal.data?.status || 'active') === 'active'
+                                ? 'translate-x-[16px]'
+                                : 'translate-x-0'
+                            }`}
+                          />
+                        </div>
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1503,8 +1534,8 @@ export default function NavigationMenusView() {
                 </header>
 
                 <div className="p-4 space-y-3.5">
-                  <label className="block space-y-1 text-xs">
-                    <span className="font-semibold text-stone-700">Item Label *</span>
+                  <div className="space-y-1.5 text-xs">
+                    <label className="block font-semibold text-stone-700">Item Label *</label>
                     <input
                       autoFocus
                       required
@@ -1517,9 +1548,9 @@ export default function NavigationMenusView() {
                           data: { ...prev.data, title: e.target.value },
                         }))
                       }
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
+                      className="w-full h-[42px] rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-xs sm:text-[13px] text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#85583f] transition-all shadow-2xs"
                     />
-                  </label>
+                  </div>
 
                   <div>
                     <Dropdown
@@ -1659,9 +1690,11 @@ export default function NavigationMenusView() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3 items-end">
-                    <label className="block space-y-1 text-xs">
-                      <span className="font-semibold text-stone-700">Display Order</span>
+                  <div className="grid grid-cols-2 gap-3 items-start">
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Display Order
+                      </label>
                       <input
                         type="number"
                         min="0"
@@ -1672,27 +1705,56 @@ export default function NavigationMenusView() {
                             data: { ...prev.data, order: e.target.value },
                           }))
                         }
-                        className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs focus:outline-none focus:border-[#85583f]"
+                        className="w-full h-[42px] rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-xs sm:text-[13px] text-stone-800 placeholder:text-stone-400 focus:outline-none focus:border-[#85583f] transition-all shadow-2xs"
                       />
-                    </label>
+                    </div>
 
-                    <div>
-                      <Dropdown
-                        label="Visibility"
-                        value={itemModal.data?.status || 'active'}
-                        onChange={(val) =>
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Visibility
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() =>
                           setItemModal((prev) => ({
                             ...prev,
-                            data: { ...prev.data, status: val },
+                            data: {
+                              ...prev.data,
+                              status: (prev.data?.status || 'active') === 'active' ? 'inactive' : 'active',
+                            },
                           }))
                         }
-                        options={[
-                          { value: 'active', label: 'Visible', dotColor: 'bg-emerald-500' },
-                          { value: 'inactive', label: 'Hidden', dotColor: 'bg-stone-400' },
-                        ]}
-                        showStatusDot
-                        size="field"
-                      />
+                        style={{ backgroundColor: '#ffffff' }}
+                        className="w-full h-[42px] px-3.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50/80 flex items-center justify-between transition-all cursor-pointer shadow-2xs select-none"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`w-2 h-2 rounded-full shrink-0 ${
+                              (itemModal.data?.status || 'active') === 'active'
+                                ? 'bg-emerald-500'
+                                : 'bg-stone-400'
+                            }`}
+                          />
+                          <span className="font-semibold text-xs sm:text-[13px] text-stone-700 truncate">
+                            {(itemModal.data?.status || 'active') === 'active' ? 'Visible' : 'Hidden'}
+                          </span>
+                        </div>
+                        <div
+                          className={`w-9 h-5 rounded-full transition-colors p-0.5 relative shrink-0 ${
+                            (itemModal.data?.status || 'active') === 'active'
+                              ? 'bg-emerald-500'
+                              : 'bg-stone-300'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform transform ${
+                              (itemModal.data?.status || 'active') === 'active'
+                                ? 'translate-x-[16px]'
+                                : 'translate-x-0'
+                            }`}
+                          />
+                        </div>
+                      </button>
                     </div>
                   </div>
                 </div>

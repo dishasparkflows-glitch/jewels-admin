@@ -158,6 +158,8 @@ export default function CustomInquiriesView() {
         const name = (i.customer?.name || '').toLowerCase();
         const email = (i.customer?.email || '').toLowerCase();
         const phone = (i.customer?.phone?.number || '').toLowerCase();
+        const countryCode = (i.customer?.phone?.countryCode || '91').toString().toLowerCase();
+        const formattedPhone = formatPhone(i.customer?.phone).toLowerCase();
         const stone = (i.requirements?.stoneType || '').toLowerCase();
         const metal = (i.requirements?.metalType || '').toLowerCase();
         const jTypes = Array.isArray(i.requirements?.jewelryTypes)
@@ -167,6 +169,8 @@ export default function CustomInquiriesView() {
           name.includes(q) ||
           email.includes(q) ||
           phone.includes(q) ||
+          formattedPhone.includes(q) ||
+          countryCode.includes(q) ||
           stone.includes(q) ||
           metal.includes(q) ||
           jTypes.includes(q)
@@ -215,11 +219,20 @@ export default function CustomInquiriesView() {
     return 'Above ₹5,00,000+';
   };
 
-  // Helper format phone
+  // Helper format phone with country code
   const formatPhone = (phoneObj) => {
     if (!phoneObj) return '—';
-    if (typeof phoneObj === 'string') return phoneObj;
-    return phoneObj.number || '—';
+    if (typeof phoneObj === 'string') {
+      const trimmed = phoneObj.trim();
+      if (!trimmed) return '—';
+      return trimmed.startsWith('+') ? trimmed : `+91 ${trimmed}`;
+    }
+    const number = (phoneObj.number || '').toString().trim();
+    if (!number) return '—';
+    if (number.startsWith('+')) return number;
+    const rawCc = (phoneObj.countryCode || '91').toString().trim();
+    const cleanCc = rawCc.replace(/^\+/, '') || '91';
+    return `+${cleanCc} ${number}`;
   };
 
   return (
@@ -497,27 +510,27 @@ export default function CustomInquiriesView() {
                       {/* Actions: Confirm, Cancel, Delete */}
                       <td className="py-3 pr-5 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Confirm Blue Check Button (Triggers Confirm Modal) */}
+                          {/* Confirm Green Check Button */}
                           <button
                             type="button"
                             onClick={() => setConfirmModalInquiry(inq)}
                             title="Confirm Inquiry"
-                            className="w-7 h-7 rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                            className="w-7 h-7 rounded-lg border border-emerald-200/80 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                           >
-                            <HiOutlineCheckCircle className="w-3.5 h-3.5 stroke-2" />
+                            <HiOutlineCheck className="w-3.5 h-3.5 stroke-2" />
                           </button>
 
-                          {/* 3. Cancel Ban Button */}
+                          {/* Cancel Red X Button */}
                           <button
                             type="button"
                             onClick={() => setCancelModalInquiry(inq)}
                             title="Cancel Inquiry"
-                            className="w-7 h-7 rounded-lg border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                            className="w-7 h-7 rounded-lg border border-rose-200/80 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                           >
-                            <HiOutlineBan className="w-3.5 h-3.5" />
+                            <HiOutlineX className="w-3.5 h-3.5 stroke-2" />
                           </button>
 
-                          {/* 4. Delete Trash Button */}
+                          {/* Delete Trash Button */}
                           <DeleteActionButton
                             onClick={() => handleDelete(id, clientName)}
                             title="Delete Inquiry"
@@ -564,9 +577,9 @@ export default function CustomInquiriesView() {
               <HiOutlineX className="w-5 h-5" />
             </button>
 
-            {/* Alert Icon */}
-            <div className="w-14 h-14 rounded-2xl bg-[#fff7ed] border border-[#ffedd5] mx-auto flex items-center justify-center text-[#d97706] shadow-2xs">
-              <HiOutlineExclamation className="w-7 h-7 stroke-2" />
+            {/* Success Icon */}
+            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 mx-auto flex items-center justify-center text-emerald-700 shadow-2xs">
+              <HiOutlineCheck className="w-7 h-7 stroke-2" />
             </div>
 
             <div>
@@ -589,7 +602,7 @@ export default function CustomInquiriesView() {
               <button
                 type="button"
                 onClick={handleConfirmInquiry}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-[#d97706] hover:bg-[#b45309] shadow-sm transition-colors cursor-pointer"
+                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-emerald-700 hover:bg-emerald-800 shadow-sm shadow-emerald-900/20 transition-colors cursor-pointer"
               >
                 CONFIRM
               </button>
@@ -642,7 +655,7 @@ export default function CustomInquiriesView() {
                 onClick={handleCancelInquiry}
                 className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-red-700 hover:bg-red-800 shadow-sm shadow-red-900/20 transition-colors cursor-pointer"
               >
-                CANCEL REQUEST
+                CANCEL INQUIRY
               </button>
             </div>
           </div>
@@ -728,6 +741,39 @@ export default function CustomInquiriesView() {
                   </span>
                 </div>
               </div>
+
+              {Array.isArray(viewingInquiry.referenceImages) && viewingInquiry.referenceImages.length > 0 && (
+                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/60 space-y-2">
+                  <span
+                    className="block text-[10px] font-bold uppercase tracking-wider"
+                    style={{ color: 'var(--theme-primary, #8b6f4e)' }}
+                  >
+                    Uploaded Reference Images ({viewingInquiry.referenceImages.length})
+                  </span>
+                  <div className="grid grid-cols-3 gap-2.5 pt-1">
+                    {viewingInquiry.referenceImages.map((img, idx) => {
+                      const imgUrl = img.url || (typeof img === 'string' ? img : '');
+                      if (!imgUrl) return null;
+                      return (
+                        <a
+                          key={idx}
+                          href={imgUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block aspect-square rounded-xl overflow-hidden border border-stone-200 hover:border-[#8b6f4e] hover:shadow-xs transition-all group relative bg-white"
+                          title="Click to view full image in new tab"
+                        >
+                          <img
+                            src={imgUrl}
+                            alt={`Reference ${idx + 1}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                          />
+                        </a>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {viewingInquiry.requirements?.comments && (
                 <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">

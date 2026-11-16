@@ -1042,7 +1042,7 @@ export default function GalleryView() {
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-700">
-                        <HiOutlineDesktopComputer className="h-3 w-3" /> Web Desktop
+                        <HiOutlineDesktopComputer className="h-3 w-3" /> Web
                       </span>
                     )}
                   </td>
@@ -1058,33 +1058,35 @@ export default function GalleryView() {
                       {item.themeName || 'Global'}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3">
-                    <button
-                      type="button"
-                      onClick={() => handleToggleStatus(item)}
-                      className="inline-flex items-center gap-2 group cursor-pointer"
-                      title={`Click to set ${item.status === 'active' ? 'inactive' : 'active'}`}
-                    >
-                      <div
+                  <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={item.status === 'active'}
+                        onClick={() => handleToggleStatus(item)}
                         style={item.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                        className={`relative inline-flex h-4.5 w-8 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out ${item.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
+                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                          item.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
+                        }`}
+                        title={`Click to set ${item.status === 'active' ? 'Inactive' : 'Active'}`}
                       >
                         <span
-                          className={`inline-block h-3 w-3 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
-                            item.status === 'active' ? 'translate-x-4' : 'translate-x-1'
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            item.status === 'active' ? 'translate-x-4' : 'translate-x-0'
                           }`}
                         />
-                      </div>
+                      </button>
                       <span
-                        className={`inline-flex items-center px-1.5 py-0.2 rounded-md text-[10px] font-semibold tracking-wide capitalize ${
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           item.status === 'active'
                             ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                             : 'bg-stone-100 text-stone-500 border border-stone-200'
                         }`}
                       >
-                        {item.status || 'active'}
+                        {item.status === 'active' ? 'Active' : 'Inactive'}
                       </span>
-                    </button>
+                    </div>
                   </td>
                   <td className="py-2.5 px-3 text-right">
                     <div className="flex items-center justify-end gap-1">
@@ -1579,7 +1581,7 @@ export default function GalleryView() {
                 <div>
                   <h3 className="text-base font-bold text-stone-900">{previewItem.typeLabel || previewItem.placement}</h3>
                   <span className="text-xs text-stone-400">
-                    {previewItem.typeLabel} · {previewItem.platform === 'common' ? 'Common (Web & App)' : previewItem.platform === 'mobile' || previewItem.platform === 'app' ? 'Mobile App' : 'Web Desktop'} · Theme: {previewItem.themeName || 'Global'}
+                    {previewItem.typeLabel} · {previewItem.platform === 'common' ? 'Common (Web & App)' : previewItem.platform === 'mobile' || previewItem.platform === 'app' ? 'Mobile App' : 'Web'} · Theme: {previewItem.themeName || 'Global'}
                   </span>
                 </div>
                 <button
@@ -1620,7 +1622,7 @@ export default function GalleryView() {
                           ? 'Common (Web & App Universal)'
                           : previewItem.platform === 'mobile' || previewItem.platform === 'app'
                           ? 'Mobile App'
-                          : 'Web Desktop'}
+                          : 'Web'}
                       </span>
                     </div>
                     <div>
@@ -1776,23 +1778,34 @@ export default function GalleryView() {
                     <label className="block text-xs font-bold text-stone-800">Media Status</label>
                     <span className="text-[11px] text-stone-500">Enable or disable this media item</span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setEditStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
-                    className="inline-flex items-center gap-2 cursor-pointer"
-                  >
-                    <div
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={editStatus === 'active'}
+                      onClick={() => setEditStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
                       style={editStatus === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${editStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        editStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
+                      }`}
+                      title={`Click to set ${editStatus === 'active' ? 'Inactive' : 'Active'}`}
                     >
                       <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition ${
-                          editStatus === 'active' ? 'translate-x-4.5' : 'translate-x-1'
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          editStatus === 'active' ? 'translate-x-4' : 'translate-x-0'
                         }`}
                       />
-                    </div>
-                    <span className="text-xs font-bold capitalize text-stone-700">{editStatus}</span>
-                  </button>
+                    </button>
+                    <span
+                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        editStatus === 'active'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : 'bg-stone-100 text-stone-500 border border-stone-200'
+                      }`}
+                    >
+                      {editStatus === 'active' ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Modal Footer */}

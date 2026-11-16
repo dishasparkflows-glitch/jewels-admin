@@ -511,6 +511,41 @@ export default function InstagramPostsView() {
         </div>
       </div>
 
+      {/* ─── Reorder Notice & Action Bar (appears above posts grid automatically on drag) ─── */}
+      {hasUnsavedOrder && (
+        <div className="sticky top-16 z-20 bg-[#faf6f0] border border-[#ebdcc9] rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md animate-fadeIn">
+          {/* Left: Drag instruction with icon */}
+          <div className="flex items-center gap-2.5 text-stone-700 text-xs font-medium">
+            <svg className="w-4 h-4 text-stone-400 shrink-0 fill-current" viewBox="0 0 24 24">
+              <path d="M9 5a2 2 0 100-4 2 2 0 000 4zm6 0a2 2 0 100-4 2 2 0 000 4zM9 13a2 2 0 100-4 2 2 0 000 4zm6 0a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4zm6 0a2 2 0 100-4 2 2 0 000 4z" />
+            </svg>
+            <span className="font-semibold text-stone-800">
+              Order changed. Click Save Order to apply changes to your website.
+            </span>
+          </div>
+
+          {/* Right: Cancel & Save Order buttons */}
+          <div className="flex items-center gap-2.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleCancelOrder}
+              className="px-4 py-2 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveOrder}
+              disabled={savingOrder}
+              style={{ backgroundColor: 'var(--theme-primary, #8c6d46)' }}
+              className="px-5 py-2 rounded-lg text-white text-xs font-semibold tracking-wide hover:brightness-95 active:scale-[0.98] transition-all cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {savingOrder ? 'Saving...' : 'Save Order'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── 4. Posts Grid (5 cards per row on large screen) ─── */}
       {loading ? (
         <div className="py-20 text-center text-stone-400 bg-white rounded-xl border border-stone-200/90 shadow-2xs">
@@ -747,42 +782,7 @@ export default function InstagramPostsView() {
         </div>
       </div>
 
-      {/* ─── 6. Bottom Notice & Reorder Action Bar (appears automatically on drag) ─── */}
-      {hasUnsavedOrder && (
-        <div className="bg-[#faf6f0] border border-[#ebdcc9] rounded-xl p-3 sm:p-3.5 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs animate-fadeIn">
-          {/* Left: Drag instruction with icon */}
-          <div className="flex items-center gap-2.5 text-stone-700 text-xs font-medium">
-            <svg className="w-4 h-4 text-stone-400 shrink-0 fill-current" viewBox="0 0 24 24">
-              <path d="M9 5a2 2 0 100-4 2 2 0 000 4zm6 0a2 2 0 100-4 2 2 0 000 4zM9 13a2 2 0 100-4 2 2 0 000 4zm6 0a2 2 0 100-4 2 2 0 000 4zM9 21a2 2 0 100-4 2 2 0 000 4zm6 0a2 2 0 100-4 2 2 0 000 4z" />
-            </svg>
-            <span>
-              Order changed. Click Save Order to apply changes to your website.
-            </span>
-          </div>
-
-          {/* Right: Cancel & Save Order buttons */}
-          <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
-              onClick={handleCancelOrder}
-              className="px-4 py-2 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveOrder}
-              disabled={savingOrder}
-              style={{ backgroundColor: 'var(--theme-primary, #8c6d46)' }}
-              className="px-5 py-2 rounded-lg text-white text-xs font-semibold tracking-wide hover:brightness-95 active:scale-[0.98] transition-all cursor-pointer shadow-2xs disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {savingOrder ? 'Saving...' : 'Save Order'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ─── 7. Modal: Add / Edit Instagram Post ─── */}
+      {/* ─── 5. Modal: Add / Edit Instagram Post ─── */}
       {isModalOpen && (
         createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"

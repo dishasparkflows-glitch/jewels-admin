@@ -7,6 +7,8 @@ import {
   HiOutlineX,
   HiOutlineStar,
   HiOutlineTrash,
+  HiOutlineCheck,
+  HiOutlineClock,
 } from 'react-icons/hi';
 import { IoStar } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -18,7 +20,7 @@ import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
-import RowActions from '../../components/common/RowActions';
+import RowActions, { StatusActionButton } from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function ReviewsView() {
@@ -33,6 +35,8 @@ export default function ReviewsView() {
   const [submitting, setSubmitting] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
   const [filterActive, setFilterActive] = useState(false);
+  const [openStatusId, setOpenStatusId] = useState(null);
+  const [updatingStatusId, setUpdatingStatusId] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
@@ -74,6 +78,16 @@ export default function ReviewsView() {
   useEffect(() => {
     fetchReviews(currentPage, pageSize);
   }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (!e.target.closest('[data-status-menu]')) {
+        setOpenStatusId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleOpenAddModal = () => {
     setEditingReview(null);
@@ -251,6 +265,52 @@ export default function ReviewsView() {
     }
   };
 
+  const handleUpdateStatus = async (review, newStatus, e) => {
+    if (e) e.stopPropagation();
+    const id = review._id || review.id;
+    if (!id) return;
+    if ((review.status || 'approved').toLowerCase() === newStatus.toLowerCase()) {
+      setOpenStatusId(null);
+      return;
+    }
+
+    const previousStatus = review.status || 'approved';
+
+    // Optimistically update local reviews list
+    setReviews((prev) =>
+      prev.map((r) => ((r._id || r.id) === id ? { ...r, status: newStatus } : r))
+    );
+    setOpenStatusId(null);
+    setUpdatingStatusId(id);
+
+    try {
+      await api.put(`/reviews/${id}`, { status: newStatus });
+      toast.success(
+        newStatus === 'approved'
+          ? 'Review approved successfully'
+          : newStatus === 'rejected'
+          ? 'Review marked as rejected'
+          : `Review status updated to ${newStatus}`
+      );
+    } catch (err) {
+      console.error('Failed to update review status:', err);
+      toast.error(err.response?.data?.message || 'Failed to update review status');
+      // Rollback on failure
+      setReviews((prev) =>
+        prev.map((r) => ((r._id || r.id) === id ? { ...r, status: previousStatus } : r))
+      );
+    } finally {
+      setUpdatingStatusId(null);
+    }
+  };
+
+  const handleToggleStatus = (review, e) => {
+    if (e) e.stopPropagation();
+    const current = (review.status || 'approved').toLowerCase();
+    const nextStatus = current === 'approved' ? 'rejected' : 'approved';
+    handleUpdateStatus(review, nextStatus, e);
+  };
+
   // Metrics
   const totalCount = reviews.length;
   const avgRating = totalCount > 0 ? (reviews.reduce((sum, r) => sum + (Number(r.review?.rating) || 0), 0) / totalCount).toFixed(1) : '—';
@@ -266,7 +326,15 @@ export default function ReviewsView() {
       const title = (r.review?.title || '').toLowerCase();
       const comment = (r.review?.comment || '').toLowerCase();
       const idStr = String(r.customId || r._id || '').toLowerCase();
-      return name.includes(q) || email.includes(q) || title.includes(q) || comment.includes(q) || idStr.includes(q);
+      const statusStr = (r.status || '').toLowerCase();
+      return (
+        name.includes(q) ||
+        email.includes(q) ||
+        title.includes(q) ||
+        comment.includes(q) ||
+        idStr.includes(q) ||
+        statusStr.includes(q)
+      );
     });
   }, [reviews, search]);
 
@@ -500,16 +568,107 @@ export default function ReviewsView() {
                       </td>
 
                       {/* Status */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      <td
+                        className="py-2.5 px-3 whitespace-nowrap"
+                        onClick={(e) => handleToggleStatus(rev, e)}
+                      >
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase border cursor-pointer transition-all hover:scale-105 select-none ${
+                            (rev.status || 'approved').toLowerCase() === 'approved'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                              : (rev.status || '').toLowerCase() === 'rejected'
+                              ? 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100'
+                              : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100'
+                          }`}
+                          title="Click to toggle status (Approved / Rejected)"
+                        >
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              (rev.status || 'approved').toLowerCase() === 'approved'
+                                ? 'bg-emerald-500'
+                                : (rev.status || '').toLowerCase() === 'rejected'
+                                ? 'bg-rose-500'
+                                : 'bg-amber-500'
+                            }`}
+                          />
                           {rev.status || 'APPROVED'}
                         </span>
                       </td>
 
-                      {/* Actions: Eye & Three Dots */}
+                      {/* Actions: Status Dropdown, Edit, Delete */}
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={rev}
+                          beforeActions={
+                            <div className="relative inline-flex" data-status-menu>
+                              <StatusActionButton
+                                status={rev.status || 'approved'}
+                                loading={updatingStatusId === id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenStatusId(openStatusId === id ? null : id);
+                                }}
+                                title={`Status: ${(rev.status || 'approved').toUpperCase()} (Click to approve or reject)`}
+                              />
+
+                              {openStatusId === id && (
+                                <div
+                                  onClick={(e) => e.stopPropagation()}
+                                  className={`absolute right-0 w-36 bg-white border border-stone-200/90 rounded-xl shadow-xl py-1 z-50 animate-fadeIn text-left ${
+                                    idx >= paginatedItems.length - 2 && paginatedItems.length >= 2
+                                      ? 'bottom-8'
+                                      : 'top-8'
+                                  }`}
+                                >
+                                  <div className="px-3 py-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider border-b border-stone-100">
+                                    Review Status
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    disabled={updatingStatusId === id}
+                                    onClick={(e) => handleUpdateStatus(rev, 'approved', e)}
+                                    className={`w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                      (rev.status || 'approved').toLowerCase() === 'approved'
+                                        ? 'bg-emerald-50/80 text-emerald-800 font-bold cursor-default'
+                                        : 'text-stone-700 hover:bg-emerald-50 hover:text-emerald-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <HiOutlineCheck className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
+                                      <span>Approve</span>
+                                    </div>
+                                    {(rev.status || 'approved').toLowerCase() === 'approved' && (
+                                      <span className="text-[9px] uppercase font-bold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-full">
+                                        Active
+                                      </span>
+                                    )}
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={updatingStatusId === id}
+                                    onClick={(e) => handleUpdateStatus(rev, 'rejected', e)}
+                                    className={`w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                                      (rev.status || '').toLowerCase() === 'rejected'
+                                        ? 'bg-rose-50/80 text-rose-800 font-bold cursor-default'
+                                        : 'text-stone-700 hover:bg-rose-50 hover:text-rose-700'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2">
+                                      <HiOutlineX className="w-3.5 h-3.5 text-rose-600 stroke-[2.5]" />
+                                      <span>Reject</span>
+                                    </div>
+                                    {(rev.status || '').toLowerCase() === 'rejected' && (
+                                      <span className="text-[9px] uppercase font-bold text-rose-700 bg-rose-100/90 px-1.5 py-0.5 rounded-full">
+                                        Active
+                                      </span>
+                                    )}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          }
                           onView={() => handleEdit(rev)}
                           onEdit={() => handleEdit(rev)}
                           onDelete={() => handleDelete(id, reviewTitle || reviewerName)}
@@ -590,32 +749,49 @@ export default function ReviewsView() {
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
-                  Star Rating <span className="text-rose-500 font-bold">*</span>
-                </label>
-                <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[#d6cfc2]/70 bg-stone-50/40">
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onMouseEnter={() => setHoverRating(star)}
-                        onMouseLeave={() => setHoverRating(0)}
-                        onClick={() => setFormData({ ...formData, rating: star })}
-                        className="p-1 cursor-pointer transition-transform hover:scale-110"
-                      >
-                        <IoStar
-                          className={`w-5 h-5 transition-colors ${
-                            star <= (hoverRating || formData.rating) ? 'text-amber-400' : 'text-stone-200'
-                          }`}
-                        />
-                      </button>
-                    ))}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                    Star Rating <span className="text-rose-500 font-bold">*</span>
+                  </label>
+                  <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[#d6cfc2]/70 bg-stone-50/40">
+                    <div className="flex items-center gap-1">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          type="button"
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          onClick={() => setFormData({ ...formData, rating: star })}
+                          className="p-1 cursor-pointer transition-transform hover:scale-110"
+                        >
+                          <IoStar
+                            className={`w-5 h-5 transition-colors ${
+                              star <= (hoverRating || formData.rating) ? 'text-amber-400' : 'text-stone-200'
+                            }`}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-xs font-bold text-stone-800 ml-1">
+                      {hoverRating || formData.rating} of 5 Stars
+                    </span>
                   </div>
-                  <span className="text-xs font-bold text-stone-800 ml-1">
-                    {hoverRating || formData.rating} of 5 Stars
-                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
+                    Review Status <span className="text-rose-500 font-bold">*</span>
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs cursor-pointer capitalize"
+                  >
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="pending">Pending</option>
+                  </select>
                 </div>
               </div>
 
@@ -700,9 +876,6 @@ export default function ReviewsView() {
                     </div>
                     <p className="text-xs font-semibold text-stone-700 group-hover:text-[#8b6f4e]">
                       Click to upload photo
-                    </p>
-                    <p className="text-[10px] text-stone-400">
-                      Supports JPG, PNG, WEBP up to 10MB
                     </p>
                   </div>
                 )}

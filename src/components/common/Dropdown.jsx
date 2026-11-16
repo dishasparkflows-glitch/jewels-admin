@@ -679,12 +679,14 @@ export default function Dropdown({
           role="listbox"
           tabIndex={-1}
           onMouseDown={(e) => {
-            // Prevent trigger button from blurring and prematurely dismissing options on scroll or click
-            e.preventDefault();
+            // Prevent trigger button from blurring when clicking options, but allow dragging scrollbar
+            if (e.target !== menuRef.current) {
+              e.preventDefault();
+            }
           }}
           className={`${
             portal ? 'fixed' : 'absolute left-0 w-full z-50'
-          } bg-white border border-[#e8ded3] rounded-xl shadow-[0_16px_40px_rgba(40,30,20,0.08)] overflow-hidden max-h-64 py-0 ${animate ? 'transition-all animate-fadeIn' : ''} ${
+          } bg-white border border-[#e8ded3] rounded-xl shadow-[0_16px_40px_rgba(40,30,20,0.08)] overflow-y-auto overscroll-contain max-h-64 py-0 ${animate ? 'transition-all animate-fadeIn' : ''} ${
             sizeStyles.menu
           } ${
             !portal

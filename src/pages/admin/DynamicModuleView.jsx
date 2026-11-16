@@ -14,6 +14,7 @@ import {
   HiOutlinePencilAlt,
   HiOutlineMenuAlt4,
   HiOutlineX,
+  HiOutlineCheck,
   HiOutlineUpload,
   HiOutlinePhotograph,
   HiOutlineSparkles,
@@ -701,8 +702,14 @@ const DynamicModuleView = () => {
         setViewingRecord((prev) => ({ ...prev, orderStatus: newStatus }));
       }
       toast.success(
-        newStatus === 'confirmed'
+        newStatus === 'processing'
+          ? 'Order accepted! Moved to Processing.'
+          : newStatus === 'confirmed'
           ? 'Order accepted and confirmed!'
+          : newStatus === 'shipped'
+          ? 'Order marked as Shipped!'
+          : newStatus === 'delivered'
+          ? 'Order marked as Delivered!'
           : newStatus === 'cancelled'
           ? 'Order cancelled successfully'
           : `Order status updated to ${newStatus}`
@@ -1264,7 +1271,7 @@ const DynamicModuleView = () => {
     let list = items;
     if (isOrdersPage && orderStatusTab) {
       if (orderStatusTab === 'pending') {
-        list = list.filter((row) => ['placed', 'confirmed', 'pending'].includes(String(row.orderStatus).toLowerCase()));
+        list = list.filter((row) => String(row.orderStatus).toLowerCase() === 'pending');
       } else if (orderStatusTab === 'processing') {
         list = list.filter((row) => ['processing', 'shipped', 'out_for_delivery'].includes(String(row.orderStatus).toLowerCase()));
       } else if (orderStatusTab === 'delivered') {
@@ -1336,9 +1343,15 @@ const DynamicModuleView = () => {
           color: 'bronze',
         },
         {
-          label: 'Confirmed Orders',
-          value: items.filter((o) => o.orderStatus === 'confirmed' || o.payment?.status === 'paid').length,
-          icon: HiOutlineCheckCircle,
+          label: 'Pending Orders',
+          value: items.filter((o) => String(o.orderStatus).toLowerCase() === 'pending').length,
+          icon: HiOutlineClock,
+          color: 'gold',
+        },
+        {
+          label: 'Processing / Shipped',
+          value: items.filter((o) => ['processing', 'shipped', 'out_for_delivery'].includes(String(o.orderStatus).toLowerCase())).length,
+          icon: HiOutlineTruck,
           color: 'green',
         },
         {
@@ -1346,12 +1359,6 @@ const DynamicModuleView = () => {
           value: `₹${items.reduce((acc, o) => acc + (Number(o.pricing?.total) || 0), 0).toLocaleString('en-IN')}`,
           icon: HiOutlineCreditCard,
           color: 'peach',
-        },
-        {
-          label: 'Pending Orders',
-          value: items.filter((o) => o.orderStatus === 'placed' || o.orderStatus === 'processing').length,
-          icon: HiOutlineClock,
-          color: 'gold',
         },
       ]
     : [
@@ -1518,17 +1525,28 @@ const DynamicModuleView = () => {
                     <th className="py-3 px-2 text-center w-12 whitespace-nowrap">
                       SR NO
                     </th>
-                    <th className="py-3 px-3 whitespace-nowrap">
-                      {isOrdersPage ? 'ORDER & PRODUCTS' : isProductCatalogPage ? 'PRODUCT' : 'ITEM / RECORD'}
-                    </th>
-                    <th className="py-3 px-3 whitespace-nowrap">
-                      {isOrdersPage ? 'CUSTOMER & PRICING' : 'SPECIFICATIONS'}
-                    </th>
-                    {isProductCatalogPage && (
-                      <th className="py-3 px-3 whitespace-nowrap text-center">DEMO METRICS</th>
-                    )}
-                    {isProductCatalogPage && (
-                      <th className="py-3 px-3 whitespace-nowrap text-center">VISIBILITY</th>
+                    {isOrdersPage ? (
+                      <>
+                        <th className="py-3 px-3 whitespace-nowrap">ORDER INFO</th>
+                        <th className="py-3 px-3 whitespace-nowrap">PRODUCTS</th>
+                        <th className="py-3 px-3 whitespace-nowrap">CUSTOMER</th>
+                        <th className="py-3 px-3 whitespace-nowrap">PRICING & PAYMENT</th>
+                      </>
+                    ) : (
+                      <>
+                        <th className="py-3 px-3 whitespace-nowrap">
+                          {isProductCatalogPage ? 'PRODUCT' : 'ITEM / RECORD'}
+                        </th>
+                        <th className="py-3 px-3 whitespace-nowrap">
+                          SPECIFICATIONS
+                        </th>
+                        {isProductCatalogPage && (
+                          <th className="py-3 px-3 whitespace-nowrap text-center">DEMO METRICS</th>
+                        )}
+                        {isProductCatalogPage && (
+                          <th className="py-3 px-3 whitespace-nowrap text-center">VISIBILITY</th>
+                        )}
+                      </>
                     )}
                     <th className="py-3 px-3 whitespace-nowrap text-center">STATUS</th>
                     <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
@@ -1614,147 +1632,211 @@ const DynamicModuleView = () => {
                           {(currentPage - 1) * pageSize + idx + 1}
                         </td>
 
-                        {/* PRODUCT / ITEM COLUMN */}
-                        <td className="py-2.5 px-3 text-stone-900 text-xs">
-                          {isOrdersPage ? (
-                            <div className="flex items-start gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-amber-50/90 border border-amber-200/80 text-[#8b6f4e] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
-                                <HiOutlineShoppingBag className="w-5 h-5 text-[#8b6f4e]" />
-                              </div>
-                              <div className="min-w-0 max-w-sm sm:max-w-md space-y-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-mono font-bold text-xs text-[#8b6f4e] bg-[#faf5ed] border border-[#8b6f4e]/30 px-2 py-0.5 rounded shadow-2xs">
-                                    {row.orderNumber || 'Order'}
-                                  </span>
-                                  {(row.meta?.createdAt || row.createdAt) && (
-                                    <span className="text-[11px] text-stone-500 font-medium flex items-center gap-1">
-                                      <HiOutlineClock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                                      {formatOrderDate(row.meta?.createdAt || row.createdAt)}
-                                    </span>
-                                  )}
-                                </div>
-                                <span
-                                  className="font-semibold text-stone-900 text-xs block leading-snug truncate hover:text-[#8b6f4e] transition-colors"
-                                  title={row.items?.[0]?.title || 'Jewellery Item'}
-                                >
-                                  {row.items?.[0]?.title || 'Jewellery Order'}
+                        {isOrdersPage ? (
+                          <>
+                            {/* 1. ORDER INFO COLUMN */}
+                            <td className="py-2.5 px-3 text-stone-900 text-xs whitespace-nowrap">
+                              <div className="space-y-1">
+                                <span className="font-mono font-bold text-xs text-[#8b6f4e] bg-[#faf5ed] border border-[#8b6f4e]/30 px-2 py-0.5 rounded shadow-2xs inline-block">
+                                  {row.orderNumber || 'Order'}
                                 </span>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  {row.items?.[0]?.selectedMetal && (
-                                    <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-medium border border-stone-200/60">
-                                      {row.items[0].selectedMetal}
-                                    </span>
-                                  )}
-                                  {row.items?.[0]?.selectedSize && (
-                                    <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] border border-stone-200/60">
-                                      Size: {row.items[0].selectedSize}
-                                    </span>
-                                  )}
-                                  {row.items?.[0]?.quantity && (
-                                    <span className="text-[10px] font-medium text-stone-500">
-                                      Qty: {row.items[0].quantity}
-                                    </span>
-                                  )}
-                                  {Array.isArray(row.items) && row.items.length > 1 && (
-                                    <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-bold">
-                                      +{row.items.length - 1} more item{row.items.length - 1 > 1 ? 's' : ''}
-                                    </span>
-                                  )}
+                                {(row.meta?.createdAt || row.createdAt) && (
+                                  <div className="text-[11px] text-stone-500 font-medium flex items-center gap-1">
+                                    <HiOutlineClock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                                    <span>{formatOrderDate(row.meta?.createdAt || row.createdAt)}</span>
+                                  </div>
+                                )}
+                                <div className="text-[10px] text-stone-400 font-medium">
+                                  {row.items?.length || 0} {row.items?.length === 1 ? 'item' : 'items'}
                                 </div>
                               </div>
-                            </div>
-                          ) : (
-                            <div className="flex items-center gap-3">
-                              <div
-                                onClick={(e) => {
-                                  if (thumbUrl) {
-                                    e.stopPropagation();
-                                    openImagePreview(thumbUrl, { title: rowLabel });
-                                  }
-                                }}
-                                className={`w-10 h-10 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#8b6f4e]/40 transition-colors ${
-                                  thumbUrl ? 'cursor-zoom-in' : ''
-                                }`}
-                                title={thumbUrl ? 'Click to preview image' : undefined}
-                              >
-                                {thumbUrl ? (
-                                  <img
-                                    src={thumbUrl}
-                                    alt={rowLabel}
-                                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                                    loading="lazy"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none';
-                                      if (e.currentTarget.parentElement) {
-                                        e.currentTarget.parentElement.innerHTML =
-                                          '<span class="text-[9px] text-stone-400 font-medium select-none">No Img</span>';
-                                      }
-                                    }}
-                                  />
-                                ) : isEmoji ? (
-                                  <span className="text-base">{row.icon}</span>
-                                ) : (
-                                  <span className="text-[9px] text-stone-400 font-medium select-none">
-                                    No Img
-                                  </span>
-                                )}
-                              </div>
-                              <div className="min-w-0 max-w-xs space-y-0.5">
-                                <span
-                                  className="font-bold text-stone-900 text-xs block leading-tight truncate hover:text-[#8b6f4e] transition-colors"
-                                  title={rowLabel}
-                                >
-                                  {rowLabel}
-                                </span>
-                                {skuCode && skuCode !== rowLabel && (
-                                  <span className="font-mono text-[10px] text-stone-400 block truncate">
-                                    {skuCode}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          )}
-                        </td>
+                            </td>
 
-                        {/* SPECIFICATIONS COLUMN */}
-                        <td className="py-2.5 px-3 text-stone-600 text-xs">
-                          {isOrdersPage ? (
-                            <div className="space-y-1 max-w-xs">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded text-xs">
-                                  ₹{Number(row.pricing?.total ?? row.totalAmount ?? 0).toLocaleString('en-IN')}
-                                </span>
-                                {row.payment?.method && (
-                                  <span className={`capitalize px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                                    String(row.payment?.method).toLowerCase() === 'cod'
-                                      ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                  }`}>
-                                    {row.payment.method}
+                            {/* 2. PRODUCTS COLUMN (Beside Order Info) */}
+                            <td className="py-2.5 px-3 text-stone-900 text-xs">
+                              <div className="min-w-[190px] max-w-xs space-y-1.5">
+                                {Array.isArray(row.items) && row.items.slice(0, 2).map((item, i) => {
+                                  const itemThumb = getMediaUrl(
+                                    item.image ||
+                                    item.thumbnail ||
+                                    item.productId?.ornate?.ornateImages?.[0]?.url ||
+                                    item.productId?.colorImages?.[0]?.images?.[0]?.url ||
+                                    item.productId?.media ||
+                                    item.productId?.basicInfo?.images?.[0] ||
+                                    item.productId?.assets?.thumbnail
+                                  );
+                                  return (
+                                    <div key={item._id || i} className="flex items-center gap-2">
+                                      <div className="w-8 h-8 rounded-lg bg-[#faf6f0] border border-stone-200/80 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
+                                        {itemThumb ? (
+                                          <img
+                                            src={itemThumb}
+                                            alt={item.title || 'Product'}
+                                            className="w-full h-full object-cover"
+                                            onError={(e) => {
+                                              e.currentTarget.style.display = 'none';
+                                              if (e.currentTarget.parentElement) {
+                                                e.currentTarget.parentElement.innerHTML = '<span class="text-[9px] text-[#8b6f4e]">💍</span>';
+                                              }
+                                            }}
+                                          />
+                                        ) : (
+                                          <span className="text-[11px]">💍</span>
+                                        )}
+                                      </div>
+                                      <div className="min-w-0 flex-1">
+                                        <span
+                                          className="font-semibold text-stone-900 text-xs block leading-tight truncate hover:text-[#8b6f4e] transition-colors"
+                                          title={item.title || 'Jewellery Item'}
+                                        >
+                                          {item.title || 'Jewellery Item'}
+                                        </span>
+                                        <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-stone-500">
+                                          {item.selectedMetal && (
+                                            <span className="px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-medium border border-stone-200/60">
+                                              {item.selectedMetal}
+                                            </span>
+                                          )}
+                                          {(item.sku || item.productId?.basicInfo?.sku || item.productId?.ornate?.tagNo) && (
+                                            <span className="px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-medium border border-stone-200/60">
+                                              SKU: {item.sku || item.productId?.basicInfo?.sku || item.productId?.ornate?.tagNo}
+                                            </span>
+                                          )}
+                                          <span className="font-medium text-stone-600">
+                                            Qty: {item.quantity || 1}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                                {Array.isArray(row.items) && row.items.length > 2 && (
+                                  <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-bold">
+                                    +{row.items.length - 2} more item{row.items.length - 2 > 1 ? 's' : ''}
                                   </span>
                                 )}
                               </div>
-                              <div className="text-[11px] text-stone-800 font-medium truncate">
-                                {row.customer?.firstName
-                                  ? `${row.customer.firstName} ${row.customer.lastName || ''}`.trim()
-                                  : row.shippingAddress?.fullName ||
-                                    row.shippingAddress?.firstName ||
-                                    'Customer'}
-                                {(row.customer?.phone || row.shippingAddress?.phone) && (
-                                  <span className="text-stone-400 font-normal ml-1">
-                                    • {row.customer?.phone || row.shippingAddress?.phone}
-                                  </span>
-                                )}
-                              </div>
-                              {row.shippingAddress?.city && (
-                                <div className="text-[10px] text-stone-500 truncate">
-                                  {row.shippingAddress.city}
-                                  {row.shippingAddress.state ? `, ${row.shippingAddress.state}` : ''}
-                                  {row.shippingAddress.postalCode ? ` - ${row.shippingAddress.postalCode}` : ''}
+                            </td>
+
+                            {/* 3. CUSTOMER DETAILS COLUMN */}
+                            <td className="py-2.5 px-3 text-stone-600 text-xs">
+                              <div className="min-w-[150px] max-w-xs space-y-0.5">
+                                <div className="font-semibold text-stone-900 text-xs truncate">
+                                  {row.customer?.firstName
+                                    ? `${row.customer.firstName} ${row.customer.lastName || ''}`.trim()
+                                    : row.shippingAddress?.fullName ||
+                                      row.shippingAddress?.firstName ||
+                                      'Customer'}
                                 </div>
-                              )}
-                            </div>
-                          ) : isProductCatalogPage ? (
+                                {(row.customer?.phone || row.shippingAddress?.phone) && (
+                                  <div className="text-[11px] text-stone-500 truncate">
+                                    {row.customer?.phone || row.shippingAddress?.phone}
+                                  </div>
+                                )}
+                                {(row.customer?.email || row.shippingAddress?.email) && (
+                                  <div className="text-[10px] text-stone-400 truncate">
+                                    {row.customer?.email || row.shippingAddress?.email}
+                                  </div>
+                                )}
+                                {row.shippingAddress?.city && (
+                                  <div className="text-[10.5px] text-stone-500 truncate">
+                                    {row.shippingAddress.city}
+                                    {row.shippingAddress.state ? `, ${row.shippingAddress.state}` : ''}
+                                    {row.shippingAddress.postalCode ? ` - ${row.shippingAddress.postalCode}` : ''}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+
+                            {/* 4. PRICING & PAYMENT COLUMN (After Customer Details) */}
+                            <td className="py-2.5 px-3 text-stone-900 text-xs whitespace-nowrap">
+                              <div className="space-y-1">
+                                <div className="font-bold text-sm text-[#8b6f4e]">
+                                  ₹{Number(row.pricing?.total ?? row.totalAmount ?? 0).toLocaleString('en-IN')}
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span
+                                    className={`capitalize px-2 py-0.5 rounded text-[10px] font-semibold border ${
+                                      String(row.payment?.method).toLowerCase() === 'cod'
+                                        ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                    }`}
+                                  >
+                                    {row.payment?.method || 'Online'}
+                                  </span>
+                                  {row.payment?.status && (
+                                    <span
+                                      className={`capitalize px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                        String(row.payment.status).toLowerCase() === 'paid'
+                                          ? 'text-emerald-700 bg-emerald-50/80'
+                                          : 'text-stone-600 bg-stone-100'
+                                      }`}
+                                    >
+                                      {row.payment.status}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          </>
+                        ) : (
+                          <>
+                            {/* PRODUCT / ITEM COLUMN */}
+                            <td className="py-2.5 px-3 text-stone-900 text-xs">
+                              <div className="flex items-center gap-3">
+                                <div
+                                  onClick={(e) => {
+                                    if (thumbUrl) {
+                                      e.stopPropagation();
+                                      openImagePreview(thumbUrl, { title: rowLabel });
+                                    }
+                                  }}
+                                  className={`w-10 h-10 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#8b6f4e]/40 transition-colors ${
+                                    thumbUrl ? 'cursor-zoom-in' : ''
+                                  }`}
+                                  title={thumbUrl ? 'Click to preview image' : undefined}
+                                >
+                                  {thumbUrl ? (
+                                    <img
+                                      src={thumbUrl}
+                                      alt={rowLabel}
+                                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                                      loading="lazy"
+                                      onError={(e) => {
+                                        e.currentTarget.style.display = 'none';
+                                        if (e.currentTarget.parentElement) {
+                                          e.currentTarget.parentElement.innerHTML =
+                                            '<span class="text-[9px] text-stone-400 font-medium select-none">No Img</span>';
+                                        }
+                                      }}
+                                    />
+                                  ) : isEmoji ? (
+                                    <span className="text-base">{row.icon}</span>
+                                  ) : (
+                                    <span className="text-[9px] text-stone-400 font-medium select-none">
+                                      No Img
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="min-w-0 max-w-xs space-y-0.5">
+                                  <span
+                                    className="font-bold text-stone-900 text-xs block leading-tight truncate hover:text-[#8b6f4e] transition-colors"
+                                    title={rowLabel}
+                                  >
+                                    {rowLabel}
+                                  </span>
+                                  {skuCode && skuCode !== rowLabel && (
+                                    <span className="font-mono text-[10px] text-stone-400 block truncate">
+                                      {skuCode}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* SPECIFICATIONS COLUMN */}
+                            <td className="py-2.5 px-3 text-stone-600 text-xs">
+                              {isProductCatalogPage ? (
                             <div className="flex flex-wrap items-center gap-1.5">
                               {displayPrice !== undefined && displayPrice !== null && (
                                 <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded text-[11px]">
@@ -1871,6 +1953,8 @@ const DynamicModuleView = () => {
                             </div>
                           )}
                         </td>
+                      </>
+                    )}
 
                         {/* DEMO METRICS COLUMN */}
                         {isProductCatalogPage && (
@@ -1949,20 +2033,22 @@ const DynamicModuleView = () => {
                           {isOrdersPage ? (
                             <span
                               className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border capitalize tracking-wider ${
-                                String(row.orderStatus).toLowerCase() === 'confirmed'
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : String(row.orderStatus).toLowerCase() === 'placed'
+                                String(row.orderStatus).toLowerCase() === 'pending'
                                   ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                  : String(row.orderStatus).toLowerCase() === 'processing'
+                                  ? 'bg-blue-50 text-blue-800 border-blue-300'
                                   : String(row.orderStatus).toLowerCase() === 'shipped'
                                   ? 'bg-sky-50 text-sky-800 border-sky-300'
+                                  : String(row.orderStatus).toLowerCase() === 'out_for_delivery'
+                                  ? 'bg-indigo-50 text-indigo-800 border-indigo-300'
                                   : String(row.orderStatus).toLowerCase() === 'delivered'
-                                  ? 'bg-purple-50 text-purple-800 border-purple-300'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                                   : String(row.orderStatus).toLowerCase() === 'cancelled'
                                   ? 'bg-rose-50 text-rose-800 border-rose-300'
                                   : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
                               }`}
                             >
-                              {row.orderStatus || 'placed'}
+                              {row.orderStatus || 'pending'}
                             </span>
                           ) : (
                             <span
@@ -1984,14 +2070,163 @@ const DynamicModuleView = () => {
 
                         {/* ACTIONS */}
                         <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
-                          <RowActions
-                            record={row}
-                            detailsEndpoint={config.endpoint}
-                            onView={() => handleEditProductRecord(row)}
-                            onOpenWebsite={isProductCatalogPage ? () => openProductPreview(row) : undefined}
-                            onEdit={isOrdersPage || isReturnsPage ? undefined : () => handleEditProductRecord(row)}
-                            onDelete={() => handleDelete(row._id || row.id, row.orderNumber || rowLabel)}
-                          />
+                          {isOrdersPage ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              {/* Quick Accept & Cancel on table row for pending orders */}
+                              {(String(row.orderStatus).toLowerCase() === 'pending' &&
+                                orderStatusTab === 'pending') && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const isConfirmed = await confirm({
+                                        title: `Accept Order ${row.orderNumber || ''}`,
+                                        message: `Are you sure you want to accept order ${row.orderNumber || ''}? This will move the order to Processing.`,
+                                        confirmText: 'Accept Order',
+                                        cancelText: 'Cancel',
+                                        type: 'success',
+                                      });
+                                      if (isConfirmed) {
+                                        handleUpdateOrderStatus(row._id || row.id, 'processing');
+                                      }
+                                    }}
+                                    disabled={updatingOrderStatus}
+                                    title="Accept Order"
+                                    className="p-1.5 rounded-lg text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-200/80 transition-all cursor-pointer shadow-2xs"
+                                  >
+                                    <HiOutlineCheck className="w-3.5 h-3.5 stroke-2" />
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const isConfirmed = await confirm({
+                                        title: `Cancel Order ${row.orderNumber || ''}`,
+                                        message: `Are you sure you want to cancel order ${row.orderNumber || ''}?`,
+                                        confirmText: 'Yes, Cancel Order',
+                                        cancelText: 'Keep Order',
+                                        type: 'danger',
+                                      });
+                                      if (isConfirmed) {
+                                        handleUpdateOrderStatus(row._id || row.id, 'cancelled');
+                                      }
+                                    }}
+                                    disabled={updatingOrderStatus}
+                                    title="Cancel Order"
+                                    className="p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200/80 transition-all cursor-pointer shadow-2xs"
+                                  >
+                                    <HiOutlineX className="w-3.5 h-3.5 stroke-2" />
+                                  </button>
+                                </>
+                              )}
+
+                              {/* Quick Actions for processing tab */}
+                              {orderStatusTab === 'processing' && (
+                                <>
+                                  {String(row.orderStatus).toLowerCase() === 'processing' && (
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const isConfirmed = await confirm({
+                                          title: `Mark Order as Shipped`,
+                                          message: `Update status of order ${row.orderNumber || ''} to Shipped?`,
+                                          confirmText: 'Mark as Shipped',
+                                          cancelText: 'Cancel',
+                                          type: 'info',
+                                        });
+                                        if (isConfirmed) {
+                                          handleUpdateOrderStatus(row._id || row.id, 'shipped');
+                                        }
+                                      }}
+                                      disabled={updatingOrderStatus}
+                                      title="Mark as Shipped"
+                                      className="p-1.5 rounded-lg text-[#8b6f4e] hover:text-[#785e40] hover:bg-[#faf5ed] border border-[#8b6f4e]/30 transition-all cursor-pointer shadow-2xs"
+                                    >
+                                      <HiOutlineTruck className="w-3.5 h-3.5 stroke-2" />
+                                    </button>
+                                  )}
+
+                                  {['shipped', 'out_for_delivery'].includes(String(row.orderStatus).toLowerCase()) && (
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const isConfirmed = await confirm({
+                                          title: `Mark Order as Delivered`,
+                                          message: `Confirm that order ${row.orderNumber || ''} has been delivered?`,
+                                          confirmText: 'Mark Delivered',
+                                          cancelText: 'Cancel',
+                                          type: 'success',
+                                        });
+                                        if (isConfirmed) {
+                                          handleUpdateOrderStatus(row._id || row.id, 'delivered');
+                                        }
+                                      }}
+                                      disabled={updatingOrderStatus}
+                                      title="Mark as Delivered"
+                                      className="p-1.5 rounded-lg text-purple-700 hover:text-purple-800 hover:bg-purple-50 border border-purple-200/80 transition-all cursor-pointer shadow-2xs"
+                                    >
+                                      <HiOutlineCheckCircle className="w-3.5 h-3.5 stroke-2" />
+                                    </button>
+                                  )}
+
+                                  {String(row.orderStatus).toLowerCase() !== 'cancelled' && (
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        const isConfirmed = await confirm({
+                                          title: `Cancel Order ${row.orderNumber || ''}`,
+                                          message: `Are you sure you want to cancel order ${row.orderNumber || ''}?`,
+                                          confirmText: 'Yes, Cancel Order',
+                                          cancelText: 'Keep Order',
+                                          type: 'danger',
+                                        });
+                                        if (isConfirmed) {
+                                          handleUpdateOrderStatus(row._id || row.id, 'cancelled');
+                                        }
+                                      }}
+                                      disabled={updatingOrderStatus}
+                                      title="Cancel Order"
+                                      className="p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200/80 transition-all cursor-pointer shadow-2xs"
+                                    >
+                                      <HiOutlineX className="w-3.5 h-3.5 stroke-2" />
+                                    </button>
+                                  )}
+                                </>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleEditProductRecord(row)}
+                                title="View Order Details"
+                                className="p-1.5 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200/80 transition-all cursor-pointer shadow-2xs"
+                              >
+                                <HiOutlineEye className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDelete(row._id || row.id, row.orderNumber || rowLabel)}
+                                title="Delete Order"
+                                className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-rose-200/60 transition-all cursor-pointer shadow-2xs"
+                              >
+                                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+                              </button>
+                            </div>
+                          ) : (
+                            <RowActions
+                              record={row}
+                              detailsEndpoint={config.endpoint}
+                              onView={() => handleEditProductRecord(row)}
+                              onOpenWebsite={isProductCatalogPage ? () => openProductPreview(row) : undefined}
+                              onEdit={isOrdersPage || isReturnsPage ? undefined : () => handleEditProductRecord(row)}
+                              onDelete={() => handleDelete(row._id || row.id, row.orderNumber || rowLabel)}
+                            />
+                          )}
                         </td>
                       </tr>
                     );
@@ -2249,9 +2484,6 @@ const DynamicModuleView = () => {
                                 <span className="text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
                                   Click to upload
                                 </span>
-                                <span className="text-[11px] text-stone-400 mt-0.5">
-                                  PNG, JPG up to 2 MB
-                                </span>
                               </label>
                             )}
                           </div>
@@ -2342,9 +2574,6 @@ const DynamicModuleView = () => {
                                 <HiOutlinePhotograph className="w-8 h-8 text-stone-400 group-hover:text-[#8b6f4e] transition-colors mb-1.5" />
                                 <span className="text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
                                   Click to upload
-                                </span>
-                                <span className="text-[11px] text-stone-400 mt-0.5">
-                                  PNG, JPG up to 5 MB
                                 </span>
                               </label>
                             )}
@@ -2457,9 +2686,6 @@ const DynamicModuleView = () => {
                                 <HiOutlinePhotograph className="w-8 h-8 text-stone-400 group-hover:text-[#8b6f4e] transition-colors mb-1.5" />
                                 <span className="text-xs font-semibold text-stone-800 group-hover:text-[#8b6f4e] transition-colors">
                                   Click to upload
-                                </span>
-                                <span className="text-[11px] text-stone-400 mt-0.5">
-                                  PNG, JPG up to 5 MB
                                 </span>
                               </label>
                             )}
@@ -3295,20 +3521,22 @@ const DynamicModuleView = () => {
                     </div>
                     <span
                       className={`px-3 py-1 rounded-full text-xs font-bold border capitalize ${
-                        String(viewingRecord.orderStatus).toLowerCase() === 'confirmed'
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                          : String(viewingRecord.orderStatus).toLowerCase() === 'placed'
+                        String(viewingRecord.orderStatus).toLowerCase() === 'pending'
                           ? 'bg-amber-50 text-amber-800 border-amber-300'
+                          : String(viewingRecord.orderStatus).toLowerCase() === 'processing'
+                          ? 'bg-blue-50 text-blue-800 border-blue-300'
                           : String(viewingRecord.orderStatus).toLowerCase() === 'shipped'
                           ? 'bg-sky-50 text-sky-800 border-sky-300'
+                          : String(viewingRecord.orderStatus).toLowerCase() === 'out_for_delivery'
+                          ? 'bg-indigo-50 text-indigo-800 border-indigo-300'
                           : String(viewingRecord.orderStatus).toLowerCase() === 'delivered'
-                          ? 'bg-purple-50 text-purple-800 border-purple-300'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
                           : String(viewingRecord.orderStatus).toLowerCase() === 'cancelled'
                           ? 'bg-rose-50 text-rose-800 border-rose-300'
                           : 'bg-stone-100 text-stone-700 border-stone-200'
                       }`}
                     >
-                      {viewingRecord.orderStatus || 'placed'}
+                      {viewingRecord.orderStatus || 'pending'}
                     </span>
                   </div>
                   {(viewingRecord.meta?.createdAt || viewingRecord.createdAt) && (
@@ -3367,9 +3595,9 @@ const DynamicModuleView = () => {
                                 {item.selectedMetal}
                               </span>
                             )}
-                            {item.selectedSize && (
-                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700">
-                                Size: {item.selectedSize}
+                            {(item.sku || item.productId?.basicInfo?.sku || item.productId?.ornate?.tagNo) && (
+                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 font-medium">
+                                SKU: {item.sku || item.productId?.basicInfo?.sku || item.productId?.ornate?.tagNo}
                               </span>
                             )}
                             <span className="text-stone-500">Qty: {item.quantity || 1}</span>
@@ -3436,24 +3664,21 @@ const DynamicModuleView = () => {
                 {/* ─── Order Status Workflow Actions ─── */}
                 <div className="pt-3 border-t border-stone-200/80 flex flex-wrap items-center justify-between gap-3">
                   <div className="flex items-center gap-2 flex-wrap">
-                    {/* Accept Order Button */}
-                    {String(viewingRecord.orderStatus).toLowerCase() !== 'confirmed' &&
-                     String(viewingRecord.orderStatus).toLowerCase() !== 'shipped' &&
-                     String(viewingRecord.orderStatus).toLowerCase() !== 'delivered' &&
-                     String(viewingRecord.orderStatus).toLowerCase() !== 'cancelled' && (
+                    {/* Accept Order Button (for pending orders awaiting store acceptance) */}
+                    {String(viewingRecord.orderStatus).toLowerCase() === 'pending' && (
                       <button
                         type="button"
                         disabled={updatingOrderStatus}
                         onClick={async () => {
                           const isConfirmed = await confirm({
                             title: `Accept Order ${viewingRecord.orderNumber || ''}`,
-                            message: 'Are you sure you want to accept and confirm this order?',
+                            message: `Are you sure you want to accept order ${viewingRecord.orderNumber || ''}? This will move the order to Processing.`,
                             confirmText: 'Accept Order',
                             cancelText: 'Cancel',
                             type: 'success',
                           });
                           if (isConfirmed) {
-                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'confirmed');
+                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'processing');
                           }
                         }}
                         className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
@@ -3463,8 +3688,8 @@ const DynamicModuleView = () => {
                       </button>
                     )}
 
-                    {/* Mark as Shipped Button (if confirmed) */}
-                    {String(viewingRecord.orderStatus).toLowerCase() === 'confirmed' && (
+                    {/* Mark as Shipped Button (when order is accepted and in processing) */}
+                    {String(viewingRecord.orderStatus).toLowerCase() === 'processing' && (
                       <button
                         type="button"
                         disabled={updatingOrderStatus}
@@ -3488,7 +3713,7 @@ const DynamicModuleView = () => {
                     )}
 
                     {/* Mark as Delivered Button (if shipped) */}
-                    {String(viewingRecord.orderStatus).toLowerCase() === 'shipped' && (
+                    {['shipped', 'out_for_delivery'].includes(String(viewingRecord.orderStatus).toLowerCase()) && (
                       <button
                         type="button"
                         disabled={updatingOrderStatus}

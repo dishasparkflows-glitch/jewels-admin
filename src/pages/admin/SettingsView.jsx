@@ -2152,13 +2152,6 @@ export default function SettingsView() {
 
               {activeModal === 'socialMedia' && (
                 <div className="space-y-4">
-                  <div className="bg-[#faf6f0] border border-[#ebdcc8]/80 rounded-xl p-3.5 text-xs text-stone-700 leading-relaxed">
-                    <span className="font-semibold text-stone-900">Dynamic Storefront Social Channels:</span>
-                    <p className="mt-0.5 text-stone-600">
-                      Configure your brand&apos;s official social profiles below. Configured channels will automatically appear in the storefront footer (&ldquo;FOLLOW US&rdquo;) and contact sections.
-                    </p>
-                  </div>
-
                   <div className="space-y-3">
                     {[
                       {

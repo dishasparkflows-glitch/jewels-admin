@@ -14,6 +14,7 @@ import {
 } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import Dropdown from './Dropdown';
 
 const PRODUCT_PICKER_TABS = [
   { id: 'gold', label: 'Gold Jewelry', icon: IoDiamondOutline, badge: 'GOLD' },
@@ -286,24 +287,29 @@ export default function ProductPickerModal({
                 }`}
               >
                 <HiOutlineCheck className={`w-3.5 h-3.5 ${isAllPageSelected ? 'text-emerald-600' : 'text-stone-400'}`} />
-                <span>{isAllPageSelected ? 'Deselect Page' : 'Select All Page'}</span>
+                <span>{isAllPageSelected ? 'Deselect All' : 'Select All'}</span>
               </button>
 
               <div className="flex items-center gap-1.5 text-xs text-stone-500">
                 <span className="text-[11px] font-bold text-stone-400 uppercase">SHOW</span>
-                <select
+                <Dropdown
                   value={pickerLimit}
-                  onChange={(e) => {
-                    setPickerLimit(Number(e.target.value));
+                  onChange={(val) => {
+                    setPickerLimit(Number(val));
                     setPickerPage(1);
                   }}
-                  className="bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs text-stone-800 font-semibold focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] cursor-pointer shadow-2xs"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
+                  options={[
+                    { value: 10, label: '10' },
+                    { value: 25, label: '25' },
+                    { value: 50, label: '50' },
+                    { value: 100, label: '100' },
+                  ]}
+                  placeholder={String(pickerLimit)}
+                  size="sm"
+                  portal={true}
+                  className="w-20"
+                  buttonClassName="h-8 px-2.5 text-xs font-semibold rounded-xl bg-white border-stone-200 shadow-2xs min-w-[64px]"
+                />
               </div>
             </div>
           </div>

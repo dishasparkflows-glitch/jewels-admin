@@ -776,7 +776,6 @@ export default function BlogsView() {
                     <p className="text-xs font-semibold text-stone-800">
                       {uploadingImage ? 'Uploading image...' : 'Upload Featured Image'}
                     </p>
-                    <p className="text-[10px] text-stone-400">PNG, JPG, WEBP up to 10MB</p>
                   </div>
                 )}
 

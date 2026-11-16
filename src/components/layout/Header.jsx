@@ -3,11 +3,9 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import DatePicker from '../common/DatePicker';
 import {
   HiOutlineBell,
   HiOutlineMenu,
-  HiOutlineCalendar,
   HiOutlineSearch,
   HiOutlineChevronDown,
   HiOutlineUser,
@@ -44,24 +42,6 @@ const Header = ({ onMobileToggle }) => {
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [selectedHeaderDate, setSelectedHeaderDate] = useState(() => {
-    const d = new Date();
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  });
-
-  const headerDateFormatted = (() => {
-    const d = selectedHeaderDate ? new Date(selectedHeaderDate) : new Date();
-    const day = d.getDate();
-    const month = d.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-    const year = d.getFullYear();
-    const today = new Date();
-    const isToday =
-      d.getDate() === today.getDate() &&
-      d.getMonth() === today.getMonth() &&
-      d.getFullYear() === today.getFullYear();
-    return `${day} ${month} ${year}${isToday ? ' - TODAY' : ''}`;
-  })();
   useEffect(() => {
     const controller = new AbortController();
     api.get('/notifications/unread-count', { signal: controller.signal })
@@ -94,8 +74,8 @@ const Header = ({ onMobileToggle }) => {
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
-      {/* Left: Mobile hamburger & Search bar */}
-      <div className="flex items-center gap-2 sm:gap-3 flex-1 max-w-xl min-w-0">
+      {/* Left: Mobile hamburger & Sidebar toggles */}
+      <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Sidebar Toggle (On / Off) */}
         <button
           type="button"
@@ -141,8 +121,20 @@ const Header = ({ onMobileToggle }) => {
           <span>{sidebarPosition === 'left' ? 'Sidebar: Left' : 'Sidebar: Right'}</span>
         </button>
 
-        {/* Desktop Global Search Bar */}
-        <div className="hidden sm:flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus-within:border-[var(--theme-primary,#8b6f4e)] focus-within:ring-2 focus-within:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] transition-all shadow-2xs w-full max-w-md">
+        {/* Mobile Search Toggle Icon */}
+        <button
+          type="button"
+          onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
+          className="sm:hidden p-2 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 transition-colors cursor-pointer"
+          aria-label="Toggle mobile search"
+        >
+          <HiOutlineSearch className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Center: Desktop Global Search Bar */}
+      <div className="hidden sm:flex items-center justify-center flex-1 max-w-md lg:max-w-xl mx-auto px-2">
+        <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus-within:border-[var(--theme-primary,#8b6f4e)] focus-within:ring-2 focus-within:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] transition-all shadow-2xs w-full max-w-lg">
           <HiOutlineSearch className="w-4 h-4 text-stone-400 shrink-0" />
           <input
             type="text"
@@ -155,41 +147,10 @@ const Header = ({ onMobileToggle }) => {
             Ctrl + K
           </kbd>
         </div>
-
-        {/* Mobile Search Toggle Icon */}
-        <button
-          type="button"
-          onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-          className="sm:hidden p-2 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 transition-colors cursor-pointer"
-          aria-label="Toggle mobile search"
-        >
-          <HiOutlineSearch className="w-4 h-4" />
-        </button>
       </div>
 
-      {/* Right: Date badge, notifications, Super Admin profile */}
+      {/* Right: notifications, Super Admin profile */}
       <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
-        {/* Date pill badge */}
-        <div>
-          <DatePicker
-            value={selectedHeaderDate}
-            onChange={(val) => setSelectedHeaderDate(val)}
-            direction="down"
-            popupClassName="right-0 left-auto"
-          >
-            {/* Desktop full date pill */}
-            <div className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] text-xs font-semibold text-stone-700 shadow-2xs cursor-pointer hover:bg-stone-50 transition-colors">
-              <HiOutlineCalendar className="w-3.5 h-3.5" style={{ color: "var(--theme-primary, #8b6f4e)" }} />
-              <span>{headerDateFormatted}</span>
-              <HiOutlineChevronDown className="w-3 h-3 text-stone-400 ml-0.5" />
-            </div>
-            {/* Mobile / Tablet compact calendar icon */}
-            <div className="md:hidden p-2 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 shadow-2xs cursor-pointer transition-colors" title={headerDateFormatted}>
-              <HiOutlineCalendar className="w-4 h-4" style={{ color: "var(--theme-primary, #8b6f4e)" }} />
-            </div>
-          </DatePicker>
-        </div>
-
         {/* Notifications */}
         <button
           className="relative p-2 text-stone-500 hover:text-stone-800 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-[#eee8df] cursor-pointer"
