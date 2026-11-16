@@ -18,6 +18,11 @@ import {
   HiOutlinePhotograph,
   HiOutlineSparkles,
   HiOutlineExternalLink,
+  HiOutlineShoppingBag,
+  HiOutlineClock,
+  HiOutlineCheckCircle,
+  HiOutlineTruck,
+  HiOutlineCreditCard,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import { RxDragHandleDots2 } from 'react-icons/rx';
@@ -224,6 +229,14 @@ const routeMap = {
   '/marketing/footer': { endpoint: '/footer-settings', title: 'Footer Management' },
 };
 
+const ORDER_TABS = [
+  { key: 'pending', label: 'PENDING' },
+  { key: 'processing', label: 'PROCESSING' },
+  { key: 'delivered', label: 'DELIVERED' },
+  { key: 'cancelled', label: 'CANCELLED' },
+  { key: 'returned', label: 'RETURNED' },
+];
+
 const DynamicModuleView = () => {
   const confirm = useConfirm();
   const { openImagePreview } = useImagePreview();
@@ -247,6 +260,7 @@ const DynamicModuleView = () => {
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
+  const [orderStatusTab, setOrderStatusTab] = useState('pending');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
 
@@ -325,6 +339,7 @@ const DynamicModuleView = () => {
   }, [isCategoryPage]);
 
   const handleOpenAdd = () => {
+    if (isOrdersPage || isReturnsPage) return;
     if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
       navigate('/catalog/jewelry-products/add');
     } else if (pathname === '/catalog/silver-products' || pathname.includes('silver-products')) {
@@ -364,6 +379,10 @@ const DynamicModuleView = () => {
   };
 
   const handleOpenEdit = (row) => {
+    if (isOrdersPage || isReturnsPage || row?.orderNumber) {
+      setViewingRecord(row);
+      return;
+    }
     setEditingRecord(row);
     const initial = {};
     if (isCategoryPage) {
@@ -627,6 +646,26 @@ const DynamicModuleView = () => {
   const isJewelryPage = pathname.includes('jewelry-products');
   const isSilverPage = pathname.includes('silver-products');
   const isProductCatalogPage = isOrnatePage || isJewelryPage || isSilverPage;
+  const isOrdersPage = pathname === '/orders' || pathname.startsWith('/orders');
+  const isReturnsPage = pathname === '/returns' || pathname.startsWith('/returns');
+
+  const formatOrderDate = (dateVal) => {
+    if (!dateVal) return '';
+    try {
+      const d = new Date(dateVal);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return '';
+    }
+  };
 
   const handleEditProductRecord = (row) => {
     const id = row?._id || row?.id;
@@ -637,8 +676,41 @@ const DynamicModuleView = () => {
       navigate(`/catalog/silver-products/edit/${id}`);
     } else if (isJewelryPage) {
       navigate(`/catalog/jewelry-products/edit/${id}`);
+    } else if (isOrdersPage || isReturnsPage || row.orderNumber) {
+      setViewingRecord(row);
     } else {
       handleOpenEdit(row);
+    }
+  };
+
+  const [updatingOrderStatus, setUpdatingOrderStatus] = useState(false);
+
+  const handleUpdateOrderStatus = async (orderId, newStatus) => {
+    if (!orderId) return;
+    try {
+      setUpdatingOrderStatus(true);
+      await api.patch(`/orders/${orderId}/status`, { orderStatus: newStatus });
+      setItems((prev) =>
+        prev.map((item) =>
+          (item._id === orderId || item.id === orderId)
+            ? { ...item, orderStatus: newStatus }
+            : item
+        )
+      );
+      if (viewingRecord && (viewingRecord._id === orderId || viewingRecord.id === orderId)) {
+        setViewingRecord((prev) => ({ ...prev, orderStatus: newStatus }));
+      }
+      toast.success(
+        newStatus === 'confirmed'
+          ? 'Order accepted and confirmed!'
+          : newStatus === 'cancelled'
+          ? 'Order cancelled successfully'
+          : `Order status updated to ${newStatus}`
+      );
+    } catch (err) {
+      toast.error(err.response?.data?.message || `Failed to update order status to ${newStatus}`);
+    } finally {
+      setUpdatingOrderStatus(false);
     }
   };
 
@@ -677,15 +749,20 @@ const DynamicModuleView = () => {
   };
 
   const fetchItems = useCallback(
-    async (page = currentPage, limit = pageSize, q = search) => {
+    async (page = currentPage, limit = pageSize, q = search, orderTab = orderStatusTab) => {
       try {
         setLoading(true);
         const params = { page, limit };
         if (q && q.trim()) params.search = q.trim();
+        if (isOrdersPage && orderTab) {
+          params.orderStatus = orderTab;
+        }
         const res = await api.get(config.endpoint, { params });
         const data = res.data?.data?.items || res.data?.data || [];
         setItems(Array.isArray(data) ? data : [data].filter(Boolean));
-        if (res.data?.pagination?.totalDocs !== undefined) {
+        if (res.data?.data?.pagination?.total !== undefined) {
+          setServerTotal(res.data.data.pagination.total);
+        } else if (res.data?.pagination?.totalDocs !== undefined) {
           setServerTotal(res.data.pagination.totalDocs);
         } else {
           setServerTotal(null);
@@ -698,7 +775,7 @@ const DynamicModuleView = () => {
         setLoading(false);
       }
     },
-    [config.endpoint, currentPage, pageSize, search]
+    [config.endpoint, currentPage, pageSize, search, isOrdersPage, orderStatusTab]
   );
 
   useEffect(() => {
@@ -708,8 +785,8 @@ const DynamicModuleView = () => {
   }, [pathname]);
 
   useEffect(() => {
-    fetchItems(currentPage, pageSize, search);
-  }, [fetchItems, currentPage, pageSize, search]);
+    fetchItems(currentPage, pageSize, search, orderStatusTab);
+  }, [fetchItems, currentPage, pageSize, search, orderStatusTab]);
 
   // Fetch lookup options when modal opens for fields with type: 'lookup'
   useEffect(() => {
@@ -970,6 +1047,10 @@ const DynamicModuleView = () => {
   // Helper to get row label/name
   const getRowLabel = (row) => {
     if (!row) return 'Record';
+    if (row.orderNumber) {
+      const firstItem = Array.isArray(row.items) && row.items[0]?.title;
+      return firstItem ? `${row.orderNumber} - ${firstItem}` : row.orderNumber;
+    }
     const val =
       row.basicInfo?.title ||
       row.basicInfo?.name ||
@@ -1009,6 +1090,12 @@ const DynamicModuleView = () => {
   // Helper to resolve product and generic thumbnails
   const getRowThumbnail = (row) => {
     if (!row) return null;
+    // 0. Order items first image
+    if (row.orderNumber && Array.isArray(row.items) && row.items.length > 0) {
+      const first = row.items[0];
+      const img = first.image?.url || first.image || first.productId?.images?.[0]?.url || first.productId?.images?.[0];
+      if (isValidMediaUrl(img)) return img;
+    }
     // 1. Ornate product images
     if (row.ornate?.ornateImages && row.ornate.ornateImages.length > 0) {
       const first = row.ornate.ornateImages[0];
@@ -1174,16 +1261,30 @@ const DynamicModuleView = () => {
   };
 
   const filteredItems = useMemo(() => {
-    if (serverTotal !== null) return items;
-    if (!search.trim()) return items;
+    let list = items;
+    if (isOrdersPage && orderStatusTab) {
+      if (orderStatusTab === 'pending') {
+        list = list.filter((row) => ['placed', 'confirmed', 'pending'].includes(String(row.orderStatus).toLowerCase()));
+      } else if (orderStatusTab === 'processing') {
+        list = list.filter((row) => ['processing', 'shipped', 'out_for_delivery'].includes(String(row.orderStatus).toLowerCase()));
+      } else if (orderStatusTab === 'delivered') {
+        list = list.filter((row) => String(row.orderStatus).toLowerCase() === 'delivered');
+      } else if (orderStatusTab === 'cancelled') {
+        list = list.filter((row) => String(row.orderStatus).toLowerCase() === 'cancelled');
+      } else if (orderStatusTab === 'returned') {
+        list = list.filter((row) => String(row.orderStatus).toLowerCase() === 'returned');
+      }
+    }
+    if (serverTotal !== null && !search.trim()) return list;
+    if (!search.trim()) return list;
     const q = search.toLowerCase();
-    return items.filter((row) => {
+    return list.filter((row) => {
       const label = String(getRowLabel(row)).toLowerCase();
       const id = String(row._id || row.id || '').toLowerCase();
       const sku = String(row.basicInfo?.sku || row.ornate?.tagNo || row.sku || '').toLowerCase();
       return label.includes(q) || id.includes(q) || sku.includes(q);
     });
-  }, [items, search, serverTotal]);
+  }, [items, search, serverTotal, isOrdersPage, orderStatusTab]);
 
   const {
     totalItems,
@@ -1226,6 +1327,33 @@ const DynamicModuleView = () => {
           color: 'gold',
         },
       ]
+    : isOrdersPage
+    ? [
+        {
+          label: 'Total Orders',
+          value: serverTotal !== null ? serverTotal : (items.length || 0),
+          icon: HiOutlineShoppingBag,
+          color: 'bronze',
+        },
+        {
+          label: 'Confirmed Orders',
+          value: items.filter((o) => o.orderStatus === 'confirmed' || o.payment?.status === 'paid').length,
+          icon: HiOutlineCheckCircle,
+          color: 'green',
+        },
+        {
+          label: 'Total Revenue',
+          value: `₹${items.reduce((acc, o) => acc + (Number(o.pricing?.total) || 0), 0).toLocaleString('en-IN')}`,
+          icon: HiOutlineCreditCard,
+          color: 'peach',
+        },
+        {
+          label: 'Pending Orders',
+          value: items.filter((o) => o.orderStatus === 'placed' || o.orderStatus === 'processing').length,
+          icon: HiOutlineClock,
+          color: 'gold',
+        },
+      ]
     : [
         {
           label: `Total ${config.title}`,
@@ -1262,11 +1390,17 @@ const DynamicModuleView = () => {
         subtitle={
           isOrnatePage
             ? 'Real-time synchronization and catalog management of Ornate ERP jewellery products.'
+            : isOrdersPage
+            ? 'View, manage, and process real-time storefront customer orders.'
+            : isReturnsPage
+            ? 'View, review, and manage customer return and exchange requests.'
             : `Configure, manage and update real-time ${config.title.toLowerCase()} catalog data.`
         }
-        onAdd={handleOpenAdd}
+        onAdd={isOrdersPage || isReturnsPage ? undefined : handleOpenAdd}
         addLabel={
-          pathname.includes('jewelry-products')
+          isOrdersPage || isReturnsPage
+            ? undefined
+            : pathname.includes('jewelry-products')
             ? 'Add Jewellery Product'
             : isSilverPage
             ? 'Add Silver Product'
@@ -1323,6 +1457,32 @@ const DynamicModuleView = () => {
         }
       />
 
+      {/* ─── Orders Status Filter Tabs ─── */}
+      {isOrdersPage && (
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 pt-0.5 luxury-scrollbar">
+          {ORDER_TABS.map((tab) => {
+            const isActive = orderStatusTab === tab.key;
+            return (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => {
+                  setOrderStatusTab(tab.key);
+                  setCurrentPage(1);
+                }}
+                className={`px-2.5 py-1 sm:px-3 sm:py-1 rounded-lg text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
+                  isActive
+                    ? 'bg-[#8c6536] text-white shadow-xs ring-1 ring-[#8c6536]'
+                    : 'bg-white text-stone-500 hover:text-stone-800 border border-stone-200/80 hover:bg-stone-50'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {/* ─── Table Card Container ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         {/* Table view */}
@@ -1359,9 +1519,11 @@ const DynamicModuleView = () => {
                       SR NO
                     </th>
                     <th className="py-3 px-3 whitespace-nowrap">
-                      {isProductCatalogPage ? 'PRODUCT' : 'ITEM / RECORD'}
+                      {isOrdersPage ? 'ORDER & PRODUCTS' : isProductCatalogPage ? 'PRODUCT' : 'ITEM / RECORD'}
                     </th>
-                    <th className="py-3 px-3 whitespace-nowrap">SPECIFICATIONS</th>
+                    <th className="py-3 px-3 whitespace-nowrap">
+                      {isOrdersPage ? 'CUSTOMER & PRICING' : 'SPECIFICATIONS'}
+                    </th>
                     {isProductCatalogPage && (
                       <th className="py-3 px-3 whitespace-nowrap text-center">DEMO METRICS</th>
                     )}
@@ -1454,60 +1616,145 @@ const DynamicModuleView = () => {
 
                         {/* PRODUCT / ITEM COLUMN */}
                         <td className="py-2.5 px-3 text-stone-900 text-xs">
-                          <div className="flex items-center gap-3">
-                            <div
-                              onClick={(e) => {
-                                if (thumbUrl) {
-                                  e.stopPropagation();
-                                  openImagePreview(thumbUrl, { title: rowLabel });
-                                }
-                              }}
-                              className={`w-10 h-10 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#8b6f4e]/40 transition-colors ${
-                                thumbUrl ? 'cursor-zoom-in' : ''
-                              }`}
-                              title={thumbUrl ? 'Click to preview image' : undefined}
-                            >
-                              {thumbUrl ? (
-                                <img
-                                  src={thumbUrl}
-                                  alt={rowLabel}
-                                  className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
-                                  loading="lazy"
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                    if (e.currentTarget.parentElement) {
-                                      e.currentTarget.parentElement.innerHTML =
-                                        '<span class="text-[9px] text-stone-400 font-medium select-none">No Img</span>';
-                                    }
-                                  }}
-                                />
-                              ) : isEmoji ? (
-                                <span className="text-base">{row.icon}</span>
-                              ) : (
-                                <span className="text-[9px] text-stone-400 font-medium select-none">
-                                  No Img
+                          {isOrdersPage ? (
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-amber-50/90 border border-amber-200/80 text-[#8b6f4e] flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
+                                <HiOutlineShoppingBag className="w-5 h-5 text-[#8b6f4e]" />
+                              </div>
+                              <div className="min-w-0 max-w-sm sm:max-w-md space-y-1">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-mono font-bold text-xs text-[#8b6f4e] bg-[#faf5ed] border border-[#8b6f4e]/30 px-2 py-0.5 rounded shadow-2xs">
+                                    {row.orderNumber || 'Order'}
+                                  </span>
+                                  {(row.meta?.createdAt || row.createdAt) && (
+                                    <span className="text-[11px] text-stone-500 font-medium flex items-center gap-1">
+                                      <HiOutlineClock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                                      {formatOrderDate(row.meta?.createdAt || row.createdAt)}
+                                    </span>
+                                  )}
+                                </div>
+                                <span
+                                  className="font-semibold text-stone-900 text-xs block leading-snug truncate hover:text-[#8b6f4e] transition-colors"
+                                  title={row.items?.[0]?.title || 'Jewellery Item'}
+                                >
+                                  {row.items?.[0]?.title || 'Jewellery Order'}
                                 </span>
-                              )}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {row.items?.[0]?.selectedMetal && (
+                                    <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-medium border border-stone-200/60">
+                                      {row.items[0].selectedMetal}
+                                    </span>
+                                  )}
+                                  {row.items?.[0]?.selectedSize && (
+                                    <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] border border-stone-200/60">
+                                      Size: {row.items[0].selectedSize}
+                                    </span>
+                                  )}
+                                  {row.items?.[0]?.quantity && (
+                                    <span className="text-[10px] font-medium text-stone-500">
+                                      Qty: {row.items[0].quantity}
+                                    </span>
+                                  )}
+                                  {Array.isArray(row.items) && row.items.length > 1 && (
+                                    <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-bold">
+                                      +{row.items.length - 1} more item{row.items.length - 1 > 1 ? 's' : ''}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                            <div className="min-w-0 max-w-xs space-y-0.5">
-                              <span
-                                className="font-bold text-stone-900 text-xs block leading-tight truncate hover:text-[#8b6f4e] transition-colors"
-                                title={rowLabel}
+                          ) : (
+                            <div className="flex items-center gap-3">
+                              <div
+                                onClick={(e) => {
+                                  if (thumbUrl) {
+                                    e.stopPropagation();
+                                    openImagePreview(thumbUrl, { title: rowLabel });
+                                  }
+                                }}
+                                className={`w-10 h-10 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#8b6f4e]/40 transition-colors ${
+                                  thumbUrl ? 'cursor-zoom-in' : ''
+                                }`}
+                                title={thumbUrl ? 'Click to preview image' : undefined}
                               >
-                                {rowLabel}
-                              </span>
-                              {skuCode && skuCode !== rowLabel && (
-                                <span className="font-mono text-[10px] text-stone-400 block truncate">
-                                  {skuCode}
+                                {thumbUrl ? (
+                                  <img
+                                    src={thumbUrl}
+                                    alt={rowLabel}
+                                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                                    loading="lazy"
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                      if (e.currentTarget.parentElement) {
+                                        e.currentTarget.parentElement.innerHTML =
+                                          '<span class="text-[9px] text-stone-400 font-medium select-none">No Img</span>';
+                                      }
+                                    }}
+                                  />
+                                ) : isEmoji ? (
+                                  <span className="text-base">{row.icon}</span>
+                                ) : (
+                                  <span className="text-[9px] text-stone-400 font-medium select-none">
+                                    No Img
+                                  </span>
+                                )}
+                              </div>
+                              <div className="min-w-0 max-w-xs space-y-0.5">
+                                <span
+                                  className="font-bold text-stone-900 text-xs block leading-tight truncate hover:text-[#8b6f4e] transition-colors"
+                                  title={rowLabel}
+                                >
+                                  {rowLabel}
                                 </span>
-                              )}
+                                {skuCode && skuCode !== rowLabel && (
+                                  <span className="font-mono text-[10px] text-stone-400 block truncate">
+                                    {skuCode}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          )}
                         </td>
 
                         {/* SPECIFICATIONS COLUMN */}
                         <td className="py-2.5 px-3 text-stone-600 text-xs">
-                          {isProductCatalogPage ? (
+                          {isOrdersPage ? (
+                            <div className="space-y-1 max-w-xs">
+                              <div className="flex items-center gap-2">
+                                <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded text-xs">
+                                  ₹{Number(row.pricing?.total ?? row.totalAmount ?? 0).toLocaleString('en-IN')}
+                                </span>
+                                {row.payment?.method && (
+                                  <span className={`capitalize px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                                    String(row.payment?.method).toLowerCase() === 'cod'
+                                      ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                      : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  }`}>
+                                    {row.payment.method}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-stone-800 font-medium truncate">
+                                {row.customer?.firstName
+                                  ? `${row.customer.firstName} ${row.customer.lastName || ''}`.trim()
+                                  : row.shippingAddress?.fullName ||
+                                    row.shippingAddress?.firstName ||
+                                    'Customer'}
+                                {(row.customer?.phone || row.shippingAddress?.phone) && (
+                                  <span className="text-stone-400 font-normal ml-1">
+                                    • {row.customer?.phone || row.shippingAddress?.phone}
+                                  </span>
+                                )}
+                              </div>
+                              {row.shippingAddress?.city && (
+                                <div className="text-[10px] text-stone-500 truncate">
+                                  {row.shippingAddress.city}
+                                  {row.shippingAddress.state ? `, ${row.shippingAddress.state}` : ''}
+                                  {row.shippingAddress.postalCode ? ` - ${row.shippingAddress.postalCode}` : ''}
+                                </div>
+                              )}
+                            </div>
+                          ) : isProductCatalogPage ? (
                             <div className="flex flex-wrap items-center gap-1.5">
                               {displayPrice !== undefined && displayPrice !== null && (
                                 <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded text-[11px]">
@@ -1699,20 +1946,40 @@ const DynamicModuleView = () => {
 
                         {/* STATUS COLUMN */}
                         <td className="py-2.5 px-3 text-center" onClick={(e) => isProductCatalogPage && handleToggleProductStatus(row, e)}>
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize transition-all ${
-                              isProductCatalogPage ? 'cursor-pointer hover:scale-105 select-none' : ''
-                            } ${
-                              isInactive
-                                ? 'bg-stone-100 text-stone-600 border-stone-200'
-                                : statusStr === 'approved'
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
-                            }`}
-                            title={isProductCatalogPage ? 'Click to toggle status (draft / approved)' : undefined}
-                          >
-                            {statusStr}
-                          </span>
+                          {isOrdersPage ? (
+                            <span
+                              className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border capitalize tracking-wider ${
+                                String(row.orderStatus).toLowerCase() === 'confirmed'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                  : String(row.orderStatus).toLowerCase() === 'placed'
+                                  ? 'bg-amber-50 text-amber-800 border-amber-300'
+                                  : String(row.orderStatus).toLowerCase() === 'shipped'
+                                  ? 'bg-sky-50 text-sky-800 border-sky-300'
+                                  : String(row.orderStatus).toLowerCase() === 'delivered'
+                                  ? 'bg-purple-50 text-purple-800 border-purple-300'
+                                  : String(row.orderStatus).toLowerCase() === 'cancelled'
+                                  ? 'bg-rose-50 text-rose-800 border-rose-300'
+                                  : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
+                              }`}
+                            >
+                              {row.orderStatus || 'placed'}
+                            </span>
+                          ) : (
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize transition-all ${
+                                isProductCatalogPage ? 'cursor-pointer hover:scale-105 select-none' : ''
+                              } ${
+                                isInactive
+                                  ? 'bg-stone-100 text-stone-600 border-stone-200'
+                                  : statusStr === 'approved'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
+                              }`}
+                              title={isProductCatalogPage ? 'Click to toggle status (draft / approved)' : undefined}
+                            >
+                              {statusStr}
+                            </span>
+                          )}
                         </td>
 
                         {/* ACTIONS */}
@@ -1722,8 +1989,8 @@ const DynamicModuleView = () => {
                             detailsEndpoint={config.endpoint}
                             onView={() => handleEditProductRecord(row)}
                             onOpenWebsite={isProductCatalogPage ? () => openProductPreview(row) : undefined}
-                            onEdit={() => handleEditProductRecord(row)}
-                            onDelete={() => handleDelete(row._id || row.id, rowLabel)}
+                            onEdit={isOrdersPage || isReturnsPage ? undefined : () => handleEditProductRecord(row)}
+                            onDelete={() => handleDelete(row._id || row.id, row.orderNumber || rowLabel)}
                           />
                         </td>
                       </tr>
@@ -2990,17 +3257,21 @@ const DynamicModuleView = () => {
           onClick={() => setViewingRecord(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto"
+            className={`bg-white rounded-2xl ${viewingRecord.orderNumber ? 'max-w-2xl' : 'max-w-lg'} w-full p-4 sm:p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#faf5ed] text-[#8b6f4e] flex items-center justify-center font-bold text-sm">
-                  <HiOutlineEye className="w-4 h-4" />
+                  {viewingRecord.orderNumber ? (
+                    <HiOutlineShoppingBag className="w-4 h-4" />
+                  ) : (
+                    <HiOutlineEye className="w-4 h-4" />
+                  )}
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-stone-900 leading-tight">
-                    {singleName} Details
+                    {viewingRecord.orderNumber ? `Order ${viewingRecord.orderNumber}` : `${singleName} Details`}
                   </h3>
                 </div>
               </div>
@@ -3012,6 +3283,271 @@ const DynamicModuleView = () => {
                 <HiOutlineX className="w-4 h-4" />
               </button>
             </div>
+
+            {viewingRecord.orderNumber ? (
+              <div className="space-y-4 text-xs">
+                {/* Header Card: Order # + Status + Date */}
+                <div className="bg-[#faf5ed] p-3.5 rounded-xl border border-[#8b6f4e]/20 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#8b6f4e]">Order Reference</span>
+                      <h4 className="text-base font-mono font-bold text-stone-900">{viewingRecord.orderNumber}</h4>
+                    </div>
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-bold border capitalize ${
+                        String(viewingRecord.orderStatus).toLowerCase() === 'confirmed'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                          : String(viewingRecord.orderStatus).toLowerCase() === 'placed'
+                          ? 'bg-amber-50 text-amber-800 border-amber-300'
+                          : String(viewingRecord.orderStatus).toLowerCase() === 'shipped'
+                          ? 'bg-sky-50 text-sky-800 border-sky-300'
+                          : String(viewingRecord.orderStatus).toLowerCase() === 'delivered'
+                          ? 'bg-purple-50 text-purple-800 border-purple-300'
+                          : String(viewingRecord.orderStatus).toLowerCase() === 'cancelled'
+                          ? 'bg-rose-50 text-rose-800 border-rose-300'
+                          : 'bg-stone-100 text-stone-700 border-stone-200'
+                      }`}
+                    >
+                      {viewingRecord.orderStatus || 'placed'}
+                    </span>
+                  </div>
+                  {(viewingRecord.meta?.createdAt || viewingRecord.createdAt) && (
+                    <div className="text-[11px] text-stone-500 flex items-center gap-1.5 pt-1 border-t border-[#8b6f4e]/10">
+                      <HiOutlineClock className="w-3.5 h-3.5 text-stone-400" />
+                      Placed on {formatOrderDate(viewingRecord.meta?.createdAt || viewingRecord.createdAt)}
+                    </div>
+                  )}
+                </div>
+
+                {/* Customer & Shipping Details */}
+                <div className="bg-stone-50/80 p-3.5 rounded-xl border border-stone-200/70 space-y-2">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 block">Customer & Shipping Address</span>
+                  <div className="font-semibold text-stone-900 text-sm">
+                    {viewingRecord.customer?.firstName
+                      ? `${viewingRecord.customer.firstName} ${viewingRecord.customer.lastName || ''}`.trim()
+                      : viewingRecord.shippingAddress?.fullName || 'Customer'}
+                  </div>
+                  <div className="text-stone-600 space-y-0.5 text-xs">
+                    {(viewingRecord.customer?.email || viewingRecord.shippingAddress?.email) && (
+                      <div>Email: {viewingRecord.customer?.email || viewingRecord.shippingAddress?.email}</div>
+                    )}
+                    {(viewingRecord.customer?.phone || viewingRecord.shippingAddress?.phone) && (
+                      <div>Phone: {viewingRecord.customer?.phone || viewingRecord.shippingAddress?.phone}</div>
+                    )}
+                    {viewingRecord.shippingAddress && (
+                      <div className="pt-1 text-stone-500 text-[11px]">
+                        {[
+                          viewingRecord.shippingAddress.addressLine,
+                          viewingRecord.shippingAddress.apartment,
+                          viewingRecord.shippingAddress.city,
+                          viewingRecord.shippingAddress.state,
+                          viewingRecord.shippingAddress.postalCode,
+                          viewingRecord.shippingAddress.country,
+                        ].filter(Boolean).join(', ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Items List */}
+                <div className="space-y-2">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 block">
+                    Ordered Items ({viewingRecord.items?.length || 0})
+                  </span>
+                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                    {Array.isArray(viewingRecord.items) && viewingRecord.items.map((item, i) => (
+                      <div key={item._id || i} className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/70 flex items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <p className="font-semibold text-stone-900 text-xs leading-snug">
+                            {item.title}
+                          </p>
+                          <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-stone-500">
+                            {item.selectedMetal && (
+                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 font-medium">
+                                {item.selectedMetal}
+                              </span>
+                            )}
+                            {item.selectedSize && (
+                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700">
+                                Size: {item.selectedSize}
+                              </span>
+                            )}
+                            <span className="text-stone-500">Qty: {item.quantity || 1}</span>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="font-bold text-stone-900 text-xs">
+                            ₹{Number(item.totalItemPrice || item.price || 0).toLocaleString('en-IN')}
+                          </div>
+                          {item.quantity > 1 && (
+                            <div className="text-[10px] text-stone-400">
+                              ₹{Number(item.price || 0).toLocaleString('en-IN')} each
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Pricing & Payment Summary */}
+                <div className="bg-stone-50/80 p-3.5 rounded-xl border border-stone-200/70 space-y-2">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 block">Payment & Pricing Breakdown</span>
+                  <div className="space-y-1 text-xs">
+                    {viewingRecord.pricing?.subtotal !== undefined && (
+                      <div className="flex justify-between text-stone-600">
+                        <span>Subtotal</span>
+                        <span>₹{Number(viewingRecord.pricing.subtotal).toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    {viewingRecord.pricing?.tax !== undefined && (
+                      <div className="flex justify-between text-stone-600">
+                        <span>Estimated Tax</span>
+                        <span>₹{Number(viewingRecord.pricing.tax).toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    {viewingRecord.pricing?.shipping !== undefined && (
+                      <div className="flex justify-between text-stone-600">
+                        <span>Shipping</span>
+                        <span>{viewingRecord.pricing.shipping === 0 ? 'FREE' : `₹${Number(viewingRecord.pricing.shipping).toLocaleString('en-IN')}`}</span>
+                      </div>
+                    )}
+                    {viewingRecord.pricing?.discount > 0 && (
+                      <div className="flex justify-between text-emerald-600 font-medium">
+                        <span>Discount</span>
+                        <span>-₹{Number(viewingRecord.pricing.discount).toLocaleString('en-IN')}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-stone-900 font-bold text-sm pt-2 border-t border-stone-200">
+                      <span>Total Amount</span>
+                      <span className="text-[#8b6f4e]">₹{Number(viewingRecord.pricing?.total ?? viewingRecord.totalAmount ?? 0).toLocaleString('en-IN')}</span>
+                    </div>
+                  </div>
+                  {viewingRecord.payment && (
+                    <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between text-[11px]">
+                      <span className="text-stone-500 font-medium">Payment Method</span>
+                      <span className="capitalize font-semibold text-stone-800">
+                        {viewingRecord.payment.method || 'Online'} ({viewingRecord.payment.status || 'Pending'})
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* ─── Order Status Workflow Actions ─── */}
+                <div className="pt-3 border-t border-stone-200/80 flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Accept Order Button */}
+                    {String(viewingRecord.orderStatus).toLowerCase() !== 'confirmed' &&
+                     String(viewingRecord.orderStatus).toLowerCase() !== 'shipped' &&
+                     String(viewingRecord.orderStatus).toLowerCase() !== 'delivered' &&
+                     String(viewingRecord.orderStatus).toLowerCase() !== 'cancelled' && (
+                      <button
+                        type="button"
+                        disabled={updatingOrderStatus}
+                        onClick={async () => {
+                          const isConfirmed = await confirm({
+                            title: `Accept Order ${viewingRecord.orderNumber || ''}`,
+                            message: 'Are you sure you want to accept and confirm this order?',
+                            confirmText: 'Accept Order',
+                            cancelText: 'Cancel',
+                            type: 'success',
+                          });
+                          if (isConfirmed) {
+                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'confirmed');
+                          }
+                        }}
+                        className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <HiOutlineCheckCircle className="w-4 h-4" />
+                        <span>Accept Order</span>
+                      </button>
+                    )}
+
+                    {/* Mark as Shipped Button (if confirmed) */}
+                    {String(viewingRecord.orderStatus).toLowerCase() === 'confirmed' && (
+                      <button
+                        type="button"
+                        disabled={updatingOrderStatus}
+                        onClick={async () => {
+                          const isConfirmed = await confirm({
+                            title: `Mark Order as Shipped`,
+                            message: `Update status of order ${viewingRecord.orderNumber || ''} to Shipped?`,
+                            confirmText: 'Mark as Shipped',
+                            cancelText: 'Cancel',
+                            type: 'info',
+                          });
+                          if (isConfirmed) {
+                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'shipped');
+                          }
+                        }}
+                        className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] active:scale-95 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <HiOutlineTruck className="w-4 h-4" />
+                        <span>Mark as Shipped</span>
+                      </button>
+                    )}
+
+                    {/* Mark as Delivered Button (if shipped) */}
+                    {String(viewingRecord.orderStatus).toLowerCase() === 'shipped' && (
+                      <button
+                        type="button"
+                        disabled={updatingOrderStatus}
+                        onClick={async () => {
+                          const isConfirmed = await confirm({
+                            title: `Mark Order as Delivered`,
+                            message: `Confirm that order ${viewingRecord.orderNumber || ''} has been delivered to customer?`,
+                            confirmText: 'Mark Delivered',
+                            cancelText: 'Cancel',
+                            type: 'success',
+                          });
+                          if (isConfirmed) {
+                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'delivered');
+                          }
+                        }}
+                        className="px-4 py-2 bg-purple-700 hover:bg-purple-800 active:scale-95 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <HiOutlineCheckCircle className="w-4 h-4" />
+                        <span>Mark as Delivered</span>
+                      </button>
+                    )}
+
+                    {/* Cancel Order Button */}
+                    {String(viewingRecord.orderStatus).toLowerCase() !== 'cancelled' &&
+                     String(viewingRecord.orderStatus).toLowerCase() !== 'delivered' && (
+                      <button
+                        type="button"
+                        disabled={updatingOrderStatus}
+                        onClick={async () => {
+                          const isConfirmed = await confirm({
+                            title: `Cancel Order ${viewingRecord.orderNumber || ''}`,
+                            message: 'Are you sure you want to cancel this order? This action will set the order status to Cancelled.',
+                            confirmText: 'Yes, Cancel Order',
+                            cancelText: 'Keep Order',
+                            type: 'danger',
+                          });
+                          if (isConfirmed) {
+                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'cancelled');
+                          }
+                        }}
+                        className="px-4 py-2 bg-white border border-rose-300 hover:bg-rose-50 text-rose-700 active:scale-95 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <HiOutlineX className="w-4 h-4" />
+                        <span>Cancel Order</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewingRecord(null)}
+                    className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+            <>
 
             {/* Media thumbnail if exists */}
             {(() => {
@@ -3497,14 +4033,18 @@ const DynamicModuleView = () => {
                 <span>View on Store</span>
               </button>
             )}
+            </>
+            )}
 
-            <button
-              type="button"
-              onClick={() => setViewingRecord(null)}
-              className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-            >
-              Close
-            </button>
+            {!viewingRecord.orderNumber && (
+              <button
+                type="button"
+                onClick={() => setViewingRecord(null)}
+                className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+            )}
           </div>
         </div>, document.body)
       )}
