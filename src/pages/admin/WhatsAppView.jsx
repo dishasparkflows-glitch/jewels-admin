@@ -6,14 +6,8 @@ import {
   HiOutlineCheckCircle,
   HiOutlineExclamationCircle,
   HiOutlineClock,
-  HiOutlineSearch,
   HiOutlinePlus,
-  HiOutlineDotsVertical,
-  HiOutlineEye,
-  HiOutlinePencil,
-  HiOutlineTrash,
   HiOutlineX,
-  HiOutlineRefresh,
   HiOutlineChatAlt2,
   HiOutlineCheck,
 } from 'react-icons/hi';
@@ -28,7 +22,6 @@ import { DeleteActionButton } from '../../components/common/RowActions';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
-import RowActions from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function WhatsAppView() {
@@ -46,7 +39,6 @@ export default function WhatsAppView() {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All Categories');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
-  const [selectedLanguage, setSelectedLanguage] = useState('All Languages');
 
   // Filters for Sent Message History
   const [historySearch, setHistorySearch] = useState('');
@@ -63,7 +55,6 @@ export default function WhatsAppView() {
   // New Template Form
   const [formName, setFormName] = useState('');
   const [formCategory, setFormCategory] = useState('MARKETING');
-  const [formLanguage, setFormLanguage] = useState('English');
   const [formBody, setFormBody] = useState('');
   const [submittingTemplate, setSubmittingTemplate] = useState(false);
 
@@ -146,17 +137,9 @@ export default function WhatsAppView() {
         }
       }
 
-      // Language
-      if (selectedLanguage !== 'All Languages') {
-        const lang = (tmpl.language || '').toLowerCase();
-        if (selectedLanguage.toLowerCase() === 'english' && !lang.includes('en') && !lang.includes('english')) {
-          return false;
-        }
-      }
-
       return true;
     });
-  }, [templates, search, selectedCategory, selectedStatus, selectedLanguage]);
+  }, [templates, search, selectedCategory, selectedStatus]);
 
   // Pagination for Templates
   const {
@@ -236,7 +219,7 @@ export default function WhatsAppView() {
         name: formName.trim().toLowerCase().replace(/\s+/g, '_'),
         displayName: formName.trim(),
         category: formCategory,
-        language: formLanguage,
+        language: 'en_US',
         body: formBody.trim(),
         variables: [],
       };
@@ -457,7 +440,7 @@ export default function WhatsAppView() {
             }}
             placeholder="Search templates by name, body, or category..."
             extraActions={
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2.5">
                 <Dropdown
                   value={selectedCategory}
                   onChange={(val) => {
@@ -470,8 +453,8 @@ export default function WhatsAppView() {
                     { value: 'MARKETING', label: 'Marketing' },
                     { value: 'AUTHENTICATION', label: 'Authentication' },
                   ]}
-                  size="sm"
-                  buttonClassName="h-7.5 px-2.5 text-xs rounded-md bg-white border-stone-200"
+                  size="md"
+                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[140px]"
                 />
 
                 <Dropdown
@@ -487,25 +470,23 @@ export default function WhatsAppView() {
                     { value: 'REJECTED', label: 'Rejected', dotColor: 'bg-rose-500' },
                   ]}
                   showStatusDot
-                  size="sm"
-                  buttonClassName="h-7.5 px-2.5 text-xs rounded-md bg-white border-stone-200"
+                  size="md"
+                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[130px]"
                 />
 
-                <Dropdown
-                  value={selectedLanguage}
-                  onChange={(val) => {
-                    setSelectedLanguage(val);
-                    setCurrentPage(1);
-                  }}
-                  options={[
-                    { value: 'All Languages', label: 'All Languages' },
-                    { value: 'English', label: 'English' },
-                    { value: 'Hindi', label: 'Hindi' },
-                    { value: 'Spanish', label: 'Spanish' },
-                  ]}
-                  size="sm"
-                  buttonClassName="h-7.5 px-2.5 text-xs rounded-md bg-white border-stone-200"
-                />
+                {(selectedCategory !== 'All Categories' || selectedStatus !== 'All Status') && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategory('All Categories');
+                      setSelectedStatus('All Status');
+                      setCurrentPage(1);
+                    }}
+                    className="h-[42px] px-3 text-xs font-semibold text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    Reset
+                  </button>
+                )}
               </div>
             }
           />
@@ -516,10 +497,10 @@ export default function WhatsAppView() {
               <table className="w-full text-left border-collapse table-auto">
                 <thead>
                   <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-                    <th className="py-3 px-4 w-[38%]">Template Details</th>
-                    <th className="py-3 px-4 w-[13%]">Category</th>
-                    <th className="py-3 px-4 w-[12%]">Language</th>
-                    <th className="py-3 px-4 w-[13%]">Status</th>
+                    <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
+                    <th className="py-3 px-4 w-[46%]">Template Details</th>
+                    <th className="py-3 px-4 w-[15%]">Category</th>
+                    <th className="py-3 px-4 w-[15%]">Status</th>
                     <th className="py-3 px-4 w-[14%]">Last Updated</th>
                     <th className="py-3 px-4 w-[10%] text-right pr-5">Actions</th>
                   </tr>
@@ -536,7 +517,7 @@ export default function WhatsAppView() {
                       </td>
                     </tr>
                   ) : (
-                    paginatedTemplates.map((tmpl) => {
+                    paginatedTemplates.map((tmpl, idx) => {
                       const { date, time } = formatDateTime(tmpl.updatedAt || tmpl.createdAt);
                       const isPending = (tmpl.status || '').toUpperCase() === 'PENDING';
                       const isRejected = (tmpl.status || '').toUpperCase() === 'REJECTED';
@@ -559,8 +540,13 @@ export default function WhatsAppView() {
                           key={tmpl._id}
                           className="hover:bg-stone-50/70 transition-colors group"
                         >
+                          {/* Sr No */}
+                          <td className="py-3.5 px-3 text-center align-middle text-xs font-semibold text-stone-500 whitespace-nowrap">
+                            {(currentPage - 1) * pageSize + idx + 1}
+                          </td>
+
                           {/* Template Name & Preview */}
-                          <td className="py-3.5 px-4 align-top">
+                          <td className="py-3.5 px-4 align-middle">
                             <div className="flex flex-col gap-1 max-w-xl">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-semibold text-stone-900 text-xs sm:text-[13px] leading-tight">
@@ -593,13 +579,6 @@ export default function WhatsAppView() {
                                 {tmpl.category || 'Utility'}
                               </span>
                             )}
-                          </td>
-
-                          {/* Language */}
-                          <td className="py-3.5 px-4 align-middle whitespace-nowrap">
-                            <span className="text-xs font-medium text-stone-700">
-                              {tmpl.language === 'en_US' || tmpl.language === 'en' ? 'English' : tmpl.language || 'English'}
-                            </span>
                           </td>
 
                           {/* Status Badge with Dot */}
@@ -693,22 +672,37 @@ export default function WhatsAppView() {
             }}
             placeholder="Search message history by phone or recipient..."
             extraActions={
-              <Dropdown
-                value={historyStatusFilter}
-                onChange={(val) => {
-                  setHistoryStatusFilter(val);
-                  setMsgPage(1);
-                }}
-                options={[
-                  { value: 'all', label: 'All Status' },
-                  { value: 'delivered', label: 'Delivered', dotColor: 'bg-emerald-500' },
-                  { value: 'sent', label: 'Sent', dotColor: 'bg-blue-500' },
-                  { value: 'failed', label: 'Failed', dotColor: 'bg-rose-500' },
-                ]}
-                showStatusDot
-                size="sm"
-                buttonClassName="h-7.5 px-2.5 text-xs rounded-md bg-white border-stone-200"
-              />
+              <div className="flex items-center gap-2.5">
+                <Dropdown
+                  value={historyStatusFilter}
+                  onChange={(val) => {
+                    setHistoryStatusFilter(val);
+                    setMsgPage(1);
+                  }}
+                  options={[
+                    { value: 'all', label: 'All Status' },
+                    { value: 'delivered', label: 'Delivered', dotColor: 'bg-emerald-500' },
+                    { value: 'sent', label: 'Sent', dotColor: 'bg-blue-500' },
+                    { value: 'failed', label: 'Failed', dotColor: 'bg-rose-500' },
+                  ]}
+                  showStatusDot
+                  size="md"
+                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[130px]"
+                />
+
+                {historyStatusFilter !== 'all' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setHistoryStatusFilter('all');
+                      setMsgPage(1);
+                    }}
+                    className="h-[42px] px-3 text-xs font-semibold text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer whitespace-nowrap"
+                  >
+                    Reset
+                  </button>
+                )}
+              </div>
             }
           />
 
@@ -717,8 +711,9 @@ export default function WhatsAppView() {
               <table className="w-full text-left border-collapse table-auto">
                 <thead>
                   <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                    <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
                     <th className="py-3 px-4 w-[20%]">Recipient</th>
-                    <th className="py-3 px-4 w-[45%]">Template / Message</th>
+                    <th className="py-3 px-4 w-[43%]">Template / Message</th>
                     <th className="py-3 px-4 w-[15%]">Status</th>
                     <th className="py-3 px-4 w-[20%]">Sent Time</th>
                   </tr>
@@ -726,13 +721,13 @@ export default function WhatsAppView() {
                 <tbody className="divide-y divide-stone-100 text-xs">
                   {(!paginatedMessages || paginatedMessages.length === 0) ? (
                     <tr>
-                      <td colSpan="4" className="py-12 text-center text-stone-400">
+                      <td colSpan="5" className="py-12 text-center text-stone-400">
                         <HiOutlineChatAlt2 className="w-9 h-9 mx-auto mb-2 stroke-1" />
                         <p className="text-xs font-semibold text-stone-600">No sent messages recorded</p>
                       </td>
                     </tr>
                   ) : (
-                    paginatedMessages.map((msg) => {
+                    paginatedMessages.map((msg, idx) => {
                       const { date, time } = formatDateTime(msg.createdAt);
                       const isDelivered = msg.status === 'delivered';
                       const isRead = msg.status === 'read';
@@ -741,12 +736,17 @@ export default function WhatsAppView() {
 
                       return (
                         <tr key={msg._id} className="hover:bg-stone-50/70 transition-colors">
-                          <td className="py-3.5 px-4 align-top whitespace-nowrap">
+                          {/* Sr No */}
+                          <td className="py-3.5 px-3 text-center align-middle text-xs font-semibold text-stone-500 whitespace-nowrap">
+                            {(msgPage - 1) * pageSize + idx + 1}
+                          </td>
+
+                          <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                             <span className="font-mono text-xs text-stone-900 font-semibold bg-stone-100/80 px-2 py-0.5 rounded border border-stone-200/60">
                               {msg.to}
                             </span>
                           </td>
-                          <td className="py-3.5 px-4 align-top max-w-md">
+                          <td className="py-3.5 px-4 align-middle max-w-md">
                             <div className="flex flex-col gap-0.5">
                               <span className="inline-block text-[11px] font-semibold text-[#8b6f4e] uppercase tracking-wider">
                                 {msg.templateName}
@@ -875,23 +875,6 @@ export default function WhatsAppView() {
                     buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium bg-white border border-[#d6cfc2] hover:border-[#bdae99]"
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-stone-900 mb-1.5">
-                  Language <span className="text-rose-500 font-bold">*</span>
-                </label>
-                <Dropdown
-                  value={formLanguage}
-                  onChange={(val) => setFormLanguage(val)}
-                  options={[
-                    { value: 'English', label: 'English' },
-                    { value: 'Hindi', label: 'Hindi' },
-                    { value: 'Spanish', label: 'Spanish' },
-                  ]}
-                  size="sm"
-                  buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium bg-white border border-[#d6cfc2] hover:border-[#bdae99]"
-                />
               </div>
 
               <div>

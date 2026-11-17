@@ -45,93 +45,7 @@ import { openProductPreview } from '../../utils/productPreview';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
 const routeMap = {
-  // ─── 1. Diamond Config ───────────────────────────
-  '/diamond-config/types': {
-    endpoint: '/diamond-types',
-    title: 'Diamond Types',
-    fields: [{ name: 'name', label: 'Type Name (e.g. Lab Grown, Natural)', type: 'text', required: true }],
-  },
-  '/diamond-config/shapes': {
-    endpoint: '/diamond-shapes',
-    title: 'Diamond Shapes',
-    fields: [{ name: 'name', label: 'Shape Name (e.g. Round, Oval, Princess)', type: 'text', required: true }],
-  },
-  '/diamond-config/color': {
-    endpoint: '/diamond-colors',
-    title: 'Diamond Color',
-    fields: [{ name: 'name', label: 'Color Grade (e.g. D, E, F, G)', type: 'text', required: true }],
-  },
-  '/diamond-config/clarity': {
-    endpoint: '/diamond-clarities',
-    title: 'Diamond Clarity',
-    fields: [{ name: 'name', label: 'Clarity Grade (e.g. VVS1, VS2, SI1)', type: 'text', required: true }],
-  },
-  '/diamond-config/size': {
-    endpoint: '/diamond-sizes',
-    title: 'Diamond Size',
-    fields: [
-      { name: 'name', label: 'Size Bracket (e.g. 1.00 - 1.49ct)', type: 'text', required: true },
-      { name: 'sizeFrom', label: 'Size From (Carats)', type: 'number', required: true },
-      { name: 'sizeTo', label: 'Size To (Carats)', type: 'number', required: true },
-    ],
-  },
-
-  // ─── 2. Product Config ───────────────────────────
-  '/product-config/metal-purity': {
-    endpoint: '/metal-purities',
-    title: 'Metal Purity',
-    fields: [
-      { name: 'name', label: 'Purity Name (e.g. 18KT, 14KT, Platinum)', type: 'text', required: true },
-      { name: 'metalType', label: 'Metal Category', type: 'select', options: ['Gold', 'Platinum', 'Silver'] },
-      { name: 'karat', label: 'Karat Value (for Gold)', type: 'number' },
-    ],
-  },
-  '/product-config/metal-color': {
-    endpoint: '/metal-colors',
-    title: 'Metal Color',
-    fields: [
-      { name: 'name', label: 'Color Label (e.g. Yellow Gold, Rose Gold)', type: 'text', required: true },
-      { name: 'colorCode', label: 'Start Color Hex (e.g. #F9E498)', type: 'text' },
-      { name: 'colorCodeEnd', label: 'End Color Hex (e.g. #B38B34)', type: 'text' },
-    ],
-  },
-  '/product-config/sizes': {
-    endpoint: '/sizes',
-    title: 'Sizes',
-    fields: [{ name: 'name', label: 'Size Display (e.g. Size 7 / 17.3mm)', type: 'text', required: true }],
-  },
-  '/product-config/vto-masters': {
-    endpoint: '/vto-masters',
-    title: 'VTO Masters',
-    fields: [
-      { name: 'bodyPart', label: 'Body Part', type: 'select', options: ['hand', 'neck', 'ear', 'wrist'], required: true },
-      { name: 'lightImage.url', label: 'Light Tone Image URL', type: 'text', required: true },
-      { name: 'darkImage.url', label: 'Dark Tone Image URL', type: 'text', required: true },
-    ],
-  },
-
-  // ─── 3. Pricing Hub ──────────────────────────────
-  '/pricing-hub/metal-rates': {
-    endpoint: '/metal-types',
-    title: 'Metal Rates',
-    fields: [
-      { name: 'name', label: 'Metal Display Name', type: 'text', required: true },
-      { name: 'karat', label: 'Karat', type: 'number' },
-      { name: 'metalColor', label: 'Metal Color', type: 'text' },
-    ],
-  },
-  '/pricing-hub/diamond-rates': {
-    endpoint: '/diamond-prices',
-    title: 'Diamond rates',
-    fields: [
-      { name: 'sizeFrom', label: 'Size From (ct)', type: 'number', required: true },
-      { name: 'sizeTo', label: 'Size To (ct)', type: 'number', required: true },
-      { name: 'ratePerCarat', label: 'Rate Per Carat (INR)', type: 'number', required: true },
-      { name: 'ratePerCaratUSD', label: 'Rate Per Carat (USD)', type: 'number' },
-    ],
-  },
-
-  // ─── 4. Catalog ──────────────────────────────────
+  // ─── 1. Catalog Products ──────────────────────────
   '/catalog/jewelry-products': {
     endpoint: '/products?productType=gold',
     title: 'Jewellery Products',
@@ -151,15 +65,6 @@ const routeMap = {
       { name: 'price', label: 'Retail Price (₹)', type: 'number', required: true },
     ],
   },
-  '/catalog/ornate-products': {
-    endpoint: '/products?isOrnate=true',
-    title: 'Ornate Products',
-    fields: [
-      { name: 'title', label: 'Product Title', type: 'text', required: true },
-      { name: 'sku', label: 'Tag No / SKU', type: 'text', required: true },
-      { name: 'price', label: 'Retail Price (₹)', type: 'number', required: true },
-    ],
-  },
   '/catalog/categories': {
     endpoint: '/categories',
     title: 'Categories',
@@ -167,69 +72,15 @@ const routeMap = {
     fields: [
       { name: 'name', label: 'Category Name', type: 'text', required: true, placeholder: 'e.g. Rings, Necklaces' },
       { name: 'type', label: 'Category Type', type: 'select', default: 'category', options: [{ value: 'category', label: 'Category' }, { value: 'collection', label: 'Collection' }] },
+      { name: 'order', label: 'Display Order', type: 'number', default: 0, placeholder: '0' },
       { name: 'icon', label: 'Icon', type: 'icon', placeholder: 'Upload Icon' },
       { name: 'banner', label: 'Banner', type: 'banner', placeholder: 'Upload Banner' },
     ],
   },
-  '/catalog/navigation-menus': {
-    endpoint: '/menu-sections',
-    title: 'Navigation Menus',
-    singularTitle: 'Menu Section',
-    fields: [
-      { name: 'categoryId', label: 'Category', type: 'lookup', lookupEndpoint: '/categories/lookup', lookupFallback: '/categories?limit=100', required: true },
-      { name: 'title', label: 'Section Title', type: 'text', required: true },
-    ],
-  },
-  '/navigation-menus': {
-    endpoint: '/menu-sections',
-    title: 'Navigation Menus',
-    singularTitle: 'Menu Section',
-    fields: [
-      { name: 'categoryId', label: 'Category', type: 'lookup', lookupEndpoint: '/categories/lookup', lookupFallback: '/categories?limit=100', required: true },
-      { name: 'title', label: 'Section Title', type: 'text', required: true },
-    ],
-  },
-  '/menu-sections': {
-    endpoint: '/menu-sections',
-    title: 'Navigation Menus',
-    singularTitle: 'Menu Section',
-    fields: [
-      { name: 'categoryId', label: 'Category', type: 'lookup', lookupEndpoint: '/categories/lookup', lookupFallback: '/categories?limit=100', required: true },
-      { name: 'title', label: 'Section Title', type: 'text', required: true },
-    ],
-  },
 
-  // ─── 5. Diamonds ──────────────────────────────────
-  '/diamonds': {
-    endpoint: '/diamonds',
-    title: 'Diamonds',
-    fields: [
-      { name: 'sku', label: 'SKU / Certificate ID', type: 'text', required: true },
-      { name: 'title', label: 'Diamond Title', type: 'text', required: true },
-      { name: 'shapeId', label: 'Shape', type: 'lookup', lookupEndpoint: '/diamond-shapes/lookup', lookupFallback: '/diamond-shapes?limit=100', required: true },
-      { name: 'colorId', label: 'Color', type: 'lookup', lookupEndpoint: '/diamond-colors/lookup', lookupFallback: '/diamond-colors?limit=100', required: true },
-      { name: 'clarityId', label: 'Clarity', type: 'lookup', lookupEndpoint: '/diamond-clarities/lookup', lookupFallback: '/diamond-clarities?limit=100', required: true },
-      { name: 'typeId', label: 'Type (Lab / Natural)', type: 'lookup', lookupEndpoint: '/diamond-types/lookup', lookupFallback: '/diamond-types?limit=100', required: true },
-      { name: 'carat', label: 'Carat Weight', type: 'number', required: true },
-      { name: 'price', label: 'Price (₹)', type: 'number', required: true },
-      { name: 'rate', label: 'Rate Per Carat (₹)', type: 'number' },
-    ],
-  },
-
-  // ─── Operations & Marketing ──────────────────────
+  // ─── 2. Operations (Orders & Returns) ─────────────
   '/orders': { endpoint: '/orders', title: 'Orders' },
   '/returns': { endpoint: '/returns', title: 'Returns' },
-  '/appointments': { endpoint: '/appointments', title: 'Appointments' },
-  '/custom-inquiries': { endpoint: '/custom-inquiries', title: 'Custom Inquiries' },
-  '/cod-sequence': { endpoint: '/cod-sequences', title: 'COD Sequence' },
-  '/cod-sequences': { endpoint: '/cod-sequences', title: 'COD Sequence' },
-  '/marketing/coupons': { endpoint: '/coupons', title: 'Coupons' },
-  '/marketing/banners': { endpoint: '/banners', title: 'Banners' },
-  '/marketing/birthstones': { endpoint: '/birthstones', title: 'Birthstones' },
-  '/marketing/before-after': { endpoint: '/cust-jewellery-before-after', title: 'Lookare Before/After' },
-  '/marketing/instagram': { endpoint: '/instagram-posts', title: 'Instagram Posts' },
-  '/marketing/gifts': { endpoint: '/featured', title: 'Celebrate & Gifts' },
-  '/marketing/footer': { endpoint: '/footer-settings', title: 'Footer Management' },
 };
 
 const ORDER_TABS = [
@@ -425,6 +276,7 @@ const DynamicModuleView = () => {
             status: 'active',
             themeId: '',
             type: 'category',
+            order: 0,
             sizeChart: '',
             sizeChartKey: '',
             iconKey: '',
@@ -460,6 +312,7 @@ const DynamicModuleView = () => {
       initial.status = row.status ?? 'active';
       initial.themeId = row.themeId?._id || row.themeId || '';
       initial.type = row.type || 'category';
+      initial.order = row.order !== undefined && row.order !== null ? Number(row.order) : 0;
 
       const isRing = String(row.name || '').toLowerCase().includes('ring') && !String(row.name || '').toLowerCase().includes('earring');
       const isBangle = String(row.name || '').toLowerCase().includes('bangle');
@@ -760,16 +613,17 @@ const DynamicModuleView = () => {
     if (!orderId) return;
     try {
       setUpdatingOrderStatus(true);
-      await api.patch(`/orders/${orderId}/status`, { orderStatus: newStatus });
+      const res = await api.patch(`/orders/${orderId}/status`, { orderStatus: newStatus });
+      const updatedOrder = res?.data?.data || res?.data;
       setItems((prev) =>
         prev.map((item) =>
           (item._id === orderId || item.id === orderId)
-            ? { ...item, orderStatus: newStatus }
+            ? { ...item, ...(updatedOrder || {}), orderStatus: newStatus }
             : item
         )
       );
       if (viewingRecord && (viewingRecord._id === orderId || viewingRecord.id === orderId)) {
-        setViewingRecord((prev) => ({ ...prev, orderStatus: newStatus }));
+        setViewingRecord((prev) => ({ ...prev, ...(updatedOrder || {}), orderStatus: newStatus }));
       }
       toast.success(
         newStatus === 'processing'
@@ -933,6 +787,7 @@ const DynamicModuleView = () => {
       if (cleanEndpoint === '/categories') {
         payload.themeId = payload.themeId || null;
         payload.type = (payload.type || 'category').toLowerCase();
+        payload.order = Number(payload.order ?? 0) || 0;
         delete payload.categoryType;
         const iconVal = typeof payload.icon === 'object' ? (payload.icon?.url || '') : (payload.icon || '');
         const iconKey = payload.iconKey || (typeof payload.icon === 'object' ? payload.icon?.key : '') || '';
@@ -1616,6 +1471,9 @@ const DynamicModuleView = () => {
                         {isProductCatalogPage && (
                           <th className="py-3 px-3 whitespace-nowrap text-center">VISIBILITY</th>
                         )}
+                        {isCategoryPage && (
+                          <th className="py-3 px-3 whitespace-nowrap text-center w-28">ORDER</th>
+                        )}
                       </>
                     )}
                     <th className="py-3 px-3 whitespace-nowrap text-center">STATUS</th>
@@ -2121,6 +1979,41 @@ const DynamicModuleView = () => {
                           </td>
                         )}
 
+                        {/* CATEGORY ORDER COLUMN */}
+                        {isCategoryPage && (
+                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="number"
+                              min="0"
+                              key={`${row._id || row.id}-${row.order ?? 0}`}
+                              defaultValue={row.order !== undefined && row.order !== null ? row.order : 0}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.target.blur();
+                                }
+                              }}
+                              onBlur={async (e) => {
+                                const val = e.target.value === '' ? 0 : Number(e.target.value);
+                                if (val === (row.order ?? 0)) return;
+                                try {
+                                  await api.put(`/categories/${row._id || row.id}`, { order: val });
+                                  toast.success(`Order updated to ${val}`);
+                                  setItems((prev) =>
+                                    prev.map((item) =>
+                                      (item._id || item.id) === (row._id || row.id) ? { ...item, order: val } : item
+                                    )
+                                  );
+                                } catch (err) {
+                                  toast.error(err.response?.data?.message || 'Failed to update order');
+                                  e.target.value = row.order ?? 0;
+                                }
+                              }}
+                              className="w-16 h-7 text-center rounded-lg border border-stone-200 bg-stone-50 hover:bg-white focus:bg-white text-xs font-bold text-stone-800 focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 outline-none transition-all shadow-2xs mx-auto block cursor-text"
+                              title="Click to edit display order directly"
+                            />
+                          </td>
+                        )}
+
                         {/* STATUS COLUMN */}
                         <td className="py-2.5 px-3 text-center" onClick={(e) => isProductCatalogPage && handleToggleProductStatus(row, e)}>
                           {isOrdersPage ? (
@@ -2379,10 +2272,10 @@ const DynamicModuleView = () => {
 
             {isCategoryPage ? (
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* ─── TOP ROW: Category Name, Theme, Category Type & Category Status ─── */}
+                {/* ─── TOP ROW: Category Name, Theme, Category Type, Order & Category Status ─── */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-start">
                   {/* Category Name */}
-                  <div className="sm:col-span-4">
+                  <div className="sm:col-span-3">
                     <label className="text-xs font-bold text-stone-800 mb-1.5 block">
                       Category Name <span className="text-rose-500 font-bold">*</span>
                     </label>
@@ -2423,7 +2316,7 @@ const DynamicModuleView = () => {
                   </div>
 
                   {/* Category Type */}
-                  <div className="sm:col-span-3">
+                  <div className="sm:col-span-2">
                     <label className="text-xs font-bold text-stone-800 mb-1.5 block">
                       Category Type
                     </label>
@@ -2439,6 +2332,26 @@ const DynamicModuleView = () => {
                       placeholder="Select Category Type"
                       size="field"
                       buttonClassName="w-full h-10 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
+                    />
+                  </div>
+
+                  {/* Category Order */}
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
+                      Order
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="0"
+                      value={formData.order !== undefined && formData.order !== null ? formData.order : ''}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          order: e.target.value === '' ? '' : Number(e.target.value),
+                        }))
+                      }
+                      className="w-full h-10 px-3 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-xl hover:border-stone-300 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all shadow-2xs placeholder:text-stone-400"
                     />
                   </div>
 
@@ -3867,6 +3780,157 @@ const DynamicModuleView = () => {
                     </div>
                   )}
                 </div>
+
+                {/* ─── Order Timeline ─── */}
+                {(() => {
+                  const timeline = viewingRecord.orderTimeline || {};
+                  const isCancelled = String(viewingRecord.orderStatus).toLowerCase() === 'cancelled' || timeline.cancelled?.at;
+
+                  const formatActor = (actor) => {
+                    if (!actor) return null;
+                    if (typeof actor === 'object') {
+                      const name = [actor.profile?.firstName, actor.profile?.lastName].filter(Boolean).join(' ');
+                      if (name) return name;
+                      return actor.auth?.email || actor.email || actor._id || 'User';
+                    }
+                    return String(actor);
+                  };
+
+                  const formatDate = (val) => {
+                    if (!val) return null;
+                    try {
+                      const d = new Date(val);
+                      if (isNaN(d.getTime())) return null;
+                      return d.toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: 'short',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true,
+                      });
+                    } catch {
+                      return null;
+                    }
+                  };
+
+                  const steps = [
+                    {
+                      key: 'placed',
+                      label: 'Order Placed',
+                      at: timeline.placed?.at || viewingRecord.createdAt || viewingRecord.meta?.createdAt,
+                      by: formatActor(timeline.placed?.by || viewingRecord.userId),
+                      done: true,
+                      color: 'emerald',
+                    },
+                    {
+                      key: 'accepted',
+                      label: 'Order Accepted',
+                      at: timeline.accepted?.at,
+                      by: formatActor(timeline.accepted?.by),
+                      done: Boolean(timeline.accepted?.at) || ['processing', 'shipped', 'out_for_delivery', 'delivered'].includes(String(viewingRecord.orderStatus).toLowerCase()),
+                      color: 'emerald',
+                    },
+                    {
+                      key: 'packed',
+                      label: 'Packed',
+                      at: timeline.packed?.at,
+                      by: null,
+                      done: Boolean(timeline.packed?.at),
+                      color: 'blue',
+                    },
+                    {
+                      key: 'shipped',
+                      label: 'Shipped',
+                      at: timeline.shipped?.at,
+                      by: formatActor(timeline.shipped?.by),
+                      done: Boolean(timeline.shipped?.at) || ['shipped', 'out_for_delivery', 'delivered'].includes(String(viewingRecord.orderStatus).toLowerCase()),
+                      color: 'amber',
+                    },
+                    {
+                      key: 'delivered',
+                      label: 'Delivered',
+                      at: timeline.delivered?.at,
+                      by: formatActor(timeline.delivered?.by),
+                      done: Boolean(timeline.delivered?.at) || String(viewingRecord.orderStatus).toLowerCase() === 'delivered',
+                      color: 'purple',
+                    },
+                  ];
+
+                  if (isCancelled) {
+                    steps.push({
+                      key: 'cancelled',
+                      label: 'Cancelled',
+                      at: timeline.cancelled?.at,
+                      by: formatActor(timeline.cancelled?.by),
+                      done: true,
+                      color: 'rose',
+                    });
+                  }
+
+                  return (
+                    <div className="p-3.5 rounded-xl bg-stone-50/80 border border-stone-200/90 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                          <HiOutlineClock className="w-4 h-4 text-[#8b6f4e]" />
+                          Order Timeline
+                        </span>
+                        <span className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">
+                          Status: <span className="text-stone-800">{viewingRecord.orderStatus || 'Pending'}</span>
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
+                        {steps.map((step) => {
+                          const dateStr = formatDate(step.at);
+                          return (
+                            <div
+                              key={step.key}
+                              className={`p-2.5 rounded-lg border text-[11px] transition-all ${
+                                step.done
+                                  ? step.color === 'rose'
+                                    ? 'bg-rose-50/80 border-rose-200/90 text-rose-900'
+                                    : 'bg-white border-stone-200/90 text-stone-800 shadow-2xs'
+                                  : 'bg-stone-100/50 border-dashed border-stone-200 text-stone-400'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-semibold text-xs flex items-center gap-1">
+                                  {step.done ? (
+                                    step.color === 'rose' ? (
+                                      <HiOutlineX className="w-3.5 h-3.5 text-rose-600" />
+                                    ) : (
+                                      <HiOutlineCheckCircle className="w-3.5 h-3.5 text-emerald-600" />
+                                    )
+                                  ) : (
+                                    <span className="w-2 h-2 rounded-full bg-stone-300 inline-block" />
+                                  )}
+                                  {step.label}
+                                </span>
+                                {step.done && (
+                                  <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded ${
+                                    step.color === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800'
+                                  }`}>
+                                    {step.color === 'rose' ? 'Cancelled' : 'Completed'}
+                                  </span>
+                                )}
+                              </div>
+                              {dateStr ? (
+                                <p className="text-[10.5px] text-stone-600 font-medium">{dateStr}</p>
+                              ) : (
+                                <p className="text-[10px] text-stone-400 italic">Pending</p>
+                              )}
+                              {step.by && (
+                                <p className="text-[10px] text-stone-500 truncate mt-0.5" title={`By: ${step.by}`}>
+                                  By: <span className="font-semibold text-stone-700">{step.by}</span>
+                                </p>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* ─── Order Status Workflow Actions ─── */}
                 <div className="pt-3 border-t border-stone-200/80 flex flex-wrap items-center justify-between gap-3">

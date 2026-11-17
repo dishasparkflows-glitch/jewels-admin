@@ -160,18 +160,6 @@ const BANNER_TYPES = [
   },
 ];
 
-const PLACEMENT_TABS = [
-  { key: 'herobanner', label: 'Hero Banner' },
-  { key: 'celebrate', label: 'Gifts & Celebrate' },
-  { key: 'collectionbanner', label: 'Collection Banner' },
-  { key: 'categorybanner', label: 'Category Banner' },
-  { key: 'offerbanner', label: 'Offer Banner' },
-  { key: 'mobileappbanner', label: 'Mobile App' },
-  { key: 'bookappointbanner', label: 'Appointments' },
-  { key: 'customizebanner', label: 'Custom' },
-  { key: 'all', label: 'All Media' },
-];
-
 export default function BannersView() {
   const navigate = useNavigate();
   const location = useLocation();

@@ -37,7 +37,6 @@ import {
   uploadWithPresignedUrl,
 } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
-import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import ImageCompressionDemo from '../../components/common/ImageCompressionDemo';
 
@@ -781,11 +780,6 @@ export default function SettingsView() {
       {/* ─── Module Header (Breadcrumbs, Title, Search) ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-2 border-b border-stone-200/80">
         <div>
-          <nav className="flex items-center gap-1.5 text-xs text-stone-400 mb-1">
-            <span>Home</span>
-            <HiOutlineChevronRight className="w-3 h-3 text-stone-300" />
-            <span className="text-stone-800 font-medium">Settings</span>
-          </nav>
           <h1 className="text-xl sm:text-2xl font-serif font-bold text-stone-900 tracking-tight">
             Settings
           </h1>
@@ -1260,11 +1254,12 @@ export default function SettingsView() {
                       <label className="block text-xs font-bold text-stone-900 mb-1">
                         Store Address
                       </label>
-                      <input
-                        type="text"
+                      <textarea
+                        rows={3}
                         value={businessForm.storeAddress}
                         onChange={(e) => setBusinessForm({ ...businessForm, storeAddress: e.target.value })}
-                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                        placeholder="Enter full store address..."
+                        className="w-full p-2.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] resize-y min-h-[72px]"
                       />
                     </div>
                     <div>

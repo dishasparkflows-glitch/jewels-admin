@@ -2,7 +2,6 @@ import { createPortal } from "react-dom";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlinePlus,
-    HiOutlineTrash,
     HiOutlineX,
     HiOutlinePhotograph,
     HiOutlineCheck,
@@ -28,7 +27,6 @@ import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
-import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import ProductPickerModal from '../../components/common/ProductPickerModal';

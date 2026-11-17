@@ -3,12 +3,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineRefresh,
   HiOutlineCheck,
-  HiOutlineEye,
-  HiOutlinePencil,
   HiOutlineX,
 } from 'react-icons/hi';
 import { TbCoins } from 'react-icons/tb';
-import { IoSparklesOutline, IoDiamondOutline } from 'react-icons/io5';
+import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import ModuleHeader from '../../components/common/ModuleHeader';

@@ -8,7 +8,6 @@ import {
   HiOutlineStar,
   HiOutlineTrash,
   HiOutlineCheck,
-  HiOutlineClock,
 } from 'react-icons/hi';
 import { IoStar } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -41,6 +40,7 @@ export default function ReviewsView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
+  const [productsList, setProductsList] = useState([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -51,11 +51,25 @@ export default function ReviewsView() {
     status: 'approved',
     comment: '',
     reviewDate: '',
+    productId: '',
     image: { url: '', key: '' },
   });
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        const res = await api.get('/products/lookup?limit=200');
+        const items = res.data?.data?.items || res.data?.data || [];
+        setProductsList(Array.isArray(items) ? items : []);
+      } catch (err) {
+        console.warn('Could not load products lookup:', err);
+      }
+    };
+    fetchProducts();
+  }, []);
 
   const fetchReviews = async (page = currentPage, limit = pageSize) => {
     try {
@@ -99,6 +113,7 @@ export default function ReviewsView() {
       status: 'approved',
       comment: '',
       reviewDate: new Date().toISOString().split('T')[0],
+      productId: '',
       image: { url: '', key: '' },
     });
     setImageFile(null);
@@ -119,6 +134,7 @@ export default function ReviewsView() {
       status: rev.status || 'approved',
       comment: rev.review?.comment || '',
       reviewDate: dateVal ? new Date(dateVal).toISOString().split('T')[0] : '',
+      productId: rev.productId?._id || rev.productId || '',
       image: rev.image || { url: '', key: '' },
     });
     setImageFile(null);
@@ -185,6 +201,7 @@ export default function ReviewsView() {
           reviewDate: formData.reviewDate || new Date().toISOString(),
         },
         status: formData.status,
+        productId: formData.productId ? formData.productId : null,
         image: imageData,
       };
 
@@ -458,6 +475,7 @@ export default function ReviewsView() {
                 </th>
                 <th className="py-2.5 px-2 text-center w-12 whitespace-nowrap text-[11px] font-bold text-stone-700 uppercase tracking-wider">SR NO</th>
                 <th className="py-2 px-3 whitespace-nowrap">REVIEWER</th>
+                <th className="py-2 px-3 whitespace-nowrap">PRODUCT</th>
                 <th className="py-2 px-3 whitespace-nowrap">RATING</th>
                 <th className="py-2 px-3 whitespace-nowrap">FEEDBACK & TESTIMONIAL</th>
                 <th className="py-2 px-3 whitespace-nowrap">DATE</th>
@@ -468,14 +486,14 @@ export default function ReviewsView() {
             <tbody className="divide-y divide-stone-100 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                  <td colSpan="9" className="py-8 text-center text-stone-400">
                     <div className="animate-spin w-4 h-4 border-2 border-[#8b6f4e] border-t-transparent rounded-full mx-auto mb-1.5" />
                     Loading client reviews...
                   </td>
                 </tr>
               ) : displayedReviews.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                  <td colSpan="9" className="py-8 text-center text-stone-400">
                     No reviews found matching &quot;{search}&quot;.
                   </td>
                 </tr>
@@ -531,6 +549,37 @@ export default function ReviewsView() {
                             </p>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Product */}
+                      <td className="py-2.5 px-3">
+                        {rev.productId ? (
+                          <div className="flex items-center gap-2 max-w-[220px]">
+                            <div className="w-8 h-8 rounded-md bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center">
+                              {rev.productId.firstPhoto || rev.productId.thumbnail ? (
+                                <img
+                                  src={rev.productId.firstPhoto || rev.productId.thumbnail}
+                                  alt={rev.productId.basicInfo?.title || rev.productId.title || 'Product'}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-[9px] text-stone-400 font-bold uppercase">PROD</span>
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-semibold text-stone-900 text-xs truncate" title={rev.productId.basicInfo?.title || rev.productId.title}>
+                                {rev.productId.basicInfo?.title || rev.productId.title || 'Product'}
+                              </p>
+                              <span className="text-[10px] text-stone-600 block truncate">
+                                SKU: {rev.productId.basicInfo?.sku || rev.productId.sku || '—'}
+                              </span>
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-stone-600 border border-stone-200">
+                            General / Storewide
+                          </span>
+                        )}
                       </td>
 
                       {/* Rating */}
@@ -795,6 +844,41 @@ export default function ReviewsView() {
                 </div>
               </div>
 
+              {/* Product Selector */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-stone-900">
+                    Linked Product <span className="text-[11px] font-normal text-stone-500">(Optional)</span>
+                  </label>
+                  {formData.productId && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, productId: '' })}
+                      className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                    >
+                      Clear / Storewide
+                    </button>
+                  )}
+                </div>
+                <select
+                  value={formData.productId}
+                  onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs cursor-pointer"
+                >
+                  <option value="">General / Storewide (No specific product)</option>
+                  {productsList.map((prod) => {
+                    const prodId = prod._id || prod.id;
+                    const prodTitle = prod.basicInfo?.title || prod.title || 'Untitled Product';
+                    const prodSku = prod.basicInfo?.sku || prod.sku;
+                    return (
+                      <option key={prodId} value={prodId}>
+                        {prodTitle} {prodSku ? `(${prodSku})` : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
                   Review Headline <span className="text-rose-500 font-bold">*</span>
@@ -956,6 +1040,14 @@ export default function ReviewsView() {
                   <span className="font-bold text-stone-800 text-xs ml-1">{viewingReview.rating}/5</span>
                 </div>
               </div>
+              {viewingReview.productId && (
+                <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
+                  <span className="text-xs font-bold text-stone-500">Product</span>
+                  <span className="font-semibold text-stone-900 text-xs truncate max-w-[240px]">
+                    {viewingReview.productId.basicInfo?.title || viewingReview.productId.title || 'Product'}
+                  </span>
+                </div>
+              )}
               <div className="pt-2.5 border-t border-stone-200/50">
                 <span className="text-xs font-bold text-stone-500 block mb-1">Headline</span>
                 <span className="font-bold text-stone-900 text-sm">{viewingReview.reviewTitle}</span>

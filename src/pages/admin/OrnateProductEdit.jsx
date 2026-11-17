@@ -28,20 +28,16 @@ import {
   HiOutlineChevronRight,
   HiOutlineChevronLeft,
   HiOutlineChevronUp,
-  HiOutlineChevronDown,
-  HiOutlineQuestionMarkCircle,
   HiOutlineExternalLink,
   HiOutlineGlobeAlt,
   HiOutlineLockClosed,
 } from 'react-icons/hi';
 import { openProductPreview } from '../../utils/productPreview';
 import {
-  IoDiamondOutline,
   IoColorPaletteOutline,
   IoCheckmarkCircle,
-  IoShieldCheckmarkOutline,
 } from 'react-icons/io5';
-import { TbCoins, TbScale, TbDatabase, TbListDetails } from 'react-icons/tb';
+import { TbScale, TbDatabase, TbListDetails } from 'react-icons/tb';
 
 const buildColorOption = (item = {}) => {
   const name = item.name || '';
@@ -60,25 +56,11 @@ const buildColorOption = (item = {}) => {
   };
 };
 
-const CATEGORY_TAG_OPTIONS = [
-  { value: 'No Banner Tag', label: 'No Banner Tag' },
-  { value: 'Best Seller', label: 'Best Seller' },
-  { value: 'New Arrival', label: 'New Arrival' },
-  { value: 'Trending', label: 'Trending' },
-  { value: 'Featured', label: 'Featured' },
-  { value: 'Limited Edition', label: 'Limited Edition' },
-];
-
 const GENDER_OPTIONS = [
   { value: 'Unisex', label: 'Unisex' },
   { value: 'Female', label: 'Female' },
   { value: 'Male', label: 'Male' },
   { value: 'Kids', label: 'Kids' },
-];
-
-const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'approved', label: 'Approved' },
 ];
 
 const STOCK_STATUS_OPTIONS = [

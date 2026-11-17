@@ -31,24 +31,6 @@ const money = (val) => {
   return `₹ ${Number(val).toLocaleString('en-IN')}`;
 };
 
-const formatDate = (dateString) => {
-  if (!dateString) return 'Never';
-  try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return 'Never';
-    return d.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-  } catch {
-    return 'Never';
-  }
-};
-
 const getProductImage = (p) => {
   if (!p) return null;
   if (p.images && p.images[0]) {

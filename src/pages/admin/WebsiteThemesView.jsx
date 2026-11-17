@@ -124,6 +124,12 @@ export default function WebsiteThemesView() {
   const [deletingId, setDeletingId] = useState(null);
   const [activeMenuThemeId, setActiveMenuThemeId] = useState(null);
 
+  // Pagination & Server State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useAdminPageSize(10);
+  const [serverTotal, setServerTotal] = useState(null);
+  const [allThemesLookup, setAllThemesLookup] = useState([]);
+
   // Close card menu on outside click
   useEffect(() => {
     const handleOutsideClick = () => setActiveMenuThemeId(null);
@@ -131,20 +137,45 @@ export default function WebsiteThemesView() {
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
-  // Fetch all themes
+  // Fetch themes lookup (for global stats counts and active theme indicator)
+  const fetchLookup = useCallback(async () => {
+    try {
+      const res = await websiteThemesAPI.getLookup();
+      const items = getData(res);
+      setAllThemesLookup(Array.isArray(items) ? items : []);
+    } catch (err) {
+      console.error('Failed to load theme lookup:', err);
+    }
+  }, []);
+
+  // Fetch paginated themes from backend
   const fetchThemes = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await websiteThemesAPI.getAll({ limit: 100 });
+      const params = {
+        page: currentPage,
+        limit: pageSize,
+      };
+      if (filter && filter !== 'all') params.status = filter;
+      if (search && search.trim()) params.search = search.trim();
+
+      const [res] = await Promise.all([
+        websiteThemesAPI.getAll(params),
+        fetchLookup(),
+      ]);
+
       const items = getData(res);
       setThemes(Array.isArray(items) ? items : []);
+      if (res?.data?.pagination?.totalDocs != null) {
+        setServerTotal(res.data.pagination.totalDocs);
+      }
     } catch (error) {
       console.error('Failed to load themes:', error);
       toast.error('Could not load website themes');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, pageSize, filter, search, fetchLookup]);
 
   const relatedDataLoaded = useRef(false);
 
@@ -166,36 +197,20 @@ export default function WebsiteThemesView() {
     }
   }, []);
 
-  // On list page, only load themes list (no extra APIs)
+  // Fetch themes when page, limit, filter or search changes
   useEffect(() => {
     fetchThemes();
   }, [fetchThemes]);
 
-
-
-
-
-  const visibleThemes = useMemo(() => {
-    return themes.filter((theme) => {
-      const matchesFilter = filter === 'all' || theme.status === filter;
-      const matchesSearch =
-        !search ||
-        `${theme.name} ${theme.code} ${theme.description}`.toLowerCase().includes(search.toLowerCase());
-      return matchesFilter && matchesSearch;
-    });
-  }, [themes, filter, search]);
-
-  const [pageSize, setPageSize] = useAdminPageSize(10);
-  const {
-    currentPage,
-    setCurrentPage,
-    totalItems,
-    paginatedItems,
-  } = usePagination(visibleThemes, pageSize);
-
+  // Reset page when filter or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, search, setCurrentPage]);
+  }, [filter, search]);
+
+  const {
+    totalItems,
+    paginatedItems,
+  } = usePagination(themes, pageSize, serverTotal);
 
   const updateConfig = (updater) =>
     setEditing((current) => ({ ...current, config: updater(current.config) }));
@@ -382,14 +397,17 @@ export default function WebsiteThemesView() {
     }
   };
 
-  const counts = ['active', 'scheduled', 'draft', 'archived'].reduce(
-    (acc, st) => ({ ...acc, [st]: themes.filter((t) => t.status === st).length }),
-    {}
-  );
+  const counts = useMemo(() => {
+    const source = allThemesLookup.length > 0 ? allThemesLookup : themes;
+    return ['active', 'scheduled', 'draft', 'archived'].reduce(
+      (acc, st) => ({ ...acc, [st]: source.filter((t) => t.status === st).length }),
+      {}
+    );
+  }, [allThemesLookup, themes]);
 
   const activeThemeObj = useMemo(
-    () => themes.find((t) => t.status === 'active'),
-    [themes]
+    () => (allThemesLookup.length > 0 ? allThemesLookup : themes).find((t) => t.status === 'active'),
+    [allThemesLookup, themes]
   );
 
   // ─────────────────────────────────────────────────────────────
@@ -831,7 +849,7 @@ export default function WebsiteThemesView() {
         <div className="rounded-2xl border border-stone-200 bg-white p-16 text-center text-sm text-stone-500">
           Loading themes…
         </div>
-      ) : visibleThemes.length === 0 ? (
+      ) : paginatedItems.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-stone-300 bg-white p-16 text-center">
           <HiOutlinePhotograph className="mx-auto h-12 w-12 text-stone-400" />
           <h3 className="mt-3 text-sm font-bold text-stone-800">No themes found</h3>
@@ -924,11 +942,11 @@ export default function WebsiteThemesView() {
           </div>
 
           {/* 5. Pagination Footer */}
-          {totalItems > 0 && (
+          {(serverTotal ?? totalItems) > 0 && (
             <div className="rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden bg-white">
               <Pagination
                 currentPage={currentPage}
-                totalItems={totalItems}
+                totalItems={serverTotal ?? totalItems}
                 pageSize={pageSize}
                 onPageChange={setCurrentPage}
                 onPageSizeChange={(newSize) => {

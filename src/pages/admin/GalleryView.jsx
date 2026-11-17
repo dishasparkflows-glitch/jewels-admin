@@ -24,7 +24,8 @@ import {
 import { IoDiamondOutline, IoSparklesOutline, IoLayersOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { galleryAPI } from '../../api/services';
-import { uploadFilesWithPresignedUrls, formatBytes } from '../../utils/uploadWithPresignedUrl';
+import GalleryUploadModal from '../../components/gallery/GalleryUploadModal';
+import GalleryEditModal from '../../components/gallery/GalleryEditModal';
 import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -37,7 +38,7 @@ const BANNER_TYPES = [
   { key: 'categorybanner', label: 'Category Banners', icon: HiOutlineViewGrid },
   { key: 'offerbanner', label: 'Offer Banners', icon: HiOutlineGift },
   { key: 'celebrate', label: 'Celebrate & Gifts', icon: IoDiamondOutline },
-  { key: 'mobileappbanner', label: 'Mobile App', icon: HiOutlineDeviceMobile },
+{ key: 'mobileappbanner', label: 'Mobile App', icon: HiOutlineDeviceMobile },
   { key: 'bookappointbanner', label: 'Appointments', icon: HiOutlineCalendar },
   { key: 'customizebanner', label: 'Custom Banners', icon: HiOutlineSparkles },
   { key: 'asset', label: 'Media Assets', icon: HiOutlinePhotograph },
@@ -85,6 +86,7 @@ export default function GalleryView() {
     asset: 0,
   });
   const [themes, setThemes] = useState([]);
+  const [uploadThemeId, setUploadThemeId] = useState('');
   const [loading, setLoading] = useState(true);
 
   // ─── Filter & View State ────────────────────────────────────
@@ -99,29 +101,8 @@ export default function GalleryView() {
   // ─── Modals State ───────────────────────────────────────────
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
-
-  // ─── Edit Modal State ───────────────────────────────────────
   const [editingItem, setEditingItem] = useState(null);
-  const [editPlacement, setEditPlacement] = useState('herobanner');
-  const [editPlatform, setEditPlatform] = useState('common');
-  const [editThemeId, setEditThemeId] = useState('');
-  const [editStatus, setEditStatus] = useState('active');
-  const [isUpdating, setIsUpdating] = useState(false);
-
-  // ─── Upload Form State ──────────────────────────────────────
-  const [uploadThemeId, setUploadThemeId] = useState('');
-  const [uploadType, setUploadType] = useState('herobanner');
-  const [uploadPlatform, setUploadPlatform] = useState('common'); // 'web' | 'app' | 'common'
-
-  // Selected files (supports single and multiple file uploads)
-  const [selectedFiles, setSelectedFiles] = useState([]);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadProgressText, setUploadProgressText] = useState('');
-
-  const fileInputRef = useRef(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // ─── Pagination State ──────────────────────────────────────
   const [page, setPage] = useState(1);
@@ -218,9 +199,9 @@ export default function GalleryView() {
 
       const handleKeyDown = (e) => {
         if (e.key === 'Escape') {
-          if (!isUploading && uploadModalOpen) setUploadModalOpen(false);
+          if (uploadModalOpen) setUploadModalOpen(false);
           if (previewItem) setPreviewItem(null);
-          if (!isUpdating && editingItem) setEditingItem(null);
+          if (editingItem) setEditingItem(null);
         }
       };
 
@@ -230,126 +211,7 @@ export default function GalleryView() {
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [uploadModalOpen, previewItem, editingItem, isUploading, isUpdating]);
-
-  // ─── File Selection & Drag-and-Drop ─────────────────────────
-  const addFiles = (filesList) => {
-    const rawFiles = Array.from(filesList || []);
-    if (!rawFiles.length) return;
-
-    const validImages = [];
-    rawFiles.forEach((file) => {
-      const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif|svg)$/i.test(file.name);
-      if (isImg) {
-        validImages.push({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          file,
-          name: file.name,
-          size: file.size,
-          previewUrl: URL.createObjectURL(file),
-        });
-      } else {
-        toast.error(`"${file.name}" is not a supported image file.`);
-      }
-    });
-
-    if (validImages.length > 0) {
-      setSelectedFiles((prev) => [...prev, ...validImages]);
-    }
-  };
-
-  const removeFile = (id) => {
-    setSelectedFiles((prev) => {
-      const target = prev.find((item) => item.id === id);
-      if (target?.previewUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(target.previewUrl);
-      }
-      return prev.filter((item) => item.id !== id);
-    });
-  };
-
-  const resetUploadModal = () => {
-    selectedFiles.forEach((f) => {
-      if (f.previewUrl?.startsWith('blob:')) {
-        URL.revokeObjectURL(f.previewUrl);
-      }
-    });
-    setSelectedFiles([]);
-    setIsDragging(false);
-    setIsUploading(false);
-    setUploadProgress(0);
-    setUploadProgressText('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  // ─── Upload & Assign Action (Batch / Multi-file Support) ─────
-  const handleUploadAndAssign = async (e) => {
-    e?.preventDefault();
-
-    if (!selectedFiles.length) {
-      toast.error('Please select at least one image file to upload.');
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      setUploadProgress(5);
-      const total = selectedFiles.length;
-      setUploadProgressText(`Preparing to upload ${total} image${total > 1 ? 's' : ''}...`);
-
-      const rawFiles = selectedFiles.map((item) => item.file);
-      const uploadResults = await uploadFilesWithPresignedUrls(
-        rawFiles,
-        'website-themes',
-        (index, subProg) => {
-          const overall = Math.round(((index + subProg / 100) / total) * 80);
-          setUploadProgress(Math.max(5, overall));
-        },
-        {
-          onFileUploading: (file, index) => {
-            setUploadProgressText(`Uploading image ${index + 1} of ${total}: ${file.name}...`);
-          },
-        }
-      );
-
-      const uploadedImages = uploadResults.map((uploadRes) => ({
-        url: uploadRes.fileUrl,
-        key: uploadRes.key || '',
-      }));
-
-      setUploadProgress(85);
-      setUploadProgressText('Assigning images to theme...');
-
-      await galleryAPI.uploadAssign({
-        themeId: uploadThemeId || undefined,
-        placement: uploadType,
-        images: uploadedImages,
-        platform: uploadPlatform,
-        status: 'active',
-      });
-
-      setUploadProgress(100);
-      toast.success(
-        total === 1
-          ? 'Image successfully uploaded and assigned to theme!'
-          : `${total} images successfully uploaded and stored as separate gallery items!`
-      );
-      resetUploadModal();
-      setUploadModalOpen(false);
-      await fetchGallery();
-    } catch (err) {
-      console.error('Upload & assignment failed:', err);
-      toast.error(err.response?.data?.message || err.message || 'Failed to upload and assign images.');
-    } finally {
-      setIsUploading(false);
-      setUploadProgress(0);
-      setUploadProgressText('');
-    }
-  };
-
-  const resetUploadModal_orig = () => {
-    resetUploadModal();
-  };
+  }, [uploadModalOpen, previewItem, editingItem]);
 
   // ─── Delete / Unassign Action ───────────────────────────────
   const handleDeleteItem = async (item) => {
@@ -400,39 +262,11 @@ export default function GalleryView() {
   const handleOpenEdit = (item) => {
     fetchThemesLookup();
     setEditingItem(item);
-    setEditPlacement(item.placement || item.type || 'herobanner');
-    setEditPlatform(item.platform || 'common');
-    setEditThemeId(item.themeId || '');
-    setEditStatus(item.status || 'active');
   };
 
   const handleOpenUploadModal = () => {
-    resetUploadModal();
     fetchThemesLookup();
     setUploadModalOpen(true);
-  };
-
-  // ─── Save Edit ──────────────────────────────────────────────
-  const handleSaveEdit = async (e) => {
-    e.preventDefault();
-    if (!editingItem) return;
-    try {
-      setIsUpdating(true);
-      await galleryAPI.update(editingItem.id, {
-        placement: editPlacement,
-        platform: editPlatform,
-        themeId: editThemeId || null,
-        status: editStatus,
-      });
-      toast.success('Gallery item updated successfully!');
-      setEditingItem(null);
-      await fetchGallery();
-    } catch (err) {
-      console.error('Update failed:', err);
-      toast.error(err.response?.data?.message || 'Failed to update gallery item.');
-    } finally {
-      setIsUpdating(false);
-    }
   };
 
   // ─── Clipboard Helper ───────────────────────────────────────
@@ -1020,8 +854,8 @@ export default function GalleryView() {
           </table>
         </div>
       ) : (
-        /* ─── GRID VIEW ─────────────────────────────────────── */
-        <div className="grid grid-cols-1 gap-2.5 sm:gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        /* ─── GRID VIEW (Compact Luxury Sizing) ─────────────── */
+        <div className="grid grid-cols-2 gap-2 sm:gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
           {effectiveItems.map((item) => {
             const bt = BANNER_TYPES.find((b) => b.key === item.type) || { icon: HiOutlinePhotograph };
             const Icon = bt.icon;
@@ -1030,7 +864,7 @@ export default function GalleryView() {
             return (
               <div
                 key={item.id}
-                className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs transition-all overflow-hidden"
+                className="group relative flex flex-col justify-between rounded-lg border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs transition-all overflow-hidden"
               >
                 {/* Image Media Box (16:10 aspect ratio) */}
                 <div
@@ -1047,23 +881,23 @@ export default function GalleryView() {
 
                   {/* Hover Overlay with Eye Icon */}
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-semibold shadow-lg">
-                      <HiOutlineEye className="w-4 h-4" />
+                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold shadow-lg">
+                      <HiOutlineEye className="w-3.5 h-3.5" />
                       <span>Preview</span>
                     </span>
                   </div>
 
                   {/* Top-Left: Placement Badge */}
-                  <div className="absolute left-2 top-2 z-10 pointer-events-none">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-medium text-white shadow-xs">
+                  <div className="absolute left-1.5 top-1.5 z-10 pointer-events-none">
+                    <span className="inline-flex items-center gap-1 rounded bg-black/65 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-medium text-white shadow-xs">
                       <Icon className="h-2.5 w-2.5" />
-                      <span>{item.typeLabel || 'Media Library Asset'}</span>
+                      <span>{item.typeLabel || 'Asset'}</span>
                     </span>
                   </div>
 
                   {/* Top-Right: Platform Badge */}
-                  <div className="absolute right-2 top-2 z-10 pointer-events-none">
-                    <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-medium text-white shadow-xs">
+                  <div className="absolute right-1.5 top-1.5 z-10 pointer-events-none">
+                    <span className="inline-flex items-center gap-1 rounded bg-black/65 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-medium text-white shadow-xs">
                       {item.platform === 'common' ? (
                         <>
                           <IoSparklesOutline className="h-2.5 w-2.5 text-amber-300" />
@@ -1085,45 +919,45 @@ export default function GalleryView() {
                 </div>
 
                 {/* Card Info Content */}
-                <div className="p-2.5 flex flex-col justify-between flex-1">
+                <div className="p-2 flex flex-col justify-between flex-1">
                   <div>
-                    <h4 className="text-xs font-bold text-stone-900 truncate" title={fileName}>
+                    <h4 className="text-[11px] font-bold text-stone-900 truncate" title={fileName}>
                       {fileName}
                     </h4>
                     {item.themeName ? (
-                      <p className="mt-0.5 text-[10px] text-stone-400 font-normal truncate">
+                      <p className="mt-0.5 text-[9.5px] text-stone-400 font-normal truncate">
                         {item.themeName}
                       </p>
                     ) : null}
                   </div>
 
                   {/* Action Buttons Row */}
-                  <div className="mt-2.5 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+                  <div className="mt-2 flex items-center justify-between gap-1 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                      className="flex-1 py-1 flex items-center justify-center rounded border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
                       title="Edit Media Item"
                     >
-                      <HiOutlinePencil className="h-3.5 w-3.5 stroke-[2]" />
+                      <HiOutlinePencil className="h-3 w-3 stroke-[2]" />
                     </button>
 
                     <button
                       type="button"
                       onClick={() => copyToClipboard(item.url)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-lg border border-stone-200/90 bg-white hover:bg-stone-50 active:scale-95 text-stone-600 transition shadow-2xs cursor-pointer"
+                      className="flex-1 py-1 flex items-center justify-center rounded border border-stone-200/90 bg-white hover:bg-stone-50 active:scale-95 text-stone-600 transition shadow-2xs cursor-pointer"
                       title="Copy Image URL"
                     >
-                      <HiOutlineClipboardCopy className="h-3.5 w-3.5" />
+                      <HiOutlineClipboardCopy className="h-3 w-3" />
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleDeleteItem(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                      className="flex-1 py-1 flex items-center justify-center rounded border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 transition-all shadow-2xs cursor-pointer"
                       title="Remove Media Item"
                     >
-                      <HiOutlineTrash className="h-3.5 w-3.5 stroke-[2]" />
+                      <HiOutlineTrash className="h-3 w-3 stroke-[2]" />
                     </button>
                   </div>
                 </div>
@@ -1145,341 +979,15 @@ export default function GalleryView() {
         </div>
       )}
 
-      {/* ─── 5. UPLOAD & ASSIGN MODAL (CENTRALIZED LUXURY MODAL) ─── */}
-      {uploadModalOpen &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-stone-900/60 backdrop-blur-sm overflow-y-auto animate-fadeIn"
-            onClick={() => {
-              if (!isUploading) setUploadModalOpen(false);
-            }}
-          >
-            <div
-              className="relative w-full max-w-xl max-h-[88vh] my-auto flex flex-col rounded-3xl border border-stone-200 bg-white shadow-2xl overflow-hidden animate-scaleUp"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4 shrink-0 bg-white">
-                <div>
-                  <h3 className="text-base sm:text-lg font-bold text-stone-900 flex items-center gap-2">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#8b6c3a]/15 text-[#8b6c3a]">
-                      <HiOutlineUpload className="h-5 w-5" />
-                    </span>
-                    Upload Image & Assign to Theme
-                  </h3>
-                  <p className="mt-0.5 text-xs text-stone-500">
-                    Select website theme, placement type, target platform, and upload image.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isUploading) setUploadModalOpen(false);
-                  }}
-                  className="rounded-xl p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition cursor-pointer"
-                >
-                  <HiOutlineX className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* Modal Scrollable Form Body */}
-              <form onSubmit={handleUploadAndAssign} className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-                {/* STEP 1: SELECT THEME */}
-                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
-                  <label className="block text-xs font-bold text-stone-800">
-                    1. Select Website Theme <span className="text-rose-500">*</span>
-                  </label>
-                  <p className="text-[11px] text-stone-500">
-                    Choose which storefront theme this image belongs to.
-                  </p>
-                  <Dropdown
-                    size="field"
-                    showStatusDot={true}
-                    value={uploadThemeId}
-                    onChange={(val) => setUploadThemeId(val || '')}
-                    options={modalThemeOptions}
-                    placeholder="Select a website theme…"
-                    portal={true}
-                    menuClassName="z-[10000]"
-                  />
-                </div>
-
-                {/* STEP 2: SELECT PLACEMENT TYPE VIA COMMON DROPDOWN */}
-                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
-                  <label className="block text-xs font-bold text-stone-800">
-                    2. Image Placement Type <span className="text-rose-500">*</span>
-                  </label>
-                  <p className="text-[11px] text-stone-500">
-                    Select where this image belongs (Hero Banner, Collection Banner, Category Banner, etc.).
-                  </p>
-                  <Dropdown
-                    size="field"
-                    value={uploadType}
-                    onChange={(val) => setUploadType(val || 'herobanner')}
-                    options={placementTypeOptions}
-                    placeholder="Select image placement type…"
-                    portal={true}
-                    menuClassName="z-[10000]"
-                  />
-                </div>
-
-                {/* STEP 3: TARGET PLATFORM (WEB / APP / COMMON) */}
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-stone-800">
-                    3. Target Platform <span className="text-rose-500">*</span>
-                  </label>
-                  <p className="text-[11px] text-stone-500">
-                    Select where this image will be displayed on the platform.
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {[
-                      {
-                        id: 'web',
-                        label: 'Web',
-                        sublabel: 'Storefront Web',
-                        icon: HiOutlineDesktopComputer,
-                      },
-                      {
-                        id: 'app',
-                        label: 'App',
-                        sublabel: 'Mobile App',
-                        icon: HiOutlineDeviceMobile,
-                      },
-                      {
-                        id: 'common',
-                        label: 'Common',
-                        sublabel: 'Web & App',
-                        icon: IoSparklesOutline,
-                      },
-                    ].map((plat) => {
-                      const isSelected = uploadPlatform === plat.id;
-                      const Icon = plat.icon;
-                      return (
-                        <button
-                          key={plat.id}
-                          type="button"
-                          onClick={() => setUploadPlatform(plat.id)}
-                          className={`group flex flex-col items-center justify-center rounded-2xl border p-3 text-center transition cursor-pointer ${
-                            isSelected
-                              ? 'border-[#8b6c3a] bg-[#8b6c3a]/10 text-[#8b6c3a] font-bold shadow-xs ring-1 ring-[#8b6c3a]/30'
-                              : 'border-stone-200 bg-stone-50/50 text-stone-600 hover:border-stone-300 hover:bg-stone-50'
-                          }`}
-                        >
-                          <div
-                            className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
-                              isSelected
-                                ? 'bg-[#8b6c3a] text-white shadow-xs'
-                                : 'bg-white text-stone-500 border border-stone-200 group-hover:text-stone-800'
-                            }`}
-                          >
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <span className="mt-1.5 text-xs font-bold">{plat.label}</span>
-                          <span className="text-[10px] text-stone-400">{plat.sublabel}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* STEP 4: FILE UPLOAD ZONE (Multi-file Support) */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-stone-800">
-                      4. Upload Image File{selectedFiles.length > 1 ? 's' : ''} <span className="text-rose-500">*</span>
-                    </label>
-                    {selectedFiles.length > 0 && (
-                      <span className="text-[11px] font-semibold text-[#8b6c3a]">
-                        {selectedFiles.length} {selectedFiles.length === 1 ? 'image' : 'images'} selected ({formatBytes(selectedFiles.reduce((sum, f) => sum + f.size, 0))})
-                      </span>
-                    )}
-                  </div>
-
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={(e) => {
-                      addFiles(e.target.files);
-                      if (e.target) e.target.value = '';
-                    }}
-                    className="hidden"
-                  />
-
-                  {selectedFiles.length === 0 ? (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsDragging(true);
-                      }}
-                      onDragLeave={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsDragging(false);
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsDragging(false);
-                        addFiles(e.dataTransfer.files);
-                      }}
-                      className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-all ${
-                        isDragging
-                          ? 'border-[#8b6c3a] bg-[#faf5ee] scale-[0.99]'
-                          : 'border-stone-300 bg-stone-50/70 hover:border-[#8b6c3a] hover:bg-stone-50'
-                      }`}
-                    >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#8b6c3a]/10 text-[#8b6c3a]">
-                        <HiOutlineUpload className="h-6 w-6" />
-                      </div>
-                      <p className="mt-2 text-xs font-bold text-stone-800">
-                        Click or drag and drop images here
-                      </p>
-                      <p className="mt-1 text-[11px] text-stone-400">
-                        Select single or multiple images (WebP, PNG, JPG). Each image is stored as an individual record.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="rounded-2xl border border-stone-200 bg-stone-50/60 p-3 space-y-3">
-                      {/* Grid of staged thumbnails */}
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-0.5">
-                        {selectedFiles.map((item, idx) => (
-                          <div
-                            key={item.id}
-                            className="group relative flex flex-col rounded-xl border border-stone-200 bg-white overflow-hidden shadow-2xs"
-                          >
-                            <div className="relative aspect-video w-full bg-stone-100 flex items-center justify-center overflow-hidden">
-                              <img
-                                src={item.previewUrl}
-                                alt={item.name}
-                                className="w-full h-full object-cover"
-                              />
-                              <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white backdrop-blur-xs">
-                                #{idx + 1}
-                              </span>
-                              {!isUploading && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeFile(item.id);
-                                  }}
-                                  className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
-                                  title="Remove image"
-                                >
-                                  <HiOutlineX className="w-3 h-3 stroke-[3]" />
-                                </button>
-                              )}
-                            </div>
-                            <div className="p-1.5 flex items-center justify-between text-[10px] text-stone-500 bg-white">
-                              <span className="truncate max-w-[95px] font-medium text-stone-700" title={item.name}>
-                                {item.name}
-                              </span>
-                              <span className="shrink-0 text-stone-400 font-mono text-[9.5px]">
-                                {formatBytes(item.size)}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-
-                        {/* + Add More button inside the grid */}
-                        {!isUploading && (
-                          <div
-                            onClick={() => fileInputRef.current?.click()}
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                            }}
-                            onDrop={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              addFiles(e.dataTransfer.files);
-                            }}
-                            className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6c3a] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors cursor-pointer aspect-video p-2 text-center"
-                          >
-                            <HiOutlineUpload className="w-5 h-5 text-[#8b6c3a] mb-0.5" />
-                            <span className="text-[11px] font-bold text-stone-700">+ Add More</span>
-                            <span className="text-[9.5px] text-stone-400">or drop here</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Summary & Clear action */}
-                      {!isUploading && (
-                        <div className="flex items-center justify-between pt-1 border-t border-stone-200/60 text-[11px]">
-                          <span className="text-stone-500 font-medium">
-                            {selectedFiles.length} image{selectedFiles.length === 1 ? '' : 's'} ready to upload
-                          </span>
-                          <button
-                            type="button"
-                            onClick={resetUploadModal}
-                            className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
-                          >
-                            Clear all
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Upload Progress Bar */}
-                {isUploading && (
-                  <div className="space-y-1.5 rounded-xl border border-stone-200 bg-stone-50 p-3">
-                    <div className="flex justify-between text-xs font-semibold text-stone-700">
-                      <span>{uploadProgressText || 'Uploading and assigning images…'}</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#8b6c3a] to-emerald-500 transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Modal Action Buttons */}
-                <div className="flex items-center justify-end gap-3 border-t border-stone-100 pt-4 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setUploadModalOpen(false)}
-                    disabled={isUploading}
-                    className="rounded-xl border border-stone-200 px-4 py-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition cursor-pointer disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isUploading || selectedFiles.length === 0}
-                    className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#8b6c3a] to-[#765a2d] px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-[#8b6c3a]/20 hover:from-[#765a2d] transition cursor-pointer disabled:opacity-50"
-                  >
-                    {isUploading ? (
-                      <>
-                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                        Uploading…
-                      </>
-                    ) : (
-                      <>
-                        <HiOutlineUpload className="h-4 w-4" />
-                        {selectedFiles.length > 1
-                          ? `Upload & Assign ${selectedFiles.length} Images`
-                          : 'Upload & Assign Image'}
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>,
-          document.body
-        )}
+      {/* ─── 5. UPLOAD & ASSIGN MODAL (MODULAR SUBCOMPONENT) ─── */}
+      <GalleryUploadModal
+        isOpen={uploadModalOpen}
+        onClose={() => setUploadModalOpen(false)}
+        defaultThemeId={selectedTheme !== 'all' ? selectedTheme : uploadThemeId}
+        modalThemeOptions={modalThemeOptions}
+        placementTypeOptions={placementTypeOptions}
+        onSuccess={fetchGallery}
+      />
 
       {/* ─── 6. IMAGE FULLSCREEN / INSPECTOR MODAL ──────────────── */}
       {previewItem &&
@@ -1570,185 +1078,14 @@ export default function GalleryView() {
           document.body
         )}
 
-      {/* ─── 7. EDIT GALLERY ITEM MODAL ────────────────────────── */}
-      {editingItem &&
-        createPortal(
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-stone-900/60 backdrop-blur-sm overflow-y-auto animate-fadeIn"
-            onClick={() => {
-              if (!isUpdating) setEditingItem(null);
-            }}
-          >
-            <div
-              className="relative w-full max-w-lg max-h-[88vh] my-auto flex flex-col rounded-3xl border border-stone-200 bg-white shadow-2xl overflow-hidden animate-scaleUp"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4 shrink-0 bg-white">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#8b6c3a]/15 text-[#8b6c3a]">
-                    <HiOutlinePencil className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-base font-bold text-stone-900">Edit Media Item</h3>
-                    <p className="text-xs text-stone-500">Update placement, theme assignment, and platform.</p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isUpdating) setEditingItem(null);
-                  }}
-                  className="rounded-xl p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition cursor-pointer"
-                >
-                  <HiOutlineX className="h-5 w-5" />
-                </button>
-              </div>
-
-              {/* Form Body */}
-              <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-                {/* Media Preview Banner */}
-                <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-3">
-                  <img
-                    src={editingItem.url}
-                    alt={editingItem.name}
-                    className="h-14 w-20 rounded-xl object-cover border border-stone-200 bg-white shadow-2xs"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">Image Asset</span>
-                    <p className="text-xs font-bold text-stone-900 truncate">{editingItem.typeLabel || editingItem.placement}</p>
-                    <span className="text-[10px] text-stone-500 truncate block">{editingItem.url}</span>
-                  </div>
-                </div>
-
-                {/* Theme Dropdown */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-stone-800">Assigned Website Theme</label>
-                  <Dropdown
-                    size="field"
-                    showStatusDot={true}
-                    value={editThemeId}
-                    onChange={(val) => setEditThemeId(val || '')}
-                    options={modalThemeOptions}
-                    placeholder="Select theme…"
-                    portal={true}
-                    menuClassName="z-[10000]"
-                  />
-                </div>
-
-                {/* Placement Type Dropdown */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-stone-800">Image Placement Type</label>
-                  <Dropdown
-                    size="field"
-                    value={editPlacement}
-                    onChange={(val) => setEditPlacement(val || 'herobanner')}
-                    options={placementTypeOptions}
-                    placeholder="Select placement type…"
-                    portal={true}
-                    menuClassName="z-[10000]"
-                  />
-                </div>
-
-                {/* Target Platform Selection */}
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-stone-800">Target Platform</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {[
-                      { id: 'web', label: 'Web', icon: HiOutlineDesktopComputer },
-                      { id: 'app', label: 'App', icon: HiOutlineDeviceMobile },
-                      { id: 'common', label: 'Common', icon: IoSparklesOutline },
-                    ].map((plat) => {
-                      const isSelected = editPlatform === plat.id;
-                      const Icon = plat.icon;
-                      return (
-                        <button
-                          key={plat.id}
-                          type="button"
-                          onClick={() => setEditPlatform(plat.id)}
-                          className={`flex items-center justify-center gap-1.5 rounded-xl border py-2 px-3 text-xs font-bold transition cursor-pointer ${
-                            isSelected
-                              ? 'border-[#8b6c3a] bg-[#8b6c3a]/10 text-[#8b6c3a] shadow-xs'
-                              : 'border-stone-200 bg-stone-50/50 text-stone-600 hover:bg-stone-100'
-                          }`}
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          <span>{plat.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Status Toggle */}
-                <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-stone-50/70 p-3.5">
-                  <div>
-                    <label className="block text-xs font-bold text-stone-800">Media Status</label>
-                    <span className="text-[11px] text-stone-500">Enable or disable this media item</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={editStatus === 'active'}
-                      onClick={() => setEditStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
-                      style={editStatus === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                        editStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
-                      }`}
-                      title={`Click to set ${editStatus === 'active' ? 'Inactive' : 'Active'}`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                          editStatus === 'active' ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                    <span
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                        editStatus === 'active'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-stone-100 text-stone-500 border border-stone-200'
-                      }`}
-                    >
-                      {editStatus === 'active' ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Modal Footer */}
-                <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">
-                  <button
-                    type="button"
-                    onClick={() => setEditingItem(null)}
-                    disabled={isUpdating}
-                    className="rounded-xl border border-stone-200 px-4 py-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isUpdating}
-                    style={{ backgroundColor: 'var(--theme-primary, #8b6c3a)' }}
-                    className="inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold text-white shadow-xs hover:brightness-95 active:scale-[0.98] transition cursor-pointer disabled:opacity-50"
-                  >
-                    {isUpdating ? (
-                      <>
-                        <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                        Saving…
-                      </>
-                    ) : (
-                      'Save Changes'
-                    )}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>,
-          document.body
-        )}
+      {/* ─── 7. EDIT GALLERY ITEM MODAL (MODULAR SUBCOMPONENT) ─── */}
+      <GalleryEditModal
+        item={editingItem}
+        onClose={() => setEditingItem(null)}
+        modalThemeOptions={modalThemeOptions}
+        placementTypeOptions={placementTypeOptions}
+        onSuccess={fetchGallery}
+      />
     </div>
   );
 }

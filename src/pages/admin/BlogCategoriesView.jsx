@@ -291,6 +291,7 @@ export default function BlogCategoriesView() {
           <table className="w-full text-left text-xs sm:text-sm text-stone-700">
             <thead className="bg-[#fcfaf7] border-b border-stone-200/80 text-[11px] font-bold tracking-wider text-stone-500 uppercase">
               <tr>
+                <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
                 <th className="py-3 px-4">Category Name</th>
                 <th className="py-3 px-4">Slug</th>
                 <th className="py-3 px-4">Description</th>
@@ -302,7 +303,7 @@ export default function BlogCategoriesView() {
             <tbody className="divide-y divide-stone-100">
               {loading ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-stone-400">
+                  <td colSpan="7" className="py-12 text-center text-stone-400">
                     <div className="inline-flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin" />
                       <span>Loading blog categories...</span>
@@ -311,7 +312,7 @@ export default function BlogCategoriesView() {
                 </tr>
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-12 text-center text-stone-500">
+                  <td colSpan="7" className="py-12 text-center text-stone-500">
                     <HiOutlineTag className="w-8 h-8 text-stone-300 mx-auto mb-2" />
                     <p className="font-semibold text-stone-700">No blog categories found</p>
                     <p className="text-xs text-stone-400 mt-1">
@@ -320,12 +321,17 @@ export default function BlogCategoriesView() {
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((category) => (
+                paginatedItems.map((category, idx) => (
                   <tr
                     key={category._id}
                     onClick={() => handleOpenEdit(category)}
                     className="hover:bg-stone-50/70 transition-colors cursor-pointer"
                   >
+                    {/* Sr No */}
+                    <td className="py-3.5 px-3 text-center align-middle text-xs font-semibold text-stone-500 whitespace-nowrap">
+                      {(currentPage - 1) * pageSize + idx + 1}
+                    </td>
+
                     <td className="py-3.5 px-4 font-semibold text-stone-900">
                       <div className="flex items-center gap-2">
                         <div className="w-7 h-7 rounded-lg bg-[#faf6f0] border border-[#e8ddce] flex items-center justify-center text-[#8b6f4e] font-bold text-xs">
