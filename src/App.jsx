@@ -11,6 +11,7 @@ import AdminLayout from './components/layout/AdminLayout';
 // Lazy-loaded Admin Page Views for dynamic code-splitting & fast build
 const Login = lazy(() => import('./pages/auth/Login'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
+const OrdersView = lazy(() => import('./pages/admin/OrdersView'));
 const CodSequencesView = lazy(() => import('./pages/admin/CodSequencesView'));
 const CustomersView = lazy(() => import('./pages/admin/CustomersView'));
 const AppointmentsView = lazy(() => import('./pages/admin/AppointmentsView'));
@@ -137,6 +138,7 @@ function App() {
             <Route path="/diamond-config" element={<Navigate to="/diamond-types" replace />} />
             <Route path="/sales-orders" element={<Navigate to="/orders" replace />} />
             <Route path="/orders-sales" element={<Navigate to="/orders" replace />} />
+            <Route path="/orders" element={<OrdersView />} />
             <Route path="/customer-hub" element={<Navigate to="/customers" replace />} />
 
             {/* Exact Screenshot Views */}

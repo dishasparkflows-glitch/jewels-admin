@@ -45,6 +45,11 @@ main {
 }
 
 /* Ensure all modal backdrops & popups across the entire admin panel overlay the sticky header and sidebar completely */
+[role="dialog"],
+[aria-modal="true"] {
+  z-index: 99999 !important;
+}
+
 main:has(.fixed.inset-0:not(#admin-sidebar)),
 main:has([role="dialog"]),
 main:has([role="alertdialog"]),

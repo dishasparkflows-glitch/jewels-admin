@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   HiOutlineX,
   HiOutlineTruck,
@@ -22,33 +23,46 @@ export function ShiprocketDispatchModal({
   const [selectedCourierId, setSelectedCourierId] = useState(null);
   const [selectedCourierName, setSelectedCourierName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [packageSpecs, setPackageSpecs] = useState({
-    length: 10,
-    breadth: 10,
-    height: 10,
-    weight: 0.5,
-  });
+
+  const orderTargetId = order?._id || order?.id;
+
+  const fetchRates = () => {
+    if (!orderTargetId) return;
+    setLoadingRates(true);
+    logisticsAPI
+      .getCourierRates(orderTargetId)
+      .then((res) => {
+        const rawList =
+          res?.data?.data?.availableCouriers ||
+          res?.data?.message?.availableCouriers ||
+          res?.data?.availableCouriers ||
+          (Array.isArray(res?.data?.data) ? res.data.data : []) ||
+          [];
+
+        // Sort ascending by price (lowest to highest)
+        const sorted = [...rawList].sort(
+          (a, b) => (Number(a.rate) || 0) - (Number(b.rate) || 0)
+        );
+
+        setCouriers(sorted);
+        if (sorted.length > 0) {
+          // Pre-select the lowest price courier by default
+          setSelectedCourierId((prev) => (prev ? prev : sorted[0].courierId));
+          setSelectedCourierName((prev) => (prev ? prev : sorted[0].courierName));
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to fetch courier rates:', err.message);
+        toast.error('Unable to fetch live courier rates. Default couriers will be used.');
+      })
+      .finally(() => setLoadingRates(false));
+  };
 
   useEffect(() => {
-    if (isOpen && order?._id) {
-      setLoadingRates(true);
-      logisticsAPI
-        .getCourierRates(order._id)
-        .then((res) => {
-          const list = res?.data?.data?.availableCouriers || res?.data?.availableCouriers || [];
-          setCouriers(list);
-          if (list.length > 0) {
-            setSelectedCourierId(list[0].courierId);
-            setSelectedCourierName(list[0].courierName);
-          }
-        })
-        .catch((err) => {
-          console.warn('Failed to fetch courier rates:', err.message);
-          toast.error('Unable to fetch live courier rates. Default couriers will be used.');
-        })
-        .finally(() => setLoadingRates(false));
+    if (isOpen && orderTargetId) {
+      fetchRates();
     }
-  }, [isOpen, order?._id]);
+  }, [isOpen, orderTargetId]);
 
   if (!isOpen || !order) return null;
 
@@ -58,13 +72,13 @@ export function ShiprocketDispatchModal({
       const payload = {
         courierId: selectedCourierId,
         courierName: selectedCourierName,
-        length: Number(packageSpecs.length) || 10,
-        breadth: Number(packageSpecs.breadth) || 10,
-        height: Number(packageSpecs.height) || 10,
-        weight: Number(packageSpecs.weight) || 0.5,
+        length: 10,
+        breadth: 10,
+        height: 10,
+        weight: 0.5,
       };
 
-      const res = await logisticsAPI.createShipment(order._id, payload);
+      const res = await logisticsAPI.createShipment(orderTargetId, payload);
       toast.success(res?.data?.message || 'Shipment & AWB allocated successfully!');
       if (onSuccess) onSuccess(res?.data?.data?.shiprocketInfo || res?.data?.shiprocketInfo);
       onClose();
@@ -77,23 +91,21 @@ export function ShiprocketDispatchModal({
 
   const deliveryCity = order.shippingAddress?.city || 'Destination';
   const deliveryPincode = order.shippingAddress?.postalCode || order.shippingAddress?.pincode || '';
-  const isCod = order.payment?.method === 'cod';
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-stone-200 animate-scale-in">
+  return createPortal(
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[99999] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-stone-200 animate-scale-in">
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#201e1b] to-[#3a352f] text-white p-5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-[#8b6f4e] flex items-center justify-center text-white shadow-xs">
+        <div className="bg-gradient-to-r from-[#201e1b] to-[#3a352f] text-white px-6 py-5 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#8b6f4e] flex items-center justify-center text-white shadow-xs">
               <HiOutlineTruck className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-bold text-sm text-white flex items-center gap-1.5">
-                <span>Shiprocket Dispatch</span>
-                <span className="text-[10px] uppercase px-1.5 py-0.2 rounded bg-white/20 text-[#faf5ee]">v2 API</span>
+              <h3 className="font-bold text-base text-white">
+                Shiprocket Dispatch
               </h3>
-              <p className="text-[11px] text-stone-300">
+              <p className="text-xs text-stone-300">
                 Order {order.orderNumber} · {deliveryCity} ({deliveryPincode})
               </p>
             </div>
@@ -101,98 +113,31 @@ export function ShiprocketDispatchModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-stone-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+            className="text-stone-400 hover:text-white p-1.5 rounded-lg transition-colors cursor-pointer"
           >
             <HiOutlineX className="w-5 h-5" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-5 space-y-4 max-h-[75vh] overflow-y-auto text-xs">
-          {/* Order Snapshot */}
-          <div className="p-3 rounded-xl bg-stone-50 border border-stone-200 flex items-center justify-between">
-            <div>
-              <span className="text-[10px] uppercase font-bold text-stone-400 block">Recipient</span>
-              <span className="font-semibold text-stone-800 text-xs">
-                {order.shippingAddress?.fullName || order.customer?.firstName || 'Customer'}
-              </span>
-              <span className="text-stone-500 text-[11px] block">
-                {order.shippingAddress?.phone || order.customer?.phone}
-              </span>
-            </div>
-            <div className="text-right">
-              <span className="text-[10px] uppercase font-bold text-stone-400 block">Payment Mode</span>
-              <span className="font-bold text-xs capitalize text-stone-900">
-                {isCod ? 'Cash on Delivery (Partial COD)' : 'Prepaid (Online)'}
-              </span>
-              <span className="text-[11px] font-bold text-[#8b6f4e] block">
-                ₹{Number(order.pricing?.total || order.totalAmount || 0).toLocaleString('en-IN')}
-              </span>
-            </div>
-          </div>
-
-          {/* Package Dimensions */}
-          <div className="space-y-1.5">
-            <label className="font-bold text-stone-800 block text-xs">
-              Package Specifications
-            </label>
-            <div className="grid grid-cols-4 gap-2">
-              <div>
-                <span className="text-[10px] text-stone-500 block mb-0.5">Length (cm)</span>
-                <input
-                  type="number"
-                  value={packageSpecs.length}
-                  onChange={(e) => setPackageSpecs({ ...packageSpecs, length: e.target.value })}
-                  className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs"
-                />
-              </div>
-              <div>
-                <span className="text-[10px] text-stone-500 block mb-0.5">Breadth (cm)</span>
-                <input
-                  type="number"
-                  value={packageSpecs.breadth}
-                  onChange={(e) => setPackageSpecs({ ...packageSpecs, breadth: e.target.value })}
-                  className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs"
-                />
-              </div>
-              <div>
-                <span className="text-[10px] text-stone-500 block mb-0.5">Height (cm)</span>
-                <input
-                  type="number"
-                  value={packageSpecs.height}
-                  onChange={(e) => setPackageSpecs({ ...packageSpecs, height: e.target.value })}
-                  className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs"
-                />
-              </div>
-              <div>
-                <span className="text-[10px] text-stone-500 block mb-0.5">Weight (kg)</span>
-                <input
-                  type="number"
-                  step="0.1"
-                  value={packageSpecs.weight}
-                  onChange={(e) => setPackageSpecs({ ...packageSpecs, weight: e.target.value })}
-                  className="w-full px-2.5 py-1.5 border border-stone-300 rounded-lg text-xs font-semibold"
-                />
-              </div>
-            </div>
-          </div>
-
+        <div className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
           {/* Courier Selection */}
-          <div className="space-y-1.5">
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
-              <label className="font-bold text-stone-800 block text-xs">
+              <label className="font-bold text-stone-800 block text-sm">
                 Select Courier Partner ({couriers.length} Serviceable)
               </label>
               {loadingRates && (
-                <span className="text-[11px] text-[#8b6f4e] font-medium animate-pulse">
+                <span className="text-xs text-[#8b6f4e] font-medium animate-pulse">
                   Fetching live rates...
                 </span>
               )}
             </div>
 
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {couriers.map((c) => {
+            <div className="space-y-2.5 max-h-96 overflow-y-auto pr-1">
+              {couriers.map((c, idx) => {
                 const isSelected = selectedCourierId === c.courierId;
+                const isLowest = idx === 0;
                 return (
                   <div
                     key={c.courierId}
@@ -200,50 +145,57 @@ export function ShiprocketDispatchModal({
                       setSelectedCourierId(c.courierId);
                       setSelectedCourierName(c.courierName);
                     }}
-                    className={`p-3 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                    className={`p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
                       isSelected
                         ? 'border-[#8b6f4e] bg-[#faf6f0] ring-1 ring-[#8b6f4e]'
                         : 'border-stone-200 hover:border-stone-300 bg-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2.5">
+                    <div className="flex items-center gap-3">
                       <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                        className={`w-5 h-5 rounded-full border flex items-center justify-center ${
                           isSelected
                             ? 'border-[#8b6f4e] bg-[#8b6f4e] text-white'
                             : 'border-stone-300'
                         }`}
                       >
-                        {isSelected && <HiOutlineCheck className="w-3 h-3 stroke-[3]" />}
+                        {isSelected && <HiOutlineCheck className="w-3.5 h-3.5 stroke-[3]" />}
                       </div>
                       <div>
-                        <span className="font-bold text-stone-900 text-xs block">
-                          {c.courierName}
-                        </span>
-                        <div className="flex items-center gap-2 text-[10px] text-stone-500">
-                          <span>★ {c.rating || 4.5}</span>
-                          <span>·</span>
-                          <span>Est. Delivery: {c.etd}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-stone-900 text-sm">
+                            {c.courierName}
+                          </span>
+                          {isLowest && (
+                            <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold text-[10px] uppercase tracking-wider">
+                              Lowest Price
+                            </span>
+                          )}
                           {c.isAir && (
-                            <span className="px-1.5 py-0.2 rounded bg-sky-100 text-sky-800 font-semibold">
+                            <span className="px-1.5 py-0.5 rounded bg-sky-100 text-sky-800 font-semibold text-[10px]">
                               AIR
                             </span>
                           )}
                         </div>
+                        <div className="flex items-center gap-2 text-xs text-stone-500 mt-1">
+                          <span>★ {c.rating || 4.5}</span>
+                          <span>·</span>
+                          <span>Est. Delivery: {c.etd}</span>
+                          {c.codAvailable && <span>· COD Available</span>}
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <span className="font-bold text-xs text-stone-900 block">
-                        ₹{c.rate}
+                      <span className="font-bold text-sm text-stone-900 block">
+                        ₹{Number(c.rate || 0).toFixed(2)}
                       </span>
-                      <span className="text-[10px] text-stone-400">Freight Charge</span>
                     </div>
                   </div>
                 );
               })}
 
               {!loadingRates && couriers.length === 0 && (
-                <div className="p-4 rounded-xl bg-stone-50 text-center text-stone-500 text-xs">
+                <div className="p-5 rounded-xl bg-stone-50 text-center text-stone-500 text-sm">
                   Standard Shiprocket multi-carrier auto-allocation will be used.
                 </div>
               )}
@@ -252,12 +204,12 @@ export function ShiprocketDispatchModal({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-stone-50 border-t border-stone-200 flex items-center justify-end gap-2.5">
+        <div className="px-6 py-4 bg-stone-50 border-t border-stone-200 flex items-center justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
             disabled={isSubmitting}
-            className="px-4 py-2 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer"
+            className="px-4 py-2.5 rounded-xl border border-stone-300 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold cursor-pointer"
           >
             Cancel
           </button>
@@ -265,7 +217,7 @@ export function ShiprocketDispatchModal({
             type="button"
             onClick={handleDispatch}
             disabled={isSubmitting}
-            className="px-5 py-2 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold shadow-sm flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
+            className="px-5 py-2.5 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold shadow-sm flex items-center gap-2 cursor-pointer active:scale-95 disabled:opacity-50"
           >
             {isSubmitting ? (
               <>
@@ -281,7 +233,8 @@ export function ShiprocketDispatchModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -319,8 +272,8 @@ export function ShiprocketTrackingModal({
 
   const scans = tracking?.scans || [];
 
-  return (
-    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+  return createPortal(
+    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[99999] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-stone-200 animate-scale-in">
         <div className="bg-gradient-to-r from-[#201e1b] to-[#3a352f] text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -425,6 +378,7 @@ export function ShiprocketTrackingModal({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

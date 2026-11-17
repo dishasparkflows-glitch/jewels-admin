@@ -395,9 +395,31 @@ export default function AppointmentsView() {
       // Fallback
     }
 
-    setAppointments((prev) => prev.filter((a) => !selectedIds.has(a._id || a.id)));
+    setAppointments((prev) => prev.filter((a, idx) => !selectedIds.has(a._id || a.id || `apt_${idx}`)));
     setSelectedIds(new Set());
     toast.success(`${count} appointment${count > 1 ? 's' : ''} deleted successfully`);
+  };
+
+  const handleSelectAll = (e) => {
+    const checked = e.target.checked;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      paginatedItems.forEach((apt, idx) => {
+        const id = apt._id || apt.id || `apt_${idx}`;
+        if (checked) next.add(id);
+        else next.delete(id);
+      });
+      return next;
+    });
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const handleCreateAppointment = async (e) => {
@@ -513,6 +535,13 @@ export default function AppointmentsView() {
     totalItems,
     paginatedItems,
   } = usePagination(displayedList, pageSize, serverTotal);
+
+  const isAllSelected =
+    paginatedItems.length > 0 &&
+    paginatedItems.every((apt, idx) => {
+      const id = apt._id || apt.id || `apt_${idx}`;
+      return selectedIds.has(id);
+    });
 
   // Initials generator
   const getInitials = (name = '') => {
@@ -843,6 +872,21 @@ export default function AppointmentsView() {
               </div>
             )}
           </div>
+
+          {/* Bulk Delete Button */}
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            disabled={selectedIds.size === 0}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap ${
+              selectedIds.size > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50 cursor-pointer'
+                : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
+            }`}
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 shrink-0" />
+            <span>Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}</span>
+          </button>
         </div>
       </div>
 
@@ -884,7 +928,15 @@ export default function AppointmentsView() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-stone-200/80 bg-stone-50/60 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-                  <th className="py-3 px-4 whitespace-nowrap">ID</th>
+                  <th className="py-3 pl-4 pr-1 w-8">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={handleSelectAll}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                    />
+                  </th>
+                  <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
                   <th className="py-3 px-4 whitespace-nowrap">CLIENT</th>
                   <th className="py-3 px-4 whitespace-nowrap">CONTACT</th>
                   <th className="py-3 px-4 whitespace-nowrap">DATE & TIME</th>
@@ -907,11 +959,29 @@ export default function AppointmentsView() {
                     displayId,
                   } = extractAptData(apt, idx);
 
+                  const isSelected = selectedIds.has(id);
+
                   return (
-                    <tr key={id} className="hover:bg-[#faf7f2]/60 transition-colors">
-                      {/* ID */}
-                      <td className="py-3.5 px-4 font-mono text-stone-400 font-medium">
-                        {displayId}
+                    <tr
+                      key={id}
+                      onClick={() => setViewingApt({ ...apt, ...extractAptData(apt, idx) })}
+                      className={`transition-colors cursor-pointer ${
+                        isSelected ? 'bg-[#faf6f0]/70' : 'hover:bg-[#faf7f2]/60'
+                      }`}
+                    >
+                      {/* Selection Checkbox */}
+                      <td className="py-3.5 pl-4 pr-1 w-8" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelect(id)}
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                        />
+                      </td>
+
+                      {/* SR NO */}
+                      <td className="py-3.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + idx + 1}
                       </td>
 
                       {/* Client */}
@@ -958,7 +1028,7 @@ export default function AppointmentsView() {
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3.5 pr-5 pl-2 whitespace-nowrap text-right">
+                      <td className="py-3.5 pr-5 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"

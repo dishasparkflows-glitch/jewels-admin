@@ -189,15 +189,15 @@ export const galleryAPI = {
 
 // ─── Shiprocket Logistics ──────────────────────────
 export const logisticsAPI = {
-  getCourierRates: (orderId) => api.get(`/admin/logistics/rates/${orderId}`),
-  createShipment: (orderId, data) => api.post(`/admin/logistics/create-shipment/${orderId}`, data),
-  assignAwb: (orderId, data) => api.post(`/admin/logistics/assign-awb/${orderId}`, data),
-  getLabel: (orderId) => api.get(`/admin/logistics/label/${orderId}`),
-  getManifest: (orderId) => api.get(`/admin/logistics/manifest/${orderId}`),
-  trackOrder: (orderId) => api.get(`/admin/logistics/track/${orderId}`),
-  cancelShipment: (orderId) => api.post('/admin/logistics/cancel', { orderId }),
-  createReturnShipment: (returnId, data) => api.post(`/admin/logistics/create-return-shipment/${returnId}`, data),
-  getReturnLabel: (returnId) => api.get(`/admin/logistics/return-label/${returnId}`),
-  trackReturn: (returnId) => api.get(`/admin/logistics/track-return/${returnId}`),
+  getCourierRates: (orderId) => api.get(`/shiprocket/rates/${orderId}`),
+  createShipment: (orderId, data) => api.post(`/shiprocket/create-shipment/${orderId}`, data),
+  assignAwb: (orderId, data) => api.post(`/shiprocket/assign-awb/${orderId}`, data),
+  getLabel: (orderId) => api.get(`/shiprocket/label/${orderId}`),
+  getManifest: (orderId) => api.get(`/shiprocket/manifest/${orderId}`),
+  trackOrder: (orderId) => api.get(`/shiprocket/track/${orderId}`),
+  cancelShipment: (orderId) => api.post('/shiprocket/cancel', { orderId }),
+  createReturnShipment: (returnId, data) => api.post(`/shiprocket/create-return-shipment/${returnId}`, data),
+  getReturnLabel: (returnId) => api.get(`/shiprocket/return-label/${returnId}`),
+  trackReturn: (returnId) => api.get(`/shiprocket/track-return/${returnId}`),
 };
 

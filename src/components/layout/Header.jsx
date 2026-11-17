@@ -73,7 +73,7 @@ const Header = ({ onMobileToggle }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4 shrink-0">
       {/* Left: Mobile hamburger & Sidebar toggles */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Sidebar Toggle (On / Off) */}

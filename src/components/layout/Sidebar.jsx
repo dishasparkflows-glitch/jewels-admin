@@ -233,8 +233,8 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
             }`
       }`}
     >
-      {/* ─── Top Brand Header (Matches Screenshot) ────────────── */}
-      <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200/80 flex-shrink-0 bg-white">
+      {/* ─── Top Brand Header (Aligned h-14 with Top Header) ────────────── */}
+      <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200/80 shrink-0 bg-white">
         <NavLink
           to="/dashboard"
           onClick={onMobileClose}
