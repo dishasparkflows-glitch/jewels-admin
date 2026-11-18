@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineTrash,
   HiOutlineX,
@@ -147,7 +147,7 @@ export default function DiamondSizesView() {
           item._id === sizeItem._id ? { ...item, status: nextStatus } : item
         )
       );
-    } catch (err) {
+    } catch {
       toast.error('Failed to update visibility');
     }
   };

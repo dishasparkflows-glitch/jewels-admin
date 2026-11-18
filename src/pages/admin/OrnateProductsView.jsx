@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -452,7 +452,7 @@ export default function OrnateProductsView() {
       if (pId && isSingle) {
         try {
           await api.delete(`/products/${pId}`);
-        } catch (e) {}
+        } catch {}
       }
       const res = await api.delete(`/product-groups/${group._id}`);
       const isHard = res.data?.data?.hardDeleted ?? isEmpty;
@@ -472,7 +472,7 @@ export default function OrnateProductsView() {
       toast.success(`Group marked as ${nextStatus}`);
       fetchData();
       fetchTabCounts();
-    } catch (err) {
+    } catch {
       toast.error('Failed to update group status');
     }
   };
@@ -1351,7 +1351,7 @@ export default function OrnateProductsView() {
                 setSelectedIds(new Set());
                 fetchData();
                 fetchTabCounts();
-              } catch (err) {
+              } catch {
                 toast.error('Could not delete some products');
               }
             }}

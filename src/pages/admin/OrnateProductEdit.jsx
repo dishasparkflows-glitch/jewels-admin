@@ -3,7 +3,7 @@ import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import CategorySelect from '../../components/common/CategorySelect';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -81,7 +81,6 @@ export default function OrnateProductEdit() {
   const [saving, setSaving] = useState(false);
   const [productRecord, setProductRecord] = useState(null);
 
-  const [uploadingImage, setUploadingImage] = useState(false);
   const [previewModalImage, setPreviewModalImage] = useState(null);
   const [previewModalGallery, setPreviewModalGallery] = useState([]);
   const [previewModalIndex, setPreviewModalIndex] = useState(0);
@@ -203,7 +202,6 @@ export default function OrnateProductEdit() {
       });
     }
   };
-  const [imageUrlInput, setImageUrlInput] = useState('');
   const [draggedCareIndex, setDraggedCareIndex] = useState(null);
   const [dragOverCareIndex, setDragOverCareIndex] = useState(null);
 
@@ -212,7 +210,6 @@ export default function OrnateProductEdit() {
     categories: rawCategoryList,
     regularCategories,
     collectionCategories,
-    categoryOnlyOptions,
   } = useCategoryLookup();
   const [selectedCollectionIds, setSelectedCollectionIds] = useState([]);
 
@@ -569,18 +566,6 @@ export default function OrnateProductEdit() {
     fetchProduct();
   }, [id, isEditMode]);
 
-  // Recalculate formula helper values
-  const markupAmount = useMemo(() => {
-    const cost = Number(pricing.costPrice) || 0;
-    const markup = Number(pricing.markupPercentage) || 0;
-    return Math.round((cost * markup) / 100);
-  }, [pricing.costPrice, pricing.markupPercentage]);
-
-  const autoCalculatedPrice = useMemo(() => {
-    const cost = Number(pricing.costPrice) || 0;
-    return cost + markupAmount;
-  }, [pricing.costPrice, markupAmount]);
-
   // Handle Cost Price or Markup change
   const handleCostOrMarkupChange = (field, value) => {
     const numVal = Number(value) || 0;
@@ -768,70 +753,6 @@ export default function OrnateProductEdit() {
         media: (prev[colorName]?.media || []).filter((m) => m.id !== mediaId),
       },
     }));
-  };
-
-  // Add Image via direct URL
-  const handleAddImageUrl = () => {
-    if (!imageUrlInput.trim()) return;
-    const newImg = {
-      id: `img-${Date.now()}`,
-      url: imageUrlInput.trim(),
-      isPrimary: ornateImages.length === 0,
-    };
-    setOrnateImages((prev) => [...prev, newImg]);
-    setImageUrlInput('');
-    toast.success('Image added to gallery!');
-  };
-
-  // File upload for Images (supports multi-image upload & auto upload-time compression)
-  const handleImageFileUpload = async (e) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
-    try {
-      setUploadingImage(true);
-      toast.loading(`Optimizing & uploading ${files.length} image(s)...`, { id: 'ornate-img-upload' });
-
-      const uploadedResults = await uploadFilesWithPresignedUrls(files, 'products', null, { productId: mediaProductId });
-
-      const newImages = uploadedResults.map((res, i) => ({
-        id: `img-${Date.now()}-${i}-${Math.random().toString(36).slice(2, 7)}`,
-        url: res.fileUrl,
-        key: res.key,
-        isPrimary: ornateImages.length === 0 && i === 0,
-        name: res.name || files[i].name,
-        size: res.size ? formatBytes(res.size) : undefined,
-      }));
-
-      if (newImages.length > 0) {
-        setOrnateImages((prev) => [...prev, ...newImages]);
-        toast.success(`Uploaded & optimized ${newImages.length} image(s)!`, { id: 'ornate-img-upload' });
-      }
-    } catch (err) {
-      console.error('Image upload failed:', err);
-      toast.error(err.response?.data?.message || err.message || 'Image upload failed. You can also paste an image URL directly.', { id: 'ornate-img-upload' });
-    } finally {
-      setUploadingImage(false);
-      e.target.value = '';
-    }
-  };
-
-  // Remove Image
-  const handleRemoveImage = async (imgId) => {
-    const image = ornateImages.find((item) => item.id === imgId);
-    try {
-      await deleteUploadedFile(image);
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
-      return;
-    }
-    setOrnateImages((prev) => {
-      const filtered = prev.filter((img) => img.id !== imgId);
-      if (filtered.length > 0 && !filtered.some((img) => img.isPrimary)) {
-        filtered[0].isPrimary = true;
-      }
-      return filtered;
-    });
   };
 
   // Set Primary Image
@@ -1090,11 +1011,11 @@ export default function OrnateProductEdit() {
           soldCount:
             baseInfo.soldCount !== '' && baseInfo.soldCount !== undefined && baseInfo.soldCount !== null
               ? Number(baseInfo.soldCount)
-              : (product?.demoMetrics?.soldCount ?? 0),
+              : (productRecord?.demoMetrics?.soldCount ?? 0),
           reviewCount:
             baseInfo.reviewCount !== '' && baseInfo.reviewCount !== undefined && baseInfo.reviewCount !== null
               ? Number(baseInfo.reviewCount)
-              : (product?.demoMetrics?.reviewCount ?? 0),
+              : (productRecord?.demoMetrics?.reviewCount ?? 0),
         },
         isOrnate: true,
         productType: 'silver',

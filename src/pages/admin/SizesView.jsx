@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineTrash,
   HiOutlineX,
@@ -263,7 +263,7 @@ export default function SizesView() {
           item._id === sizeItem._id ? { ...item, status: nextStatus } : item
         )
       );
-    } catch (err) {
+    } catch {
       toast.error('Failed to update status');
     }
   };
@@ -327,7 +327,7 @@ export default function SizesView() {
       setSizes((prev) => prev.filter((s) => !selectedIds.includes(s._id)));
       setSelectedIds([]);
       toast.success(`${count} size${count > 1 ? 's' : ''} deleted successfully`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete some sizes');
     }
   };
@@ -475,7 +475,7 @@ export default function SizesView() {
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((s, idx) => {
+                paginatedItems.map((s) => {
                   const isGoldSize = s.name === '18 inch';
                   const categoryName = resolveCategoryName(s);
 

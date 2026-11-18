@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import {
   HiOutlineSwitchHorizontal,
@@ -123,7 +123,7 @@ export default function MoveProductModal({
           if (others.length > 0) {
             setTargetGroupId(others[0]._id);
           }
-        } catch (fallbackErr) {
+        } catch {
           toast.error('Could not load target groups');
         }
       } finally {

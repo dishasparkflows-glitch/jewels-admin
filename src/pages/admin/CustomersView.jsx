@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineUserGroup,
   HiOutlineUser,
@@ -19,6 +19,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import CountryCodeSelect from '../../components/common/CountryCodeSelect';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function CustomersView() {
@@ -38,6 +39,7 @@ export default function CustomersView() {
     lastName: '',
     email: '',
     phone: '',
+    countryCode: '+91',
     password: '',
   });
 
@@ -115,31 +117,36 @@ export default function CustomersView() {
       setUsers((prev) => prev.filter((u) => !selectedIds.has(u._id || u.id)));
       setSelectedIds(new Set());
       toast.success(`${count} customer${count > 1 ? 's' : ''} deleted successfully`);
-    } catch (err) {
+    } catch {
       toast.error('Could not delete selected customers');
     }
   };
 
   const handleCreateCustomer = async (e) => {
     e.preventDefault();
-    if (!formData.firstName || !formData.email) {
+    if (!formData.firstName?.trim() || !formData.email?.trim()) {
       toast.error('First Name and Email are required');
       return;
     }
     try {
       setSubmitting(true);
       const payload = {
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
-        phone: formData.phone,
-        password: formData.password,
+        profile: {
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim() || formData.firstName.trim(),
+          phone: formData.phone.trim(),
+          countryCode: formData.countryCode || '+91',
+        },
+        auth: {
+          email: formData.email.trim().toLowerCase(),
+          ...(formData.password?.trim() ? { password: formData.password.trim() } : {}),
+        },
         role: 'user',
       };
       await api.post('/users', payload);
       toast.success('Customer added successfully');
       setIsAddModalOpen(false);
-      setFormData({ firstName: '', lastName: '', email: '', phone: '', password: '' });
+      setFormData({ firstName: '', lastName: '', email: '', phone: '', countryCode: '+91', password: '' });
       fetchUsers();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not create customer');
@@ -221,7 +228,7 @@ export default function CustomersView() {
     return `${day} ${month} ${year}`;
   };
 
-  const getCustomerId = (user, index) => {
+  const getCustomerId = (user) => {
     if (user.customId) return user.customId;
     if (user._id && String(user._id).startsWith('cust_')) {
       const num = String(user._id).replace('cust_', '');
@@ -348,7 +355,9 @@ export default function CustomersView() {
                   const lastName = client.profile?.lastName || '';
                   const fullName = firstName ? `${firstName} ${lastName}`.trim() : (client.auth?.email || 'Client');
                   const email = client.auth?.email || '—';
-                  const phone = client.profile?.phone || '—';
+                  const countryCode = client.profile?.countryCode || '';
+                  const rawPhone = client.profile?.phone || '';
+                  const phone = rawPhone ? `${countryCode ? `${countryCode} ` : ''}${rawPhone}` : '—';
                   const orders = Number(client.statistics?.ordersCount ?? client.ordersCount) || 0;
                   const ltv = Number(client.statistics?.lifetimeValue ?? client.lifetimeValue) || 0;
                   const joinedDate = formatJoinedDate(client.createdAt || client.meta?.createdAt, idx);
@@ -527,13 +536,22 @@ export default function CustomersView() {
                 <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Phone Number
                 </label>
-                <input
-                  type="tel"
-                  placeholder="e.g. 9899900118"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
-                />
+                <div className="flex items-center gap-2">
+                  <div className="shrink-0">
+                    <CountryCodeSelect
+                      value={formData.countryCode || '+91'}
+                      onChange={(dialCode) => setFormData({ ...formData, countryCode: dialCode })}
+                      buttonClassName="flex items-center justify-between gap-2 px-3 text-xs sm:text-[13px] font-semibold text-stone-800 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl h-[42px] min-w-[96px] shadow-2xs focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer"
+                    />
+                  </div>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 9899900118"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="flex-1 px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs h-[42px]"
+                  />
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">

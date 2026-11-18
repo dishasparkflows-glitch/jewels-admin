@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import {
   DEFAULT_THEME,
   THEME_PRESETS,
@@ -33,7 +33,7 @@ export const ThemeProvider = ({ children }) => {
         const preset = THEME_PRESETS.find((p) => p.id === parsed.id);
         if (preset) return preset;
       }
-    } catch (e) {
+    } catch {
       // Fallback
     }
     return DEFAULT_THEME;
@@ -44,7 +44,7 @@ export const ThemeProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem(SIDEBAR_POS_KEY);
       if (saved === 'right' || saved === 'left') return saved;
-    } catch (e) {}
+    } catch {}
     return 'left';
   });
 
@@ -53,7 +53,7 @@ export const ThemeProvider = ({ children }) => {
     try {
       const saved = localStorage.getItem(SIDEBAR_OPEN_KEY);
       if (saved !== null) return saved === 'true';
-    } catch (e) {}
+    } catch {}
     return true;
   });
 
@@ -81,7 +81,7 @@ export const ThemeProvider = ({ children }) => {
   useEffect(() => {
     try {
       localStorage.setItem(SIDEBAR_POS_KEY, sidebarPosition);
-    } catch (e) {}
+    } catch {}
   }, [sidebarPosition]);
 
   const toggleSidebarPosition = () => {
@@ -93,7 +93,7 @@ export const ThemeProvider = ({ children }) => {
       const next = typeof valueOrFn === 'function' ? valueOrFn(prev) : Boolean(valueOrFn);
       try {
         localStorage.setItem(SIDEBAR_OPEN_KEY, String(next));
-      } catch (e) {}
+      } catch {}
       return next;
     });
   };
@@ -649,7 +649,7 @@ export const ThemeProvider = ({ children }) => {
 
     try {
       window.dispatchEvent(new CustomEvent('themeChanged', { detail: currentTheme }));
-    } catch (e) {}
+    } catch {}
   }, [currentTheme]);
 
   const selectTheme = (themeId) => {

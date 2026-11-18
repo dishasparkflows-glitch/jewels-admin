@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineInformationCircle,
   HiOutlinePhotograph,
@@ -16,7 +16,7 @@ import { getMediaUrl } from '../../utils/imageUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 
-const ORDERED_PARTS = ['hand', 'neck', 'ear', 'wrist'];
+const ORDERED_PARTS = ['hand', 'neck', 'ear'];
 
 const BODY_PART_META = {
   hand: {
@@ -37,17 +37,11 @@ const BODY_PART_META = {
     description:
       'Used for Earrings. High-detail close-up of a side-view ear lobe is recommended.',
   },
-  wrist: {
-    name: 'Wrist Master',
-    env: 'WRIST ENVIRONMENT',
-    description:
-      'Used for Bangles and Bracelets. Upload images of a wrist from a side or top-down angle.',
-  },
 };
 
 export default function VtoMastersView() {
   const [masters, setMasters] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -217,7 +211,7 @@ export default function VtoMastersView() {
 
   // Quick stat cards
   const configuredCount = useMemo(
-    () => masters.filter((m) => m.lightImage?.url || m.darkImage?.url).length,
+    () => masters.filter((m) => ORDERED_PARTS.includes(m.bodyPart) && (m.lightImage?.url || m.darkImage?.url)).length,
     [masters]
   );
 
@@ -261,7 +255,7 @@ export default function VtoMastersView() {
       <StatCards cards={statCardsData} />
 
       {/* ─── Master Assets Cards Grid ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-5">
         {ORDERED_PARTS.map((key) => {
           const meta = BODY_PART_META[key];
           const master = masters.find((m) => m.bodyPart === key);
@@ -274,25 +268,25 @@ export default function VtoMastersView() {
           return (
             <div
               key={key}
-              className="bg-white rounded-xl border border-stone-200/80 p-3 sm:p-3.5 shadow-xs flex flex-col justify-between hover:border-stone-300 transition-all"
+              className="bg-white rounded-2xl border border-stone-200/80 p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-stone-300 hover:shadow-sm transition-all"
             >
               {/* Top Details */}
               <div>
                 {/* Header Row: Icon + Title/Env + Active Badge */}
                 <div
                   onClick={() => openEditModal(key, master)}
-                  className="flex items-center justify-between gap-1.5 cursor-pointer hover:opacity-85 transition-opacity"
+                  className="flex items-center justify-between gap-2 cursor-pointer hover:opacity-85 transition-opacity"
                   title="Click to edit VTO master"
                 >
-                  <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-lg bg-[#faf5ee] border border-[#ebdccb] flex items-center justify-center text-[#8f6d43] flex-shrink-0 shadow-2xs">
-                      <IoSparklesOutline className="w-3.5 h-3.5 text-[#8f6d43]" />
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-[#faf5ee] border border-[#ebdccb] flex items-center justify-center text-[#8f6d43] flex-shrink-0 shadow-2xs">
+                      <IoSparklesOutline className="w-4 h-4 text-[#8f6d43]" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-stone-900 text-xs sm:text-[13px] tracking-tight leading-tight">
+                      <h3 className="font-bold text-stone-900 text-sm sm:text-[15px] tracking-tight leading-tight">
                         {meta.name}
                       </h3>
-                      <span className="text-[9px] font-bold tracking-wider text-stone-400 uppercase">
+                      <span className="text-[10px] font-bold tracking-wider text-stone-400 uppercase">
                         {meta.env}
                       </span>
                     </div>
@@ -300,25 +294,24 @@ export default function VtoMastersView() {
 
                   {/* ACTIVE Badge */}
                   {isActive && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wide text-emerald-600 bg-emerald-50/90 border border-emerald-200/80 shadow-2xs">
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-emerald-600 bg-emerald-50/90 border border-emerald-200/80 shadow-2xs">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       ACTIVE
                     </span>
                   )}
                 </div>
 
-
                 {/* Dual Image Containers: LIGHT SKIN TONE vs DARK SKIN TONE */}
-                <div className="grid grid-cols-2 gap-2 mt-2.5">
+                <div className="grid grid-cols-2 gap-3 mt-3.5">
                   {/* Light Tone */}
                   <div>
-                    <div className="text-[9px] font-bold tracking-wider text-stone-400 uppercase mb-1 flex items-center justify-between">
+                    <div className="text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1.5 flex items-center justify-between">
                       <span>LIGHT SKIN TONE</span>
                     </div>
 
                     <label
                       htmlFor={`card-upload-${key}-light`}
-                      className="group relative aspect-[4/5] max-h-36 rounded-xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
+                      className="group relative aspect-[3/4] sm:aspect-[4/5] min-h-[180px] sm:min-h-[220px] rounded-xl overflow-hidden bg-[#fafafa] border border-stone-200/80 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
                       title="Click to replace Light Tone image"
                     >
                       <input
@@ -338,21 +331,21 @@ export default function VtoMastersView() {
                         />
                       ) : (
                         <div className="w-full h-full bg-[#f9fafb] flex flex-col items-center justify-center text-stone-300">
-                          <span className="text-[10px] font-medium text-stone-400">Light</span>
+                          <span className="text-xs font-medium text-stone-400">Light</span>
                         </div>
                       )}
 
                       {/* Loading Spinner during upload */}
                       {isLightUploading ? (
-                        <div className="absolute inset-0 bg-stone-900/75 backdrop-blur-xs flex flex-col items-center justify-center gap-1 z-20 text-white">
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span className="text-[9px] font-bold tracking-wider uppercase">Uploading...</span>
+                        <div className="absolute inset-0 bg-stone-900/75 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 z-20 text-white">
+                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span className="text-[10px] font-bold tracking-wider uppercase">Uploading...</span>
                         </div>
                       ) : (
-                        /* Hover Overlay - exact match to Screenshot 1: REPLACE LIGHT */
+                        /* Hover Overlay */
                         <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-2xs flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 text-white">
-                          <HiOutlineUpload className="w-4 h-4 text-white" />
-                          <span className="text-[9px] font-bold tracking-wider uppercase text-center px-1">
+                          <HiOutlineUpload className="w-5 h-5 text-white" />
+                          <span className="text-[10px] font-bold tracking-wider uppercase text-center px-2">
                             {lightImg ? 'REPLACE LIGHT' : 'UPLOAD LIGHT'}
                           </span>
                         </div>
@@ -362,13 +355,13 @@ export default function VtoMastersView() {
 
                   {/* Dark Tone */}
                   <div>
-                    <div className="text-[9px] font-bold tracking-wider text-stone-400 uppercase mb-1 flex items-center justify-between">
+                    <div className="text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1.5 flex items-center justify-between">
                       <span>DARK SKIN TONE</span>
                     </div>
 
                     <label
                       htmlFor={`card-upload-${key}-dark`}
-                      className="group relative aspect-[4/5] max-h-36 rounded-xl overflow-hidden bg-[#fafafa] border border-stone-150/80 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
+                      className="group relative aspect-[3/4] sm:aspect-[4/5] min-h-[180px] sm:min-h-[220px] rounded-xl overflow-hidden bg-[#fafafa] border border-stone-200/80 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
                       title="Click to replace Dark Tone image"
                     >
                       <input
@@ -388,21 +381,21 @@ export default function VtoMastersView() {
                         />
                       ) : (
                         <div className="w-full h-full bg-[#f9fafb] flex flex-col items-center justify-center text-stone-300">
-                          <span className="text-[10px] font-medium text-stone-400">Dark</span>
+                          <span className="text-xs font-medium text-stone-400">Dark</span>
                         </div>
                       )}
 
                       {/* Loading Spinner during upload */}
                       {isDarkUploading ? (
-                        <div className="absolute inset-0 bg-stone-900/75 backdrop-blur-xs flex flex-col items-center justify-center gap-1 z-20 text-white">
-                          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          <span className="text-[9px] font-bold tracking-wider uppercase">Uploading...</span>
+                        <div className="absolute inset-0 bg-stone-900/75 backdrop-blur-xs flex flex-col items-center justify-center gap-1.5 z-20 text-white">
+                          <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span className="text-[10px] font-bold tracking-wider uppercase">Uploading...</span>
                         </div>
                       ) : (
-                        /* Hover Overlay - exact match to Screenshot 1: REPLACE DARK */
+                        /* Hover Overlay */
                         <div className="absolute inset-0 bg-stone-900/60 backdrop-blur-2xs flex flex-col items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity z-10 text-white">
-                          <HiOutlineUpload className="w-4 h-4 text-white" />
-                          <span className="text-[9px] font-bold tracking-wider uppercase text-center px-1">
+                          <HiOutlineUpload className="w-5 h-5 text-white" />
+                          <span className="text-[10px] font-bold tracking-wider uppercase text-center px-2">
                             {darkImg ? 'REPLACE DARK' : 'UPLOAD DARK'}
                           </span>
                         </div>
@@ -413,16 +406,16 @@ export default function VtoMastersView() {
               </div>
 
               {/* Bottom Card Footer: High-res required + UPDATE MASTER */}
-              <div className="flex items-center justify-between gap-1.5 mt-2.5 pt-2 border-t border-stone-100">
-                <div className="flex items-center gap-1 text-[10px] text-stone-400">
-                  <HiOutlineInformationCircle className="w-3 h-3 text-stone-400 flex-shrink-0" />
+              <div className="flex items-center justify-between gap-2 mt-3.5 pt-2.5 border-t border-stone-100">
+                <div className="flex items-center gap-1 text-[11px] text-stone-400">
+                  <HiOutlineInformationCircle className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
                   <span>High-res req</span>
                 </div>
 
                 <button
                   type="button"
                   onClick={() => openEditModal(key, master)}
-                  className="bg-[#d1d5db] hover:bg-stone-400 active:bg-stone-500 text-white font-bold text-[9px] tracking-wider px-2.5 py-1 rounded transition-colors shadow-2xs uppercase cursor-pointer"
+                  className="bg-[#d1d5db] hover:bg-stone-400 active:bg-stone-500 text-white font-bold text-[10px] tracking-wider px-3 py-1.5 rounded-md transition-colors shadow-2xs uppercase cursor-pointer"
                 >
                   UPDATE MASTER
                 </button>

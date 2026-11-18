@@ -190,7 +190,9 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
     onChange([
       ...rows,
       ...(source.length
-        ? source.map(({ _id, ...r }) => {
+        ? source.map((item) => {
+            const r = { ...item };
+            delete r._id;
             let nextR = { ...r, diamondTypeId: type, rateSource: 'master' };
             nextR = autoFillRow(nextR, rates);
             const masterRate = getMasterRate(nextR, rates);

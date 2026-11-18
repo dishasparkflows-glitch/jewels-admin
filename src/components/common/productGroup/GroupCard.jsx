@@ -1,4 +1,3 @@
-import React from 'react';
 import { HiOutlineEye, HiOutlineCheckCircle, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 

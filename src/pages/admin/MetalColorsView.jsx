@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineTrash,
   HiOutlineX,
@@ -150,22 +150,6 @@ export default function MetalColorsView() {
     setIsModalOpen(true);
   };
 
-  // Toggle active/inactive status
-  const handleToggleStatus = async (colorItem) => {
-    try {
-      const nextStatus = colorItem.status === 'active' ? 'inactive' : 'active';
-      await api.put(`/metal-colors/${colorItem._id}`, { status: nextStatus });
-      toast.success(`${colorItem.name} status set to ${nextStatus}`);
-      setColors((prev) =>
-        prev.map((item) =>
-          item._id === colorItem._id ? { ...item, status: nextStatus } : item
-        )
-      );
-    } catch (err) {
-      toast.error('Failed to update status');
-    }
-  };
-
   // Delete Metal Color
   const handleDelete = async (id, name) => {
     const isConfirmed = await confirm({
@@ -225,7 +209,7 @@ export default function MetalColorsView() {
       setColors((prev) => prev.filter((c) => !selectedIds.includes(c._id)));
       setSelectedIds([]);
       toast.success(`${count} color${count > 1 ? 's' : ''} deleted successfully`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete some metal colors');
     }
   };

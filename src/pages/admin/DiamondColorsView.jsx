@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
   HiOutlineTrash,
@@ -195,7 +195,7 @@ export default function DiamondColorsView() {
           item._id === colorItem._id ? { ...item, status: nextStatus } : item
         )
       );
-    } catch (err) {
+    } catch {
       toast.error('Failed to update status');
     }
   };

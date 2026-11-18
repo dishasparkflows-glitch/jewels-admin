@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
@@ -68,7 +68,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
   // Pagination state
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
-  const [totalPages, setTotalPages] = useState(1);
+  const [, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
   // Lightbox preview & copy status

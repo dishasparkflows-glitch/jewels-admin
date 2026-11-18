@@ -40,9 +40,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   const themeRgb = hexToRgb(currentTheme?.primary || '#8b6f4e');
   const activeBg = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.22)`;
   const activeBorder = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.38)`;
-  const activeGlow = `0 0 10px rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.55)`;
   const activeShadow = `0 1px 3px rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.14)`;
-  const activeParentBg = `rgba(${themeRgb.r}, ${themeRgb.g}, ${themeRgb.b}, 0.10)`;
 
   // Only open catalog submenu by default; other submenus remain closed
   const [openSubmenus, setOpenSubmenus] = useState({

@@ -13,7 +13,7 @@ export function getAdminPageSize(fallback = DEFAULT_PAGE_SIZE) {
       const num = Number(saved);
       if (num > 0) return num;
     }
-  } catch (e) {
+  } catch {
     // Ignore storage errors
   }
   return fallback;
@@ -29,7 +29,7 @@ export function setAdminPageSize(newSize) {
       localStorage.setItem('admin_page_size', String(num));
       window.dispatchEvent(new CustomEvent('admin_page_size_change', { detail: num }));
     }
-  } catch (e) {
+  } catch {
     // Ignore storage errors
   }
 }

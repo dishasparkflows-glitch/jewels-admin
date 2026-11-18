@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineCash,
   HiOutlineCalculator,
@@ -130,7 +130,7 @@ export default function CodSequencesView() {
         next.delete(id);
         return next;
       });
-    } catch (err) {
+    } catch {
       setItems((prev) => prev.filter((i) => (i._id || i.id) !== id));
       setSelectedIds((prev) => {
         const next = new Set(prev);
@@ -165,7 +165,7 @@ export default function CodSequencesView() {
       setItems((prev) => prev.filter((i) => !selectedIds.has(i._id || i.id)));
       setSelectedIds(new Set());
       toast.success(`${count} COD tier${count > 1 ? 's' : ''} deleted successfully`);
-    } catch (err) {
+    } catch {
       setItems((prev) => prev.filter((i) => !selectedIds.has(i._id || i.id)));
       setSelectedIds(new Set());
       toast.success(`${count} COD tier${count > 1 ? 's' : ''} deleted`);

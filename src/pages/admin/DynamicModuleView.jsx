@@ -227,7 +227,7 @@ const DynamicModuleView = () => {
   const [formData, setFormData] = useState({});
   const [pendingThemeImages, setPendingThemeImages] = useState({});
   const [saving, setSaving] = useState(false);
-  const [isSyncing, setIsSyncing] = useState(false);
+  const [isSyncing] = useState(false);
   const [isOrnateSyncModalOpen, setIsOrnateSyncModalOpen] = useState(false);
   const [lookupData, setLookupData] = useState({}); // { fieldName: [{ value, label }] }
   const [uploadingField, setUploadingField] = useState(null);
@@ -519,17 +519,6 @@ const DynamicModuleView = () => {
     }
   };
 
-  const handleTogglePromoBannerStatus = (index) => {
-    setFormData((prev) => {
-      const currentList = Array.isArray(prev.promoBanners) ? [...prev.promoBanners] : [];
-      if (currentList[index]) {
-        const nextStatus = currentList[index].status === 'inactive' ? 'active' : 'inactive';
-        currentList[index] = { ...currentList[index], status: nextStatus };
-      }
-      return { ...prev, promoBanners: currentList };
-    });
-  };
-
   const executeFileUpload = async (fieldName, file, folder = 'categories') => {
     if (!file) return;
     const localPreview = URL.createObjectURL(file);
@@ -642,40 +631,6 @@ const DynamicModuleView = () => {
       toast.error(err.response?.data?.message || `Failed to update order status to ${newStatus}`);
     } finally {
       setUpdatingOrderStatus(false);
-    }
-  };
-
-  // Trigger Ornate ERP Sync & store data in DB
-  const handleSyncOrnateProducts = async () => {
-    if (isSyncing) return;
-    try {
-      setIsSyncing(true);
-      toast.loading('Connecting to Ornate ERP and syncing products into database...', {
-        id: 'ornate-sync',
-      });
-
-      let res;
-      try {
-        res = await api.post('/ornate/sync', {}, { timeout: 120000 });
-      } catch (fullSyncErr) {
-        console.warn('Full sync attempt failed, trying sync-labels fallback:', fullSyncErr);
-        res = await api.post('/ornate/sync-labels', {}, { timeout: 120000 });
-      }
-
-      const syncMsg = res.data?.message || 'Ornate products synced successfully!';
-      toast.success(syncMsg, { id: 'ornate-sync' });
-
-      // Refresh items from database
-      await fetchItems();
-    } catch (err) {
-      console.error('Failed to sync Ornate products:', err);
-      const errMsg =
-        err.response?.data?.message ||
-        err.message ||
-        'Failed to sync products from Ornate ERP';
-      toast.error(errMsg, { id: 'ornate-sync' });
-    } finally {
-      setIsSyncing(false);
     }
   };
 
@@ -971,7 +926,7 @@ const DynamicModuleView = () => {
       setItems((prev) => prev.filter((i) => !selectedIds.includes(i._id) && !selectedIds.includes(i.id)));
       setSelectedIds([]);
       toast.success(`${count} record${count > 1 ? 's' : ''} deleted successfully`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete some records');
     }
   };

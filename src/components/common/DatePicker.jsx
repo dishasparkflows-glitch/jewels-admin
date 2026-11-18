@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useId, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useId, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   HiOutlineCalendar,
   HiOutlineChevronLeft,
@@ -7,6 +8,9 @@ import {
   HiOutlineClock,
   HiOutlineX,
 } from 'react-icons/hi';
+
+const PopupLayer = ({ enabled, children }) =>
+  enabled && typeof document !== 'undefined' ? createPortal(children, document.body) : children;
 
 /**
  * Helper to format date into YYYY-MM-DD string
@@ -98,6 +102,7 @@ export default function DatePicker({
   maxDate,
   direction = 'auto',
   openUpward = false,
+  portal = true,
   size = 'md',
   className = '',
   buttonClassName = '',
@@ -111,6 +116,7 @@ export default function DatePicker({
   const [isOpen, setIsOpen] = useState(false);
   const [dropUp, setDropUp] = useState(openUpward || direction === 'up');
   const [isMonthYearPickerOpen, setIsMonthYearPickerOpen] = useState(false);
+  const [popupPosition, setPopupPosition] = useState({});
 
   // Parse initial selected date
   const parseDateValue = useCallback((val) => {
@@ -209,8 +215,52 @@ export default function DatePicker({
     }
   }, [value, parseDateValue]);
 
-  // Handle smart auto-flip (open upward when near bottom of viewport or modal)
+  // Compute and update portal popup position anchored to trigger
+  const updatePopupPosition = useCallback(() => {
+    const anchor = triggerRef.current || containerRef.current;
+    if (!anchor) return;
+    const rect = anchor.getBoundingClientRect();
+    if (!rect || (rect.width === 0 && rect.height === 0)) return;
+
+    const estimatedPopupHeight = includeTime ? 440 : 380;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    const shouldDropUp =
+      openUpward ||
+      direction === 'up' ||
+      (direction !== 'down' && spaceBelow < estimatedPopupHeight && spaceAbove > spaceBelow);
+    setDropUp(shouldDropUp);
+
+    const targetWidth = Math.min(330, window.innerWidth - 16);
+    let left = Math.round(rect.left);
+    if (left + targetWidth > window.innerWidth - 8) {
+      left = Math.max(8, window.innerWidth - targetWidth - 8);
+    }
+
+    setPopupPosition({
+      position: 'fixed',
+      left,
+      width: targetWidth,
+      top: shouldDropUp ? 'auto' : Math.round(rect.bottom + 6),
+      bottom: shouldDropUp ? Math.round(window.innerHeight - rect.top + 6) : 'auto',
+      zIndex: 100000,
+    });
+  }, [direction, openUpward, includeTime]);
+
+  useLayoutEffect(() => {
+    if (!isOpen || !portal) return;
+    updatePopupPosition();
+    window.addEventListener('resize', updatePopupPosition);
+    window.addEventListener('scroll', updatePopupPosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePopupPosition);
+      window.removeEventListener('scroll', updatePopupPosition, true);
+    };
+  }, [isOpen, portal, updatePopupPosition]);
+
+  // Handle smart auto-flip (open upward when near bottom of viewport or modal) when NOT portaled
   useEffect(() => {
+    if (portal) return;
     if (openUpward || direction === 'up') {
       setDropUp(true);
       return;
@@ -248,14 +298,16 @@ export default function DatePicker({
         setDropUp(false);
       }
     }
-  }, [isOpen, direction, openUpward, includeTime]);
+  }, [isOpen, direction, openUpward, includeTime, portal]);
 
   // Close on outside pointer click
   useEffect(() => {
     if (!isOpen) return;
 
     const handlePointerDown = (e) => {
-      if (containerRef.current && !containerRef.current.contains(e.target)) {
+      const insideContainer = containerRef.current && containerRef.current.contains(e.target);
+      const insidePopup = popupRef.current && popupRef.current.contains(e.target);
+      if (!insideContainer && !insidePopup) {
         handleCancel();
       }
     };
@@ -565,14 +617,18 @@ export default function DatePicker({
 
       {/* ─── Luxury DatePicker Pop-up (Matches User Screenshot) ─── */}
       {isOpen && (
-        <div
-          ref={popupRef}
-          className={`absolute left-0 z-[70] w-[320px] sm:w-[330px] max-w-[calc(100vw-1.5rem)] p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-stone-200/90 shadow-2xl shadow-stone-900/15 backdrop-blur-md transition-all animate-scaleUp select-none ${
-            dropUp
-              ? 'bottom-full mb-2 origin-bottom'
-              : 'top-full mt-2 origin-top'
-          } ${popupClassName}`}
-        >
+        <PopupLayer enabled={portal}>
+          <div
+            ref={popupRef}
+            style={portal ? popupPosition : undefined}
+            className={`${
+              portal
+                ? ''
+                : `absolute left-0 ${
+                    dropUp ? 'bottom-full mb-2 origin-bottom' : 'top-full mt-2 origin-top'
+                  }`
+            } z-[100000] w-[320px] sm:w-[330px] max-w-[calc(100vw-1.5rem)] p-4 sm:p-5 bg-white rounded-2xl sm:rounded-3xl border border-stone-200/90 shadow-2xl shadow-stone-900/15 backdrop-blur-md transition-all animate-scaleUp select-none ${popupClassName}`}
+          >
           {/* Header: < Month Year ⌵ > */}
           <div className="flex items-center justify-between mb-4">
             <button
@@ -799,7 +855,8 @@ export default function DatePicker({
             </div>
           </div>
         </div>
-      )}
-    </div>
-  );
+      </PopupLayer>
+    )}
+  </div>
+);
 }

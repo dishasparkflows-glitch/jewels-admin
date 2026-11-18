@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlineCalendar,
   HiOutlinePhotograph,
@@ -60,7 +60,7 @@ export default function BirthstonePortfolioView() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [viewingMonth, setViewingMonth] = useState(null);
-  const [editingMonth, setEditingMonth] = useState(null);
+  const [, setEditingMonth] = useState(null);
   const [saving, setSaving] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -256,7 +256,7 @@ export default function BirthstonePortfolioView() {
 
       toast.success(`${item.month} set to ${nextStatus}`);
       fetchBirthstones();
-    } catch (err) {
+    } catch {
       toast.error('Failed to update status');
     }
   };

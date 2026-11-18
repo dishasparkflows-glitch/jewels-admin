@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
-  HiOutlineUpload,
   HiOutlineSearch,
   HiOutlineEye,
   HiOutlineTrash,
@@ -95,14 +94,14 @@ export default function GalleryView() {
   const [selectedType, setSelectedType] = useState('all');
   const [selectedPlatform, setSelectedPlatform] = useState('all'); // 'all' | 'web' | 'mobile' | 'common'
   const [search, setSearch] = useState('');
-  const [sortBy, setSortBy] = useState('newest');
+  const [sortBy] = useState('newest');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
   // ─── Modals State ───────────────────────────────────────────
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [previewItem, setPreviewItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [, setIsDeleting] = useState(false);
 
   // ─── Pagination State ──────────────────────────────────────
   const [page, setPage] = useState(1);

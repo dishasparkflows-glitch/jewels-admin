@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineDocumentText,
   HiOutlinePaperAirplane,
@@ -33,7 +33,7 @@ export default function WhatsAppView() {
   // Templates & Messages
   const [templates, setTemplates] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
 
   // Filters for Templates
   const [search, setSearch] = useState('');
@@ -45,7 +45,7 @@ export default function WhatsAppView() {
   const [historyStatusFilter, setHistoryStatusFilter] = useState('all');
 
   // Action Menu dropdown state
-  const [openActionId, setOpenActionId] = useState(null);
+  const [, setOpenActionId] = useState(null);
 
   // Modals
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -252,7 +252,7 @@ export default function WhatsAppView() {
       await api.delete(`/whatsapp/templates/${tmpl._id}`);
       setTemplates((prev) => prev.filter((t) => t._id !== tmpl._id));
       toast.success('Template removed');
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete template');
     }
   };
@@ -326,7 +326,7 @@ export default function WhatsAppView() {
               setTestSelectedTemplate(templates[0]?.name || '');
               setIsTestModalOpen(true);
             }}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-lg text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            className="flex items-center gap-2 h-[42px] px-4 sm:px-5 bg-white hover:bg-stone-50 active:scale-[0.98] border border-stone-200 text-stone-700 rounded-xl text-xs sm:text-[13.5px] font-bold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
           >
             <HiOutlinePaperAirplane className="w-3.5 h-3.5 rotate-45 transform text-[#8b6f4e]" />
             <span>Send Test</span>

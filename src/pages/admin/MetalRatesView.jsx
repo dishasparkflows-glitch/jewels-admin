@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineRefresh,
   HiOutlineCheck,
@@ -26,7 +26,6 @@ export default function MetalRatesView() {
   const [base24KRate, setBase24KRate] = useState('');
   const [platinumRate, setPlatinumRate] = useState('');
   const [silverRate, setSilverRate] = useState('');
-  const [updatedAt, setUpdatedAt] = useState(null);
 
   // Modal State
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -53,7 +52,6 @@ export default function MetalRatesView() {
         setForm24K(String(g24));
         setFormPlatinum(String(pt));
         setFormSilver(String(ag));
-        setUpdatedAt(data.updatedAt || null);
       }
     } catch (err) {
       console.error('Failed to load metal rates:', err);
@@ -238,7 +236,6 @@ export default function MetalRatesView() {
         setBase24KRate(Number(updated.base24KRate) || 0);
         setPlatinumRate(Number(updated.platinumRate) || 0);
         setSilverRate(Number(updated.silverRate) || 0);
-        setUpdatedAt(updated.updatedAt || new Date().toISOString());
       } else {
         setBase24KRate(payload.base24KRate);
         setPlatinumRate(payload.platinumRate);

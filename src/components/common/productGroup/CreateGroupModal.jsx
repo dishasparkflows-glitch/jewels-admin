@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { HiOutlineSearch, HiOutlineX } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';

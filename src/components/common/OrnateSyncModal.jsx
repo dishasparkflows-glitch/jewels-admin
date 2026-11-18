@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { IoClose, IoRefreshOutline, IoCubeOutline, IoSearchOutline, IoGridOutline, IoListOutline, IoEyeOutline, IoChevronBack, IoChevronForward } from 'react-icons/io5';
@@ -29,7 +29,6 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
   const [selected, setSelected] = useState(new Set());
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [metal, setMetal] = useState('');
   const [selectionFilter, setSelectionFilter] = useState('all');
   const [view, setView] = useState('grid');
   const [sort, setSort] = useState('erp');
@@ -41,7 +40,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     if (!isOpen) return;
     let active = true;
     setLoading(true); setError(''); setCategories([]); setSelected(new Set());
-    setQuery(''); setSelectedCategory(''); setMetal(''); setPage(1); setDetailId(null); setSelectionFilter('all');
+    setQuery(''); setSelectedCategory(''); setPage(1); setDetailId(null); setSelectionFilter('all');
     const load = async () => {
       try {
         let response;
@@ -62,7 +61,6 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
 
   useEffect(() => {
     if (!isOpen) return;
-    const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const escape = (event) => { if (event.key === 'Escape' && !syncing) { if (detailId) setDetailId(null); else onClose?.(); } };
     window.addEventListener('keydown', escape);
@@ -84,7 +82,6 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     }));
     return [...unique.values()];
   }, [categories]);
-  const metals = useMemo(() => [...new Set(products.map((p) => p.metalName).filter(Boolean))], [products]);
 
   const filtered = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -97,9 +94,9 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     if (sort === 'priceAsc') result.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
     if (sort === 'priceDesc') result.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
     return result;
-  }, [products, query, selectedCategory, metal, selectionFilter, selected, sort]);
+  }, [products, query, selectedCategory, selectionFilter, selected, sort]);
 
-  useEffect(() => setPage(1), [query, selectedCategory, metal, selectionFilter, sort]);
+  useEffect(() => setPage(1), [query, selectedCategory, selectionFilter, sort]);
 
   const handleSelectCategory = (catName) => {
     // Strictly single selection: if clicked again, toggle back to all; otherwise switch to the single selected category
@@ -110,20 +107,6 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     const matched = products.filter((p) =>
       p.id &&
       (!nextCat || String(p.groupName || '').trim().toLowerCase() === nextCat.trim().toLowerCase())
-    );
-    setSelected(new Set(matched.map((p) => p.id)));
-  };
-
-  const handleSelectMetal = (metalName) => {
-    // Strictly single selection: if clicked again, toggle back to all; otherwise switch to the single selected metal
-    const isAlreadySelected = Boolean(metalName) && metal === metalName;
-    const nextMetal = isAlreadySelected ? '' : metalName;
-    setMetal(nextMetal);
-    setPage(1);
-    const matched = products.filter((p) =>
-      p.id &&
-      (!nextMetal || p.metalName === nextMetal) &&
-      (!selectedCategory || String(p.groupName || '').trim().toLowerCase() === selectedCategory.trim().toLowerCase())
     );
     setSelected(new Set(matched.map((p) => p.id)));
   };

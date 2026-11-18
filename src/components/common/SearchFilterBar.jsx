@@ -1,4 +1,3 @@
-import React from 'react';
 import { HiOutlineSearch, HiOutlineAdjustments, HiOutlineX } from 'react-icons/hi';
 
 export default function SearchFilterBar({

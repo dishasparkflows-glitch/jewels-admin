@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlinePlus,
   HiOutlineTrash,
@@ -186,20 +186,6 @@ export default function CouponsView() {
     setIsModalOpen(true);
   };
 
-  // Toggle coupon status (active/inactive)
-  const handleToggleStatus = async (c) => {
-    try {
-      const nextStatus = c.status === 'active' ? 'inactive' : 'active';
-      await api.put(`/coupons/${c._id}`, { status: nextStatus });
-      toast.success(`Coupon ${c.coupon?.code || 'coupon'} set to ${nextStatus}`);
-      setCoupons((prev) =>
-        prev.map((item) => (item._id === c._id ? { ...item, status: nextStatus } : item))
-      );
-    } catch (err) {
-      toast.error('Failed to update coupon status');
-    }
-  };
-
   // Delete coupon
   const handleDelete = async (id, code) => {
     const isConfirmed = await confirm({
@@ -259,7 +245,7 @@ export default function CouponsView() {
       setCoupons((prev) => prev.filter((item) => !selectedIds.includes(item._id)));
       setSelectedIds([]);
       toast.success(`${count} coupon${count > 1 ? 's' : ''} deleted successfully`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete some coupons');
     }
   };
@@ -473,7 +459,6 @@ export default function CouponsView() {
                 </tr>
               ) : (
                 paginatedItems.map((c, idx) => {
-                  const isActive = c.status === 'active';
                   const isPercentage = c.discount?.type === 'Percentage';
                   const discountVal = c.discount?.value ?? 0;
                   const formattedDiscount = isPercentage

@@ -1,4 +1,3 @@
-import React from 'react';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import GoogleAnalyticsSection from '../../components/analytics/GoogleAnalyticsSection';
 

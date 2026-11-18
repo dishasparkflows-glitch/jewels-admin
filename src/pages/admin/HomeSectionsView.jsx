@@ -1,27 +1,20 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlinePlus,
-    HiOutlineX,
-    HiOutlinePhotograph,
-    HiOutlineCheck,
+  HiOutlineX,
+  HiOutlineCheck,
   HiOutlineArrowUp,
   HiOutlineArrowDown,
-  HiOutlineFilter,
   HiOutlineTemplate,
-  HiOutlineViewGrid,
-  HiOutlineSparkles,
-    HiOutlineChatAlt2,
-  HiOutlineShieldCheck,
-    HiOutlineSwitchHorizontal,
-  } from 'react-icons/hi';
+  HiOutlineSwitchHorizontal,
+} from 'react-icons/hi';
 import {
   IoLayersOutline,
   IoDiamondOutline,
 } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -31,29 +24,6 @@ import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import ProductPickerModal from '../../components/common/ProductPickerModal';
 import { useAdminPageSize } from '../../utils/adminPagination';
-
-// Type metadata mapping
-const SECTION_TYPES = [
-  { value: 'hero_slider', label: 'Hero Banner Slider', icon: HiOutlineTemplate, desc: 'Full-width banner slider with headline & CTA' },
-  { value: 'category_grid', label: 'Category Grid', icon: HiOutlineViewGrid, desc: 'Curated category cards with image & link' },
-  { value: 'banner_grid', label: 'Multi-Banner Grid', icon: HiOutlinePhotograph, desc: 'Editorial 2/3/4 banner showcase tiles' },
-  { value: 'product_carousel', label: 'Product Carousel', icon: IoDiamondOutline, desc: 'Curated products & trending solitaire carousel' },
-  { value: 'promo_banner', label: 'Spotlight Promo Banner', icon: HiOutlineSparkles, desc: 'Bespoke atelier / spotlight promo banner' },
-  { value: 'trust_badges', label: 'Trust & Heritage Perks', icon: HiOutlineShieldCheck, desc: 'Assurance badges (Shipping, Certification, Lifetime)' },
-  { value: 'testimonials', label: 'Client Testimonials', icon: HiOutlineChatAlt2, desc: 'Real customer feedback, ratings, and quotes' },
-  { value: 'instagram_feed', label: 'Instagram Gallery', icon: HiOutlinePhotograph, desc: 'Social curation feed and editorial grid' },
-  { value: 'appointment_banner', label: 'Appointment CTA Banner', icon: HiOutlineSparkles, desc: 'Virtual & in-store concierge booking' },
-  { value: 'custom_content', label: 'Custom Content Block', icon: IoLayersOutline, desc: 'Flexible custom content with title & items' },
-];
-
-const PLACEMENT_OPTIONS = [
-  { value: 'home_top', label: 'Home Top (Header / Hero)' },
-  { value: 'home_middle', label: 'Home Middle (Main Stream)' },
-  { value: 'home_bottom', label: 'Home Bottom (Footer / Story)' },
-  { value: 'all', label: 'All Pages / Global' },
-];
-
-
 
 const getProductBadgeLabel = (prod) => {
   if (prod.isOrnate || prod.productType === 'ornate') return 'ORNATE';
@@ -69,12 +39,9 @@ export default function HomeSectionsView() {
   // State
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [placementFilter, setPlacementFilter] = useState('all');
+  const [search] = useState('');
+  const [statusFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState([]);
-  const [showTypeDrawer, setShowTypeDrawer] = useState(false);
 
   // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -82,28 +49,20 @@ export default function HomeSectionsView() {
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [viewingSection, setViewingSection] = useState(null);
   const [editingSection, setEditingSection] = useState(null);
+  const [isSlugEdited, setIsSlugEdited] = useState(false);
 
   // Form State
   const [formData, setFormData] = useState({
     title: '',
     subtitle: '',
-    description: '',
     sectionKey: '',
-    sectionType: 'product_carousel',
-    placement: 'home_middle',
     order: 0,
     status: 'active',
     visibility: {
       website: true,
       mobileApp: true,
     },
-    badgeText: '',
-    buttonText: '',
-    buttonLink: '',
-    imageUrl: '',
-    imagePublicId: '',
     selectedProducts: [],
-    items: [],
   });
 
   // Product Picker Modal State
@@ -151,18 +110,15 @@ export default function HomeSectionsView() {
         sec.sectionKey?.toLowerCase().includes(search.toLowerCase()) ||
         sec.subtitle?.toLowerCase().includes(search.toLowerCase());
 
-      const matchType = typeFilter === 'all' || sec.sectionType === typeFilter;
       const matchStatus = statusFilter === 'all' || sec.status === statusFilter;
-      const matchPlacement = placementFilter === 'all' || sec.placement === placementFilter;
 
-      return matchSearch && matchType && matchStatus && matchPlacement;
+      return matchSearch && matchStatus;
     });
-  }, [sections, search, typeFilter, statusFilter, placementFilter]);
+  }, [sections, search, statusFilter]);
 
   // Pagination hook
   const {
     paginatedItems: paginatedSections = [],
-    totalPages,
     totalItems,
   } = usePagination(filteredSections, pageSize, serverTotal);
 
@@ -171,7 +127,10 @@ export default function HomeSectionsView() {
     const total = sections.length;
     const active = sections.filter((s) => s.status === 'active').length;
     const inactive = total - active;
-    const totalItems = sections.reduce((acc, s) => acc + (s.items?.length || 0), 0);
+    const totalItems = sections.reduce(
+      (acc, s) => acc + (s.productIds?.length || s.items?.length || 0),
+      0
+    );
     return { total, active, inactive, totalItems };
   }, [sections]);
 
@@ -208,13 +167,12 @@ export default function HomeSectionsView() {
   // Open Add Modal
   const handleOpenAdd = () => {
     setEditingSection(null);
+    setIsSlugEdited(false);
     setFormData({
       title: '',
       subtitle: '',
       description: '',
       sectionKey: '',
-      sectionType: 'product_carousel',
-      placement: 'home_middle',
       order: sections.length + 1,
       status: 'active',
       visibility: {
@@ -222,10 +180,6 @@ export default function HomeSectionsView() {
         mobileApp: true,
       },
       badgeText: '',
-      buttonText: '',
-      buttonLink: '',
-      imageUrl: '',
-      imagePublicId: '',
       selectedProducts: [],
       items: [],
     });
@@ -235,39 +189,50 @@ export default function HomeSectionsView() {
   // Open Edit Modal
   const handleOpenEdit = (sec) => {
     setEditingSection(sec);
-    const loadedSelected = (sec.items || []).map((it) => ({
-      _id: it.productId || it._id,
-      id: it.productId || it._id,
-      productId: it.productId,
-      title: it.title,
-      subtitle: it.subtitle,
-      thumbnail: it.image?.url || it.imageUrl,
-      sku: it.sku || '',
-      price: it.price || 0,
-      productType: it.productType || '',
-      metalName: it.productType || '',
-    }));
+    setIsSlugEdited(Boolean(sec.sectionKey));
+    const rawList = (sec.products && sec.products.length > 0)
+      ? sec.products
+      : (sec.items && sec.items.length > 0)
+        ? sec.items
+        : (sec.productIds && sec.productIds.length > 0)
+          ? sec.productIds
+          : [];
+
+    const loadedSelected = rawList.map((it) => {
+      const isObj = it && typeof it === 'object';
+      const pid = isObj ? (it.productId || it._id || it.id) : it;
+      return {
+        _id: pid,
+        id: pid,
+        productId: pid,
+        title: it.basicInfo?.title || it.title || '',
+        subtitle: it.subtitle || it.metalName || '',
+        thumbnail:
+          it.colorImages?.[0]?.images?.[0]?.url ||
+          it.images?.[0] ||
+          it.image?.url ||
+          it.imageUrl ||
+          it.thumbnail ||
+          '',
+        sku: it.basicInfo?.sku || it.sku || '',
+        price: it.pricing?.salePrice || it.price || 0,
+        productType: it.productType || '',
+        metalName: it.productType || '',
+      };
+    });
 
     setFormData({
       title: sec.title || '',
       subtitle: sec.subtitle || '',
-      description: sec.description || '',
-      sectionKey: sec.sectionKey || '',
-      sectionType: sec.sectionType || 'product_carousel',
-      placement: sec.placement || 'home_middle',
+      slug: sec.slug || sec.sectionKey || '',
+      sectionKey: sec.slug || sec.sectionKey || '',
       order: sec.order || 0,
       status: sec.status || 'active',
       visibility: {
         website: sec.visibility?.website ?? true,
         mobileApp: sec.visibility?.mobileApp ?? true,
       },
-      badgeText: sec.badgeText || '',
-      buttonText: sec.buttonText || '',
-      buttonLink: sec.buttonLink || '',
-      imageUrl: sec.image?.url || '',
-      imagePublicId: sec.image?.key || '',
       selectedProducts: loadedSelected,
-      items: (sec.items || []).map((it) => ({ ...it })),
     });
     setIsModalOpen(true);
   };
@@ -293,6 +258,54 @@ export default function HomeSectionsView() {
       console.error('Failed to toggle status:', err);
       toast.error('Failed to update status');
       fetchSections();
+    }
+  };
+
+  const [updatingVisibilityId, setUpdatingVisibilityId] = useState(null);
+
+  // Toggle Platform Visibility (Web & App)
+  const handleToggleVisibility = async (sec, platform, e) => {
+    if (e) e.stopPropagation();
+    const secId = sec._id;
+    if (!secId) return;
+
+    const currentWeb = sec.visibility?.website !== false;
+    const currentApp = sec.visibility?.mobileApp !== false;
+
+    const nextWeb = platform === 'website' ? !currentWeb : currentWeb;
+    const nextApp = platform === 'mobileApp' ? !currentApp : currentApp;
+
+    const nextVisibility = {
+      website: nextWeb,
+      mobileApp: nextApp,
+    };
+
+    // Optimistic update
+    setSections((prev) =>
+      prev.map((item) => (item._id === secId ? { ...item, visibility: nextVisibility } : item))
+    );
+
+    try {
+      setUpdatingVisibilityId(`${secId}-${platform}`);
+      await api.put(`/home-sections/${secId}`, { visibility: nextVisibility });
+      toast.success(
+        `${platform === 'website' ? 'Web' : 'App'} visibility ${
+          (platform === 'website' ? nextWeb : nextApp) ? 'enabled' : 'disabled'
+        }`
+      );
+    } catch (err) {
+      console.error('Failed to update visibility:', err);
+      toast.error(`Failed to update ${platform === 'website' ? 'Web' : 'App'} visibility`);
+      // Revert on error
+      setSections((prev) =>
+        prev.map((item) =>
+          item._id === secId
+            ? { ...item, visibility: { website: currentWeb, mobileApp: currentApp } }
+            : item
+        )
+      );
+    } finally {
+      setUpdatingVisibilityId(null);
     }
   };
 
@@ -345,54 +358,6 @@ export default function HomeSectionsView() {
     }
   };
 
-  // Bulk Delete
-  const handleBulkDelete = async () => {
-    if (selectedIds.length === 0) return;
-    const ok = await confirm({
-      title: 'Bulk Delete Sections',
-      message: `Are you sure you want to delete ${selectedIds.length} sections?`,
-      confirmText: 'Delete Selected',
-      confirmColor: 'red',
-    });
-    if (!ok) return;
-
-    try {
-      await api.post('/home-sections/bulk-delete', { ids: selectedIds });
-      toast.success(`${selectedIds.length} sections deleted`);
-      setSelectedIds([]);
-      fetchSections();
-    } catch (err) {
-      console.error('Bulk delete failed:', err);
-      toast.error('Failed to delete sections');
-    }
-  };
-
-  // Main Image Upload
-  const handleMainImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      setUploading(true);
-      setUploadProgress(15);
-      const res = await uploadWithPresignedUrl(file, 'home-sections', (prog) => {
-        setUploadProgress(prog);
-      });
-      setFormData((prev) => ({
-        ...prev,
-        imageUrl: res.url,
-        imagePublicId: res.key || '',
-      }));
-      toast.success('Image uploaded successfully');
-    } catch (err) {
-      console.error('Upload failed:', err);
-      toast.error(err.message || 'Image upload failed');
-    } finally {
-      setUploading(false);
-      setUploadProgress(0);
-    }
-  };
-
   // Save / Submit Form
   const handleSubmitForm = async (e) => {
     e.preventDefault();
@@ -403,41 +368,24 @@ export default function HomeSectionsView() {
 
     try {
       setSubmitting(true);
-      const mappedItems = (formData.selectedProducts || []).map((p, idx) => ({
-        productId: p._id || p.id || p.productId || null,
-        title: p.title || '',
-        subtitle: p.subtitle || p.metalName || '',
-        sku: p.sku || '',
-        price: Number(p.price || 0),
-        productType: p.productType || '',
-        image: { url: p.thumbnail || p.imageUrl || '', key: '' },
-        linkUrl: `/products/${p._id || p.id || p.productId}`,
-        order: idx + 1,
-        badge: p.badge || '',
-        buttonText: 'View Details',
-      }));
+      const productIds = (formData.selectedProducts || [])
+        .map((p) => p._id || p.id || p.productId)
+        .filter(Boolean);
+
+      const sectionSlug = (formData.slug || formData.sectionKey || '').trim() || slugify(formData.title);
 
       const payload = {
         title: formData.title.trim(),
         subtitle: formData.subtitle.trim(),
-        description: formData.description.trim(),
-        sectionKey: formData.sectionKey.trim() || slugify(formData.title),
-        sectionType: formData.sectionType || 'product_carousel',
-        placement: formData.placement || 'home_middle',
+        slug: sectionSlug,
+        sectionKey: sectionSlug,
         order: Number(formData.order) || 0,
         status: formData.status || 'active',
         visibility: {
           website: Boolean(formData.visibility?.website),
           mobileApp: Boolean(formData.visibility?.mobileApp),
         },
-        badgeText: formData.badgeText.trim(),
-        buttonText: formData.buttonText.trim(),
-        buttonLink: formData.buttonLink.trim(),
-        image: {
-          url: formData.imageUrl?.trim() || '',
-          key: formData.imagePublicId?.trim() || '',
-        },
-        items: mappedItems.length > 0 ? mappedItems : formData.items,
+        productIds,
       };
 
       if (editingSection) {
@@ -476,7 +424,7 @@ export default function HomeSectionsView() {
       toast.success('Sections order saved');
       setIsReorderModalOpen(false);
       fetchSections();
-    } catch (err) {
+    } catch {
       toast.error('Failed to reorder sections');
     } finally {
       setSavingReorder(false);
@@ -498,9 +446,9 @@ export default function HomeSectionsView() {
           <button
             type="button"
             onClick={handleOpenReorderModal}
-            className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-stone-50 border border-stone-200/90 text-stone-700 rounded-md text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+            className="flex items-center gap-2 h-[42px] px-4 sm:px-5 bg-white hover:bg-stone-50 active:scale-[0.98] border border-stone-200 text-stone-700 rounded-xl text-xs sm:text-[13.5px] font-bold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
           >
-            <HiOutlineSwitchHorizontal className="w-3.5 h-3.5 text-[#8b6f4e]" />
+            <HiOutlineSwitchHorizontal className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-[#8b6f4e] stroke-2" />
             <span>Reorder</span>
           </button>
         }
@@ -548,28 +496,24 @@ export default function HomeSectionsView() {
                   <th className="py-2 px-2 text-center w-14 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">
                     ORDER
                   </th>
-                  <th className="py-2 px-3 whitespace-nowrap">SECTION DETAILS</th>
-                  <th className="py-2 px-3 whitespace-nowrap">SECTION TYPE</th>
-                  <th className="py-2 px-3 whitespace-nowrap">PLACEMENT</th>
-                  <th className="py-2 px-3 text-center whitespace-nowrap">ITEMS</th>
-                  <th className="py-2 px-3 text-center whitespace-nowrap">STATUS</th>
-                  <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap min-w-[170px]">TITLE</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap min-w-[180px]">SUBTITLE</th>
+                  <th className="py-2.5 px-3 whitespace-nowrap w-36">SLUG</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap w-44">VISIBILITY</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap w-28">ITEMS</th>
+                  <th className="py-2.5 px-3 text-center whitespace-nowrap w-24">STATUS</th>
+                  <th className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right w-28">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-xs">
                 {(paginatedSections || []).map((sec) => {
                   const globalIdx = sections.findIndex((s) => s._id === sec._id);
-                  const typeObj = SECTION_TYPES.find((t) => t.value === sec.sectionType) || {
-                    label: sec.sectionType,
-                    icon: HiOutlineTemplate,
-                  };
-                  const TypeIcon = typeObj.icon;
                   const isSelected = selectedIds.includes(sec._id);
 
                   return (
                     <tr
                       key={sec._id}
-                      onClick={() => handleOpenView(sec)}
+                      onClick={() => handleOpenEdit(sec)}
                       className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-[#faf6f0]/40' : ''
                       }`}
@@ -619,111 +563,113 @@ export default function HomeSectionsView() {
                         </div>
                       </td>
 
-                      {/* Section Details */}
-                      <td className="py-2.5 px-3">
-                        <div className="flex items-center gap-2.5">
-                          {/* Compact Thumbnail */}
-                          <div className="w-8 h-8 rounded-md bg-stone-100 border border-stone-200/80 overflow-hidden shrink-0 flex items-center justify-center relative shadow-2xs">
-                            {sec.image?.url ? (
-                              <img
-                                src={sec.image.url}
-                                alt={sec.title}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                            ) : sec.items?.[0]?.image?.url ? (
-                              <img
-                                src={sec.items[0].image.url}
-                                alt={sec.title}
-                                className="w-full h-full object-cover"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                            ) : (
-                              <TypeIcon className="w-4 h-4 text-[#8b6f4e]/60" />
-                            )}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-semibold text-stone-900 text-xs truncate">
-                                {sec.title}
-                              </span>
-                              {sec.badgeText && (
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
-                                  {sec.badgeText}
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              <code className="text-[10px] text-[#8b6f4e] bg-[#faf3e8] px-1 py-0.2 rounded font-mono font-medium">
-                                #{sec.sectionKey}
-                              </code>
-                              {sec.visibility && (
-                                <span className="inline-flex items-center gap-1 text-[10px] text-stone-600 bg-stone-100 px-2 py-0.5 rounded font-medium">
-                                  {sec.visibility.website !== false && <span>Web</span>}
-                                  {sec.visibility.website !== false && sec.visibility.mobileApp !== false && <span className="text-stone-300">/</span>}
-                                  {sec.visibility.mobileApp !== false && <span>App</span>}
-                                </span>
-                              )}
-                              {sec.subtitle && (
-                                <span className="text-[11px] text-stone-400 truncate max-w-xs">
-                                  {sec.subtitle}
-                                </span>
-                              )}
-                            </div>
-                          </div>
+                      {/* Title */}
+                      <td className="py-2.5 px-3 min-w-[170px]">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-semibold text-stone-900 text-xs">
+                            {sec.title}
+                          </span>
+                          {sec.badgeText && (
+                            <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-100 text-amber-800 uppercase tracking-wider">
+                              {sec.badgeText}
+                            </span>
+                          )}
                         </div>
                       </td>
 
-                      {/* Section Type Badge */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-stone-100/90 text-stone-700 border border-stone-200/80 shadow-2xs">
-                          <TypeIcon className="w-3.5 h-3.5 text-[#8b6f4e] shrink-0" />
-                          <span>{typeObj.label}</span>
+                      {/* Subtitle */}
+                      <td className="py-2.5 px-3 min-w-[180px]">
+                        <span className="text-xs text-stone-600 block truncate max-w-xs" title={sec.subtitle || ''}>
+                          {sec.subtitle || <span className="text-stone-300">—</span>}
                         </span>
                       </td>
 
-                      {/* Placement */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <span className="capitalize text-xs font-medium px-2 py-0.5 rounded-md bg-stone-100/80 text-stone-600 border border-stone-200/50">
-                          {sec.placement?.replace('home_', '') || 'Middle'}
-                        </span>
+                      {/* Identifier Slug */}
+                      <td className="py-2.5 px-3 whitespace-nowrap w-36">
+                        <code className="text-[10px] text-[#8b6f4e] bg-[#faf3e8] px-1.5 py-0.5 rounded font-mono font-medium">
+                          #{sec.slug || sec.sectionKey || '—'}
+                        </code>
+                      </td>
+
+                      {/* Platform Visibility */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap w-44" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center gap-1.5 bg-stone-50/90 p-1 rounded-lg border border-stone-200/80 shadow-2xs">
+                          {/* Web Status Toggle */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleVisibility(sec, 'website', e)}
+                            disabled={updatingVisibilityId === `${sec._id}-website`}
+                            title={sec.visibility?.website !== false ? 'Web: Visible (Click to Hide)' : 'Web: Hidden (Click to Show)'}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10.5px] font-bold border transition-all cursor-pointer ${
+                              sec.visibility?.website !== false
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100'
+                                : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
+                            }`}
+                          >
+                            <span className="text-[10px]">🌐</span>
+                            <span>Web</span>
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                sec.visibility?.website !== false ? 'bg-emerald-500' : 'bg-stone-300'
+                              }`}
+                            />
+                          </button>
+
+                          {/* App Status Toggle */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleVisibility(sec, 'mobileApp', e)}
+                            disabled={updatingVisibilityId === `${sec._id}-mobileApp`}
+                            title={sec.visibility?.mobileApp !== false ? 'App: Visible (Click to Hide)' : 'App: Hidden (Click to Show)'}
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10.5px] font-bold border transition-all cursor-pointer ${
+                              sec.visibility?.mobileApp !== false
+                                ? 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100'
+                                : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
+                            }`}
+                          >
+                            <span className="text-[10px]">📱</span>
+                            <span>App</span>
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                sec.visibility?.mobileApp !== false ? 'bg-sky-500' : 'bg-stone-300'
+                              }`}
+                            />
+                          </button>
+                        </div>
                       </td>
 
                       {/* Items Count */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap w-28">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf3e8] text-[#8b6f4e] border border-[#8b6f4e]/20 shadow-2xs">
-                          {sec.items?.length || 0} items
+                          {sec.productIds?.length || sec.products?.length || sec.items?.length || 0} products
                         </span>
                       </td>
 
                       {/* Status Toggle */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-1.5">
+                      <td className="py-2.5 px-3 text-center align-middle whitespace-nowrap w-24" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center">
                           <button
                             type="button"
+                            role="switch"
+                            aria-checked={sec.status === 'active'}
                             onClick={() => handleToggleStatus(sec)}
                             style={sec.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                            className={`relative inline-flex h-4 w-7.5 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${sec.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                            title={`Click to mark ${sec.status === 'active' ? 'Inactive' : 'Active'}`}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                              sec.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
+                            }`}
+                            title={sec.status === 'active' ? 'Active' : 'Inactive'}
                           >
                             <span
-                              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                                sec.status === 'active' ? 'translate-x-3.5' : 'translate-x-0'
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                sec.status === 'active' ? 'translate-x-4' : 'translate-x-0'
                               }`}
                             />
                           </button>
-                          <span className={`text-[10px] font-bold uppercase tracking-wider ${sec.status === 'active' ? 'text-emerald-600' : 'text-stone-400'}`}>
-                            {sec.status}
-                          </span>
                         </div>
                       </td>
 
                       {/* Actions */}
-                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right w-28" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={sec}
                           onView={() => handleOpenView(sec)}
@@ -802,7 +748,7 @@ export default function HomeSectionsView() {
                       setFormData((prev) => ({
                         ...prev,
                         title: val,
-                        sectionKey: prev.sectionKey ? prev.sectionKey : slugify(val),
+                        sectionKey: (!editingSection || !isSlugEdited) ? slugify(val) : prev.sectionKey,
                       }));
                     }}
                     placeholder="e.g. Trending Lab Grown Diamonds"
@@ -824,7 +770,47 @@ export default function HomeSectionsView() {
                 </div>
               </div>
 
-              {/* Row 2: Platform Visibility */}
+              {/* Row 2: Identifier Slug & Status */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-800 uppercase tracking-wider mb-2">
+                    IDENTIFIER SLUG (UNIQUE)
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.sectionKey}
+                    onChange={(e) => {
+                      const val = slugify(e.target.value);
+                      setIsSlugEdited(Boolean(val));
+                      setFormData((prev) => ({
+                        ...prev,
+                        sectionKey: val || slugify(prev.title),
+                      }));
+                    }}
+                    placeholder={slugify(formData.title) || 'e.g. trending-lab-grown'}
+                    className="w-full text-xs font-mono bg-white border border-[#d6cfc2] rounded-xl px-4 py-3 text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold text-stone-800 uppercase tracking-wider mb-2">
+                    STATUS
+                  </label>
+                  <Dropdown
+                    value={formData.status}
+                    onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
+                    options={[
+                      { value: 'active', label: 'Active (Live)', dotColor: 'bg-emerald-500' },
+                      { value: 'inactive', label: 'Inactive (Draft)', dotColor: 'bg-stone-400' },
+                    ]}
+                    showStatusDot
+                    size="sm"
+                    buttonClassName="w-full h-[42px] rounded-xl text-xs bg-white border-[#d6cfc2] shadow-2xs"
+                  />
+                </div>
+              </div>
+
+              {/* Row 3: Platform Visibility */}
               <div className="border border-stone-200/90 rounded-2xl p-4 bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">
                   PLATFORM VISIBILITY
@@ -965,62 +951,6 @@ export default function HomeSectionsView() {
                 )}
               </div>
 
-              {/* Optional Section Settings Accordion */}
-              <div className="pt-2">
-                <details className="group border border-stone-200/70 rounded-xl bg-stone-50/30 p-3">
-                  <summary className="text-[11px] font-bold text-stone-600 hover:text-[#8b6f4e] cursor-pointer list-none flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <HiOutlineFilter className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                      <span>Advanced Settings (Placement, Identifier Slug, Status)</span>
-                    </span>
-                    <span className="text-[10px] text-stone-400 group-open:rotate-180 transition-transform">▼</span>
-                  </summary>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 mt-2 border-t border-stone-200/60">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                        Identifier Slug (Unique)
-                      </label>
-                      <input
-                        type="text"
-                        value={formData.sectionKey}
-                        onChange={(e) =>
-                          setFormData((prev) => ({ ...prev, sectionKey: slugify(e.target.value) }))
-                        }
-                        placeholder="e.g. trending-lab-grown"
-                        className="w-full text-xs font-mono bg-white border border-stone-200 rounded-lg px-3 py-2 text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-stone-700 mb-1">Placement</label>
-                      <Dropdown
-                        value={formData.placement}
-                        onChange={(val) => setFormData((prev) => ({ ...prev, placement: val }))}
-                        options={PLACEMENT_OPTIONS.map((p) => ({
-                          value: p.value,
-                          label: p.label,
-                        }))}
-                        size="sm"
-                        buttonClassName="w-full h-9 rounded-lg text-xs bg-white border-stone-200"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[11px] font-semibold text-stone-700 mb-1">Status</label>
-                      <Dropdown
-                        value={formData.status}
-                        onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
-                        options={[
-                          { value: 'active', label: 'Active (Live)', dotColor: 'bg-emerald-500' },
-                          { value: 'inactive', label: 'Inactive (Draft)', dotColor: 'bg-stone-400' },
-                        ]}
-                        showStatusDot
-                        size="sm"
-                        buttonClassName="w-full h-9 rounded-lg text-xs bg-white border-stone-200"
-                      />
-                    </div>
-                  </div>
-                </details>
-              </div>
-
               {/* Modal Actions */}
               <div className="pt-4 border-t border-stone-100 flex items-center justify-end gap-3">
                 <button
@@ -1073,10 +1003,7 @@ export default function HomeSectionsView() {
           >
             <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-50">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#8b6f4e] bg-[#faf3e8] px-2 py-0.5 rounded">
-                  {viewingSection.sectionType}
-                </span>
-                <h3 className="text-base font-bold text-stone-900 mt-1">
+                <h3 className="text-base font-bold text-stone-900">
                   {viewingSection.title}
                 </h3>
               </div>
@@ -1090,24 +1017,11 @@ export default function HomeSectionsView() {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-4 text-xs">
-              {viewingSection.image?.url && (
-                <div className="rounded-xl overflow-hidden border border-stone-200 max-h-56">
-                  <img
-                    src={viewingSection.image.url}
-                    alt={viewingSection.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
+              <div className="grid grid-cols-2 gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
                 <div>
                   <span className="text-stone-400 text-[10px] uppercase font-semibold">Slug Key</span>
                   <p className="font-mono font-bold text-stone-800">#{viewingSection.sectionKey}</p>
-                </div>
-                <div>
-                  <span className="text-stone-400 text-[10px] uppercase font-semibold">Placement</span>
-                  <p className="font-semibold text-stone-800">{viewingSection.placement}</p>
                 </div>
                 <div>
                   <span className="text-stone-400 text-[10px] uppercase font-semibold">Status</span>
@@ -1140,53 +1054,64 @@ export default function HomeSectionsView() {
                 </span>
               </div>
 
-              {viewingSection.items && viewingSection.items.length > 0 && (
+              {((viewingSection.products && viewingSection.products.length > 0) ||
+                (viewingSection.items && viewingSection.items.length > 0)) && (
                 <div>
                   <span className="text-stone-400 text-[10px] uppercase font-semibold">
-                    Curated Products ({viewingSection.items.length})
+                    Curated Products ({viewingSection.products?.length || viewingSection.items?.length || 0})
                   </span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                    {viewingSection.items.map((item, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200/80 shadow-2xs"
-                      >
-                        <div className="w-12 h-12 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center p-1 shrink-0 overflow-hidden">
-                          {item.image?.url ? (
-                            <img
-                              src={item.image?.url}
-                              alt={item.title}
-                              className="w-full h-full object-contain"
-                            />
-                          ) : (
-                            <IoDiamondOutline className="w-5 h-5 text-stone-400" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-[10px] font-bold text-stone-400 font-mono">#{idx + 1}</span>
-                            {item.productType && (
-                              <span className="text-[9px] font-bold text-[#8b6f4e] bg-[#faf3e8] px-1 py-0.2 rounded uppercase">
-                                {item.productType}
-                              </span>
+                    {(viewingSection.products || viewingSection.items || []).map((item, idx) => {
+                      const img =
+                        item.colorImages?.[0]?.images?.[0]?.url ||
+                        item.images?.[0] ||
+                        item.image?.url ||
+                        '';
+                      const title = item.basicInfo?.title || item.title || '';
+                      const price = item.pricing?.salePrice || item.price || 0;
+                      const sku = item.basicInfo?.sku || item.sku || '';
+                      return (
+                        <div
+                          key={idx}
+                          className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200/80 shadow-2xs"
+                        >
+                          <div className="w-12 h-12 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center p-1 shrink-0 overflow-hidden">
+                            {img ? (
+                              <img
+                                src={img}
+                                alt={title}
+                                className="w-full h-full object-contain"
+                              />
+                            ) : (
+                              <IoDiamondOutline className="w-5 h-5 text-stone-400" />
                             )}
                           </div>
-                          <p className="font-semibold text-stone-900 text-xs truncate mt-0.5">{item.title}</p>
-                          <div className="flex items-center justify-between text-[11px] text-stone-500 mt-0.5">
-                            {item.price > 0 && (
-                              <span className="font-bold text-stone-900">
-                                ₹{Number(item.price).toLocaleString('en-IN')}
-                              </span>
-                            )}
-                            {item.sku && (
-                              <span className="text-[10px] font-mono text-stone-400 truncate max-w-[80px]">
-                                {item.sku}
-                              </span>
-                            )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-bold text-stone-400 font-mono">#{idx + 1}</span>
+                              {item.productType && (
+                                <span className="text-[9px] font-bold text-[#8b6f4e] bg-[#faf3e8] px-1 py-0.2 rounded uppercase">
+                                  {item.productType}
+                                </span>
+                              )}
+                            </div>
+                            <p className="font-semibold text-stone-900 text-xs truncate mt-0.5">{title}</p>
+                            <div className="flex items-center justify-between text-[11px] text-stone-500 mt-0.5">
+                              {price > 0 && (
+                                <span className="font-bold text-stone-900">
+                                  ₹{Number(price).toLocaleString('en-IN')}
+                                </span>
+                              )}
+                              {sku && (
+                                <span className="text-[10px] font-mono text-stone-400 truncate max-w-[80px]">
+                                  {sku}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { usersAPI, authAPI } from '../../api/services';
@@ -96,7 +96,7 @@ export default function ProfileView() {
       toast.error('Please enter a valid hex color code (e.g. #0d9488)');
       return;
     }
-    const theme = selectCustomColor(customHex, 'Custom Palette');
+    selectCustomColor(customHex, 'Custom Palette');
     toast.success(`Custom theme applied (${customHex})!`, {
       icon: '🎨',
     });

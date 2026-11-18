@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineTrash,
   HiOutlineX,
@@ -156,22 +156,6 @@ export default function MetalPuritiesView() {
     setMetalType(newType);
   };
 
-  // Toggle active/inactive status
-  const handleToggleStatus = async (purityItem) => {
-    try {
-      const nextStatus = purityItem.status === 'active' ? 'inactive' : 'active';
-      await api.put(`/metal-purities/${purityItem._id}`, { status: nextStatus });
-      toast.success(`${purityItem.name} status set to ${nextStatus}`);
-      setPurities((prev) =>
-        prev.map((item) =>
-          item._id === purityItem._id ? { ...item, status: nextStatus } : item
-        )
-      );
-    } catch (err) {
-      toast.error('Failed to update status');
-    }
-  };
-
   // Delete Metal Purity
   const handleDelete = async (id, name) => {
     const isConfirmed = await confirm({
@@ -231,7 +215,7 @@ export default function MetalPuritiesView() {
       setPurities((prev) => prev.filter((p) => !selectedIds.includes(p._id)));
       setSelectedIds([]);
       toast.success(`${count} purity${count > 1 ? 's' : ''} deleted successfully`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete some metal purities');
     }
   };

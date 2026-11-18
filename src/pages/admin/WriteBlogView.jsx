@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   HiOutlineArrowLeft,
@@ -35,21 +35,6 @@ const formatDateForInput = (d) => {
   }
 };
 
-// Default starter template matching exact screenshot
-const DEFAULT_CONTENT = `<h2>Preserving Your Heirloom's Radiance</h2>
-<p>Fine jewellery is crafted to be cherished forever. Daily exposure to cosmetics, oils, and environmental factors can temporarily dull its pristine sparkle. Here are essential rituals recommended by our master jewellers.</p>
-<h3>Gentle Cleaning Ritual</h3>
-<ol>
-  <li>Prepare a bowl of lukewarm water with a few drops of mild soap.</li>
-  <li>Soak your jewellery for 10 to 15 minutes to loosen daily residues.</li>
-  <li>Use a soft-bristled brush to gently clean around facet settings and prongs.</li>
-  <li>Rinse under tepid water and pat dry with a lint-free polishing cloth.</li>
-</ol>
-<blockquote style="display:flex; gap:12px; align-items:flex-start; padding:16px 20px; background:#faf5ee; border-left:4px solid #8b6f4e; border-radius:12px; margin:20px 0; color:#785327;">
-  <span style="font-size:18px;">💡</span>
-  <span>Store each piece in its individual velvet Neirah box to prevent delicate metals from coming into contact with one another.</span>
-</blockquote>`;
-
 export default function WriteBlogView() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -58,7 +43,7 @@ export default function WriteBlogView() {
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [uploadingImage, setUploadingImage] = useState(false);
+  const [, setUploadingImage] = useState(false);
   const [categories, setCategories] = useState([]);
   const [isEditingSlug, setIsEditingSlug] = useState(false);
   const [tagInput, setTagInput] = useState('');
@@ -68,7 +53,7 @@ export default function WriteBlogView() {
     title: '',
     slug: '',
     blogCategory: '',
-    description: DEFAULT_CONTENT,
+    description: '',
     shortDescription: '',
     image: {
       url: '',
@@ -80,8 +65,8 @@ export default function WriteBlogView() {
     readTime: '1 min read',
     status: 'active',
     publishDate: formatDateForInput(new Date()),
-    author: 'Neirah Atelier',
-    tags: ['care tips', 'gold jewellery', 'diamond'],
+    author: '',
+    tags: [],
     metaTitle: '',
     metaDescription: '',
     showInHomepage: true,

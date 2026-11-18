@@ -1,5 +1,5 @@
 /* eslint-disable react/prop-types */
-import React, { useRef } from 'react';
+import { useRef } from 'react';
 import {
   HiOutlinePhotograph,
   HiOutlineEye,
@@ -158,10 +158,19 @@ export default function ImageUploadDropzone({
         </div>
       ) : (
         <div
+          tabIndex={disabled ? -1 : 0}
+          data-upload-trigger="true"
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          className={`border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all ${heightClass} flex flex-col items-center justify-center group shadow-2xs ${
-            disabled ? 'opacity-50 cursor-not-allowed' : ''
+          onClick={() => !disabled && fileInputRef.current?.click()}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }
+          }}
+          className={`border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[var(--theme-primary,#8b6f4e)]/20 focus:outline-hidden bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all ${heightClass} flex flex-col items-center justify-center group shadow-2xs ${
+            disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
           }`}
         >
           {uploading ? (

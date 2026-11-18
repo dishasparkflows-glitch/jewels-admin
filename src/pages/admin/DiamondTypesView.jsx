@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
   HiOutlineTrash,
@@ -195,7 +195,7 @@ export default function DiamondTypesView() {
           item._id === typeItem._id ? { ...item, status: nextStatus } : item
         )
       );
-    } catch (err) {
+    } catch {
       toast.error('Failed to update status');
     }
   };
@@ -426,7 +426,6 @@ export default function DiamondTypesView() {
                 </tr>
               ) : (
                 paginatedItems.map((t, idx) => {
-                  const isActive = t.status === 'active';
                   const letter = t.name?.startsWith('Lab') ? 'L' : 'N';
 
                   const formattedDate = t.meta?.createdAt

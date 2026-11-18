@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineRefresh,
   HiOutlineSearch,
@@ -75,7 +75,7 @@ export default function CurrenciesView() {
   const handleSyncSingleRate = async (item) => {
     try {
       setSyncingId(item._id);
-      const res = await api.post(`/currencies/${item._id}/sync`);
+      await api.post(`/currencies/${item._id}/sync`);
       toast.success(`Live rate updated for ${item.currencyInfo?.code}`);
       fetchCurrencies();
     } catch (err) {

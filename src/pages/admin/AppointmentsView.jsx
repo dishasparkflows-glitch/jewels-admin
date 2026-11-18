@@ -10,172 +10,18 @@ import {
   HiOutlineTrash,
   HiOutlineSearch,
   HiOutlineChevronDown,
-  HiOutlineAdjustments,
   HiOutlinePlus,
 } from 'react-icons/hi';
-import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
-import DatePicker from '../../components/common/DatePicker';
+import DatePicker, { formatDateToISO } from '../../components/common/DatePicker';
+import CountryCodeSelect from '../../components/common/CountryCodeSelect';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import StatCards from '../../components/common/StatCards';
 
-// Reference sample appointments matching the luxury portal design
-const DEFAULT_APPOINTMENTS = [
-  {
-    _id: 'apt_0010',
-    customId: '#APT-0010',
-    customer: {
-      name: 'Gauri Khan',
-      email: 'gauri.design@gmail.com',
-      phone: { countryCode: '91', number: '98404 44522' },
-    },
-    appointment: {
-      date: '2026-10-27T12:00:00.000Z',
-      preferredTime: '12:00 PM',
-      serviceType: 'Custom Design Consultation',
-    },
-    status: 'pending',
-  },
-  {
-    _id: 'apt_0009',
-    customId: '#APT-0009',
-    customer: {
-      name: 'Natasha Poonawalla',
-      email: 'natasha.p@gmail.com',
-      phone: { countryCode: '91', number: '98777 88996' },
-    },
-    appointment: {
-      date: '2026-10-26T16:30:00.000Z',
-      preferredTime: '04:30 PM',
-      serviceType: 'Heritage Collection Viewing',
-    },
-    status: 'pending',
-  },
-  {
-    _id: 'apt_0008',
-    customId: '#APT-0008',
-    customer: {
-      name: 'Devika Singhania',
-      email: 'devika.s@gmail.com',
-      phone: { countryCode: '91', number: '98205 99885' },
-    },
-    appointment: {
-      date: '2026-10-25T10:00:00.000Z',
-      preferredTime: '10:00 AM',
-      serviceType: 'Anniversary Gift Consultation',
-    },
-    status: 'pending',
-  },
-  {
-    _id: 'apt_0007',
-    customId: '#APT-0007',
-    customer: {
-      name: 'Rohan Mehra',
-      email: 'rohan.m@gmail.com',
-      phone: { countryCode: '91', number: '98204 99884' },
-    },
-    appointment: {
-      date: '2026-10-24T13:00:00.000Z',
-      preferredTime: '01:00 PM',
-      serviceType: 'Jewellery Viewing',
-    },
-    status: 'pending',
-  },
-  {
-    _id: 'apt_0006',
-    customId: '#APT-0006',
-    customer: {
-      name: 'Ananya Birla',
-      email: 'ananya.b@gmail.com',
-      phone: { countryCode: '91', number: '98203 99883' },
-    },
-    appointment: {
-      date: '2026-10-23T15:00:00.000Z',
-      preferredTime: '03:00 PM',
-      serviceType: 'Bridal Collection Preview',
-    },
-    status: 'confirmed',
-  },
-  {
-    _id: 'apt_0005',
-    customId: '#APT-0005',
-    customer: {
-      name: 'Vikram Malhotra',
-      email: 'vikram.m@gmail.com',
-      phone: { countryCode: '91', number: '98202 99882' },
-    },
-    appointment: {
-      date: '2026-10-21T11:00:00.000Z',
-      preferredTime: '11:00 AM',
-      serviceType: 'Diamond Grading Session',
-    },
-    status: 'completed',
-  },
-  {
-    _id: 'apt_0004',
-    customId: '#APT-0004',
-    customer: {
-      name: 'Mira Rajput Kapoor',
-      email: 'mira.kapoor@gmail.com',
-      phone: { countryCode: '91', number: '98201 99881' },
-    },
-    appointment: {
-      date: '2026-10-20T14:00:00.000Z',
-      preferredTime: '02:00 PM',
-      serviceType: 'Custom Design Consultation',
-    },
-    status: 'pending',
-  },
-  {
-    _id: 'apt_0003',
-    customId: '#APT-0003',
-    customer: {
-      name: 'Shloka Ambani',
-      email: 'shloka.a@gmail.com',
-      phone: { countryCode: '91', number: '98200 99880' },
-    },
-    appointment: {
-      date: '2026-10-19T17:00:00.000Z',
-      preferredTime: '05:00 PM',
-      serviceType: 'Heritage Collection Viewing',
-    },
-    status: 'pending',
-  },
-  {
-    _id: 'apt_0002',
-    customId: '#APT-0002',
-    customer: {
-      name: 'Isha Piramal',
-      email: 'isha.p@gmail.com',
-      phone: { countryCode: '91', number: '98199 99879' },
-    },
-    appointment: {
-      date: '2026-10-18T15:30:00.000Z',
-      preferredTime: '03:30 PM',
-      serviceType: 'Solitaire Diamond Consultation',
-    },
-    status: 'pending',
-  },
-  {
-    _id: 'apt_0001',
-    customId: '#APT-0001',
-    customer: {
-      name: 'Karan Johar',
-      email: 'karan.j@gmail.com',
-      phone: { countryCode: '91', number: '98198 99878' },
-    },
-    appointment: {
-      date: '2026-10-17T11:30:00.000Z',
-      preferredTime: '11:30 AM',
-      serviceType: 'Bespoke Cufflinks & Ring Viewing',
-    },
-    status: 'confirmed',
-  },
-];
 
 const STATUS_TABS = [
   { id: 'all', label: 'All' },
@@ -185,43 +31,40 @@ const STATUS_TABS = [
   { id: 'cancelled', label: 'Cancelled' },
 ];
 
-const SERVICE_OPTIONS = [
-  'Custom Design Consultation',
-  'Heritage Collection Viewing',
-  'Anniversary Gift Consultation',
-  'Jewellery Viewing',
-  'Bridal Collection Preview',
-  'Diamond Grading Session',
-  'Solitaire Diamond Consultation',
-  'Bespoke Cufflinks & Ring Viewing',
-];
-
 export default function AppointmentsView() {
   const confirm = useConfirm();
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [serviceFilter, setServiceFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'upcoming'
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [viewingApt, setViewingApt] = useState(null);
+  const [editingApt, setEditingApt] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    countryCode: '+91',
+    date: formatDateToISO(new Date()),
+    time: '12:00 PM',
+    status: 'pending',
+    notes: '',
+  });
   const [isBookModalOpen, setIsBookModalOpen] = useState(false);
   const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
-  const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const dateMenuRef = useRef(null);
-  const filterMenuRef = useRef(null);
 
   // New appointment form state
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    date: '',
+    countryCode: '+91',
+    date: formatDateToISO(new Date()),
     time: '12:00 PM',
-    service: 'Custom Design Consultation',
+    notes: '',
   });
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -234,9 +77,6 @@ export default function AppointmentsView() {
       if (dateMenuRef.current && !dateMenuRef.current.contains(e.target)) {
         setIsDateMenuOpen(false);
       }
-      if (filterMenuRef.current && !filterMenuRef.current.contains(e.target)) {
-        setIsFilterMenuOpen(false);
-      }
     };
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
@@ -247,19 +87,17 @@ export default function AppointmentsView() {
       setLoading(true);
       const res = await api.get(`/appointments?page=${page}&limit=${limit}`);
       const data = res.data?.data?.items || res.data?.data || [];
-      if (Array.isArray(data) && data.length > 0) {
-        setAppointments(data);
-        if (res.data?.pagination?.totalDocs !== undefined) {
-          setServerTotal(res.data.pagination.totalDocs);
-        }
+      const list = Array.isArray(data) ? data : [];
+      setAppointments(list);
+      if (res.data?.pagination?.totalDocs !== undefined) {
+        setServerTotal(res.data.pagination.totalDocs);
       } else {
-        // Fallback to reference sample appointments so UI exactly matches the luxury screenshot
-        setAppointments(DEFAULT_APPOINTMENTS);
-        setServerTotal(DEFAULT_APPOINTMENTS.length);
+        setServerTotal(list.length);
       }
-    } catch {
-      setAppointments(DEFAULT_APPOINTMENTS);
-      setServerTotal(DEFAULT_APPOINTMENTS.length);
+    } catch (err) {
+      console.error('Failed to load appointments:', err);
+      setAppointments([]);
+      setServerTotal(0);
     } finally {
       setLoading(false);
     }
@@ -270,12 +108,17 @@ export default function AppointmentsView() {
   }, [fetchAppointments, currentPage, pageSize]);
 
   const handleUpdateStatus = async (id, newStatus) => {
+    const previousAppointments = appointments;
     setAppointments((prev) =>
       prev.map((a) => ((a._id || a.id) === id ? { ...a, status: newStatus } : a))
     );
 
     try {
-      await api.patch(`/appointments/${id}/status`, { status: newStatus });
+      try {
+        await api.patch(`/appointments/${id}/status`, { status: newStatus });
+      } catch {
+        await api.put(`/appointments/${id}`, { status: newStatus });
+      }
       toast.success(
         newStatus === 'confirmed'
           ? 'Appointment confirmed'
@@ -285,22 +128,9 @@ export default function AppointmentsView() {
           ? 'Appointment cancelled'
           : `Appointment status updated to ${newStatus}`
       );
-    } catch {
-      try {
-        await api.put(`/appointments/${id}`, { status: newStatus });
-        toast.success(
-          newStatus === 'confirmed'
-            ? 'Appointment confirmed'
-            : newStatus === 'completed'
-            ? 'Appointment marked as completed'
-            : newStatus === 'cancelled'
-            ? 'Appointment cancelled'
-            : `Appointment status updated to ${newStatus}`
-        );
-      } catch {
-        // If simulated or demo item, update succeeded locally
-        toast.success(`Appointment status updated to ${newStatus}`);
-      }
+    } catch (err) {
+      setAppointments(previousAppointments);
+      toast.error(err.response?.data?.message || 'Failed to update appointment status');
     }
   };
 
@@ -359,17 +189,17 @@ export default function AppointmentsView() {
 
     try {
       await api.delete(`/appointments/${id}`);
-    } catch {
-      // Local removal regardless for seamless UX
+      setAppointments((prev) => prev.filter((a) => (a._id || a.id) !== id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      setServerTotal((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+      toast.success('Appointment deleted');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete appointment');
     }
-
-    setAppointments((prev) => prev.filter((a) => (a._id || a.id) !== id));
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-    toast.success('Appointment deleted');
   };
 
   const handleBulkDelete = async () => {
@@ -391,13 +221,13 @@ export default function AppointmentsView() {
     const idsToDelete = Array.from(selectedIds);
     try {
       await api.post('/appointments/bulk-delete', { ids: idsToDelete });
-    } catch {
-      // Fallback
+      setAppointments((prev) => prev.filter((a, idx) => !selectedIds.has(a._id || a.id || `apt_${idx}`)));
+      setSelectedIds(new Set());
+      setServerTotal((prev) => (prev !== null ? Math.max(0, prev - idsToDelete.length) : 0));
+      toast.success(`${count} appointment${count > 1 ? 's' : ''} deleted successfully`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete selected appointments');
     }
-
-    setAppointments((prev) => prev.filter((a, idx) => !selectedIds.has(a._id || a.id || `apt_${idx}`)));
-    setSelectedIds(new Set());
-    toast.success(`${count} appointment${count > 1 ? 's' : ''} deleted successfully`);
   };
 
   const handleSelectAll = (e) => {
@@ -422,6 +252,67 @@ export default function AppointmentsView() {
     });
   };
 
+  const handleOpenEdit = (apt, idx) => {
+    const extracted = extractAptData(apt, idx);
+    const rawCountry = String(extracted.countryCode || '91').replace('+', '');
+    setEditingApt({ ...apt, ...extracted });
+    setEditFormData({
+      name: extracted.clientName === 'Client' ? '' : extracted.clientName,
+      email: extracted.clientEmail === '—' ? '' : extracted.clientEmail,
+      countryCode: `+${rawCountry || '91'}`,
+      phone: extracted.rawPhone === '98200 00000' ? '' : extracted.rawPhone,
+      date: extracted.aptDate ? formatDateToISO(new Date(extracted.aptDate)) : formatDateToISO(new Date()),
+      time: extracted.prefTime || '12:00 PM',
+      status: apt.status || 'pending',
+      notes: apt.notes || '',
+    });
+  };
+
+  const handleUpdateAppointment = async (e) => {
+    e.preventDefault();
+    if (!editFormData.name?.trim() || !editFormData.email?.trim()) {
+      toast.error('Client name and email required');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      const aptId = editingApt._id || editingApt.id;
+      const cleanCountry = String(editFormData.countryCode || '91').replace('+', '').trim();
+      const payload = {
+        customer: {
+          name: editFormData.name.trim(),
+          email: editFormData.email.trim(),
+          phone: {
+            countryCode: cleanCountry || '91',
+            number: editFormData.phone.trim(),
+          },
+        },
+        appointment: {
+          date: editFormData.date ? new Date(editFormData.date).toISOString() : new Date().toISOString(),
+          preferredTime: editFormData.time || '12:00 PM',
+        },
+        status: editFormData.status,
+        notes: editFormData.notes?.trim() || '',
+      };
+
+      await api.put(`/appointments/${aptId}`, payload);
+
+      setAppointments((prev) =>
+        prev.map((a) => {
+          const aId = a._id || a.id;
+          return aId === aptId ? { ...a, ...payload } : a;
+        })
+      );
+
+      toast.success('Appointment updated successfully');
+      setEditingApt(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Could not update appointment');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleCreateAppointment = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.email) {
@@ -430,35 +321,25 @@ export default function AppointmentsView() {
     }
     try {
       setSubmitting(true);
-      const newIdNumber = appointments.length + 1;
-      const customId = `#APT-${String(newIdNumber).padStart(4, '0')}`;
+      const rawCountryCode = (formData.countryCode || '+91').replace('+', '').trim() || '91';
       const payload = {
         customer: {
           name: formData.name.trim(),
           email: formData.email.trim(),
-          phone: { countryCode: '91', number: formData.phone.trim() },
+          phone: { countryCode: rawCountryCode, number: formData.phone.trim() },
         },
         appointment: {
           date: formData.date ? new Date(formData.date).toISOString() : new Date().toISOString(),
           preferredTime: formData.time || '12:00 PM',
-          serviceType: formData.service || 'Custom Design Consultation',
         },
         status: 'pending',
-        customId,
+        notes: formData.notes?.trim() || '',
       };
 
-      try {
-        const res = await api.post('/appointments', payload);
-        const created = res.data?.data || payload;
-        setAppointments((prev) => [created, ...prev]);
-      } catch {
-        // Optimistic local add
-        const mockNew = {
-          _id: `apt_local_${Date.now()}`,
-          ...payload,
-        };
-        setAppointments((prev) => [mockNew, ...prev]);
-      }
+      const res = await api.post('/appointments', payload);
+      const created = res.data?.data || payload;
+      setAppointments((prev) => [created, ...prev]);
+      setServerTotal((prev) => (prev !== null ? prev + 1 : 1));
 
       toast.success('Appointment booked successfully');
       setIsBookModalOpen(false);
@@ -466,9 +347,10 @@ export default function AppointmentsView() {
         name: '',
         email: '',
         phone: '',
-        date: '',
+        countryCode: '+91',
+        date: formatDateToISO(new Date()),
         time: '12:00 PM',
-        service: 'Custom Design Consultation',
+        notes: '',
       });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not book appointment');
@@ -490,11 +372,6 @@ export default function AppointmentsView() {
       // Tab status filter
       if (statusFilter !== 'all' && a.status !== statusFilter) {
         return false;
-      }
-      // Service filter
-      if (serviceFilter !== 'all') {
-        const sType = a.appointment?.serviceType || a.serviceType || '';
-        if (sType !== serviceFilter) return false;
       }
       // Date filter
       if (dateFilter === 'today') {
@@ -518,18 +395,16 @@ export default function AppointmentsView() {
         const email = (a.customer?.email || a.email || '').toLowerCase();
         const phone = (a.customer?.phone?.number || a.phoneNumber || a.phone || '').toLowerCase();
         const idStr = String(a.customId || a.appointmentId || a._id || '').toLowerCase();
-        const service = (a.appointment?.serviceType || a.serviceType || '').toLowerCase();
         return (
           name.includes(q) ||
           email.includes(q) ||
           phone.includes(q) ||
-          idStr.includes(q) ||
-          service.includes(q)
+          idStr.includes(q)
         );
       }
       return true;
     });
-  }, [appointments, statusFilter, serviceFilter, dateFilter, search]);
+  }, [appointments, statusFilter, dateFilter, search]);
 
   const {
     totalItems,
@@ -566,14 +441,13 @@ export default function AppointmentsView() {
     const clientEmail = apt.customer?.email || apt.email || '—';
     const countryCode = apt.customer?.phone?.countryCode || '91';
     const rawPhone = apt.customer?.phone?.number || apt.phoneNumber || apt.phone || '98200 00000';
-    const service = apt.appointment?.serviceType || apt.serviceType || 'Custom Design Consultation';
     const aptDate = apt.appointment?.date || apt.appointmentDate || apt.date;
     const prefTime = apt.appointment?.preferredTime || apt.preferredTime || apt.time || '12:00 PM';
     const displayId =
       apt.customId ||
       apt.appointmentId ||
       `#APT-${String(10 - ((currentPage - 1) * pageSize + idx)).padStart(4, '0')}`;
-    return { id, clientName, clientEmail, countryCode, rawPhone, service, aptDate, prefTime, displayId };
+    return { id, clientName, clientEmail, countryCode, rawPhone, aptDate, prefTime, displayId };
   };
 
   const statCardsData = [
@@ -680,7 +554,13 @@ export default function AppointmentsView() {
 
         <button
           type="button"
-          onClick={() => setIsBookModalOpen(true)}
+          onClick={() => {
+            setFormData((prev) => ({
+              ...prev,
+              date: prev.date || formatDateToISO(new Date()),
+            }));
+            setIsBookModalOpen(true);
+          }}
           className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white font-semibold text-xs sm:text-sm shadow-sm transition-all cursor-pointer active:scale-98 shrink-0"
         >
           <HiOutlinePlus className="w-4 h-4 stroke-2" />
@@ -811,68 +691,6 @@ export default function AppointmentsView() {
             )}
           </div>
 
-          {/* More Filters Dropdown Button */}
-          <div className="relative" ref={filterMenuRef}>
-            <button
-              type="button"
-              onClick={() => setIsFilterMenuOpen(!isFilterMenuOpen)}
-              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-medium transition-all border shadow-2xs cursor-pointer whitespace-nowrap ${
-                serviceFilter !== 'all'
-                  ? 'bg-[#8b6f4e] text-white border-[#8b6f4e]'
-                  : 'bg-white text-stone-700 border-stone-200 hover:bg-stone-50'
-              }`}
-            >
-              <HiOutlineAdjustments className="w-3.5 h-3.5" />
-              <span>{serviceFilter !== 'all' ? 'Filtered' : 'More filters'}</span>
-            </button>
-
-            {isFilterMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-stone-200 p-3 z-30 space-y-2.5">
-                <div className="flex items-center justify-between pb-2 border-b border-stone-100">
-                  <span className="text-xs font-bold text-stone-800">Filter by Consultation</span>
-                  {serviceFilter !== 'all' && (
-                    <button
-                      type="button"
-                      onClick={() => setServiceFilter('all')}
-                      className="text-[11px] text-[#8b6f4e] hover:underline cursor-pointer"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-                <div className="max-h-48 overflow-y-auto space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setServiceFilter('all');
-                      setIsFilterMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs cursor-pointer ${
-                      serviceFilter === 'all' ? 'bg-[#faf4ec] text-[#8b6f4e] font-semibold' : 'text-stone-700 hover:bg-stone-50'
-                    }`}
-                  >
-                    All Consultations
-                  </button>
-                  {SERVICE_OPTIONS.map((srv) => (
-                    <button
-                      key={srv}
-                      type="button"
-                      onClick={() => {
-                        setServiceFilter(srv);
-                        setIsFilterMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs truncate cursor-pointer ${
-                        serviceFilter === srv ? 'bg-[#faf4ec] text-[#8b6f4e] font-semibold' : 'text-stone-700 hover:bg-stone-50'
-                      }`}
-                    >
-                      {srv}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
           {/* Bulk Delete Button */}
           <button
             type="button"
@@ -890,22 +708,6 @@ export default function AppointmentsView() {
         </div>
       </div>
 
-      {/* ─── Bulk Actions Bar ─── */}
-      {selectedIds.size > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-[#faf4ec] border border-[#ecdcc7] rounded-xl animate-fadeIn">
-          <span className="text-xs font-semibold text-[#8b6f4e]">
-            {selectedIds.size} appointment{selectedIds.size > 1 ? 's' : ''} selected
-          </span>
-          <button
-            type="button"
-            onClick={handleBulkDelete}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-all cursor-pointer"
-          >
-            <HiOutlineTrash className="w-3.5 h-3.5" />
-            Delete Selected
-          </button>
-        </div>
-      )}
 
       {/* ─── Main Content: Appointment Table ─── */}
       {loading ? (
@@ -940,7 +742,6 @@ export default function AppointmentsView() {
                   <th className="py-3 px-4 whitespace-nowrap">CLIENT</th>
                   <th className="py-3 px-4 whitespace-nowrap">CONTACT</th>
                   <th className="py-3 px-4 whitespace-nowrap">DATE & TIME</th>
-                  <th className="py-3 px-4 whitespace-nowrap">CONSULTATION</th>
                   <th className="py-3 px-4 whitespace-nowrap">STATUS</th>
                   <th className="py-3 pr-5 pl-2 whitespace-nowrap text-right">ACTIONS</th>
                 </tr>
@@ -953,10 +754,8 @@ export default function AppointmentsView() {
                     clientEmail,
                     countryCode,
                     rawPhone,
-                    service,
                     aptDate,
                     prefTime,
-                    displayId,
                   } = extractAptData(apt, idx);
 
                   const isSelected = selectedIds.has(id);
@@ -964,7 +763,7 @@ export default function AppointmentsView() {
                   return (
                     <tr
                       key={id}
-                      onClick={() => setViewingApt({ ...apt, ...extractAptData(apt, idx) })}
+                      onClick={() => handleOpenEdit(apt, idx)}
                       className={`transition-colors cursor-pointer ${
                         isSelected ? 'bg-[#faf6f0]/70' : 'hover:bg-[#faf7f2]/60'
                       }`}
@@ -1012,14 +811,6 @@ export default function AppointmentsView() {
                           {formatDateDisplay(aptDate)}
                         </p>
                         <p className="text-[11px] text-stone-400 mt-1 leading-none">{prefTime}</p>
-                      </td>
-
-                      {/* Service */}
-                      <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="inline-flex items-center gap-1.5 bg-[#fdf9f4] border border-[#f2e2cf] px-2.5 py-1 rounded-lg text-xs font-medium text-[#8b6f4e]">
-                          <IoDiamondOutline className="w-3 h-3 text-[#8b6f4e]" />
-                          <span>{service}</span>
-                        </div>
                       </td>
 
                       {/* Status */}
@@ -1137,30 +928,26 @@ export default function AppointmentsView() {
                 </div>
                 <div>
                   <label className="block text-xs font-bold text-stone-800 mb-1.5">Phone Number</label>
-                  <input
-                    type="tel"
-                    placeholder="98200 99880"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    <div className="shrink-0">
+                      <CountryCodeSelect
+                        value={formData.countryCode || '+91'}
+                        onChange={(dialCode) => setFormData({ ...formData, countryCode: dialCode })}
+                        size="sm"
+                        buttonClassName="flex items-center justify-between gap-1 px-2 text-xs font-semibold text-stone-800 bg-white border border-stone-200 hover:border-[#bdae99] rounded-xl h-[38px] min-w-[76px] shadow-2xs focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all cursor-pointer"
+                      />
+                    </div>
+                    <input
+                      type="tel"
+                      placeholder="98200 99880"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      className="min-w-0 flex-1 px-2.5 py-2 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs h-[38px]"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-stone-800 mb-1.5">Consultation Service</label>
-                <select
-                  value={formData.service}
-                  onChange={(e) => setFormData({ ...formData, service: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs cursor-pointer"
-                >
-                  {SERVICE_OPTIONS.map((srv) => (
-                    <option key={srv} value={srv}>
-                      {srv}
-                    </option>
-                  ))}
-                </select>
-              </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -1168,7 +955,6 @@ export default function AppointmentsView() {
                   <DatePicker
                     value={formData.date}
                     onChange={(val) => setFormData({ ...formData, date: val })}
-                    direction="up"
                     placeholder="Select date"
                   />
                 </div>
@@ -1182,6 +968,17 @@ export default function AppointmentsView() {
                     className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-800 mb-1.5">Notes (Optional)</label>
+                <textarea
+                  rows={2}
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  placeholder="Any client preferences, special requests, or consultation notes..."
+                  className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs resize-none"
+                />
               </div>
 
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-stone-100">
@@ -1205,127 +1002,190 @@ export default function AppointmentsView() {
         </div>, document.body)
       )}
 
-      {/* ─── View Appointment Details Modal ─── */}
-      {viewingApt && (
-        createPortal(<div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
-          onClick={() => setViewingApt(null)}
-        >
+      {/* ─── Edit Appointment Details Modal ─── */}
+      {editingApt && (
+        createPortal(
           <div
-            className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200/90 animate-scaleUp overflow-hidden max-h-[92vh] flex flex-col"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/45 backdrop-blur-xs animate-fadeIn"
+            onClick={() => setEditingApt(null)}
           >
-            {/* Header */}
-            <div className="bg-[#faf3ea] border-b border-[#ebdcc9] px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-full bg-white text-[#8b6f4e] font-bold text-sm flex items-center justify-center border border-[#ebdcc9] shadow-2xs">
-                  {getInitials(viewingApt.clientName)}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-stone-900 leading-tight">
-                    {viewingApt.clientName}
-                  </h3>
-                  <p className="text-xs font-mono text-[#8b6f4e] mt-0.5">{viewingApt.displayId}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setViewingApt(null)}
-                className="w-8 h-8 rounded-lg bg-white/80 hover:bg-white text-stone-400 hover:text-stone-700 flex items-center justify-center border border-stone-200 transition-colors cursor-pointer"
-              >
-                <HiOutlineX className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
-              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Status</span>
-                {renderStatusPill(viewingApt.status)}
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">Email</p>
-                  <p className="text-xs font-bold text-stone-800 break-all">{viewingApt.clientEmail}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">Phone</p>
-                  <p className="text-xs font-bold text-stone-800">
-                    +{viewingApt.countryCode} {viewingApt.rawPhone}
-                  </p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">Date & Time</p>
-                  <p className="text-xs font-bold text-[#8b6f4e]">
-                    {formatDateDisplay(viewingApt.aptDate)}
-                  </p>
-                  <p className="text-[11px] text-stone-500">{viewingApt.prefTime}</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">Consultation</p>
-                  <div className="inline-flex items-center gap-1.5 bg-[#fdf9f4] border border-[#f2e2cf] px-2.5 py-1 rounded-lg text-xs font-semibold text-[#8b6f4e]">
-                    <IoDiamondOutline className="w-3.5 h-3.5" />
-                    <span>{viewingApt.service}</span>
+            <div
+              className="bg-white rounded-2xl sm:rounded-3xl max-w-lg w-full shadow-2xl border border-stone-200/90 animate-scaleUp overflow-hidden max-h-[92vh] flex flex-col"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="bg-[#faf3ea] border-b border-[#ebdcc9] px-4 sm:px-6 py-4 sm:py-5 flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-12 h-12 rounded-full bg-white text-[#8b6f4e] font-bold text-sm flex items-center justify-center border border-[#ebdcc9] shadow-2xs">
+                    {getInitials(editFormData.name || editingApt.clientName)}
+                  </div>
+                  <div>
+                    <h3 className="text-base font-bold text-stone-900 leading-tight">
+                      Edit Appointment
+                    </h3>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      {editingApt.clientName} &bull; {editingApt.clientEmail}
+                    </p>
                   </div>
                 </div>
-              </div>
-
-              {/* Actions in Modal */}
-              <div className="flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 pt-4 border-t border-stone-100">
-                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                  {viewingApt.status === 'pending' && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const ok = await handleAcceptAppointment(viewingApt);
-                          if (ok) setViewingApt(null);
-                        }}
-                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
-                        <span>Accept & Confirm</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          const ok = await handleRejectAppointment(viewingApt);
-                          if (ok) setViewingApt(null);
-                        }}
-                        className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                      >
-                        <HiOutlineXCircle className="w-4 h-4 stroke-2" />
-                        <span>Cancel</span>
-                      </button>
-                    </>
-                  )}
-                  {viewingApt.status === 'confirmed' && (
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const ok = await handleAcceptAppointment(viewingApt);
-                        if (ok) setViewingApt(null);
-                      }}
-                      className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
-                      <span>Mark Completed</span>
-                    </button>
-                  )}
-                </div>
-
                 <button
                   type="button"
-                  onClick={() => setViewingApt(null)}
-                  className="w-full sm:w-auto px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer text-center"
+                  onClick={() => setEditingApt(null)}
+                  className="w-8 h-8 rounded-lg bg-white/80 hover:bg-white text-stone-400 hover:text-stone-700 flex items-center justify-center border border-stone-200 transition-colors cursor-pointer"
                 >
-                  Close
+                  <HiOutlineX className="w-4 h-4" />
                 </button>
               </div>
+
+              {/* Form Content */}
+              <form onSubmit={handleUpdateAppointment} className="flex-1 flex flex-col overflow-hidden">
+                <div className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
+                  {/* Client Name */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                      Client Full Name <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Radhika Merchant"
+                      value={editFormData.name}
+                      onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                      className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Email & Phone */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                        Email Address <span className="text-rose-500">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        required
+                        placeholder="client@gmail.com"
+                        value={editFormData.email}
+                        onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                        className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5">Phone Number</label>
+                      <div className="flex items-center gap-1.5">
+                        <div className="shrink-0">
+                          <CountryCodeSelect
+                            value={editFormData.countryCode || '+91'}
+                            onChange={(dialCode) => setEditFormData({ ...editFormData, countryCode: dialCode })}
+                            size="sm"
+                            buttonClassName="flex items-center justify-between gap-1 px-2 text-xs font-semibold text-stone-800 bg-white border border-stone-200 hover:border-[#bdae99] rounded-xl h-[38px] min-w-[76px] shadow-2xs focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all cursor-pointer"
+                          />
+                        </div>
+                        <input
+                          type="tel"
+                          placeholder="98200 99880"
+                          value={editFormData.phone}
+                          onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                          className="min-w-0 flex-1 px-2.5 py-2 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs h-[38px]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Date & Time */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5">Date</label>
+                      <DatePicker
+                        value={editFormData.date}
+                        onChange={(val) => setEditFormData({ ...editFormData, date: val })}
+                        placeholder="Select date"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-800 mb-1.5">Time</label>
+                      <input
+                        type="text"
+                        placeholder="12:00 PM"
+                        value={editFormData.time}
+                        onChange={(e) => setEditFormData({ ...editFormData, time: e.target.value })}
+                        className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1.5">Notes</label>
+                    <textarea
+                      rows={2}
+                      value={editFormData.notes}
+                      onChange={(e) => setEditFormData({ ...editFormData, notes: e.target.value })}
+                      placeholder="Any client preferences, special requests, or consultation notes..."
+                      className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs resize-none"
+                    />
+                  </div>
+                </div>
+
+                {/* Footer Buttons */}
+                <div className="p-4 sm:p-5 border-t border-stone-100 bg-stone-50/60 flex flex-col-reverse sm:flex-row sm:items-center justify-between gap-3 shrink-0">
+                  <div className="flex items-center gap-2">
+                    {editingApt.status === 'pending' && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = await handleAcceptAppointment(editingApt);
+                            if (ok) setEditingApt(null);
+                          }}
+                          className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
+                          <span>Accept & Confirm</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const ok = await handleRejectAppointment(editingApt);
+                            if (ok) setEditingApt(null);
+                          }}
+                          className="px-3.5 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 border border-rose-200 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <HiOutlineXCircle className="w-4 h-4 stroke-2" />
+                          <span>Cancel</span>
+                        </button>
+                      </>
+                    )}
+                    {editingApt.status === 'confirmed' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const ok = await handleAcceptAppointment(editingApt);
+                          if (ok) setEditingApt(null);
+                        }}
+                        className="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
+                        <span>Mark Completed</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-end gap-2.5">
+                    <button
+                      type="submit"
+                      disabled={submitting}
+                      className="px-5 py-2.5 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl shadow-sm cursor-pointer disabled:opacity-50 transition-colors"
+                    >
+                      {submitting ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
-          </div>
-        </div>, document.body)
+          </div>,
+          document.body
+        )
       )}
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineEye,
   HiOutlineDuplicate,
@@ -16,6 +16,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import Modal from '../../components/common/Modal';
 import DatePicker from '../../components/common/DatePicker';
 import RowActions from '../../components/common/RowActions';
+import { VITE_FRONT_URL } from '../../config/env';
 
 // Helper to format dates matching the exact screenshot: "13 Oct 2026 - No end"
 const formatDate = (dateStr) => {
@@ -249,7 +250,7 @@ export default function TopAnnouncementView() {
   // Duplicate an announcement
   const handleDuplicate = async (item) => {
     try {
-      const res = await topAnnouncementsAPI.duplicate(item._id);
+      await topAnnouncementsAPI.duplicate(item._id);
       toast.success('Announcement duplicated');
       fetchData();
     } catch (err) {
@@ -327,10 +328,7 @@ export default function TopAnnouncementView() {
 
   // View on website handler
   const handleViewOnWebsite = () => {
-    const websiteUrl =
-      import.meta.env.VITE_WEBSITE_URL ||
-      window.location.origin.replace(':5174', ':5173');
-    window.open(websiteUrl, '_blank', 'noopener,noreferrer');
+    window.open(VITE_FRONT_URL, '_blank', 'noopener,noreferrer');
   };
 
   return (

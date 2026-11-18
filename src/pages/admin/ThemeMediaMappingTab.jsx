@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
@@ -27,6 +27,7 @@ import { websiteThemesAPI, galleryAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import { uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
+import { VITE_FRONT_URL } from '../../config/env';
 
 const MODULE_TABS = [
   {
@@ -418,7 +419,7 @@ export default function ThemeMediaMappingTab({
               type="button"
               onClick={() => {
                 if (onPreview) onPreview();
-                else window.open('/', '_blank');
+                else window.open(VITE_FRONT_URL, '_blank');
               }}
               className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 px-3.5 py-2 text-xs font-semibold text-stone-700 shadow-2xs transition cursor-pointer"
             >
@@ -1467,7 +1468,7 @@ export default function ThemeMediaMappingTab({
 // ═════════════════════════════════════════════════════════════════════
 // SUBCOMPONENT: GALLERY PICKER + DIRECT UPLOADER MODAL
 // ═════════════════════════════════════════════════════════════════════
-function GalleryPickerModal({ target, activeModule, onClose, onSelect, onDirectUpload }) {
+function GalleryPickerModal({ target, onClose, onSelect, onDirectUpload }) {
   const [activeTab, setActiveTab] = useState('gallery'); // 'gallery' or 'upload'
   const [galleryItems, setGalleryItems] = useState([]);
   const [loading, setLoading] = useState(true);

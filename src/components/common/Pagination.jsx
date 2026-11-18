@@ -59,7 +59,7 @@ export default function Pagination({
   const scrollToTop = () => {
     try {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch (_) {}
+    } catch {}
   };
 
   const handlePageClick = (page) => {

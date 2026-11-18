@@ -1,8 +1,6 @@
-import React from 'react';
 import { HiOutlinePlus } from 'react-icons/hi';
 
 export default function ModuleHeader({
-  breadcrumbs = ['Home', 'Customers'],
   title = 'Customers',
   subtitle = 'Manage customer profiles and purchase activity.',
   onAdd,

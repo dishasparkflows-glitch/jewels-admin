@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   HiOutlineRefresh,
   HiOutlineEye,
@@ -16,6 +16,8 @@ const QUALITY_PRESETS = [
   { value: 90, label: '90% High Clarity', tag: 'Sharp' },
   { value: 95, label: '95% Ultra Fidelity', tag: 'Max' },
 ];
+
+const DEFAULT_DEMO_URL = 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1200&q=80';
 
 export default function ImageCompressionDemo({
   quality = 82,

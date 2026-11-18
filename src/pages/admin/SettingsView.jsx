@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HiOutlineChevronRight,
@@ -75,7 +75,7 @@ const DEFAULT_HEADER_FOOTER_COLORS = {
 export default function SettingsView() {
   const navigate = useNavigate();
   const [settings, setSettings] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
   // Active modal: null | 'logos' | 'compression' | 'trust' | 'business' | 'monetary' | 'theme'

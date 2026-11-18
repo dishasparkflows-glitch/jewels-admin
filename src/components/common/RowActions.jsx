@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   HiOutlineDotsVertical,
   HiOutlinePencil,
@@ -126,12 +126,10 @@ export function StatusActionButton({
 
 export default function RowActions({
   onView,
-  onPreview,
   onOpenWebsite,
   onEdit,
   onDelete,
   viewTitle = 'View Details',
-  previewTitle,
   websiteTitle = 'View on store',
   editTitle = 'Edit',
   editLabel,

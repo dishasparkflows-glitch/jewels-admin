@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
@@ -37,7 +37,7 @@ import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
 const getMediaUrl = (url) => {
   if (!url) return '';
   if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  const backendBase = (import.meta.env.VITE_API_URL || 'http://localhost:5001/api').replace(/\/api\/?$/, '');
+  const backendBase = (import.meta.env.VITE_API_URL || '').replace(/\/api\/?$/, '');
   return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
@@ -233,16 +233,15 @@ export default function BannersView() {
   const [selectedCategory, setSelectedCategory] = useState('');
   const [collectionGroup, setCollectionGroup] = useState('gold');
   const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
-  const [navigationCategories, setNavigationCategories] = useState([]);
+  const [, setNavigationCategories] = useState([]);
   const [pendingThemeImages, setPendingThemeImages] = useState({});
 
   // Theme lookup & Theme placement images states
   const [themes, setThemes] = useState([]);
-  const [loadingThemes, setLoadingThemes] = useState(false);
+  const [, setLoadingThemes] = useState(false);
   const [selectedPlacementTab, setSelectedPlacementTab] = useState(currentBannerType?.key || 'herobanner');
-  const [selectedPlatformTab, setSelectedPlatformTab] = useState('all');
-  const [themePlacementImages, setThemePlacementImages] = useState([]);
-  const [loadingPlacementImages, setLoadingPlacementImages] = useState(false);
+  const [, setThemePlacementImages] = useState([]);
+  const [, setLoadingPlacementImages] = useState(false);
 
     // Keep placement tab synced with current banner type when route changes
   useEffect(() => {
@@ -258,9 +257,9 @@ export default function BannersView() {
 
   // Image Upload States
   const [isUploadingDesktop, setIsUploadingDesktop] = useState(false);
-  const [desktopUploadStats, setDesktopUploadStats] = useState(null);
+  const [, setDesktopUploadStats] = useState(null);
   const [isUploadingMobile, setIsUploadingMobile] = useState(false);
-  const [mobileUploadStats, setMobileUploadStats] = useState(null);
+  const [, setMobileUploadStats] = useState(null);
   const desktopInputRef = useRef(null);
   const mobileInputRef = useRef(null);
   const collectionSlotRef = useRef(null);
@@ -391,7 +390,7 @@ export default function BannersView() {
     }
   };
 
-  const fetchThemePlacementImages = async (tId = themeId, placement = selectedPlacementTab, platform = selectedPlatformTab) => {
+  const fetchThemePlacementImages = async (tId = themeId, placement = selectedPlacementTab) => {
     try {
       setLoadingPlacementImages(true);
       const params = { limit: 100 };
@@ -577,7 +576,7 @@ export default function BannersView() {
   };
 
   // Paginated items for Screen 2
-  const { totalItems, paginatedItems } = usePagination(banners, pageSize, serverTotal);
+  const { paginatedItems } = usePagination(banners, pageSize, serverTotal);
 
   // Upload handler for Desktop or Mobile
   const handleFileUpload = async (file, targetDevice) => {
@@ -657,14 +656,14 @@ export default function BannersView() {
   const handleRemoveUploadedImage = async (device) => {
     if (device === 'desktop') {
       if (imageUrl) {
-        try { await deleteUploadedFile(imageUrl); } catch (_) {}
+        try { await deleteUploadedFile(imageUrl); } catch {}
       }
       setImageUrl('');
       setImageKey('');
       setDesktopUploadStats(null);
     } else {
       if (mobileImageUrl) {
-        try { await deleteUploadedFile(mobileImageUrl); } catch (_) {}
+        try { await deleteUploadedFile(mobileImageUrl); } catch {}
       }
       setMobileImageUrl('');
       setMobileImageKey('');

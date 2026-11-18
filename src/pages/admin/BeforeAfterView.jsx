@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
   HiOutlineTrash,
@@ -276,7 +276,7 @@ export default function BeforeAfterView() {
       setItems((prev) =>
         prev.map((i) => (i._id === item._id ? { ...i, status: nextStatus } : i))
       );
-    } catch (err) {
+    } catch {
       toast.error('Failed to update status');
     }
   };
@@ -323,7 +323,7 @@ export default function BeforeAfterView() {
       setItems((prev) => prev.filter((i) => !selectedIds.includes(i._id)));
       setSelectedIds([]);
       toast.success(`${count} showcase pairs deleted`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete some items');
     }
   };

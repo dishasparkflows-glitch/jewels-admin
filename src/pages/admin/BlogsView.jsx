@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlineDocumentText,
   HiOutlinePhotograph,
@@ -35,7 +35,7 @@ export default function BlogsView() {
 
   // Form & Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingBlog, setEditingBlog] = useState(null);
+  const [editingBlog] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -141,42 +141,6 @@ export default function BlogsView() {
     const words = clean ? clean.split(/\s+/).length : 0;
     const mins = Math.max(1, Math.ceil(words / 200));
     return `${mins} min read`;
-  };
-
-  // Open Add Modal
-  const handleOpenAdd = () => {
-    setEditingBlog(null);
-    setFormData({
-      title: '',
-      slug: '',
-      blogCategory: categories[0]?._id || '',
-      description: '<p>Welcome to our new journal entry. Explore timeless diamonds, craftmanship, and luxury fine jewellery insights...</p>',
-      shortDescription: '',
-      image: { url: '', key: '', alt: '' },
-      readTime: '3 min read',
-      status: 'active',
-      author: 'Neirah Editorial',
-      tags: '',
-    });
-    setIsModalOpen(true);
-  };
-
-  // Open Edit Modal
-  const handleOpenEdit = (blog) => {
-    setEditingBlog(blog);
-    setFormData({
-      title: blog.basicInfo?.title || blog.title || '',
-      slug: blog.basicInfo?.slug || blog.slug || '',
-      blogCategory: blog.blogCategory?._id || blog.blogCategory || '',
-      description: blog.basicInfo?.description || blog.description || '',
-      shortDescription: blog.basicInfo?.shortDescription || blog.shortDescription || '',
-      image: typeof blog.image === 'string' ? { url: blog.image, key: '', alt: '' } : blog.image || { url: '', key: '', alt: '' },
-      readTime: blog.basicInfo?.readTime || blog.readTime || '3 min read',
-      status: blog.status || 'active',
-      author: blog.basicInfo?.author || blog.author || 'Neirah Editorial',
-      tags: Array.isArray(blog.tags) ? blog.tags.join(', ') : blog.tags || '',
-    });
-    setIsModalOpen(true);
   };
 
   // Title change with auto-slug using hyphens

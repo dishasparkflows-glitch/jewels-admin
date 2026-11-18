@@ -11,16 +11,16 @@ import {
   HiOutlineX,
   HiOutlinePhotograph,
   HiOutlineCheck,
-  HiOutlineSparkles,
   HiOutlineUpload,
 } from 'react-icons/hi';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
-import RowActions, { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
+import { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
-import AdminImage, { NoImagePlaceholder } from '../../components/common/AdminImage';
+import AdminImage from '../../components/common/AdminImage';
+import { VITE_FRONT_URL } from '../../config/env';
 
 // Preset luxury jewelry icons for 1-click selection
 const PRESET_ICONS = [
@@ -83,60 +83,6 @@ function DragHandle({ className = '', ...props }) {
         <circle cx="16" cy="19" r="1.8" />
       </svg>
     </span>
-  );
-}
-
-// Fallback luxury icons for categories if no image is uploaded
-function CategoryGlyph({ name, className = 'w-5 h-5' }) {
-  const n = (name || '').toLowerCase();
-  if (n.includes('ring')) {
-    return (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <circle cx="12" cy="14" r="7" />
-        <path d="M9 4l3-2 3 2-1.5 3h-3L9 4z" />
-      </svg>
-    );
-  }
-  if (n.includes('earring')) {
-    return (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <circle cx="8" cy="8" r="3" />
-        <path d="M8 11v4a3 3 0 006 0v-4" />
-        <circle cx="16" cy="8" r="3" />
-      </svg>
-    );
-  }
-  if (n.includes('pendant') || n.includes('neck')) {
-    return (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <path d="M4 6c4 8 12 8 16 0" />
-        <circle cx="12" cy="16" r="3" />
-        <path d="M12 11v2" />
-      </svg>
-    );
-  }
-  if (n.includes('bangle') || n.includes('bracelet')) {
-    return (
-      <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-        <ellipse cx="12" cy="12" rx="9" ry="6" />
-        <circle cx="12" cy="6" r="1.5" fill="currentColor" />
-      </svg>
-    );
-  }
-  return <HiOutlineSparkles className={className} />;
-}
-
-// Item thumbnail or gem icon
-function ItemIcon({ iconUrl, title, className = 'w-7 h-7' }) {
-  return (
-    <AdminImage
-      src={iconUrl}
-      alt={title || ''}
-      className={`${className} rounded-lg object-cover shrink-0`}
-      containerClassName={`${className} rounded-lg`}
-      rounded="rounded-lg"
-      textClassName="text-[9px] font-semibold text-stone-400 select-none"
-    />
   );
 }
 
@@ -519,7 +465,7 @@ export default function NavigationMenusView() {
         });
       }
 
-      const itemPromises = Object.entries(itemsBySection).map(([secId, items]) => {
+      const itemPromises = Object.values(itemsBySection).map((items) => {
         if (items && items.length > 0) {
           return api.put('/menu-items/reorder', {
             items: items.map((it, idx) => ({ _id: it._id, order: idx + 1 })),
@@ -795,12 +741,6 @@ export default function NavigationMenusView() {
     );
   }, [categories, categorySearch]);
 
-  // Total items count across active category
-  const totalCategoryItems = useMemo(() => {
-    return Object.values(itemsBySection).reduce((sum, arr) => sum + (arr?.length || 0), 0);
-  }, [itemsBySection]);
-
-
   return (
     <div className="space-y-5 pb-16 text-stone-800 font-sans">
       {/* ────────────────────────────────────────────────────────────────────── */}
@@ -824,8 +764,8 @@ export default function NavigationMenusView() {
             type="button"
             onClick={() => {
               const url = selectedCategory?.slug
-                ? `http://localhost:5174/shop?category=${selectedCategory.slug}`
-                : 'http://localhost:5174';
+                ? `${VITE_FRONT_URL}/shop?category=${selectedCategory.slug}`
+                : VITE_FRONT_URL;
               window.open(url, '_blank');
             }}
             className="inline-flex items-center gap-2 rounded-xl border border-stone-200/90 bg-white px-4 py-2.5 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 hover:border-stone-300 transition-all cursor-pointer"
@@ -1155,7 +1095,6 @@ export default function NavigationMenusView() {
                               ) : (
                                 <div className="divide-y divide-stone-100 border-t border-b border-stone-100">
                                   {items.map((item, itemIdx) => {
-                                    const isMenuOpen = activeItemMenu === item._id;
                                     const isItemDragging =
                                       draggedItemInfo?.sectionId === section._id &&
                                       draggedItemInfo.itemIdx === itemIdx;

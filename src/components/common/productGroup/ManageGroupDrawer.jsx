@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -349,7 +349,7 @@ export default function ManageGroupDrawer({
       toast.success('Reverted to automatic representative selection');
       fetchGroup();
       onRefreshParent?.();
-    } catch (err) {
+    } catch {
       toast.error('Failed to reset representative mode');
     }
   };
@@ -371,29 +371,6 @@ export default function ManageGroupDrawer({
       onRefreshParent?.();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not remove product');
-    }
-  };
-
-  // Bulk Remove Selected
-  const handleBulkRemove = async () => {
-    const isConfirmed = await confirm({
-      title: 'Remove Selected Products',
-      message: `Are you sure you want to remove ${selectedProductIds.size} products from this group?`,
-      confirmText: 'Remove Products',
-      type: 'warning',
-    });
-    if (!isConfirmed) return;
-
-    try {
-      for (const id of Array.from(selectedProductIds)) {
-        await api.delete(`/product-groups/${group._id}/products/${id}`);
-      }
-      toast.success(`Removed ${selectedProductIds.size} products`);
-      setSelectedProductIds(new Set());
-      fetchGroup();
-      onRefreshParent?.();
-    } catch (err) {
-      toast.error('Failed to remove some products');
     }
   };
 
@@ -432,7 +409,7 @@ export default function ManageGroupDrawer({
       const res = await api.get('/product-groups/ungrouped-products?limit=100');
       const items = res.data?.data?.items || res.data?.data || [];
       setUngroupedPool(items);
-    } catch (err) {
+    } catch {
       toast.error('Failed to load ungrouped products');
     }
   };

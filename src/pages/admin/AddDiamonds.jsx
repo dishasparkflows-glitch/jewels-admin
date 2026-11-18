@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   HiOutlinePhotograph,
@@ -28,7 +28,7 @@ export default function AddDiamonds() {
   const [shapes, setShapes] = useState([]);
   const [colors, setColors] = useState([]);
   const [clarities, setClarities] = useState([]);
-  const [loadingLookups, setLoadingLookups] = useState(true);
+  const [, setLoadingLookups] = useState(true);
 
   // Price Master Matrix (Loaded from /center-diamond-prices/lookup)
   const [pricingMatrix, setPricingMatrix] = useState([]);
@@ -341,16 +341,6 @@ export default function AddDiamonds() {
     }
   };
 
-  const handleRemoveRowImage = (variantId) => {
-    setVariants((prev) =>
-      prev.map((v) =>
-        v.id === variantId
-          ? { ...v, image: globalImage ? { url: globalImage } : null, hasCustomImage: false }
-          : v
-      )
-    );
-  };
-
   // Apply Bulk Rate to all variants
   const handleApplyBulkRate = () => {
     const r = parseFloat(bulkRate);
@@ -625,9 +615,10 @@ export default function AddDiamonds() {
             ) : (
               <button
                 type="button"
+                data-upload-trigger="true"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingImage}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-stone-50/70 hover:bg-stone-100 border border-dashed border-stone-300 rounded-xl text-xs font-semibold text-stone-600 transition-colors cursor-pointer disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-stone-50/70 hover:bg-stone-100 border border-dashed border-stone-300 rounded-xl text-xs font-semibold text-stone-600 transition-colors cursor-pointer disabled:opacity-50 focus:outline-hidden focus:ring-2 focus:ring-[#8b6f4e]/30 focus:border-[#8b6f4e]"
               >
                 {isUploadingImage ? (
                   <div className="w-4 h-4 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin" />

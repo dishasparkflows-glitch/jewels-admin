@@ -1,4 +1,3 @@
-import React from 'react';
 import { HiOutlineCalculator, HiOutlineInformationCircle } from 'react-icons/hi';
 import Modal from './Modal';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -12,14 +11,10 @@ export default function PricingBreakdownModal({
   error,
   specs,
 }) {
-  if (!isOpen) return null;
+  const themeContext = useTheme();
+  const theme = themeContext?.currentTheme;
 
-  let theme = null;
-  try {
-    theme = useTheme()?.currentTheme;
-  } catch (e) {
-    // Fallback if rendered outside ThemeProvider
-  }
+  if (!isOpen) return null;
 
   const combination =
     variant?.combination ||

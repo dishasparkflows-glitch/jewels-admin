@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import {
   HiOutlineArrowLeft,
   HiOutlineCheck,
@@ -16,13 +16,13 @@ import {
 import toast from 'react-hot-toast';
 import { websiteThemesAPI, bannersAPI, featuredAPI, categoriesAPI } from '../../api/services';
 import ConfirmModal from '../../components/common/ConfirmModal';
-import { useConfirm } from '../../contexts/ConfirmContext';
 import DatePicker from '../../components/common/DatePicker';
 import ThemeMediaLibraryTab from './ThemeMediaLibraryTab';
 import ThemeMediaMappingTab from './ThemeMediaMappingTab';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { VITE_FRONT_URL } from '../../config/env';
 
 
 
@@ -97,16 +97,15 @@ const inputClass =
   'w-full h-10 rounded-xl border border-stone-200 bg-white px-3 text-xs text-stone-800 outline-none transition focus:border-[#8b6c3a] focus:ring-2 focus:ring-[#8b6c3a]/15';
 
 export default function WebsiteThemesView() {
-  const confirm = useConfirm();
   const [themes, setThemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
 
   // Related data
-  const [availableBanners, setAvailableBanners] = useState([]);
-  const [availableFeatured, setAvailableFeatured] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [, setAvailableBanners] = useState([]);
+  const [, setAvailableFeatured] = useState([]);
+  const [, setCategories] = useState([]);
 
   // Editor states
   const [editing, setEditing] = useState(null);
@@ -122,7 +121,7 @@ export default function WebsiteThemesView() {
   // Modals & Menu
   const [themeToDelete, setThemeToDelete] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  const [activeMenuThemeId, setActiveMenuThemeId] = useState(null);
+  const [, setActiveMenuThemeId] = useState(null);
 
   // Pagination & Server State
   const [currentPage, setCurrentPage] = useState(1);
@@ -212,9 +211,6 @@ export default function WebsiteThemesView() {
     paginatedItems,
   } = usePagination(themes, pageSize, serverTotal);
 
-  const updateConfig = (updater) =>
-    setEditing((current) => ({ ...current, config: updater(current.config) }));
-
   // Open theme editor
   const openEditor = async (theme = null, initialTab = 'details') => {
     // Lazily fetch related data (banners, featured, categories) only when opening the editor
@@ -252,7 +248,7 @@ export default function WebsiteThemesView() {
       setPublishEnd(data.schedule?.endAt ? new Date(data.schedule.endAt).toISOString().slice(0, 16) : '');
       setFallbackThemeId(data.schedule?.fallbackThemeId || '');
       setTab(initialTab);
-    } catch (err) {
+    } catch {
       toast.error('Could not load this theme');
     }
   };
@@ -289,17 +285,6 @@ export default function WebsiteThemesView() {
       toast.error(error.response?.data?.message || 'Could not save theme');
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Duplicate theme
-  const duplicateTheme = async (theme) => {
-    try {
-      await websiteThemesAPI.duplicate(theme._id);
-      toast.success('Theme duplicated successfully');
-      await fetchThemes();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not duplicate theme');
     }
   };
 
@@ -341,45 +326,6 @@ export default function WebsiteThemesView() {
     }
   };
 
-  // Rollback
-  const rollbackTheme = async (theme) => {
-    const isConfirmed = await confirm({
-      title: 'Restore Published Theme Snapshot',
-      message: `Are you sure you want to restore the previous published snapshot of "${theme.name}"?`,
-      confirmText: 'Restore Theme',
-      cancelText: 'Cancel',
-      type: 'warning',
-    });
-    if (!isConfirmed) return;
-    try {
-      await websiteThemesAPI.rollback(theme._id);
-      toast.success('Theme rolled back successfully');
-      await fetchThemes();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not restore theme snapshot');
-    }
-  };
-
-  // Archive
-  const archiveTheme = async (theme) => {
-    const isConfirmed = await confirm({
-      title: 'Archive Theme',
-      message: `Are you sure you want to archive theme "${theme.name}"?`,
-      confirmText: 'Archive Theme',
-      cancelText: 'Cancel',
-      type: 'warning',
-    });
-    if (!isConfirmed) return;
-    try {
-      await websiteThemesAPI.archive(theme._id);
-      toast.success('Theme archived');
-      await fetchThemes();
-      if (editing?._id === theme._id) setEditing(null);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Could not archive theme');
-    }
-  };
-
   // Delete
   const deleteTheme = async (theme) => {
     if (!theme || deletingId) return;
@@ -414,7 +360,6 @@ export default function WebsiteThemesView() {
   // VIEW 2: THEME EDITOR (Screenshot 2)
   // ─────────────────────────────────────────────────────────────
   if (editing) {
-    const config = editing.config || DEFAULT_CONFIG;
     const isLive = editing.status === 'active';
 
     const tabs = [
@@ -653,7 +598,7 @@ export default function WebsiteThemesView() {
               fetchThemes();
             }}
             onPreview={(t) => {
-              window.open(`http://localhost:5174?previewTheme=${t._id}`, '_blank');
+              window.open(`${VITE_FRONT_URL}?previewTheme=${t._id}`, '_blank');
             }}
           />
         )}

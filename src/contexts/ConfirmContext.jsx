@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
+import { createContext, useContext, useState, useRef, useCallback } from 'react';
 import ConfirmModal from '../components/common/ConfirmModal';
 
 // Fallback confirm implementation in case context is accessed outside provider or during Vite HMR re-evaluations

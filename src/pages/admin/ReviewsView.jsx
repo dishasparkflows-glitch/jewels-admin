@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlineUser,
   HiOutlinePhotograph,
@@ -20,7 +20,15 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions, { StatusActionButton } from '../../components/common/RowActions';
+import Dropdown from '../../components/common/Dropdown';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { openProductPreview } from '../../utils/productPreview';
+
+const REVIEW_STATUS_OPTIONS = [
+  { value: 'approved', label: 'Approved' },
+  { value: 'rejected', label: 'Rejected' },
+  { value: 'pending', label: 'Pending' },
+];
 
 export default function ReviewsView() {
   const confirm = useConfirm();
@@ -40,7 +48,7 @@ export default function ReviewsView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
-  const [productsList, setProductsList] = useState([]);
+  const [, setProductsList] = useState([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -502,12 +510,10 @@ export default function ReviewsView() {
                   const id = rev._id || rev.id || `rev_${idx}`;
                   const isSelected = selectedIds.has(id);
                   const reviewerName = rev.customer?.name || 'Client';
-                  const reviewerEmail = rev.customer?.email || '—';
                   const rating = Number(rev.review?.rating || 5);
                   const reviewTitle = rev.review?.title || '';
                   const reviewComment = rev.review?.comment || '';
                   const dateStr = formatDate(rev.review?.reviewDate || rev.meta?.createdAt);
-                  const displayId = rev.customId || `#REV-${String((currentPage - 1) * pageSize + idx + 1).padStart(4, '0')}`;
                   const initial = reviewerName[0]?.toUpperCase() || 'R';
 
                   return (
@@ -554,20 +560,30 @@ export default function ReviewsView() {
                       {/* Product */}
                       <td className="py-2.5 px-3">
                         {rev.productId ? (
-                          <div className="flex items-center gap-2 max-w-[220px]">
-                            <div className="w-8 h-8 rounded-md bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center">
+                          <div
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openProductPreview(rev.productId);
+                            }}
+                            className="flex items-center gap-2 max-w-[220px] group/prod cursor-pointer"
+                            title="Open product on storefront"
+                          >
+                            <div className="w-8 h-8 rounded-md bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center group-hover/prod:border-[#8b6f4e] transition-colors">
                               {rev.productId.firstPhoto || rev.productId.thumbnail ? (
                                 <img
                                   src={rev.productId.firstPhoto || rev.productId.thumbnail}
                                   alt={rev.productId.basicInfo?.title || rev.productId.title || 'Product'}
-                                  className="w-full h-full object-cover"
+                                  className="w-full h-full object-cover group-hover/prod:scale-105 transition-transform"
                                 />
                               ) : (
                                 <span className="text-[9px] text-stone-400 font-bold uppercase">PROD</span>
                               )}
                             </div>
                             <div className="min-w-0">
-                              <p className="font-semibold text-stone-900 text-xs truncate" title={rev.productId.basicInfo?.title || rev.productId.title}>
+                              <p
+                                className="font-semibold text-stone-900 text-xs truncate group-hover/prod:text-[#8b6f4e] group-hover/prod:underline transition-colors"
+                                title={rev.productId.basicInfo?.title || rev.productId.title}
+                              >
                                 {rev.productId.basicInfo?.title || rev.productId.title || 'Product'}
                               </p>
                               <span className="text-[10px] text-stone-600 block truncate">
@@ -803,7 +819,7 @@ export default function ReviewsView() {
                   <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
                     Star Rating <span className="text-rose-500 font-bold">*</span>
                   </label>
-                  <div className="flex items-center gap-2 p-2.5 rounded-xl border border-[#d6cfc2]/70 bg-stone-50/40">
+                  <div className="flex items-center h-[42px] px-3 rounded-xl border border-[#d6cfc2]/70 bg-stone-50/40">
                     <div className="flex items-center gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <button
@@ -822,9 +838,6 @@ export default function ReviewsView() {
                         </button>
                       ))}
                     </div>
-                    <span className="text-xs font-bold text-stone-800 ml-1">
-                      {hoverRating || formData.rating} of 5 Stars
-                    </span>
                   </div>
                 </div>
 
@@ -832,51 +845,15 @@ export default function ReviewsView() {
                   <label className="text-xs font-bold text-stone-900 flex items-center gap-1">
                     Review Status <span className="text-rose-500 font-bold">*</span>
                   </label>
-                  <select
+                  <Dropdown
+                    size="field"
+                    showStatusDot={true}
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs cursor-pointer capitalize"
-                  >
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                    <option value="pending">Pending</option>
-                  </select>
+                    onChange={(val) => setFormData({ ...formData, status: val })}
+                    options={REVIEW_STATUS_OPTIONS}
+                    portal={true}
+                  />
                 </div>
-              </div>
-
-              {/* Product Selector */}
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-stone-900">
-                    Linked Product <span className="text-[11px] font-normal text-stone-500">(Optional)</span>
-                  </label>
-                  {formData.productId && (
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, productId: '' })}
-                      className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
-                    >
-                      Clear / Storewide
-                    </button>
-                  )}
-                </div>
-                <select
-                  value={formData.productId}
-                  onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs cursor-pointer"
-                >
-                  <option value="">General / Storewide (No specific product)</option>
-                  {productsList.map((prod) => {
-                    const prodId = prod._id || prod.id;
-                    const prodTitle = prod.basicInfo?.title || prod.title || 'Untitled Product';
-                    const prodSku = prod.basicInfo?.sku || prod.sku;
-                    return (
-                      <option key={prodId} value={prodId}>
-                        {prodTitle} {prodSku ? `(${prodSku})` : ''}
-                      </option>
-                    );
-                  })}
-                </select>
               </div>
 
               <div className="space-y-1.5">
@@ -1043,9 +1020,14 @@ export default function ReviewsView() {
               {viewingReview.productId && (
                 <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
                   <span className="text-xs font-bold text-stone-500">Product</span>
-                  <span className="font-semibold text-stone-900 text-xs truncate max-w-[240px]">
+                  <button
+                    type="button"
+                    onClick={() => openProductPreview(viewingReview.productId)}
+                    className="font-semibold text-stone-900 hover:text-[#8b6f4e] hover:underline text-xs truncate max-w-[240px] text-right cursor-pointer"
+                    title="Open product on storefront"
+                  >
                     {viewingReview.productId.basicInfo?.title || viewingReview.productId.title || 'Product'}
-                  </span>
+                  </button>
                 </div>
               )}
               <div className="pt-2.5 border-t border-stone-200/50">

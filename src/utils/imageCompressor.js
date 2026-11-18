@@ -12,7 +12,7 @@ export function formatFileSize(bytes) {
 }
 
 export function getImageDimensions(file) {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     if (!file || !file.type.startsWith('image/')) {
       return resolve({ width: 0, height: 0 });
     }

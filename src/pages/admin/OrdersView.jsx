@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
 import {
@@ -13,7 +12,6 @@ import {
   HiOutlineX,
   HiOutlineTruck,
   HiOutlineCheckCircle,
-  HiOutlinePrinter,
   HiOutlineTag,
   HiOutlineExternalLink,
   HiOutlineDocumentDownload,
@@ -33,7 +31,6 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import { getMediaUrl } from '../../utils/imageUrl';
-import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
 const ORDER_TABS = [
   { key: 'all', label: 'ALL ORDERS' },
@@ -47,8 +44,6 @@ const ORDER_TABS = [
 
 export default function OrdersView() {
   const confirm = useConfirm();
-  const { openImagePreview } = useImagePreview();
-  const navigate = useNavigate();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -196,7 +191,6 @@ export default function OrdersView() {
     const pending = orders.filter((o) => String(o.orderStatus || o.status).toLowerCase() === 'pending').length;
     const processing = orders.filter((o) => ['processing', 'confirmed'].includes(String(o.orderStatus || o.status).toLowerCase())).length;
     const delivered = orders.filter((o) => String(o.orderStatus || o.status).toLowerCase() === 'delivered').length;
-    const cancelled = orders.filter((o) => String(o.orderStatus || o.status).toLowerCase() === 'cancelled').length;
 
     return [
       {

@@ -17,7 +17,7 @@ export function initDatePickerAutoOpen() {
         if (typeof element.showPicker === 'function') {
           element.showPicker();
         }
-      } catch (err) {
+      } catch {
         // Ignored if browser restricts or picker is already open
       }
     }

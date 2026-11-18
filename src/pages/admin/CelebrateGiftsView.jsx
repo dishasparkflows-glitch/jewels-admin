@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   HiOutlinePlus,
   HiOutlineSearch,
@@ -72,7 +72,7 @@ export default function CelebrateGiftsView() {
 
   // Website Themes State
   const [themes, setThemes] = useState([]);
-  const [loadingThemes, setLoadingThemes] = useState(false);
+  const [, setLoadingThemes] = useState(false);
   const imageInputRef = useRef(null);
 
   // Theme Media Picker Modal State
@@ -419,11 +419,6 @@ export default function CelebrateGiftsView() {
     }
   };
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files?.[0];
-    if (file) handleImageFile(file);
-  };
-
   const handleRemoveImage = async () => {
     try {
       await deleteUploadedFile({ key: imagePublicId, url: imageUrl });
@@ -549,7 +544,7 @@ export default function CelebrateGiftsView() {
       setSelectedIds([]);
       await fetchFeatured();
       toast.success(`${count} item${count > 1 ? 's' : ''} deleted successfully`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to delete some items');
     }
   };

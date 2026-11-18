@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import {
   HiOutlineInformationCircle,
   HiOutlinePlus,
@@ -19,7 +19,7 @@ import useCategoryLookup from '../../hooks/useCategoryLookup';
 
 export default function FooterSettingsView() {
   const confirm = useConfirm();
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Corporate Identity

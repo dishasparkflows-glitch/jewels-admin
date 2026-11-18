@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlinePlus,
   HiOutlineTrash,
@@ -74,7 +74,6 @@ export default function InstagramPostsView() {
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
-  const [serverTotal, setServerTotal] = useState(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -94,9 +93,6 @@ export default function InstagramPostsView() {
       setPosts(data);
       setOriginalPosts(data);
       setHasUnsavedOrder(false);
-      if (res.data?.pagination?.totalDocs !== undefined) {
-        setServerTotal(res.data.pagination.totalDocs);
-      }
     } catch (err) {
       console.error('Failed to load Instagram posts:', err);
       toast.error('Failed to load Instagram posts');

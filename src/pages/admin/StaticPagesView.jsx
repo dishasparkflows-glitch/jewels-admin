@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineDocumentText,
   HiOutlinePlus,
@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { staticPagesAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import RichTextEditor from '../../components/common/RichTextEditor';
+import { VITE_FRONT_URL } from '../../config/env';
 
 // Helper to format date display (e.g. "24 Oct 2026", "10:45 AM")
 const formatDateParts = (dateString) => {
@@ -222,7 +223,7 @@ export default function StaticPagesView() {
     }
   };
 
-  const storefrontUrl = `http://localhost:5174/${(formData.slug || '').replace(/^\/+/, '')}`;
+  const storefrontUrl = `${VITE_FRONT_URL}/${(formData.slug || '').replace(/^\/+/, '')}`;
 
   return (
     <div className="space-y-6">

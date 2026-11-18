@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
   HiOutlineSearch,
   HiOutlinePlus,
   HiOutlineTrash,
-  HiOutlineRefresh,
   HiOutlineX,
   HiOutlineCloudUpload,
   HiOutlineCheck,
@@ -33,6 +32,7 @@ export default function DiamondsView() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
   const [pagination, setPagination] = useState({ totalPages: 1, totalDocs: 0, limit: 10 });
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   // Lookup options for filtering & editing
   const [types, setTypes] = useState([]);
@@ -72,6 +72,7 @@ export default function DiamondsView() {
       const res = await diamondsAPI.getAll(params);
       const items = res.data?.data?.items || res.data?.data || [];
       setDiamonds(Array.isArray(items) ? items : []);
+      setSelectedIds(new Set());
       if (res.data?.pagination) {
         setPagination(res.data.pagination);
       }
@@ -97,7 +98,7 @@ export default function DiamondsView() {
         if (data.shapes) setShapes(data.shapes);
         if (data.colors) setColors(data.colors);
         if (data.clarities) setClarities(data.clarities);
-      } catch (e) {
+      } catch {
         // Fallback
       }
     };
@@ -125,9 +126,74 @@ export default function DiamondsView() {
       await diamondsAPI.delete(item._id);
       toast.success('Diamond removed from stock');
       setDiamonds((prev) => prev.filter((d) => d._id !== item._id));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item._id);
+        return next;
+      });
     } catch (err) {
       console.error('Failed to delete diamond:', err);
       toast.error('Failed to delete diamond');
+    }
+  };
+
+  const isAllSelected =
+    diamonds.length > 0 &&
+    diamonds.every((d) => selectedIds.has(d._id));
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(diamonds.map((d) => d._id)));
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected Diamonds',
+      message: `Are you sure you want to delete ${count} selected diamond${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    const idsToDelete = Array.from(selectedIds);
+    try {
+      await api.post('/diamonds/bulk-delete', { ids: idsToDelete });
+      setDiamonds((prev) => prev.filter((d) => !selectedIds.has(d._id)));
+      setSelectedIds(new Set());
+      setPagination((prev) => ({
+        ...prev,
+        totalDocs: Math.max(0, (prev.totalDocs || diamonds.length) - count),
+      }));
+      toast.success(`${count} diamond${count > 1 ? 's' : ''} deleted successfully`);
+    } catch {
+      try {
+        await Promise.allSettled(idsToDelete.map((id) => api.delete(`/diamonds/${id}`)));
+        setDiamonds((prev) => prev.filter((d) => !selectedIds.has(d._id)));
+        setSelectedIds(new Set());
+        setPagination((prev) => ({
+          ...prev,
+          totalDocs: Math.max(0, (prev.totalDocs || diamonds.length) - count),
+        }));
+        toast.success(`${count} diamond${count > 1 ? 's' : ''} deleted successfully`);
+      } catch {
+        toast.error('Failed to delete selected diamonds');
+      }
     }
   };
 
@@ -139,7 +205,7 @@ export default function DiamondsView() {
       );
       await diamondsAPI.update(item._id, { status: nextStatus });
       toast.success(`Diamond set to ${nextStatus}`);
-    } catch (err) {
+    } catch {
       toast.error('Failed to update status');
       fetchData();
     }
@@ -362,13 +428,19 @@ export default function DiamondsView() {
             />
           </div>
 
+          {/* Bulk Delete Button */}
           <button
             type="button"
-            onClick={fetchData}
-            className="p-2 text-stone-500 hover:text-stone-800 hover:bg-stone-100 rounded-xl transition-colors border border-stone-200/80 cursor-pointer"
-            title="Refresh List"
+            onClick={handleBulkDelete}
+            disabled={selectedIds.size === 0}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap ${
+              selectedIds.size > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50 cursor-pointer'
+                : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
+            }`}
           >
-            <HiOutlineRefresh className="w-4 h-4" />
+            <HiOutlineTrash className="w-3.5 h-3.5 shrink-0" />
+            <span>Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}</span>
           </button>
         </div>
       </div>
@@ -392,6 +464,16 @@ export default function DiamondsView() {
             <table className="w-full text-left border-separate border-spacing-y-2">
               <thead>
                 <tr className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
+                  <th className="py-2 pl-3 pr-1 w-8 text-center">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={handleSelectAll}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                      title="Select all on this page"
+                    />
+                  </th>
+                  <th className="w-12 pb-1 px-2 text-center whitespace-nowrap">SR NO</th>
                   <th className="w-14 pb-1 pl-2">IMAGE</th>
                   <th className="pb-1 min-w-[160px]">SKU</th>
                   <th className="pb-1 min-w-[200px]">DIAMOND TITLE</th>
@@ -403,13 +485,35 @@ export default function DiamondsView() {
                 </tr>
               </thead>
               <tbody>
-                {diamonds.map((item) => (
-                  <tr
-                    key={item._id}
-                    onClick={() => handleOpenEdit(item)}
-                    className="group hover:bg-[#faf7f2] transition-colors cursor-pointer"
-                  >
-                    {/* Image */}
+                {diamonds.map((item, idx) => {
+                  const isSelected = selectedIds.has(item._id);
+                  return (
+                    <tr
+                      key={item._id}
+                      onClick={() => handleOpenEdit(item)}
+                      className={`group hover:bg-[#faf7f2] transition-colors cursor-pointer ${
+                        isSelected ? 'bg-amber-50/40' : ''
+                      }`}
+                    >
+                      {/* Selection Checkbox */}
+                      <td
+                        className="py-2.5 pl-3 pr-1 w-8 text-center align-middle"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelect(item._id)}
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                        />
+                      </td>
+
+                      {/* SR NO */}
+                      <td className="px-2 align-middle text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                        {(page - 1) * pageSize + idx + 1}
+                      </td>
+
+                      {/* Image */}
                     <td className="pl-2 align-middle">
                       <div className="w-10 h-10 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex items-center justify-center text-stone-400">
                         {item.image?.url ? (
@@ -504,8 +608,9 @@ export default function DiamondsView() {
                       />
                     </td>
                   </tr>
-                ))}
-              </tbody>
+                );
+              })}
+            </tbody>
             </table>
           )}
         </div>
@@ -668,69 +773,57 @@ export default function DiamondsView() {
                   {/* Diamond Type */}
                   <div>
                     <label className="block text-[11px] font-bold text-stone-600 mb-1">TYPE</label>
-                    <select
+                    <Dropdown
                       value={editTypeId}
-                      onChange={(e) => setEditTypeId(e.target.value)}
-                      className="w-full px-3 py-2 text-xs font-semibold bg-white border border-stone-200 rounded-xl focus:outline-hidden focus:border-[#8b6f4e] transition-colors cursor-pointer text-stone-800"
-                    >
-                      <option value="">Select Type</option>
-                      {types.map((t) => (
-                        <option key={t._id} value={t._id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setEditTypeId(val)}
+                      options={types.map((t) => ({ value: t._id, label: t.name }))}
+                      placeholder="Select Type"
+                      size="sm"
+                      portal={true}
+                      buttonClassName="w-full bg-white border-stone-200 rounded-xl text-xs font-semibold text-stone-800"
+                    />
                   </div>
 
                   {/* Diamond Shape */}
                   <div>
                     <label className="block text-[11px] font-bold text-stone-600 mb-1">SHAPE</label>
-                    <select
+                    <Dropdown
                       value={editShapeId}
-                      onChange={(e) => setEditShapeId(e.target.value)}
-                      className="w-full px-3 py-2 text-xs font-semibold bg-white border border-stone-200 rounded-xl focus:outline-hidden focus:border-[#8b6f4e] transition-colors cursor-pointer text-stone-800"
-                    >
-                      <option value="">Select Shape</option>
-                      {shapes.map((s) => (
-                        <option key={s._id} value={s._id}>
-                          {s.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setEditShapeId(val)}
+                      options={shapes.map((s) => ({ value: s._id, label: s.name }))}
+                      placeholder="Select Shape"
+                      size="sm"
+                      portal={true}
+                      buttonClassName="w-full bg-white border-stone-200 rounded-xl text-xs font-semibold text-stone-800"
+                    />
                   </div>
 
                   {/* Diamond Color */}
                   <div>
                     <label className="block text-[11px] font-bold text-stone-600 mb-1">COLOR</label>
-                    <select
+                    <Dropdown
                       value={editColorId}
-                      onChange={(e) => setEditColorId(e.target.value)}
-                      className="w-full px-3 py-2 text-xs font-semibold bg-white border border-stone-200 rounded-xl focus:outline-hidden focus:border-[#8b6f4e] transition-colors cursor-pointer text-stone-800"
-                    >
-                      <option value="">Select Color</option>
-                      {colors.map((c) => (
-                        <option key={c._id} value={c._id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setEditColorId(val)}
+                      options={colors.map((c) => ({ value: c._id, label: c.name }))}
+                      placeholder="Select Color"
+                      size="sm"
+                      portal={true}
+                      buttonClassName="w-full bg-white border-stone-200 rounded-xl text-xs font-semibold text-stone-800"
+                    />
                   </div>
 
                   {/* Diamond Clarity */}
                   <div>
                     <label className="block text-[11px] font-bold text-stone-600 mb-1">CLARITY</label>
-                    <select
+                    <Dropdown
                       value={editClarityId}
-                      onChange={(e) => setEditClarityId(e.target.value)}
-                      className="w-full px-3 py-2 text-xs font-semibold bg-white border border-stone-200 rounded-xl focus:outline-hidden focus:border-[#8b6f4e] transition-colors cursor-pointer text-stone-800"
-                    >
-                      <option value="">Select Clarity</option>
-                      {clarities.map((cl) => (
-                        <option key={cl._id} value={cl._id}>
-                          {cl.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(val) => setEditClarityId(val)}
+                      options={clarities.map((cl) => ({ value: cl._id, label: cl.name }))}
+                      placeholder="Select Clarity"
+                      size="sm"
+                      portal={true}
+                      buttonClassName="w-full bg-white border-stone-200 rounded-xl text-xs font-semibold text-stone-800"
+                    />
                   </div>
                 </div>
               </div>

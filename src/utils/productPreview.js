@@ -1,6 +1,5 @@
 import api from '../api/axios';
-
-const STOREFRONT_URL = (import.meta.env.VITE_WEBSITE_URL || 'http://localhost:5174').replace(/\/$/, '');
+import { VITE_FRONT_URL } from '../config/env';
 
 const slugify = (text) =>
   String(text || '')
@@ -10,20 +9,27 @@ const slugify = (text) =>
     .replace(/\s+/g, '-');
 
 export const getProductPreviewUrl = (product) => {
+  if (!product) return null;
   const slug =
     product?.basicInfo?.slug ||
-    slugify(product?.basicInfo?.title);
+    product?.slug ||
+    slugify(product?.basicInfo?.title || product?.title);
 
   if (!slug) return null;
-  return `${STOREFRONT_URL}/product/${encodeURIComponent(slug)}`;
+  return `${VITE_FRONT_URL}/product/${encodeURIComponent(slug)}`;
 };
 
 export const openProductPreview = async (product) => {
-  let slug =
-    product?.basicInfo?.slug ||
-    slugify(product?.basicInfo?.title);
+  if (!product) return false;
 
-  const id = product?._id || product?.id;
+  let slug =
+    typeof product === 'object'
+      ? product?.basicInfo?.slug ||
+        product?.slug ||
+        slugify(product?.basicInfo?.title || product?.title)
+      : '';
+
+  const id = typeof product === 'string' ? product : (product?._id || product?.id);
 
   if (!slug && id) {
     try {
@@ -31,12 +37,15 @@ export const openProductPreview = async (product) => {
       const data = res.data?.data;
       slug =
         data?.basicInfo?.slug ||
-        slugify(data?.basicInfo?.title);
-    } catch (_) {}
+        data?.slug ||
+        slugify(data?.basicInfo?.title || data?.title);
+    } catch {
+      // ignore
+    }
   }
 
   if (slug) {
-    const url = `${STOREFRONT_URL}/product/${encodeURIComponent(slug)}`;
+    const url = `${VITE_FRONT_URL}/product/${encodeURIComponent(slug)}`;
     window.open(url, '_blank', 'noopener,noreferrer');
     return true;
   }

@@ -369,7 +369,6 @@ export default function AddJewelryProduct() {
     categoryOptions = [],
     regularCategories = [],
     collectionCategories = [],
-    categoryOnlyOptions = [],
   } = useCategoryLookup() || {};
   const [selectedCollectionIds, setSelectedCollectionIds] = useState([]);
 
@@ -398,7 +397,6 @@ export default function AddJewelryProduct() {
   const [diamondClaritiesList, setDiamondClaritiesList] = useState([]);
   const [diamondMasters, setDiamondMasters] = useState({ types: [], shapes: [], colors: [], clarities: [] });
   const mastersFetchedRef = useRef(false);
-  const centerRatesFetchedRef = useRef(false);
 
   // Lazy-load Metal Purities, Metal Colors, and Diamond masters ONLY when user enters Step 2 (Variant Configuration) or later
   useEffect(() => {
@@ -857,26 +855,6 @@ export default function AddJewelryProduct() {
       [comboId]: newRate,
     }));
   };
-
-  // Backwards-compatible single centerDiamond & sideDiamonds
-  const [centerDiamond, setCenterDiamond] = useState({
-    type: '',
-    shape: '',
-    color: '',
-    clarity: '',
-    caratWeight: '',
-  });
-
-  const [sideDiamonds, setSideDiamonds] = useState({
-    enabled: false,
-    type: '',
-    shape: '',
-    color: '',
-    clarity: '',
-    sizeFrom: '',
-    sizeTo: '',
-    pieces: '',
-  });
 
   // ─── Step 2: Preview Variants ───────────────────────────
   const [variants, setVariants] = useState([]);
@@ -1369,7 +1347,6 @@ export default function AddJewelryProduct() {
 
   // Modals state
   const [isAddColorModalOpen, setIsAddColorModalOpen] = useState(false);
-  const [customColorInput, setCustomColorInput] = useState({ name: '', code: '#1f2937' });
 
   // Virtual Try-On Studio Modal State
   const [isVtoStudioOpen, setIsVtoStudioOpen] = useState(false);
@@ -2347,10 +2324,10 @@ export default function AddJewelryProduct() {
         centerDiamonds: (centerDiamondCombinations.length && (v.centerDiamondWeight || v.caratWeight)) ? [
           {
             diamondTypeId: v.diamondTypeId?._id || v.diamondTypeId,
-            diamondShapeId: v.diamondShapeId?._id || v.diamondShapeId || centerRows[0]?.diamondShapeId,
+            diamondShapeId: v.diamondShapeId?._id || v.diamondShapeId || centerDiamondCombinations[0]?.shapeId || centerShapeId,
             diamondClarityId: v.diamondClarityId?._id || v.diamondClarityId,
             diamondColorId: v.diamondColorId?._id || v.diamondColorId,
-            caratWeight: parseFloat(v.centerDiamondWeight || v.caratWeight || centerRows[0]?.carat || 0),
+            caratWeight: parseFloat(v.centerDiamondWeight || v.caratWeight || centerDiamondCombinations[0]?.carat || centerDiamondCarats[0] || 0),
           }
         ] : [],
         // Rule 1: Never sum all side diamond rows; pass only matching row
@@ -2511,8 +2488,6 @@ export default function AddJewelryProduct() {
         };
       }
     });
-    const hasColorMedia = Object.values(imagesByColor).some((items) => items.length) ||
-      Object.values(videosByColor).some((items) => items.length);
     const centerRows = Array.isArray(productRecord.centerDiamondRows) ? productRecord.centerDiamondRows : [];
     const centerNames = centerRows.map((row) => ({
       type: resolveName(row.diamondTypeId || row.diamondType, diamondMasters.types),
@@ -2560,13 +2535,6 @@ export default function AddJewelryProduct() {
       [row.type, row.shape, row.color, row.clarity, row.carat].join('-'),
       row.rate,
     ])));
-    setCenterDiamond({
-      type: firstCenter.type || '',
-      shape: firstCenter.shape || '',
-      color: firstCenter.color || '',
-      clarity: firstCenter.clarity || '',
-      caratWeight: firstCenter.carat == null ? '' : String(firstCenter.carat),
-    });
     setAutomaticPricing(productRecord.productType !== 'silver' && !productRecord.isOrnate);
     const savedBaseCarat = productRecord.pricing?.baseCarat;
     const minCenterCt = loadedCenterCarats[0];
@@ -2584,19 +2552,6 @@ export default function AddJewelryProduct() {
     }
     setGstPercentage(String(productRecord.pricing?.gstPercentage ?? 3));
     setSideRows((productRecord.sideDiamondRows || []).map((row) => ({ ...row, rateSource: row.rateSource || (row.priceINR ? 'manual' : 'master') })));
-    const sideRow = (Array.isArray(productRecord.sideDiamondRows) ? productRecord.sideDiamondRows : [])[0];
-    setSideDiamonds(sideRow ? {
-      enabled: true,
-      type: resolveName(sideRow.diamondTypeId || sideRow.diamondType, diamondMasters.types),
-      shape: resolveName(sideRow.diamondShapeId || sideRow.diamondShape, diamondMasters.shapes),
-      color: resolveName(sideRow.diamondColorId || sideRow.diamondColor, diamondMasters.colors),
-      clarity: resolveName(sideRow.diamondClarityId || sideRow.diamondClarity, diamondMasters.clarities),
-      sizeFrom: sideRow.sizeFrom == null ? '' : String(sideRow.sizeFrom),
-      sizeTo: sideRow.sizeTo == null ? '' : String(sideRow.sizeTo),
-      pieces: sideRow.pieces == null ? '' : String(sideRow.pieces),
-    } : {
-      enabled: false, type: '', shape: '', color: '', clarity: '', sizeFrom: '', sizeTo: '', pieces: '',
-    });
     setProductColors(colorNames);
     setActiveColorPill(colorNames[0] || '');
     setActiveMediaColor(colorNames[0] || '');
@@ -2943,7 +2898,6 @@ export default function AddJewelryProduct() {
       const mrpNum = isSilverProduct ? numberValue(pricing.mrp) : jewelryStartingPrice;
       const salePriceNum = isSilverProduct ? numberValue(pricing.salePrice) : jewelryStartingPrice;
       const costPriceNum = isSilverProduct ? numberValue(pricing.costPrice) : undefined;
-      const displayPriceNum = isSilverProduct ? numberValue(pricing.salePrice) : jewelryStartingPrice;
       const ornatePriceNum = isSilverProduct ? numberValue(pricing.ornatePrice) : undefined;
       const calculatedPriceNum = isSilverProduct ? numberValue(pricing.calculatedPrice) : undefined;
       const markupNum = numberValue(pricing.markupPercentage);
@@ -3981,7 +3935,6 @@ export default function AddJewelryProduct() {
                         value={centerDiamondType}
                         onChange={(val) => {
                           setCenterDiamondType(val);
-                          setCenterDiamond((prev) => ({ ...prev, type: val }));
                         }}
                         options={diamondTypesList}
                         placeholder="Select Diamond Type"
@@ -3999,7 +3952,6 @@ export default function AddJewelryProduct() {
                         value={centerDiamondShape}
                         onChange={(val) => {
                           setCenterDiamondShape(val);
-                          setCenterDiamond((prev) => ({ ...prev, shape: val }));
                         }}
                         options={diamondShapesList}
                         buttonClassName="h-8 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
@@ -5295,7 +5247,7 @@ export default function AddJewelryProduct() {
                                   const key = img.key || getUploadedObjectKey(img.url);
                                   if (key && !e.target.dataset.fallback) {
                                     e.target.dataset.fallback = 'true';
-                                    const backendBase = (api.defaults?.baseURL || 'http://localhost:5001/api');
+                                    const backendBase = api.defaults?.baseURL || '';
                                     e.target.src = `${backendBase}/upload/file?key=${encodeURIComponent(key)}`;
                                   }
                                 }}

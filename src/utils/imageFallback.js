@@ -13,7 +13,7 @@ export function getNoImageSvg(customPrimary, customRgb) {
       const style = getComputedStyle(document.documentElement);
       if (!primary) primary = style.getPropertyValue('--theme-primary').trim();
       if (!rgb) rgb = style.getPropertyValue('--theme-primary-rgb').trim();
-    } catch (e) {
+    } catch {
       // Fallback
     }
   }
@@ -55,6 +55,6 @@ export function initImageFallback() {
       fallbackImages.forEach((img) => {
         img.src = newSvg;
       });
-    } catch (e) {}
+    } catch {}
   });
 }
