@@ -338,8 +338,8 @@ export default function MetalRatesView() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-200/80 bg-[#faf8f5]/80 text-[11px] font-bold tracking-wider text-stone-500 uppercase">
-                <th className="py-2.5 pl-3 pr-1 w-8 text-center">
+              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                <th className="py-3 pl-4 pr-1 w-8 text-center">
                   <input
                     type="checkbox"
                     checked={
@@ -347,16 +347,16 @@ export default function MetalRatesView() {
                       paginatedItems.every((m) => selectedIds.includes(m.id))
                     }
                     onChange={handleSelectAll}
-                    className="rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
                 </th>
-                <th className="py-2.5 px-2 w-12 text-center">SR NO</th>
-                <th className="py-2.5 px-3">ITEM / RECORD</th>
-                <th className="py-2.5 px-3">PURITY</th>
-                <th className="py-2.5 px-3">CALCULATION / FORMULA</th>
-                <th className="py-2.5 px-3 text-right">RATE (₹/g)</th>
-                <th className="py-2.5 px-3 text-center">STATUS</th>
-                <th className="py-2.5 pr-3 pl-2 text-right">ACTIONS</th>
+                <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
+                <th className="py-3 px-3 whitespace-nowrap">ITEM / RECORD</th>
+                <th className="py-3 px-3 whitespace-nowrap">PURITY</th>
+                <th className="py-3 px-3 whitespace-nowrap">CALCULATION / FORMULA</th>
+                <th className="py-3 px-3 text-right whitespace-nowrap">RATE (₹/g)</th>
+                <th className="py-3 px-3 text-center whitespace-nowrap">STATUS</th>
+                <th className="py-3 pr-4 pl-2 text-right whitespace-nowrap">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs">

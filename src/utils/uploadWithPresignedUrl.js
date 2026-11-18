@@ -14,10 +14,11 @@ export {
   formatBytes,
 };
 
+export const MAX_IMAGE_DIMENSION = 2400;
+
 export const DEFAULT_UPLOAD_COMPRESSION_SETTINGS = {
   enabled: true,
   quality: 82,
-  maxDimension: 2400,
   format: 'image/webp',
 };
 
@@ -29,8 +30,7 @@ const UPLOAD_COMPRESSION_SETTINGS_TTL = 60_000;
 const normalizeUploadCompressionSettings = (settings = {}) => ({
   enabled: settings.enabled !== false,
   quality: Math.min(100, Math.max(50, Number(settings.quality) || DEFAULT_UPLOAD_COMPRESSION_SETTINGS.quality)),
-  maxDimension: Math.min(4000, Math.max(600, Number(settings.maxDimension) || DEFAULT_UPLOAD_COMPRESSION_SETTINGS.maxDimension)),
-  format: settings.format === 'image/jpeg' ? 'image/jpeg' : 'image/webp',
+  format: 'image/webp',
 });
 
 export function setUploadCompressionSettings(settings) {
@@ -60,8 +60,8 @@ export async function getUploadCompressionSettings() {
 export const getGlobalCompressionOptions = (preset, settings) => ({
   ...preset,
   quality: settings.quality / 100,
-  maxWidth: settings.maxDimension,
-  maxHeight: settings.maxDimension,
+  maxWidth: MAX_IMAGE_DIMENSION,
+  maxHeight: MAX_IMAGE_DIMENSION,
   format: settings.format,
 });
 

@@ -72,7 +72,7 @@ export default function OrnateProductsView() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
     const size = getAdminPageSize(10);
-    return [10, 20, 50, 100].includes(size) ? size : 10;
+    return [10, 25, 50, 100].includes(size) ? size : 10;
   });
 
   // Data State
@@ -1127,7 +1127,6 @@ export default function OrnateProductsView() {
                   setAdminPageSize(newSize);
                   setPage(1);
                 }}
-                pageSizeOptions={[10, 20, 50, 100]}
               />
           </div>
         )
@@ -1255,9 +1254,9 @@ export default function OrnateProductsView() {
               <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
                   <table className="w-full text-xs text-left">
-                    <thead className="bg-stone-50 text-stone-500 font-bold uppercase tracking-wider text-[10px] border-b border-stone-200">
-                      <tr>
-                        <th className="p-3 w-10 text-center">
+                    <thead>
+                      <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                        <th className="py-3 px-3 w-10 text-center">
                           <input
                             type="checkbox"
                             checked={selectedIds.size === products.length && products.length > 0}
@@ -1265,13 +1264,13 @@ export default function OrnateProductsView() {
                             className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
                           />
                         </th>
-                        <th className="p-3 w-16">Image</th>
-                        <th className="p-3">Product Name</th>
-                        <th className="p-3">SKU / Tag</th>
-                        <th className="p-3">Price</th>
-                        <th className="p-3 text-center">Visibility</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3 text-right">Actions</th>
+                        <th className="py-3 px-3 w-16">IMAGE</th>
+                        <th className="py-3 px-3">PRODUCT NAME</th>
+                        <th className="py-3 px-3">SKU / TAG</th>
+                        <th className="py-3 px-3">PRICE</th>
+                        <th className="py-3 px-3 text-center">VISIBILITY</th>
+                        <th className="py-3 px-3 text-center">STATUS</th>
+                        <th className="py-3 px-3 text-right">ACTIONS</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100">
@@ -1379,7 +1378,6 @@ export default function OrnateProductsView() {
                   setAdminPageSize(newSize);
                   setPage(1);
                 }}
-                pageSizeOptions={[10, 20, 50, 100]}
               />
             </div>
           </div>

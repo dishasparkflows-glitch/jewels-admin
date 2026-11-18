@@ -37,7 +37,6 @@ import {
   uploadWithPresignedUrl,
 } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
-import StatCards from '../../components/common/StatCards';
 import ImageCompressionDemo from '../../components/common/ImageCompressionDemo';
 
 const LUXURY_BUTTON_PALETTES = [
@@ -434,8 +433,7 @@ export default function SettingsView() {
       mediaCompression: {
         enabled: Boolean(imageCompression.enabled),
         quality: Number(imageCompression.quality),
-        maxDimension: Number(imageCompression.maxDimension),
-        format: imageCompression.format === 'image/jpeg' ? 'image/jpeg' : 'image/webp',
+        format: 'image/webp',
       },
     };
 
@@ -653,34 +651,6 @@ export default function SettingsView() {
     }
   };
 
-  // Quick stat cards
-  const statCardsData = [
-    {
-      label: 'Business Entity',
-      value: businessForm.companyName || 'Not configured',
-      icon: HiOutlineOfficeBuilding,
-      color: 'bronze',
-    },
-    {
-      label: 'Settlement Bank',
-      value: monetaryForm.bankName || 'HDFC Bank',
-      icon: HiOutlineCash,
-      color: 'green',
-    },
-    {
-      label: 'Tax & Compliance',
-      value: businessForm.gstCode ? `GST: ${businessForm.gstCode}` : 'PAN / GST Ready',
-      icon: HiOutlineShieldCheck,
-      color: 'peach',
-    },
-    {
-      label: 'System Status',
-      value: 'Operational',
-      icon: HiOutlineCheck,
-      color: 'gold',
-    },
-  ];
-
   // The 5 Setting Boxes
   const settingBoxes = [
     {
@@ -701,9 +671,7 @@ export default function SettingsView() {
       title: 'Global Image Compression',
       subtitle: 'Optimize product images automatically with WebP and quality presets.',
       icon: HiOutlineSparkles,
-      badgeText: `${imageCompression.enabled ? 'Automatic' : 'Manual'} · ${
-        imageCompression.format === 'image/webp' ? 'WebP' : 'JPEG'
-      } · ${imageCompression.quality}% quality`,
+      badgeText: `${imageCompression.enabled ? 'Automatic' : 'Manual'} · WebP · ${imageCompression.quality}% quality`,
       hasPreview: false,
     },
     {
@@ -809,9 +777,6 @@ export default function SettingsView() {
           )}
         </div>
       </div>
-
-      {/* ─── Quick Stat Cards ─── */}
-      <StatCards cards={statCardsData} />
 
       {/* ─── Setting Boxes Grid ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
@@ -1042,59 +1007,61 @@ export default function SettingsView() {
 
               {/* 2. Global Image Compression Modal */}
               {activeModal === 'compression' && (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <label className="flex min-h-16 items-center justify-between rounded-xl border border-stone-200 bg-[#fbfaf8] p-3 cursor-pointer">
-                      <span>
-                        <span className="block text-xs font-bold text-stone-800">Automatic compression</span>
-                        <span className="block text-[10px] text-stone-500">Compress image uploads by default</span>
-                      </span>
+                <div className="space-y-3">
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
+                    {/* 1. Automatic compression */}
+                    <label className="flex items-center justify-between rounded-lg border border-stone-200 bg-[#fbfaf8] px-3 py-2 cursor-pointer hover:bg-stone-50 transition-colors">
+                      <div>
+                        <span className="block text-xs font-bold text-stone-800 leading-tight">Automatic compression</span>
+                        <span className="block text-[10px] text-stone-500 leading-tight">Compress image uploads by default</span>
+                      </div>
                       <input
                         type="checkbox"
                         checked={imageCompression.enabled}
                         onChange={(event) =>
                           setImageCompression((prev) => ({ ...prev, enabled: event.target.checked }))
                         }
-                        className="h-4 w-4 accent-[#8f6d43]"
+                        className="h-4 w-4 accent-[#8f6d43] cursor-pointer shrink-0 ml-2"
                       />
                     </label>
 
-                    <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] p-3">
-                      <span className="flex items-center justify-between text-xs font-bold text-stone-800">
-                        Image quality <span className="text-[#8f6d43]">{imageCompression.quality}%</span>
-                      </span>
-                      <input
-                        type="range"
-                        min="50"
-                        max="100"
-                        step="1"
-                        value={imageCompression.quality}
-                        onChange={(event) =>
-                          setImageCompression((prev) => ({ ...prev, quality: Number(event.target.value) }))
-                        }
-                        disabled={!imageCompression.enabled}
-                        className="mt-2.5 w-full accent-[#8f6d43] disabled:opacity-50"
-                      />
-                      <span className="mt-1 flex justify-between text-[10px] text-stone-400">
-                        <span>Smaller files (60%)</span>
-                        <span>Higher detail (95%)</span>
-                      </span>
+                    {/* 2. Image quality slider */}
+                    <label className="flex flex-col justify-center rounded-lg border border-stone-200 bg-[#fbfaf8] px-3 py-2">
+                      <div className="flex items-center justify-between text-xs font-bold text-stone-800 leading-tight">
+                        <span>Image quality</span>
+                        <span className="text-[#8f6d43] font-semibold">{imageCompression.quality}%</span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className="text-[9px] text-stone-400 shrink-0">60%</span>
+                        <input
+                          type="range"
+                          min="50"
+                          max="100"
+                          step="1"
+                          value={imageCompression.quality}
+                          onChange={(event) =>
+                            setImageCompression((prev) => ({ ...prev, quality: Number(event.target.value) }))
+                          }
+                          disabled={!imageCompression.enabled}
+                          className="h-1 w-full accent-[#8f6d43] disabled:opacity-40 cursor-pointer"
+                        />
+                        <span className="text-[9px] text-stone-400 shrink-0">95%</span>
+                      </div>
                     </label>
 
-                    <label className="rounded-xl border border-stone-200 bg-[#fbfaf8] p-3">
-                      <span className="block text-xs font-bold text-stone-800">Output format</span>
-                      <select
-                        value={imageCompression.format}
-                        onChange={(event) =>
-                          setImageCompression((prev) => ({ ...prev, format: event.target.value }))
-                        }
-                        disabled={!imageCompression.enabled}
-                        className="mt-2 h-9 w-full rounded-lg border border-stone-200 bg-white px-2 text-xs text-stone-800 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20"
-                      >
-                        <option value="image/webp">WebP (recommended)</option>
-                        <option value="image/jpeg">JPEG</option>
-                      </select>
-                    </label>
+                    {/* 3. Output format */}
+                    <div className="flex items-center justify-between rounded-lg border border-stone-200 bg-[#fbfaf8] px-3 py-2">
+                      <div>
+                        <span className="block text-xs font-bold text-stone-800 leading-tight">Output format</span>
+                        <span className="block text-[10px] text-stone-500 leading-tight">Standard web optimization</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 rounded-md border border-emerald-200/90 bg-emerald-50/90 px-2 py-1 text-xs font-bold text-emerald-900 shrink-0 ml-2">
+                        <span className="text-[11px]">⚡</span> WebP
+                        <span className="rounded bg-emerald-200/70 px-1 py-0.2 text-[9px] font-semibold text-emerald-800">
+                          Standard
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
                   {/* Side-by-Side Live Demo Image Preview */}
@@ -2349,7 +2316,7 @@ export default function SettingsView() {
       {/* ─── Footer ─── */}
       <div className="pt-4 pb-2 text-center">
         <p className="text-[9px] tracking-[0.2em] text-stone-400 uppercase font-semibold">
-          NEIRAH JEWELLERS GLOBAL ADMIN V1.0.25
+          NEIRAH JEWELLERS GLOBAL ADMIN
         </p>
       </div>
     </div>

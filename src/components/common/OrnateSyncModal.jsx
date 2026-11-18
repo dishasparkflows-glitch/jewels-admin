@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { IoClose, IoRefreshOutline, IoCubeOutline, IoSearchOutline, IoGridOutline, IoListOutline, IoEyeOutline, IoChevronBack, IoChevronForward } from 'react-icons/io5';
 import Dropdown from './Dropdown';
+import Pagination from './Pagination';
+import { useAdminPageSize, PAGE_SIZE_OPTIONS } from '../../utils/adminPagination';
 import api from '../../api/axios';
 
 const money = (value) => value == null || value === '' ? '—' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value));
@@ -33,6 +35,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
   const [view, setView] = useState('grid');
   const [sort, setSort] = useState('erp');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useAdminPageSize(10);
   const [detailId, setDetailId] = useState(null);
   const [imageIndex, setImageIndex] = useState(0);
 
@@ -96,7 +99,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     return result;
   }, [products, query, selectedCategory, selectionFilter, selected, sort]);
 
-  useEffect(() => setPage(1), [query, selectedCategory, selectionFilter, sort]);
+  useEffect(() => setPage(1), [query, selectedCategory, selectionFilter, sort, pageSize]);
 
   const handleSelectCategory = (catName) => {
     // Strictly single selection: if clicked again, toggle back to all; otherwise switch to the single selected category
@@ -125,9 +128,9 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     });
   };
 
-  const pageCount = Math.max(1, Math.ceil(filtered.length / 12));
+  const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const visible = filtered.slice((currentPage - 1) * 12, currentPage * 12);
+  const visible = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const detail = products.find((p) => p.key === detailId);
   const photos = detail ? imagesFor(detail) : [];
   const toggle = (id) => { if (!id || syncing) return; setSelected((prev) => { const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next; }); };
@@ -223,62 +226,51 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
       <div className="flex-1 min-h-0 overflow-y-auto">
         {loading ? <div className="p-20 text-center text-stone-500"><IoRefreshOutline size={30} className="animate-spin mx-auto mb-3" />Loading products from Ornate ERP...</div> : error ? <div className="p-8 text-red-700" role="alert">{error}<button type="button" className={`${button} ml-4`} onClick={() => setRetry((n) => n + 1)}>Retry</button></div> : <div className={`grid ${detail ? 'lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]' : ''}`}>
           <div className="p-6 min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-4 text-[13px]">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">
-                  Products ({filtered.length})
-                  {selectedCategory && (
-                    <span className="ml-1.5 text-xs font-normal text-stone-500">
-                      in <strong className="text-stone-800">{selectedCategory}</strong>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={pageCount}
+              totalItems={filtered.length}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+              pageSizeOptions={PAGE_SIZE_OPTIONS}
+              itemLabel="products"
+              className="border border-stone-200/90 rounded-xl mb-4 shadow-2xs"
+              leftContent={
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-stone-900">
+                    Products ({filtered.length})
+                    {selectedCategory && (
+                      <span className="ml-1 text-xs font-normal text-stone-500">
+                        in <strong className="text-stone-800">{selectedCategory}</strong>
+                      </span>
+                    )}
+                  </span>
+                  {filtered.length > 0 && (
+                    <span className="text-xs text-stone-400">
+                      ({(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filtered.length)})
                     </span>
                   )}
-                </span>
-                {filtered.length > 0 && (
-                  <span className="text-xs text-stone-400">
-                    ({(currentPage - 1) * 12 + 1}–{Math.min(currentPage * 12, filtered.length)})
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3">
-                {pageCount > 1 && (
-                  <div className="flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-xl px-2 py-1">
-                    <button
-                      type="button"
-                      aria-label="Previous page (top)"
-                      className="h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-white text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                      disabled={currentPage === 1}
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    >
-                      <IoChevronBack size={15} />
-                    </button>
-                    <span className="text-[12px] font-semibold text-stone-700 px-2 select-none min-w-[50px] text-center">
-                      {currentPage} / {pageCount}
-                    </span>
-                    <button
-                      type="button"
-                      aria-label="Next page (top)"
-                      className="h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-white text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                      disabled={currentPage === pageCount}
-                      onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                    >
-                      <IoChevronForward size={15} />
-                    </button>
-                  </div>
-                )}
-
-                <button
-                  type="button"
-                  className="text-[#8b6f4e] hover:text-[#785e40] font-semibold disabled:opacity-40 cursor-pointer whitespace-nowrap"
-                  disabled={syncing || !filtered.length}
-                  onClick={handleToggleAllFiltered}
-                >
-                  {allFilteredSelected
-                    ? `Deselect all ${filtered.length} results`
-                    : `Select all ${filtered.length} results`}
-                </button>
-              </div>
-            </div>
+                </div>
+              }
+              action={
+                filtered.length > 0 ? (
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-[#8b6f4e] hover:text-[#785e40] hover:underline cursor-pointer transition-colors ml-2"
+                    disabled={syncing || !filtered.length}
+                    onClick={handleToggleAllFiltered}
+                  >
+                    {allFilteredSelected
+                      ? `• Deselect all ${filtered.length} results`
+                      : `• Select all ${filtered.length} results`}
+                  </button>
+                ) : null
+              }
+            />
             {!visible.length && <p className="py-16 text-center text-stone-500">No products match these filters.</p>}
             <div className={view === 'grid' ? `grid grid-cols-1 sm:grid-cols-2 ${detail ? '' : 'lg:grid-cols-3 xl:grid-cols-4'} gap-3` : 'space-y-2'}>
               {visible.map((product) => { const image = imagesFor(product)[0]; return <article key={product.key} className={`rounded-xl border overflow-hidden ${selected.has(product.id) ? 'border-[#b8946c] bg-[#faf6f0]' : 'border-stone-200 bg-white'} ${detailId === product.key ? 'ring-2 ring-[#8b6f4e]/30' : ''}`}>
@@ -296,34 +288,24 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
                 </div>
               </article>; })}
             </div>
-            <nav aria-label="Product pages" className="flex justify-between items-center gap-3 mt-5 text-[12px]">
-              <span className="text-stone-500">
-                {filtered.length ? `${(currentPage - 1) * 12 + 1}–${Math.min(currentPage * 12, filtered.length)} of ${filtered.length}` : '0 products'}
-              </span>
-              <div className="flex items-center gap-1.5 bg-stone-50 border border-stone-200 rounded-xl px-2 py-1">
-                <button
-                  type="button"
-                  aria-label="Previous page (bottom)"
-                  className="h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-white text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  disabled={currentPage === 1}
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                >
-                  <IoChevronBack size={15} />
-                </button>
-                <span className="text-[12px] font-semibold text-stone-700 px-2 select-none min-w-[50px] text-center">
-                  {currentPage} / {pageCount}
-                </span>
-                <button
-                  type="button"
-                  aria-label="Next page (bottom)"
-                  className="h-7 w-7 inline-flex items-center justify-center rounded-lg hover:bg-white text-stone-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
-                  disabled={currentPage === pageCount}
-                  onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                >
-                  <IoChevronForward size={15} />
-                </button>
+            {filtered.length > 0 && (
+              <div className="mt-5 rounded-xl border border-stone-200/90 overflow-hidden shadow-2xs">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={pageCount}
+                  totalItems={filtered.length}
+                  pageSize={pageSize}
+                  onPageChange={setPage}
+                  onPageSizeChange={(newSize) => {
+                    setPageSize(newSize);
+                    setPage(1);
+                  }}
+                  pageSizeOptions={PAGE_SIZE_OPTIONS}
+                  itemLabel="products"
+                  className="border-t-0"
+                />
               </div>
-            </nav>
+            )}
           </div>
           {detail && <aside className="border-t lg:border-t-0 lg:border-l border-stone-200 p-6 bg-stone-50/50 min-w-0">
             <div className="flex items-center justify-between mb-4"><h3 className="text-[14px] font-bold">Product details</h3><button type="button" aria-label="Close product details" onClick={() => setDetailId(null)} className="p-2"><IoClose size={20} /></button></div>

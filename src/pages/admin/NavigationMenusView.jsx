@@ -196,7 +196,7 @@ export default function NavigationMenusView() {
   async function loadCategories() {
     setLoadingCategories(true);
     try {
-      const res = await api.get('/categories', { params: { limit: 100 } });
+      const res = await api.get('/categories/lookup');
       const rows = res.data?.data || [];
       const list = Array.isArray(rows) ? rows : rows.items || [];
       const sorted = [...list].sort((a, b) => Number(a.order || 0) - Number(b.order || 0));

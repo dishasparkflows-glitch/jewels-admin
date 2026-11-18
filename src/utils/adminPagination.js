@@ -1,22 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export const DEFAULT_PAGE_SIZE = 10;
-export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
 /**
  * Get the current admin-selected page size from localStorage, defaulting to 10.
+ * Enforces standard PAGE_SIZE_OPTIONS: [10, 25, 50, 100].
  */
 export function getAdminPageSize(fallback = DEFAULT_PAGE_SIZE) {
   try {
     const saved = localStorage.getItem('admin_page_size');
     if (saved) {
       const num = Number(saved);
-      if (num > 0) return num;
+      if (PAGE_SIZE_OPTIONS.includes(num)) return num;
     }
   } catch {
     // Ignore storage errors
   }
-  return fallback;
+  return PAGE_SIZE_OPTIONS.includes(Number(fallback)) ? Number(fallback) : DEFAULT_PAGE_SIZE;
 }
 
 /**
@@ -25,7 +26,7 @@ export function getAdminPageSize(fallback = DEFAULT_PAGE_SIZE) {
 export function setAdminPageSize(newSize) {
   try {
     const num = Number(newSize);
-    if (num > 0) {
+    if (PAGE_SIZE_OPTIONS.includes(num)) {
       localStorage.setItem('admin_page_size', String(num));
       window.dispatchEvent(new CustomEvent('admin_page_size_change', { detail: num }));
     }
@@ -39,18 +40,21 @@ export function setAdminPageSize(newSize) {
  * Automatically synchronizes across components and browser tabs.
  */
 export function useAdminPageSize(initialFallback = DEFAULT_PAGE_SIZE) {
-  const [pageSize, setPageSizeState] = useState(() => getAdminPageSize(initialFallback));
+  const safeFallback = PAGE_SIZE_OPTIONS.includes(Number(initialFallback))
+    ? Number(initialFallback)
+    : DEFAULT_PAGE_SIZE;
+  const [pageSize, setPageSizeState] = useState(() => getAdminPageSize(safeFallback));
 
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'admin_page_size' && e.newValue) {
         const num = Number(e.newValue);
-        if (num > 0) setPageSizeState(num);
+        if (PAGE_SIZE_OPTIONS.includes(num)) setPageSizeState(num);
       }
     };
 
     const handleCustomChange = (e) => {
-      if (e.detail && Number(e.detail) > 0) {
+      if (e.detail && PAGE_SIZE_OPTIONS.includes(Number(e.detail))) {
         setPageSizeState(Number(e.detail));
       }
     };
@@ -66,7 +70,7 @@ export function useAdminPageSize(initialFallback = DEFAULT_PAGE_SIZE) {
 
   const changePageSize = useCallback((newSize) => {
     const num = Number(newSize);
-    if (num > 0) {
+    if (PAGE_SIZE_OPTIONS.includes(num)) {
       setAdminPageSize(num);
       setPageSizeState(num);
     }

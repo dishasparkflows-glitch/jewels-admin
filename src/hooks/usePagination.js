@@ -1,8 +1,14 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { getAdminPageSize, setAdminPageSize, DEFAULT_PAGE_SIZE } from "../utils/adminPagination";
+import {
+  getAdminPageSize,
+  setAdminPageSize,
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+} from "../utils/adminPagination";
 
 /**
  * Custom hook for client-side and server-side pagination
+ * Standardized across the entire admin panel with rows options: [10, 25, 50, 100]
  *
  * @param {Array} items - List of items
  * @param {number|null} initialPageSize - Default rows per page (defaults to admin preference, fallback 10)
@@ -13,8 +19,8 @@ export function usePagination(items = [], initialPageSize = null, serverTotal = 
   const safeItems = useMemo(() => (Array.isArray(items) ? items : []), [items]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSizeState] = useState(() => {
-    if (initialPageSize && initialPageSize !== DEFAULT_PAGE_SIZE) {
-      return initialPageSize;
+    if (initialPageSize && PAGE_SIZE_OPTIONS.includes(Number(initialPageSize))) {
+      return Number(initialPageSize);
     }
     return getAdminPageSize(DEFAULT_PAGE_SIZE);
   });
@@ -24,12 +30,12 @@ export function usePagination(items = [], initialPageSize = null, serverTotal = 
     const handleStorageChange = (e) => {
       if (e.key === 'admin_page_size' && e.newValue) {
         const num = Number(e.newValue);
-        if (num > 0) setPageSizeState(num);
+        if (PAGE_SIZE_OPTIONS.includes(num)) setPageSizeState(num);
       }
     };
 
     const handleCustomChange = (e) => {
-      if (e.detail && Number(e.detail) > 0) {
+      if (e.detail && PAGE_SIZE_OPTIONS.includes(Number(e.detail))) {
         setPageSizeState(Number(e.detail));
       }
     };
@@ -45,7 +51,7 @@ export function usePagination(items = [], initialPageSize = null, serverTotal = 
 
   const setPageSize = useCallback((newSize) => {
     const num = Number(newSize);
-    if (num > 0) {
+    if (PAGE_SIZE_OPTIONS.includes(num)) {
       setAdminPageSize(num);
       setPageSizeState(num);
     }

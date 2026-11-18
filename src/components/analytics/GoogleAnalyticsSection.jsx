@@ -602,9 +602,9 @@ export default function GoogleAnalyticsSection() {
         {/* Table Content */}
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-stone-700">
-            <thead className="bg-stone-50/75 border-b border-stone-200 text-stone-500 font-medium">
-              <tr>
-                <th className="py-3 px-4">Product Details</th>
+            <thead>
+              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                <th className="py-3 px-4 whitespace-nowrap">Product Details</th>
                 <th className="py-3 px-4">SKU / Code</th>
                 <th className="py-3 px-4">Category</th>
                 <th className="py-3 px-4">Price</th>
@@ -707,17 +707,13 @@ export default function GoogleAnalyticsSection() {
 
         {/* Pagination footer */}
         {filteredItems.length > 0 && (
-          <div className="p-4 border-t border-stone-100 flex items-center justify-between">
-            <span className="text-xs text-stone-500">
-              Showing {(currentPageSafe - 1) * pageSize + 1} to{' '}
-              {Math.min(currentPageSafe * pageSize, filteredItems.length)} of {filteredItems.length} products
-            </span>
-            <Pagination
-              currentPage={currentPageSafe}
-              totalPages={totalPages}
-              onPageChange={(p) => setPage(p)}
-            />
-          </div>
+          <Pagination
+            currentPage={currentPageSafe}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            itemLabel="products"
+          />
         )}
       </div>
 

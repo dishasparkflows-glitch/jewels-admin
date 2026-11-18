@@ -1094,8 +1094,8 @@ export default function BannersView() {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-stone-150 bg-[#faf8f5]/80 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
-                  <th className="py-3.5 px-4 w-10">
+                <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                  <th className="py-3 px-4 w-10">
                     <input
                       type="checkbox"
                       checked={banners.length > 0 && selectedIds.length === banners.length}
@@ -1103,18 +1103,18 @@ export default function BannersView() {
                         if (e.target.checked) setSelectedIds(banners.map((b) => b._id));
                         else setSelectedIds([]);
                       }}
-                      className="rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b] cursor-pointer"
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                     />
                   </th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">PREVIEW</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">
+                  <th className="py-3 px-4 whitespace-nowrap">PREVIEW</th>
+                  <th className="py-3 px-4 whitespace-nowrap">
                     {currentBannerType.key === 'categorybanner' ? 'CATEGORY' : 'TITLE'}
                   </th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">STATUS</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">DEVICES</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">ORDER</th>
-                  <th className="py-3.5 px-4 whitespace-nowrap">DATE</th>
-                  <th className="py-3.5 pr-6 pl-4 whitespace-nowrap text-right">ACTIONS</th>
+                  <th className="py-3 px-4 whitespace-nowrap">STATUS</th>
+                  <th className="py-3 px-4 whitespace-nowrap">DEVICES</th>
+                  <th className="py-3 px-4 whitespace-nowrap">ORDER</th>
+                  <th className="py-3 px-4 whitespace-nowrap">DATE</th>
+                  <th className="py-3 pr-6 pl-4 whitespace-nowrap text-right">ACTIONS</th>
                 </tr>
               </thead>
 

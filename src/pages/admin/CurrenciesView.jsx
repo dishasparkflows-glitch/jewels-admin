@@ -311,15 +311,15 @@ export default function CurrenciesView() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-100 bg-white text-[10px] font-bold tracking-wider text-stone-400 uppercase">
-                <th className="py-3.5 pl-4 pr-2 w-12 text-center">SR. NO.</th>
-                <th className="py-3.5 px-4">CURRENCY</th>
-                <th className="py-3.5 px-4 text-center">SYMBOL</th>
-                <th className="py-3.5 px-4">VALUE IN INR (1 UNIT)</th>
-                <th className="py-3.5 px-4">RATE VS INR (1 INR)</th>
-                <th className="py-3.5 px-4 text-center">RATE TYPE</th>
-                <th className="py-3.5 px-4 text-center">LAST UPDATED</th>
-                <th className="py-3.5 pr-4 pl-2 text-right">ACTIONS</th>
+              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                <th className="py-3 pl-4 pr-2 w-12 text-center whitespace-nowrap">SR NO</th>
+                <th className="py-3 px-4 whitespace-nowrap">CURRENCY</th>
+                <th className="py-3 px-4 text-center whitespace-nowrap">SYMBOL</th>
+                <th className="py-3 px-4 whitespace-nowrap">VALUE IN INR (1 UNIT)</th>
+                <th className="py-3 px-4 whitespace-nowrap">RATE VS INR (1 INR)</th>
+                <th className="py-3 px-4 text-center whitespace-nowrap">RATE TYPE</th>
+                <th className="py-3 px-4 text-center whitespace-nowrap">LAST UPDATED</th>
+                <th className="py-3 pr-4 pl-2 text-right whitespace-nowrap">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100/90 text-xs">

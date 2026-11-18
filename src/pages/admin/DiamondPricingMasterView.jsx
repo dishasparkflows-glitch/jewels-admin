@@ -497,7 +497,7 @@ export default function DiamondPricingMasterView() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                 <th className="py-3 px-4 w-14 text-center font-bold">#</th>
                 <th className="py-3 px-4 min-w-[160px] font-bold">SHAPE</th>
                 <th className="py-3 px-4 min-w-[140px] font-bold">COLOR</th>
@@ -624,7 +624,6 @@ export default function DiamondPricingMasterView() {
           pageSize={pageSize}
           onPageChange={setCurrentPage}
           onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1); }}
-          pageSizeOptions={[10, 25, 50, 100]}
           itemLabel="diamond rates"
         />
 

@@ -964,7 +964,7 @@ export default function AddJewelryProduct() {
   const [stagedUploadColor, setStagedUploadColor] = useState('');
   const [stagedUploadType, setStagedUploadType] = useState('jewelry'); // 'jewelry' | 'silver'
   const [showUploadModal, setShowUploadModal] = useState(false);
-  const [imageUploadPolicy, setImageUploadPolicy] = useState({ enabled: true, quality: 82, maxDimension: 2400, format: 'image/webp' });
+  const [imageUploadPolicy, setImageUploadPolicy] = useState({ enabled: true, quality: 82, format: 'image/webp' });
   const [uploadCompressVideos, setUploadCompressVideos] = useState(true);
   const [isProcessingUpload, setIsProcessingUpload] = useState(false);
   const [uploadProcessingStep, setUploadProcessingStep] = useState('');
@@ -7112,7 +7112,7 @@ export default function AddJewelryProduct() {
                             <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">Automatic image compression</h4>
                             <p className="mt-1 text-[11px] text-stone-600">
                               {imageUploadPolicy.enabled
-                                ? `${imageUploadPolicy.format === 'image/webp' ? 'WebP' : 'JPEG'} at ${imageUploadPolicy.quality}% quality · maximum ${imageUploadPolicy.maxDimension}px`
+                                ? `${imageUploadPolicy.format === 'image/webp' ? 'WebP' : 'JPEG'} at ${imageUploadPolicy.quality}% quality`
                                 : 'Disabled in System Settings; images will upload at their original size.'}
                             </p>
                           </div>

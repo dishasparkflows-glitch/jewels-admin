@@ -16,7 +16,6 @@ import {
   HiOutlineViewList,
   HiOutlineCalendar,
   HiOutlinePlus,
-  HiOutlineClipboardCopy,
   HiOutlineGift,
   HiOutlinePencil,
 } from 'react-icons/hi';
@@ -27,6 +26,7 @@ import GalleryUploadModal from '../../components/gallery/GalleryUploadModal';
 import GalleryEditModal from '../../components/gallery/GalleryEditModal';
 import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
+import { useAdminPageSize } from '../../utils/adminPagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { DeleteActionButton, EditActionButton } from '../../components/common/RowActions';
 
@@ -105,15 +105,7 @@ export default function GalleryView() {
 
   // ─── Pagination State ──────────────────────────────────────
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(() => {
-    try {
-      const saved = localStorage.getItem('gallery_page_size');
-      if (saved && Number(saved) > 0) return Number(saved);
-    } catch {
-      // Ignore storage errors
-    }
-    return 24;
-  });
+  const [pageSize, setPageSize] = useAdminPageSize(10);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -122,11 +114,6 @@ export default function GalleryView() {
     if (num > 0) {
       setPageSize(num);
       setPage(1);
-      try {
-        localStorage.setItem('gallery_page_size', String(num));
-      } catch {
-        // Ignore storage errors
-      }
     }
   };
 
@@ -753,14 +740,14 @@ export default function GalleryView() {
         <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-2xs">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-200 bg-stone-50 text-[11px] font-bold uppercase tracking-wider text-stone-500">
-                <th className="py-2.5 px-3">Preview</th>
-                <th className="py-2.5 px-3">Image Name / Banner Title</th>
-                <th className="py-2.5 px-3">Placement Type</th>
-                <th className="py-2.5 px-3">Target Platform</th>
-                <th className="py-2.5 px-3">Assigned Theme</th>
-                <th className="py-2.5 px-3">Status</th>
-                <th className="py-2.5 px-3 text-right">Actions</th>
+              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                <th className="py-3 px-3 whitespace-nowrap">Preview</th>
+                <th className="py-3 px-3 whitespace-nowrap">Image Name / Banner Title</th>
+                <th className="py-3 px-3 whitespace-nowrap">Placement Type</th>
+                <th className="py-3 px-3 whitespace-nowrap">Target Platform</th>
+                <th className="py-3 px-3 whitespace-nowrap">Assigned Theme</th>
+                <th className="py-3 px-3 whitespace-nowrap">Status</th>
+                <th className="py-3 px-3 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
@@ -781,9 +768,17 @@ export default function GalleryView() {
                   <td className="py-2.5 px-3 font-semibold text-stone-900">
                     <div className="flex flex-col">
                       <span className="truncate max-w-xs">{item.typeLabel || item.placement}</span>
-                      {item.categoryName && (
+                      {item.linkedBanner?.title ? (
+                        <span className="text-[10px] text-[#8b6c3a] font-medium truncate">
+                          Banner: {item.linkedBanner.title}
+                        </span>
+                      ) : item.linkedFeatured?.title ? (
+                        <span className="text-[10px] text-[#8b6c3a] font-medium truncate">
+                          Celebrate: {item.linkedFeatured.title}
+                        </span>
+                      ) : item.categoryName ? (
                         <span className="text-[10px] text-stone-400">Category: {item.categoryName}</span>
-                      )}
+                      ) : null}
                     </div>
                   </td>
                   <td className="py-2.5 px-3">
@@ -850,14 +845,6 @@ export default function GalleryView() {
                   </td>
                   <td className="py-2.5 px-3 text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => copyToClipboard(item.url)}
-                        className="rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition"
-                        title="Copy Image URL"
-                      >
-                        <HiOutlineClipboardCopy className="h-3.5 w-3.5" />
-                      </button>
                       <EditActionButton
                         onClick={() => handleOpenEdit(item)}
                         title="Edit Details"
@@ -949,10 +936,31 @@ export default function GalleryView() {
                         {item.themeName}
                       </p>
                     ) : null}
+                    {item.linkedBanner?.title ? (
+                      <p className="mt-0.5 text-[9px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedBanner.title}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#8b6c3a]" />
+                        <span>{item.linkedBanner.title}</span>
+                      </p>
+                    ) : item.linkedFeatured?.title ? (
+                      <p className="mt-0.5 text-[9px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedFeatured.title}>
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#8b6c3a]" />
+                        <span>Celebrate: {item.linkedFeatured.title}</span>
+                      </p>
+                    ) : item.linkedRecord?.module === 'banner' ? (
+                      <p className="mt-0.5 text-[9px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#8b6c3a]" />
+                        <span>Banner #{String(item.linkedRecord.recordId).slice(-4)}</span>
+                      </p>
+                    ) : item.linkedRecord?.module === 'featured' ? (
+                      <p className="mt-0.5 text-[9px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                        <span className="h-1.5 w-1.5 rounded-full bg-[#8b6c3a]" />
+                        <span>Celebrate #{String(item.linkedRecord.recordId).slice(-4)}</span>
+                      </p>
+                    ) : null}
                   </div>
 
                   {/* Action Buttons Row */}
-                  <div className="mt-2 flex items-center justify-between gap-1 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+                  <div className="mt-2 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(item)}
@@ -960,15 +968,6 @@ export default function GalleryView() {
                       title="Edit Media Item"
                     >
                       <HiOutlinePencil className="h-3 w-3 stroke-[2]" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => copyToClipboard(item.url)}
-                      className="flex-1 py-1 flex items-center justify-center rounded border border-stone-200/90 bg-white hover:bg-stone-50 active:scale-95 text-stone-600 transition shadow-2xs cursor-pointer"
-                      title="Copy Image URL"
-                    >
-                      <HiOutlineClipboardCopy className="h-3 w-3" />
                     </button>
 
                     <button
@@ -996,7 +995,6 @@ export default function GalleryView() {
             pageSize={pageSize}
             onPageChange={(p) => setPage(p)}
             onPageSizeChange={handlePageSizeChange}
-            pageSizeOptions={[12, 24, 48, 96]}
             showPageSize={true}
             itemLabel="assets"
             className="border-t-0"
@@ -1082,6 +1080,22 @@ export default function GalleryView() {
                         <span className="h-2 w-2 rounded-full bg-emerald-500"></span> Active
                       </span>
                     </div>
+                    {(previewItem.linkedBanner?.title || previewItem.linkedRecord?.module === 'banner') && (
+                      <div>
+                        <span className="font-semibold text-stone-700 block">Linked Banner</span>
+                        <span className="text-[#8b6c3a] font-bold">
+                          {previewItem.linkedBanner?.title || `Banner #${String(previewItem.linkedRecord.recordId).slice(-6)}`}
+                        </span>
+                      </div>
+                    )}
+                    {(previewItem.linkedFeatured?.title || previewItem.linkedRecord?.module === 'featured') && (
+                      <div>
+                        <span className="font-semibold text-stone-700 block">Linked Showcase (Celebrate & Gifts)</span>
+                        <span className="text-[#8b6c3a] font-bold">
+                          {previewItem.linkedFeatured?.title || `Featured #${String(previewItem.linkedRecord.recordId).slice(-6)}`}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions in Inspector */}

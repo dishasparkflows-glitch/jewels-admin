@@ -289,15 +289,15 @@ export default function BlogCategoriesView() {
       <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs sm:text-sm text-stone-700">
-            <thead className="bg-[#fcfaf7] border-b border-stone-200/80 text-[11px] font-bold tracking-wider text-stone-500 uppercase">
-              <tr>
+            <thead>
+              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                 <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
-                <th className="py-3 px-4">Category Name</th>
-                <th className="py-3 px-4">Slug</th>
-                <th className="py-3 px-4">Description</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-center">Sort Order</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-3 px-4 whitespace-nowrap">Category Name</th>
+                <th className="py-3 px-4 whitespace-nowrap">Slug</th>
+                <th className="py-3 px-4 whitespace-nowrap">Description</th>
+                <th className="py-3 px-4 text-center whitespace-nowrap">Status</th>
+                <th className="py-3 px-4 text-center whitespace-nowrap">Sort Order</th>
+                <th className="py-3 px-4 text-right whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">

@@ -385,30 +385,32 @@ export default function BeforeAfterView() {
           />
         </div>
 
-        {/* Compact Right Controls */}
-        <div className="flex items-center gap-1.5 self-start sm:self-auto shrink-0">
-          <Dropdown
-            value={statusFilter}
-            onChange={(val) => setStatusFilter(val)}
-            options={[
-              { value: 'all', label: 'All Status' },
-              { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
-              { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
-            ]}
-            showStatusDot
-            size="sm"
-            placeholder="Status"
-            buttonClassName="h-7.5 px-2.5 rounded-md text-xs font-semibold text-stone-700 bg-white border border-stone-200/90 shadow-2xs"
-          />
+        {/* Right Controls: Status Filter & View Mode */}
+        <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+          <div className="w-36 sm:w-40">
+            <Dropdown
+              value={statusFilter}
+              onChange={(val) => setStatusFilter(val)}
+              options={[
+                { value: 'all', label: 'All Status' },
+                { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
+                { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
+              ]}
+              showStatusDot
+              size="field"
+              placeholder="All Status"
+              className="w-full"
+            />
+          </div>
 
           {/* View Mode Toggle: Grid vs Table */}
-          <div className="flex items-center p-0.5 bg-stone-100 rounded-md border border-stone-200/80">
+          <div className="flex items-center h-[42px] p-1 bg-stone-100/90 rounded-xl border border-stone-200/90 shadow-2xs">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
-              className={`p-1 rounded transition-colors cursor-pointer ${
+              className={`h-full px-2.5 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                 viewMode === 'grid'
-                  ? 'bg-white text-[#8b6f4e] shadow-2xs'
+                  ? 'bg-white text-[#8b6f4e] shadow-2xs font-semibold'
                   : 'text-stone-400 hover:text-stone-700'
               }`}
               title="Dual Cards Grid View"
@@ -418,9 +420,9 @@ export default function BeforeAfterView() {
             <button
               type="button"
               onClick={() => setViewMode('table')}
-              className={`p-1 rounded transition-colors cursor-pointer ${
+              className={`h-full px-2.5 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
                 viewMode === 'table'
-                  ? 'bg-white text-[#8b6f4e] shadow-2xs'
+                  ? 'bg-white text-[#8b6f4e] shadow-2xs font-semibold'
                   : 'text-stone-400 hover:text-stone-700'
               }`}
               title="Table View"
@@ -586,7 +588,6 @@ export default function BeforeAfterView() {
               currentPage={currentPage}
               totalItems={serverTotal ?? totalItems}
               pageSize={pageSize}
-              pageSizeOptions={[10, 25, 50, 100]}
               onPageChange={setCurrentPage}
               onPageSizeChange={(newSize) => {
                 setPageSize(newSize);
@@ -603,7 +604,7 @@ export default function BeforeAfterView() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                  <th className="py-2 pl-4 pr-1 w-8 text-center">
+                  <th className="py-3 pl-4 pr-1 w-8 text-center">
                     <input
                       type="checkbox"
                       checked={
@@ -614,12 +615,12 @@ export default function BeforeAfterView() {
                       className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                     />
                   </th>
-                  <th className="py-2 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
-                  <th className="py-2 px-3 whitespace-nowrap">PAIR PREVIEW</th>
-                  <th className="py-2 px-3 whitespace-nowrap">ALT TEXT (DESCRIPTION)</th>
-                  <th className="py-2 px-3 text-center whitespace-nowrap">STATUS</th>
-                  <th className="py-2 px-3 whitespace-nowrap">CREATED DATE</th>
-                  <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
+                  <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
+                  <th className="py-3 px-3 whitespace-nowrap">PAIR PREVIEW</th>
+                  <th className="py-3 px-3 whitespace-nowrap">ALT TEXT (DESCRIPTION)</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap">STATUS</th>
+                  <th className="py-3 px-3 whitespace-nowrap">CREATED DATE</th>
+                  <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
@@ -734,7 +735,6 @@ export default function BeforeAfterView() {
             currentPage={currentPage}
             totalItems={serverTotal ?? totalItems}
             pageSize={pageSize}
-            pageSizeOptions={[10, 25, 50, 100]}
             onPageChange={setCurrentPage}
             onPageSizeChange={(newSize) => {
               setPageSize(newSize);

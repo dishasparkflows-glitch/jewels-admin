@@ -5,11 +5,23 @@ import {
   HiOutlineX,
   HiOutlineDesktopComputer,
   HiOutlineDeviceMobile,
+  HiOutlineCheck,
+  HiOutlinePhotograph,
+  HiOutlineLink,
 } from 'react-icons/hi';
 import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import Dropdown from '../common/Dropdown';
-import { formatBytes, uploadFilesWithPresignedUrls } from '../../utils/uploadWithPresignedUrl';
+import {
+  formatBytes,
+  uploadFilesWithPresignedUrls,
+  getUploadCompressionSettings,
+  getGlobalCompressionOptions,
+  compressImageFile,
+  isCompressibleImage,
+  COMPRESSION_PRESETS,
+  DEFAULT_UPLOAD_COMPRESSION_SETTINGS,
+} from '../../utils/uploadWithPresignedUrl';
 import { galleryAPI } from '../../api/services';
 
 export default function GalleryUploadModal({
@@ -29,17 +41,136 @@ export default function GalleryUploadModal({
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadProgressText, setUploadProgressText] = useState('');
 
+  // Target Records Loading, Multi-selection & Mapping states (Supports all Banner types & Celebrate & Gifts)
+  const [availableRecords, setAvailableRecords] = useState([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const [selectedRecordIds, setSelectedRecordIds] = useState([]);
+  const [imageRecordMap, setImageRecordMap] = useState({});
+
+  const BANNER_TYPES = [
+    'herobanner',
+    'collectionbanner',
+    'categorybanner',
+    'offerbanner',
+    'mobileappbanner',
+    'bookappointbanner',
+    'customizebanner',
+  ];
+
+  const BANNER_META = {
+    herobanner: {
+      title: 'Hero Banner',
+      singular: 'Hero Banner',
+      subtitle: 'Select homepage hero slider banner(s) to map your uploaded media assets.',
+    },
+    collectionbanner: {
+      title: 'Collection Banner',
+      singular: 'Collection Banner',
+      subtitle: 'Select 4-tile curated collection showcase banner(s) to map your media.',
+    },
+    categorybanner: {
+      title: 'Category Banner',
+      singular: 'Category Banner',
+      subtitle: 'Select category page header banner(s) to map your media.',
+    },
+    offerbanner: {
+      title: 'Offer Banner',
+      singular: 'Offer Banner',
+      subtitle: 'Select promotional deals & discount banner(s) to map your media.',
+    },
+    mobileappbanner: {
+      title: 'Mobile App Banner',
+      singular: 'Mobile App Banner',
+      subtitle: 'Select mobile app download promo banner(s) to map your media.',
+    },
+    bookappointbanner: {
+      title: 'Appointment Banner',
+      singular: 'Appointment Banner',
+      subtitle: 'Select in-store appointment booking banner(s) to map your media.',
+    },
+    customizebanner: {
+      title: 'Custom Banner',
+      singular: 'Custom Banner',
+      subtitle: 'Select custom campaign banner(s) to map your media.',
+    },
+  };
+
+  const isBannerType = BANNER_TYPES.includes(uploadType);
+  const isTargetMappable = isBannerType || uploadType === 'celebrate';
+  const targetModule = uploadType === 'celebrate' ? 'featured' : (isBannerType ? 'banner' : null);
+
+  const targetModuleTitle = uploadType === 'celebrate'
+    ? 'Celebrate & Gifts (Featured)'
+    : (BANNER_META[uploadType]?.title || 'Banner');
+
+  const targetSingularLabel = uploadType === 'celebrate'
+    ? 'Celebrate & Gift'
+    : (BANNER_META[uploadType]?.singular || 'Banner');
+
+  const targetModuleSubtitle = uploadType === 'celebrate'
+    ? 'Select Celebrate & Gifts showcase item(s) from featureds table to map your media.'
+    : (BANNER_META[uploadType]?.subtitle || 'Select banner(s) to map your uploaded media assets.');
+
   const fileInputRef = useRef(null);
+
+  const fetchTargetRecords = async (type, themeId) => {
+    const isBanner = BANNER_TYPES.includes(type);
+    if (!isBanner && type !== 'celebrate') {
+      setAvailableRecords([]);
+      setSelectedRecordIds([]);
+      setImageRecordMap({});
+      return;
+    }
+
+    setLoadingRecords(true);
+    try {
+      let list = [];
+      if (type === 'celebrate') {
+        const res = await galleryAPI.getFeatureds({ themeId: themeId || undefined });
+        const data = res?.data?.data || res?.data || [];
+        list = Array.isArray(data) ? data : [];
+      } else {
+        const res = await galleryAPI.getBanners({
+          type: type,
+          themeId: themeId || undefined,
+        });
+        const data = res?.data?.data || res?.data || [];
+        list = Array.isArray(data) ? data : [];
+      }
+
+      setAvailableRecords(list);
+
+      setSelectedRecordIds((prev) => {
+        if (prev.length > 0) {
+          const valid = prev.filter((id) => list.some((b) => b._id === id));
+          return valid.length > 0 ? valid : (list[0]?._id ? [list[0]._id] : []);
+        }
+        return list[0]?._id ? [list[0]._id] : [];
+      });
+    } catch (err) {
+      console.warn(`Failed to load ${type} records:`, err);
+      setAvailableRecords([]);
+    } finally {
+      setLoadingRecords(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) {
       setUploadThemeId(defaultThemeId || '');
       setUploadType('herobanner');
       setUploadPlatform('web');
+      fetchTargetRecords('herobanner', defaultThemeId);
     } else {
       resetUploadModal();
     }
   }, [isOpen, defaultThemeId]);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchTargetRecords(uploadType, uploadThemeId);
+    }
+  }, [isOpen, uploadType, uploadThemeId]);
 
   const resetUploadModal = () => {
     selectedFiles.forEach((f) => {
@@ -48,6 +179,8 @@ export default function GalleryUploadModal({
       }
     });
     setSelectedFiles([]);
+    setSelectedRecordIds([]);
+    setImageRecordMap({});
     setIsDragging(false);
     setIsUploading(false);
     setUploadProgress(0);
@@ -55,7 +188,34 @@ export default function GalleryUploadModal({
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  const addFiles = (filesList) => {
+  const toggleRecordSelection = (recordId) => {
+    setSelectedRecordIds((prev) => {
+      const exists = prev.includes(recordId);
+      const next = exists ? prev.filter((id) => id !== recordId) : [...prev, recordId];
+      return next;
+    });
+  };
+
+  const handleSelectAllRecords = () => {
+    setSelectedRecordIds(availableRecords.map((r) => r._id));
+  };
+
+  const handleClearRecordSelection = () => {
+    setSelectedRecordIds([]);
+  };
+
+  const handleAutoDistributeRecords = () => {
+    if (!selectedFiles.length || !availableRecords.length) return;
+    const pool = selectedRecordIds.length > 0 ? selectedRecordIds : availableRecords.map((r) => r._id);
+    const updated = {};
+    selectedFiles.forEach((file, idx) => {
+      updated[file.id] = pool[idx % pool.length];
+    });
+    setImageRecordMap(updated);
+    toast.success(`Mapped ${selectedFiles.length} images sequentially to selected ${targetModuleTitle}`);
+  };
+
+  const addFiles = async (filesList) => {
     const rawFiles = Array.from(filesList || []);
     if (!rawFiles.length) return;
 
@@ -63,20 +223,113 @@ export default function GalleryUploadModal({
     rawFiles.forEach((file) => {
       const isImg = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif|svg)$/i.test(file.name);
       if (isImg) {
-        validImages.push({
-          id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          file,
-          name: file.name,
-          size: file.size,
-          previewUrl: URL.createObjectURL(file),
-        });
+        validImages.push(file);
       } else {
         toast.error(`"${file.name}" is not a supported image file.`);
       }
     });
 
-    if (validImages.length > 0) {
-      setSelectedFiles((prev) => [...prev, ...validImages]);
+    if (!validImages.length) return;
+
+    // Create preliminary entries with preview and compressing state
+    const newItems = validImages.map((file) => {
+      const tempId = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+      return {
+        id: tempId,
+        file,
+        name: file.name,
+        originalName: file.name,
+        originalSize: file.size,
+        compressedSize: file.size,
+        savingsPercent: 0,
+        isCompressing: isCompressibleImage(file),
+        wasCompressed: false,
+        previewUrl: URL.createObjectURL(file),
+      };
+    });
+
+    setSelectedFiles((prev) => [...prev, ...newItems]);
+
+    // Auto-map target records for newly added images
+    if (isTargetMappable) {
+      setImageRecordMap((prev) => {
+        const updated = { ...prev };
+        const pool = selectedRecordIds.length > 0 ? selectedRecordIds : availableRecords.map((b) => b._id);
+        if (pool.length > 0) {
+          const existingCount = Object.keys(updated).length;
+          newItems.forEach((item, idx) => {
+            if (!updated[item.id]) {
+              updated[item.id] = pool[(existingCount + idx) % pool.length];
+            }
+          });
+        }
+        return updated;
+      });
+    }
+
+    // Compress in background and update each item with exact compressed KB size & savings
+    try {
+      const uploadSettings = await getUploadCompressionSettings();
+      const shouldCompress = uploadSettings?.enabled !== false;
+      const preset =
+        COMPRESSION_PRESETS['website-themes'] ||
+        COMPRESSION_PRESETS.banners ||
+        COMPRESSION_PRESETS.general;
+      const compressionOpts = getGlobalCompressionOptions(
+        preset,
+        uploadSettings || DEFAULT_UPLOAD_COMPRESSION_SETTINGS
+      );
+
+      await Promise.all(
+        newItems.map(async (item) => {
+          if (!shouldCompress || !isCompressibleImage(item.file)) {
+            setSelectedFiles((prev) =>
+              prev.map((f) => (f.id === item.id ? { ...f, isCompressing: false } : f))
+            );
+            return;
+          }
+
+          try {
+            const compressed = await compressImageFile(item.file, compressionOpts);
+            const compUrl = URL.createObjectURL(compressed);
+
+            setSelectedFiles((prev) =>
+              prev.map((f) => {
+                if (f.id !== item.id) return f;
+                // Revoke old blob url
+                if (f.previewUrl?.startsWith('blob:') && f.previewUrl !== compUrl) {
+                  try {
+                    URL.revokeObjectURL(f.previewUrl);
+                  } catch {}
+                }
+                const originalSize = f.originalSize || f.size;
+                const compressedSize = compressed.size;
+                const savingsBytes = Math.max(0, originalSize - compressedSize);
+                const savingsPercent =
+                  originalSize > 0 ? Math.round((savingsBytes / originalSize) * 100) : 0;
+
+                return {
+                  ...f,
+                  file: compressed,
+                  name: compressed.name || f.name,
+                  compressedSize,
+                  savingsPercent,
+                  isCompressing: false,
+                  wasCompressed: true,
+                  previewUrl: compUrl,
+                };
+              })
+            );
+          } catch (err) {
+            console.warn('Compression failed for', item.name, err);
+            setSelectedFiles((prev) =>
+              prev.map((f) => (f.id === item.id ? { ...f, isCompressing: false } : f))
+            );
+          }
+        })
+      );
+    } catch (err) {
+      console.warn('Background compression setup error:', err);
     }
   };
 
@@ -88,7 +341,25 @@ export default function GalleryUploadModal({
       }
       return prev.filter((item) => item.id !== id);
     });
+    setImageRecordMap((prev) => {
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
+    });
   };
+
+  const totalOriginalBytes = selectedFiles.reduce(
+    (sum, f) => sum + (f.originalSize || f.size || 0),
+    0
+  );
+  const totalCompressedBytes = selectedFiles.reduce(
+    (sum, f) => sum + (f.compressedSize || f.size || 0),
+    0
+  );
+  const totalSavingsBytes = Math.max(0, totalOriginalBytes - totalCompressedBytes);
+  const totalSavingsPercent =
+    totalOriginalBytes > 0 ? Math.round((totalSavingsBytes / totalOriginalBytes) * 100) : 0;
+  const isAnyCompressing = selectedFiles.some((f) => f.isCompressing);
 
   const handleUploadAndAssign = async (e) => {
     e?.preventDefault();
@@ -102,7 +373,9 @@ export default function GalleryUploadModal({
       setIsUploading(true);
       setUploadProgress(5);
       const total = selectedFiles.length;
-      setUploadProgressText(`Preparing to upload ${total} image${total > 1 ? 's' : ''}...`);
+      setUploadProgressText(
+        `Preparing to upload ${total} optimized image${total > 1 ? 's' : ''} (${formatBytes(totalCompressedBytes)})...`
+      );
 
       const rawFiles = selectedFiles.map((item) => item.file);
       const uploadResults = await uploadFilesWithPresignedUrls(
@@ -114,32 +387,63 @@ export default function GalleryUploadModal({
         },
         {
           onFileUploading: (file, index) => {
-            setUploadProgressText(`Uploading image ${index + 1} of ${total}: ${file.name}...`);
+            const sizeStr = formatBytes(file.size);
+            setUploadProgressText(`Uploading image ${index + 1} of ${total}: ${file.name} (${sizeStr})...`);
           },
         }
       );
 
-      const uploadedImages = uploadResults.map((uploadRes) => ({
-        url: uploadRes.fileUrl,
-        key: uploadRes.key || '',
-      }));
+      const uploadedImages = uploadResults.map((uploadRes, index) => {
+        const sourceItem = selectedFiles[index];
+        const assignedRecordId =
+          (sourceItem && imageRecordMap[sourceItem.id] !== undefined && imageRecordMap[sourceItem.id] !== '')
+            ? imageRecordMap[sourceItem.id]
+            : (selectedRecordIds.length > 0 ? selectedRecordIds[index % selectedRecordIds.length] : null);
+
+        const imgObj = {
+          url: uploadRes.fileUrl,
+          key: uploadRes.key || '',
+        };
+
+        if (isTargetMappable && assignedRecordId) {
+          imgObj.linkedRecord = {
+            module: targetModule,
+            recordId: assignedRecordId,
+          };
+        }
+        return imgObj;
+      });
+
+      const primaryRecordId =
+        (selectedFiles[0] && imageRecordMap[selectedFiles[0].id] !== undefined && imageRecordMap[selectedFiles[0].id] !== '')
+          ? imageRecordMap[selectedFiles[0].id]
+          : (selectedRecordIds[0] || null);
 
       setUploadProgress(85);
-      setUploadProgressText('Assigning images to theme...');
+      setUploadProgressText(`Assigning images to theme and ${targetModuleTitle.toLowerCase()}...`);
 
-      await galleryAPI.uploadAssign({
+      const payload = {
         themeId: uploadThemeId || undefined,
         placement: uploadType,
         images: uploadedImages,
         platform: uploadPlatform,
         status: 'active',
-      });
+      };
+
+      if (isTargetMappable && primaryRecordId) {
+        payload.linkedRecord = {
+          module: targetModule,
+          recordId: primaryRecordId,
+        };
+      }
+
+      await galleryAPI.uploadAssign(payload);
 
       setUploadProgress(100);
       toast.success(
         total === 1
-          ? 'Image successfully uploaded and assigned to theme!'
-          : `${total} images successfully uploaded and stored as separate gallery items!`
+          ? `Image successfully optimized (${formatBytes(totalOriginalBytes)} → ${formatBytes(totalCompressedBytes)}) & assigned!`
+          : `${total} images successfully optimized (${formatBytes(totalOriginalBytes)} → ${formatBytes(totalCompressedBytes)}, ${totalSavingsPercent}% saved) & assigned!`
       );
       resetUploadModal();
       onClose();
@@ -166,21 +470,28 @@ export default function GalleryUploadModal({
       }}
     >
       <div
-        className="relative w-full max-w-xl max-h-[88vh] my-auto flex flex-col rounded-3xl border border-stone-200 bg-white shadow-2xl overflow-hidden animate-scaleUp"
+        className="relative w-full max-w-5xl xl:max-w-6xl max-h-[92vh] my-auto flex flex-col rounded-3xl border border-stone-200 bg-white shadow-2xl overflow-hidden animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4 shrink-0 bg-white">
-          <div>
-            <h3 className="text-base sm:text-lg font-bold text-stone-900 flex items-center gap-2">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#8b6c3a]/15 text-[#8b6c3a]">
-                <HiOutlineUpload className="h-5 w-5" />
-              </span>
-              Upload Image & Assign to Theme
-            </h3>
-            <p className="mt-0.5 text-xs text-stone-500">
-              Select website theme, placement type, target platform, and upload image.
-            </p>
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#8b6c3a]/15 text-[#8b6c3a]">
+              <HiOutlineUpload className="h-5 w-5" />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base sm:text-lg font-bold text-stone-900">
+                  Upload Media & Assign to Theme
+                </h3>
+                <span className="hidden sm:inline-flex items-center rounded-full bg-[#8b6c3a]/10 px-2 py-0.5 text-[10px] font-bold text-[#8b6c3a]">
+                  Expanded Mapping Studio
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-stone-500">
+                Configure theme & placement targets on the left, upload and map media files on the right.
+              </p>
+            </div>
           </div>
           <button
             type="button"
@@ -193,290 +504,561 @@ export default function GalleryUploadModal({
           </button>
         </div>
 
-        {/* Modal Scrollable Form Body */}
-        <form onSubmit={handleUploadAndAssign} className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
-          {/* STEP 1: SELECT THEME */}
-          <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
-            <label className="block text-xs font-bold text-stone-800">
-              1. Select Website Theme <span className="text-rose-500">*</span>
-            </label>
-            <Dropdown
-              size="field"
-              showStatusDot={true}
-              value={uploadThemeId}
-              onChange={(val) => setUploadThemeId(val || '')}
-              options={modalThemeOptions}
-              placeholder="Select a website theme…"
-              portal={true}
-              menuClassName="z-[10000]"
-            />
-          </div>
-
-          {/* STEP 2: SELECT PLACEMENT TYPE VIA COMMON DROPDOWN */}
-          <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
-            <label className="block text-xs font-bold text-stone-800">
-              2. Image Placement Type <span className="text-rose-500">*</span>
-            </label>
-            <Dropdown
-              size="field"
-              value={uploadType}
-              onChange={(val) => setUploadType(val || 'herobanner')}
-              options={placementTypeOptions}
-              placeholder="Select image placement type…"
-              portal={true}
-              menuClassName="z-[10000]"
-            />
-          </div>
-
-          {/* STEP 3: TARGET PLATFORM (WEB / APP / COMMON) */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-stone-800">
-              3. Target Platform <span className="text-rose-500">*</span>
-            </label>
-            <p className="text-[11px] text-stone-500">
-              Select where this image will be displayed on the platform.
-            </p>
-
-            <div className="grid grid-cols-3 gap-2.5">
-              {[
-                {
-                  id: 'web',
-                  label: 'Web',
-                  sublabel: 'Storefront Web',
-                  icon: HiOutlineDesktopComputer,
-                },
-                {
-                  id: 'app',
-                  label: 'App',
-                  sublabel: 'Mobile App',
-                  icon: HiOutlineDeviceMobile,
-                },
-                {
-                  id: 'common',
-                  label: 'Common',
-                  sublabel: 'Web & App',
-                  icon: IoSparklesOutline,
-                },
-              ].map((plat) => {
-                const isSelected = uploadPlatform === plat.id;
-                const Icon = plat.icon;
-                return (
-                  <button
-                    key={plat.id}
-                    type="button"
-                    onClick={() => setUploadPlatform(plat.id)}
-                    className={`group flex flex-col items-center justify-center rounded-2xl border p-3 text-center transition cursor-pointer ${
-                      isSelected
-                        ? 'border-[#8b6c3a] bg-[#8b6c3a]/10 text-[#8b6c3a] font-bold shadow-xs ring-1 ring-[#8b6c3a]/30'
-                        : 'border-stone-200 bg-stone-50/50 text-stone-600 hover:border-stone-300 hover:bg-stone-50'
-                    }`}
-                  >
-                    <div
-                      className={`flex h-8 w-8 items-center justify-center rounded-xl transition ${
-                        isSelected
-                          ? 'bg-[#8b6c3a] text-white shadow-xs'
-                          : 'bg-white text-stone-500 border border-stone-200 group-hover:text-stone-800'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                    </div>
-                    <span className="mt-1.5 text-xs font-bold">{plat.label}</span>
-                    <span className="text-[10px] text-stone-400">{plat.sublabel}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* STEP 4: FILE UPLOAD ZONE (Multi-file Support) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <label className="block text-xs font-bold text-stone-800">
-                4. Upload Image File{selectedFiles.length > 1 ? 's' : ''} <span className="text-rose-500">*</span>
-              </label>
-              {selectedFiles.length > 0 && (
-                <span className="text-[11px] font-semibold text-[#8b6c3a]">
-                  {selectedFiles.length} {selectedFiles.length === 1 ? 'image' : 'images'} selected ({formatBytes(selectedFiles.reduce((sum, f) => sum + f.size, 0))})
-                </span>
-              )}
-            </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={(e) => {
-                addFiles(e.target.files);
-                if (e.target) e.target.value = '';
-              }}
-              className="hidden"
-            />
-
-            {selectedFiles.length === 0 ? (
-              <div
-                onClick={() => fileInputRef.current?.click()}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDragging(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDragging(false);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setIsDragging(false);
-                  addFiles(e.dataTransfer.files);
-                }}
-                className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-6 text-center cursor-pointer transition-all ${
-                  isDragging
-                    ? 'border-[#8b6c3a] bg-[#faf5ee] scale-[0.99]'
-                    : 'border-stone-300 bg-stone-50/70 hover:border-[#8b6c3a] hover:bg-stone-50'
-                }`}
-              >
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#8b6c3a]/10 text-[#8b6c3a]">
-                  <HiOutlineUpload className="h-6 w-6" />
+        {/* Modal Form with Scrollable Body & Sticky Action Footer */}
+        <form onSubmit={handleUploadAndAssign} className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+              {/* ─── LEFT COLUMN: TARGET SELECTION & BANNER/FEATURED MAPPING (col-span-5) ─── */}
+              <div className="lg:col-span-5 space-y-4">
+                {/* STEP 1: SELECT THEME */}
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-stone-800">
+                      1. Select Website Theme <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] font-semibold text-stone-400">Target Theme</span>
+                  </div>
+                  <Dropdown
+                    size="field"
+                    showStatusDot={true}
+                    value={uploadThemeId}
+                    onChange={(val) => setUploadThemeId(val || '')}
+                    options={modalThemeOptions}
+                    placeholder="Select a website theme…"
+                    portal={true}
+                    menuClassName="z-[10000]"
+                  />
                 </div>
-                <p className="mt-2 text-xs font-bold text-stone-800">
-                  Click or drag and drop images here
-                </p>
-                <p className="mt-1 text-[11px] text-stone-400">
-                  Select single or multiple images (WebP, PNG, JPG). Each image is stored as an individual record.
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-2xl border border-stone-200 bg-stone-50/60 p-3 space-y-3">
-                {/* Grid of staged thumbnails */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 max-h-56 overflow-y-auto p-0.5">
-                  {selectedFiles.map((item, idx) => (
-                    <div
-                      key={item.id}
-                      className="group relative flex flex-col rounded-xl border border-stone-200 bg-white overflow-hidden shadow-2xs"
-                    >
-                      <div className="relative aspect-video w-full bg-stone-100 flex items-center justify-center overflow-hidden">
-                        <img
-                          src={item.previewUrl}
-                          alt={item.name}
-                          className="w-full h-full object-cover"
-                        />
-                        <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded text-[9px] font-bold bg-black/60 text-white backdrop-blur-xs">
-                          #{idx + 1}
-                        </span>
-                        {!isUploading && (
+
+                {/* STEP 2: SELECT PLACEMENT TYPE VIA COMMON DROPDOWN */}
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-stone-800">
+                      2. Image Placement Type <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] font-semibold text-stone-400">Slot Type</span>
+                  </div>
+                  <Dropdown
+                    size="field"
+                    value={uploadType}
+                    onChange={(val) => setUploadType(val || 'herobanner')}
+                    options={placementTypeOptions}
+                    placeholder="Select image placement type…"
+                    portal={true}
+                    menuClassName="z-[10000]"
+                  />
+                </div>
+
+                {/* STEP 2.5: SELECT LINKED TARGET RECORD(S) WHEN PLACEMENT IS HERO BANNER OR CELEBRATE & GIFTS */}
+                {isTargetMappable && (
+                  <div className="rounded-2xl border border-[#8b6c3a]/30 bg-[#faf6f0]/70 p-4 space-y-3 animate-fadeIn">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="block text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#8b6c3a] text-white text-[10px]">
+                            ✓
+                          </span>
+                          Link to {targetModuleTitle}
+                        </label>
+                        <p className="text-[11px] text-stone-500 mt-0.5">
+                          {targetModuleSubtitle}
+                        </p>
+                      </div>
+                      {availableRecords.length > 0 && (
+                        <div className="flex items-center gap-2">
                           <button
                             type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeFile(item.id);
-                            }}
-                            className="absolute top-1 right-1 h-5 w-5 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
-                            title="Remove image"
+                            onClick={handleSelectAllRecords}
+                            className="text-[10.5px] font-semibold text-[#8b6c3a] hover:underline cursor-pointer"
                           >
-                            <HiOutlineX className="w-3 h-3 stroke-[3]" />
+                            All ({availableRecords.length})
                           </button>
+                          <span className="text-stone-300">|</span>
+                          <button
+                            type="button"
+                            onClick={handleClearRecordSelection}
+                            className="text-[10.5px] font-semibold text-stone-400 hover:text-stone-600 cursor-pointer"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {loadingRecords ? (
+                      <div className="flex items-center justify-center py-6 gap-2 text-xs text-stone-500">
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#8b6c3a] border-t-transparent" />
+                        <span>Loading {targetModuleTitle.toLowerCase()}…</span>
+                      </div>
+                    ) : availableRecords.length === 0 ? (
+                      <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-[11px] text-amber-800 flex items-center gap-2">
+                        <span>ℹ️</span>
+                        <span>No {targetModuleTitle.toLowerCase()} found. Images will be saved as general assets.</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                          {availableRecords.map((r) => {
+                            const isSelected = selectedRecordIds.includes(r._id);
+                            const displayName = r.title || r.name || 'Untitled';
+                            const badgeType = r.displayType || (r.display?.type) || r.type || r.platform || 'Asset';
+                            const categoryLabel = r.categoryName || r.categoryId?.name || '';
+                            const thumbUrl = r.image?.url || r.imageUrl;
+
+                            return (
+                              <div
+                                key={r._id}
+                                onClick={() => toggleRecordSelection(r._id)}
+                                className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left cursor-pointer transition ${
+                                  isSelected
+                                    ? 'border-[#8b6c3a] bg-white ring-1 ring-[#8b6c3a]/40 shadow-xs'
+                                    : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50'
+                                }`}
+                              >
+                                <div
+                                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
+                                    isSelected
+                                      ? 'border-[#8b6c3a] bg-[#8b6c3a] text-white'
+                                      : 'border-stone-300 bg-white'
+                                  }`}
+                                >
+                                  {isSelected && <HiOutlineCheck className="h-3 w-3 stroke-[3]" />}
+                                </div>
+
+                                <div className="h-10 w-14 shrink-0 rounded-lg overflow-hidden border border-stone-200 bg-stone-100 flex items-center justify-center">
+                                  {thumbUrl ? (
+                                    <img src={thumbUrl} alt={displayName} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <HiOutlinePhotograph className="h-5 w-5 text-stone-400" />
+                                  )}
+                                </div>
+
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-bold text-stone-800 truncate">
+                                    {displayName}
+                                  </p>
+                                  <div className="flex items-center gap-1.5 mt-0.5">
+                                    <span className="text-[9px] uppercase font-semibold text-stone-500 bg-stone-100 px-1 py-0.2 rounded">
+                                      {badgeType}
+                                    </span>
+                                    {categoryLabel && (
+                                      <>
+                                        <span className="text-stone-300">•</span>
+                                        <span className="text-[9.5px] text-[#8b6c3a] truncate max-w-[120px]">
+                                          {categoryLabel}
+                                        </span>
+                                      </>
+                                    )}
+                                    <span className="text-stone-300">•</span>
+                                    <span className="text-[9px] font-mono text-stone-400">
+                                      #{r._id.slice(-6)}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {isSelected && (
+                                  <span className="shrink-0 text-[10px] font-bold text-[#8b6c3a] bg-[#8b6c3a]/10 px-2 py-0.5 rounded-full">
+                                    Selected
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {selectedRecordIds.length > 1 && selectedFiles.length > 1 && (
+                          <div className="flex items-center justify-between pt-1 text-[11px] text-stone-700 bg-white p-2.5 rounded-xl border border-[#8b6c3a]/25">
+                            <span>
+                              💡 <strong>{selectedRecordIds.length}</strong> {targetModuleTitle.toLowerCase()} selected.
+                            </span>
+                            <button
+                              type="button"
+                              onClick={handleAutoDistributeRecords}
+                              className="font-bold text-[#8b6c3a] hover:underline cursor-pointer flex items-center gap-1"
+                            >
+                              <span>⚡</span> Auto-distribute to {selectedFiles.length} images
+                            </button>
+                          </div>
                         )}
                       </div>
-                      <div className="p-1.5 flex items-center justify-between text-[10px] text-stone-500 bg-white">
-                        <span className="truncate max-w-[95px] font-medium text-stone-700" title={item.name}>
-                          {item.name}
+                    )}
+                  </div>
+                )}
+
+                {/* STEP 3: TARGET PLATFORM (WEB / APP / COMMON) */}
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-stone-800">
+                      3. Target Platform <span className="text-rose-500">*</span>
+                    </label>
+                    <span className="text-[10px] font-semibold text-stone-400">Device</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      {
+                        id: 'web',
+                        label: 'Web',
+                        sublabel: 'Storefront Web',
+                        icon: HiOutlineDesktopComputer,
+                      },
+                      {
+                        id: 'app',
+                        label: 'App',
+                        sublabel: 'Mobile App',
+                        icon: HiOutlineDeviceMobile,
+                      },
+                      {
+                        id: 'common',
+                        label: 'Common',
+                        sublabel: 'Web & App',
+                        icon: IoSparklesOutline,
+                      },
+                    ].map((plat) => {
+                      const isSelected = uploadPlatform === plat.id;
+                      const Icon = plat.icon;
+                      return (
+                        <button
+                          key={plat.id}
+                          type="button"
+                          onClick={() => setUploadPlatform(plat.id)}
+                          className={`group flex flex-col items-center justify-center rounded-xl border p-2 text-center transition cursor-pointer ${
+                            isSelected
+                              ? 'border-[#8b6c3a] bg-[#8b6c3a]/10 text-[#8b6c3a] font-bold shadow-xs ring-1 ring-[#8b6c3a]/30'
+                              : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
+                          }`}
+                        >
+                          <Icon className={`h-4 w-4 ${isSelected ? 'text-[#8b6c3a]' : 'text-stone-400'}`} />
+                          <span className="mt-1 text-xs font-bold">{plat.label}</span>
+                          <span className="text-[9.5px] text-stone-400">{plat.sublabel}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* ─── RIGHT COLUMN: FILE UPLOAD ZONE & STAGED IMAGES MAPPING (col-span-7) ─── */}
+              <div className="lg:col-span-7 space-y-4">
+                {/* Header & Compression Info Banner */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="block text-xs font-bold text-stone-800">
+                      4. Upload Image File{selectedFiles.length > 1 ? 's' : ''} {isTargetMappable ? `& ${targetSingularLabel} Mapping` : ''} <span className="text-rose-500">*</span>
+                    </label>
+                    {selectedFiles.length > 0 && (
+                      <div className="flex items-center gap-1.5 text-[11px]">
+                        <span className="text-stone-400 font-mono line-through" title="Original File Size">
+                          {formatBytes(totalOriginalBytes)}
                         </span>
-                        <span className="shrink-0 text-stone-400 font-mono text-[9.5px]">
-                          {formatBytes(item.size)}
+                        <span className="text-stone-300">→</span>
+                        <span className="font-bold font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1 shadow-2xs">
+                          <span className="text-[10px]">⚡</span> {formatBytes(totalCompressedBytes)} WebP
+                          {totalSavingsPercent > 0 && (
+                            <span className="text-[10px] text-emerald-600 font-semibold">(-{totalSavingsPercent}%)</span>
+                          )}
                         </span>
                       </div>
-                    </div>
-                  ))}
+                    )}
+                  </div>
 
-                  {/* + Add More button inside the grid */}
-                  {!isUploading && (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      onDragOver={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                      }}
-                      onDrop={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        addFiles(e.dataTransfer.files);
-                      }}
-                      className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6c3a] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors cursor-pointer aspect-video p-2 text-center"
-                    >
-                      <HiOutlineUpload className="w-5 h-5 text-[#8b6c3a] mb-0.5" />
-                      <span className="text-[11px] font-bold text-stone-700">+ Add More</span>
-                      <span className="text-[9.5px] text-stone-400">or drop here</span>
+                  {/* Smart Image Compression Info Banner */}
+                  <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200/90 bg-emerald-50/70 p-2.5 text-[11px] text-emerald-900 shadow-2xs">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-[11px] shadow-2xs mt-0.5">
+                      ⚡
                     </div>
-                  )}
+                    <div className="flex-1 leading-relaxed">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-emerald-950">Smart Image Compression Active</span>
+                        <span className="inline-flex items-center rounded-md bg-emerald-200/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-emerald-800">
+                          Auto WebP · ~82% Quality
+                        </span>
+                      </div>
+                      <p className="mt-0.5 text-[10.5px] text-emerald-800">
+                        Heavy original photos are automatically compressed to ultra-fast lightweight WebP before upload with zero visible jewellery clarity loss.
+                      </p>
+                    </div>
+                  </div>
                 </div>
 
-                {/* Summary & Clear action */}
-                {!isUploading && (
-                  <div className="flex items-center justify-between pt-1 border-t border-stone-200/60 text-[11px]">
-                    <span className="text-stone-500 font-medium">
-                      {selectedFiles.length} image{selectedFiles.length === 1 ? '' : 's'} ready to upload
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => {
+                    addFiles(e.target.files);
+                    if (e.target) e.target.value = '';
+                  }}
+                  className="hidden"
+                />
+
+                {selectedFiles.length === 0 ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDragging(false);
+                      addFiles(e.dataTransfer.files);
+                    }}
+                    className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all min-h-[320px] ${
+                      isDragging
+                        ? 'border-[#8b6c3a] bg-[#faf5ee] scale-[0.99]'
+                        : 'border-stone-300 bg-stone-50/70 hover:border-[#8b6c3a] hover:bg-stone-50'
+                    }`}
+                  >
+                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#8b6c3a]/10 text-[#8b6c3a] shadow-sm">
+                      <HiOutlineUpload className="h-8 w-8" />
+                    </div>
+                    <p className="mt-3 text-sm font-bold text-stone-800">
+                      Click or drag and drop images here
+                    </p>
+                    <p className="mt-1 text-xs text-stone-400 max-w-sm">
+                      Upload single or multiple images (PNG, JPG, WebP). Automatic compression optimizes heavy MB files to lightweight KB.
+                    </p>
+                    <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-stone-200 shadow-2xs text-xs font-semibold text-stone-700 hover:bg-stone-50">
+                      Browse Files
                     </span>
-                    <button
-                      type="button"
-                      onClick={resetUploadModal}
-                      className="text-rose-600 hover:text-rose-700 font-semibold hover:underline cursor-pointer"
-                    >
-                      Clear all
-                    </button>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-stone-200 bg-stone-50/60 p-3.5 space-y-3">
+                    {/* Top Action Toolbar inside Staged Area */}
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-stone-800">
+                          {selectedFiles.length} Image{selectedFiles.length === 1 ? '' : 's'} Staged
+                        </span>
+                        <span className="text-stone-300">•</span>
+                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                          {formatBytes(totalCompressedBytes)} total
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {isTargetMappable && availableRecords.length > 1 && selectedFiles.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={handleAutoDistributeRecords}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#8b6c3a]/10 border border-[#8b6c3a]/30 text-[#8b6c3a] text-[11px] font-bold hover:bg-[#8b6c3a]/20 transition cursor-pointer"
+                            title={`Auto map ${targetModuleTitle.toLowerCase()} sequentially`}
+                          >
+                            <span>⚡</span> Auto-Map 1-to-1
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-stone-700 text-[11px] font-semibold hover:bg-stone-50 transition cursor-pointer shadow-2xs"
+                        >
+                          + Add More
+                        </button>
+                        <button
+                          type="button"
+                          onClick={resetUploadModal}
+                          className="text-rose-600 hover:text-rose-700 text-[11px] font-semibold hover:underline cursor-pointer ml-1"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Grid of staged thumbnails (spacious 2 or 3 columns) */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[460px] overflow-y-auto p-1">
+                      {selectedFiles.map((item, idx) => (
+                        <div
+                          key={item.id}
+                          className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs hover:border-[#8b6c3a]/50 hover:shadow-md transition"
+                        >
+                          <div className="relative aspect-video w-full bg-stone-100 flex items-center justify-center overflow-hidden">
+                            <img
+                              src={item.previewUrl}
+                              alt={item.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/65 text-white backdrop-blur-xs shadow-xs">
+                              #{idx + 1}
+                            </span>
+
+                            {/* Top reduction or optimizing badge */}
+                            {item.isCompressing ? (
+                              <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500 text-white shadow-xs animate-pulse flex items-center gap-1">
+                                <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                                Optimizing...
+                              </span>
+                            ) : item.savingsPercent > 0 ? (
+                              <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600 text-white shadow-xs flex items-center gap-0.5">
+                                <span>⚡</span> -{item.savingsPercent}%
+                              </span>
+                            ) : (
+                              <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-700/80 text-white shadow-xs">
+                                WebP
+                              </span>
+                            )}
+
+                            {!isUploading && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeFile(item.id);
+                                }}
+                                className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
+                                title="Remove image"
+                              >
+                                <HiOutlineX className="w-3.5 h-3.5 stroke-[3]" />
+                              </button>
+                            )}
+                          </div>
+
+                          {/* Card Meta with Original (OG) vs Compressed Size */}
+                          <div className="p-2.5 flex flex-col gap-1.5 text-xs bg-white border-t border-stone-100">
+                            <div className="flex items-center justify-between">
+                              <span className="truncate font-semibold text-stone-800 text-[11px]" title={item.name}>
+                                {item.name}
+                              </span>
+                              <span className="text-[9.5px] font-bold text-emerald-700 uppercase bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded">
+                                WebP
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[10.5px]">
+                              <span className="text-stone-400 font-mono line-through" title="Original size">
+                                {formatBytes(item.originalSize || item.size)}
+                              </span>
+                              <span className="text-stone-300">→</span>
+                              <span className="font-mono font-bold text-emerald-700" title="Compressed WebP size">
+                                {formatBytes(item.compressedSize || item.size)}
+                              </span>
+                            </div>
+
+                            {/* Target Record Mapping Dropdown for each image */}
+                            {isTargetMappable && availableRecords.length > 0 && (
+                              <div className="pt-2 border-t border-stone-100 flex flex-col gap-1">
+                                <label className="text-[10px] font-bold text-[#8b6c3a] flex items-center justify-between">
+                                  <span className="flex items-center gap-1">
+                                    <HiOutlineLink className="w-3 h-3" /> Linked {targetSingularLabel}:
+                                  </span>
+                                  {imageRecordMap[item.id] ? (
+                                    <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded">
+                                      Mapped
+                                    </span>
+                                  ) : (
+                                    <span className="text-[9px] text-stone-400">Default</span>
+                                  )}
+                                </label>
+                                <select
+                                  value={
+                                    imageRecordMap[item.id] !== undefined
+                                      ? imageRecordMap[item.id]
+                                      : (selectedRecordIds[idx % selectedRecordIds.length] || selectedRecordIds[0] || '')
+                                  }
+                                  onChange={(e) => {
+                                    const val = e.target.value;
+                                    setImageRecordMap((prev) => ({ ...prev, [item.id]: val }));
+                                  }}
+                                  className="w-full text-[10.5px] py-1.5 px-2 rounded-xl border border-stone-200 bg-stone-50 font-medium text-stone-800 focus:border-[#8b6c3a] focus:bg-white outline-none cursor-pointer transition shadow-2xs"
+                                >
+                                  <option value="">(None / General Asset)</option>
+                                  {availableRecords.map((r) => {
+                                    const displayName = r.title || r.name || 'Untitled';
+                                    const cat = r.categoryName ? ` · ${r.categoryName}` : '';
+                                    const badge = r.displayType || r.display?.type ? ` [${r.displayType || r.display?.type}]` : '';
+                                    return (
+                                      <option key={r._id} value={r._id}>
+                                        {displayName}{cat}{badge} (#{r._id.slice(-6)})
+                                      </option>
+                                    );
+                                  })}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Progress Bar */}
+                {isUploading && (
+                  <div className="space-y-1.5 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                    <div className="flex justify-between text-xs font-semibold text-stone-700">
+                      <span>{uploadProgressText || 'Uploading and assigning images…'}</span>
+                      <span>{uploadProgress}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#8b6c3a] to-emerald-500 transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
+                      ></div>
+                    </div>
                   </div>
                 )}
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Upload Progress Bar */}
-          {isUploading && (
-            <div className="space-y-1.5 rounded-xl border border-stone-200 bg-stone-50 p-3">
-              <div className="flex justify-between text-xs font-semibold text-stone-700">
-                <span>{uploadProgressText || 'Uploading and assigning images…'}</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
-                <div
-                  className="h-full bg-gradient-to-r from-[#8b6c3a] to-emerald-500 transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-
-          {/* Modal Action Buttons */}
-          <div className="flex items-center justify-end gap-3 border-t border-stone-100 pt-4 shrink-0">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={isUploading}
-              className="rounded-xl border border-stone-200 px-4 py-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition cursor-pointer disabled:opacity-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isUploading || selectedFiles.length === 0}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#8b6c3a] to-[#765a2d] px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-[#8b6c3a]/20 hover:from-[#765a2d] transition cursor-pointer disabled:opacity-50"
-            >
-              {isUploading ? (
-                <>
-                  <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
-                  Uploading…
-                </>
+          {/* ─── STICKY ACTION FOOTER ─── */}
+          <div className="flex items-center justify-between border-t border-stone-200/80 px-6 py-3.5 bg-stone-50/90 shrink-0">
+            <div className="text-xs text-stone-500 font-medium">
+              {selectedFiles.length > 0 ? (
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-stone-800">
+                    {selectedFiles.length} file{selectedFiles.length === 1 ? '' : 's'} selected
+                  </span>
+                  <span className="text-stone-300">•</span>
+                  <span className="text-emerald-700 font-bold font-mono">
+                    {formatBytes(totalCompressedBytes)} WebP
+                  </span>
+                  {totalSavingsBytes > 0 && (
+                    <span className="hidden sm:inline text-emerald-600 text-[11px]">
+                      (Saved {formatBytes(totalSavingsBytes)})
+                    </span>
+                  )}
+                </div>
               ) : (
-                <>
-                  <HiOutlineUpload className="h-4 w-4" />
-                  {selectedFiles.length > 1
-                    ? `Upload & Assign ${selectedFiles.length} Images`
-                    : 'Upload & Assign Image'}
-                </>
+                <span>No files selected yet. Drag & drop images above.</span>
               )}
-            </button>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isUploading}
+                className="rounded-xl border border-stone-200 px-4 py-2.5 text-xs font-semibold text-stone-700 hover:bg-stone-100 transition cursor-pointer disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isUploading || selectedFiles.length === 0}
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-[#8b6c3a] to-[#765a2d] px-6 py-2.5 text-xs font-semibold text-white shadow-md shadow-[#8b6c3a]/20 hover:from-[#765a2d] transition cursor-pointer disabled:opacity-50"
+              >
+                {isUploading ? (
+                  <>
+                    <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                    Uploading…
+                  </>
+                ) : (
+                  <>
+                    <HiOutlineUpload className="h-4 w-4" />
+                    {selectedFiles.length > 1
+                      ? `Upload & Assign ${selectedFiles.length} Images (${formatBytes(totalCompressedBytes)})`
+                      : `Upload & Assign Image (${formatBytes(totalCompressedBytes)})`}
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </form>
       </div>

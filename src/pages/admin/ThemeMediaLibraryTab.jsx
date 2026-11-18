@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
@@ -11,11 +11,18 @@ import {
   HiOutlineUpload,
   HiOutlineClipboardCopy,
   HiOutlineCheck,
+  HiOutlineTag,
+  HiOutlineViewGrid,
+  HiOutlineGift,
+  HiOutlineCalendar,
+  HiOutlineSparkles,
+  HiOutlineCollection,
 } from 'react-icons/hi';
-import { IoSparklesOutline } from 'react-icons/io5';
+import { IoSparklesOutline, IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { galleryAPI } from '../../api/services';
 import Pagination from '../../components/common/Pagination';
+import Dropdown from '../../components/common/Dropdown';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 
@@ -31,6 +38,69 @@ const PLACEMENT_LABELS = {
   websitebanner: 'Website Banner',
   asset: 'Media Library Asset',
 };
+
+const PLACEMENT_OPTIONS = [
+  {
+    value: 'all',
+    label: 'All Placement Types',
+    sublabel: 'Show all banner and media placements',
+    icon: HiOutlineCollection,
+  },
+  {
+    value: 'herobanner',
+    label: 'Hero Banner',
+    sublabel: 'Homepage main hero slider',
+    icon: HiOutlineDesktopComputer,
+  },
+  {
+    value: 'collectionbanner',
+    label: 'Collection Banner',
+    sublabel: '4-tile curated collection showcase',
+    icon: HiOutlineTag,
+  },
+  {
+    value: 'categorybanner',
+    label: 'Category Banner',
+    sublabel: 'Category page top header banner',
+    icon: HiOutlineViewGrid,
+  },
+  {
+    value: 'offerbanner',
+    label: 'Offer Banner',
+    sublabel: 'Promotional deals & discount banner',
+    icon: HiOutlineGift,
+  },
+  {
+    value: 'celebrate',
+    label: 'Celebrate & Gifts',
+    sublabel: 'Gift guide and celebrate showcase item',
+    icon: IoDiamondOutline,
+  },
+  {
+    value: 'mobileappbanner',
+    label: 'Mobile App Banner',
+    sublabel: 'Mobile app download promotion',
+    icon: HiOutlineDeviceMobile,
+  },
+  {
+    value: 'bookappointbanner',
+    label: 'Appointment Banner',
+    sublabel: 'In-store appointment booking section',
+    icon: HiOutlineCalendar,
+  },
+  {
+    value: 'customizebanner',
+    label: 'Custom Banner',
+    sublabel: 'Custom pages and seasonal campaigns',
+    icon: HiOutlineSparkles,
+  },
+  {
+    value: 'asset',
+    label: 'Media Library Asset',
+    sublabel: 'General asset stored in theme media library',
+    icon: HiOutlinePhotograph,
+  },
+];
 
 function getPlacementLabel(placement) {
   if (!placement) return 'Media';
@@ -65,6 +135,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedPlacement, setSelectedPlacement] = useState('all');
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -85,6 +156,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
         setLoading(true);
         const params = {
           themeId: currentThemeId || undefined,
+          placement: selectedPlacement !== 'all' ? selectedPlacement : undefined,
           page: targetPage,
           limit: targetPageSize,
           search: search.trim() || undefined,
@@ -109,7 +181,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
         setLoading(false);
       }
     },
-    [currentThemeId, page, pageSize, search]
+    [currentThemeId, selectedPlacement, page, pageSize, search]
   );
 
   // On mount and when page or pageSize changes
@@ -117,10 +189,10 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
     fetchGalleryMedia(page, pageSize);
   }, [fetchGalleryMedia, page, pageSize]);
 
-  // Reset to page 1 on search or theme change
+  // Reset to page 1 on search, placement, or theme change
   useEffect(() => {
     setPage(1);
-  }, [search, currentThemeId]);
+  }, [search, selectedPlacement, currentThemeId]);
 
   // ─── Handle Upload Media for This Theme ───
   const handleFileUpload = async (e) => {
@@ -200,6 +272,21 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
           </div>
 
           <div className="flex items-center gap-2.5 flex-wrap">
+            {/* Placement Type Filter Dropdown */}
+            <div className="w-full sm:w-64">
+              <Dropdown
+                size="sm"
+                value={selectedPlacement}
+                onChange={(val) => {
+                  setSelectedPlacement(val || 'all');
+                }}
+                options={PLACEMENT_OPTIONS}
+                placeholder="Filter placement type…"
+                portal={true}
+                menuClassName="z-[10000]"
+              />
+            </div>
+
             {/* Search Input */}
             <div className="relative w-full sm:w-60">
               <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
@@ -247,9 +334,23 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
           <p className="text-xs text-stone-500 max-w-sm mx-auto">
             {search
               ? `No media matches "${search}". Try clearing search.`
+              : selectedPlacement !== 'all'
+              ? `No ${getPlacementLabel(selectedPlacement)} media found for ${currentThemeName || 'this theme'}.`
               : `No media assets have been assigned to ${currentThemeName || 'this theme'} yet.`}
           </p>
-          {!search && (
+          {(search || selectedPlacement !== 'all') ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setSelectedPlacement('all');
+              }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition shadow-2xs cursor-pointer"
+            >
+              <HiOutlineRefresh className="h-3.5 w-3.5 text-[#8b6f4e]" />
+              <span>Reset Filters</span>
+            </button>
+          ) : (
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -346,7 +447,6 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
               setPageSize(newSize);
               setPage(1);
             }}
-            pageSizeOptions={[10, 20, 40, 60]}
             showPageSize={true}
             itemLabel="theme assets"
           />

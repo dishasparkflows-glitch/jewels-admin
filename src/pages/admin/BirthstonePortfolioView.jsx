@@ -391,11 +391,11 @@ export default function BirthstonePortfolioView() {
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="border-b border-stone-100 bg-[#faf8f5]/60 text-[10px] font-bold tracking-wider text-stone-500 uppercase">
-                <th className="py-2 pl-4 pr-1 w-8 text-center">
+              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                <th className="py-3 pl-4 pr-1 w-8 text-center">
                   <input
                     type="checkbox"
-                    className="rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                     onChange={handleSelectAll}
                     checked={
                       paginatedItems.length > 0 &&
@@ -403,12 +403,12 @@ export default function BirthstonePortfolioView() {
                     }
                   />
                 </th>
-                <th className="py-2 px-2 text-center w-12 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">SR NO</th>
-                <th className="py-2 px-3">MONTH</th>
-                <th className="py-2 px-3">GEM PORTRAIT</th>
-                <th className="py-2 px-3">ASSIGNED GEMSTONE</th>
-                <th className="py-2 px-3">STATUS</th>
-                <th className="py-2 pr-4 pl-2 text-right">ACTIONS</th>
+                <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
+                <th className="py-3 px-3 whitespace-nowrap">MONTH</th>
+                <th className="py-3 px-3 whitespace-nowrap">GEM PORTRAIT</th>
+                <th className="py-3 px-3 whitespace-nowrap">ASSIGNED GEMSTONE</th>
+                <th className="py-3 px-3 whitespace-nowrap text-center">STATUS</th>
+                <th className="py-3 pr-4 pl-2 text-right whitespace-nowrap">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 font-sans">

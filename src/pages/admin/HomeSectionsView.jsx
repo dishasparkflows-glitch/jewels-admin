@@ -474,7 +474,7 @@ export default function HomeSectionsView() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                  <th className="py-2 pl-4 pr-1 w-8 text-center">
+                  <th className="py-3 pl-4 pr-1 w-8 text-center">
                     <input
                       type="checkbox"
                       checked={
@@ -493,16 +493,16 @@ export default function HomeSectionsView() {
                       className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                     />
                   </th>
-                  <th className="py-2 px-2 text-center w-14 whitespace-nowrap text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                  <th className="py-3 px-2 text-center w-14 whitespace-nowrap">
                     ORDER
                   </th>
-                  <th className="py-2.5 px-3 whitespace-nowrap min-w-[170px]">TITLE</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap min-w-[180px]">SUBTITLE</th>
-                  <th className="py-2.5 px-3 whitespace-nowrap w-36">SLUG</th>
-                  <th className="py-2.5 px-3 text-center whitespace-nowrap w-44">VISIBILITY</th>
-                  <th className="py-2.5 px-3 text-center whitespace-nowrap w-28">ITEMS</th>
-                  <th className="py-2.5 px-3 text-center whitespace-nowrap w-24">STATUS</th>
-                  <th className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right w-28">ACTIONS</th>
+                  <th className="py-3 px-3 whitespace-nowrap min-w-[170px]">TITLE</th>
+                  <th className="py-3 px-3 whitespace-nowrap min-w-[180px]">SUBTITLE</th>
+                  <th className="py-3 px-3 whitespace-nowrap w-36">SLUG</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap w-44">VISIBILITY</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap w-28">ITEMS</th>
+                  <th className="py-3 px-3 text-center whitespace-nowrap w-24">STATUS</th>
+                  <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right w-28">ACTIONS</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-stone-100 text-xs">

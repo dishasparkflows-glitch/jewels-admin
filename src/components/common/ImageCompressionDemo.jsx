@@ -3,21 +3,54 @@ import {
   HiOutlineRefresh,
   HiOutlineEye,
   HiOutlineSparkles,
-  HiOutlineArrowsExpand,
-  HiOutlineCheck,
+  HiOutlineUpload,
+  HiOutlineX,
+  HiOutlinePhotograph,
 } from 'react-icons/hi';
 import { compressImage, formatFileSize } from '../../utils/imageCompressor';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
-const QUALITY_PRESETS = [
-  { value: 60, label: '60% Max Compression', tag: 'Smallest' },
-  { value: 70, label: '70% High Savings', tag: 'Fast' },
-  { value: 80, label: '80% Balanced', tag: 'Standard' },
-  { value: 82, label: '82% Recommended', tag: 'Optimal', isDefault: true },
-  { value: 90, label: '90% High Clarity', tag: 'Sharp' },
-  { value: 95, label: '95% Ultra Fidelity', tag: 'Max' },
-];
+const STORAGE_KEY = 'neirah_compression_test_image';
+const DEFAULT_DEMO_PATH = '/demo-jewelry/diamond-ring.jpg';
 
-const DEFAULT_DEMO_URL = 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=1200&q=80';
+// Helper to convert base64 dataUrl back to a File
+function dataUrlToFile(dataUrl, filename, mimeType) {
+  try {
+    const arr = dataUrl.split(',');
+    const mime = mimeType || arr[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename || 'custom_test.jpg', { type: mime });
+  } catch (err) {
+    console.error('Failed to convert dataUrl to File:', err);
+    return null;
+  }
+}
+
+// Fallback generator in case network/file fetch fails
+function createFallbackCanvasFile() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1200;
+  canvas.height = 800;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#1c1917';
+    ctx.fillRect(0, 0, 1200, 800);
+    ctx.fillStyle = '#8f6d43';
+    ctx.font = 'bold 36px serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Neirah Luxury Jewelry Sample', 600, 400);
+  }
+  return new Promise((resolve) => {
+    canvas.toBlob((blob) => {
+      resolve(new File([blob], 'demo_fallback.jpg', { type: 'image/jpeg' }));
+    }, 'image/jpeg', 0.9);
+  });
+}
 
 export default function ImageCompressionDemo({
   quality = 82,
@@ -25,56 +58,87 @@ export default function ImageCompressionDemo({
   enabled = true,
   onQualityChange,
 }) {
+  const [activePreset, setActivePreset] = useState('ring');
+  const [customFileMeta, setCustomFileMeta] = useState(null);
   const [sourceFile, setSourceFile] = useState(null);
-  const [originalStats, setOriginalStats] = useState({
-    width: 1920,
-    height: 1080,
-    size: 200000,
-    url: '',
-    name: 'Sample Jewelry Photo',
-  });
+  const [originalStats, setOriginalStats] = useState(null);
   const [compressedStats, setCompressedStats] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
+  const { openImagePreview } = useImagePreview();
+  const fileInputRef = useRef(null);
   const originalUrlRef = useRef(null);
   const compressedUrlRef = useRef(null);
   const debounceTimerRef = useRef(null);
 
-  // Helper to generate a demo image on canvas as File/Blob
-  const loadDemoFile = useCallback(async () => {
-    return new Promise((resolve) => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1920;
-      canvas.height = 1080;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#1c1917';
-        ctx.fillRect(0, 0, 1920, 1080);
-        ctx.fillStyle = '#8b6f4e';
-        ctx.font = 'bold 48px serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Neirah Luxury Jewelry Sample', 960, 540);
-      }
-      canvas.toBlob((blob) => {
-        resolve(new File([blob], 'demo_jewelry.jpg', { type: 'image/jpeg' }));
-      }, 'image/jpeg', 0.95);
-    });
+  // Clean up localStorage when leaving page or unmounting
+  useEffect(() => {
+    const cleanup = () => {
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch (_) {}
+    };
+
+    window.addEventListener('beforeunload', cleanup);
+    window.addEventListener('pagehide', cleanup);
+
+    return () => {
+      cleanup();
+      window.removeEventListener('beforeunload', cleanup);
+      window.removeEventListener('pagehide', cleanup);
+    };
   }, []);
 
-  // Load the 5MB demo file on mount
+  // Fetch local preset file and convert to File
+  const loadPresetFile = useCallback(async () => {
+    try {
+      const res = await fetch(DEFAULT_DEMO_PATH);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const filename = DEFAULT_DEMO_PATH.split('/').pop() || 'diamond-ring.jpg';
+      return new File([blob], filename, { type: blob.type || 'image/jpeg' });
+    } catch (err) {
+      console.warn('Failed to load demo image from public path, generating fallback:', err);
+      return await createFallbackCanvasFile();
+    }
+  }, []);
+
+  // Load image on mount: check localStorage first, else load default preset
   useEffect(() => {
     let isCancelled = false;
     setIsProcessing(true);
 
-    loadDemoFile()
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.dataUrl) {
+          const restoredFile = dataUrlToFile(parsed.dataUrl, parsed.name, parsed.type);
+          if (restoredFile && !isCancelled) {
+            setSourceFile(restoredFile);
+            setActivePreset('custom');
+            setCustomFileMeta({ name: parsed.name, size: parsed.size });
+            setIsProcessing(false);
+            return;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Error reading test image from localStorage:', err);
+    }
+
+    // Default to diamond ring
+    loadPresetFile()
       .then((file) => {
         if (!isCancelled) {
           setSourceFile(file);
+          setActivePreset('ring');
+          setCustomFileMeta(null);
         }
       })
       .catch((err) => {
-        console.error('Failed to load demo image:', err);
+        console.error('Failed to load preset:', err);
       })
       .finally(() => {
         if (!isCancelled) setIsProcessing(false);
@@ -83,9 +147,69 @@ export default function ImageCompressionDemo({
     return () => {
       isCancelled = true;
     };
-  }, [loadDemoFile]);
+  }, [loadPresetFile]);
 
-  // Update original stats and original preview URL
+  // Switch demo preset
+  const handleResetToDefault = async () => {
+    setIsProcessing(true);
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      setCustomFileMeta(null);
+      setActivePreset('ring');
+      const file = await loadPresetFile();
+      setSourceFile(file);
+    } catch (err) {
+      console.error('Failed to reset to demo image:', err);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Handle custom file selection / upload
+  const handleCustomFileUpload = (file) => {
+    if (!file) return;
+
+    if (!file.type || !file.type.startsWith('image/')) {
+      alert('Please upload a valid image file (JPG, PNG, or WebP).');
+      return;
+    }
+
+    // Limit to 12MB
+    if (file.size > 12 * 1024 * 1024) {
+      alert('Please select an image smaller than 12MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result;
+      if (dataUrl && typeof dataUrl === 'string') {
+        try {
+          // If within typical localStorage quota (~5MB)
+          if (dataUrl.length < 5 * 1024 * 1024) {
+            localStorage.setItem(
+              STORAGE_KEY,
+              JSON.stringify({
+                name: file.name,
+                type: file.type,
+                size: file.size,
+                dataUrl,
+              })
+            );
+          }
+        } catch (storageErr) {
+          console.warn('Could not cache file into localStorage (quota limit):', storageErr);
+        }
+      }
+    };
+    reader.readAsDataURL(file);
+
+    setActivePreset('custom');
+    setCustomFileMeta({ name: file.name, size: file.size });
+    setSourceFile(file);
+  };
+
+  // Update original stats and original preview URL whenever sourceFile changes
   useEffect(() => {
     if (!sourceFile) return;
 
@@ -99,20 +223,20 @@ export default function ImageCompressionDemo({
     const img = new Image();
     img.onload = () => {
       setOriginalStats({
-        width: img.naturalWidth || 5120,
-        height: img.naturalHeight || 2858,
+        width: img.naturalWidth || img.width,
+        height: img.naturalHeight || img.height,
         size: sourceFile.size,
         url: origUrl,
-        name: '5.0 MB Raw Jewelry Photo',
+        name: sourceFile.name || 'Test Jewelry Image',
       });
     };
     img.onerror = () => {
       setOriginalStats({
-        width: 5120,
-        height: 2858,
+        width: 1600,
+        height: 1067,
         size: sourceFile.size,
         url: origUrl,
-        name: '5.0 MB Raw Jewelry Photo',
+        name: sourceFile.name || 'Test Jewelry Image',
       });
     };
     img.src = origUrl;
@@ -125,7 +249,7 @@ export default function ImageCompressionDemo({
     };
   }, [sourceFile]);
 
-  // Run live compression with slight debounce whenever quality, format or source file changes
+  // Live compression with slight debounce
   useEffect(() => {
     if (!sourceFile) return;
 
@@ -160,11 +284,11 @@ export default function ImageCompressionDemo({
           format: format === 'image/webp' ? 'WebP' : 'JPEG',
         });
       } catch (err) {
-        console.error('Demo compression failed:', err);
+        console.error('Compression error:', err);
       } finally {
         setIsProcessing(false);
       }
-    }, 80);
+    }, 70);
 
     return () => {
       if (debounceTimerRef.current) {
@@ -185,44 +309,58 @@ export default function ImageCompressionDemo({
     };
   }, []);
 
-  // Recommendation status text
-  const getQualityGuidance = () => {
-    if (quality <= 65) {
-      return {
-        tone: 'text-amber-800 bg-amber-50 border-amber-200',
-        title: '⚡ 60% Maximum Compression (Smallest Files)',
-        desc: 'Maximum reduction (~95% to 98% bandwidth savings). Ideal for ultra-fast storefront loading on mobile networks with minimal detail loss.',
-      };
-    }
-    if (quality < 75) {
-      return {
-        tone: 'text-blue-800 bg-blue-50 border-blue-200',
-        title: '🚀 70% High Savings (Fast)',
-        desc: 'Significant size reduction (~90% to 94% saved). Clean product detail with great performance.',
-      };
-    }
-    if (quality <= 85) {
-      return {
-        tone: 'text-emerald-800 bg-emerald-50 border-emerald-200',
-        title: '✨ Recommended Sweet Spot for Fine Jewelry (75% - 85%)',
-        desc: 'Optimal balance: Flawless diamond sparkle, crisp gold bevels, and ~85% to 92% bandwidth savings for fast storefront loading.',
-      };
-    }
-    return {
-      tone: 'text-stone-700 bg-stone-100 border-stone-200',
-      title: 'Near-lossless clarity (Higher file size)',
-      desc: 'Retains every micro-detail and gem reflection. Produces larger files which may slightly increase catalog loading times on mobile networks.',
-    };
-  };
-
-  const guidance = getQualityGuidance();
-  const originalUrl = originalStats?.url || DEFAULT_DEMO_URL;
+  const originalUrl = originalStats?.url || '';
   const compressedUrl = compressedStats?.url;
 
+  // Handlers to open full-resolution inspection modal
+  const handlePreviewOriginal = (e) => {
+    e?.stopPropagation?.();
+    if (!originalUrl) return;
+    const gallery = [
+      {
+        url: originalUrl,
+        title: `Original Photo (${originalStats ? formatFileSize(originalStats.size) : 'Uncompressed'})`,
+      },
+      ...(compressedUrl
+        ? [
+            {
+              url: compressedUrl,
+              title: `Optimized Output (WebP @ ${quality}% - ${compressedStats ? formatFileSize(compressedStats.size) : ''})`,
+            },
+          ]
+        : []),
+    ];
+    openImagePreview(originalUrl, {
+      gallery,
+      title: `Original Photo (${originalStats ? formatFileSize(originalStats.size) : 'Uncompressed'})`,
+      initialIndex: 0,
+    });
+  };
+
+  const handlePreviewOptimized = (e) => {
+    e?.stopPropagation?.();
+    if (!compressedUrl) return;
+    const gallery = [
+      {
+        url: originalUrl,
+        title: `Original Photo (${originalStats ? formatFileSize(originalStats.size) : 'Uncompressed'})`,
+      },
+      {
+        url: compressedUrl,
+        title: `Optimized Output (WebP @ ${quality}% - ${compressedStats ? formatFileSize(compressedStats.size) : ''})`,
+      },
+    ];
+    openImagePreview(compressedUrl, {
+      gallery,
+      title: `Optimized Output (WebP @ ${quality}% - ${compressedStats ? formatFileSize(compressedStats.size) : ''})`,
+      initialIndex: 1,
+    });
+  };
+
   return (
-    <div className="mt-4 rounded-xl border border-stone-200 bg-[#fdfcfb] p-3.5 sm:p-4 transition-all">
-      {/* Top Header / Bar */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-stone-200/80 pb-3">
+    <div className="rounded-xl border border-stone-200 bg-[#fdfcfb] p-3 sm:p-4 transition-all">
+      {/* Top Bar: Title, Presets, Upload & Zoom */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between border-b border-stone-200/80 pb-2.5">
         <div>
           <div className="flex items-center gap-2">
             <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#8f6d43]/15 text-[#8f6d43]">
@@ -239,46 +377,97 @@ export default function ImageCompressionDemo({
             )}
           </div>
           <p className="mt-0.5 text-[11px] text-stone-500">
-            Real-time side-by-side comparison using a <span className="font-semibold text-stone-700">5.0 MB</span> raw jewelry photo at <span className="font-semibold text-[#8f6d43]">{quality}%</span> quality.
+            Compare clarity, sparkle, and facets between original and compressed output at{' '}
+            <span className="font-semibold text-[#8f6d43]">{quality}%</span> quality.
           </p>
         </div>
 
-        {/* 5MB Demo Badge & Zoom */}
+        {/* Actions */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 rounded-lg border border-[#8f6d43]/30 bg-[#faf6f0] px-2.5 py-1 text-xs font-semibold text-[#8f6d43]">
-            <span>📸</span>
-            <span>5.0 MB Demo Image</span>
-          </div>
+          {activePreset === 'custom' ? (
+            <button
+              type="button"
+              onClick={handleResetToDefault}
+              className="flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition-colors"
+              title="Reset to Diamond Ring sample"
+            >
+              <HiOutlineX className="h-3.5 w-3.5" />
+              <span>Reset to Sample</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-1.5 rounded-lg border border-[#8f6d43]/30 bg-[#faf6f0] px-2.5 py-1 text-xs font-semibold text-[#8f6d43]">
+              <span>💍</span>
+              <span>Diamond Ring</span>
+            </div>
+          )}
+
+          {/* Upload Custom Image Button */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleCustomFileUpload(file);
+              e.target.value = '';
+            }}
+          />
 
           <button
             type="button"
-            onClick={() => setIsZoomed((prev) => !prev)}
-            className={`flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all ${
-              isZoomed
-                ? 'border-[#8f6d43] bg-[#8f6d43]/10 text-[#8f6d43]'
-                : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+            onClick={() => fileInputRef.current?.click()}
+            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all ${
+              activePreset === 'custom'
+                ? 'border-[#8f6d43] bg-[#8f6d43] text-white shadow-xs'
+                : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
             }`}
-            title="Inspect diamond facets and metal sheen at 2x zoom"
+            title="Upload your own jewelry image to test compression"
           >
-            <HiOutlineArrowsExpand className="h-3.5 w-3.5" />
-            <span>{isZoomed ? '1x Normal' : '2x Detail Zoom'}</span>
+            <HiOutlineUpload className="h-3.5 w-3.5" />
+            <span>Upload Test Photo</span>
           </button>
         </div>
       </div>
 
+      {/* Custom Uploaded Active Indicator */}
+      {activePreset === 'custom' && customFileMeta && (
+        <div className="mt-2 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-1.5 text-xs text-amber-900">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="text-amber-700 font-bold">📸 Custom Test Photo:</span>
+            <span className="font-medium truncate max-w-[240px] sm:max-w-md">{customFileMeta.name}</span>
+            <span className="text-amber-700 text-[11px]">({formatFileSize(customFileMeta.size)})</span>
+            <span className="text-[10px] text-amber-600 italic hidden sm:inline">
+              • Cleaned automatically when leaving page
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={handleResetToDefault}
+            className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 transition-colors ml-2 shrink-0"
+            title="Reset to sample jewelry photos"
+          >
+            <HiOutlineX className="h-3.5 w-3.5" />
+            <span>Reset</span>
+          </button>
+        </div>
+      )}
+
       {/* Metrics & Savings Strip */}
-      <div className="my-3 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3">
-        <div className="rounded-lg border border-stone-200/90 bg-white p-2.5">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400">Original Size</span>
+      <div className="my-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5">
+        <div className="rounded-lg border border-stone-200/90 bg-white p-2">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+            Original Size
+          </span>
           <div className="mt-0.5 flex items-baseline gap-1">
             <span className="text-sm font-bold text-stone-800">
-              {originalStats ? formatFileSize(originalStats.size) : '4.95 MB'}
+              {originalStats ? formatFileSize(originalStats.size) : '…'}
             </span>
             <span className="text-[10px] text-stone-400">source</span>
           </div>
         </div>
 
-        <div className="rounded-lg border border-stone-200/90 bg-white p-2.5">
+        <div className="rounded-lg border border-stone-200/90 bg-white p-2">
           <span className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400">
             {format === 'image/webp' ? 'WebP' : 'JPEG'} Output (@{quality}%)
           </span>
@@ -290,33 +479,52 @@ export default function ImageCompressionDemo({
           </div>
         </div>
 
-        <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/60 p-2.5">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-emerald-700">Storage & Bandwidth Saved</span>
+        <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/70 p-2">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
+            Storage & Bandwidth Saved
+          </span>
           <div className="mt-0.5 flex items-baseline gap-1">
             <span className="text-sm font-extrabold text-emerald-700">
               {compressedStats?.savingsPercent ? `-${compressedStats.savingsPercent}%` : '0%'}
             </span>
             {compressedStats?.savingsBytes > 0 && (
-              <span className="text-[10px] text-emerald-600">
+              <span className="text-[10px] text-emerald-600 font-medium">
                 ({formatFileSize(compressedStats.savingsBytes)})
               </span>
             )}
           </div>
         </div>
 
-        <div className="rounded-lg border border-stone-200/90 bg-white p-2.5">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400">Resolution</span>
+        <div className="rounded-lg border border-stone-200/90 bg-white p-2">
+          <span className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400">
+            Resolution
+          </span>
           <div className="mt-0.5 flex items-baseline gap-1">
             <span className="text-sm font-bold text-stone-800">
-              {originalStats?.width ? `${originalStats.width} × ${originalStats.height}px` : '5120 × 2858px'}
+              {originalStats?.width ? `${originalStats.width} × ${originalStats.height}px` : '…'}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Side-by-Side Comparison Container */}
-      <div className="relative overflow-hidden rounded-xl border border-stone-200/90 bg-white select-none">
-        {/* Disabled Compression Notification if enabled === false */}
+      {/* Side-by-Side Comparison Container with Drag-and-Drop */}
+      <div
+        className={`relative overflow-hidden rounded-xl border bg-white select-none transition-colors ${
+          isDragging ? 'border-[#8f6d43] ring-2 ring-[#8f6d43]/30' : 'border-stone-200/90'
+        }`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          const file = e.dataTransfer.files?.[0];
+          if (file) handleCustomFileUpload(file);
+        }}
+      >
+        {/* Disabled Compression Notification */}
         {!enabled && (
           <div className="bg-amber-500/95 py-1 text-center text-xs font-semibold text-white shadow-xs">
             Automatic compression is turned OFF. Images will be stored at original file size.
@@ -325,116 +533,118 @@ export default function ImageCompressionDemo({
 
         <div className="grid grid-cols-1 divide-y divide-stone-200 md:grid-cols-2 md:divide-y-0 md:divide-x">
           {/* Left: Original Photo */}
-          <div className="p-3 bg-white flex flex-col">
+          <div className="p-2.5 sm:p-3 bg-white flex flex-col">
             <div className="mb-2 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 truncate">
                 <span className="font-bold text-stone-800">Original Photo</span>
-                <span className="rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-600">
-                  5.0 MB Raw Image
+                <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600 truncate max-w-[140px]">
+                  {activePreset === 'custom' ? 'Custom Upload' : 'Raw Jewelry'}
                 </span>
               </div>
-              <span className="rounded bg-stone-100 px-2 py-0.5 text-[11px] font-bold text-stone-700">
-                {originalStats ? formatFileSize(originalStats.size) : '4.95 MB'}
-              </span>
-            </div>
-            <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden rounded-lg bg-stone-50 flex items-center justify-center border border-stone-100">
-              <div
-                className={`h-full w-full flex items-center justify-center transition-transform duration-200 ${
-                  isZoomed ? 'scale-200 cursor-zoom-out' : 'scale-100 cursor-zoom-in'
-                }`}
-                onClick={() => setIsZoomed((prev) => !prev)}
-              >
-                <img
-                  src={originalUrl}
-                  alt="Original 5MB jewelry demo"
-                  className="h-full w-full object-contain pointer-events-none"
-                  onError={(e) => {
-                    if (e.target.src !== DEFAULT_DEMO_URL) {
-                      e.target.src = DEFAULT_DEMO_URL;
-                    }
-                  }}
-                />
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handlePreviewOriginal}
+                  className="inline-flex items-center gap-1 rounded-md border border-stone-200 bg-white hover:bg-stone-50 px-2 py-0.5 text-[11px] font-semibold text-stone-700 shadow-2xs transition-colors cursor-pointer"
+                  title="View full-resolution image preview"
+                >
+                  <HiOutlineEye className="w-3.5 h-3.5 text-[#8f6d43]" />
+                  <span>View Preview</span>
+                </button>
+                <span className="rounded bg-stone-100 px-2 py-0.5 text-[11px] font-bold text-stone-700">
+                  {originalStats ? formatFileSize(originalStats.size) : '…'}
+                </span>
               </div>
-              <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-stone-900/70 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-xs">
-                Original Photo (Uncompressed)
+            </div>
+
+            <div
+              onClick={handlePreviewOriginal}
+              className="group relative h-56 sm:h-64 md:h-72 w-full overflow-hidden rounded-lg bg-stone-900 flex items-center justify-center border border-stone-100 cursor-pointer"
+              title="Click to open full-resolution preview"
+            >
+              <div className="h-full w-full flex items-center justify-center">
+                {originalUrl ? (
+                  <img
+                    src={originalUrl}
+                    alt="Original jewelry demo"
+                    className="h-full w-full object-contain pointer-events-none group-hover:scale-102 transition-transform duration-200"
+                  />
+                ) : (
+                  <div className="flex items-center justify-center text-stone-400 text-xs">
+                    Loading sample...
+                  </div>
+                )}
+              </div>
+              {/* Hover overlay with Eye Icon & Click to View */}
+              <div className="absolute inset-0 bg-stone-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 pointer-events-none">
+                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shadow-md">
+                  <HiOutlineEye className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-[11px] font-semibold tracking-wide drop-shadow-xs">Click to view full preview</span>
+              </div>
+              <div className="pointer-events-none absolute bottom-2 left-2 rounded-md bg-stone-900/80 px-2 py-0.5 text-[10px] font-medium text-white/90 backdrop-blur-xs">
+                Original (Uncompressed)
               </div>
             </div>
           </div>
 
           {/* Right: Optimized Photo */}
-          <div className="p-3 bg-white flex flex-col">
+          <div className="p-2.5 sm:p-3 bg-white flex flex-col">
             <div className="mb-2 flex items-center justify-between text-xs">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 truncate">
                 <span className="font-bold text-[#8f6d43]">
                   Optimized ({format === 'image/webp' ? 'WebP' : 'JPEG'} @ {quality}%)
                 </span>
               </div>
-              <span className="rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
-                {compressedStats ? formatFileSize(compressedStats.size) : '…'}
-                {compressedStats?.savingsPercent ? ` (-${compressedStats.savingsPercent}%)` : ''}
-              </span>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={handlePreviewOptimized}
+                  disabled={!compressedUrl}
+                  className="inline-flex items-center gap-1 rounded-md border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800 shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
+                  title="View full-resolution optimized preview"
+                >
+                  <HiOutlineEye className="w-3.5 h-3.5 text-emerald-700" />
+                  <span>View Preview</span>
+                </button>
+                <span className="rounded bg-emerald-100 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+                  {compressedStats ? formatFileSize(compressedStats.size) : '…'}
+                  {compressedStats?.savingsPercent ? ` (-${compressedStats.savingsPercent}%)` : ''}
+                </span>
+              </div>
             </div>
-            <div className="relative h-64 sm:h-80 md:h-96 w-full overflow-hidden rounded-lg bg-stone-50 flex items-center justify-center border border-stone-100">
-              <div
-                className={`h-full w-full flex items-center justify-center transition-transform duration-200 ${
-                  isZoomed ? 'scale-200 cursor-zoom-out' : 'scale-100 cursor-zoom-in'
-                }`}
-                onClick={() => setIsZoomed((prev) => !prev)}
-              >
+
+            <div
+              onClick={handlePreviewOptimized}
+              className="group relative h-56 sm:h-64 md:h-72 w-full overflow-hidden rounded-lg bg-stone-900 flex items-center justify-center border border-stone-100 cursor-pointer"
+              title="Click to open full-resolution preview"
+            >
+              <div className="h-full w-full flex items-center justify-center">
                 {compressedUrl ? (
                   <img
                     src={compressedUrl}
                     alt="Optimized jewelry preview"
-                    className="h-full w-full object-contain pointer-events-none"
+                    className="h-full w-full object-contain pointer-events-none group-hover:scale-102 transition-transform duration-200"
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center gap-2 text-stone-400">
                     <HiOutlineRefresh className="h-6 w-6 animate-spin text-[#8f6d43]" />
-                    <span className="text-xs font-medium">Compressing demo photo...</span>
+                    <span className="text-xs font-medium">Encoding preview...</span>
                   </div>
                 )}
               </div>
-              <div className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-emerald-900/80 px-2 py-0.5 text-[10px] font-semibold text-emerald-100 backdrop-blur-xs">
+              {/* Hover overlay with Eye Icon & Click to View */}
+              <div className="absolute inset-0 bg-stone-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white gap-1 pointer-events-none">
+                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-xs flex items-center justify-center shadow-md">
+                  <HiOutlineEye className="w-4 h-4 text-white" />
+                </div>
+                <span className="text-[11px] font-semibold tracking-wide drop-shadow-xs">Click to view full preview</span>
+              </div>
+              <div className="pointer-events-none absolute bottom-2 right-2 rounded-md bg-emerald-900/85 px-2 py-0.5 text-[10px] font-semibold text-emerald-100 backdrop-blur-xs">
                 {compressedStats?.savingsBytes > 0
                   ? `${formatFileSize(compressedStats.savingsBytes)} saved per image`
                   : 'Optimized Output'}
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Quick Quality Preset Buttons */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-stone-200/80 pt-3">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-semibold text-stone-600 mr-1">Quick Presets:</span>
-          {QUALITY_PRESETS.map((preset) => {
-            const isActive = Number(quality) === preset.value;
-            return (
-              <button
-                key={preset.value}
-                type="button"
-                onClick={() => onQualityChange && onQualityChange(preset.value)}
-                className={`flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
-                  isActive
-                    ? 'bg-[#8f6d43] text-white shadow-xs'
-                    : 'bg-white text-stone-700 border border-stone-200 hover:border-[#8f6d43]/50 hover:bg-[#faf6f0]'
-                }`}
-              >
-                {isActive && <HiOutlineCheck className="h-3 w-3" />}
-                <span>{preset.label}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Guidance Alert */}
-        <div className={`w-full rounded-lg border px-3 py-2 text-xs transition-all ${guidance.tone}`}>
-          <div className="flex items-start gap-1.5">
-            <HiOutlineSparkles className="h-4 w-4 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-semibold">{guidance.title}: </span>
-              <span className="opacity-90">{guidance.desc}</span>
             </div>
           </div>
         </div>

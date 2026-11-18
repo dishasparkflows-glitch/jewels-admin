@@ -206,6 +206,13 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
     }));
   };
 
+  const handleNavClick = (path) => {
+    onMobileClose?.();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('admin:nav-item-click', { detail: { path } }));
+    }
+  };
+
   return (
     <aside
       id="admin-sidebar"
@@ -235,7 +242,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
       <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200/80 shrink-0 bg-white">
         <NavLink
           to="/dashboard"
-          onClick={onMobileClose}
+          onClick={() => handleNavClick('/dashboard')}
           className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
           title="Go to Dashboard"
         >
@@ -333,7 +340,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                   <NavLink
                     key={item.id || item.path}
                     to={item.path}
-                    onClick={onMobileClose}
+                    onClick={() => handleNavClick(item.path)}
                     className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[13px] transition-all duration-150 cursor-pointer overflow-hidden ${
                       isActive
                         ? 'font-bold text-white shadow-sm'
@@ -404,7 +411,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                           <NavLink
                             key={child.id || child.path}
                             to={child.path}
-                            onClick={onMobileClose}
+                            onClick={() => handleNavClick(child.path)}
                             className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-all duration-150 cursor-pointer overflow-hidden ${
                               isChildActive
                                 ? 'font-bold text-white shadow-sm'

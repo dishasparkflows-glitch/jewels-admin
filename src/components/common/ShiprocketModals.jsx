@@ -64,6 +64,16 @@ export function ShiprocketDispatchModal({
     }
   }, [isOpen, orderTargetId]);
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen || !order) return null;
 
   const handleDispatch = async () => {
@@ -93,8 +103,16 @@ export function ShiprocketDispatchModal({
   const deliveryPincode = order.shippingAddress?.postalCode || order.shippingAddress?.pincode || '';
 
   return createPortal(
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[99999] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-stone-200 animate-scale-in">
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      className="fixed inset-0 z-[99999] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full shadow-2xl overflow-hidden border border-stone-200 animate-scale-in cursor-default"
+      >
         {/* Header */}
         <div className="bg-gradient-to-r from-[#201e1b] to-[#3a352f] text-white px-6 py-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -268,13 +286,31 @@ export function ShiprocketTrackingModal({
     }
   }, [isOpen, orderId, awbCode]);
 
+  // Close on Escape key
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
   const scans = tracking?.scans || [];
 
   return createPortal(
-    <div role="dialog" aria-modal="true" className="fixed inset-0 z-[99999] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-stone-200 animate-scale-in">
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      className="fixed inset-0 z-[99999] bg-stone-900/60 backdrop-blur-xs flex items-center justify-center p-4 cursor-pointer"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden border border-stone-200 animate-scale-in cursor-default"
+      >
         <div className="bg-gradient-to-r from-[#201e1b] to-[#3a352f] text-white p-5 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-[#8b6f4e] flex items-center justify-center text-white">

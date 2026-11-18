@@ -135,6 +135,7 @@ export function isCompressibleImage(file) {
  */
 export async function compressImageFile(file, customOptions = {}) {
   if (!file) return file;
+  if (file.wasCompressed) return file;
   if (!isCompressibleImage(file)) return file;
 
   const options = { ...DEFAULT_COMPRESSION_CONFIG, ...customOptions };

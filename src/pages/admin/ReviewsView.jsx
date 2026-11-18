@@ -467,8 +467,8 @@ export default function ReviewsView() {
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-stone-200/80 bg-[#fbfaf8] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                <th className="py-2.5 pl-4 pr-1 w-8">
+              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                <th className="py-3 pl-4 pr-1 w-8">
                   <input
                     type="checkbox"
                     checked={allSelected}
@@ -477,14 +477,14 @@ export default function ReviewsView() {
                     aria-label="Select all reviews"
                   />
                 </th>
-                <th className="py-2.5 px-2 text-center w-12 whitespace-nowrap text-[11px] font-bold text-stone-700 uppercase tracking-wider">SR NO</th>
-                <th className="py-2 px-3 whitespace-nowrap">REVIEWER</th>
-                <th className="py-2 px-3 whitespace-nowrap">PRODUCT</th>
-                <th className="py-2 px-3 whitespace-nowrap">RATING</th>
-                <th className="py-2 px-3 whitespace-nowrap">FEEDBACK & TESTIMONIAL</th>
-                <th className="py-2 px-3 whitespace-nowrap">DATE</th>
-                <th className="py-2 px-3 whitespace-nowrap">STATUS</th>
-                <th className="py-2 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
+                <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
+                <th className="py-3 px-3 whitespace-nowrap">REVIEWER</th>
+                <th className="py-3 px-3 whitespace-nowrap">PRODUCT</th>
+                <th className="py-3 px-3 whitespace-nowrap">RATING</th>
+                <th className="py-3 px-3 whitespace-nowrap">FEEDBACK & TESTIMONIAL</th>
+                <th className="py-3 px-3 whitespace-nowrap">DATE</th>
+                <th className="py-3 px-3 whitespace-nowrap">STATUS</th>
+                <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs">

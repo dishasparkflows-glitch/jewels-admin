@@ -184,6 +184,7 @@ export const galleryAPI = {
   toggleStatus: (id) => api.patch('/gallery/' + id + '/status'),
   getThemes: () => api.get('/gallery/themes'),
   getBanners: (params) => api.get('/gallery/banners', { params }),
+  getFeatureds: (params) => api.get('/gallery/featured', { params }),
   deleteItem: (id, params) => api.delete('/gallery/' + id, { params }),
 };
 

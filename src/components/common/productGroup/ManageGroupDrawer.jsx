@@ -746,9 +746,9 @@ export default function ManageGroupDrawer({
                   <div className="border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs divide-y divide-stone-100">
-                        <thead className="bg-stone-50 text-stone-600 font-semibold">
-                          <tr>
-                            <th className="p-3 w-8">
+                        <thead>
+                          <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                            <th className="py-3 px-3 w-8">
                               <input
                                 type="checkbox"
                                 checked={
@@ -756,15 +756,15 @@ export default function ManageGroupDrawer({
                                   filteredProducts.length > 0
                                 }
                                 onChange={toggleSelectAll}
-                                className="rounded text-[#8b6f4e] focus:ring-[#8b6f4e] w-3.5 h-3.5 cursor-pointer"
+                                className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                               />
                             </th>
-                            <th className="p-3">Product</th>
-                            <th className="p-3">Tag / Barcode / SKU</th>
-                            <th className="p-3">Weight</th>
-                            <th className="p-3">Sale Price</th>
-                            <th className="p-3">Status / Stock</th>
-                            <th className="p-3 text-right">Actions</th>
+                            <th className="py-3 px-3 whitespace-nowrap">Product</th>
+                            <th className="py-3 px-3 whitespace-nowrap">Tag / Barcode / SKU</th>
+                            <th className="py-3 px-3 whitespace-nowrap">Weight</th>
+                            <th className="py-3 px-3 whitespace-nowrap">Sale Price</th>
+                            <th className="py-3 px-3 whitespace-nowrap">Status / Stock</th>
+                            <th className="py-3 px-3 text-right whitespace-nowrap">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-stone-100">
@@ -920,7 +920,6 @@ export default function ManageGroupDrawer({
                       currentPage={page}
                       totalItems={filteredProducts.length}
                       pageSize={pageSize}
-                      pageSizeOptions={[10, 25, 50]}
                       onPageChange={setPage}
                       onPageSizeChange={(newSize) => {
                         setPageSize(newSize);
@@ -1057,7 +1056,6 @@ export default function ManageGroupDrawer({
                       currentPage={page}
                       totalItems={filteredProducts.length}
                       pageSize={pageSize}
-                      pageSizeOptions={[10, 25, 50]}
                       onPageChange={setPage}
                       onPageSizeChange={(newSize) => {
                         setPageSize(newSize);

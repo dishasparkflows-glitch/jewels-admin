@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   HiOutlineArrowLeft,
   HiOutlineCheck,
@@ -129,6 +130,31 @@ export default function WebsiteThemesView() {
   const [pageSize, setPageSize] = useAdminPageSize(10);
   const [serverTotal, setServerTotal] = useState(null);
   const [allThemesLookup, setAllThemesLookup] = useState([]);
+  const location = useLocation();
+
+  // Reset to Theme Management list view whenever "Themes" is clicked in sidebar or route reset
+  useEffect(() => {
+    const handleNavReset = (e) => {
+      const targetPath = e.detail?.path;
+      if (
+        targetPath === '/website/themes' ||
+        targetPath === '/themes' ||
+        targetPath?.startsWith('/website/themes')
+      ) {
+        setEditing(null);
+        setTab('details');
+      }
+    };
+    window.addEventListener('admin:nav-item-click', handleNavReset);
+    return () => window.removeEventListener('admin:nav-item-click', handleNavReset);
+  }, []);
+
+  useEffect(() => {
+    if (location.pathname === '/website/themes' && location.state?.reset) {
+      setEditing(null);
+      setTab('details');
+    }
+  }, [location.pathname, location.state]);
 
   // Close card menu on outside click
   useEffect(() => {

@@ -7,14 +7,13 @@ import {
   HiOutlineExternalLink,
   HiOutlinePhotograph,
   HiOutlineSearch,
-  HiOutlineChevronLeft,
-  HiOutlineChevronRight,
 } from 'react-icons/hi';
 
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
+import Pagination from '../../components/common/Pagination';
 import RowActions from '../../components/common/RowActions';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
@@ -45,13 +44,6 @@ const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
   { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
   { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
-];
-
-const PAGE_SIZE_OPTIONS = [
-  { value: 10, label: '10' },
-  { value: 25, label: '25' },
-  { value: 50, label: '50' },
-  { value: 100, label: '100' },
 ];
 
 export default function InstagramPostsView() {
@@ -344,20 +336,6 @@ export default function InstagramPostsView() {
       return 'Recently';
     }
   };
-
-  // Generate page numbers for pagination
-  const pageNumbers = useMemo(() => {
-    if (totalPages <= 5) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    if (safeCurrentPage <= 3) {
-      return [1, 2, 3, '...', totalPages];
-    }
-    if (safeCurrentPage >= totalPages - 2) {
-      return [1, '...', totalPages - 2, totalPages - 1, totalPages];
-    }
-    return [1, '...', safeCurrentPage, '...', totalPages];
-  }, [totalPages, safeCurrentPage]);
 
   return (
     <div className="space-y-4 pb-8">
@@ -690,95 +668,26 @@ export default function InstagramPostsView() {
         </div>
       )}
 
-      {/* ─── 5. Pagination Bar ─── */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 text-xs text-stone-500 select-none">
-        {/* Left: Showing Range */}
-        <div className="text-xs text-stone-500 font-normal">
-          Showing{' '}
-          <span className="font-semibold text-stone-700">
-            {totalItems === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1}
-          </span>
-          –
-          <span className="font-semibold text-stone-700">
-            {Math.min(safeCurrentPage * pageSize, totalItems)}
-          </span>{' '}
-          of <span className="font-semibold text-stone-700">{totalItems}</span> posts
+      {/* ─── 5. Standardized Pagination Bar ─── */}
+      {totalItems > 0 && (
+        <div className="rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden mt-3 sm:mt-4">
+          <Pagination
+            currentPage={safeCurrentPage}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={(p) => setCurrentPage(p)}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setCurrentPage(1);
+            }}
+            showPageSize={true}
+            itemLabel="posts"
+            className="border-t-0"
+          />
         </div>
+      )}
 
-        {/* Right: Rows per page + Page numbers */}
-        <div className="flex items-center gap-3">
-          {/* Rows per page */}
-          <div className="flex items-center gap-1.5 text-xs text-stone-500">
-            <span>Rows per page</span>
-            <Dropdown
-              value={pageSize}
-              onChange={(val) => {
-                setPageSize(Number(val));
-                setCurrentPage(1);
-              }}
-              options={PAGE_SIZE_OPTIONS}
-              size="sm"
-              openUpward
-              className="w-20"
-              buttonClassName="!h-7 !px-2.5 text-xs font-semibold rounded-md border-stone-200/90"
-            />
-          </div>
-
-          {/* Page numbers navigation */}
-          <div className="flex items-center gap-1">
-            {/* Previous */}
-            <button
-              type="button"
-              disabled={safeCurrentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              className="w-7 h-7 rounded-md border border-stone-200/90 bg-white text-stone-500 hover:bg-stone-50 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
-              title="Previous"
-            >
-              <HiOutlineChevronLeft className="w-3.5 h-3.5" />
-            </button>
-
-            {/* Numbers */}
-            {pageNumbers.map((num, i) => {
-              if (num === '...') {
-                return (
-                  <span key={`ell-${i}`} className="px-1 text-stone-400 font-mono">
-                    ...
-                  </span>
-                );
-              }
-              const isActive = num === safeCurrentPage;
-              return (
-                <button
-                  key={`page-${num}`}
-                  type="button"
-                  onClick={() => setCurrentPage(num)}
-                  style={isActive ? { backgroundColor: 'var(--theme-primary, #8c6d46)' } : {}}
-                  className={`w-7 h-7 rounded-md text-xs font-semibold flex items-center justify-center transition-colors cursor-pointer ${
-                    isActive
-                      ? 'text-white shadow-2xs'
-                      : 'bg-white text-stone-600 hover:bg-stone-50 border border-stone-200/90'
-                  }`}
-                >
-                  {num}
-                </button>
-              );
-            })}
-
-            {/* Next */}
-            <button
-              type="button"
-              disabled={safeCurrentPage >= totalPages || totalItems === 0}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              className="w-7 h-7 rounded-md border border-stone-200/90 bg-white text-stone-500 hover:bg-stone-50 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
-              title="Next"
-            >
-              <HiOutlineChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* ─── 5. Modal: Add / Edit Instagram Post ─── */}
+      {/* ─── 6. Modal: Add / Edit Instagram Post ─── */}
       {isModalOpen && (
         createPortal(<div
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn cursor-pointer"

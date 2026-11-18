@@ -496,7 +496,7 @@ export default function WhatsAppView() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse table-auto">
                 <thead>
-                  <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                  <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                     <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
                     <th className="py-3 px-4 w-[46%]">Template Details</th>
                     <th className="py-3 px-4 w-[15%]">Category</th>
@@ -710,7 +710,7 @@ export default function WhatsAppView() {
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse table-auto">
                 <thead>
-                  <tr className="bg-stone-50/90 border-b border-stone-200 text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+                  <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                     <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
                     <th className="py-3 px-4 w-[20%]">Recipient</th>
                     <th className="py-3 px-4 w-[43%]">Template / Message</th>
