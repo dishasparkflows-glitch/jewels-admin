@@ -159,16 +159,12 @@ export default function CodSequencesView() {
 
     const idsToDelete = Array.from(selectedIds);
     try {
-      await Promise.allSettled(
-        idsToDelete.map((id) => api.delete(`/cod-sequences/${id}`))
-      );
+      await api.post('/cod-sequences/bulk-delete', { ids: idsToDelete });
       setItems((prev) => prev.filter((i) => !selectedIds.has(i._id || i.id)));
       setSelectedIds(new Set());
       toast.success(`${count} COD tier${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
-      setItems((prev) => prev.filter((i) => !selectedIds.has(i._id || i.id)));
-      setSelectedIds(new Set());
-      toast.success(`${count} COD tier${count > 1 ? 's' : ''} deleted`);
+      toast.error('Failed to delete COD tiers');
     }
   };
 

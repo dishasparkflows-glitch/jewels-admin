@@ -260,23 +260,14 @@ export default function DiamondColorsView() {
     if (!isConfirmed) return;
 
     try {
-      const results = await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/diamond-colors/${id}`))
-      );
-      const successfulIds = selectedIds.filter((_, idx) => results[idx].status === 'fulfilled');
-      const failedCount = results.filter((r) => r.status === 'rejected').length;
-
-      if (successfulIds.length > 0) {
-        setColors((prev) => prev.filter((item) => !successfulIds.includes(item._id)));
-        setSelectedIds((prev) => prev.filter((id) => !successfulIds.includes(id)));
-        toast.success(`${successfulIds.length} color grade${successfulIds.length > 1 ? 's' : ''} deleted successfully`);
-      }
-      if (failedCount > 0) {
-        toast.error(`Failed to delete ${failedCount} color grade${failedCount > 1 ? 's' : ''}`);
-      }
+      const res = await api.post('/diamond-colors/bulk-delete', { ids: selectedIds });
+      const deletedCount = res.data?.data?.deletedCount ?? count;
+      setColors((prev) => prev.filter((item) => !selectedIds.includes(item._id)));
+      setSelectedIds([]);
+      toast.success(`${deletedCount} color grade${deletedCount > 1 ? 's' : ''} deleted successfully`);
     } catch (err) {
       console.error('Bulk delete failed:', err);
-      toast.error('Failed to delete selected color grades');
+      toast.error(err.response?.data?.message || 'Failed to delete selected color grades');
     }
   };
 

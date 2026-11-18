@@ -920,9 +920,17 @@ const DynamicModuleView = () => {
 
     try {
       const cleanEndpoint = config.endpoint.split('?')[0];
-      await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`${cleanEndpoint}/${id}`))
-      );
+      try {
+        await api.post(`${cleanEndpoint}/bulk-delete`, { ids: selectedIds });
+      } catch (bulkErr) {
+        if (bulkErr?.response?.status === 404) {
+          await Promise.allSettled(
+            selectedIds.map((id) => api.delete(`${cleanEndpoint}/${id}`))
+          );
+        } else {
+          throw bulkErr;
+        }
+      }
       setItems((prev) => prev.filter((i) => !selectedIds.includes(i._id) && !selectedIds.includes(i.id)));
       setSelectedIds([]);
       toast.success(`${count} record${count > 1 ? 's' : ''} deleted successfully`);
@@ -2373,9 +2381,6 @@ const DynamicModuleView = () => {
                             <label className="text-xs font-bold text-stone-900 block leading-tight">
                               Category Icon <span className="text-rose-500 font-bold">*</span>
                             </label>
-                            <span className="text-[11px] text-stone-400 font-normal block mt-0.5 truncate">
-                              Square image (e.g. 200 × 200 px)
-                            </span>
                           </div>
 
                           <div className="flex-1 min-h-[148px] relative rounded-xl border border-dashed border-stone-200 hover:border-[#8b6f4e] bg-white p-3 flex flex-col items-center justify-center text-center transition-all group shadow-2xs">
@@ -2464,9 +2469,6 @@ const DynamicModuleView = () => {
                             <label className="text-xs font-bold text-stone-900 block leading-tight">
                               Category Banner <span className="text-rose-500 font-bold">*</span>
                             </label>
-                            <span className="text-[11px] text-stone-400 font-normal block mt-0.5 truncate">
-                              Landscape image (e.g. 1920 × 600 px)
-                            </span>
                           </div>
 
                           <div className="flex-1 min-h-[148px] relative rounded-xl border border-dashed border-stone-200 hover:border-[#8b6f4e] bg-white p-3 flex flex-col items-center justify-center text-center transition-all group shadow-2xs">

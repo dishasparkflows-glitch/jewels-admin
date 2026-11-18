@@ -220,24 +220,15 @@ export default function GemstoneTypesView() {
     if (!isConfirmed) return;
 
     try {
-      const results = await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/gemstone-types/${id}`))
-      );
-      const successfulIds = selectedIds.filter((_, idx) => results[idx].status === 'fulfilled');
-      const failedCount = results.filter((r) => r.status === 'rejected').length;
-
-      if (successfulIds.length > 0) {
-        setGemstones((prev) => prev.filter((g) => !successfulIds.includes(g._id)));
-        setSelectedIds((prev) => prev.filter((id) => !successfulIds.includes(id)));
-        toast.success(`${successfulIds.length} gemstone type${successfulIds.length > 1 ? 's' : ''} deleted`);
-      }
-      if (failedCount > 0) {
-        toast.error(`Failed to delete ${failedCount} item${failedCount > 1 ? 's' : ''}`);
-      }
+      const res = await api.post('/gemstone-types/bulk-delete', { ids: selectedIds });
+      const count = res.data?.data?.deletedCount ?? selectedIds.length;
+      setGemstones((prev) => prev.filter((g) => !selectedIds.includes(g._id)));
+      setSelectedIds([]);
+      toast.success(`${count} gemstone type${count > 1 ? 's' : ''} deleted`);
       fetchGemstones(currentPage, pageSize);
     } catch (err) {
       console.error('Bulk delete failed:', err);
-      toast.error('Failed to delete some gemstone types');
+      toast.error(err.response?.data?.message || 'Failed to delete selected gemstone types');
     }
   };
 

@@ -317,14 +317,12 @@ export default function BeforeAfterView() {
     if (!isConfirmed) return;
 
     try {
-      await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/cust-jewellery-before-after/${id}`))
-      );
+      await api.post('/cust-jewellery-before-after/bulk-delete', { ids: selectedIds });
       setItems((prev) => prev.filter((i) => !selectedIds.includes(i._id)));
       setSelectedIds([]);
       toast.success(`${count} showcase pairs deleted`);
     } catch {
-      toast.error('Failed to delete some items');
+      toast.error('Failed to delete showcase pairs');
     }
   };
 

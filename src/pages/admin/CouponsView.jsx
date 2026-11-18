@@ -239,14 +239,12 @@ export default function CouponsView() {
     if (!isConfirmed) return;
 
     try {
-      await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/coupons/${id}`))
-      );
+      await api.post('/coupons/bulk-delete', { ids: selectedIds });
       setCoupons((prev) => prev.filter((item) => !selectedIds.includes(item._id)));
       setSelectedIds([]);
       toast.success(`${count} coupon${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
-      toast.error('Failed to delete some coupons');
+      toast.error('Failed to delete coupons');
     }
   };
 

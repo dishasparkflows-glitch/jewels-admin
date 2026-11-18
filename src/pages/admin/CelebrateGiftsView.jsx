@@ -538,14 +538,12 @@ export default function CelebrateGiftsView() {
     if (!isConfirmed) return;
 
     try {
-      await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/featured/${id}`))
-      );
+      await api.post('/featured/bulk-delete', { ids: selectedIds });
       setSelectedIds([]);
       await fetchFeatured();
       toast.success(`${count} item${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
-      toast.error('Failed to delete some items');
+      toast.error('Failed to delete showcase items');
     }
   };
 

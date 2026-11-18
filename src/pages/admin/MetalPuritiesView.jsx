@@ -209,14 +209,12 @@ export default function MetalPuritiesView() {
     if (!isConfirmed) return;
 
     try {
-      await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/metal-purities/${id}`))
-      );
+      await api.post('/metal-purities/bulk-delete', { ids: selectedIds });
       setPurities((prev) => prev.filter((p) => !selectedIds.includes(p._id)));
       setSelectedIds([]);
       toast.success(`${count} purity${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
-      toast.error('Failed to delete some metal purities');
+      toast.error('Failed to delete metal purities');
     }
   };
 

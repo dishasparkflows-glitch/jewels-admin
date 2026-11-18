@@ -200,9 +200,6 @@ export default function GalleryUploadModal({
             <label className="block text-xs font-bold text-stone-800">
               1. Select Website Theme <span className="text-rose-500">*</span>
             </label>
-            <p className="text-[11px] text-stone-500">
-              Choose which storefront theme this image belongs to.
-            </p>
             <Dropdown
               size="field"
               showStatusDot={true}
@@ -220,9 +217,6 @@ export default function GalleryUploadModal({
             <label className="block text-xs font-bold text-stone-800">
               2. Image Placement Type <span className="text-rose-500">*</span>
             </label>
-            <p className="text-[11px] text-stone-500">
-              Select where this image belongs (Hero Banner, Collection Banner, Category Banner, etc.).
-            </p>
             <Dropdown
               size="field"
               value={uploadType}

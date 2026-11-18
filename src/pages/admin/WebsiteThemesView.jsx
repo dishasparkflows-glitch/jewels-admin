@@ -17,6 +17,7 @@ import toast from 'react-hot-toast';
 import { websiteThemesAPI, bannersAPI, featuredAPI, categoriesAPI } from '../../api/services';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import DatePicker from '../../components/common/DatePicker';
+import Dropdown from '../../components/common/Dropdown';
 import ThemeMediaLibraryTab from './ThemeMediaLibraryTab';
 import ThemeMediaMappingTab from './ThemeMediaMappingTab';
 import Pagination from '../../components/common/Pagination';
@@ -210,6 +211,32 @@ export default function WebsiteThemesView() {
     totalItems,
     paginatedItems,
   } = usePagination(themes, pageSize, serverTotal);
+
+  // Fallback Theme Options for Common Dropdown
+  const fallbackThemeOptions = useMemo(() => {
+    const source = allThemesLookup.length > 0 ? allThemesLookup : themes;
+    const list = [
+      {
+        value: '',
+        label: 'Use the previous published theme',
+      },
+    ];
+
+    const eligible = (source || [])
+      .filter((t) => t._id !== editing?._id && t.status !== 'archived')
+      .map((t) => ({
+        value: t._id,
+        label: `${t.name} (${t.status})`,
+        dotColor:
+          t.status === 'active'
+            ? 'bg-emerald-500'
+            : t.status === 'scheduled'
+            ? 'bg-amber-500'
+            : 'bg-stone-400',
+      }));
+
+    return [...list, ...eligible];
+  }, [allThemesLookup, themes, editing?._id]);
 
   // Open theme editor
   const openEditor = async (theme = null, initialTab = 'details') => {
@@ -544,22 +571,19 @@ export default function WebsiteThemesView() {
               </div>
 
               <div>
-                <Field label="Fallback Theme on Expiry">
-                  <select
-                    className={inputClass}
-                    value={fallbackThemeId}
-                    onChange={(e) => setFallbackThemeId(e.target.value)}
-                  >
-                    <option value="">Use the previous published theme</option>
-                    {themes
-                      .filter((t) => t._id !== editing._id && t.status !== 'archived')
-                      .map((t) => (
-                        <option key={t._id} value={t._id}>
-                          {t.name} ({t.status})
-                        </option>
-                      ))}
-                  </select>
-                </Field>
+                <span className="block text-xs font-bold text-stone-700 mb-1.5">
+                  Fallback Theme on Expiry
+                </span>
+                <Dropdown
+                  value={fallbackThemeId || ''}
+                  onChange={(val) => setFallbackThemeId(val || '')}
+                  options={fallbackThemeOptions}
+                  placeholder="Use the previous published theme"
+                  showStatusDot
+                  portal
+                  size="md"
+                  buttonClassName="w-full h-10 rounded-xl text-xs bg-white border-stone-200 hover:border-stone-300 font-sans shadow-2xs"
+                />
               </div>
 
               <div className="pt-2">

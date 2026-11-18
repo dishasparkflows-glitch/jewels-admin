@@ -14,6 +14,8 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { diamondsAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
+import { getMediaUrl } from '../../utils/imageUrl';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import Dropdown from '../../components/common/Dropdown';
@@ -23,6 +25,7 @@ import { useAdminPageSize } from '../../utils/adminPagination';
 export default function DiamondsView() {
   const navigate = useNavigate();
   const confirm = useConfirm();
+  const { openImagePreview } = useImagePreview();
 
   const [diamonds, setDiamonds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -182,29 +185,128 @@ export default function DiamondsView() {
       }));
       toast.success(`${count} diamond${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
-      try {
-        await Promise.allSettled(idsToDelete.map((id) => api.delete(`/diamonds/${id}`)));
-        setDiamonds((prev) => prev.filter((d) => !selectedIds.has(d._id)));
-        setSelectedIds(new Set());
-        setPagination((prev) => ({
-          ...prev,
-          totalDocs: Math.max(0, (prev.totalDocs || diamonds.length) - count),
-        }));
-        toast.success(`${count} diamond${count > 1 ? 's' : ''} deleted successfully`);
-      } catch {
-        toast.error('Failed to delete selected diamonds');
-      }
+      toast.error('Failed to delete selected diamonds');
     }
   };
 
-  const handleToggleStatus = async (item) => {
+  // Demo Metrics Quick Edit Modal state
+  const [editingMetricsDiamond, setEditingMetricsDiamond] = useState(null);
+  const [metricsSoldCount, setMetricsSoldCount] = useState(0);
+  const [metricsReviewCount, setMetricsReviewCount] = useState(0);
+  const [savingMetrics, setSavingMetrics] = useState(false);
+
+  const handleOpenMetricsModal = (diamond) => {
+    setEditingMetricsDiamond(diamond);
+    setMetricsSoldCount(diamond.demoMetrics?.soldCount ?? 0);
+    setMetricsReviewCount(diamond.demoMetrics?.reviewCount ?? 0);
+  };
+
+  const handleSaveMetrics = async () => {
+    if (!editingMetricsDiamond) return;
     try {
-      const nextStatus = item.status === 'active' ? 'inactive' : 'active';
+      setSavingMetrics(true);
+      const diamondId = editingMetricsDiamond._id;
+      const payload = {
+        demoMetrics: {
+          soldCount: Number(metricsSoldCount) || 0,
+          reviewCount: Number(metricsReviewCount) || 0,
+          rating: 5,
+        },
+      };
+      await diamondsAPI.update(diamondId, payload);
+      setDiamonds((prev) =>
+        prev.map((item) =>
+          item._id === diamondId ? { ...item, ...payload } : item
+        )
+      );
+      toast.success('Demo metrics updated for diamond');
+      setEditingMetricsDiamond(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update metrics');
+    } finally {
+      setSavingMetrics(false);
+    }
+  };
+
+  // Visibility toggle state
+  const [updatingVisibilityId, setUpdatingVisibilityId] = useState(null);
+
+  const handleToggleVisibility = async (diamond, platform, e) => {
+    if (e) e.stopPropagation();
+    const diamondId = diamond._id;
+    if (!diamondId) return;
+
+    const currentWeb = diamond.visibility?.web !== false;
+    const currentApp = diamond.visibility?.app !== false;
+
+    const nextWeb = platform === 'web' ? !currentWeb : currentWeb;
+    const nextApp = platform === 'app' ? !currentApp : currentApp;
+
+    // Optimistic UI update
+    setDiamonds((prev) =>
+      prev.map((item) => {
+        if (item._id === diamondId) {
+          return {
+            ...item,
+            visibility: {
+              ...(item.visibility || {}),
+              web: nextWeb,
+              app: nextApp,
+            },
+          };
+        }
+        return item;
+      })
+    );
+
+    try {
+      setUpdatingVisibilityId(`${diamondId}-${platform}`);
+      const payload =
+        platform === 'web'
+          ? { 'visibility.web': nextWeb }
+          : { 'visibility.app': nextApp };
+
+      await diamondsAPI.update(diamondId, payload);
+      toast.success(
+        `${platform === 'web' ? 'Web' : 'App'} visibility ${
+          (platform === 'web' ? nextWeb : nextApp) ? 'enabled' : 'disabled'
+        }`
+      );
+    } catch (err) {
+      console.error('Failed to update diamond visibility:', err);
+      toast.error(`Failed to update ${platform} visibility`);
+      // Revert on error
+      setDiamonds((prev) =>
+        prev.map((item) => {
+          if (item._id === diamondId) {
+            return {
+              ...item,
+              visibility: {
+                ...(item.visibility || {}),
+                web: currentWeb,
+                app: currentApp,
+              },
+            };
+          }
+          return item;
+        })
+      );
+    } finally {
+      setUpdatingVisibilityId(null);
+    }
+  };
+
+  // Toggle status
+  const handleToggleStatus = async (item, e) => {
+    if (e) e.stopPropagation();
+    try {
+      const currentStatus = item.status || 'active';
+      const nextStatus = (currentStatus === 'inactive' || currentStatus === 'draft') ? 'active' : 'inactive';
       setDiamonds((prev) =>
         prev.map((d) => (d._id === item._id ? { ...d, status: nextStatus } : d))
       );
       await diamondsAPI.update(item._id, { status: nextStatus });
-      toast.success(`Diamond set to ${nextStatus}`);
+      toast.success(`Status updated to ${nextStatus === 'active' ? 'Approved' : 'Draft'}`);
     } catch {
       toast.error('Failed to update status');
       fetchData();
@@ -446,8 +548,8 @@ export default function DiamondsView() {
       </div>
 
       {/* ─── Diamonds List Table ─── */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="p-3 sm:p-6 pt-3 sm:pt-4 overflow-x-auto">
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+        <div className="overflow-x-auto">
           {loading ? (
             <div className="py-20 text-center">
               <div className="w-8 h-8 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
@@ -461,10 +563,10 @@ export default function DiamondsView() {
               <p className="text-stone-800 font-semibold mb-1">No diamonds found</p>
             </div>
           ) : (
-            <table className="w-full text-left border-separate border-spacing-y-2">
+            <table className="w-full text-left border-collapse min-w-[760px]">
               <thead>
-                <tr className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                  <th className="py-2 pl-3 pr-1 w-8 text-center">
+                <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                  <th className="py-3 pl-4 pr-1 w-8">
                     <input
                       type="checkbox"
                       checked={isAllSelected}
@@ -473,33 +575,38 @@ export default function DiamondsView() {
                       title="Select all on this page"
                     />
                   </th>
-                  <th className="w-12 pb-1 px-2 text-center whitespace-nowrap">SR NO</th>
-                  <th className="w-14 pb-1 pl-2">IMAGE</th>
-                  <th className="pb-1 min-w-[160px]">SKU</th>
-                  <th className="pb-1 min-w-[200px]">DIAMOND TITLE</th>
-                  <th className="pb-1 w-24 text-center">CARAT</th>
-                  <th className="pb-1 w-28 text-center">SHAPE / COLOR</th>
-                  <th className="pb-1 min-w-[120px]">PRICE (₹)</th>
-                  <th className="pb-1 w-20 text-center">STATUS</th>
-                  <th className="pb-1 w-24 text-right pr-2">ACTIONS</th>
+                  <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
+                  <th className="py-3 px-3 whitespace-nowrap">PRODUCT</th>
+                  <th className="py-3 px-3 whitespace-nowrap">SPECIFICATIONS</th>
+                  <th className="py-3 px-3 whitespace-nowrap text-center">DEMO METRICS</th>
+                  <th className="py-3 px-3 whitespace-nowrap text-center">VISIBILITY</th>
+                  <th className="py-3 px-3 whitespace-nowrap text-center">STATUS</th>
+                  <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-stone-100 text-xs">
                 {diamonds.map((item, idx) => {
                   const isSelected = selectedIds.has(item._id);
+                  const imageUrl = item.image?.url || (typeof item.image === 'string' ? item.image : '');
+                  const thumbUrl = getMediaUrl(imageUrl);
+                  const isWebVisible = item.visibility?.web !== false;
+                  const isAppVisible = item.visibility?.app !== false;
+                  const shapeName = item.shapeId?.name || item.shape || '';
+                  const colorName = item.colorId?.name || item.color || '';
+                  const clarityName = item.clarityId?.name || item.clarity || '';
+                  const typeName = item.typeId?.name || item.type || '';
+                  const isInactive = item.status === 'inactive' || item.status === 'draft';
+
                   return (
                     <tr
                       key={item._id}
                       onClick={() => handleOpenEdit(item)}
-                      className={`group hover:bg-[#faf7f2] transition-colors cursor-pointer ${
+                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
                         isSelected ? 'bg-amber-50/40' : ''
                       }`}
                     >
-                      {/* Selection Checkbox */}
-                      <td
-                        className="py-2.5 pl-3 pr-1 w-8 text-center align-middle"
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                      {/* Checkbox */}
+                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -509,108 +616,198 @@ export default function DiamondsView() {
                       </td>
 
                       {/* SR NO */}
-                      <td className="px-2 align-middle text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
                         {(page - 1) * pageSize + idx + 1}
                       </td>
 
-                      {/* Image */}
-                    <td className="pl-2 align-middle">
-                      <div className="w-10 h-10 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex items-center justify-center text-stone-400">
-                        {item.image?.url ? (
-                          <img
-                            src={item.image.url}
-                            alt={item.title}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <IoDiamondOutline className="w-5 h-5 text-stone-400" />
-                        )}
-                      </div>
-                    </td>
+                      {/* PRODUCT (Thumbnail + Title + SKU) */}
+                      <td className="py-2.5 px-3 text-stone-900 text-xs">
+                        <div className="flex items-center gap-3">
+                          <div
+                            onClick={(e) => {
+                              if (thumbUrl) {
+                                e.stopPropagation();
+                                openImagePreview(thumbUrl, { title: item.title });
+                              }
+                            }}
+                            className={`w-10 h-10 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs group-hover:border-[#8b6f4e]/40 transition-colors ${
+                              thumbUrl ? 'cursor-zoom-in' : ''
+                            }`}
+                            title={thumbUrl ? 'Click to preview image' : undefined}
+                          >
+                            {thumbUrl ? (
+                              <img
+                                src={thumbUrl}
+                                alt={item.title}
+                                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-300"
+                                loading="lazy"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                  if (e.currentTarget.parentElement) {
+                                    e.currentTarget.parentElement.innerHTML =
+                                      '<span class="text-[9px] text-stone-400 font-medium select-none">No Img</span>';
+                                  }
+                                }}
+                              />
+                            ) : (
+                              <span className="text-[9px] text-stone-400 font-medium select-none">
+                                No Img
+                              </span>
+                            )}
+                          </div>
+                          <div className="min-w-0 max-w-xs space-y-0.5">
+                            <span
+                              className="font-bold text-stone-900 text-xs block leading-tight truncate hover:text-[#8b6f4e] transition-colors"
+                              title={item.title}
+                            >
+                              {item.title}
+                            </span>
+                            {item.sku && (
+                              <span className="font-mono text-[10px] text-stone-400 block truncate">
+                                {item.sku}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </td>
 
-                    {/* SKU */}
-                    <td className="align-middle px-2">
-                      <span className="font-mono text-xs font-bold text-stone-800">
-                        {item.sku}
-                      </span>
-                    </td>
+                      {/* SPECIFICATIONS */}
+                      <td className="py-2.5 px-3 text-stone-600 text-xs">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          {item.price !== undefined && item.price !== null && (
+                            <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded text-[11px]">
+                              ₹{Number(item.price).toLocaleString('en-IN')}
+                            </span>
+                          )}
+                          {item.carat !== undefined && item.carat !== null && (
+                            <span className="inline-block px-2 py-0.5 text-xs font-bold bg-[#fbf5ed] text-[#8b6f4e] border border-[#e8d7be] rounded-lg">
+                              {item.carat} ct
+                            </span>
+                          )}
+                          {shapeName && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium uppercase">
+                              {shapeName}
+                            </span>
+                          )}
+                          {(colorName || clarityName) && (
+                            <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px]">
+                              {colorName || 'D-E'} • {clarityName || 'SI'}
+                            </span>
+                          )}
+                          {typeName && (
+                            <span className="capitalize px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 text-[10px]">
+                              {typeName}
+                            </span>
+                          )}
+                          {item.rate > 0 && (
+                            <span className="px-1.5 py-0.5 rounded bg-stone-50 border border-stone-200/60 text-stone-600 text-[10px] font-mono">
+                              @ ₹{Number(item.rate).toLocaleString('en-IN')}/ct
+                            </span>
+                          )}
+                        </div>
+                      </td>
 
-                    {/* Title */}
-                    <td className="align-middle px-2">
-                      <span className="text-xs font-medium text-stone-800 block truncate max-w-xs">
-                        {item.title}
-                      </span>
-                      {item.typeId?.name && (
-                        <span className="text-[10px] text-stone-400 block font-normal">
-                          {item.typeId.name}
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Carat */}
-                    <td className="text-center align-middle px-2">
-                      <span className="inline-block px-2.5 py-0.5 text-xs font-bold bg-[#fbf5ed] text-[#8b6f4e] border border-[#e8d7be] rounded-lg">
-                        {item.carat} ct
-                      </span>
-                    </td>
-
-                    {/* Shape / Color */}
-                    <td className="text-center align-middle px-2">
-                      <span className="text-xs text-stone-700 font-semibold block">
-                        {item.shapeId?.name || item.shape || 'FANCY'}
-                      </span>
-                      <span className="text-[10px] text-stone-400">
-                        {item.colorId?.name || item.color || 'D-E'} • {item.clarityId?.name || item.clarity || 'SI'}
-                      </span>
-                    </td>
-
-                    {/* Price */}
-                    <td className="align-middle px-2">
-                      <span className="text-xs font-bold text-stone-900 block">
-                        ₹ {Number(item.price || 0).toLocaleString()}
-                      </span>
-                      {item.rate > 0 && (
-                        <span className="text-[10px] text-stone-400">
-                          @ ₹ {Number(item.rate).toLocaleString()}/ct
-                        </span>
-                      )}
-                    </td>
-
-                    {/* Status */}
-                    <td className="text-center align-middle px-2" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={item.status === 'active'}
+                      {/* DEMO METRICS */}
+                      <td
+                        className="py-2.5 px-3 text-center"
                         onClick={(e) => {
                           e.stopPropagation();
-                          handleToggleStatus(item);
+                          handleOpenMetricsModal(item);
                         }}
-                        style={item.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${item.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                        title={item.status === 'active' ? 'Active' : 'Inactive'}
+                      >
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenMetricsModal(item);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-stone-200/90 bg-stone-50/80 hover:bg-amber-50 hover:border-amber-200 text-stone-700 hover:text-amber-900 transition-all cursor-pointer shadow-2xs group"
+                          title="Click to edit demo metrics (sold & review count)"
+                        >
+                          <span className="flex items-center gap-1 text-[11px] font-semibold">
+                            <span className="text-amber-500 font-bold">★</span>
+                            <span>{item.demoMetrics?.reviewCount ?? 0}</span>
+                          </span>
+                          <span className="text-stone-300">|</span>
+                          <span className="flex items-center gap-1 text-[11px] font-semibold">
+                            <span>🔥</span>
+                            <span>{item.demoMetrics?.soldCount ?? 0}</span>
+                          </span>
+                        </button>
+                      </td>
+
+                      {/* VISIBILITY */}
+                      <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="inline-flex items-center gap-1.5 bg-stone-50/90 p-1 rounded-lg border border-stone-200/80 shadow-2xs">
+                          {/* Web Toggle */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleVisibility(item, 'web', e)}
+                            disabled={updatingVisibilityId === `${item._id}-web`}
+                            title={isWebVisible ? 'Web: Visible (Click to Hide)' : 'Web: Hidden (Click to Show)'}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                              isWebVisible
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100'
+                                : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
+                            }`}
+                          >
+                            <span className="text-[10px]">🌐</span>
+                            <span>Web</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isWebVisible ? 'bg-emerald-500' : 'bg-stone-300'}`} />
+                          </button>
+
+                          {/* App Toggle */}
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleVisibility(item, 'app', e)}
+                            disabled={updatingVisibilityId === `${item._id}-app`}
+                            title={isAppVisible ? 'App: Visible (Click to Hide)' : 'App: Hidden (Click to Show)'}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                              isAppVisible
+                                ? 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100'
+                                : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
+                            }`}
+                          >
+                            <span className="text-[10px]">📱</span>
+                            <span>App</span>
+                            <span className={`w-1.5 h-1.5 rounded-full ${isAppVisible ? 'bg-sky-500' : 'bg-stone-300'}`} />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* STATUS */}
+                      <td
+                        className="py-2.5 px-3 text-center"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleStatus(item, e);
+                        }}
                       >
                         <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                            item.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border capitalize transition-all cursor-pointer hover:scale-105 select-none ${
+                            isInactive
+                              ? 'bg-stone-100 text-stone-600 border-stone-200'
+                              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
                           }`}
-                        />
-                      </button>
-                    </td>
+                          title="Click to toggle status (Draft / Approved)"
+                        >
+                          {isInactive ? 'Draft' : 'Approved'}
+                        </span>
+                      </td>
 
-                    {/* Actions */}
-                    <td className="text-right align-middle pr-2" onClick={(e) => e.stopPropagation()}>
-                      <RowActions
-                        onEdit={() => handleOpenEdit(item)}
-                        onDelete={() => handleDelete(item)}
-                        editTitle="Edit Diamond"
-                        deleteTitle="Delete Diamond"
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
+                      {/* ACTIONS */}
+                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
+                        <RowActions
+                          onEdit={() => handleOpenEdit(item)}
+                          onDelete={() => handleDelete(item)}
+                          editTitle="Edit Diamond"
+                          deleteTitle="Delete Diamond"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
             </table>
           )}
         </div>
@@ -955,6 +1152,125 @@ export default function DiamondsView() {
         </div>,
         document.body
       )}
+
+      {/* ─── Demo Metrics Quick Edit Modal ─── */}
+      {editingMetricsDiamond &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn cursor-pointer"
+            onClick={() => setEditingMetricsDiamond(null)}
+          >
+            <div
+              className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-stone-200 p-5 space-y-4 cursor-default animate-scaleUp"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-600 text-lg shadow-2xs">
+                    🔥
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-stone-900">
+                      Diamond Demo Metrics
+                    </h3>
+                    <p className="text-[11px] text-stone-500 truncate max-w-[220px]">
+                      {editingMetricsDiamond.title || editingMetricsDiamond.sku || ''}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingMetricsDiamond(null)}
+                  className="w-7 h-7 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Live Storefront Preview */}
+              <div className="rounded-xl border border-stone-200/90 bg-[#fdfcfb] p-3 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                  Storefront Live Badge Preview
+                </span>
+                <div className="flex items-center gap-1.5 text-xs text-stone-700">
+                  <span className="text-amber-400 tracking-tighter">★★★★★</span>
+                  <span className="font-semibold text-stone-800 text-xs">
+                    {metricsReviewCount || 0} reviews
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-stone-700 font-medium">
+                  <span>🔥</span>
+                  <span>
+                    <strong className="font-bold text-stone-900">{metricsSoldCount || 0}</strong> sold in last 3 hours
+                  </span>
+                </div>
+              </div>
+
+              {/* Inputs */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Sold Count
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs">🔥</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={metricsSoldCount}
+                      onChange={(e) => setMetricsSoldCount(e.target.value)}
+                      className="w-full h-9 pl-7 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
+                      placeholder="e.g. 24"
+                    />
+                  </div>
+                  <span className="text-[10px] text-stone-400 mt-1 block">Pieces sold</span>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-stone-700 mb-1">
+                    Review Count
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-xs">★</span>
+                    <input
+                      type="number"
+                      min="0"
+                      value={metricsReviewCount}
+                      onChange={(e) => setMetricsReviewCount(e.target.value)}
+                      className="w-full h-9 pl-7 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
+                      placeholder="e.g. 13"
+                    />
+                  </div>
+                  <span className="text-[10px] text-stone-400 mt-1 block">Customer reviews</span>
+                </div>
+              </div>
+
+              {/* Footer Buttons */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+                <button
+                  type="button"
+                  onClick={() => setEditingMetricsDiamond(null)}
+                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 rounded-lg border border-stone-200 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveMetrics}
+                  disabled={savingMetrics}
+                  style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                  className="px-4 py-2 text-xs font-semibold text-white rounded-lg hover:brightness-95 disabled:opacity-50 transition cursor-pointer"
+                >
+                  {savingMetrics ? 'Saving…' : 'Save Demo Metrics'}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

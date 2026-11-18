@@ -231,24 +231,15 @@ export default function GemstoneShapesView() {
     if (!isConfirmed) return;
 
     try {
-      const results = await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/gemstone-shapes/${id}`))
-      );
-      const successfulIds = selectedIds.filter((_, idx) => results[idx].status === 'fulfilled');
-      const failedCount = results.filter((r) => r.status === 'rejected').length;
-
-      if (successfulIds.length > 0) {
-        setShapes((prev) => prev.filter((s) => !successfulIds.includes(s._id)));
-        setSelectedIds((prev) => prev.filter((id) => !successfulIds.includes(id)));
-        toast.success(`${successfulIds.length} gemstone shape${successfulIds.length > 1 ? 's' : ''} deleted`);
-      }
-      if (failedCount > 0) {
-        toast.error(`Failed to delete ${failedCount} item${failedCount > 1 ? 's' : ''}`);
-      }
+      const res = await api.post('/gemstone-shapes/bulk-delete', { ids: selectedIds });
+      const count = res.data?.data?.deletedCount ?? selectedIds.length;
+      setShapes((prev) => prev.filter((s) => !selectedIds.includes(s._id)));
+      setSelectedIds([]);
+      toast.success(`${count} gemstone shape${count > 1 ? 's' : ''} deleted`);
       fetchShapes(currentPage, pageSize);
     } catch (err) {
       console.error('Bulk delete failed:', err);
-      toast.error('Failed to delete some gemstone shapes');
+      toast.error(err.response?.data?.message || 'Failed to delete selected gemstone shapes');
     }
   };
 

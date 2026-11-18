@@ -277,16 +277,12 @@ export default function ReviewsView() {
 
     const idsToDelete = Array.from(selectedIds);
     try {
-      await Promise.allSettled(
-        idsToDelete.map((id) => api.delete(`/reviews/${id}`))
-      );
+      await api.post('/reviews/bulk-delete', { ids: idsToDelete });
       setReviews((prev) => prev.filter((r) => !selectedIds.has(r._id || r.id)));
       setSelectedIds(new Set());
       toast.success(`${count} review${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
-      setReviews((prev) => prev.filter((r) => !selectedIds.has(r._id || r.id)));
-      setSelectedIds(new Set());
-      toast.success(`${count} review${count > 1 ? 's' : ''} deleted`);
+      toast.error('Failed to delete reviews');
     }
   };
 

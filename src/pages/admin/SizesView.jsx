@@ -321,14 +321,12 @@ export default function SizesView() {
     if (!isConfirmed) return;
 
     try {
-      await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/sizes/${id}`))
-      );
+      await api.post('/sizes/bulk-delete', { ids: selectedIds });
       setSizes((prev) => prev.filter((s) => !selectedIds.includes(s._id)));
       setSelectedIds([]);
       toast.success(`${count} size${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
-      toast.error('Failed to delete some sizes');
+      toast.error('Failed to delete sizes');
     }
   };
 

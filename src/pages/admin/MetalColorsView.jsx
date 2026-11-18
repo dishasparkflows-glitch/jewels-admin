@@ -203,14 +203,12 @@ export default function MetalColorsView() {
     if (!isConfirmed) return;
 
     try {
-      await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/metal-colors/${id}`))
-      );
+      await api.post('/metal-colors/bulk-delete', { ids: selectedIds });
       setColors((prev) => prev.filter((c) => !selectedIds.includes(c._id)));
       setSelectedIds([]);
       toast.success(`${count} color${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
-      toast.error('Failed to delete some metal colors');
+      toast.error('Failed to delete metal colors');
     }
   };
 

@@ -16,6 +16,7 @@ import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { galleryAPI } from '../../api/services';
 import Pagination from '../../components/common/Pagination';
+import { useAdminPageSize } from '../../utils/adminPagination';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 
 const PLACEMENT_LABELS = {
@@ -67,7 +68,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
+  const [pageSize, setPageSize] = useAdminPageSize(10);
   const [, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -220,19 +221,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
               )}
             </div>
 
-            {/* Refresh Button */}
-            <button
-              type="button"
-              onClick={() => fetchGalleryMedia(page, pageSize)}
-              disabled={loading || uploading}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold shadow-2xs transition cursor-pointer disabled:opacity-50"
-              title="Refresh Media Gallery"
-            >
-              <HiOutlineRefresh className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
-            </button>
-
-            {/* Hidden File Input */}
+            {/* Hidden File Input (kept for empty-state upload action) */}
             <input
               type="file"
               ref={fileInputRef}
@@ -241,18 +230,6 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
               accept="image/*"
               className="hidden"
             />
-
-            {/* Upload Media Button */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading || loading}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-[#8b6f4e] hover:bg-[#785e41] text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer disabled:opacity-50"
-              title="Upload new media for this theme"
-            >
-              <HiOutlineUpload className={`h-3.5 w-3.5 ${uploading ? 'animate-bounce' : ''}`} />
-              <span>{uploading ? 'Uploading…' : 'Upload Media'}</span>
-            </button>
           </div>
         </div>
       </div>

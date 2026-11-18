@@ -261,23 +261,14 @@ export default function DiamondClaritiesView() {
     if (!isConfirmed) return;
 
     try {
-      const results = await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/diamond-clarities/${id}`))
-      );
-      const successfulIds = selectedIds.filter((_, idx) => results[idx].status === 'fulfilled');
-      const failedCount = results.filter((r) => r.status === 'rejected').length;
-
-      if (successfulIds.length > 0) {
-        setClarities((prev) => prev.filter((item) => !successfulIds.includes(item._id)));
-        setSelectedIds((prev) => prev.filter((id) => !successfulIds.includes(id)));
-        toast.success(`${successfulIds.length} clarit${successfulIds.length > 1 ? 'ies' : 'y'} deleted successfully`);
-      }
-      if (failedCount > 0) {
-        toast.error(`Failed to delete ${failedCount} clarit${failedCount > 1 ? 'ies' : 'y'}`);
-      }
+      const res = await api.post('/diamond-clarities/bulk-delete', { ids: selectedIds });
+      const deletedCount = res.data?.data?.deletedCount ?? count;
+      setClarities((prev) => prev.filter((item) => !selectedIds.includes(item._id)));
+      setSelectedIds([]);
+      toast.success(`${deletedCount} clarit${deletedCount > 1 ? 'ies' : 'y'} deleted successfully`);
     } catch (err) {
       console.error('Bulk delete failed:', err);
-      toast.error('Failed to delete selected clarities');
+      toast.error(err.response?.data?.message || 'Failed to delete selected clarities');
     }
   };
 

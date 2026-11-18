@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 
 export const DEFAULT_PAGE_SIZE = 10;
-export const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
+export const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
 
 /**
  * Get the current admin-selected page size from localStorage, defaulting to 10.

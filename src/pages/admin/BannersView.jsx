@@ -862,13 +862,13 @@ export default function BannersView() {
     if (!isConfirmed) return;
 
     try {
-      await Promise.allSettled(selectedIds.map((id) => api.delete(`/banners/${id}`)));
+      await api.post('/banners/bulk-delete', { ids: selectedIds });
       setSelectedIds([]);
       toast.success(`${count} banner${count > 1 ? 's' : ''} deleted`);
       fetchListBanners();
     } catch (err) {
       console.error('Bulk delete failed:', err);
-      toast.error('Failed to delete some banners');
+      toast.error('Failed to delete banners');
     }
   };
 

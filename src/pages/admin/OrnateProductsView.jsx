@@ -70,7 +70,10 @@ export default function OrnateProductsView() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState('single_first');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(() => getAdminPageSize(10));
+  const [pageSize, setPageSize] = useState(() => {
+    const size = getAdminPageSize(10);
+    return [10, 20, 50, 100].includes(size) ? size : 10;
+  });
 
   // Data State
   const [products, setProducts] = useState([]);
@@ -142,59 +145,75 @@ export default function OrnateProductsView() {
   }, []);
 
   // Fetch Main Content based on active tab
-  const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
+  const fetchData = useCallback(
+    async ({ silent = false } = {}) => {
+      const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+      try {
+        if (!silent) setLoading(true);
 
-      // CASE 1: UNGROUPED PRODUCTS TAB
-      if (activeTab === 'ungrouped') {
+        // CASE 1: UNGROUPED PRODUCTS TAB
+        if (activeTab === 'ungrouped') {
+          const params = new URLSearchParams({
+            isOrnate: 'true',
+            status: 'all',
+            page: String(page),
+            limit: String(pageSize),
+          });
+          if (searchQuery.trim()) params.set('search', searchQuery.trim());
+          if (sortBy) params.set('sort', sortBy);
+
+          const res = await api.get(`/products?${params.toString()}`);
+          const data = res.data?.data || [];
+          const items = Array.isArray(data) ? data : data.items || [];
+          setProducts(items);
+          setTotalDocs(Number(res.data?.pagination?.totalDocs || items.length));
+          if (silent && savedScrollY > 0) {
+            requestAnimationFrame(() => {
+              window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+            });
+          }
+          return;
+        }
+
+        // CASE 2: ALL / DRAFT / APPROVED / SOLD / COMMON GROUPS TABS (PRODUCT GROUPS)
         const params = new URLSearchParams({
-          isOrnate: 'true',
-          status: 'all',
           page: String(page),
           limit: String(pageSize),
         });
+
+        if (activeTab === 'draft') params.set('productStatus', 'draft');
+        else if (activeTab === 'approved') params.set('productStatus', 'approved');
+        else if (activeTab === 'sold') params.set('productStatus', 'sold');
+        else params.set('status', 'all');
+
+        if (groupFilterType !== 'all') params.set('groupType', groupFilterType);
         if (searchQuery.trim()) params.set('search', searchQuery.trim());
         if (sortBy) params.set('sort', sortBy);
 
-        const res = await api.get(`/products?${params.toString()}`);
+        const res = await api.get(`/product-groups?${params.toString()}`);
         const data = res.data?.data || [];
         const items = Array.isArray(data) ? data : data.items || [];
-        setProducts(items);
+        setGroups(items);
         setTotalDocs(Number(res.data?.pagination?.totalDocs || items.length));
-        return;
+        if (silent && savedScrollY > 0) {
+          requestAnimationFrame(() => {
+            window.scrollTo({ top: savedScrollY, behavior: 'instant' });
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch data:', err);
+        toast.error('Could not load data');
+        if (!silent) {
+          setProducts([]);
+          setGroups([]);
+          setTotalDocs(0);
+        }
+      } finally {
+        if (!silent) setLoading(false);
       }
-
-      // CASE 2: ALL / DRAFT / APPROVED / SOLD / COMMON GROUPS TABS (PRODUCT GROUPS)
-      const params = new URLSearchParams({
-        page: String(page),
-        limit: String(pageSize),
-      });
-
-      if (activeTab === 'draft') params.set('productStatus', 'draft');
-      else if (activeTab === 'approved') params.set('productStatus', 'approved');
-      else if (activeTab === 'sold') params.set('productStatus', 'sold');
-      else params.set('status', 'all');
-
-      if (groupFilterType !== 'all') params.set('groupType', groupFilterType);
-      if (searchQuery.trim()) params.set('search', searchQuery.trim());
-      if (sortBy) params.set('sort', sortBy);
-
-      const res = await api.get(`/product-groups?${params.toString()}`);
-      const data = res.data?.data || [];
-      const items = Array.isArray(data) ? data : data.items || [];
-      setGroups(items);
-      setTotalDocs(Number(res.data?.pagination?.totalDocs || items.length));
-    } catch (err) {
-      console.error('Failed to fetch data:', err);
-      toast.error('Could not load data');
-      setProducts([]);
-      setGroups([]);
-      setTotalDocs(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeTab, groupFilterType, page, pageSize, searchQuery, sortBy]);
+    },
+    [activeTab, groupFilterType, page, pageSize, searchQuery, sortBy]
+  );
 
   useEffect(() => {
     fetchTabCounts();
@@ -251,6 +270,7 @@ export default function OrnateProductsView() {
     });
     if (!isConfirmed) return;
 
+    const currentScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
     try {
       setBulkSplitting(true);
       const res = await api.post('/product-groups/bulk-split-individual', {
@@ -258,8 +278,13 @@ export default function OrnateProductsView() {
       });
       toast.success(res.data?.message || `Successfully created ${selectedIds.size} separate groups!`);
       setSelectedIds(new Set());
-      fetchData();
-      fetchTabCounts();
+      await fetchData({ silent: true });
+      await fetchTabCounts();
+      if (currentScrollY > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+        });
+      }
     } catch (err) {
       console.error('Failed to bulk split products:', err);
       toast.error(err.response?.data?.message || 'Failed to create separate groups');
@@ -279,6 +304,7 @@ export default function OrnateProductsView() {
     });
     if (!isConfirmed) return;
 
+    const currentScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
     try {
       setBulkApproving(true);
       const res = await api.post('/product-groups/bulk-approve', {
@@ -286,8 +312,13 @@ export default function OrnateProductsView() {
       });
       toast.success(res.data?.message || `Successfully approved products across selected groups!`);
       setSelectedIds(new Set());
-      fetchData();
-      fetchTabCounts();
+      await fetchData({ silent: true });
+      await fetchTabCounts();
+      if (currentScrollY > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+        });
+      }
     } catch (err) {
       console.error('Failed to bulk approve groups:', err);
       toast.error(err.response?.data?.message || 'Failed to approve selected groups');
@@ -298,12 +329,18 @@ export default function OrnateProductsView() {
 
   // Direct 1-Click Approve Products in a Single Group (instant without extra modal)
   const handleDirectApproveOneGroup = async (group) => {
+    const currentScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
     try {
       setApprovingGroupId(group._id);
       const res = await api.post(`/product-groups/${group._id}/approve`);
       toast.success(res.data?.message || `Approved products in "${group.groupName}"`);
-      fetchData();
-      fetchTabCounts();
+      await fetchData({ silent: true });
+      await fetchTabCounts();
+      if (currentScrollY > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+        });
+      }
     } catch (err) {
       console.error('Failed to approve group:', err);
       toast.error(err.response?.data?.message || 'Failed to approve group');
@@ -415,11 +452,17 @@ export default function OrnateProductsView() {
     });
     if (!isConfirmed) return;
 
+    const currentScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
     try {
       await api.delete(`/products/${id}`);
       toast.success('Product deleted successfully');
-      fetchData();
-      fetchTabCounts();
+      await fetchData({ silent: true });
+      await fetchTabCounts();
+      if (currentScrollY > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+        });
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not delete product');
     }
@@ -447,6 +490,7 @@ export default function OrnateProductsView() {
     });
     if (!isConfirmed) return;
 
+    const currentScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
     try {
       const pId = group.primaryProductId || group.firstProduct?._id || group.representative?._id;
       if (pId && isSingle) {
@@ -457,22 +501,44 @@ export default function OrnateProductsView() {
       const res = await api.delete(`/product-groups/${group._id}`);
       const isHard = res.data?.data?.hardDeleted ?? isEmpty;
       toast.success(isHard ? 'Empty group permanently deleted' : isSingle ? 'Product deleted successfully' : 'Group deleted successfully');
-      fetchData();
-      fetchTabCounts();
+      await fetchData({ silent: true });
+      await fetchTabCounts();
+      if (currentScrollY > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+        });
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not delete');
     }
   };
 
-  // Toggle Group Status (Active / Inactive)
+  // Toggle Group Status (Active / Inactive) with Optimistic UI & Scroll Preservation
   const handleToggleGroupStatus = async (group) => {
     const nextStatus = group.status === 'active' ? 'inactive' : 'active';
+    const groupId = group._id;
+    const currentScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+
+    // Optimistic UI update: instantly update group status without destroying DOM tree
+    setGroups((prev) =>
+      prev.map((g) => (g._id === groupId ? { ...g, status: nextStatus } : g))
+    );
+
     try {
-      await api.patch(`/product-groups/${group._id}`, { status: nextStatus });
+      await api.patch(`/product-groups/${groupId}`, { status: nextStatus });
       toast.success(`Group marked as ${nextStatus}`);
-      fetchData();
-      fetchTabCounts();
+      await fetchData({ silent: true });
+      await fetchTabCounts();
+      if (currentScrollY > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+        });
+      }
     } catch {
+      // Revert on error
+      setGroups((prev) =>
+        prev.map((g) => (g._id === groupId ? { ...g, status: group.status } : g))
+      );
       toast.error('Failed to update group status');
     }
   };
@@ -487,27 +553,9 @@ export default function OrnateProductsView() {
             Manage catalogue, ERP sync, and Common Product Groups
           </p>
         </div>
-        <div className="flex items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => setIsSyncModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#8b6f4e] bg-white border border-[#8b6f4e]/40 rounded-xl hover:bg-[#8b6f4e]/5 transition-all shadow-2xs cursor-pointer"
-          >
-            <HiOutlineRefresh className="w-3.5 h-3.5" />
-            <span>Sync Products</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate('/catalog/ornate-products/add')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs cursor-pointer"
-          >
-            <HiOutlinePlus className="w-3.5 h-3.5" />
-            <span>Add Ornate Product</span>
-          </button>
-        </div>
       </div>
 
-      {/* ─── 2. Status Filter Tabs & Create Group Action ─── */}
+      {/* ─── 2. Status Filter Tabs & Action Buttons ─── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
           {[
@@ -538,14 +586,32 @@ export default function OrnateProductsView() {
           })}
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsCreateGroupModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs shrink-0 cursor-pointer self-end md:self-auto"
-        >
-          <HiOutlinePlus className="w-4 h-4" />
-          <span>Create Group</span>
-        </button>
+        <div className="flex items-center gap-2.5 shrink-0 self-end md:self-auto">
+          <button
+            type="button"
+            onClick={() => setIsSyncModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#8b6f4e] bg-white border border-[#8b6f4e]/40 rounded-xl hover:bg-[#8b6f4e]/5 transition-all shadow-2xs cursor-pointer"
+          >
+            <HiOutlineRefresh className="w-3.5 h-3.5" />
+            <span>Sync Products</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/catalog/ornate-products/add')}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs cursor-pointer"
+          >
+            <HiOutlinePlus className="w-3.5 h-3.5" />
+            <span>Add Ornate Product</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsCreateGroupModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs cursor-pointer"
+          >
+            <HiOutlinePlus className="w-4 h-4" />
+            <span>Create Group</span>
+          </button>
+        </div>
       </div>
 
       {/* ─── 3. Filter and Control Bar ─── */}
@@ -1061,7 +1127,7 @@ export default function OrnateProductsView() {
                   setAdminPageSize(newSize);
                   setPage(1);
                 }}
-                pageSizeOptions={[10, 14, 25, 28, 50, 100]}
+                pageSizeOptions={[10, 20, 50, 100]}
               />
           </div>
         )
@@ -1313,7 +1379,7 @@ export default function OrnateProductsView() {
                   setAdminPageSize(newSize);
                   setPage(1);
                 }}
-                pageSizeOptions={[10, 14, 25, 28, 50, 100]}
+                pageSizeOptions={[10, 20, 50, 100]}
               />
             </div>
           </div>
@@ -1346,13 +1412,13 @@ export default function OrnateProductsView() {
               if (!isConfirmed) return;
 
               try {
-                await Promise.all(Array.from(selectedIds).map((id) => api.delete(`/products/${id}`)));
+                await api.post('/products/bulk-delete', { ids: Array.from(selectedIds) });
                 toast.success('Selected products deleted');
                 setSelectedIds(new Set());
                 fetchData();
                 fetchTabCounts();
               } catch {
-                toast.error('Could not delete some products');
+                toast.error('Could not delete selected products');
               }
             }}
             className="text-xs font-semibold text-rose-400 hover:text-rose-300"
@@ -1389,7 +1455,7 @@ export default function OrnateProductsView() {
         onClose={() => setSelectedGroupIdForManage(null)}
         groupId={selectedGroupIdForManage}
         onRefreshParent={() => {
-          fetchData();
+          fetchData({ silent: true });
           fetchTabCounts();
         }}
       />

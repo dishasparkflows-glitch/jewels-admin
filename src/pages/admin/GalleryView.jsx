@@ -105,9 +105,30 @@ export default function GalleryView() {
 
   // ─── Pagination State ──────────────────────────────────────
   const [page, setPage] = useState(1);
-  const pageSize = 24;
+  const [pageSize, setPageSize] = useState(() => {
+    try {
+      const saved = localStorage.getItem('gallery_page_size');
+      if (saved && Number(saved) > 0) return Number(saved);
+    } catch {
+      // Ignore storage errors
+    }
+    return 24;
+  });
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+
+  const handlePageSizeChange = (newSize) => {
+    const num = Number(newSize);
+    if (num > 0) {
+      setPageSize(num);
+      setPage(1);
+      try {
+        localStorage.setItem('gallery_page_size', String(num));
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  };
 
   // ─── Fetch Themes Lookup (Only called when uploading/editing images) ────────
   const fetchThemesLookup = useCallback(async () => {
@@ -127,7 +148,7 @@ export default function GalleryView() {
   }, [uploadThemeId]);
 
   // ─── Fetch Gallery Items (With Pagination) ──────────────────
-  const fetchGallery = useCallback(async (targetPage = page) => {
+  const fetchGallery = useCallback(async (targetPage = page, targetLimit = pageSize) => {
     try {
       setLoading(true);
       const res = await galleryAPI.getAll({
@@ -137,7 +158,7 @@ export default function GalleryView() {
         search,
         sortBy,
         page: targetPage,
-        limit: pageSize,
+        limit: targetLimit,
       });
       const data = res.data?.data || {};
       const rawItems = data.items || [];
@@ -164,7 +185,7 @@ export default function GalleryView() {
       setItems(normalizedItems);
       setCounts(data.counts || {});
       setTotalPages(data.pagination?.totalPages || 1);
-      setTotalItems(data.pagination?.totalDocs || (data.items || []).length);
+      setTotalItems(data.pagination?.totalDocs ?? data.pagination?.totalItems ?? (data.items || []).length);
       if (data.themes && (!themes || themes.length === 0)) {
         setThemes(data.themes);
         const active = data.themes.find((t) => t.isLive);
@@ -187,8 +208,8 @@ export default function GalleryView() {
 
   // On mount and filter changes: ONLY call gallery get list API with pagination
   useEffect(() => {
-    fetchGallery(page);
-  }, [page, selectedTheme, selectedType, selectedPlatform, search, sortBy]);
+    fetchGallery(page, pageSize);
+  }, [page, pageSize, selectedTheme, selectedType, selectedPlatform, search, sortBy]);
 
   // ─── Modal Scroll Lock & ESC Key Handling ───────────────────
   useEffect(() => {
@@ -966,15 +987,20 @@ export default function GalleryView() {
         </div>
       )}
 
-      {/* Pagination Footer */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-between rounded-2xl border border-stone-200 bg-white p-4 shadow-xs">
-          <div className="text-xs text-stone-500">
-            Showing <span className="font-bold text-stone-800">{(page - 1) * pageSize + 1}</span> to{' '}
-            <span className="font-bold text-stone-800">{Math.min(page * pageSize, totalItems)}</span> of{' '}
-            <span className="font-bold text-stone-800">{totalItems}</span> assets
-          </div>
-          <Pagination currentPage={page} totalPages={totalPages} onPageChange={(p) => setPage(p)} />
+      {/* ─── Pagination Footer ─── */}
+      {!loading && totalItems > 0 && (
+        <div className="rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden mt-3 sm:mt-4">
+          <Pagination
+            currentPage={page}
+            totalItems={totalItems}
+            pageSize={pageSize}
+            onPageChange={(p) => setPage(p)}
+            onPageSizeChange={handlePageSizeChange}
+            pageSizeOptions={[12, 24, 48, 96]}
+            showPageSize={true}
+            itemLabel="assets"
+            className="border-t-0"
+          />
         </div>
       )}
 

@@ -111,9 +111,7 @@ export default function CustomersView() {
 
     const idsToDelete = Array.from(selectedIds);
     try {
-      await Promise.allSettled(
-        idsToDelete.map((id) => api.delete(`/users/${id}`))
-      );
+      await api.post('/users/bulk-delete', { ids: idsToDelete });
       setUsers((prev) => prev.filter((u) => !selectedIds.has(u._id || u.id)));
       setSelectedIds(new Set());
       toast.success(`${count} customer${count > 1 ? 's' : ''} deleted successfully`);

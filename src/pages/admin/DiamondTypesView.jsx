@@ -260,23 +260,14 @@ export default function DiamondTypesView() {
     if (!isConfirmed) return;
 
     try {
-      const results = await Promise.allSettled(
-        selectedIds.map((id) => api.delete(`/diamond-types/${id}`))
-      );
-      const successfulIds = selectedIds.filter((_, idx) => results[idx].status === 'fulfilled');
-      const failedCount = results.filter((r) => r.status === 'rejected').length;
-
-      if (successfulIds.length > 0) {
-        setTypes((prev) => prev.filter((t) => !successfulIds.includes(t._id)));
-        setSelectedIds((prev) => prev.filter((id) => !successfulIds.includes(id)));
-        toast.success(`${successfulIds.length} type${successfulIds.length > 1 ? 's' : ''} deleted successfully`);
-      }
-      if (failedCount > 0) {
-        toast.error(`Failed to delete ${failedCount} type${failedCount > 1 ? 's' : ''}`);
-      }
+      const res = await api.post('/diamond-types/bulk-delete', { ids: selectedIds });
+      const deletedCount = res.data?.data?.deletedCount ?? count;
+      setTypes((prev) => prev.filter((t) => !selectedIds.includes(t._id)));
+      setSelectedIds([]);
+      toast.success(`${deletedCount} diamond type${deletedCount > 1 ? 's' : ''} deleted successfully`);
     } catch (err) {
       console.error('Bulk delete failed:', err);
-      toast.error('Failed to delete some diamond types');
+      toast.error(err.response?.data?.message || 'Failed to delete selected diamond types');
     }
   };
 
