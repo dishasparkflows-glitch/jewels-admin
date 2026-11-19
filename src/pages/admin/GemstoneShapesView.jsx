@@ -393,7 +393,7 @@ export default function GemstoneShapesView() {
                 : 'Select gemstone shapes to delete'
             }
           >
-            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#d93025]" />
             <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
           </button>
         }

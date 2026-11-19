@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
-import { IoClose, IoRefreshOutline, IoCubeOutline, IoSearchOutline, IoGridOutline, IoListOutline, IoEyeOutline, IoChevronBack, IoChevronForward } from 'react-icons/io5';
+import { IoClose, IoRefreshOutline, IoCubeOutline, IoSearchOutline, IoGridOutline, IoListOutline, IoEyeOutline, IoChevronBack, IoChevronForward, IoCheckmark } from 'react-icons/io5';
 import Dropdown from './Dropdown';
 import Pagination from './Pagination';
 import { useAdminPageSize, PAGE_SIZE_OPTIONS } from '../../utils/adminPagination';
@@ -54,7 +54,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
         if (!active) return;
         const items = Array.isArray(data.categories) ? data.categories : [];
         setCategories(items);
-        setSelected(new Set(items.flatMap((c) => (c.products || []).filter((p) => p.uniqueLabelID != null && p.uniqueLabelID !== '').map((p) => String(p.uniqueLabelID)))));
+        setSelected(new Set());
       } catch (err) { if (active) setError(err.response?.data?.message || err.message || 'Could not load ERP products'); }
       finally { if (active) setLoading(false); }
     };
@@ -107,11 +107,6 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     const nextCat = isAlreadySelected ? '' : catName;
     setSelectedCategory(nextCat);
     setPage(1);
-    const matched = products.filter((p) =>
-      p.id &&
-      (!nextCat || String(p.groupName || '').trim().toLowerCase() === nextCat.trim().toLowerCase())
-    );
-    setSelected(new Set(matched.map((p) => p.id)));
   };
 
   const allFilteredSelected = filtered.length > 0 && filtered.every((p) => p.id && selected.has(p.id));
@@ -191,7 +186,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
               type="button"
               aria-pressed={!selectedCategory}
               onClick={() => handleSelectCategory('')}
-              className={`rounded-full px-4 py-2 border text-[12px] font-medium transition-colors cursor-pointer ${
+              className={`inline-flex items-center rounded-full px-4 py-2 border text-[12px] font-medium transition-colors cursor-pointer ${
                 !selectedCategory
                   ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs'
                   : 'border-stone-200 text-stone-600 hover:bg-stone-50'
@@ -207,13 +202,20 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
                   key={item.name}
                   aria-pressed={active}
                   onClick={() => handleSelectCategory(item.name)}
-                  className={`rounded-full px-4 py-2 border text-[12px] text-left font-medium transition-colors cursor-pointer ${
+                  className={`inline-flex items-center rounded-full px-4 py-2 border text-[12px] text-left font-medium transition-colors cursor-pointer ${
                     active
                       ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-xs'
                       : 'border-stone-200 text-stone-600 hover:bg-stone-50'
                   }`}
                 >
-                  {item.name} ({item.count ?? item.products?.length ?? 0})
+                  <span>{item.name}</span>
+                  <span
+                    className={`ml-2 text-[11px] font-normal ${
+                      active ? 'text-white/85' : 'text-stone-400'
+                    }`}
+                  >
+                    ({item.count ?? item.products?.length ?? 0})
+                  </span>
                 </button>
               );
             })}
@@ -223,7 +225,23 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
           </div>
         </div>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto">
+      <div className={`flex-1 min-h-0 relative ${syncing ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        {syncing && (
+          <div className="absolute inset-0 z-30 bg-white/90 backdrop-blur-xs flex flex-col items-center justify-center p-8 text-center animate-fadeIn">
+            <div className="w-16 h-16 rounded-2xl bg-[#f4ece0] text-[#8b6f4e] flex items-center justify-center mb-4 shadow-sm">
+              <IoRefreshOutline className="w-8 h-8 animate-spin" />
+            </div>
+            <h3 className="text-[17px] font-bold text-stone-900">
+              Syncing {selected.size} {selected.size === 1 ? 'Product' : 'Products'} from Ornate ERP...
+            </h3>
+            <p className="mt-1.5 text-[13px] text-stone-500 max-w-md">
+              Please wait while products are being imported, grouped, and saved to your catalog.
+            </p>
+            <div className="mt-5 w-52 h-1.5 bg-stone-100 rounded-full overflow-hidden">
+              <div className="h-full bg-[#8b6f4e] rounded-full animate-pulse w-3/4" />
+            </div>
+          </div>
+        )}
         {loading ? <div className="p-20 text-center text-stone-500"><IoRefreshOutline size={30} className="animate-spin mx-auto mb-3" />Loading products from Ornate ERP...</div> : error ? <div className="p-8 text-red-700" role="alert">{error}<button type="button" className={`${button} ml-4`} onClick={() => setRetry((n) => n + 1)}>Retry</button></div> : <div className={`grid ${detail ? 'lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]' : ''}`}>
           <div className="p-6 min-w-0">
             <Pagination
@@ -260,13 +278,28 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
                 filtered.length > 0 ? (
                   <button
                     type="button"
-                    className="text-xs font-semibold text-[#8b6f4e] hover:text-[#785e40] hover:underline cursor-pointer transition-colors ml-2"
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-all cursor-pointer shadow-2xs ${
+                      allFilteredSelected
+                        ? 'bg-[#faf5ee] border-[#b8946c] text-[#8b6f4e] hover:bg-[#f3ece0]'
+                        : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50 hover:border-stone-300'
+                    }`}
                     disabled={syncing || !filtered.length}
                     onClick={handleToggleAllFiltered}
                   >
-                    {allFilteredSelected
-                      ? `• Deselect all ${filtered.length} results`
-                      : `• Select all ${filtered.length} results`}
+                    <span
+                      className={`w-3.5 h-3.5 rounded border flex items-center justify-center transition-colors ${
+                        allFilteredSelected
+                          ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white'
+                          : 'border-stone-300 bg-white'
+                      }`}
+                    >
+                      {allFilteredSelected && <IoCheckmark className="w-3 h-3 stroke-[2.5]" />}
+                    </span>
+                    <span>
+                      {allFilteredSelected
+                        ? `Deselect all ${filtered.length} results`
+                        : `Select all ${filtered.length} results`}
+                    </span>
                   </button>
                 ) : null
               }

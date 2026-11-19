@@ -422,7 +422,7 @@ export default function OrdersView() {
               : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
           }`}
         >
-          <HiOutlineTrash className="w-3.5 h-3.5 shrink-0" />
+          <HiOutlineTrash className="w-3.5 h-3.5 shrink-0 text-[#ef4444]" />
           <span>Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}</span>
         </button>
       </div>
@@ -815,9 +815,9 @@ export default function OrdersView() {
                               handleDeleteOrder(orderId, orderNo);
                             }}
                             title="Delete Order Record"
-                            className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 transition-all cursor-pointer"
+                            className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                           >
-                            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+                            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#d93025]" />
                           </button>
                         </div>
                       </td>

@@ -373,7 +373,7 @@ export default function BannersView() {
       setLoadingThemes(true);
       let res;
       try {
-        res = await api.get('/website/themes/lookup');
+        res = await api.get('/website/themes/lookup').catch(() => api.get('/themes/lookup'));
       } catch {
         res = await api.get('/gallery/themes');
       }
@@ -522,11 +522,12 @@ export default function BannersView() {
     setCollectionGroup(banner.display?.collectionGroup || 'gold');
     setSelectedMenuItemIds((banner.display?.menuItemIds || []).map((i) => String(i?._id || i)));
 
-    setCollectionImages((banner.collectionImages?.length ? banner.collectionImages : (banner.image?.url ? [banner.image] : [])).map((img) => ({
+    setCollectionImages((banner.collectionImages?.length ? banner.collectionImages : (banner.image?.url ? [banner.image] : [])).map((img, idx) => ({
       _id: img._id,
       url: img.url,
       key: img.key || '',
       categoryId: img.categoryId?._id || img.categoryId || banner.display?.categoryId?._id || banner.display?.categoryId || '',
+      order: img.order ?? idx + 1,
     })));
 
     const currentThemeId = banner.themeId?._id || banner.themeId || '';
@@ -746,10 +747,12 @@ export default function BannersView() {
       if (effectiveType === 'collectionbanner' && collectionImages.length > 0) {
         payload.collectionImages = collectionImages
           .filter((img) => img.url)
-          .map((img) => ({
+          .map((img, idx) => ({
+            _id: img._id || undefined,
             url: img.url,
             key: img.key || undefined,
             categoryId: img.categoryId || undefined,
+            order: img.order !== undefined && img.order !== null ? Number(img.order) : idx + 1,
           }));
       }
 
@@ -1288,9 +1291,9 @@ export default function BannersView() {
                               type="button"
                               onClick={(e) => handleDelete(banner, e)}
                               title="Delete banner"
-                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-red-50 text-stone-600 hover:text-red-700 transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                              className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                             >
-                              <HiOutlineTrash className="w-3.5 h-3.5 stroke-[1.8]" />
+                              <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2]" />
                             </button>
                           </div>
                         </td>

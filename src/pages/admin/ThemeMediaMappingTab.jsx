@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -28,12 +28,15 @@ import {
   HiOutlineCode,
   HiOutlineDotsHorizontal,
   HiOutlineChevronRight,
+  HiOutlineChevronDown,
+  HiOutlineChevronUp,
   HiOutlineSwitchHorizontal,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { themesAPI, galleryAPI, bannersAPI, featuredAPI } from '../../api/services';
 import Dropdown from '../../components/common/Dropdown';
+import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import { uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
@@ -384,10 +387,54 @@ export default function ThemeMediaMappingTab({
   const [activeTargetSlot, setActiveTargetSlot] = useState(null); // { record, device, placement }
 
   // Modal states
-  const [pickerTarget, setPickerTarget] = useState(null); // { record, device, placement, currentMediaId }
+  const [pickerTarget, setPickerTarget] = useState(null); // { record, device, placement, currentGalleryId, currentMediaId }
   const [showActivateModal, setShowActivateModal] = useState(false);
   const [activating, setActivating] = useState(false);
   const [bulkActionLoading, setBulkActionLoading] = useState(false);
+
+  // Expanded/collapsed collection banner rows (default expanded)
+  const [collapsedBanners, setCollapsedBanners] = useState(() => new Set());
+  const toggleCollapseBanner = (bannerId) => {
+    setCollapsedBanners((prev) => {
+      const next = new Set(prev);
+      const sid = String(bannerId);
+      if (next.has(sid)) next.delete(sid);
+      else next.add(sid);
+      return next;
+    });
+  };
+
+  // Revert all tiles of a collection banner back to default
+  const handleResetAllTiles = async (tiles) => {
+    if (!tiles || !tiles.length || !themeId) return;
+    const mapped = tiles.filter((t) => t.isMapped);
+    if (mapped.length === 0) {
+      toast.info('No tiles are currently mapped.');
+      return;
+    }
+    const confirmed = await confirm({
+      title: 'Reset Collection Tiles',
+      message: `Revert ${mapped.length} mapped collection tile(s) back to original storefront images?`,
+      confirmText: 'Reset Tiles',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!confirmed) return;
+    try {
+      await Promise.all(
+        mapped.map((t) =>
+          themesAPI.deleteMappingByTarget(themeId, {
+            recordId: t._id,
+          })
+        )
+      );
+      toast.success(`Reset ${mapped.length} tile(s) to default.`);
+      await Promise.all([fetchRecords(), fetchSummary(), fetchSideGallery()]);
+    } catch (err) {
+      console.error('Failed to reset tiles:', err);
+      toast.error('Failed to reset some tiles');
+    }
+  };
 
   // ─── 1. Load Summary Across All Modules ──────────────────
   const fetchSummary = useCallback(async () => {
@@ -596,25 +643,37 @@ export default function ThemeMediaMappingTab({
 
     try {
       await themesAPI.saveMapping(themeId, {
-        module: activeModule,
         recordId: record._id,
-        mediaId: mediaAsset._id,
-        device: device || 'desktop',
-        placement: placement || 'primary',
+        galleryId: mediaAsset._id,
         status: 'active',
       });
 
       toast.success(
-        `Mapped ${device === 'mobile' ? 'Mobile' : 'Desktop'} image for "${record.title || record.name}"`
+        `Mapped image for "${record.title || record.name}"`
       );
 
       setPickerTarget(null);
       setActiveTargetSlot(null);
-      await Promise.all([fetchRecords(), fetchSummary(), fetchSideGallery()]);
+      await Promise.all([fetchRecords(), fetchSummary()]);
     } catch (err) {
       console.error('Failed to save mapping:', err);
       toast.error(err.response?.data?.message || 'Could not save theme mapping');
     }
+  };
+
+  // ─── Handle Selection from Common GalleryMediaPickerModal ───
+  const handlePickerSelect = async (selectedAsset) => {
+    if (!pickerTarget || !pickerTarget.record) {
+      if (pickerTarget?.isBrowsing && selectedAsset) {
+        openImagePreview(selectedAsset.url || selectedAsset.image?.url, {
+          title: selectedAsset.name || 'Theme Gallery Asset',
+        });
+      }
+      setPickerTarget(null);
+      return;
+    }
+    await handleSaveMapping(selectedAsset, pickerTarget);
+    setPickerTarget(null);
   };
 
   // ─── Direct File Upload & Map Immediately ────────────────
@@ -650,11 +709,8 @@ export default function ThemeMediaMappingTab({
 
       // 3. Save Theme Mapping
       await themesAPI.saveMapping(themeId, {
-        module: activeModule,
         recordId: record._id,
-        mediaId: mediaAsset._id,
-        device,
-        placement,
+        galleryId: mediaAsset._id,
         status: 'active',
       });
 
@@ -709,15 +765,12 @@ export default function ThemeMediaMappingTab({
   };
 
   // ─── Delete Single Mapping Handler ───────────────────────
-  const handleDeleteMapping = async (record, device = 'desktop', placement = 'primary') => {
+  const handleDeleteMapping = async (record) => {
     if (!themeId) return;
 
     try {
       await themesAPI.deleteMappingByTarget(themeId, {
-        module: activeModule,
         recordId: record._id,
-        device,
-        placement,
       });
 
       toast.success(`Theme mapping removed. Reverted to default storefront image.`);
@@ -744,9 +797,18 @@ export default function ThemeMediaMappingTab({
 
     try {
       setBulkActionLoading(true);
-      const promises = Array.from(selectedIds).map((recId) =>
+      const allTargetIds = [];
+      selectedIds.forEach((recId) => {
+        allTargetIds.push(recId);
+        const item = records.find((r) => String(r._id) === String(recId));
+        if (item?.tiles && Array.isArray(item.tiles)) {
+          item.tiles.forEach((t) => {
+            if (t._id) allTargetIds.push(t._id);
+          });
+        }
+      });
+      const promises = allTargetIds.map((recId) =>
         themesAPI.deleteMappingByTarget(themeId, {
-          module: activeModule,
           recordId: recId,
         })
       );
@@ -1026,53 +1088,14 @@ export default function ThemeMediaMappingTab({
           </div>
         </div>
       )}
-
-      {/* ─────────────────────────────────────────────────────────────
-          3. ACTIVE TARGET BANNER (When user clicked "Select to Map")
-          ───────────────────────────────────────────────────────────── */}
-      {activeTargetSlot && (
-        <div className="rounded-2xl border-2 border-[#8b6f4e] bg-amber-50/80 p-3.5 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-sm animate-pulse-subtle">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#8b6f4e] text-white flex items-center justify-center shrink-0 shadow-xs">
-              <HiOutlineCursorClick className="h-5 w-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-bold text-stone-900">
-                  Target Selected for Mapping:
-                </span>
-                <span className="bg-[#8b6f4e]/15 text-[#8b6f4e] font-bold px-2 py-0.5 rounded-md text-xs">
-                  {activeTargetSlot.record.title || activeTargetSlot.record.name}
-                </span>
-                <span className="text-[11px] text-stone-500 font-semibold uppercase">
-                  ({activeTargetSlot.device})
-                </span>
-              </div>
-              <p className="text-xs text-stone-600 mt-0.5">
-                👉 Now click <strong>any image in the Theme Gallery on the right</strong> to assign it instantly!
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setActiveTargetSlot(null)}
-            className="rounded-xl border border-stone-300 bg-white hover:bg-stone-100 px-3 py-1.5 text-xs font-semibold text-stone-700 transition cursor-pointer shrink-0"
-          >
-            Cancel Selection
-          </button>
-        </div>
-      )}
+      
 
       {/* ─────────────────────────────────────────────────────────────
           4. SIDE-BY-SIDE MAIN LAYOUT:
              LEFT: Banners & Featured List (xl:col-span-7)
              RIGHT: Theme Media Gallery Side Panel (xl:col-span-5)
           ───────────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-        {/* ═══════════════════════════════════════════════════════════
-            LEFT COLUMN: BANNERS & FEATURED LIST (xl:col-span-7)
-            ═══════════════════════════════════════════════════════════ */}
-        <div className="xl:col-span-7 space-y-4">
+      <div className="space-y-4">
           {mappingMode === 'banner' ? (
             /* ═══════════════════════════════════════════════════════════
                BANNER TYPE LIST VIEW (Matches Screen 2 of BannersView.jsx)
@@ -1109,6 +1132,33 @@ export default function ThemeMediaMappingTab({
                       <span>Revert Selected ({selectedIds.size})</span>
                     </button>
                   )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPickerTarget({
+                        record: null,
+                        device: 'desktop',
+                        placement: activeModule,
+                        isBrowsing: true,
+                      });
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <HiOutlinePhotograph className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                    <span>Browse Gallery</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate(`/gallery?openUpload=true&themeId=${themeId || ''}&type=${activeModule || 'herobanner'}`);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#8b6f4e] text-white hover:brightness-95 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <HiOutlineUpload className="h-3.5 w-3.5" />
+                    <span>+ Upload Media</span>
+                  </button>
                 </div>
               </div>
 
@@ -1157,17 +1207,40 @@ export default function ThemeMediaMappingTab({
                         </tr>
                       ) : (
                         filteredRecords.map((banner) => {
+                          const isCollectionBanner = currentBannerType.key === 'collectionbanner';
+                          const bannerTiles = isCollectionBanner
+                            ? (Array.isArray(banner.tiles) && banner.tiles.length > 0
+                                ? banner.tiles
+                                : (Array.isArray(banner.collectionImages)
+                                    ? banner.collectionImages.map((ci, idx) => ({
+                                        _id: ci._id,
+                                        bannerId: banner._id,
+                                        order: ci.order ?? idx + 1,
+                                        originalUrl: ci.url,
+                                        imageUrl: ci.url,
+                                        categoryId: ci.categoryId?._id || ci.categoryId,
+                                        categoryName:
+                                          ci.categoryId?.name ||
+                                          categories.find((c) => String(c._id) === String(ci.categoryId?._id || ci.categoryId))?.name ||
+                                          '',
+                                        isMapped: false,
+                                      }))
+                                    : []))
+                            : [];
+                          const mappedTilesCount = bannerTiles.filter((t) => t.isMapped).length;
+                          const isExpanded = !collapsedBanners.has(String(banner._id));
+
                           const bTitle = currentBannerType.key === 'categorybanner'
                             ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || banner.title || 'Category Banner')
-                            : (banner.content?.title || banner.title || 'Hero Banner');
-                          const bDesc = banner.content?.description || banner.content?.subtitle || banner.subtitle || '';
+                            : (banner.content?.title || banner.title || (isCollectionBanner ? 'Collection Banner' : 'Hero Banner'));
+                          const bDesc = banner.content?.description || banner.content?.subtitle || banner.subtitle || (banner.display?.collectionGroup ? `Collection Group: ${banner.display.collectionGroup.toUpperCase()}` : '');
                           const defaultAssetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url) || banner.originalDesktopImage;
                           const isPublished = banner.status === 'active';
                           const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);
                           const isSelected = selectedIds.has(String(banner._id));
 
                           const desktopMappedImg = banner.desktopMapping?.imageUrl;
-                          const hasDesktopOverride = Boolean(desktopMappedImg);
+                          const hasDesktopOverride = Boolean(desktopMappedImg) || (isCollectionBanner && mappedTilesCount > 0);
                           const currentEffectiveImg = desktopMappedImg || defaultAssetUrl;
 
                           const isTargetActive =
@@ -1184,256 +1257,590 @@ export default function ThemeMediaMappingTab({
                             : categories.find((c) => String(c._id) === String(catObj?._id || catObj))?.name;
 
                           return (
-                            <tr
-                              key={banner._id}
-                              className={`hover:bg-[#faf8f5]/70 transition-colors ${
-                                isSlotHovered
-                                  ? 'bg-[#8b6f4e]/15 ring-2 ring-inset ring-[#8b6f4e]'
-                                  : isTargetActive
-                                  ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-400'
-                                  : isSelected
-                                  ? 'bg-[#fcfaf7]'
-                                  : ''
-                              }`}
-                            >
-                              {/* Checkbox */}
-                              <td className="py-3 px-3.5">
-                                <input
-                                  type="checkbox"
-                                  checked={isSelected}
-                                  onChange={() => toggleSelectRow(banner._id)}
-                                  className="rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b] cursor-pointer"
-                                />
-                              </td>
+                            <Fragment key={banner._id}>
+                              <tr
+                                className={`hover:bg-[#faf8f5]/70 transition-colors ${
+                                  isSlotHovered
+                                    ? 'bg-[#8b6f4e]/15 ring-2 ring-inset ring-[#8b6f4e]'
+                                    : isTargetActive
+                                    ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-400'
+                                    : isSelected
+                                    ? 'bg-[#fcfaf7]'
+                                    : ''
+                                }`}
+                              >
+                                {/* Checkbox */}
+                                <td className="py-3 px-3.5">
+                                  <input
+                                    type="checkbox"
+                                    checked={isSelected}
+                                    onChange={() => toggleSelectRow(banner._id)}
+                                    className="rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b] cursor-pointer"
+                                  />
+                                </td>
 
-                              {/* PREVIEW (Droppable Thumbnail matching BannersView) */}
-                              <td className="py-3 px-3.5 whitespace-nowrap">
-                                <div
-                                  onDragOver={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    e.dataTransfer.dropEffect = 'copy';
-                                    setDragOverSlot({ recordId: banner._id, device: 'desktop' });
-                                  }}
-                                  onDragLeave={(e) => {
-                                    if (!e.currentTarget.contains(e.relatedTarget)) {
-                                      setDragOverSlot(null);
-                                    }
-                                  }}
-                                  onDrop={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    handleDropOnSlot(e, banner, 'desktop', 'primary');
-                                  }}
-                                  onClick={() => {
-                                    setActiveTargetSlot((prev) =>
-                                      prev?.record?._id === banner._id && prev?.device === 'desktop'
-                                        ? null
-                                        : { record: banner, device: 'desktop', placement: 'primary' }
-                                    );
-                                  }}
-                                  className={`w-28 sm:w-32 h-14 rounded-xl border overflow-hidden relative shadow-2xs cursor-pointer group flex items-center justify-center shrink-0 transition-all ${
-                                    isSlotHovered
-                                      ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e] scale-102'
-                                      : isTargetActive
-                                      ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/40'
-                                      : hasDesktopOverride
-                                      ? 'border-emerald-400 ring-1 ring-emerald-300'
-                                      : 'border-stone-200/90 bg-stone-900'
-                                  }`}
-                                  title={
-                                    isTargetActive
-                                      ? 'Target selected! Click an image in the gallery to map.'
-                                      : 'Click to select as mapping target, or drag an image here.'
-                                  }
-                                >
-                                  {currentEffectiveImg ? (
-                                    <img
-                                      src={getMediaUrl(currentEffectiveImg)}
-                                      alt={bTitle}
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                                    />
+                                {/* PREVIEW */}
+                                <td className="py-3 px-3.5 whitespace-nowrap">
+                                  {isCollectionBanner ? (
+                                    /* Collection 4-Tile Mini Preview */
+                                    <div
+                                      onClick={() => toggleCollapseBanner(banner._id)}
+                                      className="w-28 sm:w-32 h-14 rounded-xl border border-stone-200/90 overflow-hidden relative shadow-2xs cursor-pointer group bg-stone-900 p-0.5 grid grid-cols-2 grid-rows-2 gap-0.5 hover:border-[#8b6f4e] transition-all"
+                                      title="Click to expand/collapse 4 collection tiles"
+                                    >
+                                      {bannerTiles.slice(0, 4).map((tile, i) => (
+                                        <div key={tile._id || i} className="relative w-full h-full overflow-hidden rounded-xs bg-stone-800">
+                                          <img
+                                            src={getMediaUrl(tile.imageUrl || tile.originalUrl)}
+                                            alt={`Tile ${tile.order || i + 1}`}
+                                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                          />
+                                          {tile.isMapped && (
+                                            <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-1 ring-white" />
+                                          )}
+                                        </div>
+                                      ))}
+                                      {/* Hover overlay hint */}
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[9.5px] font-bold text-white uppercase tracking-wider">
+                                        {isExpanded ? 'Hide' : 'View 4'}
+                                      </div>
+                                    </div>
                                   ) : (
-                                    <div className="w-full h-full bg-[#2a241e] flex items-center justify-center text-stone-500">
-                                      <HiOutlinePhotograph className="w-5 h-5 text-[#8a6d4b]/60" />
+                                    /* Standard Droppable Thumbnail matching BannersView */
+                                    <div
+                                      onDragOver={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        e.dataTransfer.dropEffect = 'copy';
+                                        setDragOverSlot({ recordId: banner._id, device: 'desktop' });
+                                      }}
+                                      onDragLeave={(e) => {
+                                        if (!e.currentTarget.contains(e.relatedTarget)) {
+                                          setDragOverSlot(null);
+                                        }
+                                      }}
+                                      onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        handleDropOnSlot(e, banner, 'desktop', 'primary');
+                                      }}
+                                      onClick={() => {
+                                        setPickerTarget({
+                                          record: banner,
+                                          device: 'desktop',
+                                          placement: 'primary',
+                                        });
+                                      }}
+                                      className={`w-28 sm:w-32 h-14 rounded-xl border overflow-hidden relative shadow-2xs cursor-pointer group flex items-center justify-center shrink-0 transition-all ${
+                                        hasDesktopOverride
+                                          ? 'border-emerald-400 ring-1 ring-emerald-300'
+                                          : 'border-stone-200 bg-stone-100 hover:border-[#8b6f4e]'
+                                      }`}
+                                      title="Click to select image from Gallery Media Picker or drag an image here"
+                                    >
+                                      {currentEffectiveImg ? (
+                                        <img
+                                          src={getMediaUrl(currentEffectiveImg)}
+                                          alt={bTitle}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full bg-[#2a241e] flex items-center justify-center text-stone-500">
+                                          <HiOutlinePhotograph className="w-5 h-5 text-[#8a6d4b]/60" />
+                                        </div>
+                                      )}
+
+                                      {/* Hover overlay */}
+                                      <div className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                                        <span className="text-[10px] font-bold flex items-center gap-1 bg-white text-stone-900 px-2 py-0.5 rounded-md shadow-xs">
+                                          <HiOutlinePhotograph className="w-3 h-3 text-[#8b6f4e]" />
+                                          <span>{hasDesktopOverride ? 'Change' : 'Map'}</span>
+                                        </span>
+                                      </div>
                                     </div>
                                   )}
+                                </td>
 
-                                  {/* Drag hover overlay */}
-                                  {isSlotHovered ? (
-                                    <div className="absolute inset-0 bg-[#8b6f4e]/90 text-white flex items-center justify-center text-[11px] font-bold animate-pulse">
-                                      ⚡ Drop to Map
-                                    </div>
-                                  ) : isTargetActive ? (
-                                    <div className="absolute inset-0 bg-[#8b6f4e]/30 flex items-center justify-center">
-                                      <span className="bg-[#8b6f4e] text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded shadow">
-                                        Selected
-                                      </span>
-                                    </div>
-                                  ) : hasDesktopOverride ? (
-                                    <div className="absolute top-1 left-1">
-                                      <span className="bg-emerald-600/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
-                                        Theme
-                                      </span>
-                                    </div>
-                                  ) : null}
-                                </div>
-                              </td>
-
-                              {/* TITLE */}
-                              <td className="py-3 px-3.5 font-medium text-stone-900">
-                                <div
-                                  className="font-bold text-stone-900 text-xs sm:text-sm max-w-[220px] truncate"
-                                  title={bTitle}
-                                >
-                                  {bTitle}
-                                </div>
-                                {bDesc && (
-                                  <div className="text-[11px] text-stone-400 font-normal max-w-[200px] truncate mt-0.5" title={bDesc}>
-                                    {bDesc}
+                                {/* TITLE */}
+                                <td className="py-3 px-3.5 font-medium text-stone-900">
+                                  <div
+                                    className="font-bold text-stone-900 text-xs sm:text-sm max-w-[220px] truncate"
+                                    title={bTitle}
+                                  >
+                                    {bTitle}
                                   </div>
-                                )}
-                                {catName && (
-                                  <div className="mt-1">
-                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-medium bg-[#f5efe6] text-[#8a6d4b] border border-[#e8dccb]">
-                                      Category: {catName}
+                                  {bDesc && (
+                                    <div className="text-[11px] text-stone-400 font-normal max-w-[200px] truncate mt-0.5" title={bDesc}>
+                                      {bDesc}
+                                    </div>
+                                  )}
+                                  {catName && (
+                                    <div className="mt-1">
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-medium bg-[#f5efe6] text-[#8a6d4b] border border-[#e8dccb]">
+                                        Category: {catName}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {isCollectionBanner && (
+                                    <div className="mt-1 flex items-center gap-1.5">
+                                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-[#faf5ef] text-[#8b6f4e] border border-[#eedfcb]">
+                                        4 Collection Tiles ({mappedTilesCount} mapped)
+                                      </span>
+                                    </div>
+                                  )}
+                                </td>
+
+                                {/* STATUS */}
+                                <td className="py-3 px-3.5 whitespace-nowrap">
+                                  {isPublished ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf7ee] text-[#137333]">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-[#137333]" />
+                                      <span>Active</span>
                                     </span>
-                                  </div>
-                                )}
-                              </td>
-
-                              {/* STATUS */}
-                              <td className="py-3 px-3.5 whitespace-nowrap">
-                                {isPublished ? (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf7ee] text-[#137333]">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#137333]" />
-                                    <span>Active</span>
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-500">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
-                                    <span>Draft</span>
-                                  </span>
-                                )}
-                              </td>
-
-                              {/* DEVICES */}
-                              <td className="py-3 px-3.5 whitespace-nowrap">
-                                <div className="flex items-center gap-1.5 text-stone-500">
-                                  <button
-                                    type="button"
-                                    title="Desktop View (Click to target desktop)"
-                                    onClick={() => {
-                                      setActiveTargetSlot((prev) =>
-                                        prev?.record?._id === banner._id && prev?.device === 'desktop'
-                                          ? null
-                                          : { record: banner, device: 'desktop', placement: 'primary' }
-                                      );
-                                    }}
-                                    className={`p-1 rounded-md transition cursor-pointer ${
-                                      activeTargetSlot?.record?._id === banner._id && activeTargetSlot?.device === 'desktop'
-                                        ? 'bg-[#8b6f4e] text-white ring-2 ring-[#8b6f4e]/30'
-                                        : hasDesktopOverride
-                                        ? 'text-emerald-700 bg-emerald-50'
-                                        : (banner.image?.url || defaultAssetUrl)
-                                        ? 'text-stone-700 bg-stone-100'
-                                        : 'text-stone-400'
-                                    }`}
-                                  >
-                                    <HiOutlineDesktopComputer className="w-4 h-4" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    title="Mobile View (Click to target mobile)"
-                                    onClick={() => {
-                                      setActiveTargetSlot((prev) =>
-                                        prev?.record?._id === banner._id && prev?.device === 'mobile'
-                                          ? null
-                                          : { record: banner, device: 'mobile', placement: 'primary' }
-                                      );
-                                    }}
-                                    className={`p-1 rounded-md transition cursor-pointer ${
-                                      activeTargetSlot?.record?._id === banner._id && activeTargetSlot?.device === 'mobile'
-                                        ? 'bg-[#8b6f4e] text-white ring-2 ring-[#8b6f4e]/30'
-                                        : banner.mobileMapping?.imageUrl
-                                        ? 'text-emerald-700 bg-emerald-50'
-                                        : banner.mobileImage?.url
-                                        ? 'text-stone-700 bg-stone-100'
-                                        : 'text-stone-300'
-                                    }`}
-                                  >
-                                    <HiOutlineDeviceMobile className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </td>
-
-                              {/* ORDER */}
-                              <td className="py-3 px-3.5 whitespace-nowrap">
-                                <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg border border-stone-200 text-xs font-bold text-stone-700 bg-stone-50">
-                                  {banner.display?.order ?? banner.order ?? 1}
-                                </span>
-                              </td>
-
-                              {/* THEME MAPPING ACTIONS */}
-                              <td className="py-3 pr-4 pl-3 whitespace-nowrap text-right">
-                                <div className="flex items-center justify-end gap-1.5">
-                                  {hasDesktopOverride ? (
-                                    <>
-                                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10.5px] font-bold px-2 py-1">
-                                        Mapped
-                                      </span>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveTargetSlot((prev) =>
-                                            prev?.record?._id === banner._id && prev?.device === 'desktop'
-                                              ? null
-                                              : { record: banner, device: 'desktop', placement: 'primary' }
-                                          );
-                                        }}
-                                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                                          isTargetActive
-                                            ? 'bg-[#8b6f4e] text-white shadow-xs'
-                                            : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
-                                        }`}
-                                        title="Map another image: Click to select, then click any image from the gallery"
-                                      >
-                                        <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
-                                        <span>{isTargetActive ? 'Selected' : 'Change'}</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => handleDeleteMapping(banner, 'desktop', 'primary')}
-                                        className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
-                                        title="Reset to default storefront image"
-                                      >
-                                        <HiOutlineRefresh className="w-3.5 h-3.5" />
-                                      </button>
-                                    </>
                                   ) : (
-                                    <>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveTargetSlot((prev) =>
-                                            prev?.record?._id === banner._id && prev?.device === 'desktop'
-                                              ? null
-                                              : { record: banner, device: 'desktop', placement: 'primary' }
-                                          );
-                                        }}
-                                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                                          isTargetActive
-                                            ? 'bg-[#8b6f4e] text-white shadow-xs'
-                                            : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
-                                        }`}
-                                      >
-                                        {isTargetActive ? 'Selected' : 'Map'}
-                                      </button>
-                                    </>
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-500">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                                      <span>Draft</span>
+                                    </span>
                                   )}
-                                </div>
-                              </td>
-                            </tr>
+                                </td>
+
+                                {/* DEVICES */}
+                                <td className="py-3 px-3.5 whitespace-nowrap">
+                                  <div className="flex items-center gap-1.5 text-stone-500">
+                                    <button
+                                      type="button"
+                                      title="Desktop View (Click to map Desktop image)"
+                                      onClick={() => {
+                                        setPickerTarget({
+                                          record: banner,
+                                          device: 'desktop',
+                                          placement: 'primary',
+                                        });
+                                      }}
+                                      className={`p-1.5 rounded-lg transition cursor-pointer ${
+                                        hasDesktopOverride
+                                          ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                                          : (banner.image?.url || defaultAssetUrl)
+                                          ? 'text-stone-700 bg-stone-100 hover:bg-stone-200'
+                                          : 'text-stone-400 hover:bg-stone-100'
+                                      }`}>
+                                      <HiOutlineDesktopComputer className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      title="Mobile View (Click to map Mobile image)"
+                                      onClick={() => {
+                                        setPickerTarget({
+                                          record: banner,
+                                          device: 'mobile',
+                                          placement: 'primary',
+                                        });
+                                      }}
+                                      className={`p-1.5 rounded-lg transition cursor-pointer ${
+                                        banner.mobileMapping?.imageUrl
+                                          ? 'text-emerald-700 bg-emerald-50 hover:bg-emerald-100'
+                                          : banner.mobileImage?.url
+                                          ? 'text-stone-700 bg-stone-100 hover:bg-stone-200'
+                                          : 'text-stone-300 hover:bg-stone-100'
+                                      }`}>
+                                      <HiOutlineDeviceMobile className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </td>
+
+                                {/* ORDER */}
+                                <td className="py-3 px-3.5 whitespace-nowrap">
+                                  <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg border border-stone-200 text-xs font-bold text-stone-700 bg-stone-50">
+                                    {banner.display?.order ?? banner.order ?? 1}
+                                  </span>
+                                </td>
+
+                                {/* THEME MAPPING ACTIONS */}
+                                <td className="py-3 pr-4 pl-3 whitespace-nowrap text-right">
+                                  <div className="flex items-center justify-end gap-1.5">
+                                    {isCollectionBanner ? (
+                                      <>
+                                        <span
+                                          className={`inline-flex items-center gap-1 rounded-md text-[10.5px] font-bold px-2 py-1 border ${
+                                            mappedTilesCount === bannerTiles.length && bannerTiles.length > 0
+                                              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                                              : mappedTilesCount > 0
+                                              ? 'bg-amber-50 border-amber-200 text-amber-800'
+                                              : 'bg-stone-50 border-stone-200 text-stone-600'
+                                          }`}
+                                        >
+                                          {mappedTilesCount} of {bannerTiles.length} Mapped
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleCollapseBanner(banner._id)}
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white transition cursor-pointer"
+                                        >
+                                          {isExpanded ? (
+                                            <>
+                                              <HiOutlineChevronUp className="w-3.5 h-3.5" />
+                                              <span>Hide Tiles</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <HiOutlineChevronDown className="w-3.5 h-3.5" />
+                                              <span>View 4 Tiles</span>
+                                            </>
+                                          )}
+                                        </button>
+                                      </>
+                                    ) : hasDesktopOverride ? (
+                                      <>
+                                        <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10.5px] font-bold px-2 py-1">
+                                          Mapped
+                                        </span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setPickerTarget({
+                                              record: banner,
+                                              device: 'desktop',
+                                              placement: 'primary',
+                                            });
+                                          }}
+                                          className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white transition cursor-pointer"
+                                          title="Change mapped image"
+                                        >
+                                          <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
+                                          <span>Change</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleDeleteMapping(banner)}
+                                          className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+                                          title="Reset to default storefront image"
+                                        >
+                                          <HiOutlineRefresh className="w-3.5 h-3.5" />
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setPickerTarget({
+                                              record: banner,
+                                              device: 'desktop',
+                                              placement: 'primary',
+                                            });
+                                          }}
+                                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white transition cursor-pointer shadow-2xs"
+                                          title="Select image from Gallery Media Picker"
+                                        >
+                                          <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                                          <span>Map</span>
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+
+                              {/* EXPANDED 4-TILES GRID FOR COLLECTION BANNER */}
+                              {isCollectionBanner && isExpanded && (
+                                <tr className="bg-gradient-to-b from-[#fbf9f6] to-[#f7f3ed]/60 border-b-2 border-stone-200">
+                                  <td colSpan="7" className="p-3.5 sm:p-5">
+                                    <div className="bg-white rounded-2xl border border-[#e8dfd3] shadow-xs p-4 sm:p-5 space-y-4">
+                                      {/* Header bar */}
+                                      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-150">
+                                        <div className="flex items-center gap-3">
+                                          <div className="w-8 h-8 rounded-lg bg-[#8b6f4e]/10 text-[#8b6f4e] flex items-center justify-center font-bold text-sm">
+                                            4
+                                          </div>
+                                          <div>
+                                            <h4 className="text-xs sm:text-sm font-bold text-stone-900 flex items-center gap-2">
+                                              <span>Collection Showcase Tiles</span>
+                                              <span className="text-[11px] font-normal text-stone-500">
+                                                (Map theme images to each of the 4 tiles individually)
+                                              </span>
+                                            </h4>
+                                            <p className="text-[11px] text-stone-500 mt-0.5">
+                                              Drag &amp; drop photos from the Theme Media Gallery on the right onto any tile, or click &ldquo;Map Tile&rdquo; to assign.
+                                            </p>
+                                          </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                          <span
+                                            className={`text-xs font-semibold px-2.5 py-1 rounded-full border ${
+                                              mappedTilesCount === bannerTiles.length && bannerTiles.length > 0
+                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                                : mappedTilesCount > 0
+                                                ? 'bg-amber-50 text-amber-700 border-amber-200'
+                                                : 'bg-stone-50 text-stone-600 border-stone-200'
+                                            }`}
+                                          >
+                                            {mappedTilesCount} of {bannerTiles.length} Tiles Mapped
+                                          </span>
+                                          {mappedTilesCount > 0 && (
+                                            <button
+                                              type="button"
+                                              onClick={() => handleResetAllTiles(bannerTiles)}
+                                              className="text-[11.5px] font-medium text-stone-500 hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-50 border border-stone-200 hover:border-red-200 transition cursor-pointer"
+                                            >
+                                              Reset All Tiles
+                                            </button>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      {/* 4 Tiles Grid */}
+                                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                        {bannerTiles.map((tile) => {
+                                          const isTileTarget = activeTargetSlot?.record?._id === tile._id;
+                                          const isTileHovered = dragOverSlot?.recordId === tile._id;
+                                          const tileEffectiveImg = tile.mappedImageUrl || tile.imageUrl || tile.originalUrl;
+                                          const catName =
+                                            tile.categoryName ||
+                                            categories.find((c) => String(c._id) === String(tile.categoryId))?.name ||
+                                            `Category ${tile.order}`;
+
+                                          return (
+                                            <div
+                                              key={tile._id}
+                                              className={`rounded-xl border transition-all duration-200 p-3 flex flex-col justify-between ${
+                                                isTileHovered
+                                                  ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e] bg-[#8b6f4e]/5'
+                                                  : isTileTarget
+                                                  ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/40 bg-amber-50/40 shadow-sm'
+                                                  : tile.isMapped
+                                                  ? 'border-emerald-200 bg-emerald-50/20'
+                                                  : 'border-stone-200/90 bg-white hover:border-stone-300'
+                                              }`}
+                                            >
+                                              {/* Tile Header: Order & Category */}
+                                              <div className="flex items-center justify-between gap-1.5 mb-2.5">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                  <span className="shrink-0 inline-flex items-center justify-center w-5 h-5 rounded-md text-[11px] font-bold bg-[#8b6f4e] text-white">
+                                                    {tile.order}
+                                                  </span>
+                                                  <span className="text-xs font-bold text-stone-800 truncate" title={catName}>
+                                                    {catName}
+                                                  </span>
+                                                </div>
+                                                {tile.isMapped ? (
+                                                  <span className="shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-0.5">
+                                                    <HiOutlineCheck className="w-3 h-3 text-emerald-600" />
+                                                    Theme
+                                                  </span>
+                                                ) : (
+                                                  <span className="shrink-0 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-stone-100 text-stone-500">
+                                                    Original
+                                                  </span>
+                                                )}
+                                              </div>
+
+                                              {/* Droppable Image Slot */}
+                                              <div
+                                                onDragOver={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  e.dataTransfer.dropEffect = 'copy';
+                                                  setDragOverSlot({ recordId: tile._id, device: 'desktop' });
+                                                }}
+                                                onDragLeave={(e) => {
+                                                  if (!e.currentTarget.contains(e.relatedTarget)) {
+                                                    setDragOverSlot(null);
+                                                  }
+                                                }}
+                                                onDrop={(e) => {
+                                                  e.preventDefault();
+                                                  e.stopPropagation();
+                                                  handleDropOnSlot(
+                                                    e,
+                                                    { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
+                                                    'desktop',
+                                                    'primary'
+                                                  );
+                                                }}
+                                                onClick={() => {
+                                                  setActiveTargetSlot((prev) =>
+                                                    prev?.record?._id === tile._id
+                                                      ? null
+                                                      : {
+                                                          record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
+                                                          device: 'desktop',
+                                                          placement: 'primary',
+                                                        }
+                                                  );
+                                                }}
+                                                className={`w-full aspect-[4/3] rounded-lg border overflow-hidden relative cursor-pointer group flex items-center justify-center transition-all bg-stone-900 ${
+                                                  isTileHovered
+                                                    ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e] scale-101'
+                                                    : isTileTarget
+                                                    ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]'
+                                                    : tile.isMapped
+                                                    ? 'border-emerald-300 ring-1 ring-emerald-200'
+                                                    : 'border-stone-200'
+                                                }`}
+                                                title={
+                                                  isTileTarget
+                                                    ? 'Target selected! Click any image in the gallery on the right to map.'
+                                                    : 'Click to select as target, or drag an image here.'
+                                                }
+                                              >
+                                                {tileEffectiveImg ? (
+                                                  <img
+                                                    src={getMediaUrl(tileEffectiveImg)}
+                                                    alt={`Tile ${tile.order} - ${catName}`}
+                                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                                  />
+                                                ) : (
+                                                  <div className="w-full h-full bg-[#2a241e] flex flex-col items-center justify-center text-stone-500 gap-1">
+                                                    <HiOutlinePhotograph className="w-6 h-6 text-[#8a6d4b]/60" />
+                                                    <span className="text-[10px] text-stone-400">No Image</span>
+                                                  </div>
+                                                )}
+
+                                                {/* Overlays */}
+                                                {isTileHovered ? (
+                                                  <div className="absolute inset-0 bg-[#8b6f4e]/90 text-white flex items-center justify-center text-xs font-bold animate-pulse z-10">
+                                                    ⚡ Drop to Map Tile #{tile.order}
+                                                  </div>
+                                                ) : isTileTarget ? (
+                                                  <div className="absolute inset-0 bg-[#8b6f4e]/30 flex flex-col items-center justify-center gap-1 z-10">
+                                                    <span className="bg-[#8b6f4e] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
+                                                      Selected
+                                                    </span>
+                                                    <span className="text-[9.5px] text-white bg-black/60 px-1.5 py-0.5 rounded font-medium">
+                                                      Click gallery photo
+                                                    </span>
+                                                  </div>
+                                                ) : tile.isMapped ? (
+                                                  <div className="absolute top-1 left-1 z-10">
+                                                    <span className="bg-emerald-600/90 text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
+                                                      Theme
+                                                    </span>
+                                                  </div>
+                                                ) : null}
+
+                                                {/* High-res preview eye button */}
+                                                {tileEffectiveImg && !isTileHovered && !isTileTarget && (
+                                                  <button
+                                                    type="button"
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      openImagePreview(tileEffectiveImg, {
+                                                        title: `Collection Tile #${tile.order} · ${catName}`,
+                                                      });
+                                                    }}
+                                                    className="absolute top-1.5 right-1.5 p-1 rounded-md bg-black/60 hover:bg-black/80 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                                                    title="View full image preview"
+                                                  >
+                                                    <HiOutlineEye className="w-3.5 h-3.5" />
+                                                  </button>
+                                                )}
+                                              </div>
+
+                                              {/* Tile Footer Actions */}
+                                              <div className="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between gap-1.5">
+                                                {tile.isMapped ? (
+                                                  <>
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setActiveTargetSlot((prev) =>
+                                                          prev?.record?._id === tile._id
+                                                            ? null
+                                                            : {
+                                                                record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
+                                                                device: 'desktop',
+                                                                placement: 'primary',
+                                                              }
+                                                        );
+                                                      }}
+                                                      className={`flex-1 inline-flex items-center justify-center gap-1 py-1 px-2 text-[11px] font-semibold rounded-lg transition cursor-pointer ${
+                                                        isTileTarget
+                                                          ? 'bg-[#8b6f4e] text-white shadow-xs'
+                                                          : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
+                                                      }`}
+                                                      title="Change image by clicking from Theme Media Gallery"
+                                                    >
+                                                      <HiOutlineSwitchHorizontal className="w-3 h-3" />
+                                                      <span>{isTileTarget ? 'Selected' : 'Change'}</span>
+                                                    </button>
+
+                                                    <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                        setPickerTarget({
+                                                          record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
+                                                          device: 'desktop',
+                                                          placement: 'primary',
+                                                        })
+                                                      }
+                                                      className="p-1 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-stone-100 border border-stone-200 transition cursor-pointer"
+                                                      title="Open Media Gallery Picker Modal"
+                                                    >
+                                                      <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                                                    </button>
+
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => handleDeleteMapping({ _id: tile._id })}
+                                                      className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+                                                      title="Reset to original storefront image"
+                                                    >
+                                                      <HiOutlineRefresh className="w-3.5 h-3.5" />
+                                                    </button>
+                                                  </>
+                                                ) : (
+                                                  <>
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => {
+                                                        setActiveTargetSlot((prev) =>
+                                                          prev?.record?._id === tile._id
+                                                            ? null
+                                                            : {
+                                                                record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
+                                                                device: 'desktop',
+                                                                placement: 'primary',
+                                                              }
+                                                        );
+                                                      }}
+                                                      className={`flex-1 inline-flex items-center justify-center gap-1 py-1 px-2 text-[11px] font-semibold rounded-lg transition cursor-pointer ${
+                                                        isTileTarget
+                                                          ? 'bg-[#8b6f4e] text-white shadow-xs'
+                                                          : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
+                                                      }`}
+                                                    >
+                                                      <HiOutlineTag className="w-3 h-3" />
+                                                      <span>{isTileTarget ? 'Selected' : `Map Tile ${tile.order}`}</span>
+                                                    </button>
+
+                                                    <button
+                                                      type="button"
+                                                      onClick={() =>
+                                                        setPickerTarget({
+                                                          record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
+                                                          device: 'desktop',
+                                                          placement: 'primary',
+                                                        })
+                                                      }
+                                                      className="p-1 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-stone-100 border border-stone-200 transition cursor-pointer"
+                                                      title="Open Media Gallery Picker Modal"
+                                                    >
+                                                      <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                                                    </button>
+                                                  </>
+                                                )}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
                           );
                         })
                       )}
@@ -1455,7 +1862,7 @@ export default function ThemeMediaMappingTab({
                ═══════════════════════════════════════════════════════════ */
             <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
               {/* Prominent Placement Tabs Header */}
-              <div className="border-b border-stone-200 bg-[#fbfaf8] px-4 sm:px-6 pt-2.5 flex flex-wrap items-center justify-between gap-3">
+              <div className="border-b border-stone-200 bg-[#fbfaf8] px-4 sm:px-6 py-2.5 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-2 sm:gap-6 -mb-px overflow-x-auto">
                   {['Celebrate', 'Gifts', 'all'].map((tabKey) => {
                     const isTabActive = celebratePlacementFilter === tabKey;
@@ -1485,17 +1892,46 @@ export default function ThemeMediaMappingTab({
                   })}
                 </div>
 
-                {selectedIds.size > 0 && (
+                <div className="flex items-center gap-2">
+                  {selectedIds.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleBulkClear}
+                      disabled={bulkActionLoading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition cursor-pointer"
+                    >
+                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                      <span>Revert Selected ({selectedIds.size})</span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
-                    onClick={handleBulkClear}
-                    disabled={bulkActionLoading}
-                    className="flex items-center gap-1.5 px-3 py-1.5 mb-2 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition cursor-pointer"
+                    onClick={() => {
+                      setPickerTarget({
+                        record: null,
+                        device: 'desktop',
+                        placement: 'celebrate',
+                        isBrowsing: true,
+                      });
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer shadow-2xs"
                   >
-                    <HiOutlineTrash className="w-3.5 h-3.5" />
-                    <span>Revert Selected ({selectedIds.size})</span>
+                    <HiOutlinePhotograph className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                    <span>Browse Gallery</span>
                   </button>
-                )}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate(`/gallery?openUpload=true&themeId=${themeId || ''}&type=celebrate`);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#8b6f4e] text-white hover:brightness-95 transition-colors cursor-pointer shadow-2xs"
+                  >
+                    <HiOutlineUpload className="h-3.5 w-3.5" />
+                    <span>+ Upload Media</span>
+                  </button>
+                </div>
               </div>
 
               {/* Table matching CelebrateGiftsView.jsx */}
@@ -1572,43 +2008,19 @@ export default function ThemeMediaMappingTab({
                             </td>
                             <td className="py-2.5 px-3">
                               <div
-                                onDragOver={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  e.dataTransfer.dropEffect = 'copy';
-                                  setDragOverSlot({ recordId: item._id, device: 'desktop' });
-                                }}
-                                onDragLeave={(e) => {
-                                  if (!e.currentTarget.contains(e.relatedTarget)) {
-                                    setDragOverSlot(null);
-                                  }
-                                }}
-                                onDrop={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  handleDropOnSlot(e, item, 'desktop', 'primary');
-                                }}
                                 onClick={() => {
-                                  setActiveTargetSlot((prev) =>
-                                    prev?.record?._id === item._id
-                                      ? null
-                                      : { record: item, device: 'desktop', placement: 'celebrate' }
-                                  );
+                                  setPickerTarget({
+                                    record: item,
+                                    device: 'desktop',
+                                    placement: 'celebrate',
+                                  });
                                 }}
                                 className={`w-14 h-10 rounded-md overflow-hidden border cursor-pointer flex items-center justify-center relative shadow-2xs transition-all ${
-                                  isSlotHovered
-                                    ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e] scale-105'
-                                    : isTargetActive
-                                    ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/40'
-                                    : isMapped
+                                  isMapped
                                     ? 'border-emerald-400 ring-1 ring-emerald-300'
-                                    : 'border-stone-200/80 bg-stone-100'
+                                    : 'border-stone-200/80 bg-stone-100 hover:border-[#8b6f4e]'
                                 }`}
-                                title={
-                                  isTargetActive
-                                    ? 'Target selected! Click an image in the gallery to map.'
-                                    : 'Click to select as mapping target, or drag an image here.'
-                                }
+                                title="Click to select image from Gallery Media Picker"
                               >
                                 {currentCover ? (
                                   <img
@@ -1619,11 +2031,7 @@ export default function ThemeMediaMappingTab({
                                 ) : (
                                   <HiOutlinePhotograph className="w-5 h-5 text-stone-400" />
                                 )}
-                                {isSlotHovered ? (
-                                  <div className="absolute inset-0 bg-[#8b6f4e]/90 text-white flex items-center justify-center text-[9px] font-bold">
-                                    Drop
-                                  </div>
-                                ) : isMapped ? (
+                                {isMapped ? (
                                   <div className="absolute top-0.5 left-0.5">
                                     <span className="bg-emerald-600/90 text-white text-[8px] font-bold px-1 rounded shadow-xs uppercase">
                                       Theme
@@ -1662,25 +2070,21 @@ export default function ThemeMediaMappingTab({
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        setActiveTargetSlot((prev) =>
-                                          prev?.record?._id === item._id
-                                            ? null
-                                            : { record: item, device: 'desktop', placement: 'celebrate' }
-                                        );
+                                        setPickerTarget({
+                                          record: item,
+                                          device: 'desktop',
+                                          placement: 'celebrate',
+                                        });
                                       }}
-                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                                        isTargetActive
-                                          ? 'bg-[#8b6f4e] text-white shadow-xs'
-                                          : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
-                                      }`}
-                                      title="Map another image: Click to select, then click any image from the gallery"
+                                      className="inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-lg bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white transition cursor-pointer"
+                                      title="Change mapped image"
                                     >
                                       <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
-                                      <span>{isTargetActive ? 'Selected' : 'Change'}</span>
+                                      <span>Change</span>
                                     </button>
                                     <button
                                       type="button"
-                                      onClick={() => handleDeleteMapping(item, 'desktop', 'primary')}
+                                      onClick={() => handleDeleteMapping(item)}
                                       className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
                                       title="Reset to default storefront image"
                                     >
@@ -1691,19 +2095,16 @@ export default function ThemeMediaMappingTab({
                                   <button
                                     type="button"
                                     onClick={() => {
-                                      setActiveTargetSlot((prev) =>
-                                        prev?.record?._id === item._id
-                                          ? null
-                                          : { record: item, device: 'desktop', placement: 'celebrate' }
-                                      );
+                                      setPickerTarget({
+                                        record: item,
+                                        device: 'desktop',
+                                        placement: 'celebrate',
+                                      });
                                     }}
-                                    className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
-                                      isTargetActive
-                                        ? 'bg-[#8b6f4e] text-white shadow-xs'
-                                        : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
-                                    }`}
+                                    className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white transition cursor-pointer shadow-2xs"
                                   >
-                                    {isTargetActive ? 'Selected' : 'Map'}
+                                    <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                                    <span>Map</span>
                                   </button>
                                 )}
                               </div>
@@ -1720,212 +2121,42 @@ export default function ThemeMediaMappingTab({
               </div>
             </div>
           )}
-        </div>
-
-        {/* ═══════════════════════════════════════════════════════════
-            RIGHT COLUMN: THEME MEDIA GALLERY SIDE PANEL (xl:col-span-5)
-            ═══════════════════════════════════════════════════════════ */}
-        <div className="xl:col-span-5 sticky top-4 space-y-3.5">
-          <div className="rounded-2xl border border-stone-200 bg-white shadow-2xs overflow-hidden">
-            {/* Side Panel Header */}
-            <div className="p-4 border-b border-stone-200 bg-stone-50/80">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl bg-[#8b6f4e] text-white flex items-center justify-center shadow-2xs">
-                    <HiOutlinePhotograph className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-stone-900 leading-tight">
-                      Theme Media Gallery
-                    </h3>
-                    <p className="text-[11px] text-stone-500">
-                      Drag & Drop onto any banner on the left
-                    </p>
-                  </div>
-                </div>
-
-                {/* Upload Button: Redirects to Gallery Upload Studio */}
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const type = mappingMode === 'celebrate' ? 'celebrate' : (currentBannerType?.key || activeModule || 'herobanner');
-                      navigate(`/gallery?openUpload=true&themeId=${themeId || ''}&type=${type}`);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-xl bg-[#8b6f4e] hover:brightness-95 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition cursor-pointer"
-                  >
-                    <HiOutlineUpload className="h-3.5 w-3.5" />
-                    <span>+ Upload</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* Placement & Platform Filters (gallery.model.js L23-L38 & L39-L44) */}
-              <div className="mt-3 flex items-center gap-2">
-                <div className="flex-1 min-w-0">
-                  <Dropdown
-                    value={galleryPlacementFilter}
-                    onChange={(val) => setGalleryPlacementFilter(val)}
-                    options={GALLERY_PLACEMENT_FILTER_OPTIONS}
-                    portal={true}
-                    size="sm"
-                    buttonClassName="w-full h-8 px-2.5 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 justify-between truncate shadow-2xs"
-                    menuClassName="z-30 text-xs max-h-60 overflow-y-auto"
-                  />
-                </div>
-
-                <div className="flex-1 min-w-0">
-                  <Dropdown
-                    value={galleryPlatformFilter}
-                    onChange={(val) => setGalleryPlatformFilter(val)}
-                    options={GALLERY_PLATFORM_FILTER_OPTIONS}
-                    portal={true}
-                    size="sm"
-                    buttonClassName="w-full h-8 px-2.5 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 justify-between truncate shadow-2xs"
-                    menuClassName="z-30 text-xs max-h-60 overflow-y-auto"
-                  />
-                </div>
-
-                {(galleryPlacementFilter !== 'all' || galleryPlatformFilter !== 'all') && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setGalleryPlacementFilter('all');
-                      setGalleryPlatformFilter('all');
-                    }}
-                    title="Reset filters"
-                    className="h-8 w-8 rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-stone-800 hover:bg-stone-50 flex items-center justify-center shrink-0 transition cursor-pointer"
-                  >
-                    <HiOutlineRefresh className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Gallery Images Grid */}
-            <div className="p-3.5 max-h-[620px] overflow-y-auto">
-              {galleryLoading ? (
-                <div className="py-20 text-center text-xs text-stone-500 space-y-2">
-                  <HiOutlineRefresh className="h-6 w-6 animate-spin mx-auto text-[#8b6f4e]" />
-                  <p>Loading theme gallery…</p>
-                </div>
-              ) : sideGalleryItems.length === 0 ? (
-                <div className="py-14 text-center text-xs text-stone-500 space-y-2.5">
-                  <HiOutlinePhotograph className="h-8 w-8 mx-auto text-stone-300" />
-                  <p className="font-bold text-stone-800">
-                    No images uploaded for {theme?.name || 'this theme'} yet
-                  </p>
-                  <p className="text-[11px] text-stone-400 max-w-xs mx-auto">
-                    Click <strong>+ Upload</strong> above to upload media assets for this theme.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {sideGalleryItems.map((item) => {
-                    const imgUrl = item.image?.url || item.url;
-                    const displayName = item.name || item.fileName || `Asset ${String(item._id).slice(-4)}`;
-                    const isLinked = Boolean(item.linkedRecord?.recordId);
-
-                    return (
-                      <div
-                        key={item._id}
-                        draggable={true}
-                        onDragStart={(e) => {
-                          draggedAssetRef.current = item;
-                          try {
-                            const payload = JSON.stringify(item);
-                            e.dataTransfer.setData('application/json', payload);
-                            e.dataTransfer.setData('text/plain', payload);
-                          } catch (_) {}
-                          e.dataTransfer.effectAllowed = 'copy';
-                        }}
-                        onDragEnd={() => {
-                          draggedAssetRef.current = null;
-                          setDragOverSlot(null);
-                        }}
-                        onClick={() => handleGalleryItemClick(item)}
-                        className={`group relative rounded-xl border overflow-hidden bg-white cursor-grab active:cursor-grabbing transition-all duration-200 hover:shadow-md ${
-                          activeTargetSlot
-                            ? 'border-amber-300 ring-2 ring-amber-200/50 hover:border-amber-500'
-                            : 'border-stone-200 hover:border-[#8b6f4e]'
-                        }`}
-                        title="Drag this image onto any banner card on the left"
-                      >
-                        {/* Image Thumbnail */}
-                        <div className="aspect-4/3 w-full bg-stone-100 overflow-hidden relative">
-                          <img
-                            src={imgUrl}
-                            alt={displayName}
-                            draggable={false}
-                            className="w-full h-full object-cover select-none pointer-events-none transition duration-300 group-hover:scale-105"
-                          />
-
-                          {/* Hover Drag Badge */}
-                          <div className="absolute top-1.5 left-1.5 rounded-md bg-stone-900/75 backdrop-blur-xs text-white px-1.5 py-0.5 text-[9px] font-bold flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                            <span>⋮⋮ Drag</span>
-                          </div>
-
-                          {/* Linked Record Indicator */}
-                          {isLinked && (
-                            <div className="absolute top-1.5 right-1.5 rounded-md bg-emerald-600/90 text-white p-1 text-[9px] font-bold shadow-xs" title="Linked to a banner/featured record">
-                              <HiOutlineLink className="h-3 w-3" />
-                            </div>
-                          )}
-
-                          {/* Click to Map Overlay when Active Target is selected */}
-                          {activeTargetSlot && (
-                            <div className="absolute inset-0 bg-[#8b6f4e]/80 opacity-0 group-hover:opacity-100 transition flex flex-col items-center justify-center text-white p-2 text-center">
-                              <HiOutlineCursorClick className="h-5 w-5 mb-1" />
-                              <span className="text-[10px] font-bold leading-tight">
-                                Click to Map
-                              </span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Card Info Footer (matches Screen 2 & Gallery cards) */}
-                        <div className="p-2 border-t border-stone-100 bg-white">
-                          <div className="text-[11px] font-bold text-stone-800 truncate">
-                            {displayName}
-                          </div>
-                          <div className="mt-0.5 flex items-center justify-between text-[10px] text-stone-400 capitalize">
-                            <span className="truncate">{item.placement || 'asset'}</span>
-                            <span className="uppercase text-[9px] font-semibold text-stone-400 shrink-0 ml-1">
-                              {item.platform || 'web'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-
-          </div>
-        </div>
       </div>
+
+
 
       {/* ─────────────────────────────────────────────────────────────
           5. MODAL: MEDIA GALLERY PICKER (When user clicks "Browse")
           ───────────────────────────────────────────────────────────── */}
-      {pickerTarget && (
-        <GalleryPickerModal
-          target={pickerTarget}
-          activeModule={activeModule}
-          onClose={() => setPickerTarget(null)}
-          onSelect={handleSaveMapping}
-          onDirectUpload={(file) =>
-            handleDirectUpload(
-              file,
-              pickerTarget.record,
-              pickerTarget.device,
-              pickerTarget.placement
-            )
-          }
-        />
-      )}
+      {/* ─── COMMON GALLERY MEDIA PICKER MODAL ─── */}
+      <GalleryMediaPickerModal
+        isOpen={Boolean(pickerTarget)}
+        onClose={() => setPickerTarget(null)}
+        onSelect={handlePickerSelect}
+        currentSelectedUrl={
+          pickerTarget?.device === 'mobile'
+            ? pickerTarget?.record?.mobileMapping?.imageUrl || pickerTarget?.record?.mobileImage?.url || ''
+            : pickerTarget?.record?.desktopMapping?.imageUrl || pickerTarget?.record?.image?.url || ''
+        }
+        initialTheme={themeId || 'all'}
+        initialPlacement={
+          mappingMode === 'celebrate'
+            ? 'celebrate'
+            : (activeModule || 'herobanner')
+        }
+        initialPlatform={
+          pickerTarget?.device === 'mobile' ? 'app' : pickerTarget?.device === 'desktop' ? 'web' : 'all'
+        }
+        placementOptions={GALLERY_PLACEMENT_FILTER_OPTIONS}
+        title="Gallery Media Picker"
+        subtitle={
+          pickerTarget?.record
+            ? `Select an image for ${
+                pickerTarget?.record?.content?.title || pickerTarget?.record?.title || pickerTarget?.record?.name || 'Banner'
+              } · ${pickerTarget?.device === 'mobile' ? 'Mobile App' : 'Desktop'} slot.`
+            : 'Select an image from your website themes or media gallery.'
+        }
+      />
 
       {/* ─────────────────────────────────────────────────────────────
           6. MODAL: ONE-CLICK ACTIVATION CONFIRMATION
@@ -1945,346 +2176,6 @@ export default function ThemeMediaMappingTab({
 
 // ═════════════════════════════════════════════════════════════════════
 // SUBCOMPONENT: GALLERY PICKER + DIRECT UPLOADER MODAL
-// ═════════════════════════════════════════════════════════════════════
-function GalleryPickerModal({ target, onClose, onSelect, onDirectUpload }) {
-  const [activeTab, setActiveTab] = useState('gallery'); // 'gallery' or 'upload'
-  const [galleryItems, setGalleryItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedType, setSelectedType] = useState('all');
-  const [selectedAsset, setSelectedAsset] = useState(null);
-  const [saving, setSaving] = useState(false);
-  const [dragOver, setDragOver] = useState(false);
-  const fileInputRef = useRef(null);
-
-  // Fetch Gallery Assets
-  const fetchGalleryAssets = useCallback(async () => {
-    try {
-      setLoading(true);
-      const res = await galleryAPI.getAll({
-        search,
-        type: selectedType === 'all' ? undefined : selectedType,
-        limit: 100,
-      });
-      const data = res.data?.data || res.data || {};
-      const items = data.items || [];
-      setGalleryItems(items);
-
-      if (target.currentMediaId) {
-        const found = items.find((i) => String(i._id) === String(target.currentMediaId));
-        if (found) setSelectedAsset(found);
-      }
-    } catch (err) {
-      console.error('Failed to fetch gallery media for picker:', err);
-      toast.error('Could not load Media Gallery assets');
-    } finally {
-      setLoading(false);
-    }
-  }, [search, selectedType, target.currentMediaId]);
-
-  useEffect(() => {
-    fetchGalleryAssets();
-  }, [fetchGalleryAssets]);
-
-  const handleConfirm = async () => {
-    if (!selectedAsset) return;
-    try {
-      setSaving(true);
-      await onSelect(selectedAsset);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleFileDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      onDirectUpload(file);
-      onClose();
-    }
-  };
-
-  const handleFileSelect = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      onDirectUpload(file);
-      onClose();
-    }
-  };
-
-  const deviceLabel = target.device === 'mobile' ? 'Mobile Variant' : 'Primary Desktop';
-  const recordTitle = target.record.title || target.record.name || 'Storefront Item';
-
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="relative w-full max-w-4xl max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-stone-200 overflow-hidden">
-        {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-stone-200 p-4 sm:p-5 bg-stone-50/70">
-          <div>
-            <div className="flex items-center gap-2">
-              <HiOutlinePhotograph className="h-5 w-5 text-[#8b6f4e]" />
-              <h3 className="text-base font-bold text-stone-900">
-                Choose or Upload Theme Image
-              </h3>
-            </div>
-            <p className="mt-0.5 text-xs text-stone-500">
-              Customizing <span className="font-semibold text-stone-800">"{recordTitle}"</span> ·{' '}
-              <span className="font-semibold text-[#8b6f4e]">{deviceLabel}</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl border border-stone-200 bg-white p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
-          >
-            <HiOutlineX className="h-5 w-5" />
-          </button>
-        </div>
-
-        {/* Modal Tabs: Gallery vs Direct Upload */}
-        <div className="border-b border-stone-200 bg-stone-50/40 px-4 sm:px-5 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('gallery')}
-              className={`py-3 px-3 border-b-2 text-xs font-bold transition cursor-pointer ${
-                activeTab === 'gallery'
-                  ? 'border-[#8b6f4e] text-[#8b6f4e]'
-                  : 'border-transparent text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              Browse Media Gallery ({galleryItems.length})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('upload')}
-              className={`py-3 px-3 border-b-2 text-xs font-bold transition cursor-pointer ${
-                activeTab === 'upload'
-                  ? 'border-[#8b6f4e] text-[#8b6f4e]'
-                  : 'border-transparent text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              Upload New File Directly
-            </button>
-          </div>
-        </div>
-
-        {/* Modal Body */}
-        {activeTab === 'upload' ? (
-          /* Direct Drag & Drop Upload Tab */
-          <div className="p-8 sm:p-12 flex-1 flex flex-col items-center justify-center">
-            <div
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={handleFileDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className={`w-full max-w-lg p-10 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition ${
-                dragOver
-                  ? 'border-[#8b6f4e] bg-[#8b6f4e]/10 scale-102'
-                  : 'border-stone-300 hover:border-[#8b6f4e] bg-stone-50 hover:bg-stone-50/50'
-              }`}
-            >
-              <div className="w-16 h-16 rounded-2xl bg-amber-100/70 text-[#8b6f4e] flex items-center justify-center mb-4 shadow-2xs">
-                <HiOutlineCloudUpload className="h-8 w-8" />
-              </div>
-              <h4 className="font-bold text-stone-900 text-sm">
-                Drag and drop your festival image here
-              </h4>
-              <p className="text-xs text-stone-500 mt-1 max-w-xs">
-                PNG, JPG, or WebP. The image will be compressed automatically and mapped to this record.
-              </p>
-              <button
-                type="button"
-                className="mt-4 rounded-xl bg-[#8b6f4e] hover:brightness-95 px-4 py-2 text-xs font-semibold text-white shadow-2xs cursor-pointer"
-              >
-                Browse File from Computer
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleFileSelect}
-              />
-            </div>
-          </div>
-        ) : (
-          /* Media Gallery Grid Tab */
-          <>
-            {/* Search & Categories */}
-            <div className="p-4 border-b border-stone-100 bg-white flex flex-col sm:flex-row gap-3 items-center justify-between">
-              <div className="relative w-full sm:w-72">
-                <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search gallery images..."
-                  className="w-full h-9 pl-9 pr-8 rounded-xl border border-stone-200 bg-white text-xs text-stone-800 outline-none transition focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 placeholder:text-stone-400"
-                />
-                {search && (
-                  <button
-                    type="button"
-                    onClick={() => setSearch('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
-                  >
-                    <HiOutlineX className="h-3.5 w-3.5" />
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto">
-                {[
-                  ['all', 'All Gallery'],
-                  ['herobanner', 'Hero'],
-                  ['celebrate', 'Celebrate'],
-                  ['collectionbanner', 'Collections'],
-                  ['categorybanner', 'Categories'],
-                  ['asset', 'Assets'],
-                ].map(([val, lbl]) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setSelectedType(val)}
-                    className={`rounded-lg px-2.5 py-1 text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
-                      selectedType === val
-                        ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
-                  >
-                    {lbl}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Gallery Grid */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-5">
-              {loading ? (
-                <div className="py-24 text-center text-xs text-stone-500 space-y-2">
-                  <HiOutlineRefresh className="h-6 w-6 animate-spin mx-auto text-[#8b6f4e]" />
-                  <p>Fetching uploaded Media Gallery images…</p>
-                </div>
-              ) : galleryItems.length === 0 ? (
-                <div className="py-20 text-center text-xs text-stone-500 space-y-2">
-                  <HiOutlinePhotograph className="h-8 w-8 mx-auto text-stone-300" />
-                  <p className="font-semibold text-stone-700">No images found in Media Gallery</p>
-                  <p className="text-[11px] text-stone-400">
-                    Switch to the "Upload New File" tab above to upload directly.
-                  </p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {galleryItems.map((item) => {
-                    const imgUrl = item.image?.url || item.url;
-                    const isSelected = selectedAsset?._id === item._id;
-                    const displayName = item.name || item.fileName || `Image ${String(item._id).slice(-4)}`;
-
-                    return (
-                      <div
-                        key={item._id}
-                        onClick={() => setSelectedAsset(item)}
-                        className={`group relative rounded-xl border-2 overflow-hidden bg-stone-50 cursor-pointer transition-all ${
-                          isSelected
-                            ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20 shadow-md scale-102'
-                            : 'border-stone-200 hover:border-stone-300 hover:shadow-sm'
-                        }`}
-                      >
-                        <div className="aspect-4/3 w-full overflow-hidden bg-stone-100">
-                          <img
-                            src={imgUrl}
-                            alt={displayName}
-                            className="w-full h-full object-cover transition duration-300 group-hover:scale-105"
-                          />
-                        </div>
-
-                        {isSelected && (
-                          <div className="absolute top-2 right-2 rounded-full bg-[#8b6f4e] text-white p-1 shadow-sm">
-                            <HiOutlineCheck className="h-3.5 w-3.5 stroke-2" />
-                          </div>
-                        )}
-
-                        <div className="p-2 bg-white">
-                          <p className="text-[11px] font-semibold text-stone-800 truncate" title={displayName}>
-                            {displayName}
-                          </p>
-                          <div className="flex items-center justify-between text-[10px] text-stone-400 mt-0.5">
-                            <span className="capitalize">{item.type || 'media'}</span>
-                            {item.platform && <span className="uppercase">{item.platform}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* Modal Footer */}
-        {activeTab === 'gallery' && (
-          <div className="border-t border-stone-200 p-4 bg-stone-50/80 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 w-full sm:w-auto">
-              {selectedAsset ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-8 rounded border border-stone-200 overflow-hidden bg-stone-100 shrink-0">
-                    <img
-                      src={selectedAsset.image?.url || selectedAsset.url}
-                      alt="preview"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <div className="text-left">
-                    <span className="text-[11px] font-bold text-stone-800 block truncate max-w-[200px]">
-                      {selectedAsset.name || selectedAsset.fileName || 'Selected Media Asset'}
-                    </span>
-                    <span className="text-[10px] text-emerald-700 font-semibold">
-                      Ready to map to {deviceLabel}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <span className="text-xs text-stone-500 italic">
-                  Select an image from the grid above
-                </span>
-              )}
-            </div>
-
-            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={saving}
-                className="rounded-xl border border-stone-200 bg-white hover:bg-stone-50 px-4 py-2 text-xs font-semibold text-stone-700 transition cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleConfirm}
-                disabled={!selectedAsset || saving}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#8b6f4e] hover:brightness-95 px-5 py-2 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
-              >
-                <HiOutlineCheck className="h-4 w-4 stroke-2" />
-                <span>{saving ? 'Saving Mapping…' : 'Use This Image'}</span>
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>,
-    document.body
-  );
-}
-
-// ═════════════════════════════════════════════════════════════════════
-// SUBCOMPONENT: ONE-CLICK ACTIVATION CONFIRMATION MODAL
 // ═════════════════════════════════════════════════════════════════════
 function ActivationConfirmModal({ theme, summary, activating, onClose, onConfirm }) {
   const total = summary?.summary?.totalRecords || 0;

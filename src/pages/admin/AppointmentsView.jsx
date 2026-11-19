@@ -702,7 +702,7 @@ export default function AppointmentsView() {
                 : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
             }`}
           >
-            <HiOutlineTrash className="w-3.5 h-3.5 shrink-0" />
+            <HiOutlineTrash className="w-3.5 h-3.5 shrink-0 text-[#ef4444]" />
             <span>Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}</span>
           </button>
         </div>

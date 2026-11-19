@@ -3,7 +3,7 @@ import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import CategorySelect from '../../components/common/CategorySelect';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -217,7 +217,6 @@ export default function OrnateProductEdit() {
   const [baseInfo, setBaseInfo] = useState({
     title: '',
     category: '',
-    categoryTag: '',
     promoBanner: [],
     menuItem: [],
     targetGender: [],
@@ -454,14 +453,13 @@ export default function OrnateProductEdit() {
           setSelectedCollectionIds(collIds);
 
           // Populate Base Information
-          const rawPromo = product.promoBanner || product.basicInfo?.promoBanner || product.categoryTag || [];
+          const rawPromo = product.promoBanner || product.basicInfo?.promoBanner || [];
           const promoArr = Array.isArray(rawPromo)
             ? rawPromo.map((p) => String(p)).filter(Boolean)
             : (rawPromo ? [String(rawPromo)] : []);
           setBaseInfo({
             title: product.basicInfo?.title || '',
             category: primaryCat,
-            categoryTag: (Array.isArray(product.promoBanner) && product.promoBanner[0]) || product.categoryTag || '',
             promoBanner: promoArr,
             menuItem: selectedMenuIds(product),
             targetGender: (() => {
@@ -732,7 +730,7 @@ export default function OrnateProductEdit() {
     try {
       setUploadingSwatchColor(colorName);
       toast.loading(`Optimizing & uploading swatch...`, { id: `swatch-${colorName}` });
-      const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
+      const res = await uploadWithPresignedUrl(file, 'swatch', null, { productId: mediaProductId });
       if (res.fileUrl) {
         setVariantMedia((prev) => ({
           ...prev,
@@ -1077,8 +1075,7 @@ export default function OrnateProductEdit() {
         categoryIds: [...new Set([baseInfo.category, ...(selectedCollectionIds || [])].filter(Boolean))],
         promoBanner: Array.isArray(baseInfo.promoBanner)
           ? baseInfo.promoBanner.filter(Boolean)
-          : (baseInfo.promoBanner ? [baseInfo.promoBanner] : (baseInfo.categoryTag ? [baseInfo.categoryTag] : [])),
-        categoryTag: (Array.isArray(baseInfo.promoBanner) && baseInfo.promoBanner[0]) || baseInfo.categoryTag || '',
+          : (baseInfo.promoBanner ? [baseInfo.promoBanner] : []),
         menuItemIds: baseInfo.menuItem,
         gender: Array.isArray(baseInfo.targetGender)
           ? baseInfo.targetGender.filter(Boolean)
@@ -1549,7 +1546,6 @@ export default function OrnateProductEdit() {
                           category: catId,
                           menuItem: [],
                           promoBanner: [],
-                          categoryTag: '',
                         }));
                       } else {
                         setBaseInfo((prev) => ({
@@ -1590,13 +1586,12 @@ export default function OrnateProductEdit() {
                     size="field"
                     variant="input"
                     multiple
-                    value={baseInfo.promoBanner || (baseInfo.categoryTag ? [baseInfo.categoryTag] : [])}
+                    value={baseInfo.promoBanner || []}
                     onChange={(val) => {
                       const arr = Array.isArray(val) ? val : [val].filter(Boolean);
                       setBaseInfo((prev) => ({
                         ...prev,
                         promoBanner: arr,
-                        categoryTag: arr[0] || '',
                       }));
                     }}
                     placeholder={
@@ -2016,21 +2011,11 @@ export default function OrnateProductEdit() {
                                 <div className="flex items-center gap-1 shrink-0">
                                   <button
                                     type="button"
-                                    onClick={() =>
-                                      document.getElementById(`swatch-upload-${col.name}`)?.click()
-                                    }
-                                    className="p-1.5 text-stone-500 hover:text-[#8b6f4e] rounded-lg hover:bg-stone-50 cursor-pointer"
-                                    title="Change icon"
-                                  >
-                                    <HiOutlineRefresh className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
                                     onClick={() => handleRemoveSwatchIcon(col.name)}
-                                    className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-red-50 cursor-pointer"
+                                    className="p-1.5 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/60 rounded-lg cursor-pointer transition-colors"
                                     title="Remove icon"
                                   >
-                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                    <HiOutlineTrash className="w-3.5 h-3.5 text-red-600" />
                                   </button>
                                 </div>
                               </div>
@@ -2111,10 +2096,10 @@ export default function OrnateProductEdit() {
                                           e.stopPropagation();
                                           handleRemoveVariantMedia(col.name, m.id);
                                         }}
-                                        className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                        className="absolute top-1 right-1 p-1 bg-white/95 hover:bg-red-600 text-red-600 hover:text-white rounded-md border border-red-200/60 shadow-2xs opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                                         title="Delete media"
                                       >
-                                        <HiOutlineTrash className="w-3 h-3" />
+                                        <HiOutlineTrash className="w-3 h-3 text-red-600 group-hover:text-white" />
                                       </button>
                                     </div>
                                   ))}
@@ -2320,21 +2305,11 @@ export default function OrnateProductEdit() {
                                 <div className="flex items-center gap-1 shrink-0">
                                   <button
                                     type="button"
-                                    onClick={() =>
-                                      document.getElementById(`swatch-upload-${colName}`)?.click()
-                                    }
-                                    className="p-1.5 text-stone-500 hover:text-[#8b6f4e] rounded-lg hover:bg-stone-50 cursor-pointer"
-                                    title="Change icon"
-                                  >
-                                    <HiOutlineRefresh className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
                                     onClick={() => handleRemoveSwatchIcon(colName)}
-                                    className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-red-50 cursor-pointer"
+                                    className="p-1.5 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/60 rounded-lg cursor-pointer transition-colors"
                                     title="Remove icon"
                                   >
-                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                    <HiOutlineTrash className="w-3.5 h-3.5 text-red-600" />
                                   </button>
                                 </div>
                               </div>
@@ -2418,10 +2393,10 @@ export default function OrnateProductEdit() {
                                           e.stopPropagation();
                                           handleRemoveVariantMedia(colName, m.id);
                                         }}
-                                        className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                        className="absolute top-1 right-1 p-1 bg-white/95 hover:bg-red-600 text-red-600 hover:text-white rounded-md border border-red-200/60 shadow-2xs opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                                         title="Delete media"
                                       >
-                                        <HiOutlineTrash className="w-3 h-3" />
+                                        <HiOutlineTrash className="w-3 h-3 text-red-600 group-hover:text-white" />
                                       </button>
                                     </div>
                                   ))}

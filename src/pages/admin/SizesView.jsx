@@ -409,10 +409,10 @@ export default function SizesView() {
                 setCurrentPage(1);
               }}
               options={categoryOptions}
-              size="sm"
+              size="md"
               showStatusDot
               className="w-48 sm:w-56"
-              buttonClassName="h-7.5 px-2.5 text-xs rounded-md bg-white border-stone-200/90 text-stone-700 font-medium hover:border-stone-300 shadow-2xs"
+              buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700"
               placeholder="All Categories"
             />
 
@@ -431,7 +431,7 @@ export default function SizesView() {
                   : 'Select sizes to delete'
               }
             >
-              <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+              <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#d93025]" />
               <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
             </button>
           </div>
@@ -456,6 +456,7 @@ export default function SizesView() {
                     className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
                 </th>
+                <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
                 <th className="py-3 px-3 whitespace-nowrap">SIZE</th>
                 <th className="py-3 px-3 whitespace-nowrap">CATEGORY</th>
                 <th className="py-3 px-3 whitespace-nowrap">STATUS</th>
@@ -465,15 +466,15 @@ export default function SizesView() {
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
-                <CuteLoader variant="table" colSpan={6} text="Loading jewelry sizes..." />
+                <CuteLoader variant="table" colSpan={7} text="Loading jewelry sizes..." />
               ) : filteredSizes.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
+                  <td colSpan="7" className="py-8 text-center text-stone-400">
                     No jewelry sizes found.
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((s) => {
+                paginatedItems.map((s, idx) => {
                   const isGoldSize = s.name === '18 inch';
                   const categoryName = resolveCategoryName(s);
 
@@ -498,6 +499,11 @@ export default function SizesView() {
                           onChange={() => handleSelectItem(s._id)}
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
+                      </td>
+
+                      {/* Sr No */}
+                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                        {(currentPage - 1) * pageSize + idx + 1}
                       </td>
 
                       {/* Size Name */}
@@ -528,7 +534,7 @@ export default function SizesView() {
 
                       {/* Status Toggle */}
                       <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center">
                           <button
                             type="button"
                             role="switch"
@@ -546,15 +552,6 @@ export default function SizesView() {
                               }`}
                             />
                           </button>
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              s.status === 'active'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-stone-100 text-stone-500 border border-stone-200'
-                            }`}
-                          >
-                            {s.status === 'active' ? 'Active' : 'Inactive'}
-                          </span>
                         </div>
                       </td>
 
@@ -611,9 +608,6 @@ export default function SizesView() {
                 <h3 className="font-bold text-stone-900 text-lg tracking-tight">
                   {editingSize ? 'Edit Size' : 'Add Size'}
                 </h3>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#8f6d43] block mt-0.5">
-                  MANAGEMENT SYSTEM
-                </span>
               </div>
               <button
                 type="button"

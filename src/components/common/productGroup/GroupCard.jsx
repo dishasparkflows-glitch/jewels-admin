@@ -305,26 +305,36 @@ export default function GroupCard({
             </span>
           </div>
 
-          {/* On/Off Toggle Switch */}
-          <button
-            type="button"
-            role="switch"
-            aria-checked={isActive}
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleStatus?.(group);
-            }}
-            style={isActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-            className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-            title={isActive ? 'Click to deactivate group' : 'Click to activate group'}
-          >
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Product Count Round Box */}
             <span
-              aria-hidden="true"
-              className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                isActive ? 'translate-x-3' : 'translate-x-0'
-              }`}
-            />
-          </button>
+              className="min-w-5 h-5 px-1 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[10px] font-bold font-mono inline-flex items-center justify-center shadow-2xs shrink-0"
+              title={`${productCount} product${productCount === 1 ? '' : 's'} in this group`}
+            >
+              {productCount}
+            </span>
+
+            {/* On/Off Toggle Switch */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={isActive}
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleStatus?.(group);
+              }}
+              style={isActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+              className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${isActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
+              title={isActive ? 'Click to deactivate group' : 'Click to activate group'}
+            >
+              <span
+                aria-hidden="true"
+                className={`pointer-events-none inline-block h-3 w-3 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                  isActive ? 'translate-x-3' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
         </div>
 
         {/* 1st Product Image Thumbnail */}
@@ -371,115 +381,6 @@ export default function GroupCard({
           <span className="text-[9px] uppercase tracking-wider font-semibold text-stone-500 bg-stone-100 px-1 py-0.5 rounded shrink-0">
             {productCount > 1 && minPrice !== maxPrice ? 'Range' : 'Sale Price'}
           </span>
-        </div>
-      </div>
-
-      {/* Card Footer: Product Count Badge & Actions */}
-      <div className="pt-2 mt-2 border-t border-stone-100 flex items-center justify-between gap-1">
-        {/* Product Count Badge */}
-        <span
-          className="px-1.5 py-0.5 rounded-md bg-stone-100 border border-stone-200/90 text-stone-700 text-[10px] font-semibold font-mono tracking-tight shrink-0"
-          title={`${productCount} product(s) in this group`}
-        >
-          {productCount} {productCount === 1 ? 'Product' : 'Products'}
-        </span>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 shrink-0">
-          {isDraftOrApproved ? (
-            <>
-              {/* Edit Icon Button */}
-              {onEdit && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(group);
-                  }}
-                  className="w-6 h-6 rounded-md border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                  title="Edit Group"
-                  aria-label="Edit Group"
-                >
-                  <HiOutlinePencil className="w-3 h-3 stroke-[2]" />
-                </button>
-              )}
-
-              {/* Delete Icon Button */}
-              {onDelete && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(group);
-                  }}
-                  className="w-6 h-6 rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                  title="Delete Group"
-                  aria-label="Delete Group"
-                >
-                  <HiOutlineTrash className="w-3 h-3 stroke-[2]" />
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Manage Group Icon Button */}
-              {onManage && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onManage(group);
-                  }}
-                  className="w-6 h-6 rounded-md border border-[#8b6f4e]/30 bg-[#8b6f4e]/10 text-[#8b6f4e] hover:bg-[#8b6f4e] hover:text-white active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                  title="Manage Group"
-                  aria-label="Manage Group"
-                >
-                  <HiOutlineEye className="w-3 h-3 stroke-[2]" />
-                </button>
-              )}
-
-              {/* Direct Approve Icon Button */}
-              {onDirectApprove && (
-                <button
-                  type="button"
-                  disabled={isApproving || isAllApproved}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDirectApprove(group);
-                  }}
-                  className={`w-6 h-6 rounded-md border transition-all shadow-2xs inline-flex items-center justify-center shrink-0 ${
-                    isAllApproved
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-600 cursor-default'
-                      : 'border-emerald-600 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white cursor-pointer'
-                  }`}
-                  title={isAllApproved ? 'All products are approved' : 'Directly approve all products in this group'}
-                  aria-label={isAllApproved ? 'Approved' : 'Approve'}
-                >
-                  {isApproving ? (
-                    <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <HiOutlineCheckCircle className="w-3.5 h-3.5 stroke-[2]" />
-                  )}
-                </button>
-              )}
-
-              {/* Delete button if no products attached */}
-              {hasNoProducts && onDelete && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onDelete(group);
-                  }}
-                  className="w-6 h-6 rounded-md border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                  title="Delete Group (no products attached)"
-                  aria-label="Delete Group"
-                >
-                  <HiOutlineTrash className="w-3 h-3 stroke-[2]" />
-                </button>
-              )}
-            </>
-          )}
         </div>
       </div>
     </article>

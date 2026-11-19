@@ -144,8 +144,8 @@ export default function MoveProductModal({
 
     list.push({
       value: '__create_new__',
-      label: '+ Create Another Group...',
-      sublabel: 'Set up a new common group with auto-generated name',
+      label: '+ Create New Group...',
+      sublabel: 'Set up a new common group for these products',
     });
 
     return list;
@@ -209,8 +209,20 @@ export default function MoveProductModal({
 
   const getTitle = () => {
     if (mode === 'split') return 'Split into Separate Groups';
-    if (mode === 'create') return 'Create Another Group';
-    return 'Move to Another Group';
+    if (mode === 'create') return 'Create New Group';
+    return 'Move to Existing Group';
+  };
+
+  const getSubtitle = () => {
+    const groupName = sourceGroup?.groupName || 'Current Group';
+    const s = count === 1 ? '' : 's';
+    if (mode === 'split') {
+      return `Split ${count} product${s} from "${groupName}" into separate individual groups`;
+    }
+    if (mode === 'create') {
+      return `Move ${count} product${s} from "${groupName}" into a new common group`;
+    }
+    return `Transfer ${count} product${s} from "${groupName}" to an existing group`;
   };
 
   return (
@@ -218,7 +230,7 @@ export default function MoveProductModal({
       isOpen={isOpen}
       onClose={onClose}
       title={getTitle()}
-      subtitle={`Transfer ${count} product${count === 1 ? '' : 's'} from "${sourceGroup?.groupName || 'Current Group'}"`}
+      subtitle={getSubtitle()}
       maxWidth="max-w-lg"
       zIndex="z-[1050]"
     >
@@ -232,41 +244,39 @@ export default function MoveProductModal({
           <button
             type="button"
             onClick={() => setMode('existing')}
-            className={`py-2 px-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`py-2 px-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mode === 'existing'
                 ? 'bg-white text-stone-900 shadow-2xs border border-stone-200/60'
                 : 'text-stone-500 hover:text-stone-700'
             }`}
           >
             <HiOutlineSwitchHorizontal className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">Move to Existing</span>
+            <span className="whitespace-nowrap">Existing Group</span>
           </button>
           <button
             type="button"
             onClick={() => setMode('create')}
-            className={`py-2 px-2 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+            className={`py-2 px-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mode === 'create'
                 ? 'bg-white text-[#8b6f4e] shadow-2xs border border-[#8b6f4e]/30'
                 : 'text-stone-500 hover:text-stone-700'
             }`}
           >
             <HiOutlinePlus className="w-3.5 h-3.5 shrink-0" />
-            <span className="truncate">
-              {count > 1 ? '1 Combined Group' : 'Create Group'}
-            </span>
+            <span className="whitespace-nowrap">New Group</span>
           </button>
           {count > 1 && (
             <button
               type="button"
               onClick={() => setMode('split')}
-              className={`py-2 px-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`py-2 px-2.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 mode === 'split'
                   ? 'bg-[#8b6f4e] text-white shadow-2xs ring-1 ring-[#8b6f4e]'
                   : 'text-[#8b6f4e] bg-[#8b6f4e]/5 hover:bg-[#8b6f4e]/15'
               }`}
             >
               <HiOutlineSparkles className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">1 Group / Product</span>
+              <span className="whitespace-nowrap">Separate Groups</span>
             </button>
           )}
         </div>
@@ -334,7 +344,7 @@ export default function MoveProductModal({
             />
             {groups.length === 0 && !loading && (
               <p className="text-xs text-stone-400 mt-1.5">
-                No other active groups found. You can switch to "Create Another Group" to start a new one.
+                No other active groups found. You can switch to "New Group" to start a new one.
               </p>
             )}
             <p className="text-[11px] text-stone-500 bg-stone-50 p-2.5 rounded-xl border border-stone-100 mt-3">
@@ -358,7 +368,7 @@ export default function MoveProductModal({
                   onClick={() => setMode('split')}
                   className="px-2.5 py-1 text-[11px] font-bold text-[#8b6f4e] bg-[#8b6f4e]/10 hover:bg-[#8b6f4e]/20 rounded-lg transition-colors cursor-pointer shrink-0"
                 >
-                  ⚡ Split instead
+                  ⚡ Separate Groups instead
                 </button>
               </div>
             )}
@@ -386,7 +396,7 @@ export default function MoveProductModal({
             </div>
 
             <p className="text-[11px] text-stone-500 bg-stone-50 p-2.5 rounded-xl border border-stone-100">
-              Note: Creating another group will immediately establish a new common group and transfer the selected product(s) into it.
+              Note: Creating a new group will immediately establish a new common group and transfer the selected product(s) into it.
             </p>
           </div>
         )}
@@ -399,7 +409,7 @@ export default function MoveProductModal({
                 <span className="text-[11px] font-bold text-stone-600 uppercase tracking-wider">
                   New Groups Preview ({targetProducts.length}):
                 </span>
-                <span className="text-[10px] text-stone-400 font-mono">1 product / group</span>
+                <span className="text-[10px] text-stone-500 font-medium">1 product per group</span>
               </div>
 
               <div className="max-h-56 overflow-y-auto border border-stone-200 rounded-xl divide-y divide-stone-100 bg-white shadow-2xs">
@@ -460,18 +470,18 @@ export default function MoveProductModal({
                 <span>
                   {moving
                     ? 'Creating Separate Groups...'
-                    : `Create ${count} Separate Groups (1-Click)`}
+                    : `Create ${count} Separate Groups`}
                 </span>
               </>
             ) : mode === 'create' ? (
               <>
                 <HiOutlinePlus className="w-3.5 h-3.5" />
-                <span>{moving ? 'Creating & Moving...' : 'Create Group & Move'}</span>
+                <span>{moving ? 'Creating & Moving...' : 'Create New Group & Move'}</span>
               </>
             ) : (
               <>
                 <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
-                <span>{moving ? 'Moving...' : 'Move Products'}</span>
+                <span>{moving ? 'Moving...' : 'Move to Existing Group'}</span>
               </>
             )}
           </button>

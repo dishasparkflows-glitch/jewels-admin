@@ -518,7 +518,7 @@ export default function SettingsView() {
   const fetchThemesLookup = async () => {
     try {
       setLoadingThemes(true);
-      const res = await api.get('/website/themes/lookup');
+      const res = await api.get('/website/themes/lookup').catch(() => api.get('/themes/lookup'));
       const list = res.data?.data || [];
       setThemesList(list);
       if (selectedThemeId) {

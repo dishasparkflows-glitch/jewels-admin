@@ -83,7 +83,7 @@ export default function CelebrateGiftsView() {
       setLoadingThemes(true);
       let res;
       try {
-        res = await api.get('/website/themes/lookup');
+        res = await api.get('/website/themes/lookup').catch(() => api.get('/themes/lookup'));
       } catch {
         res = await api.get('/gallery/themes');
       }
@@ -695,7 +695,7 @@ export default function CelebrateGiftsView() {
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border shadow-2xs cursor-pointer bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50"
                 title={`Delete ${selectedIds.length} selected item${selectedIds.length > 1 ? 's' : ''}`}
               >
-                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#d93025]" />
                 <span>Delete ({selectedIds.length})</span>
               </button>
             )}

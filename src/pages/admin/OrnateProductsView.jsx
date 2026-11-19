@@ -1147,9 +1147,18 @@ export default function OrnateProductsView() {
             {/* Top Selection Bar for Ungrouped Products */}
             {selectedIds.size > 0 && (
               <div className="bg-[#8b6f4e]/10 border border-[#8b6f4e]/20 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <span className="font-bold text-[#8b6f4e]">
-                  {selectedIds.size} ungrouped product(s) selected
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-[#8b6f4e]">
+                    {selectedIds.size} ungrouped product(s) selected
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedIds(new Set())}
+                    className="text-[11px] text-stone-500 hover:text-stone-800 underline ml-1 cursor-pointer"
+                  >
+                    Deselect All
+                  </button>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
@@ -1264,6 +1273,7 @@ export default function OrnateProductsView() {
                             className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
                           />
                         </th>
+                        <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
                         <th className="py-3 px-3 w-16">IMAGE</th>
                         <th className="py-3 px-3">PRODUCT NAME</th>
                         <th className="py-3 px-3">SKU / TAG</th>
@@ -1274,7 +1284,7 @@ export default function OrnateProductsView() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-stone-100">
-                      {products.map((p) => {
+                      {products.map((p, idx) => {
                         const isSelected = selectedIds.has(p._id);
                         const imgUrl = getProductImage(p);
                         const title = p.basicInfo?.title || p.name || 'Ornate Jewellery';
@@ -1293,6 +1303,10 @@ export default function OrnateProductsView() {
                                 onChange={() => toggleSelectOne(p._id)}
                                 className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer"
                               />
+                            </td>
+                            {/* Sr No */}
+                            <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
+                              {(page - 1) * pageSize + idx + 1}
                             </td>
                             <td className="p-3">
                               <div
@@ -1384,54 +1398,7 @@ export default function OrnateProductsView() {
         )
       )}
 
-      {/* ─── 5. Floating Bulk Actions Bar (for ungrouped products) ─── */}
-      {selectedIds.size > 0 && activeTab === 'ungrouped' && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-stone-900 text-white rounded-2xl px-5 py-3 shadow-2xl flex items-center gap-4 animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <span className="text-xs font-semibold">
-            {selectedIds.size} {selectedIds.size === 1 ? 'product' : 'products'} selected
-          </span>
-          <div className="h-4 w-px bg-stone-700" />
-          <button
-            type="button"
-            onClick={() => setIsCreateGroupModalOpen(true)}
-            className="text-xs font-semibold text-[#8b6f4e] hover:text-[#a0815e]"
-          >
-            Create Group
-          </button>
-          <button
-            type="button"
-            onClick={async () => {
-              const isConfirmed = await confirm({
-                title: 'Delete Selected Products',
-                message: `Are you sure you want to delete ${selectedIds.size} selected products? This action cannot be undone.`,
-                confirmText: 'Delete All',
-                type: 'danger',
-              });
-              if (!isConfirmed) return;
 
-              try {
-                await api.post('/products/bulk-delete', { ids: Array.from(selectedIds) });
-                toast.success('Selected products deleted');
-                setSelectedIds(new Set());
-                fetchData();
-                fetchTabCounts();
-              } catch {
-                toast.error('Could not delete selected products');
-              }
-            }}
-            className="text-xs font-semibold text-rose-400 hover:text-rose-300"
-          >
-            Delete
-          </button>
-          <button
-            type="button"
-            onClick={() => setSelectedIds(new Set())}
-            className="text-xs font-semibold text-stone-400 hover:text-white"
-          >
-            Clear
-          </button>
-        </div>
-      )}
 
       {/* ─── 6. Modals & Drawers ─── */}
 

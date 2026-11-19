@@ -592,7 +592,7 @@ export default function AddJewelryProduct() {
     const collIds = allCatIds.filter((id) => (collectionCategories || []).some((c) => String(c?._id) === id));
     const categoryId = regMatch || allCatIds.find((id) => !collIds.includes(id)) || allCatIds[0] || '';
 
-    const rawPromo = productRecord.promoBanner || basicInfo.promoBanner || productRecord.categoryTag || [];
+    const rawPromo = productRecord.promoBanner || basicInfo.promoBanner || [];
     const promoArr = Array.isArray(rawPromo)
       ? rawPromo.map((p) => String(p)).filter(Boolean)
       : (rawPromo ? [String(rawPromo)] : []);
@@ -1328,34 +1328,38 @@ export default function AddJewelryProduct() {
     );
   };
 
-  const handleSilverSwatchUpload = async (colorName, e) => {
+  const handleSilverSwatchUpload = (colorName, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    try {
-      setUploadingSilverSwatchColor(colorName);
-      const res = await uploadWithPresignedUrl(file, 'products', null, { productId: mediaProductId });
-      if (res.fileUrl) {
-        setSilverVariantMedia((prev) => ({
-          ...prev,
-          [colorName]: {
-            ...prev[colorName],
-            swatchIcon: res.fileUrl,
-            swatchIconKey: res.key,
-          },
-        }));
-        setSilverColors((prev) => Array.from(new Set([...prev, colorName])));
-        setExpandedSilverColors((prev) => Array.from(new Set([...prev, colorName])));
-        const savingsText = res.wasCompressed ? ` (optimized ${formatMediaSize(res.originalSize)} → ${formatMediaSize(res.compressedSize)})` : '';
-        toast.success(`${colorName} swatch icon uploaded${savingsText}!`);
-      }
-    } catch (err) {
-      console.error('Swatch icon upload failed:', err);
-      toast.error(err.message || 'Failed to upload swatch icon');
-    } finally {
-      setUploadingSilverSwatchColor(null);
-      e.target.value = '';
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|gif|avif|svg)$/i.test(file.name);
+    if (!isImage) {
+      toast.error(`${file.name} is not a supported image file`);
+      if (e.target) e.target.value = '';
+      return;
     }
+
+    const staged = [
+      {
+        id: `staged-swatch-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        file,
+        name: file.name,
+        size: file.size,
+        formattedSize: formatMediaSize(file.size),
+        type: file.type || 'image/jpeg',
+        previewUrl: URL.createObjectURL(file),
+        isVideo: false,
+        isImage: true,
+        status: 'ready',
+        error: null,
+      },
+    ];
+
+    setStagedUploadFiles(staged);
+    setStagedUploadColor(colorName);
+    setStagedUploadType('silver-swatch');
+    setShowUploadModal(true);
+    if (e.target) e.target.value = '';
   };
 
   const handleSilverVariantMediaUpload = (colorName, e) => {
@@ -1609,6 +1613,7 @@ export default function AddJewelryProduct() {
     const uploadedAt = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const targetColor = stagedUploadColor;
     const isSilver = stagedUploadType === 'silver';
+    const isSilverSwatch = stagedUploadType === 'silver-swatch';
 
     let totalOriginalBytes = 0;
     let totalCompressedBytes = 0;
@@ -1619,9 +1624,12 @@ export default function AddJewelryProduct() {
     toast.loading(`Starting upload for ${stagedUploadFiles.length} file(s)...`, { id: toastId });
 
     if (isSilver) setUploadingSilverVariantColor(targetColor);
+    if (isSilverSwatch) setUploadingSilverSwatchColor(targetColor);
     try {
       const uploadSettings = await getUploadCompressionSettings();
-      const preset = COMPRESSION_PRESETS.products || COMPRESSION_PRESETS.general;
+      const preset = isSilverSwatch
+        ? (COMPRESSION_PRESETS.swatch || COMPRESSION_PRESETS.products)
+        : (COMPRESSION_PRESETS.products || COMPRESSION_PRESETS.general);
       const compressionOpts = getGlobalCompressionOptions(preset, uploadSettings);
 
       // --- STEP 1: Client-Side Preparation & Compression ---
@@ -1742,7 +1750,21 @@ export default function AddJewelryProduct() {
       setUploadProcessingPercent(100);
 
       // --- STEP 3: Update State & Sync DB ---
-      if (isSilver) {
+      if (isSilverSwatch) {
+        const swatchRecord = newMediaItems[0]?.mediaRecord;
+        if (swatchRecord?.url) {
+          setSilverVariantMedia((prev) => ({
+            ...prev,
+            [targetColor]: {
+              ...prev[targetColor],
+              swatchIcon: swatchRecord.url,
+              swatchIconKey: swatchRecord.key,
+            },
+          }));
+          setSilverColors((prev) => Array.from(new Set([...prev, targetColor])));
+          setExpandedSilverColors((prev) => Array.from(new Set([...prev, targetColor])));
+        }
+      } else if (isSilver) {
         setSilverVariantMedia((prev) => ({
           ...prev,
           [targetColor]: {
@@ -1780,7 +1802,16 @@ export default function AddJewelryProduct() {
       const savedBytes = Math.max(0, totalOriginalBytes - totalCompressedBytes);
       const savedPercent = totalOriginalBytes > 0 ? Math.round((savedBytes / totalOriginalBytes) * 100) : 0;
 
-      if (savedBytes > 0) {
+      if (isSilverSwatch) {
+        if (savedBytes > 0) {
+          toast.success(
+            `Optimized & uploaded ${targetColor} swatch icon! Saved ${formatMediaSize(savedBytes)} (${savedPercent}%) direct to Cloudflare!`,
+            { id: toastId, duration: 5000 }
+          );
+        } else {
+          toast.success(`Uploaded ${targetColor} swatch icon direct to Cloudflare!`, { id: toastId });
+        }
+      } else if (savedBytes > 0) {
         toast.success(
           `Compressed & uploaded ${successfulCount} file(s)! Saved ${formatMediaSize(savedBytes)} (${savedPercent}%) direct to Cloudflare!`,
           { id: toastId, duration: 5000 }
@@ -1805,6 +1836,7 @@ export default function AddJewelryProduct() {
       toast.error(`Upload error: ${err.message}`, { id: toastId });
     } finally {
       if (isSilver) setUploadingSilverVariantColor(null);
+      if (isSilverSwatch) setUploadingSilverSwatchColor(null);
       setIsProcessingUpload(false);
       setUploadProcessingStep('');
       setUploadProcessingPercent(0);
@@ -3242,7 +3274,6 @@ export default function AddJewelryProduct() {
         },
         gender: genderArr,
         promoBanner: promoArr,
-        categoryTag: promoArr[0] || '',
         basicInfo: compactObject({
           title: activeTitle,
           sku: activeSku || undefined,
@@ -4790,21 +4821,11 @@ export default function AddJewelryProduct() {
                                   <div className="flex items-center gap-1 shrink-0">
                                     <button
                                       type="button"
-                                      onClick={() =>
-                                        document.getElementById(`silver-swatch-upload-${col.name}`)?.click()
-                                      }
-                                      className="p-1.5 text-stone-500 hover:text-[#8b6f4e] rounded-lg hover:bg-stone-50 cursor-pointer"
-                                      title="Change icon"
-                                    >
-                                      <HiOutlineRefresh className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
                                       onClick={() => handleRemoveSilverSwatchIcon(col.name)}
-                                      className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-red-50 cursor-pointer"
+                                      className="p-1.5 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/60 rounded-lg cursor-pointer transition-colors"
                                       title="Remove icon"
                                     >
-                                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                                      <HiOutlineTrash className="w-3.5 h-3.5 text-red-600" />
                                     </button>
                                   </div>
                                 </div>
@@ -4892,10 +4913,10 @@ export default function AddJewelryProduct() {
                                             e.stopPropagation();
                                             handleRemoveSilverVariantMedia(col.name, m.id);
                                           }}
-                                          className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                          className="absolute top-1 right-1 p-1 bg-white/95 hover:bg-red-600 text-red-600 hover:text-white rounded-md border border-red-200/60 shadow-2xs opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                                           title="Delete media"
                                         >
-                                          <HiOutlineTrash className="w-3 h-3" />
+                                          <HiOutlineTrash className="w-3 h-3 text-red-600 group-hover:text-white" />
                                         </button>
                                       </div>
                                     ))}
@@ -5087,21 +5108,11 @@ export default function AddJewelryProduct() {
                                   <div className="flex items-center gap-1 shrink-0">
                                     <button
                                       type="button"
-                                      onClick={() =>
-                                        document.getElementById(`silver-swatch-upload-${colName}`)?.click()
-                                      }
-                                      className="p-1.5 text-stone-500 hover:text-[#8b6f4e] rounded-lg hover:bg-stone-50 cursor-pointer"
-                                      title="Change icon"
-                                    >
-                                      <HiOutlineRefresh className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
                                       onClick={() => handleRemoveSilverSwatchIcon(colName)}
-                                      className="p-1.5 text-stone-400 hover:text-red-500 rounded-lg hover:bg-red-50 cursor-pointer"
+                                      className="p-1.5 text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/60 rounded-lg cursor-pointer transition-colors"
                                       title="Remove icon"
                                     >
-                                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                                      <HiOutlineTrash className="w-3.5 h-3.5 text-red-600" />
                                     </button>
                                   </div>
                                 </div>
@@ -5189,10 +5200,10 @@ export default function AddJewelryProduct() {
                                             e.stopPropagation();
                                             handleRemoveSilverVariantMedia(colName, m.id);
                                           }}
-                                          className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                          className="absolute top-1 right-1 p-1 bg-white/95 hover:bg-red-600 text-red-600 hover:text-white rounded-md border border-red-200/60 shadow-2xs opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
                                           title="Delete media"
                                         >
-                                          <HiOutlineTrash className="w-3 h-3" />
+                                          <HiOutlineTrash className="w-3 h-3 text-red-600 group-hover:text-white" />
                                         </button>
                                       </div>
                                     ))}
@@ -7204,10 +7215,13 @@ export default function AddJewelryProduct() {
                         <div>
                           <div className="flex items-center gap-2">
                             <h3 className="text-base sm:text-lg font-bold text-slate-900">
-                              Optimize &amp; Upload Media
+                              {stagedUploadType === 'silver-swatch'
+                                ? 'Optimize & Upload Swatch Icon'
+                                : 'Optimize & Upload Media'}
                             </h3>
                             <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-[#f6eee2] text-[#8b6f4e] border border-[#dfcfbd]">
                               {stagedUploadColor || 'General'}
+                              {stagedUploadType === 'silver-swatch' ? ' • Swatch Icon' : ''}
                             </span>
                           </div>
                           <p className="text-[11px] sm:text-xs text-slate-500">

@@ -181,7 +181,7 @@ export default function ImagePreviewModal({
     >
       {/* ─── Top Bar: Meta Info & Controls ─── */}
       <div
-        className="w-full max-w-5xl flex items-center justify-between pb-3 text-white z-20 shrink-0"
+        className="w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl flex items-center justify-between pb-3 text-white z-20 shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -226,7 +226,7 @@ export default function ImagePreviewModal({
 
       {/* ─── Main Image Viewport ─── */}
       <div
-        className="relative w-full max-w-5xl h-[72vh] sm:h-[78vh] flex items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xs shadow-2xl"
+        className="relative w-full max-w-5xl lg:max-w-6xl xl:max-w-7xl h-[74vh] sm:h-[80vh] flex items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xs shadow-2xl"
         onClick={(e) => e.stopPropagation()}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -262,17 +262,18 @@ export default function ImagePreviewModal({
         <div
           style={{
             transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomScale})`,
+            transformOrigin: 'center center',
             transition: isDragging ? 'none' : 'transform 0.15s cubic-bezier(0.2, 0, 0, 1)',
             cursor: zoomScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
           }}
           onDoubleClick={handleDoubleClick}
-          className="flex items-center justify-center max-w-full max-h-full"
+          className="w-full h-full flex items-center justify-center p-4 sm:p-8 pb-14 sm:pb-16 select-none"
         >
           <img
             src={currentUrl}
             alt={currentTitle}
             draggable={false}
-            className="max-w-[85vw] max-h-[68vh] object-contain rounded-xl shadow-2xl pointer-events-none"
+            className="max-w-full max-h-full w-auto h-auto object-contain rounded-xl shadow-2xl pointer-events-none select-none"
           />
         </div>
 

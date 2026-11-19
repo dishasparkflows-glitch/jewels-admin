@@ -541,7 +541,7 @@ export default function DiamondsView() {
                 : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
             }`}
           >
-            <HiOutlineTrash className="w-3.5 h-3.5 shrink-0" />
+            <HiOutlineTrash className="w-3.5 h-3.5 shrink-0 text-[#ef4444]" />
             <span>Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}</span>
           </button>
         </div>
@@ -890,10 +890,10 @@ export default function DiamondsView() {
                         <button
                           type="button"
                           onClick={() => setEditImageUrl('')}
-                          className="absolute top-1.5 right-1.5 p-1 bg-black/60 hover:bg-red-600 text-white rounded-lg transition-colors cursor-pointer shadow-sm"
+                          className="absolute top-1.5 right-1.5 p-1 bg-white/95 hover:bg-red-600 text-red-600 hover:text-white rounded-lg border border-red-200/60 transition-colors cursor-pointer shadow-xs"
                           title="Remove image"
                         >
-                          <HiOutlineTrash className="w-3.5 h-3.5" />
+                          <HiOutlineTrash className="w-3.5 h-3.5 text-red-600 group-hover:text-white" />
                         </button>
                       </>
                     ) : (

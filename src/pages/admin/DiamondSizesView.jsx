@@ -308,7 +308,7 @@ export default function DiamondSizesView() {
                 : 'Select size ranges to delete'
             }
           >
-            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#d93025]" />
             <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
           </button>
         }
@@ -489,9 +489,6 @@ export default function DiamondSizesView() {
                 <h3 className="font-bold text-stone-900 text-lg tracking-tight">
                   {editingSize ? 'Edit Size Range' : 'Add Size Range'}
                 </h3>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-[#8f6d43] block mt-0.5">
-                  MANAGEMENT SYSTEM
-                </span>
               </div>
               <button
                 type="button"

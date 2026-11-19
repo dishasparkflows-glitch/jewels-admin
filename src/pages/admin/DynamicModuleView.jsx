@@ -1346,7 +1346,7 @@ const DynamicModuleView = () => {
                 : 'Select records to delete'
             }
           >
-            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#ef4444]" />
             <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
           </button>
         }
@@ -2163,7 +2163,7 @@ const DynamicModuleView = () => {
                                 title="Delete Order"
                                 className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-rose-200/60 transition-all cursor-pointer shadow-2xs"
                               >
-                                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+                                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#ef4444]" />
                               </button>
                             </div>
                           ) : (

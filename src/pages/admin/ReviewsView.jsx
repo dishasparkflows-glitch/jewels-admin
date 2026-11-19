@@ -456,7 +456,7 @@ export default function ReviewsView() {
                 : 'Select reviews to delete'
             }
           >
-            <HiOutlineTrash className="w-4 h-4 stroke-[2]" />
+            <HiOutlineTrash className="w-4 h-4 stroke-[2] text-[#d93025]" />
             <span>{selectedIds.size > 0 ? `Delete (${selectedIds.size})` : 'Delete'}</span>
           </button>
         }
@@ -917,10 +917,10 @@ export default function ReviewsView() {
                     <button
                       type="button"
                       onClick={handleRemoveImage}
-                      className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                      className="p-1.5 rounded-lg text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200/60 transition-colors cursor-pointer"
                       title="Remove image"
                     >
-                      <HiOutlineTrash className="w-4 h-4" />
+                      <HiOutlineTrash className="w-4 h-4 text-red-600" />
                     </button>
                   </div>
                 ) : (

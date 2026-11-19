@@ -275,7 +275,7 @@ export default function CodSequencesView() {
                 : 'Select tiers to delete'
             }
           >
-            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2" />
+            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#d93025]" />
             <span>{selectedIds.size > 0 ? `Delete (${selectedIds.size})` : 'Delete'}</span>
           </button>
         }

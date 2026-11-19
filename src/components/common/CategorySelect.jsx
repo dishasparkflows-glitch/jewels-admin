@@ -70,6 +70,7 @@ export default function CategorySelect({
   const handleSelectCategory = (catId) => {
     if (disabled) return;
     if (String(categoryId) === String(catId)) {
+      onChangeCategory?.('');
       return;
     }
     onChangeCategory?.(catId);
@@ -118,9 +119,23 @@ export default function CategorySelect({
         <div className="absolute z-50 left-0 top-full mt-1.5 w-full bg-white border border-stone-200/90 rounded-2xl shadow-xl max-h-80 overflow-y-auto p-3 space-y-3 animate-fadeIn">
           {/* SECTION 1: CATEGORY (SELECT ONE) */}
           <div className="space-y-1">
-            <span className="text-[9px] sm:text-[10px] font-black text-stone-400 uppercase tracking-widest block px-2 pb-1 border-b border-stone-100 mb-2 select-none">
-              CATEGORY (SELECT ONE)
-            </span>
+            <div className="flex items-center justify-between px-2 pb-1 border-b border-stone-100 mb-2 select-none">
+              <span className="text-[9px] sm:text-[10px] font-black text-stone-400 uppercase tracking-widest block">
+                CATEGORY (SELECT ONE)
+              </span>
+              {Boolean(categoryId) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChangeCategory?.('');
+                  }}
+                  className="text-[10px] font-semibold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer transition-colors"
+                >
+                  Deselect
+                </button>
+              )}
+            </div>
 
             {regularCategories.length === 0 ? (
               <p className="text-xs text-stone-400 px-2 py-1">No categories configured</p>
@@ -133,32 +148,41 @@ export default function CategorySelect({
                   <div
                     key={cId}
                     onClick={() => handleSelectCategory(cId)}
-                    className={`flex items-center gap-2.5 p-2 rounded-xl cursor-pointer transition-all select-none ${
+                    title={isSelected ? 'Click to deselect category' : `Select ${c.name}`}
+                    className={`flex items-center justify-between p-2 rounded-xl cursor-pointer transition-all select-none ${
                       isSelected
-                        ? 'bg-[#faf5ee] text-stone-900'
+                        ? 'bg-[#faf5ee] text-stone-900 ring-1 ring-[#8b6f4e]/30'
                         : 'hover:bg-stone-50 text-stone-700'
                     }`}
                   >
-                    {/* Radio Circle */}
-                    <div
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all shrink-0 ${
-                        isSelected
-                          ? 'border-[#8b6f4e] bg-[#8b6f4e]'
-                          : 'border-stone-300 bg-white'
-                      }`}
-                    >
-                      {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      {/* Radio Circle */}
+                      <div
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-all shrink-0 ${
+                          isSelected
+                            ? 'border-[#8b6f4e] bg-[#8b6f4e]'
+                            : 'border-stone-300 bg-white'
+                        }`}
+                      >
+                        {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                      </div>
+
+                      <span
+                        className={`text-xs sm:text-[13px] truncate ${
+                          isSelected
+                            ? 'text-[#8b6f4e] font-bold'
+                            : 'text-stone-800 font-medium'
+                        }`}
+                      >
+                        {c.name}
+                      </span>
                     </div>
 
-                    <span
-                      className={`text-xs sm:text-[13px] ${
-                        isSelected
-                          ? 'text-[#8b6f4e] font-bold'
-                          : 'text-stone-800 font-medium'
-                      }`}
-                    >
-                      {c.name}
-                    </span>
+                    {isSelected && (
+                      <span className="text-[10px] text-stone-400 hover:text-rose-600 font-medium px-1.5 py-0.5 rounded transition-colors shrink-0">
+                        Click to deselect
+                      </span>
+                    )}
                   </div>
                 );
               })
@@ -167,9 +191,23 @@ export default function CategorySelect({
 
           {/* SECTION 2: COLLECTIONS (SELECT MULTIPLE) */}
           <div className="space-y-1 pt-2 border-t border-stone-100">
-            <span className="text-[9px] sm:text-[10px] font-black text-stone-400 uppercase tracking-widest block px-2 pb-1 border-b border-stone-100 mb-2 select-none">
-              COLLECTIONS (SELECT MULTIPLE)
-            </span>
+            <div className="flex items-center justify-between px-2 pb-1 border-b border-stone-100 mb-2 select-none">
+              <span className="text-[9px] sm:text-[10px] font-black text-stone-400 uppercase tracking-widest block">
+                COLLECTIONS (SELECT MULTIPLE)
+              </span>
+              {selectedCollectionIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChangeCollections?.([]);
+                  }}
+                  className="text-[10px] font-semibold text-stone-400 hover:text-stone-700 hover:underline cursor-pointer transition-colors"
+                >
+                  Clear All
+                </button>
+              )}
+            </div>
 
             {collectionCategories.length === 0 ? (
               <p className="text-xs text-stone-400 px-2 py-1">No collections available</p>
