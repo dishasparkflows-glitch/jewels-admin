@@ -212,7 +212,7 @@ export const navSections = [
           { id: 'blog-categories', title: 'Blog Categories', path: '/blog-categories', icon: HiOutlineFolder, apiEndpoint: '/blog-categories' },
           { id: 'gallery', title: 'Media Gallery', path: '/gallery', icon: HiOutlinePhotograph, apiEndpoint: '/gallery' },
           { id: 'static-pages', title: 'Static Pages', path: '/static-pages', icon: HiOutlineDocumentText, apiEndpoint: '/static-pages' },
-          { id: 'website-themes', title: 'Themes', path: '/website/themes', icon: HiOutlineColorSwatch, apiEndpoint: '/website/themes' },
+          { id: 'themes', title: 'Themes', path: '/themes', icon: HiOutlineColorSwatch, apiEndpoint: '/themes' },
         ],
       },
     ],

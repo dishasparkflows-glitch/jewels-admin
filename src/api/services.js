@@ -47,33 +47,34 @@ export const homeSectionsAPI = {
   bulkDelete: (ids) => api.post('/home-sections/bulk-delete', { ids }),
 };
 
-// ─── Website theme management ─────────────────────────
-export const websiteThemesAPI = {
-  getAll: (params) => api.get('/website/themes', { params }),
-  getById: (id) => api.get(`/website/themes/${id}`),
-  create: (data) => api.post('/website/themes', data),
-  update: (id, data) => api.put(`/website/themes/${id}`, data),
-  duplicate: (id) => api.post(`/website/themes/${id}/duplicate`),
-  preview: (id) => api.get(`/website/themes/${id}/preview`),
-  publish: (id, data = {}) => api.post(`/website/themes/${id}/publish`, data),
-  rollback: (id) => api.post(`/website/themes/${id}/rollback`),
-  archive: (id) => api.post(`/website/themes/${id}/archive`),
-  remove: (id) => api.delete(`/website/themes/${id}`),
+// ─── Theme management ─────────────────────────
+export const themesAPI = {
+  getAll: (params) => api.get('/themes', { params }),
+  getById: (id) => api.get(`/themes/${id}`),
+  create: (data) => api.post('/themes', data),
+  update: (id, data) => api.put(`/themes/${id}`, data),
+  duplicate: (id) => api.post(`/themes/${id}/duplicate`),
+  preview: (id) => api.get(`/themes/${id}/preview`),
+  publish: (id, data = {}) => api.post(`/themes/${id}/publish`, data),
+  rollback: (id) => api.post(`/themes/${id}/rollback`),
+  archive: (id) => api.post(`/themes/${id}/archive`),
+  remove: (id) => api.delete(`/themes/${id}`),
   // Theme Media Mapping & Activation
-  getModules: () => api.get('/website/themes/modules'),
-  getMappingRecords: (themeId, params) => api.get(`/website/themes/${themeId}/media-mapping/records`, { params }),
-  getMappingSummary: (themeId) => api.get(`/website/themes/${themeId}/media-mapping/summary`),
-  getMappings: (themeId, params) => api.get(`/website/themes/${themeId}/media-mappings`, { params }),
-  saveMapping: (themeId, data) => api.put(`/website/themes/${themeId}/media-mappings`, data),
-  saveMappingsBulk: (themeId, data) => api.put(`/website/themes/${themeId}/media-mappings/bulk`, data),
-  deleteMapping: (themeId, mappingId) => api.delete(`/website/themes/${themeId}/media-mappings/${mappingId}`),
-  deleteMappingByTarget: (themeId, params) => api.delete(`/website/themes/${themeId}/media-mappings`, { params }),
-  activateTheme: (themeId) => api.post(`/website/themes/${themeId}/activate`),
-  getHistory: (themeId) => api.get('/website/themes/history', { params: themeId ? { themeId } : {} }),
-  getLookup: () => api.get('/website/themes/lookup'),
-  getMediaLibrary: (themeId) => api.get(`/website/themes/${themeId}/media-library`),
-  saveMedia: (themeId, data) => api.put(`/website/themes/${themeId}/media`, data),
+  getModules: () => api.get('/themes/modules'),
+  getMappingRecords: (themeId, params) => api.get(`/themes/${themeId}/media-mapping/records`, { params }),
+  getMappingSummary: (themeId) => api.get(`/themes/${themeId}/media-mapping/summary`),
+  getMappings: (themeId, params) => api.get(`/themes/${themeId}/media-mappings`, { params }),
+  saveMapping: (themeId, data) => api.put(`/themes/${themeId}/media-mappings`, data),
+  saveMappingsBulk: (themeId, data) => api.put(`/themes/${themeId}/media-mappings/bulk`, data),
+  deleteMapping: (themeId, mappingId) => api.delete(`/themes/${themeId}/media-mappings/${mappingId}`),
+  deleteMappingByTarget: (themeId, params) => api.delete(`/themes/${themeId}/media-mappings`, { params }),
+  activateTheme: (themeId) => api.post(`/themes/${themeId}/activate`),
+  getHistory: (themeId) => api.get('/themes/history', { params: themeId ? { themeId } : {} }),
+  getLookup: () => api.get('/themes/lookup'),
+  getMediaLibrary: (themeId) => api.get(`/themes/${themeId}/media-library`),
+  saveMedia: (themeId, data) => api.put(`/themes/${themeId}/media`, data),
 };
+export const websiteThemesAPI = themesAPI;
 
 // ─── Top Announcements ────────────────────────────
 export const topAnnouncementsAPI = {
@@ -127,18 +128,22 @@ export const blogsAPI = {
 // ─── Banners & Sections ───────────────────────────
 export const bannersAPI = {
   getAll: (params) => api.get('/banners', { params }),
+  getLookup: (params) => api.get('/banners/lookup', { params }),
+  getThemeLookup: (params) => api.get('/banners/theme-lookup', { params }),
   getById: (id) => api.get(`/banners/${id}`),
   create: (data) => api.post('/banners', data),
   update: (id, data) => api.put(`/banners/${id}`, data),
   delete: (id) => api.delete(`/banners/${id}`),
   getCounts: () => api.get('/banners/counts'),
-  getThemesLookup: () => api.get('/banners/themes/lookup'),
+  getThemesLookup: () => api.get('/themes/lookup'),
   getThemeImages: (params) => api.get('/banners/theme-images', { params }),
 };
 
 // ─── Featured (Celebrate & Gifts) ─────────────────
 export const featuredAPI = {
   getAll: (params) => api.get('/featured', { params }),
+  getLookup: (params) => api.get('/featured/lookup', { params }),
+  getThemeLookup: (params) => api.get('/featured/theme-lookup', { params }),
   getById: (id) => api.get(`/featured/${id}`),
   create: (data) => api.post('/featured', data),
   update: (id, data) => api.put(`/featured/${id}`, data),
@@ -176,6 +181,7 @@ export const vtoMastersAPI = {
 
 // --- Media & Theme Gallery -------------------------
 export const galleryAPI = {
+  getLookup: (params) => api.get('/gallery/lookup', { params }),
   getAll: (params) => api.get('/gallery', { params }),
   getOne: (id) => api.get('/gallery/' + id),
   create: (data) => api.post('/gallery', data),

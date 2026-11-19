@@ -28,12 +28,13 @@ export default function GalleryUploadModal({
   isOpen,
   onClose,
   defaultThemeId = '',
+  defaultType = 'herobanner',
   modalThemeOptions = [],
   placementTypeOptions = [],
   onSuccess,
 }) {
   const [uploadThemeId, setUploadThemeId] = useState('');
-  const [uploadType, setUploadType] = useState('herobanner');
+  const [uploadType, setUploadType] = useState(defaultType || 'herobanner');
   const [uploadPlatform, setUploadPlatform] = useState('web');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -157,14 +158,15 @@ export default function GalleryUploadModal({
 
   useEffect(() => {
     if (isOpen) {
+      const initialType = defaultType || 'herobanner';
       setUploadThemeId(defaultThemeId || '');
-      setUploadType('herobanner');
+      setUploadType(initialType);
       setUploadPlatform('web');
-      fetchTargetRecords('herobanner', defaultThemeId);
+      fetchTargetRecords(initialType, defaultThemeId);
     } else {
       resetUploadModal();
     }
-  }, [isOpen, defaultThemeId]);
+  }, [isOpen, defaultThemeId, defaultType]);
 
   useEffect(() => {
     if (isOpen) {

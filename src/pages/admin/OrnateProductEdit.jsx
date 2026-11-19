@@ -218,6 +218,7 @@ export default function OrnateProductEdit() {
     title: '',
     category: '',
     categoryTag: '',
+    promoBanner: [],
     menuItem: [],
     targetGender: [],
     status: 'draft',
@@ -229,6 +230,79 @@ export default function OrnateProductEdit() {
     reviewCount: '',
   });
   const [autoOpenMenu, setAutoOpenMenu] = useState(false);
+  const [categoryPromoBanners, setCategoryPromoBanners] = useState([]);
+
+  // Fetch or sync promo banners whenever selected category changes
+  useEffect(() => {
+    if (!baseInfo.category) {
+      setCategoryPromoBanners([]);
+      return;
+    }
+    const catInList = (rawCategoryList || []).find(
+      (c) => String(c?._id || c?.id) === String(baseInfo.category)
+    );
+    if (Array.isArray(catInList?.promoBanners) && catInList.promoBanners.length > 0) {
+      setCategoryPromoBanners(catInList.promoBanners);
+      return;
+    }
+    let cancelled = false;
+    api.get(`/categories/${baseInfo.category}`)
+      .then((res) => {
+        if (cancelled) return;
+        const cat = res.data?.data || res.data;
+        setCategoryPromoBanners(Array.isArray(cat?.promoBanners) ? cat.promoBanners : []);
+      })
+      .catch(() => {
+        if (!cancelled) setCategoryPromoBanners([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [baseInfo.category, rawCategoryList]);
+
+  // If baseInfo.promoBanner contains legacy title strings instead of ObjectIds, resolve them to IDs
+  useEffect(() => {
+    if (!categoryPromoBanners || categoryPromoBanners.length === 0) return;
+    setBaseInfo((prev) => {
+      const currentPromo = Array.isArray(prev.promoBanner) ? prev.promoBanner : [];
+      if (currentPromo.length === 0) return prev;
+      let hasChanges = false;
+      const resolved = currentPromo.map((val) => {
+        const found = categoryPromoBanners.find(
+          (b) => String(b._id || b.id) === String(val) || String(b.title).trim().toLowerCase() === String(val).trim().toLowerCase()
+        );
+        if (found && String(found._id || found.id) !== String(val)) {
+          hasChanges = true;
+          return String(found._id || found.id);
+        }
+        return val;
+      });
+      return hasChanges ? { ...prev, promoBanner: resolved } : prev;
+    });
+  }, [categoryPromoBanners]);
+
+  const promoBannerOptions = useMemo(() => {
+    const banners = (categoryPromoBanners && categoryPromoBanners.length > 0)
+      ? categoryPromoBanners
+      : (rawCategoryList.find((c) => String(c._id) === String(baseInfo.category))?.promoBanners || []);
+    return (Array.isArray(banners) ? banners : [])
+      .filter((b) => b && (b._id || b.id || b.title))
+      .map((b) => {
+        const bannerId = String(b._id || b.id || b.title);
+        const imgUrl = b.image?.url || b.imageUrl || (typeof b.image === 'string' ? b.image : '');
+        return {
+          value: bannerId,
+          label: b.title,
+          icon: imgUrl ? (
+            <img
+              src={imgUrl}
+              alt={b.title}
+              className="w-4 h-4 rounded object-cover shrink-0 border border-stone-200"
+            />
+          ) : null,
+        };
+      });
+  }, [categoryPromoBanners, rawCategoryList, baseInfo.category]);
 
   const [togglingStatus, setTogglingStatus] = useState(false);
   const currentStatus = baseInfo?.status || 'draft';
@@ -380,10 +454,15 @@ export default function OrnateProductEdit() {
           setSelectedCollectionIds(collIds);
 
           // Populate Base Information
+          const rawPromo = product.promoBanner || product.basicInfo?.promoBanner || product.categoryTag || [];
+          const promoArr = Array.isArray(rawPromo)
+            ? rawPromo.map((p) => String(p)).filter(Boolean)
+            : (rawPromo ? [String(rawPromo)] : []);
           setBaseInfo({
             title: product.basicInfo?.title || '',
             category: primaryCat,
             categoryTag: (Array.isArray(product.promoBanner) && product.promoBanner[0]) || product.categoryTag || '',
+            promoBanner: promoArr,
             menuItem: selectedMenuIds(product),
             targetGender: (() => {
               const raw = product.basicInfo?.gender ?? product.gender ?? [];
@@ -996,7 +1075,10 @@ export default function OrnateProductEdit() {
         ...(!isEditMode ? { _id: draftProductId } : {}),
         // Product identity and copy live in basicInfo.
         categoryIds: [...new Set([baseInfo.category, ...(selectedCollectionIds || [])].filter(Boolean))],
-        promoBanner: baseInfo.categoryTag ? [baseInfo.categoryTag] : [],
+        promoBanner: Array.isArray(baseInfo.promoBanner)
+          ? baseInfo.promoBanner.filter(Boolean)
+          : (baseInfo.promoBanner ? [baseInfo.promoBanner] : (baseInfo.categoryTag ? [baseInfo.categoryTag] : [])),
+        categoryTag: (Array.isArray(baseInfo.promoBanner) && baseInfo.promoBanner[0]) || baseInfo.categoryTag || '',
         menuItemIds: baseInfo.menuItem,
         gender: Array.isArray(baseInfo.targetGender)
           ? baseInfo.targetGender.filter(Boolean)
@@ -1462,12 +1544,19 @@ export default function OrnateProductEdit() {
                     categories={rawCategoryList}
                     onChangeCategory={(catId) => {
                       if (catId !== baseInfo.category) {
-                        setBaseInfo((prev) => ({ ...prev, menuItem: [] }));
+                        setBaseInfo((prev) => ({
+                          ...prev,
+                          category: catId,
+                          menuItem: [],
+                          promoBanner: [],
+                          categoryTag: '',
+                        }));
+                      } else {
+                        setBaseInfo((prev) => ({
+                          ...prev,
+                          category: catId,
+                        }));
                       }
-                      setBaseInfo((prev) => ({
-                        ...prev,
-                        category: catId,
-                      }));
                       if (catId) setAutoOpenMenu(true);
                     }}
                     onChangeCollections={setSelectedCollectionIds}
@@ -1476,7 +1565,7 @@ export default function OrnateProductEdit() {
                   />
                 </div>
 
-                <div className="sm:col-span-2 space-y-1.5">
+                <div className="sm:col-span-1 space-y-1.5">
                   <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
                     Menu Items
                   </label>
@@ -1490,6 +1579,36 @@ export default function OrnateProductEdit() {
                     onOpenChange={(isOpen) => {
                       if (!isOpen) setAutoOpenMenu(false);
                     }}
+                  />
+                </div>
+
+                <div className="sm:col-span-1 space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                    Promo Banner
+                  </label>
+                  <Dropdown
+                    size="field"
+                    variant="input"
+                    multiple
+                    value={baseInfo.promoBanner || (baseInfo.categoryTag ? [baseInfo.categoryTag] : [])}
+                    onChange={(val) => {
+                      const arr = Array.isArray(val) ? val : [val].filter(Boolean);
+                      setBaseInfo((prev) => ({
+                        ...prev,
+                        promoBanner: arr,
+                        categoryTag: arr[0] || '',
+                      }));
+                    }}
+                    placeholder={
+                      !baseInfo.category
+                        ? 'Select Category first'
+                        : promoBannerOptions.length === 0
+                        ? 'No promo banners'
+                        : 'Select Promo Banner'
+                    }
+                    disabled={saving || !baseInfo.category || promoBannerOptions.length === 0}
+                    options={promoBannerOptions}
+                    className="w-full"
                   />
                 </div>
               </div>
@@ -1517,7 +1636,6 @@ export default function OrnateProductEdit() {
                       Social Proof & Urgency (Demo Metrics)
                     </h4>
                   </div>
-                  <span className="text-[11px] text-stone-400 font-medium">Storefront Product Detail Display</span>
                 </div>
                 <p className="text-xs text-stone-500">
                   Set product-specific sold and review counts displayed under the title on the storefront.

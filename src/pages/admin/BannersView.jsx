@@ -373,13 +373,9 @@ export default function BannersView() {
       setLoadingThemes(true);
       let res;
       try {
-        res = await api.get('/banners/themes/lookup');
+        res = await api.get('/website/themes/lookup');
       } catch {
-        try {
-          res = await api.get('/website/themes/lookup');
-        } catch {
-          res = await api.get('/gallery/themes');
-        }
+        res = await api.get('/gallery/themes');
       }
       const items = res.data?.data || [];
       setThemes(Array.isArray(items) ? items : []);
@@ -1113,7 +1109,6 @@ export default function BannersView() {
                   <th className="py-3 px-4 whitespace-nowrap">STATUS</th>
                   <th className="py-3 px-4 whitespace-nowrap">DEVICES</th>
                   <th className="py-3 px-4 whitespace-nowrap">ORDER</th>
-                  <th className="py-3 px-4 whitespace-nowrap">DATE</th>
                   <th className="py-3 pr-6 pl-4 whitespace-nowrap text-right">ACTIONS</th>
                 </tr>
               </thead>
@@ -1121,14 +1116,14 @@ export default function BannersView() {
               <tbody className="divide-y divide-stone-100 text-xs sm:text-[13px] text-stone-700">
                 {loading ? (
                   <tr>
-                    <td colSpan="8" className="py-16 text-center text-stone-400">
+                    <td colSpan="7" className="py-16 text-center text-stone-400">
                       <div className="w-7 h-7 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
                       <span>Loading banners...</span>
                     </td>
                   </tr>
                 ) : banners.length === 0 ? (
                   <tr>
-                    <td colSpan="8" className="py-16 text-center text-stone-400">
+                    <td colSpan="7" className="py-16 text-center text-stone-400">
                       <HiOutlinePhotograph className="w-10 h-10 mx-auto text-stone-300 mb-2 stroke-1" />
                       <p className="text-sm font-medium text-stone-600">No {currentBannerType.label}s found</p>
                       <p className="text-xs text-stone-400 mt-1">
@@ -1260,16 +1255,6 @@ export default function BannersView() {
                           <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg border border-stone-200 text-xs font-bold text-stone-700 bg-stone-50">
                             {banner.display?.order ?? 1}
                           </span>
-                        </td>
-
-                        {/* DATE */}
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          <div className="text-xs font-medium text-stone-700">
-                            {dateInfo.date}
-                          </div>
-                          <div className="text-[11px] text-stone-400 font-normal mt-0.5">
-                            {dateInfo.time}
-                          </div>
                         </td>
 
                         {/* ACTIONS */}
@@ -1426,6 +1411,55 @@ export default function BannersView() {
                         buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
                         menuClassName="z-30"
                       />
+                    </div>
+                  ) : currentBannerType.key === 'herobanner' ? (
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {/* Title */}
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold text-stone-700">
+                            Title <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={title}
+                            onChange={(e) => setTitle(e.target.value)}
+                            placeholder="Enter banner title"
+                            className="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all placeholder:text-stone-400"
+                          />
+                        </div>
+
+                        {/* Category (Optional) */}
+                        <div className="space-y-1.5">
+                          <label className="block text-xs font-semibold text-stone-700">
+                            Category <span className="text-[11px] font-normal text-stone-400">(Optional)</span>
+                          </label>
+                          <Dropdown
+                            value={selectedCategory}
+                            onChange={setSelectedCategory}
+                            options={[
+                              { value: '', label: 'Select Category (Optional)' },
+                              ...categories.map((c) => ({ value: c._id, label: c.name })),
+                            ]}
+                            buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
+                            menuClassName="z-30"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Description */}
+                      <div className="space-y-1.5">
+                        <label className="block text-xs font-semibold text-stone-700">
+                          Description
+                        </label>
+                        <input
+                          type="text"
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
+                          placeholder="Enter short description (optional)"
+                          className="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all placeholder:text-stone-400"
+                        />
+                      </div>
                     </div>
                   ) : (
                     <>

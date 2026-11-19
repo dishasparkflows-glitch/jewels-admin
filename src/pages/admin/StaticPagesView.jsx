@@ -251,7 +251,8 @@ export default function StaticPagesView() {
         <button
           type="button"
           onClick={handleStartCreate}
-          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#0c4a3e] hover:bg-[#115e59] text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2.5 shadow-sm transition-all cursor-pointer self-start sm:self-auto"
+          style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+          className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs sm:text-sm font-semibold px-4 sm:px-5 py-2.5 shadow-sm hover:brightness-95 transition-all cursor-pointer self-start sm:self-auto"
         >
           <HiOutlinePlus className="w-4 h-4" />
           <span>Create Page</span>
@@ -271,7 +272,7 @@ export default function StaticPagesView() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search pages..."
-                className="w-full pl-9 pr-4 py-2 text-xs text-stone-800 placeholder-stone-400 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-1 focus:ring-[#0c4a3e] focus:border-[#0c4a3e] transition-all"
+                className="w-full pl-9 pr-4 py-2 text-xs text-stone-800 placeholder-stone-400 bg-stone-50 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] transition-all"
               />
             </div>
           </div>
@@ -302,13 +303,13 @@ export default function StaticPagesView() {
                     onClick={() => handleSelectPage(page)}
                     className={`grid grid-cols-12 items-center px-4 py-3.5 transition-colors cursor-pointer group ${
                       isSelected
-                        ? 'bg-[#f4f8f5] border-l-4 border-l-[#0c4a3e]'
+                        ? 'bg-[#faf6f0] border-l-4 border-l-[#8b6f4e]'
                         : 'hover:bg-stone-50/80'
                     }`}
                   >
                     {/* Col 1: Page icon, title & slug */}
                     <div className="col-span-5 flex items-center gap-3 min-w-0 pr-2">
-                      <div className="w-8 h-8 rounded-lg bg-[#eef7ee] text-[#2d6a4f] flex items-center justify-center shrink-0">
+                      <div className="w-8 h-8 rounded-lg bg-[#faf6f0] border border-[#8b6f4e]/20 text-[#8b6f4e] flex items-center justify-center shrink-0 group-hover:bg-[#8b6f4e] group-hover:text-white transition-all">
                         <HiOutlineDocumentText className="w-4 h-4" />
                       </div>
                       <div className="min-w-0 truncate">
@@ -405,7 +406,7 @@ export default function StaticPagesView() {
                   value={formData.title}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   placeholder="e.g. Our Story"
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0c4a3e]/20 focus:border-[#0c4a3e] transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs sm:text-sm text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] transition-all"
                 />
               </div>
 
@@ -425,7 +426,7 @@ export default function StaticPagesView() {
                       })
                     }
                     placeholder="our-story"
-                    className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-sm text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0c4a3e]/20 focus:border-[#0c4a3e] font-mono transition-all"
+                    className="w-full pl-7 pr-3.5 py-2.5 text-xs sm:text-sm text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] font-mono transition-all"
                   />
                 </div>
               </div>
@@ -443,8 +444,8 @@ export default function StaticPagesView() {
                       status: formData.status === 'published' ? 'draft' : 'published',
                     })
                   }
-                  style={formData.status === 'published' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${formData.status === 'published' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
+                  style={formData.status === 'published' ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${formData.status === 'published' ? 'bg-[var(--theme-primary,#8b6f4e)]' : 'bg-stone-300'}`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -467,7 +468,7 @@ export default function StaticPagesView() {
                   value={formData.seoTitle}
                   onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
                   placeholder="e.g. Our Story | Neirah - Handcrafted Luxury Jewellery"
-                  className="w-full px-3.5 py-2.5 text-xs text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0c4a3e]/20 focus:border-[#0c4a3e] transition-all"
+                  className="w-full px-3.5 py-2.5 text-xs text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] transition-all"
                 />
               </div>
 
@@ -484,7 +485,7 @@ export default function StaticPagesView() {
                   value={formData.metaDescription}
                   onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
                   placeholder="Discover the story behind Neirah..."
-                  className="w-full px-3.5 py-2 text-xs text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#0c4a3e]/20 focus:border-[#0c4a3e] transition-all resize-none"
+                  className="w-full px-3.5 py-2 text-xs text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] transition-all resize-none"
                 />
               </div>
             </div>
@@ -520,7 +521,8 @@ export default function StaticPagesView() {
               type="button"
               disabled={saving}
               onClick={() => handleSave('published')}
-              className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-[#0c4a3e] hover:bg-[#115e59] text-white text-xs sm:text-sm font-semibold shadow-sm transition-all disabled:opacity-50 cursor-pointer"
+              style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+              className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 rounded-xl bg-[#8b6f4e] hover:bg-[#785e40] hover:brightness-95 text-white text-xs sm:text-sm font-semibold shadow-sm transition-all disabled:opacity-50 cursor-pointer"
             >
               {saving ? (
                 <span>Saving...</span>

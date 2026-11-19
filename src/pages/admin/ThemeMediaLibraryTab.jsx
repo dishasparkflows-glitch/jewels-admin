@@ -149,50 +149,46 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
 
   const fileInputRef = useRef(null);
 
-  // ─── Fetch Media from Gallery List API (ThemeId Wise with Pagination) ───
-  const fetchGalleryMedia = useCallback(
-    async (targetPage = page, targetPageSize = pageSize) => {
-      try {
-        setLoading(true);
-        const params = {
-          themeId: currentThemeId || undefined,
-          placement: selectedPlacement !== 'all' ? selectedPlacement : undefined,
-          page: targetPage,
-          limit: targetPageSize,
-          search: search.trim() || undefined,
-        };
+  // ─── Fetch Media from Gallery Lookup API (ThemeId Wise) ───
+  const fetchGalleryMedia = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = {
+        themeId: currentThemeId || undefined,
+        placement: selectedPlacement !== 'all' ? selectedPlacement : undefined,
+        search: search.trim() || undefined,
+      };
 
-        const res = await galleryAPI.getAll(params);
-        const data = res.data?.data || res.data || {};
-        const fetchedItems = data.items || [];
+      const res = await galleryAPI.getLookup(params);
+      const data = res.data?.data || res.data || [];
+      const fetchedItems = Array.isArray(data) ? data : (data.items || []);
 
-        setItems(fetchedItems);
-        setTotalPages(data.pagination?.totalPages || 1);
-        setTotalItems(
-          data.pagination?.totalItems ??
-            data.pagination?.totalDocs ??
-            data.total ??
-            fetchedItems.length
-        );
-      } catch (err) {
-        console.error('Failed to load gallery media list:', err);
-        toast.error('Could not load gallery media');
-      } finally {
-        setLoading(false);
-      }
-    },
-    [currentThemeId, selectedPlacement, page, pageSize, search]
-  );
+      setItems(fetchedItems);
+      setTotalPages(Math.max(1, Math.ceil(fetchedItems.length / pageSize)));
+      setTotalItems(fetchedItems.length);
+    } catch (err) {
+      console.error('Failed to load gallery lookup:', err);
+      toast.error('Could not load gallery media');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentThemeId, selectedPlacement, search, pageSize]);
 
-  // On mount and when page or pageSize changes
+  // On mount and when search, placement or theme changes
   useEffect(() => {
-    fetchGalleryMedia(page, pageSize);
-  }, [fetchGalleryMedia, page, pageSize]);
+    fetchGalleryMedia();
+  }, [fetchGalleryMedia]);
 
   // Reset to page 1 on search, placement, or theme change
   useEffect(() => {
     setPage(1);
   }, [search, selectedPlacement, currentThemeId]);
+
+  // Client-side paginated items for display
+  const displayedItems = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return items.slice(start, start + pageSize);
+  }, [items, page, pageSize]);
 
   // ─── Handle Upload Media for This Theme ───
   const handleFileUpload = async (e) => {
@@ -231,7 +227,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
 
       // Re-fetch gallery on page 1
       setPage(1);
-      fetchGalleryMedia(1, pageSize);
+      fetchGalleryMedia();
     } catch (err) {
       console.error('Failed to upload theme media:', err);
       toast.error(err.response?.data?.message || 'Upload failed. Please try again.', {
@@ -364,7 +360,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5">
-          {items.map((item) => {
+          {displayedItems.map((item) => {
             const fileName = getMediaFileName(item);
             const mediaUrl = item.url || item.image?.url;
             const placementLabel = item.typeLabel || getPlacementLabel(item.placement);

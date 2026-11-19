@@ -163,6 +163,7 @@ export default function NavigationMenusView() {
   const [draggedItemInfo, setDraggedItemInfo] = useState(null); // { sectionId, itemIdx }
   const [dragOverItemInfo, setDragOverItemInfo] = useState(null); // { sectionId, itemIdx }
   const [isSavingAll, setIsSavingAll] = useState(false);
+  const hasDraggedItemRef = useRef(false);
 
   // Close popups on Escape key
   useEffect(() => {
@@ -424,6 +425,7 @@ export default function NavigationMenusView() {
 
   function handleItemDragStart(e, sectionId, itemIdx) {
     e.stopPropagation();
+    hasDraggedItemRef.current = true;
     setDraggedItemInfo({ sectionId, itemIdx });
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', JSON.stringify({ sectionId, itemIdx }));
@@ -453,6 +455,9 @@ export default function NavigationMenusView() {
     e.stopPropagation();
     setDraggedItemInfo(null);
     setDragOverItemInfo(null);
+    setTimeout(() => {
+      hasDraggedItemRef.current = false;
+    }, 100);
   }
 
   // ─── Save All Navigation Changes ─────────────────────────────────────
@@ -1033,6 +1038,20 @@ export default function NavigationMenusView() {
                               onClick={(e) => e.stopPropagation()}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
+                              {/* + Add Menu Item Button moved to Section Header */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setExpandedSections((prev) => ({ ...prev, [section._id]: true }));
+                                  openAddMenuItemModal(section._id);
+                                }}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-dashed border-[#85583f]/50 hover:border-[#85583f] bg-[#85583f]/5 hover:bg-[#85583f]/15 text-[#85583f] text-xs font-semibold shadow-2xs transition-all cursor-pointer mr-1"
+                                title="Add menu link to this section"
+                              >
+                                <HiOutlinePlus className="w-3.5 h-3.5" />
+                                <span>Add Menu Item</span>
+                              </button>
+
                               {/* Direct On/Off Toggle Button for Section */}
                               <button
                                 type="button"
@@ -1110,16 +1129,20 @@ export default function NavigationMenusView() {
                                         onDragOver={(e) => handleItemDragOver(e, section._id, itemIdx)}
                                         onDrop={(e) => handleItemDrop(e, section._id, itemIdx)}
                                         onDragEnd={handleItemDragEnd}
-                                        className={`group flex items-center justify-between py-3 px-1 transition-all select-none cursor-grab active:cursor-grabbing ${
+                                        onClick={() => {
+                                          if (hasDraggedItemRef.current) return;
+                                          openEditMenuItemModal(item);
+                                        }}
+                                        className={`group flex items-center justify-between py-2.5 px-2 rounded-xl transition-all select-none cursor-pointer ${
                                           isItemDragging
                                             ? 'opacity-40 bg-stone-50'
                                             : isItemDragOver
                                             ? 'bg-[#85583f]/5'
-                                            : 'hover:bg-stone-50/70'
+                                            : 'hover:bg-stone-50/90'
                                         }`}
                                       >
-                                        <div className="flex items-center gap-3.5 min-w-0">
-                                          <DragHandle />
+                                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                          <DragHandle onClick={(e) => e.stopPropagation()} />
                                           <div className="w-8 h-8 rounded-lg shrink-0 overflow-hidden flex items-center justify-center shadow-2xs">
                                             <AdminImage
                                               src={item.icon?.url}
@@ -1130,7 +1153,7 @@ export default function NavigationMenusView() {
                                               textClassName="text-[9px] font-semibold text-stone-400 select-none"
                                             />
                                           </div>
-                                          <span className="text-xs font-medium text-stone-800 truncate">
+                                          <span className="text-xs font-medium text-stone-800 truncate group-hover:text-[#85583f] transition-colors">
                                             {item.title}
                                           </span>
                                         </div>
@@ -1187,16 +1210,6 @@ export default function NavigationMenusView() {
                                   })}
                                 </div>
                               )}
-
-                              {/* + Add Menu Item Button */}
-                              <button
-                                type="button"
-                                onClick={() => openAddMenuItemModal(section._id)}
-                                className="w-full py-2.5 rounded-xl border border-dashed border-stone-200 hover:border-[#85583f] hover:bg-[#85583f]/5 text-stone-600 hover:text-[#85583f] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-                              >
-                                <HiOutlinePlus className="w-3.5 h-3.5" />
-                                Add Menu Item
-                              </button>
                             </div>
                           )}
                         </div>
@@ -1248,13 +1261,14 @@ export default function NavigationMenusView() {
                         return (
                           <div
                             key={index}
-                            className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2.5 relative group overflow-hidden"
+                            onClick={() => openEditBannerModal(banner, index)}
+                            className="rounded-xl border border-stone-200 bg-stone-50/50 p-3 space-y-2.5 relative group overflow-hidden cursor-pointer hover:border-[#85583f]/40 hover:shadow-xs transition-all"
                           >
                             <div className="w-full h-32 rounded-xl overflow-hidden relative">
                               <AdminImage
                                 src={img}
                                 alt=""
-                                className="w-full h-full object-cover rounded-xl"
+                                className="w-full h-full object-cover rounded-xl group-hover:scale-102 transition-transform duration-300"
                                 containerClassName="w-full h-full"
                                 rounded="rounded-xl"
                                 textClassName="text-xs font-semibold text-stone-400 select-none"
@@ -1262,12 +1276,15 @@ export default function NavigationMenusView() {
                             </div>
 
                             <div>
-                              <h4 className="text-xs font-bold text-stone-900 truncate">
+                              <h4 className="text-xs font-bold text-stone-900 truncate group-hover:text-[#85583f] transition-colors">
                                 {banner.title || 'Untitled Banner'}
                               </h4>
                             </div>
 
-                            <div className="flex items-center justify-end gap-1.5 pt-1.5 border-t border-stone-200/60">
+                            <div
+                              className="flex items-center justify-end gap-1.5 pt-1.5 border-t border-stone-200/60"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <EditActionButton
                                 title="Edit Banner"
                                 onClick={() => openEditBannerModal(banner, index)}

@@ -83,13 +83,9 @@ export default function CelebrateGiftsView() {
       setLoadingThemes(true);
       let res;
       try {
-        res = await api.get('/banners/themes/lookup');
+        res = await api.get('/website/themes/lookup');
       } catch {
-        try {
-          res = await api.get('/website/themes/lookup');
-        } catch {
-          res = await api.get('/gallery/themes');
-        }
+        res = await api.get('/gallery/themes');
       }
       const items = res.data?.data || [];
       setThemes(Array.isArray(items) ? items : []);

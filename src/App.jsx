@@ -56,7 +56,7 @@ const DynamicModuleView = lazy(() => import('./pages/admin/DynamicModuleView'));
 const ProfileView = lazy(() => import('./pages/admin/ProfileView'));
 const AnalyticsView = lazy(() => import('./pages/admin/AnalyticsView'));
 const StaticPagesView = lazy(() => import('./pages/admin/StaticPagesView'));
-const WebsiteThemesView = lazy(() => import('./pages/admin/WebsiteThemesView'));
+const ThemesView = lazy(() => import('./pages/admin/ThemesView'));
 const GalleryView = lazy(() => import('./pages/admin/GalleryView'));
 import CuteLoader from './components/common/CuteLoader';
 
@@ -187,8 +187,8 @@ function App() {
             <Route path="/media-gallery" element={<GalleryView />} />
             <Route path="/website/gallery" element={<GalleryView />} />
             <Route path="/marketing/gallery" element={<GalleryView />} />
-            <Route path="/website/themes" element={<WebsiteThemesView />} />
-            <Route path="/themes" element={<WebsiteThemesView />} />
+            <Route path="/website/themes" element={<ThemesView />} />
+            <Route path="/themes" element={<ThemesView />} />
             <Route path="/static-pages" element={<StaticPagesView />} />
             <Route path="/website/static-pages" element={<StaticPagesView />} />
             <Route path="/website-content/static-pages" element={<StaticPagesView />} />

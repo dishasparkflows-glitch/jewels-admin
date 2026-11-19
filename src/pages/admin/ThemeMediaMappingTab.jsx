@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
@@ -24,15 +25,45 @@ import {
   HiOutlineLink,
   HiOutlineCalendar,
   HiOutlineCollection,
+  HiOutlineCode,
+  HiOutlineDotsHorizontal,
+  HiOutlineChevronRight,
+  HiOutlineSwitchHorizontal,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
-import { websiteThemesAPI, galleryAPI } from '../../api/services';
+import { themesAPI, galleryAPI, bannersAPI, featuredAPI } from '../../api/services';
 import Dropdown from '../../components/common/Dropdown';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import { uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
+import { getMediaUrl } from '../../utils/imageUrl';
+import useCategoryLookup from '../../hooks/useCategoryLookup';
 import { VITE_FRONT_URL } from '../../config/env';
+
+const formatDateDisplay = (dateStr) => {
+  if (!dateStr) return { date: '—', time: '' };
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return { date: '—', time: '' };
+    const day = d.getDate();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const month = months[d.getMonth()];
+    const year = d.getFullYear();
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;
+    const padHours = String(hours).padStart(2, '0');
+    return {
+      date: `${day} ${month} ${year}`,
+      time: `${padHours}:${minutes} ${ampm}`,
+    };
+  } catch {
+    return { date: '—', time: '' };
+  }
+};
 
 const MODULE_TABS = [
   {
@@ -90,6 +121,57 @@ const MODULE_TABS = [
     description: 'Bespoke jewelry, book appointment, and custom section banners.',
     recommendedDesktop: '1600 × 600 px',
     recommendedMobile: '768 × 800 px',
+  },
+];
+
+const BANNER_TYPES = [
+  {
+    key: 'herobanner',
+    label: 'Hero Banner',
+    icon: HiOutlineDesktopComputer,
+    desc: 'Main homepage slider banner for top section.',
+  },
+  {
+    key: 'collectionbanner',
+    label: 'Collection Banner',
+    icon: HiOutlineTag,
+    desc: 'Banners for collection pages and featured collections.',
+  },
+  {
+    key: 'categorybanner',
+    label: 'Category Banner',
+    icon: HiOutlineViewGrid,
+    desc: 'Banners for category pages and category highlights.',
+  },
+  {
+    key: 'offerbanner',
+    label: 'Offer Banner',
+    icon: HiOutlineGift,
+    desc: 'Banners for offers, promotions and special deals.',
+  },
+  {
+    key: 'mobileappbanner',
+    label: 'App Banner',
+    icon: HiOutlineDeviceMobile,
+    desc: 'Banners for app download promotion.',
+  },
+  {
+    key: 'bookappointbanner',
+    label: 'Appointment Banner',
+    icon: HiOutlineCalendar,
+    desc: 'Banners for appointment booking section.',
+  },
+  {
+    key: 'customizebanner',
+    label: 'Custom Banner',
+    icon: HiOutlineCode,
+    desc: 'Custom banners for special pages or campaigns.',
+  },
+  {
+    key: 'websitebanner',
+    label: 'Other',
+    icon: HiOutlineDotsHorizontal,
+    desc: 'Other banners and miscellaneous placements.',
   },
 ];
 
@@ -169,34 +251,112 @@ const MODULE_TO_PLACEMENT = {
   customizebanner: 'customizebanner',
 };
 
+// Filter options matching gallery.model.js L23-L38 (placement enum)
+const GALLERY_PLACEMENT_FILTER_OPTIONS = [
+  { value: 'all', label: 'All Placements' },
+  { value: 'herobanner', label: 'Hero Banner' },
+  { value: 'collectionbanner', label: 'Collection Banner' },
+  { value: 'categorybanner', label: 'Category Banner' },
+  { value: 'offerbanner', label: 'Offer Banner' },
+  { value: 'celebrate', label: 'Celebrate & Gifts' },
+  { value: 'mobileappbanner', label: 'App Banner' },
+  { value: 'bookappointbanner', label: 'Appointment Banner' },
+  { value: 'customizebanner', label: 'Custom Banner' },
+  { value: 'asset', label: 'Asset' },
+];
+
+// Filter options matching gallery.model.js L39-L44 (platform enum)
+const GALLERY_PLATFORM_FILTER_OPTIONS = [
+  { value: 'all', label: 'All Platforms' },
+  { value: 'web', label: 'Web' },
+  { value: 'app', label: 'App' },
+  { value: 'common', label: 'Common' },
+];
+
 export default function ThemeMediaMappingTab({
   theme,
   onThemeUpdated,
   onPreview,
 }) {
+  const navigate = useNavigate();
   const confirm = useConfirm();
   const { openImagePreview } = useImagePreview();
   const themeId = theme?._id;
 
-  // Active module & filter state
+  // Active mapping mode ('banner' or 'celebrate')
+  const [mappingMode, setMappingMode] = useState('banner');
   const [activeModule, setActiveModule] = useState('herobanner');
   const [selectedPlacement, setSelectedPlacement] = useState('herobanner');
-  const [statusFilter, setStatusFilter] = useState('all'); // all, mapped, unmapped
+  const [statusFilter, setStatusFilter] = useState('all'); // all, active, draft, mapped, unmapped
+  const [deviceFilter, setDeviceFilter] = useState('all'); // all, web, mobile
+  const [sortBy, setSortBy] = useState('newest'); // newest, oldest, order
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState('cards'); // 'cards' (visual) or 'table' (compact)
+  const [celebratePlacementFilter, setCelebratePlacementFilter] = useState('Celebrate'); // Celebrate, Gifts, all
+  const { categories } = useCategoryLookup({ enabled: true });
+  const [viewMode, setViewMode] = useState('table'); // standard table layout matching main screens
 
   // Data state
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState([]);
   const [summary, setSummary] = useState(null);
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [bannerCounts, setBannerCounts] = useState({});
+
+  // Fetch live counts from banners API
+  useEffect(() => {
+    bannersAPI.getCounts()
+      .then((res) => {
+        if (res.data?.data) {
+          setBannerCounts(res.data.data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleSelectBannerType = (key) => {
+    setActiveModule(key);
+    setSelectedPlacement(key);
+    setSelectedIds(new Set());
+    setActiveTargetSlot(null);
+  };
+
+  // Aggregate stats for the 2 primary mapping boxes
+  const bannerStats = useMemo(() => {
+    const bannerModules = ['herobanner', 'collectionbanner', 'offerbanner', 'mobileappbanner', 'customizebanner'];
+    const relevant = summary?.breakdown?.filter((b) => bannerModules.includes(b.module)) || [];
+    const total = relevant.reduce((sum, b) => sum + (b.total || 0), 0);
+    const mapped = relevant.reduce((sum, b) => sum + (b.mapped || 0), 0);
+    return { total, mapped };
+  }, [summary]);
+
+  const celebrateStats = useMemo(() => {
+    const b = summary?.breakdown?.find((item) => item.module === 'celebrate');
+    return {
+      total: b?.total || 0,
+      mapped: b?.mapped || 0,
+    };
+  }, [summary]);
+
+  // Handler when clicking on either Banner Mapping or Celebrate & Gift Mapping box
+  const handleSelectMappingMode = (mode) => {
+    setMappingMode(mode);
+    setSelectedIds(new Set());
+    setActiveTargetSlot(null);
+    if (mode === 'banner') {
+      setActiveModule('herobanner');
+      setSelectedPlacement('herobanner');
+    } else {
+      setActiveModule('celebrate');
+      setSelectedPlacement('celebrate');
+    }
+  };
 
   // Side panel gallery state
   const [sideGalleryItems, setSideGalleryItems] = useState([]);
   const [galleryLoading, setGalleryLoading] = useState(false);
   const [galleryScope, setGalleryScope] = useState('theme'); // 'theme' or 'all'
-  const [gallerySearch, setGallerySearch] = useState('');
-  const [galleryTypeFilter, setGalleryTypeFilter] = useState('herobanner');
+  const [galleryPlacementFilter, setGalleryPlacementFilter] = useState('all');
+  const [galleryPlatformFilter, setGalleryPlatformFilter] = useState('all');
   const [panelUploading, setPanelUploading] = useState(false);
   const panelFileInputRef = useRef(null);
 
@@ -207,7 +367,7 @@ export default function ThemeMediaMappingTab({
     setActiveTargetSlot(null);
 
     if (val === 'all') {
-      setGalleryTypeFilter('all');
+      setGalleryPlacementFilter('all');
       return;
     }
 
@@ -215,7 +375,7 @@ export default function ThemeMediaMappingTab({
     if (opt?.module) {
       setActiveModule(opt.module);
     }
-    setGalleryTypeFilter(val);
+    setGalleryPlacementFilter(val);
   };
 
   // Drag and drop & active target state
@@ -233,7 +393,7 @@ export default function ThemeMediaMappingTab({
   const fetchSummary = useCallback(async () => {
     if (!themeId) return;
     try {
-      const res = await websiteThemesAPI.getMappingSummary(themeId);
+      const res = await themesAPI.getMappingSummary(themeId);
       const data = res.data?.data || res.data;
       setSummary(data);
     } catch (err) {
@@ -241,18 +401,47 @@ export default function ThemeMediaMappingTab({
     }
   }, [themeId]);
 
-  // ─── 2. Load Records for Current Module ──────────────────
+  // ─── 2. Load Records for Current Module (Calls banners or featured API) ──────────────────
   const fetchRecords = useCallback(async () => {
     if (!themeId) return;
     try {
       setLoading(true);
-      const res = await websiteThemesAPI.getMappingRecords(themeId, {
-        module: activeModule,
-        search,
-        limit: 100,
-      });
-      const data = res.data?.data || res.data || {};
-      setRecords(data.items || data.records || []);
+      if (mappingMode === 'banner') {
+        // Concurrently invoke bannersAPI.getThemeLookup and mapping records
+        const [mappingRes] = await Promise.all([
+          themesAPI.getMappingRecords(themeId, {
+            module: activeModule,
+            search,
+            limit: 100,
+          }),
+          bannersAPI.getThemeLookup({
+            type: activeModule,
+            status: 'active',
+          }).catch((err) => {
+            console.warn('bannersAPI.getThemeLookup error:', err);
+            return null;
+          }),
+        ]);
+        const data = mappingRes?.data?.data || mappingRes?.data || {};
+        setRecords(data.items || data.records || []);
+      } else {
+        // Concurrently invoke featuredAPI.getThemeLookup and mapping records
+        const [mappingRes] = await Promise.all([
+          themesAPI.getMappingRecords(themeId, {
+            module: 'celebrate',
+            search,
+            limit: 100,
+          }),
+          featuredAPI.getThemeLookup({
+            status: 'active',
+          }).catch((err) => {
+            console.warn('featuredAPI.getThemeLookup error:', err);
+            return null;
+          }),
+        ]);
+        const data = mappingRes?.data?.data || mappingRes?.data || {};
+        setRecords(data.items || data.records || []);
+      }
       setSelectedIds(new Set());
     } catch (err) {
       console.error('Failed to load module records for mapping:', err);
@@ -260,7 +449,7 @@ export default function ThemeMediaMappingTab({
     } finally {
       setLoading(false);
     }
-  }, [themeId, activeModule, search]);
+  }, [themeId, mappingMode, activeModule, search]);
 
   // ─── 3. Load Side Panel Theme Gallery Items ──────────────
   const fetchSideGallery = useCallback(async () => {
@@ -269,24 +458,27 @@ export default function ThemeMediaMappingTab({
       setGalleryLoading(true);
       const params = {
         limit: 100,
-        search: gallerySearch || undefined,
       };
       if (galleryScope === 'theme') {
         params.themeId = themeId;
       }
-      if (galleryTypeFilter !== 'all') {
-        params.type = galleryTypeFilter;
-        params.placement = galleryTypeFilter;
+      if (galleryPlacementFilter && galleryPlacementFilter !== 'all') {
+        params.type = galleryPlacementFilter;
+        params.placement = galleryPlacementFilter;
       }
-      const res = await galleryAPI.getAll(params);
-      const data = res.data?.data || res.data || {};
-      setSideGalleryItems(data.items || []);
+      if (galleryPlatformFilter && galleryPlatformFilter !== 'all') {
+        params.platform = galleryPlatformFilter;
+      }
+      const res = await galleryAPI.getLookup(params);
+      const data = res.data?.data || res.data || [];
+      const items = Array.isArray(data) ? data : (data.items || []);
+      setSideGalleryItems(items);
     } catch (err) {
       console.error('Failed to load gallery for side panel:', err);
     } finally {
       setGalleryLoading(false);
     }
-  }, [themeId, galleryScope, gallerySearch, galleryTypeFilter]);
+  }, [themeId, galleryScope, galleryPlacementFilter, galleryPlatformFilter]);
 
   useEffect(() => {
     fetchSummary();
@@ -307,14 +499,71 @@ export default function ThemeMediaMappingTab({
     );
   }, [activeModule]);
 
+  // Current banner type config (for Banner Management view matching)
+  const currentBannerType = useMemo(() => {
+    return BANNER_TYPES.find((t) => t.key === activeModule) || BANNER_TYPES[0];
+  }, [activeModule]);
+
   // ─── Filtered Records ────────────────────────────────────
   const filteredRecords = useMemo(() => {
-    return records.filter((rec) => {
-      if (statusFilter === 'mapped') return rec.isMapped;
-      if (statusFilter === 'unmapped') return !rec.isMapped;
-      return true;
-    });
-  }, [records, statusFilter]);
+    let result = [...records];
+
+    if (mappingMode === 'banner') {
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        result = result.filter((r) => {
+          const t = (r.content?.title || r.title || '').toLowerCase();
+          const d = (r.content?.description || r.subtitle || '').toLowerCase();
+          const cat = categories.find((c) => String(c._id) === String(r.display?.categoryId?._id || r.display?.categoryId))?.name?.toLowerCase() || '';
+          return t.includes(q) || d.includes(q) || cat.includes(q);
+        });
+      }
+
+      if (statusFilter !== 'all') {
+        if (statusFilter === 'active' || statusFilter === 'published') {
+          result = result.filter((r) => r.status === 'active');
+        } else if (statusFilter === 'draft' || statusFilter === 'inactive') {
+          result = result.filter((r) => r.status !== 'active');
+        } else if (statusFilter === 'mapped') {
+          result = result.filter((r) => r.isMapped || Boolean(r.desktopMapping?.imageUrl));
+        } else if (statusFilter === 'unmapped') {
+          result = result.filter((r) => !r.isMapped && !r.desktopMapping?.imageUrl);
+        }
+      }
+
+      if (deviceFilter !== 'all') {
+        result = result.filter((r) => {
+          if (deviceFilter === 'web') return Boolean(r.image?.url || r.desktopMapping?.imageUrl);
+          if (deviceFilter === 'mobile') return Boolean(r.mobileImage?.url || r.mobileMapping?.imageUrl);
+          return true;
+        });
+      }
+
+      if (sortBy === 'order') {
+        result.sort((a, b) => (a.display?.order ?? a.order ?? 0) - (b.display?.order ?? b.order ?? 0));
+      } else if (sortBy === 'oldest') {
+        result.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
+      } else if (sortBy === 'newest') {
+        result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+      }
+    } else {
+      // celebrate mode
+      if (celebratePlacementFilter !== 'all') {
+        result = result.filter((r) => (r.placement || '').toLowerCase() === celebratePlacementFilter.toLowerCase());
+      }
+      if (search.trim()) {
+        const q = search.toLowerCase().trim();
+        result = result.filter((r) => (r.name || r.title || '').toLowerCase().includes(q));
+      }
+      if (statusFilter === 'mapped') {
+        result = result.filter((r) => r.isMapped || Boolean(r.desktopMapping?.imageUrl));
+      } else if (statusFilter === 'unmapped') {
+        result = result.filter((r) => !r.isMapped && !r.desktopMapping?.imageUrl);
+      }
+    }
+
+    return result;
+  }, [records, mappingMode, search, statusFilter, deviceFilter, sortBy, celebratePlacementFilter, categories]);
 
   // ─── Selection Handlers ──────────────────────────────────
   const isAllSelected =
@@ -346,7 +595,7 @@ export default function ThemeMediaMappingTab({
     const { record, device, placement } = target;
 
     try {
-      await websiteThemesAPI.saveMapping(themeId, {
+      await themesAPI.saveMapping(themeId, {
         module: activeModule,
         recordId: record._id,
         mediaId: mediaAsset._id,
@@ -400,7 +649,7 @@ export default function ThemeMediaMappingTab({
       const mediaAsset = galleryRes.data?.data || galleryRes.data;
 
       // 3. Save Theme Mapping
-      await websiteThemesAPI.saveMapping(themeId, {
+      await themesAPI.saveMapping(themeId, {
         module: activeModule,
         recordId: record._id,
         mediaId: mediaAsset._id,
@@ -464,7 +713,7 @@ export default function ThemeMediaMappingTab({
     if (!themeId) return;
 
     try {
-      await websiteThemesAPI.deleteMappingByTarget(themeId, {
+      await themesAPI.deleteMappingByTarget(themeId, {
         module: activeModule,
         recordId: record._id,
         device,
@@ -496,7 +745,7 @@ export default function ThemeMediaMappingTab({
     try {
       setBulkActionLoading(true);
       const promises = Array.from(selectedIds).map((recId) =>
-        websiteThemesAPI.deleteMappingByTarget(themeId, {
+        themesAPI.deleteMappingByTarget(themeId, {
           module: activeModule,
           recordId: recId,
         })
@@ -567,7 +816,7 @@ export default function ThemeMediaMappingTab({
 
     try {
       setActivating(true);
-      const res = await websiteThemesAPI.activateTheme(themeId);
+      const res = await themesAPI.activateTheme(themeId);
       const data = res.data?.data || res.data || {};
       toast.success(data.message || `Theme "${theme?.name}" is now live on the storefront!`);
       setShowActivateModal(false);
@@ -613,51 +862,170 @@ export default function ThemeMediaMappingTab({
   return (
     <div className="space-y-4">
       {/* ─────────────────────────────────────────────────────────────
-          1. MODULE TABS STRIP
+          1. 2 PRIMARY SELECTION BOXES: BANNER MAPPING & CELEBRATE-GIFT MAPPING
           ───────────────────────────────────────────────────────────── */}
-      <div className="flex gap-1.5 overflow-x-auto rounded-2xl border border-stone-200 bg-white p-1.5 shadow-2xs">
-        {MODULE_TABS.map((tab) => {
-          const Icon = tab.icon;
-          const stat = summary?.breakdown?.find((b) => b.module === tab.key);
-          const isSelected = activeModule === tab.key;
-          const total = stat?.total || 0;
-          const mapped = stat?.mapped || 0;
-
-          return (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => {
-                setActiveModule(tab.key);
-                setSelectedIds(new Set());
-                setActiveTargetSlot(null);
-                const matchingPlacement = MODULE_TO_PLACEMENT[tab.key] || tab.key;
-                setSelectedPlacement(matchingPlacement);
-                setGalleryTypeFilter(matchingPlacement);
-              }}
-              className={`flex items-center gap-2 shrink-0 rounded-xl px-4 py-2.5 text-xs font-semibold transition cursor-pointer ${
-                isSelected
-                  ? 'bg-[#8b6f4e] text-white shadow-xs'
-                  : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'
-              }`}
-            >
-              <Icon className="h-4 w-4" />
-              <span>{tab.label}</span>
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                  isSelected
-                    ? 'bg-white/20 text-white'
-                    : mapped === total && total > 0
-                    ? 'bg-emerald-100 text-emerald-800'
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Box 1: Banner Mapping */}
+        <button
+          type="button"
+          onClick={() => handleSelectMappingMode('banner')}
+          className={`p-4 sm:p-5 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+            mappingMode === 'banner'
+              ? 'border-[#8b6f4e] bg-[#fbf9f6] shadow-sm ring-2 ring-[#8b6f4e]/20'
+              : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50/60 shadow-2xs'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3.5">
+              <div
+                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                  mappingMode === 'banner'
+                    ? 'bg-[#8b6f4e] text-white shadow-xs'
                     : 'bg-stone-100 text-stone-600'
                 }`}
               >
-                {mapped}/{total}
+                <HiOutlineDesktopComputer className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-stone-900">Banner Mapping</h3>
+                  {mappingMode === 'banner' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8b6f4e] text-white">
+                      <HiOutlineCheck className="w-3 h-3" /> Selected
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Hero banners, collection banners & promotional sliders
+                </p>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <span
+                className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${
+                  bannerStats.mapped === bannerStats.total && bannerStats.total > 0
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-stone-100 text-stone-700'
+                }`}
+              >
+                {bannerStats.mapped}/{bannerStats.total} Mapped
               </span>
-            </button>
-          );
-        })}
+            </div>
+          </div>
+        </button>
+
+        {/* Box 2: Celebrate & Gift Mapping */}
+        <button
+          type="button"
+          onClick={() => handleSelectMappingMode('celebrate')}
+          className={`p-4 sm:p-5 rounded-2xl border text-left transition-all cursor-pointer relative overflow-hidden ${
+            mappingMode === 'celebrate'
+              ? 'border-[#8b6f4e] bg-[#fbf9f6] shadow-sm ring-2 ring-[#8b6f4e]/20'
+              : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50/60 shadow-2xs'
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3.5">
+              <div
+                className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 transition-colors ${
+                  mappingMode === 'celebrate'
+                    ? 'bg-[#8b6f4e] text-white shadow-xs'
+                    : 'bg-stone-100 text-stone-600'
+                }`}
+              >
+                <IoDiamondOutline className="w-6 h-6" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-stone-900">Celebrate & Gifts Mapping</h3>
+                  {mappingMode === 'celebrate' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#8b6f4e] text-white">
+                      <HiOutlineCheck className="w-3 h-3" /> Selected
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-stone-500 mt-0.5">
+                  Curated festive gifting showcase cards & category highlights
+                </p>
+              </div>
+            </div>
+            <div className="text-right shrink-0">
+              <span
+                className={`inline-block px-2.5 py-1 rounded-full text-xs font-bold ${
+                  celebrateStats.mapped === celebrateStats.total && celebrateStats.total > 0
+                    ? 'bg-emerald-100 text-emerald-800'
+                    : 'bg-stone-100 text-stone-700'
+                }`}
+              >
+                {celebrateStats.mapped}/{celebrateStats.total} Mapped
+              </span>
+            </div>
+          </div>
+        </button>
       </div>
+
+      {/* ─────────────────────────────────────────────────────────────
+          BANNER TYPES SELECTION CARDS (Matches Banner Management UI)
+          ───────────────────────────────────────────────────────────── */}
+      {mappingMode === 'banner' && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">
+              Select Banner Type to Map:
+            </span>
+            <span className="text-xs text-stone-400">
+              Active: <strong className="text-[#8b6f4e] font-bold">{BANNER_TYPES.find((b) => b.key === activeModule)?.label || 'Hero Banner'}</strong>
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+            {BANNER_TYPES.map((card) => {
+              const CardIcon = card.icon;
+              const count = bannerCounts[card.key] ?? 0;
+              const isSelected = activeModule === card.key;
+
+              return (
+                <div
+                  key={card.key}
+                  onClick={() => handleSelectBannerType(card.key)}
+                  className={`rounded-xl border p-3 sm:p-3.5 transition-all duration-200 cursor-pointer relative group flex flex-col justify-between shadow-2xs ${
+                    isSelected
+                      ? 'border-[#8b6f4e] bg-[#fbf9f6] ring-2 ring-[#8b6f4e]/20 shadow-xs'
+                      : 'border-stone-200 bg-white hover:border-[#8b6f4e]/40 hover:bg-stone-50/60'
+                  }`}
+                >
+                  <div>
+                    {/* Top row: Icon and Count Badge */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div
+                        className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
+                          isSelected
+                            ? 'bg-[#8b6f4e] text-white shadow-xs'
+                            : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/20 group-hover:bg-[#8b6f4e] group-hover:text-white'
+                        }`}
+                      >
+                        <CardIcon className="w-4 h-4 stroke-[1.8]" />
+                      </div>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        isSelected
+                          ? 'bg-[#8b6f4e] text-white font-bold'
+                          : 'text-stone-600 bg-stone-100 border border-stone-200/60'
+                      }`}>
+                        {count} {count === 1 ? 'banner' : 'banners'}
+                      </span>
+                    </div>
+
+                    {/* Title */}
+                    <h4 className="text-xs font-bold text-stone-900 group-hover:text-[#8b6f4e] transition-colors line-clamp-1">
+                      {card.label}
+                    </h4>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ─────────────────────────────────────────────────────────────
           3. ACTIVE TARGET BANNER (When user clicked "Select to Map")
@@ -705,566 +1073,437 @@ export default function ThemeMediaMappingTab({
             LEFT COLUMN: BANNERS & FEATURED LIST (xl:col-span-7)
             ═══════════════════════════════════════════════════════════ */}
         <div className="xl:col-span-7 space-y-4">
-          {/* Search, Placement Type Dropdown, Filter Pills & View Mode */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-            <div className="flex items-center gap-2 flex-1 min-w-0">
-              <div className="relative flex-1 min-w-[140px]">
-                <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder={`Search ${activeModuleConfig.label}...`}
-                  className="w-full h-9 pl-9 pr-8 rounded-xl border border-stone-200 bg-white text-xs text-stone-800 outline-none transition focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 placeholder:text-stone-400"
-                />
-                {search && (
+          {mappingMode === 'banner' ? (
+            /* ═══════════════════════════════════════════════════════════
+               BANNER TYPE LIST VIEW (Matches Screen 2 of BannersView.jsx)
+               ═══════════════════════════════════════════════════════════ */
+            <>
+              {/* Header: Type Icon + Title + Description + Selected Bulk Action */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 sm:p-4 bg-white rounded-2xl border border-stone-200/90 shadow-2xs">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#fbf5ed] border border-[#f5e3cc]/60 flex items-center justify-center text-[#8a6d4b] shrink-0">
+                    {(() => {
+                      const TypeIcon = currentBannerType.icon || HiOutlinePhotograph;
+                      return <TypeIcon className="w-5 h-5 stroke-[1.8]" />;
+                    })()}
+                  </div>
+                  <div>
+                    <h2 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight font-playfair">
+                      {currentBannerType.label}
+                    </h2>
+                    <p className="text-xs text-stone-500 font-normal">
+                      {currentBannerType.desc}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {selectedIds.size > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleBulkClear}
+                      disabled={bulkActionLoading}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors cursor-pointer"
+                    >
+                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                      <span>Revert Selected ({selectedIds.size})</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Banners Table */}
+              <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                        <th className="py-3 px-3.5 w-10">
+                          <input
+                            type="checkbox"
+                            checked={isAllSelected}
+                            onChange={toggleSelectAll}
+                            className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                          />
+                        </th>
+                        <th className="py-3 px-3.5 whitespace-nowrap">PREVIEW</th>
+                        <th className="py-3 px-3.5 whitespace-nowrap">
+                          {currentBannerType.key === 'categorybanner' ? 'CATEGORY' : 'TITLE'}
+                        </th>
+                        <th className="py-3 px-3.5 whitespace-nowrap">STATUS</th>
+                        <th className="py-3 px-3.5 whitespace-nowrap">DEVICES</th>
+                        <th className="py-3 px-3.5 whitespace-nowrap">ORDER</th>
+                        <th className="py-3 pr-4 pl-3 whitespace-nowrap text-right">THEME MAPPING</th>
+                      </tr>
+                    </thead>
+
+                    <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
+                      {loading ? (
+                        <tr>
+                          <td colSpan="7" className="py-16 text-center text-stone-400">
+                            <div className="w-7 h-7 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
+                            <span>Loading banners...</span>
+                          </td>
+                        </tr>
+                      ) : filteredRecords.length === 0 ? (
+                        <tr>
+                          <td colSpan="7" className="py-16 text-center text-stone-400">
+                            <HiOutlinePhotograph className="w-10 h-10 mx-auto text-stone-300 mb-2 stroke-1" />
+                            <p className="text-sm font-medium text-stone-600">No {currentBannerType.label}s found</p>
+                            <p className="text-xs text-stone-400 mt-1">
+                              No banners match the selected filter.
+                            </p>
+                          </td>
+                        </tr>
+                      ) : (
+                        filteredRecords.map((banner) => {
+                          const bTitle = currentBannerType.key === 'categorybanner'
+                            ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || banner.title || 'Category Banner')
+                            : (banner.content?.title || banner.title || 'Hero Banner');
+                          const bDesc = banner.content?.description || banner.content?.subtitle || banner.subtitle || '';
+                          const defaultAssetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url) || banner.originalDesktopImage;
+                          const isPublished = banner.status === 'active';
+                          const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);
+                          const isSelected = selectedIds.has(String(banner._id));
+
+                          const desktopMappedImg = banner.desktopMapping?.imageUrl;
+                          const hasDesktopOverride = Boolean(desktopMappedImg);
+                          const currentEffectiveImg = desktopMappedImg || defaultAssetUrl;
+
+                          const isTargetActive =
+                            activeTargetSlot?.record?._id === banner._id &&
+                            activeTargetSlot?.device === 'desktop';
+
+                          const isSlotHovered =
+                            dragOverSlot?.recordId === banner._id &&
+                            dragOverSlot?.device === 'desktop';
+
+                          const catObj = banner.display?.categoryId;
+                          const catName = typeof catObj === 'object' && catObj?.name
+                            ? catObj.name
+                            : categories.find((c) => String(c._id) === String(catObj?._id || catObj))?.name;
+
+                          return (
+                            <tr
+                              key={banner._id}
+                              className={`hover:bg-[#faf8f5]/70 transition-colors ${
+                                isSlotHovered
+                                  ? 'bg-[#8b6f4e]/15 ring-2 ring-inset ring-[#8b6f4e]'
+                                  : isTargetActive
+                                  ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-400'
+                                  : isSelected
+                                  ? 'bg-[#fcfaf7]'
+                                  : ''
+                              }`}
+                            >
+                              {/* Checkbox */}
+                              <td className="py-3 px-3.5">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleSelectRow(banner._id)}
+                                  className="rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b] cursor-pointer"
+                                />
+                              </td>
+
+                              {/* PREVIEW (Droppable Thumbnail matching BannersView) */}
+                              <td className="py-3 px-3.5 whitespace-nowrap">
+                                <div
+                                  onDragOver={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    e.dataTransfer.dropEffect = 'copy';
+                                    setDragOverSlot({ recordId: banner._id, device: 'desktop' });
+                                  }}
+                                  onDragLeave={(e) => {
+                                    if (!e.currentTarget.contains(e.relatedTarget)) {
+                                      setDragOverSlot(null);
+                                    }
+                                  }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    handleDropOnSlot(e, banner, 'desktop', 'primary');
+                                  }}
+                                  onClick={() => {
+                                    setActiveTargetSlot((prev) =>
+                                      prev?.record?._id === banner._id && prev?.device === 'desktop'
+                                        ? null
+                                        : { record: banner, device: 'desktop', placement: 'primary' }
+                                    );
+                                  }}
+                                  className={`w-28 sm:w-32 h-14 rounded-xl border overflow-hidden relative shadow-2xs cursor-pointer group flex items-center justify-center shrink-0 transition-all ${
+                                    isSlotHovered
+                                      ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e] scale-102'
+                                      : isTargetActive
+                                      ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/40'
+                                      : hasDesktopOverride
+                                      ? 'border-emerald-400 ring-1 ring-emerald-300'
+                                      : 'border-stone-200/90 bg-stone-900'
+                                  }`}
+                                  title={
+                                    isTargetActive
+                                      ? 'Target selected! Click an image in the gallery to map.'
+                                      : 'Click to select as mapping target, or drag an image here.'
+                                  }
+                                >
+                                  {currentEffectiveImg ? (
+                                    <img
+                                      src={getMediaUrl(currentEffectiveImg)}
+                                      alt={bTitle}
+                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                  ) : (
+                                    <div className="w-full h-full bg-[#2a241e] flex items-center justify-center text-stone-500">
+                                      <HiOutlinePhotograph className="w-5 h-5 text-[#8a6d4b]/60" />
+                                    </div>
+                                  )}
+
+                                  {/* Drag hover overlay */}
+                                  {isSlotHovered ? (
+                                    <div className="absolute inset-0 bg-[#8b6f4e]/90 text-white flex items-center justify-center text-[11px] font-bold animate-pulse">
+                                      ⚡ Drop to Map
+                                    </div>
+                                  ) : isTargetActive ? (
+                                    <div className="absolute inset-0 bg-[#8b6f4e]/30 flex items-center justify-center">
+                                      <span className="bg-[#8b6f4e] text-white text-[9.5px] font-bold px-1.5 py-0.5 rounded shadow">
+                                        Selected
+                                      </span>
+                                    </div>
+                                  ) : hasDesktopOverride ? (
+                                    <div className="absolute top-1 left-1">
+                                      <span className="bg-emerald-600/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
+                                        Theme
+                                      </span>
+                                    </div>
+                                  ) : null}
+                                </div>
+                              </td>
+
+                              {/* TITLE */}
+                              <td className="py-3 px-3.5 font-medium text-stone-900">
+                                <div
+                                  className="font-bold text-stone-900 text-xs sm:text-sm max-w-[220px] truncate"
+                                  title={bTitle}
+                                >
+                                  {bTitle}
+                                </div>
+                                {bDesc && (
+                                  <div className="text-[11px] text-stone-400 font-normal max-w-[200px] truncate mt-0.5" title={bDesc}>
+                                    {bDesc}
+                                  </div>
+                                )}
+                                {catName && (
+                                  <div className="mt-1">
+                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10.5px] font-medium bg-[#f5efe6] text-[#8a6d4b] border border-[#e8dccb]">
+                                      Category: {catName}
+                                    </span>
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* STATUS */}
+                              <td className="py-3 px-3.5 whitespace-nowrap">
+                                {isPublished ? (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf7ee] text-[#137333]">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#137333]" />
+                                    <span>Active</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-500">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
+                                    <span>Draft</span>
+                                  </span>
+                                )}
+                              </td>
+
+                              {/* DEVICES */}
+                              <td className="py-3 px-3.5 whitespace-nowrap">
+                                <div className="flex items-center gap-1.5 text-stone-500">
+                                  <button
+                                    type="button"
+                                    title="Desktop View (Click to target desktop)"
+                                    onClick={() => {
+                                      setActiveTargetSlot((prev) =>
+                                        prev?.record?._id === banner._id && prev?.device === 'desktop'
+                                          ? null
+                                          : { record: banner, device: 'desktop', placement: 'primary' }
+                                      );
+                                    }}
+                                    className={`p-1 rounded-md transition cursor-pointer ${
+                                      activeTargetSlot?.record?._id === banner._id && activeTargetSlot?.device === 'desktop'
+                                        ? 'bg-[#8b6f4e] text-white ring-2 ring-[#8b6f4e]/30'
+                                        : hasDesktopOverride
+                                        ? 'text-emerald-700 bg-emerald-50'
+                                        : (banner.image?.url || defaultAssetUrl)
+                                        ? 'text-stone-700 bg-stone-100'
+                                        : 'text-stone-400'
+                                    }`}
+                                  >
+                                    <HiOutlineDesktopComputer className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    title="Mobile View (Click to target mobile)"
+                                    onClick={() => {
+                                      setActiveTargetSlot((prev) =>
+                                        prev?.record?._id === banner._id && prev?.device === 'mobile'
+                                          ? null
+                                          : { record: banner, device: 'mobile', placement: 'primary' }
+                                      );
+                                    }}
+                                    className={`p-1 rounded-md transition cursor-pointer ${
+                                      activeTargetSlot?.record?._id === banner._id && activeTargetSlot?.device === 'mobile'
+                                        ? 'bg-[#8b6f4e] text-white ring-2 ring-[#8b6f4e]/30'
+                                        : banner.mobileMapping?.imageUrl
+                                        ? 'text-emerald-700 bg-emerald-50'
+                                        : banner.mobileImage?.url
+                                        ? 'text-stone-700 bg-stone-100'
+                                        : 'text-stone-300'
+                                    }`}
+                                  >
+                                    <HiOutlineDeviceMobile className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+
+                              {/* ORDER */}
+                              <td className="py-3 px-3.5 whitespace-nowrap">
+                                <span className="inline-flex items-center justify-center min-w-[28px] h-7 px-2 rounded-lg border border-stone-200 text-xs font-bold text-stone-700 bg-stone-50">
+                                  {banner.display?.order ?? banner.order ?? 1}
+                                </span>
+                              </td>
+
+                              {/* THEME MAPPING ACTIONS */}
+                              <td className="py-3 pr-4 pl-3 whitespace-nowrap text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {hasDesktopOverride ? (
+                                    <>
+                                      <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10.5px] font-bold px-2 py-1">
+                                        Mapped
+                                      </span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveTargetSlot((prev) =>
+                                            prev?.record?._id === banner._id && prev?.device === 'desktop'
+                                              ? null
+                                              : { record: banner, device: 'desktop', placement: 'primary' }
+                                          );
+                                        }}
+                                        className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                                          isTargetActive
+                                            ? 'bg-[#8b6f4e] text-white shadow-xs'
+                                            : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
+                                        }`}
+                                        title="Map another image: Click to select, then click any image from the gallery"
+                                      >
+                                        <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
+                                        <span>{isTargetActive ? 'Selected' : 'Change'}</span>
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteMapping(banner, 'desktop', 'primary')}
+                                        className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+                                        title="Reset to default storefront image"
+                                      >
+                                        <HiOutlineRefresh className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setActiveTargetSlot((prev) =>
+                                            prev?.record?._id === banner._id && prev?.device === 'desktop'
+                                              ? null
+                                              : { record: banner, device: 'desktop', placement: 'primary' }
+                                          );
+                                        }}
+                                        className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                                          isTargetActive
+                                            ? 'bg-[#8b6f4e] text-white shadow-xs'
+                                            : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
+                                        }`}
+                                      >
+                                        {isTargetActive ? 'Selected' : 'Map'}
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Table Footer with Count */}
+                <div className="px-4 py-3 border-t border-stone-150 flex items-center justify-between bg-stone-50/50 text-xs text-stone-500 font-medium">
+                  <span>
+                    Showing 1-{filteredRecords.length} of {records.length} {currentBannerType.label.toLowerCase()}s
+                  </span>
+                </div>
+              </div>
+            </>
+          ) : (
+            /* ═══════════════════════════════════════════════════════════
+               CELEBRATE & GIFTS VIEW (Matches CelebrateGiftsView.jsx)
+               ═══════════════════════════════════════════════════════════ */
+            <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
+              {/* Prominent Placement Tabs Header */}
+              <div className="border-b border-stone-200 bg-[#fbfaf8] px-4 sm:px-6 pt-2.5 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 sm:gap-6 -mb-px overflow-x-auto">
+                  {['Celebrate', 'Gifts', 'all'].map((tabKey) => {
+                    const isTabActive = celebratePlacementFilter === tabKey;
+                    const label = tabKey === 'all' ? 'All Items' : tabKey;
+                    const count = tabKey === 'all'
+                      ? records.length
+                      : records.filter((r) => (r.placement || '').toLowerCase() === tabKey.toLowerCase()).length;
+                    return (
+                      <button
+                        key={tabKey}
+                        type="button"
+                        onClick={() => setCelebratePlacementFilter(tabKey)}
+                        className={`pb-2.5 pt-1.5 px-1 sm:px-2 border-b-2 font-bold text-xs sm:text-sm flex items-center gap-2 transition cursor-pointer whitespace-nowrap ${
+                          isTabActive
+                            ? 'border-[#8b6f4e] text-[#8b6f4e]'
+                            : 'border-transparent text-stone-500 hover:text-stone-800'
+                        }`}
+                      >
+                        <span>{label}</span>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-semibold ${
+                          isTabActive ? 'bg-[#8b6f4e]/15 text-[#8b6f4e]' : 'bg-stone-200/70 text-stone-600'
+                        }`}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {selectedIds.size > 0 && (
                   <button
                     type="button"
-                    onClick={() => setSearch('')}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
+                    onClick={handleBulkClear}
+                    disabled={bulkActionLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 mb-2 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition cursor-pointer"
                   >
-                    <HiOutlineX className="h-3.5 w-3.5" />
+                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                    <span>Revert Selected ({selectedIds.size})</span>
                   </button>
                 )}
               </div>
 
-              {/* Placement Type Dropdown */}
-              <div className="w-48 sm:w-56 shrink-0">
-                <Dropdown
-                  size="sm"
-                  value={selectedPlacement}
-                  onChange={handlePlacementSelect}
-                  options={PLACEMENT_OPTIONS}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Status Filter */}
-              <div className="flex items-center rounded-xl border border-stone-200 bg-white p-0.5 shadow-2xs shrink-0">
-                {[
-                  ['all', 'All'],
-                  ['mapped', 'Customized'],
-                  ['unmapped', 'Default'],
-                ].map(([val, lbl]) => (
-                  <button
-                    key={val}
-                    type="button"
-                    onClick={() => setStatusFilter(val)}
-                    className={`rounded-lg px-2.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                      statusFilter === val
-                        ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                        : 'text-stone-600 hover:bg-stone-50'
-                    }`}
-                  >
-                    {lbl}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 justify-end">
-              {/* Cards / Table Toggle */}
-              <div className="flex items-center rounded-xl border border-stone-200 bg-white p-0.5 shadow-2xs">
-                <button
-                  type="button"
-                  onClick={() => setViewMode('cards')}
-                  title="Visual Cards View"
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    viewMode === 'cards'
-                      ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                      : 'text-stone-600 hover:bg-stone-50'
-                  }`}
-                >
-                  <HiOutlineViewGrid className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Cards</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('table')}
-                  title="Table View"
-                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
-                    viewMode === 'table'
-                      ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                      : 'text-stone-600 hover:bg-stone-50'
-                  }`}
-                >
-                  <HiOutlineViewList className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Table</span>
-                </button>
-              </div>
-
-              {selectedIds.size > 0 && (
-                <button
-                  type="button"
-                  onClick={handleBulkClear}
-                  disabled={bulkActionLoading}
-                  className="inline-flex items-center gap-1 bg-red-50 hover:bg-red-100 border border-red-200 text-red-700 font-bold px-2.5 py-1.5 rounded-xl text-xs transition cursor-pointer disabled:opacity-50"
-                  title="Revert selected to default"
-                >
-                  <HiOutlineTrash className="h-3.5 w-3.5" />
-                  <span>Revert ({selectedIds.size})</span>
-                </button>
-              )}
-
-              <button
-                type="button"
-                onClick={() => {
-                  fetchRecords();
-                  fetchSummary();
-                  fetchSideGallery();
-                }}
-                disabled={loading}
-                className="flex items-center gap-1 px-2.5 py-1.5 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-xl text-xs font-semibold shadow-2xs transition cursor-pointer"
-                title="Refresh records"
-              >
-                <HiOutlineRefresh className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Master Select All Bar */}
-          <div className="flex items-center justify-between bg-stone-100/70 border border-stone-200/80 rounded-xl px-3.5 py-2 text-xs text-stone-600">
-            <label className="flex items-center gap-2 font-semibold cursor-pointer">
-              <input
-                type="checkbox"
-                checked={isAllSelected}
-                onChange={toggleSelectAll}
-                className="rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]"
-              />
-              <span>Select all {filteredRecords.length} records</span>
-            </label>
-            <span className="text-[11px] text-stone-500">
-              Showing {filteredRecords.length} of {records.length} {activeModuleConfig.label}
-            </span>
-          </div>
-
-          {/* Cards or Table */}
-          {loading ? (
-            <div className="rounded-2xl border border-stone-200 bg-white py-20 text-center text-xs text-stone-500 space-y-2 shadow-2xs">
-              <HiOutlineRefresh className="h-7 w-7 animate-spin mx-auto text-[#8b6f4e]" />
-              <p className="font-semibold text-stone-700">Loading {activeModuleConfig.label} records…</p>
-            </div>
-          ) : filteredRecords.length === 0 ? (
-            <div className="rounded-2xl border border-stone-200 bg-white py-16 text-center text-xs text-stone-500 space-y-2 shadow-2xs">
-              <HiOutlinePhotograph className="h-9 w-9 mx-auto text-stone-300" />
-              <p className="font-bold text-stone-800 text-sm">No records found for this module</p>
-              <p className="text-stone-400 max-w-sm mx-auto text-[11px]">
-                {search
-                  ? `No records match "${search}". Try clearing your search.`
-                  : `No existing records found in ${activeModuleConfig.label}.`}
-              </p>
-            </div>
-          ) : viewMode === 'cards' ? (
-            /* ═══════ VIEW MODE 1: CARDS WITH DRAG-AND-DROP TARGETS ═══════ */
-            <div className="space-y-3.5">
-              {filteredRecords.map((record) => {
-                const isSelected = selectedIds.has(String(record._id));
-                const isMapped = record.isMapped;
-                const fallback = resolveFallbackMedia(record);
-
-                // Desktop mapping
-                const desktopMappedImg = record.desktopMapping?.imageUrl;
-                const hasDesktopOverride = Boolean(desktopMappedImg);
-
-                // Mobile mapping
-                const mobileMappedImg =
-                  activeModule === 'category'
-                    ? record.bannerMapping?.imageUrl
-                    : record.mobileMapping?.imageUrl;
-                const hasMobileOverride = Boolean(mobileMappedImg);
-
-                const isTargetActive =
-                  activeTargetSlot?.record?._id === record._id &&
-                  activeTargetSlot?.device === 'desktop';
-
-                const isSlotHovered =
-                  dragOverSlot?.recordId === record._id &&
-                  dragOverSlot?.device === 'desktop';
-
-                return (
-                  <div
-                    key={record._id}
-                    className={`rounded-2xl border transition-all duration-200 bg-white overflow-hidden shadow-2xs ${
-                      isTargetActive
-                        ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20 bg-amber-50/15'
-                        : hasDesktopOverride || hasMobileOverride
-                        ? 'border-[#8b6f4e]/30'
-                        : 'border-stone-200 hover:border-stone-300'
-                    } ${isSelected ? 'ring-2 ring-amber-400 bg-amber-50/20' : ''}`}
-                  >
-                    {/* Card Header Bar */}
-                    <div className="p-3 border-b border-stone-100 bg-stone-50/70 flex items-center justify-between gap-2.5">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleSelectRow(record._id)}
-                          className="rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]"
-                        />
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center rounded-md bg-[#8b6f4e]/10 text-[#8b6f4e] px-2 py-0.5 text-[10px] font-bold">
-                              {record.slotLabel || `${activeModuleConfig.label} · Slide #${(record.order ?? 0) + 1}`}
-                            </span>
-                            <h3 className="font-bold text-stone-900 text-xs sm:text-sm truncate">
-                              {record.title || record.name || 'Storefront Item'}
-                            </h3>
-                          </div>
-                          <div className="flex items-center gap-2 text-[10px] text-stone-500 mt-0.5 flex-wrap">
-                            {record.subtitle && <span>{record.subtitle}</span>}
-                            {record.targetLink && (
-                              <span className="text-[#8b6f4e] font-mono">
-                                🔗 {record.targetLink}
-                              </span>
-                            )}
-                            <span className="text-stone-400 font-mono">
-                              ID: {String(record._id).slice(-6)}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Status Badge */}
-                      <div className="shrink-0">
-                        {isMapped ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 text-[11px] font-bold text-emerald-800">
-                            <HiOutlineCheckCircle className="h-3.5 w-3.5 text-emerald-600" />
-                            <span>Customized</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[11px] font-medium text-amber-800">
-                            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                            <span>Using Default</span>
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Card Body */}
-                    <div className="p-3.5 sm:p-4 space-y-3">
-                      {/* Primary / Desktop Drop Zone & Comparison */}
-                      <div>
-                        <div className="flex items-center justify-between mb-1.5 text-xs">
-                          <span className="font-bold text-stone-700 flex items-center gap-1.5 text-[11px]">
-                            <HiOutlineDesktopComputer className="h-3.5 w-3.5 text-stone-400" />
-                            {activeModule === 'category' ? 'Category Icon' : 'Desktop Banner Slot'}
-                          </span>
-                        </div>
-
-                        {/* Interactive Drop Zone & Preview Container */}
-                        <div
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            e.dataTransfer.dropEffect = 'copy';
-                            setDragOverSlot({ recordId: record._id, device: 'desktop' });
-                          }}
-                          onDragLeave={() => setDragOverSlot(null)}
-                          onDrop={(e) =>
-                            handleDropOnSlot(
-                              e,
-                              record,
-                              'desktop',
-                              activeModule === 'category' ? 'icon' : 'primary'
-                            )
-                          }
-                          className={`rounded-xl border-2 transition-all duration-200 p-3 ${
-                            isSlotHovered
-                              ? 'border-[#8b6f4e] bg-[#8b6f4e]/10 scale-[1.01] ring-2 ring-[#8b6f4e]/20'
-                              : isTargetActive
-                              ? 'border-amber-400 bg-amber-50/40 ring-2 ring-amber-400/20'
-                              : hasDesktopOverride
-                              ? 'border-emerald-200 bg-emerald-50/15'
-                              : 'border-dashed border-stone-200 bg-stone-50/50 hover:border-stone-300'
-                          }`}
-                        >
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              {/* Thumbnail preview */}
-                              <div
-                                onClick={() => {
-                                  const img = desktopMappedImg || fallback.primary;
-                                  if (img) {
-                                    openImagePreview(img, {
-                                      title: `${record.title} · ${hasDesktopOverride ? 'Theme Override' : 'Default'}`,
-                                    });
-                                  }
-                                }}
-                                className={`w-24 h-16 sm:w-28 sm:h-18 rounded-lg border overflow-hidden shrink-0 relative group bg-white ${
-                                  hasDesktopOverride ? 'border-emerald-300 cursor-pointer' : 'border-stone-200'
-                                }`}
-                              >
-                                {desktopMappedImg ? (
-                                  <>
-                                    <img
-                                      src={desktopMappedImg}
-                                      alt="Theme override"
-                                      className="w-full h-full object-cover transition duration-200 group-hover:scale-105"
-                                    />
-                                    <div className="absolute inset-0 bg-emerald-950/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
-                                      <HiOutlineEye className="h-4 w-4" />
-                                    </div>
-                                  </>
-                                ) : fallback.primary ? (
-                                  <>
-                                    <img
-                                      src={fallback.primary}
-                                      alt="Default fallback"
-                                      className="w-full h-full object-cover opacity-75 group-hover:opacity-100 transition"
-                                    />
-                                    <div className="absolute inset-0 bg-stone-900/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
-                                      <HiOutlineEye className="h-4 w-4" />
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-stone-300">
-                                    <HiOutlinePhotograph className="h-5 w-5" />
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Mapping State Text */}
-                              <div className="space-y-0.5 min-w-0">
-                                {hasDesktopOverride ? (
-                                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-100 text-emerald-800 px-2 py-0.5 text-[10px] font-bold">
-                                    <HiOutlineCheck className="h-3 w-3 stroke-2 text-emerald-600" />
-                                    {theme?.name?.toUpperCase() || 'THEME'} ACTIVE
-                                  </span>
-                                ) : (
-                                  <>
-                                    <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="inline-flex items-center rounded-md bg-amber-100 text-amber-800 px-2 py-0.5 text-[10px] font-bold">
-                                        ⚡ UNMAPPED FOR THIS THEME
-                                      </span>
-                                      <span className="text-[10px] text-stone-400">
-                                        (Using storefront default)
-                                      </span>
-                                    </div>
-                                    <p className="text-xs font-bold text-amber-900">
-                                      Drop image here, or click "Map" to assign
-                                    </p>
-                                    <p className="text-[11px] text-stone-500">
-                                      Drag from Theme Gallery on right, or choose from options.
-                                    </p>
-                                  </>
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Slot Actions */}
-                            <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center flex-wrap">
-                              {/* Select for Mapping / Active Target Button */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setActiveTargetSlot(
-                                    isTargetActive
-                                      ? null
-                                      : {
-                                          record,
-                                          device: 'desktop',
-                                          placement: activeModule === 'category' ? 'icon' : 'primary',
-                                        }
-                                  )
-                                }
-                                className={`inline-flex items-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-semibold transition cursor-pointer ${
-                                  isTargetActive
-                                    ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                                    : 'border border-[#8b6f4e]/30 bg-[#8b6f4e]/10 text-[#8b6f4e] hover:bg-[#8b6f4e]/20'
-                                }`}
-                                title="Select this slot, then click any image in the side gallery"
-                              >
-                                <HiOutlineCursorClick className="h-3.5 w-3.5" />
-                                <span>{isTargetActive ? 'Selected' : 'Map'}</span>
-                              </button>
-
-                              {/* Traditional Full Gallery Modal Picker */}
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPickerTarget({
-                                    record,
-                                    device: 'desktop',
-                                    placement: activeModule === 'category' ? 'icon' : 'primary',
-                                    currentMediaId: record.desktopMapping?.mediaId,
-                                  })
-                                }
-                                className="inline-flex items-center gap-1 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 px-2.5 py-1.5 text-[11px] font-semibold text-stone-700 transition cursor-pointer shadow-2xs"
-                                title="Browse full media library modal"
-                              >
-                                <HiOutlinePhotograph className="h-3 w-3 text-stone-500" />
-                                <span>Browse</span>
-                              </button>
-
-                              {/* Revert / Remove Mapping Button */}
-                              {hasDesktopOverride && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleDeleteMapping(
-                                      record,
-                                      'desktop',
-                                      activeModule === 'category' ? 'icon' : 'primary'
-                                    )
-                                  }
-                                  className="inline-flex items-center gap-1 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 px-2 py-1.5 text-[11px] font-semibold text-red-700 transition cursor-pointer"
-                                  title="Revert to default storefront image"
-                                >
-                                  <HiOutlineTrash className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Mobile Slot (Optional Variant) */}
-                      {(activeModuleConfig.recommendedMobile || activeModule === 'category') && (
-                        <div className="pt-2.5 border-t border-stone-100">
-                          <div className="flex items-center justify-between mb-1.5 text-xs">
-                            <span className="font-bold text-stone-600 flex items-center gap-1 text-[11px]">
-                              <HiOutlineDeviceMobile className="h-3.5 w-3.5 text-stone-400" />
-                              {activeModule === 'category' ? 'Category Page Header Banner' : 'Mobile Banner Slot (Optional)'}
-                            </span>
-                          </div>
-
-                          <div
-                            onDragOver={(e) => {
-                              e.preventDefault();
-                              e.dataTransfer.dropEffect = 'copy';
-                              setDragOverSlot({ recordId: record._id, device: 'mobile' });
-                            }}
-                            onDragLeave={() => setDragOverSlot(null)}
-                            onDrop={(e) =>
-                              handleDropOnSlot(
-                                e,
-                                record,
-                                'mobile',
-                                activeModule === 'category' ? 'banner' : 'primary'
-                              )
-                            }
-                            className={`rounded-xl border p-2.5 flex items-center justify-between gap-3 transition-all ${
-                              dragOverSlot?.recordId === record._id && dragOverSlot?.device === 'mobile'
-                                ? 'border-[#8b6f4e] bg-[#8b6f4e]/10 ring-2 ring-[#8b6f4e]/20'
-                                : hasMobileOverride
-                                ? 'border-emerald-300 bg-emerald-50/20'
-                                : 'border-stone-200 bg-stone-50/40'
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <div
-                                onClick={() => {
-                                  const img = mobileMappedImg || fallback.secondary;
-                                  if (img) {
-                                    openImagePreview(img, {
-                                      title: `${record.title} · Mobile Banner`,
-                                    });
-                                  }
-                                }}
-                                className={`w-16 h-12 rounded-lg border overflow-hidden shrink-0 relative group bg-white ${
-                                  hasMobileOverride ? 'border-emerald-300 cursor-pointer' : 'border-stone-200'
-                                }`}
-                              >
-                                {mobileMappedImg ? (
-                                  <img
-                                    src={mobileMappedImg}
-                                    alt="Mobile override"
-                                    className="w-full h-full object-cover"
-                                  />
-                                ) : fallback.secondary ? (
-                                  <img
-                                    src={fallback.secondary}
-                                    alt="Mobile fallback"
-                                    className="w-full h-full object-cover opacity-70"
-                                  />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-stone-300">
-                                    <HiOutlineDeviceMobile className="h-4 w-4" />
-                                  </div>
-                                )}
-                              </div>
-
-                              <div className="min-w-0">
-                                <p className="text-[11px] font-bold text-stone-800">
-                                  {hasMobileOverride ? 'Custom Mobile Active' : 'Falls back to Desktop if empty'}
-                                </p>
-                                <p className="text-[10px] text-stone-500 truncate">
-                                  {hasMobileOverride
-                                    ? 'Optimized for mobile viewports'
-                                    : 'Drag & drop image from gallery or upload'}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              <label className="rounded-lg border border-stone-200 bg-white hover:bg-stone-50 px-2 py-1 text-[10px] font-semibold text-stone-700 transition cursor-pointer">
-                                <span>Upload</span>
-                                <input
-                                  type="file"
-                                  accept="image/*"
-                                  className="hidden"
-                                  onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    e.target.value = '';
-                                    if (file) {
-                                      handleDirectUpload(
-                                        file,
-                                        record,
-                                        'mobile',
-                                        activeModule === 'category' ? 'banner' : 'primary'
-                                      );
-                                    }
-                                  }}
-                                />
-                              </label>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPickerTarget({
-                                    record,
-                                    device: 'mobile',
-                                    placement: activeModule === 'category' ? 'banner' : 'primary',
-                                    currentMediaId: record.mobileMapping?.mediaId,
-                                  })
-                                }
-                                className="rounded-lg bg-[#8b6f4e] hover:brightness-95 px-2.5 py-1 text-[10px] font-semibold text-white shadow-2xs transition cursor-pointer"
-                              >
-                                {hasMobileOverride ? 'Change' : 'Map'}
-                              </button>
-
-                              {hasMobileOverride && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleDeleteMapping(
-                                      record,
-                                      'mobile',
-                                      activeModule === 'category' ? 'banner' : 'primary'
-                                    )
-                                  }
-                                  className="rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 p-1 text-red-700 transition cursor-pointer"
-                                  title="Revert mobile variant"
-                                >
-                                  <HiOutlineTrash className="h-3 w-3" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            /* ═══════ VIEW MODE 2: COMPACT TABLE ═══════ */
-            <div className="rounded-2xl border border-stone-200 bg-white shadow-2xs overflow-hidden">
+              {/* Table matching CelebrateGiftsView.jsx */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
+                <table className="w-full text-left border-collapse">
                   <thead>
-                    <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                      <th className="w-8 px-3 py-3 text-center">
+                    <tr className="border-b border-stone-200 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                      <th className="py-3 px-3.5 w-10">
                         <input
                           type="checkbox"
                           checked={isAllSelected}
@@ -1272,194 +1511,212 @@ export default function ThemeMediaMappingTab({
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
                       </th>
-                      <th className="px-3 py-3 min-w-[160px] whitespace-nowrap">Record Slot</th>
-                      <th className="px-3 py-3 min-w-[200px] whitespace-nowrap">Desktop Mapping</th>
-                      <th className="px-3 py-3 min-w-[100px] text-center whitespace-nowrap">Status</th>
-                      <th className="px-3 py-3 min-w-[100px] text-right whitespace-nowrap">Actions</th>
+                      <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
+                      <th className="py-3 px-3 whitespace-nowrap">COVER</th>
+                      <th className="py-3 px-3 whitespace-nowrap">SHOWCASE NAME</th>
+                      <th className="py-3 px-3 whitespace-nowrap">PLACEMENT</th>
+                      <th className="py-3 px-3 whitespace-nowrap">PRODUCTS</th>
+                      <th className="py-3 pr-4 pl-3 whitespace-nowrap text-right">THEME MAPPING</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-stone-100">
-                    {filteredRecords.map((record) => {
-                      const isSelected = selectedIds.has(String(record._id));
-                      const isMapped = record.isMapped;
-                      const fallback = resolveFallbackMedia(record);
-                      const desktopMappedImg = record.desktopMapping?.imageUrl;
-                      const hasDesktopOverride = Boolean(desktopMappedImg);
-                      const currentDesktopImg = desktopMappedImg || fallback.primary;
+                  <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
+                    {loading ? (
+                      <tr>
+                        <td colSpan="7" className="py-12 text-center text-stone-400">
+                          <div className="w-7 h-7 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
+                          <span>Loading showcase items...</span>
+                        </td>
+                      </tr>
+                    ) : filteredRecords.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" className="py-12 text-center text-stone-400">
+                          No showcase items found.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredRecords.map((item, idx) => {
+                        const isSelected = selectedIds.has(String(item._id));
+                        const isMapped = item.isMapped || Boolean(item.desktopMapping?.imageUrl);
+                        const currentCover = item.desktopMapping?.imageUrl || item.image?.url || item.originalDesktopImage;
 
-                      const isTargetActive =
-                        activeTargetSlot?.record?._id === record._id &&
-                        activeTargetSlot?.device === 'desktop';
+                        const isTargetActive =
+                          activeTargetSlot?.record?._id === item._id &&
+                          activeTargetSlot?.placement === 'celebrate';
 
-                      const isSlotHovered =
-                        dragOverSlot?.recordId === record._id &&
-                        dragOverSlot?.device === 'desktop';
+                        const isSlotHovered =
+                          dragOverSlot?.recordId === item._id;
 
-                      return (
-                        <tr
-                          key={record._id}
-                          onDragOver={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            e.dataTransfer.dropEffect = 'copy';
-                            setDragOverSlot({ recordId: record._id, device: 'desktop' });
-                          }}
-                          onDragLeave={(e) => {
-                            if (!e.currentTarget.contains(e.relatedTarget)) {
-                              setDragOverSlot(null);
-                            }
-                          }}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleDropOnSlot(
-                              e,
-                              record,
-                              'desktop',
-                              activeModule === 'category' ? 'icon' : 'primary'
-                            );
-                          }}
-                          className={`transition-colors duration-150 ${
-                            isSlotHovered
-                              ? 'bg-[#8b6f4e]/20 ring-2 ring-inset ring-[#8b6f4e]'
-                              : isTargetActive
-                              ? 'bg-amber-50/70 ring-1 ring-inset ring-amber-400'
-                              : isSelected
-                              ? 'bg-amber-50/40'
-                              : 'hover:bg-stone-50/70'
-                          }`}
-                        >
-                          <td className="w-8 px-3 py-2.5 text-center">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={() => toggleSelectRow(record._id)}
-                              className="rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]"
-                            />
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="font-bold text-stone-900 leading-tight">
-                              {record.title || record.name || 'Untitled Record'}
-                            </div>
-                            <span className="text-[10px] text-stone-400 font-mono">
-                              ID: {String(record._id).slice(-6)}
-                            </span>
-                          </td>
-                          <td className="px-3 py-2.5">
-                            <div className="flex items-center gap-2.5">
+                        return (
+                          <tr
+                            key={item._id}
+                            className={`hover:bg-[#faf7f2] transition-colors ${
+                              isSlotHovered
+                                ? 'bg-[#8b6f4e]/15 ring-2 ring-inset ring-[#8b6f4e]'
+                                : isTargetActive
+                                ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-400'
+                                : isSelected
+                                ? 'bg-[#fcfaf7]'
+                                : ''
+                            }`}
+                          >
+                            <td className="py-2.5 px-3.5">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleSelectRow(item._id)}
+                                className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                              />
+                            </td>
+                            <td className="py-2.5 px-2 text-center font-bold text-stone-500">
+                              {idx + 1}
+                            </td>
+                            <td className="py-2.5 px-3">
                               <div
-                                onClick={() =>
-                                  currentDesktopImg &&
-                                  openImagePreview(currentDesktopImg, {
-                                    title: record.title,
-                                  })
+                                onDragOver={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  e.dataTransfer.dropEffect = 'copy';
+                                  setDragOverSlot({ recordId: item._id, device: 'desktop' });
+                                }}
+                                onDragLeave={(e) => {
+                                  if (!e.currentTarget.contains(e.relatedTarget)) {
+                                    setDragOverSlot(null);
+                                  }
+                                }}
+                                onDrop={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  handleDropOnSlot(e, item, 'desktop', 'primary');
+                                }}
+                                onClick={() => {
+                                  setActiveTargetSlot((prev) =>
+                                    prev?.record?._id === item._id
+                                      ? null
+                                      : { record: item, device: 'desktop', placement: 'celebrate' }
+                                  );
+                                }}
+                                className={`w-14 h-10 rounded-md overflow-hidden border cursor-pointer flex items-center justify-center relative shadow-2xs transition-all ${
+                                  isSlotHovered
+                                    ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e] scale-105'
+                                    : isTargetActive
+                                    ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/40'
+                                    : isMapped
+                                    ? 'border-emerald-400 ring-1 ring-emerald-300'
+                                    : 'border-stone-200/80 bg-stone-100'
+                                }`}
+                                title={
+                                  isTargetActive
+                                    ? 'Target selected! Click an image in the gallery to map.'
+                                    : 'Click to select as mapping target, or drag an image here.'
                                 }
-                                className={`w-14 h-10 rounded border overflow-hidden shrink-0 relative bg-white ${
-                                  hasDesktopOverride ? 'border-emerald-400' : 'border-stone-200'
-                                } ${currentDesktopImg ? 'cursor-pointer' : ''}`}
                               >
-                                {currentDesktopImg ? (
+                                {currentCover ? (
                                   <img
-                                    src={currentDesktopImg}
-                                    alt="desktop preview"
+                                    src={getMediaUrl(currentCover)}
+                                    alt={item.name}
                                     className="w-full h-full object-cover"
                                   />
                                 ) : (
-                                  <div className="w-full h-full bg-stone-100 flex items-center justify-center text-stone-300">
-                                    <HiOutlinePhotograph className="h-4 w-4" />
-                                  </div>
+                                  <HiOutlinePhotograph className="w-5 h-5 text-stone-400" />
                                 )}
-                              </div>
-                              <div className="text-[11px] min-w-0">
                                 {isSlotHovered ? (
-                                  <span className="inline-flex items-center gap-1 rounded bg-[#8b6f4e] text-white px-1.5 py-0.5 text-[10px] font-bold animate-pulse">
-                                    ⚡ Drop to Map
-                                  </span>
-                                ) : hasDesktopOverride ? (
-                                  <span className="text-emerald-700 font-bold block">
-                                    Theme Mapped
-                                  </span>
+                                  <div className="absolute inset-0 bg-[#8b6f4e]/90 text-white flex items-center justify-center text-[9px] font-bold">
+                                    Drop
+                                  </div>
+                                ) : isMapped ? (
+                                  <div className="absolute top-0.5 left-0.5">
+                                    <span className="bg-emerald-600/90 text-white text-[8px] font-bold px-1 rounded shadow-xs uppercase">
+                                      Theme
+                                    </span>
+                                  </div>
+                                ) : null}
+                              </div>
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold text-stone-900">
+                              <div>{item.name || item.title || 'Showcase Card'}</div>
+                              {item.subtitle && (
+                                <div className="text-[11px] text-stone-400 font-normal">{item.subtitle}</div>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                                item.placement === 'Celebrate'
+                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                  : 'bg-purple-100 text-purple-800 border border-purple-200'
+                              }`}>
+                                {item.placement || 'Celebrate'}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-600">
+                                {Array.isArray(item.products) ? item.products.length : 0} Products
+                              </span>
+                            </td>
+                            <td className="py-2.5 pr-4 pl-3 whitespace-nowrap text-right">
+                              <div className="flex items-center justify-end gap-1.5">
+                                {isMapped ? (
+                                  <>
+                                    <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800 text-[10.5px] font-bold px-2 py-0.5">
+                                      Mapped
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveTargetSlot((prev) =>
+                                          prev?.record?._id === item._id
+                                            ? null
+                                            : { record: item, device: 'desktop', placement: 'celebrate' }
+                                        );
+                                      }}
+                                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                                        isTargetActive
+                                          ? 'bg-[#8b6f4e] text-white shadow-xs'
+                                          : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
+                                      }`}
+                                      title="Map another image: Click to select, then click any image from the gallery"
+                                    >
+                                      <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
+                                      <span>{isTargetActive ? 'Selected' : 'Change'}</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteMapping(item, 'desktop', 'primary')}
+                                      className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
+                                      title="Reset to default storefront image"
+                                    >
+                                      <HiOutlineRefresh className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
                                 ) : (
-                                  <span className="text-amber-800 font-medium block">
-                                    Safe Fallback
-                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveTargetSlot((prev) =>
+                                        prev?.record?._id === item._id
+                                          ? null
+                                          : { record: item, device: 'desktop', placement: 'celebrate' }
+                                      );
+                                    }}
+                                    className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition cursor-pointer ${
+                                      isTargetActive
+                                        ? 'bg-[#8b6f4e] text-white shadow-xs'
+                                        : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
+                                    }`}
+                                  >
+                                    {isTargetActive ? 'Selected' : 'Map'}
+                                  </button>
                                 )}
                               </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-2.5 text-center">
-                            {isMapped ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                                Mapped
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200 px-2 py-0.5 text-[10px] font-medium text-amber-800">
-                                Default
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-2.5 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setActiveTargetSlot(
-                                    isTargetActive
-                                      ? null
-                                      : {
-                                          record,
-                                          device: 'desktop',
-                                          placement: activeModule === 'category' ? 'icon' : 'primary',
-                                        }
-                                  )
-                                }
-                                className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold transition cursor-pointer shadow-2xs ${
-                                  isTargetActive
-                                    ? 'bg-[#8b6f4e] text-white'
-                                    : 'border border-[#8b6f4e]/30 bg-[#8b6f4e]/10 text-[#8b6f4e] hover:bg-[#8b6f4e]/20'
-                                }`}
-                                title="Click to select this record, then click any image in gallery"
-                              >
-                                {isTargetActive ? 'Selected' : 'Map'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setPickerTarget({
-                                    record,
-                                    device: 'desktop',
-                                    placement: activeModule === 'category' ? 'icon' : 'primary',
-                                    currentMediaId: record.desktopMapping?.mediaId,
-                                  })
-                                }
-                                className="rounded-lg border border-stone-200 bg-white hover:bg-stone-50 px-2 py-1 text-[11px] font-semibold text-stone-700 transition cursor-pointer shadow-2xs"
-                                title="Browse full media library modal"
-                              >
-                                Browse
-                              </button>
-                              {hasDesktopOverride && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    handleDeleteMapping(
-                                      record,
-                                      'desktop',
-                                      activeModule === 'category' ? 'icon' : 'primary'
-                                    )
-                                  }
-                                  className="rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 p-1 text-red-700 transition cursor-pointer"
-                                  title="Revert to default storefront image"
-                                >
-                                  <HiOutlineTrash className="h-3.5 w-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                          </tr>
+                        );
+                      })
+                    )}
                   </tbody>
                 </table>
+              </div>
+              <div className="px-4 py-3 border-t border-stone-150 flex items-center justify-between bg-stone-50/50 text-xs text-stone-500 font-medium">
+                <span>Showing {filteredRecords.length} items</span>
               </div>
             </div>
           )}
@@ -1487,114 +1744,61 @@ export default function ThemeMediaMappingTab({
                   </div>
                 </div>
 
-                {/* Upload Button */}
+                {/* Upload Button: Redirects to Gallery Upload Studio */}
                 <div className="flex items-center gap-1.5">
                   <button
                     type="button"
-                    onClick={() => panelFileInputRef.current?.click()}
-                    disabled={panelUploading}
-                    className="inline-flex items-center gap-1 rounded-xl bg-[#8b6f4e] hover:brightness-95 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition cursor-pointer disabled:opacity-50"
+                    onClick={() => {
+                      const type = mappingMode === 'celebrate' ? 'celebrate' : (currentBannerType?.key || activeModule || 'herobanner');
+                      navigate(`/gallery?openUpload=true&themeId=${themeId || ''}&type=${type}`);
+                    }}
+                    className="inline-flex items-center gap-1 rounded-xl bg-[#8b6f4e] hover:brightness-95 px-3 py-1.5 text-xs font-semibold text-white shadow-2xs transition cursor-pointer"
                   >
                     <HiOutlineUpload className="h-3.5 w-3.5" />
-                    <span>{panelUploading ? 'Uploading…' : '+ Upload'}</span>
+                    <span>+ Upload</span>
                   </button>
-                  <input
-                    ref={panelFileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      e.target.value = '';
-                      if (file) handleSidePanelUpload(file);
-                    }}
+                </div>
+              </div>
+
+              {/* Placement & Platform Filters (gallery.model.js L23-L38 & L39-L44) */}
+              <div className="mt-3 flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <Dropdown
+                    value={galleryPlacementFilter}
+                    onChange={(val) => setGalleryPlacementFilter(val)}
+                    options={GALLERY_PLACEMENT_FILTER_OPTIONS}
+                    portal={true}
+                    size="sm"
+                    buttonClassName="w-full h-8 px-2.5 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 justify-between truncate shadow-2xs"
+                    menuClassName="z-30 text-xs max-h-60 overflow-y-auto"
                   />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                  <Dropdown
+                    value={galleryPlatformFilter}
+                    onChange={(val) => setGalleryPlatformFilter(val)}
+                    options={GALLERY_PLATFORM_FILTER_OPTIONS}
+                    portal={true}
+                    size="sm"
+                    buttonClassName="w-full h-8 px-2.5 rounded-lg border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 justify-between truncate shadow-2xs"
+                    menuClassName="z-30 text-xs max-h-60 overflow-y-auto"
+                  />
+                </div>
+
+                {(galleryPlacementFilter !== 'all' || galleryPlatformFilter !== 'all') && (
                   <button
                     type="button"
-                    onClick={fetchSideGallery}
-                    disabled={galleryLoading}
-                    className="p-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 transition cursor-pointer"
-                    title="Refresh gallery"
+                    onClick={() => {
+                      setGalleryPlacementFilter('all');
+                      setGalleryPlatformFilter('all');
+                    }}
+                    title="Reset filters"
+                    className="h-8 w-8 rounded-lg border border-stone-200 bg-white text-stone-500 hover:text-stone-800 hover:bg-stone-50 flex items-center justify-center shrink-0 transition cursor-pointer"
                   >
-                    <HiOutlineRefresh className={`h-3.5 w-3.5 ${galleryLoading ? 'animate-spin' : ''}`} />
+                    <HiOutlineRefresh className="h-3.5 w-3.5" />
                   </button>
-                </div>
-              </div>
-
-              {/* Scope Switcher: This Theme vs All Gallery */}
-              <div className="mt-3 flex items-center gap-1 bg-stone-200/60 p-0.5 rounded-xl text-xs font-semibold">
-                <button
-                  type="button"
-                  onClick={() => setGalleryScope('theme')}
-                  className={`flex-1 py-1.5 rounded-lg text-center transition cursor-pointer ${
-                    galleryScope === 'theme'
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  This Theme ({theme?.name || 'Theme'})
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGalleryScope('all')}
-                  className={`flex-1 py-1.5 rounded-lg text-center transition cursor-pointer ${
-                    galleryScope === 'all'
-                      ? 'bg-white text-stone-900 shadow-2xs'
-                      : 'text-stone-600 hover:text-stone-900'
-                  }`}
-                >
-                  All Media Library
-                </button>
-              </div>
-
-              {/* Search & Placement Filter */}
-              <div className="mt-2.5 flex items-center gap-2">
-                <div className="relative flex-1">
-                  <HiOutlineSearch className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-stone-400" />
-                  <input
-                    type="text"
-                    value={gallerySearch}
-                    onChange={(e) => setGallerySearch(e.target.value)}
-                    placeholder="Search gallery..."
-                    className="w-full h-8 pl-8 pr-7 rounded-lg border border-stone-200 bg-white text-xs text-stone-800 outline-none transition focus:border-[#8b6f4e] placeholder:text-stone-400"
-                  />
-                  {gallerySearch && (
-                    <button
-                      type="button"
-                      onClick={() => setGallerySearch('')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 cursor-pointer"
-                    >
-                      <HiOutlineX className="h-3 w-3" />
-                    </button>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-1 overflow-x-auto shrink-0 max-w-full pb-0.5">
-                  {[
-                    ['all', 'All'],
-                    ['herobanner', 'Hero'],
-                    ['celebrate', 'Gifts'],
-                    ['categorybanner', 'Cat'],
-                    ['collectionbanner', 'Colls'],
-                    ['offerbanner', 'Offers'],
-                    ['mobileappbanner', 'App'],
-                    ['bookappointbanner', 'Appt'],
-                    ['customizebanner', 'Custom'],
-                  ].map(([val, lbl]) => (
-                    <button
-                      key={val}
-                      type="button"
-                      onClick={() => handlePlacementSelect(val)}
-                      className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition cursor-pointer shrink-0 ${
-                        galleryTypeFilter === val
-                          ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                          : 'bg-white border border-stone-200 text-stone-600 hover:bg-stone-50'
-                      }`}
-                    >
-                      {lbl}
-                    </button>
-                  ))}
-                </div>
+                )}
               </div>
             </div>
 
@@ -1609,26 +1813,10 @@ export default function ThemeMediaMappingTab({
                 <div className="py-14 text-center text-xs text-stone-500 space-y-2.5">
                   <HiOutlinePhotograph className="h-8 w-8 mx-auto text-stone-300" />
                   <p className="font-bold text-stone-800">
-                    {galleryScope === 'theme'
-                      ? `No images uploaded for ${theme?.name || 'this theme'} yet`
-                      : 'No images found in Media Gallery'}
+                    No images uploaded for {theme?.name || 'this theme'} yet
                   </p>
                   <p className="text-[11px] text-stone-400 max-w-xs mx-auto">
-                    {galleryScope === 'theme' ? (
-                      <>
-                        Switch to{' '}
-                        <button
-                          type="button"
-                          onClick={() => setGalleryScope('all')}
-                          className="text-[#8b6f4e] font-semibold underline cursor-pointer"
-                        >
-                          All Media Library
-                        </button>{' '}
-                        or click <strong>+ Upload</strong> above to upload festive images.
-                      </>
-                    ) : (
-                      'Click "+ Upload" above to add images.'
-                    )}
+                    Click <strong>+ Upload</strong> above to upload media assets for this theme.
                   </p>
                 </div>
               ) : (
@@ -1695,20 +1883,16 @@ export default function ThemeMediaMappingTab({
                           )}
                         </div>
 
-                        {/* Image Info */}
-                        <div className="p-2 bg-white">
-                          <p className="text-[11px] font-semibold text-stone-800 truncate" title={displayName}>
+                        {/* Card Info Footer (matches Screen 2 & Gallery cards) */}
+                        <div className="p-2 border-t border-stone-100 bg-white">
+                          <div className="text-[11px] font-bold text-stone-800 truncate">
                             {displayName}
-                          </p>
-                          <div className="flex items-center justify-between text-[10px] text-stone-400 mt-0.5">
-                            <span className="capitalize truncate max-w-[80px]">
-                              {item.placement || item.type || 'media'}
+                          </div>
+                          <div className="mt-0.5 flex items-center justify-between text-[10px] text-stone-400 capitalize">
+                            <span className="truncate">{item.placement || 'asset'}</span>
+                            <span className="uppercase text-[9px] font-semibold text-stone-400 shrink-0 ml-1">
+                              {item.platform || 'web'}
                             </span>
-                            {item.platform && (
-                              <span className="uppercase text-[9px] font-mono bg-stone-100 px-1 rounded">
-                                {item.platform}
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -1718,13 +1902,7 @@ export default function ThemeMediaMappingTab({
               )}
             </div>
 
-            {/* Side Panel Footer Guidance */}
-            <div className="p-3 bg-amber-50/60 border-t border-amber-200/60 flex items-start gap-2 text-[11px] text-amber-900">
-              <HiOutlineSparkles className="h-4 w-4 shrink-0 text-amber-700 mt-0.5" />
-              <p className="leading-tight">
-                <strong>How it works:</strong> Drag any image above and drop it directly onto an unmapped banner on the left. Or click <strong>"Map"</strong> on any banner, then click an image here.
-              </p>
-            </div>
+
           </div>
         </div>
       </div>

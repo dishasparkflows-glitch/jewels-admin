@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
@@ -98,7 +99,9 @@ export default function GalleryView() {
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
   // ─── Modals State ───────────────────────────────────────────
+  const [searchParams, setSearchParams] = useSearchParams();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [initialUploadType, setInitialUploadType] = useState('herobanner');
   const [previewItem, setPreviewItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [, setIsDeleting] = useState(false);
@@ -133,6 +136,29 @@ export default function GalleryView() {
       return [];
     }
   }, [uploadThemeId]);
+
+  // ─── Auto-open Upload Modal when redirected from Theme Studio / other views ───
+  useEffect(() => {
+    const shouldOpen = searchParams.get('openUpload') === 'true' || searchParams.get('upload') === 'true';
+    const paramTheme = searchParams.get('themeId');
+    const paramType = searchParams.get('type') || searchParams.get('placement');
+
+    if (paramTheme) {
+      setSelectedTheme(paramTheme);
+      setUploadThemeId(paramTheme);
+    }
+    if (paramType) {
+      setInitialUploadType(paramType);
+    }
+    if (shouldOpen) {
+      fetchThemesLookup();
+      setUploadModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('openUpload');
+      next.delete('upload');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, fetchThemesLookup, setSearchParams]);
 
   // ─── Fetch Gallery Items (With Pagination) ──────────────────
   const fetchGallery = useCallback(async (targetPage = page, targetLimit = pageSize) => {
@@ -1007,6 +1033,7 @@ export default function GalleryView() {
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}
         defaultThemeId={selectedTheme !== 'all' ? selectedTheme : uploadThemeId}
+        defaultType={initialUploadType}
         modalThemeOptions={modalThemeOptions}
         placementTypeOptions={placementTypeOptions}
         onSuccess={fetchGallery}

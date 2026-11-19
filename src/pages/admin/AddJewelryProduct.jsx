@@ -48,6 +48,7 @@ import {
   HiOutlineLink,
   HiOutlineExternalLink,
   HiOutlineChevronUp,
+  HiOutlineChevronDown,
   HiOutlineCalculator,
   HiOutlineGlobeAlt,
   HiOutlineLockClosed,
@@ -567,6 +568,7 @@ export default function AddJewelryProduct() {
     title: '',
     sku: '',
     category: '',
+    promoBanner: [],
     gender: [],
     description: '',
     isOrnate: false,
@@ -590,12 +592,18 @@ export default function AddJewelryProduct() {
     const collIds = allCatIds.filter((id) => (collectionCategories || []).some((c) => String(c?._id) === id));
     const categoryId = regMatch || allCatIds.find((id) => !collIds.includes(id)) || allCatIds[0] || '';
 
+    const rawPromo = productRecord.promoBanner || basicInfo.promoBanner || productRecord.categoryTag || [];
+    const promoArr = Array.isArray(rawPromo)
+      ? rawPromo.map((p) => String(p)).filter(Boolean)
+      : (rawPromo ? [String(rawPromo)] : []);
+
     setSelectedCollectionIds(collIds);
     setMenuItemIds(selectedMenuIds(productRecord));
     setBasicDetails({
       title: basicInfo.title || '',
       sku: basicInfo.sku || '',
       category: categoryId ? String(categoryId) : '',
+      promoBanner: promoArr,
       gender: (() => {
         const rawGender = basicInfo.gender ?? productRecord.gender ?? [];
         const arr = Array.isArray(rawGender) ? rawGender : (rawGender ? [rawGender] : []);
@@ -646,6 +654,80 @@ export default function AddJewelryProduct() {
     () => categoryList.find((category) => String(category._id) === String(basicDetails.category)),
     [categoryList, basicDetails.category]
   );
+
+  const [categoryPromoBanners, setCategoryPromoBanners] = useState([]);
+
+  // Fetch or sync promo banners whenever selected category changes
+  useEffect(() => {
+    if (!basicDetails.category) {
+      setCategoryPromoBanners([]);
+      return;
+    }
+    const catInList = (categoryList || []).find(
+      (c) => String(c?._id || c?.id) === String(basicDetails.category)
+    );
+    if (Array.isArray(catInList?.promoBanners) && catInList.promoBanners.length > 0) {
+      setCategoryPromoBanners(catInList.promoBanners);
+      return;
+    }
+    let cancelled = false;
+    api.get(`/categories/${basicDetails.category}`)
+      .then((res) => {
+        if (cancelled) return;
+        const cat = res.data?.data || res.data;
+        setCategoryPromoBanners(Array.isArray(cat?.promoBanners) ? cat.promoBanners : []);
+      })
+      .catch(() => {
+        if (!cancelled) setCategoryPromoBanners([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [basicDetails.category, categoryList]);
+
+  // If basicDetails.promoBanner contains legacy title strings instead of ObjectIds, resolve them to IDs
+  useEffect(() => {
+    if (!categoryPromoBanners || categoryPromoBanners.length === 0) return;
+    setBasicDetails((prev) => {
+      const currentPromo = Array.isArray(prev.promoBanner) ? prev.promoBanner : [];
+      if (currentPromo.length === 0) return prev;
+      let hasChanges = false;
+      const resolved = currentPromo.map((val) => {
+        const found = categoryPromoBanners.find(
+          (b) => String(b._id || b.id) === String(val) || String(b.title).trim().toLowerCase() === String(val).trim().toLowerCase()
+        );
+        if (found && String(found._id || found.id) !== String(val)) {
+          hasChanges = true;
+          return String(found._id || found.id);
+        }
+        return val;
+      });
+      return hasChanges ? { ...prev, promoBanner: resolved } : prev;
+    });
+  }, [categoryPromoBanners]);
+
+  const promoBannerOptions = useMemo(() => {
+    const banners = (categoryPromoBanners && categoryPromoBanners.length > 0)
+      ? categoryPromoBanners
+      : (selectedCategory?.promoBanners || []);
+    return (Array.isArray(banners) ? banners : [])
+      .filter((b) => b && (b._id || b.id || b.title))
+      .map((b) => {
+        const bannerId = String(b._id || b.id || b.title);
+        const imgUrl = b.image?.url || b.imageUrl || (typeof b.image === 'string' ? b.image : '');
+        return {
+          value: bannerId,
+          label: b.title,
+          icon: imgUrl ? (
+            <img
+              src={getMediaUrl(imgUrl)}
+              alt={b.title}
+              className="w-4 h-4 rounded object-cover shrink-0 border border-stone-200"
+            />
+          ) : null,
+        };
+      });
+  }, [categoryPromoBanners, selectedCategory]);
 
   const sortedDisplayPurities = useMemo(() => {
     return sortPurities(
@@ -855,6 +937,10 @@ export default function AddJewelryProduct() {
       [comboId]: newRate,
     }));
   };
+
+  // ─── Step 2: Auto-Generated Combinations & Preview Variants Collapse States ─────
+  const [isCombinationsCollapsed, setIsCombinationsCollapsed] = useState(true);
+  const [isVariantsPreviewCollapsed, setIsVariantsPreviewCollapsed] = useState(true);
 
   // ─── Step 2: Preview Variants ───────────────────────────
   const [variants, setVariants] = useState([]);
@@ -2374,11 +2460,21 @@ export default function AddJewelryProduct() {
 
     const resolveName = (value, options = []) => {
       const embeddedName = value && typeof value === 'object' ? value.name : '';
+      if (embeddedName) return embeddedName;
       const id = value && typeof value === 'object' ? (value._id || value.id) : value;
-      const match = options.find((option) =>
-        option && typeof option === 'object' && String(option._id || option.id) === String(id)
-      );
-      return embeddedName || match?.name || (id ? String(id) : '');
+      const match = options.find((option) => {
+        if (!option) return false;
+        if (typeof option === 'string') {
+          return option.toLowerCase() === String(id || '').toLowerCase();
+        }
+        return (
+          String(option._id || option.id) === String(id) ||
+          String(option.name || '').toLowerCase() === String(id || '').toLowerCase()
+        );
+      });
+      return match && typeof match === 'object'
+        ? match.name
+        : (typeof match === 'string' ? match : (id ? String(id) : ''));
     };
     const unique = (values) => [...new Set(values.filter(Boolean))];
     const basicInfo = productRecord.basicInfo || {};
@@ -2518,9 +2614,12 @@ export default function AddJewelryProduct() {
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
       soldCount: productRecord.demoMetrics?.soldCount ?? '',
       reviewCount: productRecord.demoMetrics?.reviewCount ?? '',
+      showInApp: productRecord.visibility?.app !== false && productRecord.inapp !== false,
+      showOnWeb: productRecord.visibility?.web !== false && productRecord.inweb !== false,
     });
+    const purityOptions = [...purityMasterList, ...puritiesList.map((p) => (typeof p === 'string' ? { name: p } : p))];
     const savedPurities = Array.isArray(productRecord.metalPurityIds)
-      ? productRecord.metalPurityIds.map((purity) => resolveName(purity, puritiesList))
+      ? productRecord.metalPurityIds.map((purity) => resolveName(purity, purityOptions))
       : [];
     setSelectedPurities(unique([...savedPurities, ...variantRows.map((variant) => variant.purity)]));
     setSelectedColors(unique([...colorNames, ...variantRows.map((variant) => variant.color)]));
@@ -2867,7 +2966,7 @@ export default function AddJewelryProduct() {
   };
 
   // Final Publish / Save Handler
-  const handlePublish = async (statusOverride = 'preserve') => {
+  const handlePublish = async (statusOverride = 'preserve', { stayOnPage = false } = {}) => {
     setSaving(true);
     try {
       const isDraft = statusOverride === 'draft' || statusOverride === 'preserve';
@@ -2985,16 +3084,31 @@ export default function AddJewelryProduct() {
           } : {}),
         }];
       });
-      const metalColorIds = [...new Set(productColors.map((colorName) => {
-        const color = colorsList.find((item) => item.name?.toLowerCase() === colorName.toLowerCase());
-        return color?.id || color?._id;
-      }).filter(Boolean))];
-      const metalPurityIds = [...new Set(selectedPurities.map((purityName) => {
-        const purity = purityMasterList.find((item) =>
-          (typeof item === 'string' ? item : item?.name)?.toLowerCase() === purityName.toLowerCase()
-        );
-        return typeof purity === 'object' && purity ? (purity._id || purity.id) : null;
-      }).filter(Boolean).map(String))];
+      const allSelectedColors = [...new Set([...(selectedColors || []), ...(productColors || [])])];
+      const metalColorIds = mastersLoaded || allSelectedColors.length
+        ? [...new Set(allSelectedColors.map((colorName) => {
+            const color = colorsList.find((item) =>
+              item.name?.toLowerCase() === String(colorName)?.toLowerCase() ||
+              String(item.id || item._id) === String(colorName)
+            );
+            return color?.id || color?._id;
+          }).filter(Boolean))]
+        : (productRecord?.metalColorIds || []).map((c) => String(c?._id || c?.id || c)).filter(Boolean);
+
+      const metalPurityIds = mastersLoaded || (selectedPurities || []).length
+        ? [...new Set((selectedPurities || []).map((purityName) => {
+            const purity = purityMasterList.find((item) => {
+              const name = (typeof item === 'string' ? item : item?.name || '').trim().toLowerCase();
+              const pStr = String(purityName || '').trim().toLowerCase();
+              return (
+                name === pStr ||
+                String(item?._id || item?.id) === pStr ||
+                name.replace(/\s*gold$/i, '') === pStr.replace(/\s*gold$/i, '')
+              );
+            });
+            return typeof purity === 'object' && purity ? (purity._id || purity.id) : (purity || null);
+          }).filter(Boolean).map(String))]
+        : (productRecord?.metalPurityIds || []).map((p) => String(p?._id || p?.id || p)).filter(Boolean);
       const variantRows = variants.map((variant) => compactObject({
         ...variant,
         _id: variant._id,
@@ -3056,16 +3170,11 @@ export default function AddJewelryProduct() {
           markupPercentage: markupNum,
         }),
         ...(!isSilverProduct ? {
-          ...(metalWeightNum ? {
-            baseCarat: Number(baseCarat || centerDiamondCarats[0] || 1),
-            gstPercentage: Number(gstPercentage),
-            baseLabourCharge: numberValue(specs.baseLabourCharge),
-            certificateCharge: numberValue(specs.certificateCharge),
-            otherAmountPercentage: numberValue(specs.otherAmountPercentage),
-          } : (!isDraft ? {
-            baseCarat: Number(baseCarat || centerDiamondCarats[0] || 1),
-            gstPercentage: Number(gstPercentage),
-          } : {})),
+          baseCarat: Number(baseCarat || centerDiamondCarats[0] || 1),
+          gstPercentage: Number(gstPercentage || 3),
+          ...(numberValue(specs.baseLabourCharge) !== undefined ? { baseLabourCharge: numberValue(specs.baseLabourCharge) } : {}),
+          ...(numberValue(specs.certificateCharge) !== undefined ? { certificateCharge: numberValue(specs.certificateCharge) } : {}),
+          ...(numberValue(specs.otherAmountPercentage) !== undefined ? { otherAmountPercentage: numberValue(specs.otherAmountPercentage) } : {}),
         } : {}),
       });
       const specificationData = compactObject({
@@ -3110,6 +3219,9 @@ export default function AddJewelryProduct() {
         const genderArr = Array.isArray(basicDetails.gender)
           ? basicDetails.gender.filter(Boolean)
           : (basicDetails.gender ? [basicDetails.gender] : []);
+        const promoArr = Array.isArray(basicDetails.promoBanner)
+          ? basicDetails.promoBanner.filter(Boolean)
+          : (basicDetails.promoBanner ? [basicDetails.promoBanner] : []);
         const payload = {
         ...(!productId ? { _id: draftProductId } : {}),
         productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
@@ -3129,12 +3241,15 @@ export default function AddJewelryProduct() {
               : (productRecord?.demoMetrics?.reviewCount ?? 0),
         },
         gender: genderArr,
+        promoBanner: promoArr,
+        categoryTag: promoArr[0] || '',
         basicInfo: compactObject({
           title: activeTitle,
           sku: activeSku || undefined,
           slug: activeSlug,
           description: activeDesc,
           gender: genderArr,
+          promoBanner: promoArr,
         }),
         status: statusOverride === 'preserve'
           ? (productRecord?.status || seo.status || (productId ? 'approved' : 'draft'))
@@ -3146,8 +3261,8 @@ export default function AddJewelryProduct() {
         ...(Object.keys(specificationData).length ? { specifications: specificationData } : {}),
         ...(isSilverProduct
           ? (silverMetalColorIds.length ? { metalColorIds: silverMetalColorIds } : {})
-          : (metalColorIds.length && (!isDraft || variantRows.length) ? { metalColorIds } : {})),
-        ...(!isSilverProduct && metalPurityIds.length && (!isDraft || variantRows.length) ? { metalPurityIds } : {}),
+          : (metalColorIds.length ? { metalColorIds } : {})),
+        ...(!isSilverProduct && metalPurityIds.length ? { metalPurityIds } : {}),
         ...(isSilverProduct
           ? (silverColorImageRows.length ? { colorImages: silverColorImageRows } : {})
           : (colorImageRows.length ? { colorImages: colorImageRows } : {})),
@@ -3160,10 +3275,15 @@ export default function AddJewelryProduct() {
         ...(seo.stockStatus ? { stockStatus: seo.stockStatus } : {}),
       };
 
+      let targetProductId = productId;
       if (productId) {
         await api.put('/products/' + productId, payload);
       } else {
-        await api.post('/products', payload);
+        const createRes = await api.post('/products', payload);
+        targetProductId =
+          createRes?.data?.data?.product?._id ||
+          createRes?.data?.data?._id ||
+          createRes?.data?.data?.id;
       }
       if (pendingCompressionDeletes.length) {
         const deleteResults = await Promise.allSettled(pendingCompressionDeletes.map((asset) => deleteUploadedFile(asset)));
@@ -3180,7 +3300,28 @@ export default function AddJewelryProduct() {
         successMsg = productId ? `${productName} published successfully!` : `${productName} published successfully!`;
       }
       toast.success(successMsg);
-      navigate(productListPath);
+
+      if (stayOnPage) {
+        const idToFetch = productId || targetProductId;
+        if (!productId && targetProductId) {
+          const editPath = `${productListPath}/edit/${targetProductId}`;
+          navigate(editPath, { replace: true });
+        }
+        if (idToFetch) {
+          try {
+            const getRes = await api.get('/products/' + idToFetch);
+            const freshRec = getRes.data?.data?.product || getRes.data?.data;
+            if (freshRec) {
+              hydratedProductId.current = '';
+              setProductRecord(freshRec);
+            }
+          } catch (fetchErr) {
+            console.warn('Could not reload product after save:', fetchErr);
+          }
+        }
+      } else {
+        navigate(productListPath);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Could not save product. Please review the details and try again.');
     } finally {
@@ -3188,8 +3329,8 @@ export default function AddJewelryProduct() {
     }
   };
 
-  // Save the current product storing details and keeping status field as it is.
-  const handleSave = async () => handlePublish('preserve');
+  // Save the current product storing details and keeping status field as it is (without moving away from edit page)
+  const handleSave = async () => handlePublish('preserve', { stayOnPage: true });
 
   const [togglingStatus, setTogglingStatus] = useState(false);
   const currentStatus = productRecord?.status || 'approved';
@@ -3577,11 +3718,19 @@ export default function AddJewelryProduct() {
                     selectedCollectionIds={selectedCollectionIds}
                     categories={categoryList}
                     onChangeCategory={(catId) => {
-                      if (catId !== basicDetails.category) setMenuItemIds([]);
-                      setBasicDetails((prev) => ({
-                        ...prev,
-                        category: catId,
-                      }));
+                      if (catId !== basicDetails.category) {
+                        setMenuItemIds([]);
+                        setBasicDetails((prev) => ({
+                          ...prev,
+                          category: catId,
+                          promoBanner: [],
+                        }));
+                      } else {
+                        setBasicDetails((prev) => ({
+                          ...prev,
+                          category: catId,
+                        }));
+                      }
                       if (catId) setAutoOpenMenu(true);
                     }}
                     onChangeCollections={setSelectedCollectionIds}
@@ -3590,7 +3739,7 @@ export default function AddJewelryProduct() {
                   />
                 </div>
 
-                <div className="sm:col-span-2 space-y-1.5">
+                <div className="sm:col-span-1 space-y-1.5">
                   <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">Menu Items</label>
                   <MenuItemSelect
                     key={basicDetails.category}
@@ -3602,6 +3751,34 @@ export default function AddJewelryProduct() {
                     onOpenChange={(isOpen) => {
                       if (!isOpen) setAutoOpenMenu(false);
                     }}
+                  />
+                </div>
+
+                <div className="sm:col-span-1 space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                    Promo Banner
+                  </label>
+                  <Dropdown
+                    size="field"
+                    variant="input"
+                    multiple
+                    value={basicDetails.promoBanner}
+                    onChange={(val) =>
+                      setBasicDetails((prev) => ({
+                        ...prev,
+                        promoBanner: Array.isArray(val) ? val : [val].filter(Boolean),
+                      }))
+                    }
+                    placeholder={
+                      !basicDetails.category
+                        ? 'Select Category first'
+                        : promoBannerOptions.length === 0
+                        ? 'No promo banners'
+                        : 'Select Promo Banner'
+                    }
+                    disabled={saving || !basicDetails.category || promoBannerOptions.length === 0}
+                    options={promoBannerOptions}
+                    className="w-full"
                   />
                 </div>
 
@@ -3700,7 +3877,6 @@ export default function AddJewelryProduct() {
                         Social Proof & Urgency (Demo Metrics)
                       </h4>
                     </div>
-                    <span className="text-[11px] text-stone-400 font-medium">Storefront Product Detail Display</span>
                   </div>
                   <p className="text-xs text-stone-500">
                     Set product-specific sold and review counts displayed under the title on the storefront.
@@ -3757,7 +3933,7 @@ export default function AddJewelryProduct() {
           {!isSilverProduct && activeStep === 2 && (
             <div className="bg-white rounded-2xl border border-[#eee8df] p-6 shadow-xs space-y-6 animate-fadeIn">
               {/* Step Header */}
-              <div className="flex items-center gap-3.5 pb-4 border-b border-stone-100">
+              <div className="flex items-center gap-3.5 pb-4 border-b border-stone-200">
                 <div className="w-8 h-8 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
                   2
                 </div>
@@ -3772,7 +3948,7 @@ export default function AddJewelryProduct() {
               </div>
 
               {/* ─── Sub-Section 1: Metal Options ──────────── */}
-              <div className="space-y-2 pt-2 border-t border-stone-100">
+              <div className="p-4 sm:p-5 rounded-2xl border border-stone-200/90 bg-white space-y-3.5 shadow-2xs">
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
                     1
@@ -3785,7 +3961,7 @@ export default function AddJewelryProduct() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-7 pt-0.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
                   {/* Metal Purity Selection */}
                   <div className="space-y-1.5">
                     <label className="text-[11px] font-bold text-stone-700">
@@ -3844,8 +4020,8 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
-              {/* Metal weight and product charges are configured alongside the variants. */}
-              <div className="space-y-3 pt-3 border-t border-stone-100">
+              {/* ─── Sub-Section 2: Metal Specifications ──────────── */}
+              <div className="p-4 sm:p-5 rounded-2xl border border-stone-200/90 bg-white space-y-3.5 shadow-2xs">
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
                     2
@@ -3855,7 +4031,7 @@ export default function AddJewelryProduct() {
                     <p className="text-[10px] text-stone-400">Set the base metal weight and applicable charges for these variants.</p>
                   </div>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pl-7">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                   <label className="space-y-1.5">
                     <span className="text-[11px] font-bold text-stone-700">Metal Weight (g) (14KT)</span>
                     <input
@@ -3895,7 +4071,7 @@ export default function AddJewelryProduct() {
 
 
               {/* ─── Sub-Section 3: Center & Side Diamond Configuration ──── */}
-              <div className="space-y-4 pt-3 border-t border-stone-100">
+              <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
                     3
@@ -4064,11 +4240,28 @@ export default function AddJewelryProduct() {
 
                   {/* Auto-Generated Combinations Table */}
                   <div className="pt-3 space-y-2.5">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
-                      <h5 className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
-                        AUTO-GENERATED COMBINATIONS ({centerDiamondCombinations.length})
-                      </h5>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
+                        <h5 className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                          AUTO-GENERATED COMBINATIONS ({centerDiamondCombinations.length})
+                        </h5>
+                      </div>
+                      {centerDiamondCombinations.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setIsCombinationsCollapsed((prev) => !prev)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-stone-200 hover:border-stone-300 rounded-lg shadow-2xs transition-all cursor-pointer"
+                          title={isCombinationsCollapsed ? 'Expand Combinations Table' : 'Collapse Combinations Table'}
+                        >
+                          <span>{isCombinationsCollapsed ? 'Expand' : 'Collapse'}</span>
+                          {isCombinationsCollapsed ? (
+                            <HiOutlineChevronDown className="w-3.5 h-3.5 text-stone-500" />
+                          ) : (
+                            <HiOutlineChevronUp className="w-3.5 h-3.5 text-stone-500" />
+                          )}
+                        </button>
+                      )}
                     </div>
 
                     {centerDiamondCombinations.length === 0 ? (
@@ -4077,11 +4270,22 @@ export default function AddJewelryProduct() {
                           Select colors, clarities, and add carat weights to generate combinations.
                         </p>
                       </div>
+                    ) : isCombinationsCollapsed ? (
+                      <div
+                        onClick={() => setIsCombinationsCollapsed(false)}
+                        className="py-2.5 px-4 rounded-xl border border-dashed border-stone-200 bg-stone-50/70 flex items-center justify-between text-xs text-stone-500 hover:bg-stone-100/70 transition-colors cursor-pointer"
+                      >
+                        <span>{centerDiamondCombinations.length} auto-generated combinations collapsed.</span>
+                        <span className="font-semibold text-[#8b6f4e] inline-flex items-center gap-1">
+                          Expand <HiOutlineChevronDown className="w-3.5 h-3.5" />
+                        </span>
+                      </div>
                     ) : (
                       <div className="overflow-x-auto rounded-xl border border-stone-200/80 bg-white">
                         <table className="w-full text-left text-xs">
                           <thead>
                             <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                              <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
                               <th className="py-2.5 px-4 font-bold">DIAMOND TYPE</th>
                               <th className="py-2.5 px-3 font-bold">COLOR</th>
                               <th className="py-2.5 px-3 font-bold">CLARITY</th>
@@ -4091,8 +4295,11 @@ export default function AddJewelryProduct() {
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-stone-100 font-sans">
-                            {centerDiamondCombinations.map((combo) => (
+                            {centerDiamondCombinations.map((combo, idx) => (
                               <tr key={combo.id} className="hover:bg-stone-50/40 transition-colors">
+                                <td className="py-2.5 px-3 text-center text-[11px] font-semibold text-stone-500 whitespace-nowrap">
+                                  {idx + 1}
+                                </td>
                                 <td className="py-2.5 px-4 whitespace-nowrap">
                                   <span className="inline-block px-2.5 py-0.5 rounded-md border border-stone-200 bg-stone-50 text-[11px] font-semibold text-stone-700">
                                     {combo.diamondType}
@@ -4147,24 +4354,21 @@ export default function AddJewelryProduct() {
               </div>
 
               {/* ─── Sub-Section 3: Preview Variants ───────── */}
-              <div className="space-y-2.5 pt-3 border-t border-stone-100">
+              <div className="space-y-2.5 pt-5 border-t border-stone-300">
                 <div className="flex items-center justify-between gap-3 flex-wrap">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2.5">
                     <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
                       3
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
                       <h3 className="text-xs font-bold text-stone-900">Preview Variants</h3>
-                      <p className="text-[10px] text-stone-400">
-                        Review calculated metal, diamond, making and tax costs. Hover over a price for its breakdown.
-                      </p>
+                      <span aria-live="polite" className="rounded-full border border-stone-200 bg-stone-50 px-2.5 py-0.5 text-xs font-semibold text-stone-700">
+                        Total Variants: {variants.length}
+                      </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span aria-live="polite" className="rounded-full border border-stone-200 bg-stone-50 px-3 py-1.5 text-xs font-semibold text-stone-700">
-                      Total Variants: {variants.length}
-                    </span>
                     <label className="flex items-center gap-2 text-[10px] font-semibold text-stone-500">
                       Other amount markup %
                       <input type="number" min="0" value={specs.otherAmountPercentage} onChange={(e) => setSpecs((prev) => ({ ...prev, otherAmountPercentage: e.target.value }))} className="w-16 px-2 py-1.5 text-xs text-stone-800 rounded-md border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]" />
@@ -4173,9 +4377,37 @@ export default function AddJewelryProduct() {
                       <HiOutlineRefresh className="w-4 h-4" />
                       <span>{variants.length ? 'Recompute Variants' : 'Compute Variants'}</span>
                     </button>
+                    {variants.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setIsVariantsPreviewCollapsed((prev) => !prev)}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-stone-200 hover:border-stone-300 rounded-lg shadow-2xs transition-all cursor-pointer"
+                        title={isVariantsPreviewCollapsed ? 'Expand Variants Table' : 'Collapse Variants Table'}
+                      >
+                        <span>{isVariantsPreviewCollapsed ? 'Expand' : 'Collapse'}</span>
+                        {isVariantsPreviewCollapsed ? (
+                          <HiOutlineChevronDown className="w-3.5 h-3.5 text-stone-500" />
+                        ) : (
+                          <HiOutlineChevronUp className="w-3.5 h-3.5 text-stone-500" />
+                        )}
+                      </button>
+                    )}
                   </div>
 
                 </div>
+
+                {isVariantsPreviewCollapsed && variants.length > 0 ? (
+                  <div
+                    onClick={() => setIsVariantsPreviewCollapsed(false)}
+                    className="py-3 px-4 rounded-xl border border-dashed border-stone-200 bg-stone-50/70 flex items-center justify-between text-xs text-stone-500 hover:bg-stone-100/70 transition-colors cursor-pointer"
+                  >
+                    <span>{variants.length} preview variants hidden. Click to expand and view full pricing table.</span>
+                    <span className="font-semibold text-[#8b6f4e] inline-flex items-center gap-1">
+                      Expand <HiOutlineChevronDown className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                ) : (
+                  <>
 
                 {/* Quick Karat / Purity Break Tabs */}
                 {purityGroups.length > 1 && (
@@ -4358,10 +4590,10 @@ export default function AddJewelryProduct() {
                                   <button
                                     type="button"
                                     onClick={() => setVariants((prev) => prev.filter((item) => item.id !== v.id))}
-                                    className="p-1 rounded-md text-stone-400 hover:text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                                    className="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 transition-colors cursor-pointer inline-flex items-center justify-center shadow-2xs"
                                     title="Delete variant"
                                   >
-                                    <HiOutlineTrash className="w-3.5 h-3.5" />
+                                    <HiOutlineTrash className="w-4 h-4 stroke-[1.8]" />
                                   </button>
                                 </td>
                               </tr>
@@ -4375,6 +4607,8 @@ export default function AddJewelryProduct() {
                     </table>
                   </div>
                 </div>
+              </>
+            )}
               </div>
             </div>
           )}
@@ -6746,16 +6980,6 @@ export default function AddJewelryProduct() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900">Meta Description</label>
-                  <textarea
-                    rows={3}
-                    value={seo.metaDescription}
-                    onChange={(e) => setSeo((prev) => ({ ...prev, metaDescription: e.target.value }))}
-                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs leading-relaxed placeholder:text-stone-400"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-bold text-stone-900">Keywords</label>
                     <span className="text-[11px] text-stone-400 font-normal">Comma separated</span>
@@ -6766,6 +6990,16 @@ export default function AddJewelryProduct() {
                     onChange={(e) => setSeo((prev) => ({ ...prev, keywords: e.target.value }))}
                     placeholder="e.g. diamond stud earrings, lab grown diamond, gold earrings"
                     className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs placeholder:text-stone-400"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900">Meta Description</label>
+                  <textarea
+                    rows={3}
+                    value={seo.metaDescription}
+                    onChange={(e) => setSeo((prev) => ({ ...prev, metaDescription: e.target.value }))}
+                    className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs leading-relaxed placeholder:text-stone-400"
                   />
                 </div>
               </div>
@@ -6782,12 +7016,6 @@ export default function AddJewelryProduct() {
               <HiOutlineArrowLeft className="w-3 h-3 stroke-[2.5]" />
               <span>{activeStep === 1 ? 'Back to List' : 'Previous Tab'}</span>
             </button>
-
-            {/* In the middle: Step X of Y • Step Title */}
-            <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-stone-500">
-              <span>Step {activeStepIndex + 1} of {steps.length} &bull;</span>
-              <span className="text-[#8b6f4e] font-bold">{steps[activeStepIndex]?.title}</span>
-            </div>
 
             <div className="flex items-center gap-2.5">
               <button

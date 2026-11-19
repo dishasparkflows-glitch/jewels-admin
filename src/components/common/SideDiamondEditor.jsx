@@ -494,7 +494,7 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
                           aria-label="Delete row"
                           title="Delete row"
                           onClick={() => remove(index)}
-                          className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer inline-flex items-center justify-center"
+                          className="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 transition-colors cursor-pointer inline-flex items-center justify-center shadow-2xs"
                         >
                           <HiOutlineTrash className="w-4 h-4" />
                         </button>
