@@ -36,7 +36,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
-import RowActions from '../../components/common/RowActions';
+import RowActions, { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import OrnateSyncModal from '../../components/common/OrnateSyncModal';
 import { deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
@@ -2884,24 +2884,16 @@ const DynamicModuleView = () => {
                                   />
                                 </div>
 
-                                {/* Edit & Delete Buttons Matching Screenshot */}
+                                {/* Edit & Delete Buttons Matching Common RowActions */}
                                 <div className="flex items-center gap-1.5 shrink-0">
-                                  <button
-                                    type="button"
+                                  <EditActionButton
                                     onClick={() => handleOpenBannerForm(banner, index)}
-                                    className="p-1.5 text-stone-600 hover:text-stone-900 bg-stone-50 hover:bg-stone-100 rounded-lg transition-colors border border-stone-200 cursor-pointer"
                                     title="Edit Details"
-                                  >
-                                    <HiOutlinePencil className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
+                                  />
+                                  <DeleteActionButton
                                     onClick={() => handleDeletePromoBannerItem(index)}
-                                    className="p-1.5 text-rose-600 bg-rose-50/80 hover:bg-rose-100 rounded-lg transition-colors border border-rose-100 cursor-pointer"
                                     title="Delete Banner"
-                                  >
-                                    <HiOutlineTrash className="w-3.5 h-3.5" />
-                                  </button>
+                                  />
                                 </div>
                               </div>
                             );

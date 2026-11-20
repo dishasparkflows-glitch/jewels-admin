@@ -19,6 +19,7 @@ import {
 import { IoDiamondOutline } from 'react-icons/io5';
 import Dropdown from '../Dropdown';
 import Pagination from '../Pagination';
+import { EditActionButton, DeleteActionButton, MoveActionButton } from '../RowActions';
 import SyncPreviewModal from './SyncPreviewModal';
 import MoveProductModal from './MoveProductModal';
 import api from '../../../api/axios';
@@ -209,6 +210,12 @@ export default function ManageGroupDrawer({
         setEditStatus(data.status || 'active');
       }
     } catch (err) {
+      if (err?.response?.status === 404) {
+        // Group no longer exists (e.g. disbanded, deleted, or all products moved out)
+        onClose();
+        onRefreshParent?.();
+        return;
+      }
       console.error('Failed to load group:', err);
       toast.error('Could not load group details');
       onClose();
@@ -732,7 +739,7 @@ export default function ManageGroupDrawer({
                             </th>
                             <th className="py-3 px-2 text-center whitespace-nowrap w-12">Sr. No.</th>
                             <th className="py-3 px-3 whitespace-nowrap">Product</th>
-                            <th className="py-3 px-3 whitespace-nowrap">Tag / Barcode / SKU</th>
+                            <th className="py-3 px-3 whitespace-nowrap">Tag / Barcode</th>
                             <th className="py-3 px-3 whitespace-nowrap">Weight</th>
                             <th className="py-3 px-3 whitespace-nowrap">Sale Price</th>
                             <th className="py-3 px-3 whitespace-nowrap">Status / Stock</th>
@@ -819,7 +826,6 @@ export default function ManageGroupDrawer({
                                   <td className="p-3 font-mono text-[11px]">
                                     <p className="text-stone-700">Tag: <span className="font-semibold text-stone-900">{p.ornate?.tagNo || '—'}</span></p>
                                     <p className="text-stone-700 text-[11px]">Barcode: <span className="font-semibold text-stone-900">{p.ornate?.barcode || p.barcode || '—'}</span></p>
-                                    <p className="text-stone-700 text-[11px]">SKU: <span className="font-semibold text-stone-900">{p.basicInfo?.sku || '—'}</span></p>
                                   </td>
                                   <td className="p-3 text-stone-600">
                                     {p.specifications?.metalWeight ?? p.ornate?.netWt ?? '—'} g
@@ -839,48 +845,36 @@ export default function ManageGroupDrawer({
                                         <button
                                           type="button"
                                           onClick={() => openProductPreview(p)}
-                                          className="p-1.5 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] hover:border-[#8b6f4e]/40 transition-all cursor-pointer shadow-2xs"
+                                          className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] hover:border-[#8b6f4e]/40 inline-flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
                                           title="Open product on website (storefront)"
                                         >
-                                          <HiOutlineExternalLink className="w-4 h-4 stroke-[2]" />
+                                          <HiOutlineExternalLink className="w-3.5 h-3.5 stroke-[2]" />
                                         </button>
                                       )}
-                                      <button
-                                        type="button"
+                                      <MoveActionButton
                                         onClick={() => handleOpenMoveSingle(p)}
-                                        className="p-1.5 rounded-lg border border-stone-200 bg-white text-stone-600 hover:text-[#8b6f4e] hover:border-[#8b6f4e]/40 hover:bg-[#8b6f4e]/5 transition-all cursor-pointer"
                                         title="Move to another group or create new group"
-                                      >
-                                        <HiOutlineSwitchHorizontal className="w-4 h-4" />
-                                      </button>
+                                      />
                                       <button
                                         type="button"
                                         onClick={() => handleSetRepresentative(p._id)}
-                                        className={`p-1.5 rounded-lg border transition-all ${
+                                        className={`w-7 h-7 rounded-lg border inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer active:scale-95 ${
                                           isPrimary
                                             ? 'bg-amber-50 border-amber-300 text-amber-600'
                                             : 'bg-white border-stone-200 text-stone-400 hover:text-amber-500 hover:border-amber-200'
                                         }`}
                                         title={isPrimary ? 'Current Primary Representative' : 'Set as Primary Representative'}
                                       >
-                                        <HiOutlineStar className="w-4 h-4 fill-current" />
+                                        <HiOutlineStar className="w-3.5 h-3.5 fill-current" />
                                       </button>
-                                      <button
-                                        type="button"
+                                      <EditActionButton
                                         onClick={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
-                                        className="p-1.5 rounded-lg border border-stone-200 bg-white text-stone-600 hover:text-stone-900 hover:bg-stone-50"
                                         title="Edit Product"
-                                      >
-                                        <HiOutlinePencil className="w-4 h-4" />
-                                      </button>
-                                      <button
-                                        type="button"
+                                      />
+                                      <DeleteActionButton
                                         onClick={() => handleRemoveProduct(p._id, p.basicInfo?.title)}
-                                        className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                                         title="Remove from Group"
-                                      >
-                                        <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2] text-[#d93025]" />
-                                      </button>
+                                      />
                                     </div>
                                   </td>
                                 </tr>
@@ -972,8 +966,8 @@ export default function ManageGroupDrawer({
                                 {p.basicInfo?.title || 'Ornate Product'}
                               </p>
                               <div className="space-y-0.5 mt-1 font-mono text-[10px] text-stone-700">
-                                <p className="truncate text-stone-700" title={`Tag: ${p.ornate?.tagNo || '—'} · SKU: ${p.basicInfo?.sku || '—'}`}>
-                                  Tag: <span className="font-semibold text-stone-900">{p.ornate?.tagNo || '—'}</span> · SKU: <span className="font-semibold text-stone-900">{p.basicInfo?.sku || '—'}</span>
+                                <p className="truncate text-stone-700" title={`Tag: ${p.ornate?.tagNo || '—'}`}>
+                                  Tag: <span className="font-semibold text-stone-900">{p.ornate?.tagNo || '—'}</span>
                                 </p>
                                 <p className="truncate text-stone-700" title={`Barcode: ${p.ornate?.barcode || '—'}`}>
                                   Barcode: <span className="font-semibold text-stone-900">{p.ornate?.barcode || p.barcode || '—'}</span>
@@ -985,41 +979,29 @@ export default function ManageGroupDrawer({
                               <span className="font-bold text-[#8b6f4e]">
                                 {money(p.pricing?.salePrice || p.pricing?.mrp)}
                               </span>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-1.5">
                                 {isTopAvailable && (
                                   <button
                                     type="button"
                                     onClick={() => openProductPreview(p)}
-                                    className="p-1 text-[#8b6f4e] hover:text-[#735839] transition-colors cursor-pointer"
+                                    className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] hover:border-[#8b6f4e]/40 inline-flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
                                     title="Open product on website (storefront)"
                                   >
                                     <HiOutlineExternalLink className="w-3.5 h-3.5 stroke-[2]" />
                                   </button>
                                 )}
-                                <button
-                                  type="button"
+                                <MoveActionButton
                                   onClick={() => handleOpenMoveSingle(p)}
-                                  className="p-1 text-stone-500 hover:text-[#8b6f4e] transition-colors cursor-pointer"
                                   title="Move to another group or create new group"
-                                >
-                                  <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
+                                />
+                                <EditActionButton
                                   onClick={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
-                                  className="p-1 text-stone-500 hover:text-stone-900"
                                   title="Edit Product"
-                                >
-                                  <HiOutlinePencil className="w-3.5 h-3.5" />
-                                </button>
-                                <button
-                                  type="button"
+                                />
+                                <DeleteActionButton
                                   onClick={() => handleRemoveProduct(p._id, p.basicInfo?.title)}
-                                  className="p-1 text-[#d93025] hover:text-[#b3261e]"
                                   title="Remove from Group"
-                                >
-                                  <HiOutlineTrash className="w-3.5 h-3.5 text-[#d93025]" />
-                                </button>
+                                />
                               </div>
                             </div>
                           </div>
@@ -1164,12 +1146,28 @@ export default function ManageGroupDrawer({
             ? (products || []).filter((p) => selectedProductIds.has(p._id))
             : (products || [])
         }
-        onSuccess={() => {
+        onSuccess={(result) => {
+          const movingIds = moveTargetProducts.length > 0
+            ? moveTargetProducts.map((p) => p._id)
+            : selectedProductIds.size > 0
+            ? Array.from(selectedProductIds)
+            : (products || []).map((p) => p._id);
+          const totalMemberCount = products?.length || group?.productIds?.length || 0;
+          const isDeleted = result?.sourceGroupDeleted || movingIds.length >= totalMemberCount;
+
           setSelectedProductIds(new Set());
           setMoveTargetProducts([]);
           setMoveInitialMode(null);
-          fetchGroup();
-          onRefreshParent?.();
+
+          if (isDeleted) {
+            // Source group was disbanded / deleted / emptied - cleanly close drawer and refresh parent list
+            onClose();
+            onRefreshParent?.();
+          } else {
+            // Group still has remaining products, refresh member list
+            fetchGroup();
+            onRefreshParent?.();
+          }
         }}
       />
 
@@ -1268,8 +1266,8 @@ export default function ManageGroupDrawer({
                         <p className="text-xs font-semibold text-stone-800 truncate">
                           {p.basicInfo?.title || 'Ornate Product'}
                         </p>
-                        <p className="text-[10px] text-stone-700 font-mono truncate" title={`Tag: ${p.ornate?.tagNo || '—'} · Barcode: ${p.ornate?.barcode || p.barcode || '—'} · SKU: ${p.basicInfo?.sku || '—'}`}>
-                          Tag: <span className="font-semibold text-stone-900">{p.ornate?.tagNo || '—'}</span> · Barcode: <span className="font-semibold text-stone-900">{p.ornate?.barcode || '—'}</span> · SKU: <span className="font-semibold text-stone-900">{p.basicInfo?.sku || '—'}</span>
+                        <p className="text-[10px] text-stone-700 font-mono truncate" title={`Tag: ${p.ornate?.tagNo || '—'} · Barcode: ${p.ornate?.barcode || p.barcode || '—'}`}>
+                          Tag: <span className="font-semibold text-stone-900">{p.ornate?.tagNo || '—'}</span> · Barcode: <span className="font-semibold text-stone-900">{p.ornate?.barcode || '—'}</span>
                         </p>
                       </div>
                       <span className="text-xs font-bold text-stone-800 shrink-0">

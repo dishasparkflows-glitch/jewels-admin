@@ -364,6 +364,7 @@ export default function AddJewelryProduct() {
   const [productLoading, setProductLoading] = useState(Boolean(productId));
   const [mastersLoaded, setMastersLoaded] = useState(false);
   const hydratedProductId = useRef('');
+  const step1HydratedId = useRef('');
 
   const {
     categories: categoryList = [],
@@ -544,6 +545,7 @@ export default function AddJewelryProduct() {
     if (!productId) return undefined;
     let cancelled = false;
     hydratedProductId.current = '';
+    step1HydratedId.current = '';
     setProductRecord(null);
     setProductLoading(true);
     api.get('/products/' + productId)
@@ -581,6 +583,9 @@ export default function AddJewelryProduct() {
   // Immediately hydrate Step 1 (Basic Details) as soon as productRecord is fetched without waiting for diamond masters
   useEffect(() => {
     if (!productRecord) return;
+    const currentRecId = String(productRecord._id || productRecord.id || '');
+    if (step1HydratedId.current === currentRecId && currentRecId) return;
+    step1HydratedId.current = currentRecId;
     const basicInfo = productRecord.basicInfo || {};
     const categoryValues = productRecord.categoryIds || productRecord.category || [];
     const rawCatList = Array.isArray(categoryValues) ? categoryValues : [categoryValues].filter(Boolean);
@@ -3035,8 +3040,31 @@ export default function AddJewelryProduct() {
       const mrpMarkupNum = isSilverProduct ? numberValue(pricing.mrpMarkupPercentage) : undefined;
 
       const metalWeightNum = numberValue(specs.metalWeight);
-      const categoryId = selectedCategory?._id ||
-        (/^[a-f\d]{24}$/i.test(String(basicDetails.category)) ? basicDetails.category : null);
+      const resolveCatId = (val) => {
+        if (!val) return null;
+        if (typeof val === 'object') return String(val._id || val.id || '');
+        const str = String(val).trim();
+        if (/^[a-f\d]{24}$/i.test(str)) return str;
+        const matched = (categoryList || []).find(
+          (c) =>
+            String(c._id) === str ||
+            String(c.name || '').trim().toLowerCase() === str.toLowerCase() ||
+            String(c.slug || '').trim().toLowerCase() === str.toLowerCase()
+        );
+        return matched ? String(matched._id || matched.id) : null;
+      };
+
+      const resolvedPrimaryCatId =
+        (selectedCategory?._id ? String(selectedCategory._id) : null) ||
+        resolveCatId(basicDetails.category);
+
+      const resolvedCollectionIds = (selectedCollectionIds || [])
+        .map(resolveCatId)
+        .filter(Boolean);
+
+      const finalCategoryIds = Array.from(
+        new Set([resolvedPrimaryCatId, ...resolvedCollectionIds].filter(Boolean))
+      );
       const resolveDiamondId = (options, value) => {
         const normalizedValue = String(value ?? '').trim();
         const match = options.find((option) =>
@@ -3285,7 +3313,7 @@ export default function AddJewelryProduct() {
         status: statusOverride === 'preserve'
           ? (productRecord?.status || seo.status || (productId ? 'approved' : 'draft'))
           : (statusOverride === 'draft' ? 'draft' : 'approved'),
-        ...(categoryId ? { categoryIds: [...new Set([categoryId, ...(selectedCollectionIds || [])].filter(Boolean))] } : {}),
+        categoryIds: finalCategoryIds,
         sizeIds: selectedSizeIds || [],
         ...(menuItemIds && menuItemIds.length ? { menuItemIds } : {}),
         ...(Object.keys(pricingData).length ? { pricing: pricingData } : {}),
@@ -3344,6 +3372,7 @@ export default function AddJewelryProduct() {
             const freshRec = getRes.data?.data?.product || getRes.data?.data;
             if (freshRec) {
               hydratedProductId.current = '';
+    step1HydratedId.current = '';
               setProductRecord(freshRec);
             }
           } catch (fetchErr) {

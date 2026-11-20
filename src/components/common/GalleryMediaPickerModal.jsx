@@ -7,10 +7,12 @@ import {
   HiOutlinePhotograph,
   HiOutlineRefresh,
   HiOutlineCheck,
+  HiOutlineEye,
 } from 'react-icons/hi';
 import Dropdown from './Dropdown';
 import api from '../../api/axios';
 import { getMediaUrl } from '../../utils/imageUrl';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
 const DEFAULT_PLACEMENTS = [
   { value: 'all', label: 'All Placements' },
@@ -45,6 +47,19 @@ export default function GalleryMediaPickerModal({
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerImages, setPickerImages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const { openImagePreview } = useImagePreview();
+
+  const handlePreview = (e, img, idx) => {
+    e.stopPropagation();
+    const targetUrl = getMediaUrl(img.url || img.image?.url);
+    const title = img.name || img.title || img.recordTitle || `Placement Image ${idx + 1}`;
+    const gallery = filteredImages.map((item) => getMediaUrl(item.url || item.image?.url));
+    openImagePreview(targetUrl, {
+      title,
+      gallery,
+      initialIndex: idx >= 0 ? idx : 0,
+    });
+  };
 
   // Sync initial filters when modal opens
   useEffect(() => {
@@ -298,15 +313,42 @@ export default function GalleryMediaPickerModal({
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
 
-                      {/* Overlay button on hover */}
-                      <div className="absolute inset-0 bg-stone-900/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
-                        <span className="px-3 py-1.5 rounded-xl bg-white text-stone-900 text-xs font-bold shadow-md flex items-center gap-1.5">
+                      {/* Quick Preview Icon (Top Left) */}
+                      <button
+                        type="button"
+                        onClick={(e) => handlePreview(e, img, idx)}
+                        className="absolute top-2 left-2 z-20 w-7 h-7 rounded-lg bg-black/70 hover:bg-black text-white flex items-center justify-center opacity-85 group-hover:opacity-100 transition-all backdrop-blur-xs shadow-xs cursor-pointer hover:scale-105"
+                        title="Preview full size"
+                      >
+                        <HiOutlineEye className="w-3.5 h-3.5 stroke-2" />
+                      </button>
+
+                      {/* Overlay actions on hover */}
+                      <div className="absolute inset-0 bg-stone-900/65 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 p-2 z-10">
+                        <button
+                          type="button"
+                          onClick={(e) => handlePreview(e, img, idx)}
+                          className="px-2.5 py-1.5 rounded-xl bg-stone-900/90 hover:bg-black text-white text-xs font-semibold shadow-md flex items-center gap-1.5 transition-all cursor-pointer border border-white/20 hover:border-white/40"
+                          title="Preview full size image"
+                        >
+                          <HiOutlineEye className="w-3.5 h-3.5 text-stone-200" />
+                          <span>Preview</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelect(img);
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-stone-100 text-stone-900 text-xs font-bold shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+                          title="Select this image"
+                        >
                           <HiOutlineCheck
                             className="w-3.5 h-3.5 stroke-[2.5]"
                             style={{ color: 'var(--theme-primary, #8b6f4e)' }}
                           />
                           <span>Select</span>
-                        </span>
+                        </button>
                       </div>
 
                       {/* Selected Badge */}

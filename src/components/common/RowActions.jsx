@@ -8,7 +8,30 @@ import {
   HiOutlineCheck,
   HiOutlineX,
   HiOutlineClock,
+  HiOutlineSwitchHorizontal,
 } from 'react-icons/hi';
+
+export function MoveActionButton({
+  onClick,
+  title = 'Move / Transfer',
+  className = '',
+  iconClassName = 'w-3.5 h-3.5',
+  disabled = false,
+  ...props
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      className={`w-7 h-7 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:border-purple-300 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
+      {...props}
+    >
+      <HiOutlineSwitchHorizontal className={iconClassName} />
+    </button>
+  );
+}
 
 export function EditActionButton({
   onClick,

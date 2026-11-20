@@ -427,32 +427,6 @@ export default function OrdersView() {
         </button>
       </div>
 
-      {/* ─── Bulk Actions Banner ─── */}
-      {selectedIds.size > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 bg-[#faf4ec] border border-[#ecdcc7] rounded-xl animate-fadeIn">
-          <span className="text-xs font-semibold text-[#8b6f4e]">
-            {selectedIds.size} order{selectedIds.size > 1 ? 's' : ''} selected
-          </span>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setSelectedIds(new Set())}
-              className="px-2.5 py-1 text-xs font-medium text-stone-500 hover:text-stone-700 hover:bg-white/80 rounded-lg transition-colors cursor-pointer"
-            >
-              Clear selection
-            </button>
-            <button
-              type="button"
-              onClick={handleBulkDelete}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg border border-rose-200 transition-all cursor-pointer"
-            >
-              <HiOutlineTrash className="w-3.5 h-3.5" />
-              Delete Selected ({selectedIds.size})
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* ─── Orders Table ─── */}
       <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">

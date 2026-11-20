@@ -444,12 +444,33 @@ export default function OrnateProductEdit() {
         if (product) {
           setProductRecord(product);
           const rawCatList = product.categoryIds || product.category || [];
-          const allCatIds = (Array.isArray(rawCatList) ? rawCatList : [rawCatList])
+          const catArray = Array.isArray(rawCatList) ? rawCatList : [rawCatList];
+          const allCatIds = catArray
             .map((c) => String(c && typeof c === 'object' ? (c._id || c.id) : c))
             .filter(Boolean);
-          const regMatch = allCatIds.find((id) => regularCategories.some((r) => String(r._id) === id));
-          const collIds = allCatIds.filter((id) => collectionCategories.some((c) => String(c._id) === id));
-          const primaryCat = regMatch || allCatIds.find((id) => !collIds.includes(id)) || allCatIds[0] || '';
+
+          const knownCollIds = new Set(
+            catArray
+              .filter((c) => c && typeof c === 'object' && c.type === 'collection')
+              .map((c) => String(c._id || c.id))
+          );
+          const knownRegIds = new Set(
+            catArray
+              .filter((c) => c && typeof c === 'object' && c.type && c.type !== 'collection')
+              .map((c) => String(c._id || c.id))
+          );
+
+          const regList = regularCategories || [];
+          const colList = collectionCategories || [];
+
+          const collIds = allCatIds.filter(
+            (id) => colList.some((c) => String(c._id) === id) || knownCollIds.has(id)
+          );
+          const primaryCat =
+            allCatIds.find((id) => regList.some((r) => String(r._id) === id)) ||
+            allCatIds.find((id) => knownRegIds.has(id)) ||
+            allCatIds.find((id) => !collIds.includes(id)) ||
+            '';
           setSelectedCollectionIds(collIds);
 
           // Populate Base Information
@@ -642,6 +663,48 @@ export default function OrnateProductEdit() {
 
     fetchProduct();
   }, [id, isEditMode]);
+
+  // Synchronize category & collection selections whenever productRecord or category lookup lists load/update
+  useEffect(() => {
+    if (!productRecord) return;
+    const rawCatList = productRecord.categoryIds || productRecord.category || [];
+    const catArray = Array.isArray(rawCatList) ? rawCatList : [rawCatList];
+    const allCatIds = catArray
+      .map((c) => String(c && typeof c === 'object' ? (c._id || c.id) : c))
+      .filter(Boolean);
+
+    if (allCatIds.length === 0) return;
+
+    const knownCollIds = new Set(
+      catArray
+        .filter((c) => c && typeof c === 'object' && c.type === 'collection')
+        .map((c) => String(c._id || c.id))
+    );
+    const knownRegIds = new Set(
+      catArray
+        .filter((c) => c && typeof c === 'object' && c.type && c.type !== 'collection')
+        .map((c) => String(c._id || c.id))
+    );
+
+    const regList = regularCategories || [];
+    const colList = collectionCategories || [];
+
+    const collIds = allCatIds.filter(
+      (id) => colList.some((c) => String(c._id) === id) || knownCollIds.has(id)
+    );
+
+    const primaryCat =
+      allCatIds.find((id) => regList.some((r) => String(r._id) === id)) ||
+      allCatIds.find((id) => knownRegIds.has(id)) ||
+      allCatIds.find((id) => !collIds.includes(id)) ||
+      '';
+
+    setSelectedCollectionIds(collIds);
+    setBaseInfo((prev) => ({
+      ...prev,
+      category: primaryCat,
+    }));
+  }, [productRecord, regularCategories, collectionCategories]);
 
   // Handle Cost Price or Markup change
   const handleCostOrMarkupChange = (field, value) => {
@@ -1069,10 +1132,33 @@ export default function OrnateProductEdit() {
       setSaving(true);
       const activeStatus = statusOverride || baseInfo.status || 'draft';
 
+      const resolveCatId = (val) => {
+        if (!val) return null;
+        if (typeof val === 'object') return String(val._id || val.id || '');
+        const str = String(val).trim();
+        if (/^[a-f\d]{24}$/i.test(str)) return str;
+        const matched = (rawCategoryList || []).find(
+          (c) =>
+            String(c._id) === str ||
+            String(c.name || '').trim().toLowerCase() === str.toLowerCase() ||
+            String(c.slug || '').trim().toLowerCase() === str.toLowerCase()
+        );
+        return matched ? String(matched._id || matched.id) : null;
+      };
+
+      const resolvedPrimaryCatId = resolveCatId(baseInfo.category);
+      const resolvedCollectionIds = (selectedCollectionIds || [])
+        .map(resolveCatId)
+        .filter(Boolean);
+
+      const finalCategoryIds = Array.from(
+        new Set([resolvedPrimaryCatId, ...resolvedCollectionIds].filter(Boolean))
+      );
+
       const payload = {
         ...(!isEditMode ? { _id: draftProductId } : {}),
         // Product identity and copy live in basicInfo.
-        categoryIds: [...new Set([baseInfo.category, ...(selectedCollectionIds || [])].filter(Boolean))],
+        categoryIds: finalCategoryIds,
         promoBanner: Array.isArray(baseInfo.promoBanner)
           ? baseInfo.promoBanner.filter(Boolean)
           : (baseInfo.promoBanner ? [baseInfo.promoBanner] : []),

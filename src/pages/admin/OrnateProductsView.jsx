@@ -294,12 +294,13 @@ export default function OrnateProductsView() {
   };
 
   // Bulk Approve Products in Selected Groups
-  const handleBulkApproveGroups = async () => {
-    if (!selectedIds.size) return;
+  const handleBulkApproveGroups = async (targetIds = null) => {
+    const idsToApprove = targetIds ? Array.from(targetIds) : Array.from(selectedIds);
+    if (!idsToApprove.length) return;
     const isConfirmed = await confirm({
-      title: `Approve Products in ${selectedIds.size} Group(s)`,
-      message: `Directly approve all in-stock products across the ${selectedIds.size} selected group(s)? Approved products will become active in your catalogue.`,
-      confirmText: `Approve ${selectedIds.size} Group(s)`,
+      title: `Approve Products in ${idsToApprove.length} Group(s)`,
+      message: `Directly approve all in-stock products across the ${idsToApprove.length} selected group(s)? Approved products will become active in your catalogue.`,
+      confirmText: `Approve ${idsToApprove.length} Group(s)`,
       type: 'success',
     });
     if (!isConfirmed) return;
@@ -308,10 +309,14 @@ export default function OrnateProductsView() {
     try {
       setBulkApproving(true);
       const res = await api.post('/product-groups/bulk-approve', {
-        groupIds: Array.from(selectedIds),
+        groupIds: idsToApprove,
       });
       toast.success(res.data?.message || `Successfully approved products across selected groups!`);
-      setSelectedIds(new Set());
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        idsToApprove.forEach((id) => next.delete(id));
+        return next;
+      });
       await fetchData({ silent: true });
       await fetchTabCounts();
       if (currentScrollY > 0) {
@@ -792,68 +797,6 @@ export default function OrnateProductsView() {
           </div>
         ) : (
           <div className="space-y-4">
-            {/* Top Selection & Action Bar for Groups */}
-            {selectedIds.size > 0 && (
-              <div className="bg-[#8b6f4e]/10 border border-[#8b6f4e]/20 rounded-2xl p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-[#8b6f4e]">
-                    {selectedIds.size} group(s) selected
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedIds(new Set())}
-                    className="text-[11px] text-stone-500 hover:text-stone-800 underline ml-1 cursor-pointer"
-                  >
-                    Deselect All
-                  </button>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  {singleGroups.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const singles = groups.filter((g) => (g.productCount ?? 0) === 1);
-                        setSelectedIds(new Set(singles.map((g) => g._id)));
-                      }}
-                      className="px-3 py-1.5 font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer text-xs"
-                      title="Select all groups on this page that have exactly 1 product"
-                    >
-                      <span>Select All 1-Product ({singleGroups.length})</span>
-                    </button>
-                  )}
-                  {multiGroups.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const multis = groups.filter((g) => (g.productCount ?? 0) !== 1);
-                        setSelectedIds(new Set(multis.map((g) => g._id)));
-                      }}
-                      className="px-3 py-1.5 font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer text-xs"
-                      title="Select all groups on this page that have multiple products"
-                    >
-                      <span>Select All Multi-Product ({multiGroups.length})</span>
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={toggleSelectAll}
-                    className="px-3 py-1.5 font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer text-xs"
-                  >
-                    <span>{selectedIds.size === groups.length ? 'Deselect Page' : 'Select All on Page'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleBulkApproveGroups}
-                    disabled={bulkApproving}
-                    className="px-3.5 py-1.5 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <HiOutlineCheckCircle className="w-4 h-4" />
-                    <span>{bulkApproving ? 'Approving Products...' : `Approve Selected Groups (${selectedIds.size})`}</span>
-                  </button>
-                </div>
-              </div>
-            )}
-
             {/* Helper to render group cards in grid or list mode */}
             {(() => {
               const renderCardsGrid = (items) => (
@@ -892,6 +835,8 @@ export default function OrnateProductsView() {
               );
 
               if (groupFilterType === 'single') {
+                const selectedSingles = groups.filter((g) => selectedIds.has(g._id));
+                const allSingleSelected = groups.length > 0 && groups.every((g) => selectedIds.has(g._id));
                 return (
                   <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-100">
@@ -913,6 +858,40 @@ export default function OrnateProductsView() {
                           </p>
                         </div>
                       </div>
+
+                      <div className="flex items-center gap-2">
+                        {selectedSingles.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleBulkApproveGroups(selectedSingles.map((g) => g._id))}
+                            disabled={bulkApproving}
+                            className="px-3.5 py-1.5 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs"
+                          >
+                            <HiOutlineCheckCircle className="w-4 h-4" />
+                            <span>{bulkApproving ? 'Approving Products...' : `Approve Selected Groups (${selectedSingles.length})`}</span>
+                          </button>
+                        )}
+                        {groups.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedIds((prev) => {
+                                const next = new Set(prev);
+                                groups.forEach((g) => {
+                                  if (allSingleSelected) next.delete(g._id);
+                                  else next.add(g._id);
+                                });
+                                return next;
+                              });
+                            }}
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-xl text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 transition-colors cursor-pointer"
+                          >
+                            {allSingleSelected
+                              ? 'Deselect 1-Product'
+                              : `Select 1-Product (${groups.length})`}
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {renderCardsGrid(groups)}
                   </div>
@@ -920,6 +899,8 @@ export default function OrnateProductsView() {
               }
 
               if (groupFilterType === 'multi') {
+                const selectedMultis = groups.filter((g) => selectedIds.has(g._id));
+                const allMultiSelected = groups.length > 0 && groups.every((g) => selectedIds.has(g._id));
                 return (
                   <div className="bg-white border border-stone-200 rounded-2xl p-4 shadow-2xs space-y-4">
                     <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-100">
@@ -940,6 +921,40 @@ export default function OrnateProductsView() {
                             Groups containing multiple products, sizes, designs, or matching sets
                           </p>
                         </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {selectedMultis.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleBulkApproveGroups(selectedMultis.map((g) => g._id))}
+                            disabled={bulkApproving}
+                            className="px-3.5 py-1.5 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs"
+                          >
+                            <HiOutlineCheckCircle className="w-4 h-4" />
+                            <span>{bulkApproving ? 'Approving Products...' : `Approve Selected Groups (${selectedMultis.length})`}</span>
+                          </button>
+                        )}
+                        {groups.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedIds((prev) => {
+                                const next = new Set(prev);
+                                groups.forEach((g) => {
+                                  if (allMultiSelected) next.delete(g._id);
+                                  else next.add(g._id);
+                                });
+                                return next;
+                              });
+                            }}
+                            className="text-xs font-semibold px-2.5 py-1.5 rounded-xl text-blue-800 bg-blue-50 hover:bg-blue-100 border border-blue-200 transition-colors cursor-pointer"
+                          >
+                            {allMultiSelected
+                              ? 'Deselect Multi'
+                              : `Select Multi (${groups.length})`}
+                          </button>
+                        )}
                       </div>
                     </div>
                     {renderCardsGrid(groups)}
@@ -975,6 +990,21 @@ export default function OrnateProductsView() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {singleGroups.length > 0 && (() => {
+                          const selectedSingles = singleGroups.filter((g) => selectedIds.has(g._id));
+                          if (selectedSingles.length === 0) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleBulkApproveGroups(selectedSingles.map((g) => g._id))}
+                              disabled={bulkApproving}
+                              className="px-3.5 py-1.5 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs"
+                            >
+                              <HiOutlineCheckCircle className="w-4 h-4" />
+                              <span>{bulkApproving ? 'Approving Products...' : `Approve Selected Groups (${selectedSingles.length})`}</span>
+                            </button>
+                          );
+                        })()}
                         {singleGroups.length > 0 && (
                           <button
                             type="button"
@@ -1064,6 +1094,21 @@ export default function OrnateProductsView() {
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {multiGroups.length > 0 && (() => {
+                          const selectedMultis = multiGroups.filter((g) => selectedIds.has(g._id));
+                          if (selectedMultis.length === 0) return null;
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => handleBulkApproveGroups(selectedMultis.map((g) => g._id))}
+                              disabled={bulkApproving}
+                              className="px-3.5 py-1.5 font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-xs"
+                            >
+                              <HiOutlineCheckCircle className="w-4 h-4" />
+                              <span>{bulkApproving ? 'Approving Products...' : `Approve Selected Groups (${selectedMultis.length})`}</span>
+                            </button>
+                          );
+                        })()}
                         {multiGroups.length > 0 && (
                           <button
                             type="button"
@@ -1192,6 +1237,7 @@ export default function OrnateProductsView() {
                   const imgUrl = getProductImage(p);
                   const title = p.basicInfo?.title || 'Ornate Jewellery';
                   const sku = p.basicInfo?.sku || p.ornate?.tagNo || '—';
+                  const barcode = p.ornate?.barcode || p.barcode || p.basicInfo?.barcode || '';
                   const price = p.pricing?.salePrice ?? 0;
 
                   return (
@@ -1240,7 +1286,10 @@ export default function OrnateProductsView() {
                         >
                           {title}
                         </h4>
-                        <p className="text-[10px] font-mono text-stone-400">{sku}</p>
+                        <p className="text-[10px] font-mono text-stone-400 truncate">
+                          {sku}
+                          {barcode && barcode !== sku ? ` • ${barcode}` : ''}
+                        </p>
                       </div>
 
                       <div className="pt-2 mt-2 border-t border-stone-100 flex items-center justify-between">
@@ -1277,6 +1326,7 @@ export default function OrnateProductsView() {
                         <th className="py-3 px-3 w-16">IMAGE</th>
                         <th className="py-3 px-3">PRODUCT NAME</th>
                         <th className="py-3 px-3">SKU / TAG</th>
+                        <th className="py-3 px-3">BARCODE</th>
                         <th className="py-3 px-3">PRICE</th>
                         <th className="py-3 px-3 text-center">VISIBILITY</th>
                         <th className="py-3 px-3 text-center">STATUS</th>
@@ -1289,6 +1339,7 @@ export default function OrnateProductsView() {
                         const imgUrl = getProductImage(p);
                         const title = p.basicInfo?.title || p.name || 'Ornate Jewellery';
                         const sku = p.basicInfo?.sku || p.ornate?.tagNo || '—';
+                        const barcode = p.ornate?.barcode || p.barcode || p.basicInfo?.barcode || '—';
                         const price = p.pricing?.salePrice ?? 0;
 
                         return (
@@ -1325,6 +1376,7 @@ export default function OrnateProductsView() {
                             </td>
                             <td className="p-3 font-bold text-stone-900">{title}</td>
                             <td className="p-3 font-mono text-stone-500 text-[11px]">{sku}</td>
+                            <td className="p-3 font-mono text-stone-500 text-[11px]">{barcode}</td>
                             <td className="p-3 font-bold text-stone-900">{money(price)}</td>
                             <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="inline-flex items-center gap-1.5 bg-stone-50/90 p-1 rounded-lg border border-stone-200/80 shadow-2xs">

@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { staticPagesAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import RichTextEditor from '../../components/common/RichTextEditor';
+import { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import { VITE_FRONT_URL } from '../../config/env';
 
 // Helper to format date display (e.g. "24 Oct 2026", "10:45 AM")
@@ -346,25 +347,17 @@ export default function StaticPagesView() {
 
                     {/* Col 4: Actions */}
                     <div className="col-span-2 flex items-center justify-end gap-1.5">
-                      <button
-                        type="button"
+                      <EditActionButton
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSelectPage(page);
                         }}
                         title="Edit Page"
-                        className="p-1.5 rounded-lg bg-stone-100 hover:bg-stone-200 text-stone-600 transition-colors"
-                      >
-                        <HiOutlinePencil className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
+                      />
+                      <DeleteActionButton
                         onClick={(e) => handleDelete(page._id, page.title, e)}
                         title="Delete Page"
-                        className="p-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-500 transition-colors"
-                      >
-                        <HiOutlineTrash className="w-3.5 h-3.5" />
-                      </button>
+                      />
                     </div>
                   </div>
                 );

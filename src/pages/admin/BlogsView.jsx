@@ -4,7 +4,6 @@ import {
   HiOutlinePhotograph,
   HiOutlineClock,
   HiOutlineTag,
-  HiOutlineRefresh,
   HiOutlineSparkles,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
@@ -299,16 +298,6 @@ export default function BlogsView() {
         subtitle="Publish editorial articles, diamond buying guides, styling tips, and brand stories"
         onAdd={() => navigate('/blogs/write')}
         addLabel="+ Write Blog Article"
-        extraActions={
-          <button
-            type="button"
-            onClick={fetchData}
-            title="Refresh List"
-            className="p-2 border border-stone-200 rounded-lg hover:bg-stone-50 text-stone-600 transition-colors cursor-pointer"
-          >
-            <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        }
       />
 
       {/* ─── Stat Cards ─── */}

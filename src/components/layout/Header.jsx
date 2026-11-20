@@ -39,8 +39,6 @@ const Header = ({ onMobileToggle }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [unreadCount, setUnreadCount] = useState(null);
-  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -120,34 +118,10 @@ const Header = ({ onMobileToggle }) => {
           <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" style={{ color: "var(--theme-primary, #8b6f4e)" }} />
           <span>{sidebarPosition === 'left' ? 'Sidebar: Left' : 'Sidebar: Right'}</span>
         </button>
-
-        {/* Mobile Search Toggle Icon */}
-        <button
-          type="button"
-          onClick={() => setMobileSearchOpen(!mobileSearchOpen)}
-          className="sm:hidden p-2 rounded-xl border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-600 hover:text-stone-900 transition-colors cursor-pointer"
-          aria-label="Toggle mobile search"
-        >
-          <HiOutlineSearch className="w-4 h-4" />
-        </button>
       </div>
 
-      {/* Center: Desktop Global Search Bar */}
-      <div className="hidden sm:flex items-center justify-center flex-1 max-w-md lg:max-w-xl mx-auto px-2">
-        <div className="flex items-center gap-2.5 px-3.5 py-1.5 rounded-xl bg-white border border-[#d6cfc2] hover:border-[#bdae99] focus-within:border-[var(--theme-primary,#8b6f4e)] focus-within:ring-2 focus-within:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] transition-all shadow-2xs w-full max-w-lg">
-          <HiOutlineSearch className="w-4 h-4 text-stone-400 shrink-0" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search products, orders, customers..."
-            className="w-full bg-transparent border-none outline-none text-xs text-stone-900 placeholder:text-stone-400 font-medium"
-          />
-          <kbd className="px-1.5 py-0.5 text-[10px] font-mono font-semibold text-stone-400 bg-stone-100 rounded border border-stone-200 shrink-0">
-            Ctrl + K
-          </kbd>
-        </div>
-      </div>
+      {/* Spacer */}
+      <div className="flex-1" />
 
       {/* Right: notifications, Super Admin profile */}
       <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
@@ -377,37 +351,6 @@ const Header = ({ onMobileToggle }) => {
           )}
         </div>
       </div>
-
-      {/* Expandable Mobile Search Row */}
-      {mobileSearchOpen && (
-        <div className="absolute top-14 left-0 right-0 p-2.5 bg-white border-b border-[#eee8df] shadow-md sm:hidden flex items-center gap-2 animate-fadeIn z-30">
-          <HiOutlineSearch className="w-4 h-4 text-stone-400 shrink-0 ml-1" />
-          <input
-            type="text"
-            autoFocus
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search products, orders, customers..."
-            className="flex-1 text-xs text-stone-900 placeholder:text-stone-400 bg-transparent outline-none py-1"
-          />
-          {searchQuery && (
-            <button
-              type="button"
-              onClick={() => setSearchQuery('')}
-              className="text-stone-400 hover:text-stone-700 p-1"
-            >
-              <HiOutlineX className="w-3.5 h-3.5" />
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => setMobileSearchOpen(false)}
-            className="px-2 py-1 text-xs font-semibold text-stone-600 hover:text-stone-900 rounded-lg hover:bg-stone-100"
-          >
-            Cancel
-          </button>
-        </div>
-      )}
     </header>
   );
 };

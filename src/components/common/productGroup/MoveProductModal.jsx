@@ -193,7 +193,7 @@ export default function MoveProductModal({
             ? 'Group created and products moved successfully'
             : 'Products moved successfully')
       );
-      onSuccess?.();
+      onSuccess?.(res.data?.data || res.data);
       onClose();
     } catch (err) {
       console.error('Failed to move products:', err);
@@ -394,10 +394,6 @@ export default function MoveProductModal({
                 A unique sequential group code (e.g. CG-000007) will be assigned automatically.
               </p>
             </div>
-
-            <p className="text-[11px] text-stone-500 bg-stone-50 p-2.5 rounded-xl border border-stone-100">
-              Note: Creating a new group will immediately establish a new common group and transfer the selected product(s) into it.
-            </p>
           </div>
         )}
 

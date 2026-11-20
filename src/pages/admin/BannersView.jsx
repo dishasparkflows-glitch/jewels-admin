@@ -33,6 +33,7 @@ import { useAdminPageSize } from '../../utils/adminPagination';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 
 const getMediaUrl = (url) => {
   if (!url) return '';
@@ -1268,33 +1269,25 @@ export default function BannersView() {
                               type="button"
                               onClick={(e) => handleDuplicate(banner, e)}
                               title="Duplicate banner"
-                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-[#faf6f0] text-stone-600 hover:text-[#8a6d4b] transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
+                              className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-[#faf6f0] text-stone-600 hover:text-[#8a6d4b] active:scale-95 transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
                             >
                               <HiOutlineDuplicate className="w-3.5 h-3.5 stroke-[1.8]" />
                             </button>
 
-                            {/* Edit Pencil */}
-                            <button
-                              type="button"
+                            {/* Edit Action */}
+                            <EditActionButton
                               onClick={() => {
                                 populateFormWithBanner(banner);
                                 setIsFormModalOpen(true);
                               }}
                               title="Edit banner"
-                              className="w-8 h-8 rounded-lg border border-stone-200 bg-white hover:bg-[#faf6f0] text-stone-600 hover:text-[#8a6d4b] transition-colors flex items-center justify-center cursor-pointer shadow-2xs"
-                            >
-                              <HiOutlinePencil className="w-3.5 h-3.5 stroke-[1.8]" />
-                            </button>
+                            />
 
-                            {/* Delete Trash */}
-                            <button
-                              type="button"
+                            {/* Delete Action */}
+                            <DeleteActionButton
                               onClick={(e) => handleDelete(banner, e)}
                               title="Delete banner"
-                              className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                            >
-                              <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2]" />
-                            </button>
+                            />
                           </div>
                         </td>
                       </tr>

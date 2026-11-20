@@ -596,7 +596,10 @@ export default function ThemeMediaMappingTab({
     } else {
       // celebrate mode
       if (celebratePlacementFilter !== 'all') {
-        result = result.filter((r) => (r.placement || '').toLowerCase() === celebratePlacementFilter.toLowerCase());
+        result = result.filter((r) => {
+          const p = (r.display?.type || r.placement || r.type || '').toLowerCase();
+          return p === celebratePlacementFilter.toLowerCase();
+        });
       }
       if (search.trim()) {
         const q = search.toLowerCase().trim();
@@ -1741,95 +1744,37 @@ export default function ThemeMediaMappingTab({
                                               {/* Tile Footer Actions */}
                                               <div className="mt-2.5 pt-2 border-t border-stone-100 flex items-center justify-between gap-1.5">
                                                 {tile.isMapped ? (
-                                                  <>
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => {
-                                                        setActiveTargetSlot((prev) =>
-                                                          prev?.record?._id === tile._id
-                                                            ? null
-                                                            : {
-                                                                record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
-                                                                device: 'desktop',
-                                                                placement: 'primary',
-                                                              }
-                                                        );
-                                                      }}
-                                                      className={`flex-1 inline-flex items-center justify-center gap-1 py-1 px-2 text-[11px] font-semibold rounded-lg transition cursor-pointer ${
-                                                        isTileTarget
-                                                          ? 'bg-[#8b6f4e] text-white shadow-xs'
-                                                          : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
-                                                      }`}
-                                                      title="Change image by clicking from Theme Media Gallery"
-                                                    >
-                                                      <HiOutlineSwitchHorizontal className="w-3 h-3" />
-                                                      <span>{isTileTarget ? 'Selected' : 'Change'}</span>
-                                                    </button>
-
-                                                    <button
-                                                      type="button"
-                                                      onClick={() =>
-                                                        setPickerTarget({
-                                                          record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
-                                                          device: 'desktop',
-                                                          placement: 'primary',
-                                                        })
-                                                      }
-                                                      className="p-1 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-stone-100 border border-stone-200 transition cursor-pointer"
-                                                      title="Open Media Gallery Picker Modal"
-                                                    >
-                                                      <HiOutlinePhotograph className="w-3.5 h-3.5" />
-                                                    </button>
-
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => handleDeleteMapping({ _id: tile._id })}
-                                                      className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
-                                                      title="Reset to original storefront image"
-                                                    >
-                                                      <HiOutlineRefresh className="w-3.5 h-3.5" />
-                                                    </button>
-                                                  </>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      setPickerTarget({
+                                                        record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
+                                                        device: 'desktop',
+                                                        placement: 'primary',
+                                                      })
+                                                    }
+                                                    className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-lg bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white transition cursor-pointer shadow-2xs"
+                                                    title="Change mapped image from Media Gallery"
+                                                  >
+                                                    <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
+                                                    <span>Change</span>
+                                                  </button>
                                                 ) : (
-                                                  <>
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => {
-                                                        setActiveTargetSlot((prev) =>
-                                                          prev?.record?._id === tile._id
-                                                            ? null
-                                                            : {
-                                                                record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
-                                                                device: 'desktop',
-                                                                placement: 'primary',
-                                                              }
-                                                        );
-                                                      }}
-                                                      className={`flex-1 inline-flex items-center justify-center gap-1 py-1 px-2 text-[11px] font-semibold rounded-lg transition cursor-pointer ${
-                                                        isTileTarget
-                                                          ? 'bg-[#8b6f4e] text-white shadow-xs'
-                                                          : 'bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white'
-                                                      }`}
-                                                    >
-                                                      <HiOutlineTag className="w-3 h-3" />
-                                                      <span>{isTileTarget ? 'Selected' : `Map Tile ${tile.order}`}</span>
-                                                    </button>
-
-                                                    <button
-                                                      type="button"
-                                                      onClick={() =>
-                                                        setPickerTarget({
-                                                          record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
-                                                          device: 'desktop',
-                                                          placement: 'primary',
-                                                        })
-                                                      }
-                                                      className="p-1 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-stone-100 border border-stone-200 transition cursor-pointer"
-                                                      title="Open Media Gallery Picker Modal"
-                                                    >
-                                                      <HiOutlinePhotograph className="w-3.5 h-3.5" />
-                                                    </button>
-                                                  </>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() =>
+                                                      setPickerTarget({
+                                                        record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
+                                                        device: 'desktop',
+                                                        placement: 'primary',
+                                                      })
+                                                    }
+                                                    className="w-full inline-flex items-center justify-center gap-1.5 py-1.5 px-3 text-xs font-semibold rounded-lg bg-[#faf6f0] text-[#8b6f4e] border border-[#8b6f4e]/30 hover:bg-[#8b6f4e] hover:text-white transition cursor-pointer shadow-2xs"
+                                                    title="Select image from Gallery Media Picker"
+                                                  >
+                                                    <HiOutlinePhotograph className="w-3.5 h-3.5" />
+                                                    <span>Map</span>
+                                                  </button>
                                                 )}
                                               </div>
                                             </div>
@@ -1869,7 +1814,10 @@ export default function ThemeMediaMappingTab({
                     const label = tabKey === 'all' ? 'All Items' : tabKey;
                     const count = tabKey === 'all'
                       ? records.length
-                      : records.filter((r) => (r.placement || '').toLowerCase() === tabKey.toLowerCase()).length;
+                      : records.filter((r) => {
+                          const p = (r.display?.type || r.placement || r.type || '').toLowerCase();
+                          return p === tabKey.toLowerCase();
+                        }).length;
                     return (
                       <button
                         key={tabKey}
@@ -2047,17 +1995,28 @@ export default function ThemeMediaMappingTab({
                               )}
                             </td>
                             <td className="py-2.5 px-3">
-                              <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
-                                item.placement === 'Celebrate'
-                                  ? 'bg-amber-100 text-amber-800 border border-amber-200'
-                                  : 'bg-purple-100 text-purple-800 border border-purple-200'
-                              }`}>
-                                {item.placement || 'Celebrate'}
-                              </span>
+                              {(() => {
+                                const placementType = item.display?.type || item.placement || item.type || 'Celebrate';
+                                const isCelebrate = placementType.toLowerCase() === 'celebrate';
+                                return (
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-bold ${
+                                    isCelebrate
+                                      ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                      : 'bg-purple-100 text-purple-800 border border-purple-200'
+                                  }`}>
+                                    {placementType}
+                                  </span>
+                                );
+                              })()}
                             </td>
                             <td className="py-2.5 px-3">
                               <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-stone-600">
-                                {Array.isArray(item.products) ? item.products.length : 0} Products
+                                {Array.isArray(item.productIds)
+                                  ? item.productIds.length
+                                  : Array.isArray(item.products)
+                                  ? item.products.length
+                                  : 0}{' '}
+                                Products
                               </span>
                             </td>
                             <td className="py-2.5 pr-4 pl-3 whitespace-nowrap text-right">

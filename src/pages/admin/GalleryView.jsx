@@ -407,20 +407,28 @@ export default function GalleryView() {
     categorybanner: counts.categorybanner ?? 0,
     offerbanner: counts.offerbanner ?? 0,
     celebrate: counts.celebrate ?? 0,
+    mobileappbanner: counts.mobileappbanner ?? 0,
+    bookappointbanner: counts.bookappointbanner ?? 0,
+    customizebanner: counts.customizebanner ?? 0,
+    asset: counts.asset ?? 0,
   };
+
+  const filterPlacementOptions = useMemo(() => [
+    {
+      value: 'all',
+      label: 'All Placements',
+      icon: HiOutlinePhotograph,
+    },
+    ...placementTypeOptions.map((opt) => ({
+      value: opt.value,
+      label: opt.label,
+      icon: opt.icon,
+    })),
+  ], [placementTypeOptions]);
 
   const effectiveItems = useMemo(() => {
     return items;
   }, [items]);
-
-  const displayTabs = [
-    { key: 'all', label: 'All Media', icon: HiOutlinePhotograph, count: displayCounts.total },
-    { key: 'herobanner', label: 'Hero Banners', icon: HiOutlineDesktopComputer, count: displayCounts.herobanner },
-    { key: 'collectionbanner', label: 'Collection Banners', icon: HiOutlineTag, count: displayCounts.collectionbanner },
-    { key: 'categorybanner', label: 'Category Banners', icon: HiOutlineViewGrid, count: displayCounts.categorybanner },
-    { key: 'offerbanner', label: 'Offer Banners', icon: HiOutlineGift, count: displayCounts.offerbanner },
-    { key: 'celebrate', label: 'Celebrate & Gifts', icon: IoDiamondOutline, count: displayCounts.celebrate },
-  ];
 
   return (
     <div className="space-y-2.5 sm:space-y-3">
@@ -585,132 +593,92 @@ export default function GalleryView() {
       </div>
 
       {/* ─── 3. FILTER & TOOLBAR (Compact Layout) ─── */}
-      <div className="space-y-2 rounded-lg border border-stone-200/90 bg-white p-2.5 sm:p-3 shadow-2xs">
-        {/* Row 1: Search, Filter Theme, Platform */}
-        <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-          {/* Search bar */}
-          <div className="relative flex-1">
-            <HiOutlineSearch className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by image name, banner title, theme, or placement…"
-              className="w-full rounded-md border border-stone-200 bg-stone-50/70 pl-8.5 pr-7 py-1.5 text-xs text-stone-800 placeholder-stone-400 outline-none transition focus:border-[#8b6f4e] focus:bg-white focus:ring-1 focus:ring-[#8b6f4e]/20"
-            />
-            {search && (
+      <div className="rounded-lg border border-stone-200/90 bg-white p-2.5 sm:p-3 shadow-2xs">
+        <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Placement Type Dropdown Filter */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[11px] font-semibold text-stone-600 whitespace-nowrap">Placement:</span>
+              <div className="w-48 sm:w-52">
+                <Dropdown
+                  size="sm"
+                  value={selectedType}
+                  onChange={(val) => setSelectedType(val || 'all')}
+                  options={filterPlacementOptions}
+                  placeholder="All Placements"
+                />
+              </div>
+            </div>
+
+            {/* Theme Dropdown Filter */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[11px] font-semibold text-stone-600 whitespace-nowrap">Filter Theme:</span>
+              <div className="w-48 sm:w-52">
+                <Dropdown
+                  size="sm"
+                  showStatusDot={true}
+                  value={selectedTheme}
+                  onChange={(val) => setSelectedTheme(val || 'all')}
+                  options={filterThemeOptions}
+                  placeholder="All Website Themes"
+                />
+              </div>
+            </div>
+
+            {/* Platform Filter: All, Web, App, Common */}
+            <div className="flex items-center gap-0.5 rounded-md border border-stone-200 bg-stone-50 p-0.5 shrink-0">
               <button
                 type="button"
-                onClick={() => setSearch('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                onClick={() => setSelectedPlatform('all')}
+                className={`rounded px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                  selectedPlatform === 'all'
+                    ? 'bg-white text-stone-900 shadow-2xs'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
               >
-                <HiOutlineX className="h-3.5 w-3.5" />
+                All
               </button>
-            )}
-          </div>
-
-          {/* Theme Dropdown Filter */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <span className="text-[11px] font-semibold text-stone-600 whitespace-nowrap">Filter Theme:</span>
-            <div className="w-52">
-              <Dropdown
-                size="sm"
-                showStatusDot={true}
-                value={selectedTheme}
-                onChange={(val) => setSelectedTheme(val || 'all')}
-                options={filterThemeOptions}
-                placeholder="All Website Themes"
-              />
+              <button
+                type="button"
+                onClick={() => setSelectedPlatform('web')}
+                className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                  selectedPlatform === 'web'
+                    ? 'bg-white text-stone-900 shadow-2xs'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <HiOutlineDesktopComputer className="h-3 w-3" />
+                Web
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPlatform('mobile')}
+                className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                  selectedPlatform === 'mobile'
+                    ? 'bg-white text-stone-900 shadow-2xs'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <HiOutlineDeviceMobile className="h-3 w-3" />
+                App
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPlatform('common')}
+                className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                  selectedPlatform === 'common'
+                    ? 'bg-white text-stone-900 shadow-2xs'
+                    : 'text-stone-500 hover:text-stone-800'
+                }`}
+              >
+                <IoSparklesOutline className="h-3 w-3 text-amber-600" />
+                Common
+              </button>
             </div>
           </div>
 
-          {/* Platform Filter: All, Web, App, Common */}
-          <div className="flex items-center gap-1 rounded-md border border-stone-200 bg-stone-50 p-0.5 shrink-0">
-            <button
-              type="button"
-              onClick={() => setSelectedPlatform('all')}
-              className={`rounded px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                selectedPlatform === 'all'
-                  ? 'bg-white text-stone-900 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              All
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedPlatform('web')}
-              className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
-                selectedPlatform === 'web'
-                  ? 'bg-white text-stone-900 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              <HiOutlineDesktopComputer className="h-3 w-3" />
-              Web
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedPlatform('mobile')}
-              className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
-                selectedPlatform === 'mobile'
-                  ? 'bg-white text-stone-900 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              <HiOutlineDeviceMobile className="h-3 w-3" />
-              App
-            </button>
-            <button
-              type="button"
-              onClick={() => setSelectedPlatform('common')}
-              className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
-                selectedPlatform === 'common'
-                  ? 'bg-white text-stone-900 shadow-2xs'
-                  : 'text-stone-500 hover:text-stone-800'
-              }`}
-            >
-              <IoSparklesOutline className="h-3 w-3 text-amber-600" />
-              Common
-            </button>
-          </div>
-        </div>
-
-        {/* Row 2: Placement Tabs & View Mode Toggle */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-stone-100">
-          {/* Placement Pills */}
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin">
-            {displayTabs.map((bt) => {
-              const Icon = bt.icon;
-              const isSelected = selectedType === bt.key;
-              return (
-                <button
-                  key={bt.key}
-                  type="button"
-                  onClick={() => setSelectedType(bt.key)}
-                  style={isSelected ? { backgroundColor: 'var(--theme-primary, #855836)' } : {}}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
-                    isSelected
-                      ? 'text-white shadow-2xs'
-                      : 'bg-stone-50 text-stone-600 hover:bg-stone-100 hover:text-stone-900 border border-stone-200/70'
-                  }`}
-                >
-                  <Icon className="h-3 w-3" />
-                  <span>{bt.label}</span>
-                  <span
-                    className={`rounded-full px-1.5 py-0.2 text-[10px] font-bold ${
-                      isSelected ? 'bg-white/20 text-white' : 'bg-stone-200/70 text-stone-600'
-                    }`}
-                  >
-                    {bt.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-
           {/* View Mode Toggle */}
-          <div className="flex items-center gap-0.5 shrink-0 rounded-md border border-stone-200 bg-stone-50 p-0.5 self-end sm:self-auto">
+          <div className="flex items-center gap-0.5 shrink-0 rounded-md border border-stone-200 bg-stone-50 p-0.5">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
@@ -887,8 +855,8 @@ export default function GalleryView() {
           </table>
         </div>
       ) : (
-        /* ─── GRID VIEW (Compact Luxury Sizing) ─────────────── */
-        <div className="grid grid-cols-2 gap-2 sm:gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
+        /* ─── GRID VIEW (Compact Small Box Sizing) ─────────────── */
+        <div className="grid grid-cols-2 gap-2 sm:gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8">
           {effectiveItems.map((item) => {
             const bt = BANNER_TYPES.find((b) => b.key === item.type) || { icon: HiOutlinePhotograph };
             const Icon = bt.icon;
@@ -914,36 +882,36 @@ export default function GalleryView() {
 
                   {/* Hover Overlay with Eye Icon */}
                   <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-semibold shadow-lg">
-                      <HiOutlineEye className="w-3.5 h-3.5" />
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold shadow-lg">
+                      <HiOutlineEye className="w-3 h-3" />
                       <span>Preview</span>
                     </span>
                   </div>
 
                   {/* Top-Left: Placement Badge */}
-                  <div className="absolute left-1.5 top-1.5 z-10 pointer-events-none">
-                    <span className="inline-flex items-center gap-1 rounded bg-black/65 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-medium text-white shadow-xs">
-                      <Icon className="h-2.5 w-2.5" />
+                  <div className="absolute left-1 top-1 z-10 pointer-events-none">
+                    <span className="inline-flex items-center gap-0.5 rounded bg-black/65 backdrop-blur-md px-1 py-0.5 text-[8px] font-medium text-white shadow-xs">
+                      <Icon className="h-2 w-2" />
                       <span>{item.typeLabel || 'Asset'}</span>
                     </span>
                   </div>
 
                   {/* Top-Right: Platform Badge */}
-                  <div className="absolute right-1.5 top-1.5 z-10 pointer-events-none">
-                    <span className="inline-flex items-center gap-1 rounded bg-black/65 backdrop-blur-md px-1.5 py-0.5 text-[9px] font-medium text-white shadow-xs">
+                  <div className="absolute right-1 top-1 z-10 pointer-events-none">
+                    <span className="inline-flex items-center gap-0.5 rounded bg-black/65 backdrop-blur-md px-1 py-0.5 text-[8px] font-medium text-white shadow-xs">
                       {item.platform === 'common' ? (
                         <>
-                          <IoSparklesOutline className="h-2.5 w-2.5 text-amber-300" />
+                          <IoSparklesOutline className="h-2 w-2 text-amber-300" />
                           <span>Common</span>
                         </>
                       ) : item.platform === 'app' || item.platform === 'mobile' ? (
                         <>
-                          <HiOutlineDeviceMobile className="h-2.5 w-2.5 text-sky-300" />
+                          <HiOutlineDeviceMobile className="h-2 w-2 text-sky-300" />
                           <span>App</span>
                         </>
                       ) : (
                         <>
-                          <HiOutlineDesktopComputer className="h-2.5 w-2.5 text-stone-300" />
+                          <HiOutlineDesktopComputer className="h-2 w-2 text-stone-300" />
                           <span>Web</span>
                         </>
                       )}
@@ -952,57 +920,57 @@ export default function GalleryView() {
                 </div>
 
                 {/* Card Info Content */}
-                <div className="p-2 flex flex-col justify-between flex-1">
+                <div className="p-1.5 flex flex-col justify-between flex-1">
                   <div>
-                    <h4 className="text-[11px] font-bold text-stone-900 truncate" title={fileName}>
+                    <h4 className="text-[10px] font-bold text-stone-900 truncate" title={fileName}>
                       {fileName}
                     </h4>
                     {item.themeName ? (
-                      <p className="mt-0.5 text-[9.5px] text-stone-400 font-normal truncate">
+                      <p className="mt-0.5 text-[8.5px] text-stone-400 font-normal truncate">
                         {item.themeName}
                       </p>
                     ) : null}
                     {item.linkedBanner?.title ? (
-                      <p className="mt-0.5 text-[9px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedBanner.title}>
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#8b6c3a]" />
+                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedBanner.title}>
+                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>{item.linkedBanner.title}</span>
                       </p>
                     ) : item.linkedFeatured?.title ? (
-                      <p className="mt-0.5 text-[9px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedFeatured.title}>
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#8b6c3a]" />
+                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedFeatured.title}>
+                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>Celebrate: {item.linkedFeatured.title}</span>
                       </p>
                     ) : item.linkedRecord?.module === 'banner' ? (
-                      <p className="mt-0.5 text-[9px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#8b6c3a]" />
+                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>Banner #{String(item.linkedRecord.recordId).slice(-4)}</span>
                       </p>
                     ) : item.linkedRecord?.module === 'featured' ? (
-                      <p className="mt-0.5 text-[9px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-[#8b6c3a]" />
+                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>Celebrate #{String(item.linkedRecord.recordId).slice(-4)}</span>
                       </p>
                     ) : null}
                   </div>
 
                   {/* Action Buttons Row */}
-                  <div className="mt-2 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+                  <div className="mt-1.5 flex items-center justify-between gap-1 pt-1 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                      className="flex-1 py-0.5 flex items-center justify-center rounded border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
                       title="Edit Media Item"
                     >
-                      <HiOutlinePencil className="h-3 w-3 stroke-[2]" />
+                      <HiOutlinePencil className="h-2.5 w-2.5 stroke-[2]" />
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleDeleteItem(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                      className="flex-1 py-0.5 flex items-center justify-center rounded border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 transition-all shadow-2xs cursor-pointer"
                       title="Remove Media Item"
                     >
-                      <HiOutlineTrash className="h-3 w-3 stroke-[2]" />
+                      <HiOutlineTrash className="h-2.5 w-2.5 stroke-[2]" />
                     </button>
                   </div>
                 </div>

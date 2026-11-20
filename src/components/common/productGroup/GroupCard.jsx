@@ -1,5 +1,6 @@
-import { HiOutlineEye, HiOutlineCheckCircle, HiOutlinePencil, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlineEye, HiOutlineCheckCircle } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
+import { EditActionButton, DeleteActionButton } from '../RowActions';
 
 const getProductImageUrl = (p) => {
   if (!p) return null;
@@ -166,29 +167,21 @@ export default function GroupCard({
         <div className="flex items-center gap-2 shrink-0">
           {isDraftOrApproved ? (
             <>
-              <button
-                type="button"
+              <EditActionButton
                 onClick={(e) => {
                   e.stopPropagation();
                   onEdit?.(group);
                 }}
-                className="w-7 h-7 rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                 title="Edit Product"
-              >
-                <HiOutlinePencil className="w-3.5 h-3.5 stroke-[2]" />
-              </button>
+              />
 
-              <button
-                type="button"
+              <DeleteActionButton
                 onClick={(e) => {
                   e.stopPropagation();
                   onDelete?.(group);
                 }}
-                className="w-7 h-7 rounded-lg border border-red-200 bg-red-50 text-red-700 hover:bg-red-100 hover:border-red-300 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                 title="Delete Product"
-              >
-                <HiOutlineTrash className="w-3.5 h-3.5 stroke-[2]" />
-              </button>
+              />
             </>
           ) : (
             <>
