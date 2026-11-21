@@ -155,7 +155,7 @@ export default function HomeSectionsView() {
     setIsProductPickerOpen(true);
   };
 
-    const handleRemoveSelectedProduct = (productId) => {
+  const handleRemoveSelectedProduct = (productId) => {
     setFormData((prev) => ({
       ...prev,
       selectedProducts: (prev.selectedProducts || []).filter(
@@ -289,8 +289,7 @@ export default function HomeSectionsView() {
       setUpdatingVisibilityId(`${secId}-${platform}`);
       await api.put(`/home-sections/${secId}`, { visibility: nextVisibility });
       toast.success(
-        `${platform === 'website' ? 'Web' : 'App'} visibility ${
-          (platform === 'website' ? nextWeb : nextApp) ? 'enabled' : 'disabled'
+        `${platform === 'website' ? 'Web' : 'App'} visibility ${(platform === 'website' ? nextWeb : nextApp) ? 'enabled' : 'disabled'
         }`
       );
     } catch (err) {
@@ -514,9 +513,8 @@ export default function HomeSectionsView() {
                     <tr
                       key={sec._id}
                       onClick={() => handleOpenEdit(sec)}
-                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
-                        isSelected ? 'bg-[#faf6f0]/40' : ''
-                      }`}
+                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${isSelected ? 'bg-[#faf6f0]/40' : ''
+                        }`}
                     >
                       {/* Checkbox */}
                       <td className="py-2.5 pl-4 pr-1 text-center" onClick={(e) => e.stopPropagation()}>
@@ -534,33 +532,11 @@ export default function HomeSectionsView() {
                         />
                       </td>
 
-                      {/* Order Controls */}
-                      <td className="py-2.5 px-2 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-1">
-                          <span className="w-5 text-center font-bold text-stone-700 font-mono text-[11px]">
-                            {sec.order || globalIdx + 1}
-                          </span>
-                          <div className="flex flex-col -space-y-1">
-                            <button
-                              type="button"
-                              onClick={() => handleMoveOrder(globalIdx, 'up')}
-                              disabled={globalIdx === 0}
-                              title="Move up"
-                              className="text-stone-400 hover:text-stone-700 disabled:opacity-20 cursor-pointer p-0.5"
-                            >
-                              <HiOutlineArrowUp className="w-2.5 h-2.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMoveOrder(globalIdx, 'down')}
-                              disabled={globalIdx === sections.length - 1}
-                              title="Move down"
-                              className="text-stone-400 hover:text-stone-700 disabled:opacity-20 cursor-pointer p-0.5"
-                            >
-                              <HiOutlineArrowDown className="w-2.5 h-2.5" />
-                            </button>
-                          </div>
-                        </div>
+                      {/* Order */}
+                      <td className="py-2.5 px-2 text-center whitespace-nowrap">
+                        <span className="font-bold text-stone-700 font-mono text-[11px]">
+                          {sec.order || globalIdx + 1}
+                        </span>
                       </td>
 
                       {/* Title */}
@@ -600,18 +576,16 @@ export default function HomeSectionsView() {
                             onClick={(e) => handleToggleVisibility(sec, 'website', e)}
                             disabled={updatingVisibilityId === `${sec._id}-website`}
                             title={sec.visibility?.website !== false ? 'Web: Visible (Click to Hide)' : 'Web: Hidden (Click to Show)'}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10.5px] font-bold border transition-all cursor-pointer ${
-                              sec.visibility?.website !== false
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10.5px] font-bold border transition-all cursor-pointer ${sec.visibility?.website !== false
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 hover:bg-emerald-100'
                                 : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
-                            }`}
+                              }`}
                           >
                             <span className="text-[10px]">🌐</span>
                             <span>Web</span>
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                sec.visibility?.website !== false ? 'bg-emerald-500' : 'bg-stone-300'
-                              }`}
+                              className={`w-1.5 h-1.5 rounded-full ${sec.visibility?.website !== false ? 'bg-emerald-500' : 'bg-stone-300'
+                                }`}
                             />
                           </button>
 
@@ -621,18 +595,16 @@ export default function HomeSectionsView() {
                             onClick={(e) => handleToggleVisibility(sec, 'mobileApp', e)}
                             disabled={updatingVisibilityId === `${sec._id}-mobileApp`}
                             title={sec.visibility?.mobileApp !== false ? 'App: Visible (Click to Hide)' : 'App: Hidden (Click to Show)'}
-                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10.5px] font-bold border transition-all cursor-pointer ${
-                              sec.visibility?.mobileApp !== false
+                            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[10.5px] font-bold border transition-all cursor-pointer ${sec.visibility?.mobileApp !== false
                                 ? 'bg-sky-50 text-sky-700 border-sky-200/80 hover:bg-sky-100'
                                 : 'bg-white text-stone-400 border-stone-200 hover:text-stone-600 hover:bg-stone-50'
-                            }`}
+                              }`}
                           >
                             <span className="text-[10px]">📱</span>
                             <span>App</span>
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                sec.visibility?.mobileApp !== false ? 'bg-sky-500' : 'bg-stone-300'
-                              }`}
+                              className={`w-1.5 h-1.5 rounded-full ${sec.visibility?.mobileApp !== false ? 'bg-sky-500' : 'bg-stone-300'
+                                }`}
                             />
                           </button>
                         </div>
@@ -654,15 +626,13 @@ export default function HomeSectionsView() {
                             aria-checked={sec.status === 'active'}
                             onClick={() => handleToggleStatus(sec)}
                             style={sec.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                              sec.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
-                            }`}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${sec.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
+                              }`}
                             title={sec.status === 'active' ? 'Active' : 'Inactive'}
                           >
                             <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                                sec.status === 'active' ? 'translate-x-4' : 'translate-x-0'
-                              }`}
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${sec.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                                }`}
                             />
                           </button>
                         </div>
@@ -770,7 +740,7 @@ export default function HomeSectionsView() {
                 </div>
               </div>
 
-              {/* Row 2: Identifier Slug & Status */}
+              {/* Row 2: Identifier Slug, Status & Platform Visibility */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
                   <label className="block text-[11px] font-bold text-stone-800 uppercase tracking-wider mb-2">
@@ -792,59 +762,60 @@ export default function HomeSectionsView() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-stone-800 uppercase tracking-wider mb-2">
-                    STATUS
-                  </label>
-                  <Dropdown
-                    value={formData.status}
-                    onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
-                    options={[
-                      { value: 'active', label: 'Active (Live)', dotColor: 'bg-emerald-500' },
-                      { value: 'inactive', label: 'Inactive (Draft)', dotColor: 'bg-stone-400' },
-                    ]}
-                    showStatusDot
-                    size="sm"
-                    buttonClassName="w-full h-[42px] rounded-xl text-xs bg-white border-[#d6cfc2] shadow-2xs"
-                  />
-                </div>
-              </div>
-
-              {/* Row 3: Platform Visibility */}
-              <div className="border border-stone-200/90 rounded-2xl p-4 bg-stone-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <span className="text-xs font-bold text-stone-800 uppercase tracking-wider">
-                  PLATFORM VISIBILITY
-                </span>
-                <div className="flex items-center gap-6">
-                  <label className="inline-flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={formData.visibility?.website ?? true}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          visibility: { ...prev.visibility, website: e.target.checked },
-                        }))
-                      }
-                      className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer accent-[#8b6f4e]"
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-800 uppercase tracking-wider mb-2">
+                      STATUS
+                    </label>
+                    <Dropdown
+                      value={formData.status}
+                      onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
+                      options={[
+                        { value: 'active', label: 'Active (Live)', dotColor: 'bg-emerald-500' },
+                        { value: 'inactive', label: 'Inactive (Draft)', dotColor: 'bg-stone-400' },
+                      ]}
+                      showStatusDot
+                      size="sm"
+                      buttonClassName="w-full h-[42px] rounded-xl text-xs bg-white border-[#d6cfc2] shadow-2xs"
                     />
-                    <span>Web</span>
-                  </label>
+                  </div>
 
-                  <label className="inline-flex items-center gap-2 text-xs font-semibold text-stone-800 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={formData.visibility?.mobileApp ?? true}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          visibility: { ...prev.visibility, mobileApp: e.target.checked },
-                        }))
-                      }
-                      className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer accent-[#8b6f4e]"
-                    />
-                    <span>App</span>
-                  </label>
+                  <div>
+                    <label className="block text-[11px] font-bold text-stone-800 uppercase tracking-wider mb-2">
+                      PLATFORM VISIBILITY
+                    </label>
+                    <div className="h-[42px] px-3.5 bg-white border border-[#d6cfc2] rounded-xl flex items-center justify-start gap-4 shadow-2xs">
+                      <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={formData.visibility?.website ?? true}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              visibility: { ...prev.visibility, website: e.target.checked },
+                            }))
+                          }
+                          className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer accent-[#8b6f4e]"
+                        />
+                        <span>Web</span>
+                      </label>
+
+                      <label className="inline-flex items-center gap-1.5 text-xs font-semibold text-stone-800 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={formData.visibility?.mobileApp ?? true}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              visibility: { ...prev.visibility, mobileApp: e.target.checked },
+                            }))
+                          }
+                          className="w-4 h-4 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] border-stone-300 cursor-pointer accent-[#8b6f4e]"
+                        />
+                        <span>App</span>
+                      </label>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -882,9 +853,6 @@ export default function HomeSectionsView() {
                     <h4 className="text-sm font-bold text-stone-800 mb-1">
                       No products added yet
                     </h4>
-                    <p className="text-xs text-stone-500 max-w-md mx-auto mb-5 leading-relaxed">
-                      Open the product catalog pop-up to search, browse by page, and checkmark products to show in this section.
-                    </p>
                     <button
                       type="button"
                       onClick={handleOpenProductPicker}
@@ -1056,65 +1024,65 @@ export default function HomeSectionsView() {
 
               {((viewingSection.products && viewingSection.products.length > 0) ||
                 (viewingSection.items && viewingSection.items.length > 0)) && (
-                <div>
-                  <span className="text-stone-400 text-[10px] uppercase font-semibold">
-                    Curated Products ({viewingSection.products?.length || viewingSection.items?.length || 0})
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                    {(viewingSection.products || viewingSection.items || []).map((item, idx) => {
-                      const img =
-                        item.colorImages?.[0]?.images?.[0]?.url ||
-                        item.images?.[0] ||
-                        item.image?.url ||
-                        '';
-                      const title = item.basicInfo?.title || item.title || '';
-                      const price = item.pricing?.salePrice || item.price || 0;
-                      const sku = item.basicInfo?.sku || item.sku || '';
-                      return (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200/80 shadow-2xs"
-                        >
-                          <div className="w-12 h-12 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center p-1 shrink-0 overflow-hidden">
-                            {img ? (
-                              <img
-                                src={img}
-                                alt={title}
-                                className="w-full h-full object-contain"
-                              />
-                            ) : (
-                              <IoDiamondOutline className="w-5 h-5 text-stone-400" />
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-bold text-stone-400 font-mono">#{idx + 1}</span>
-                              {item.productType && (
-                                <span className="text-[9px] font-bold text-[#8b6f4e] bg-[#faf3e8] px-1 py-0.2 rounded uppercase">
-                                  {item.productType}
-                                </span>
+                  <div>
+                    <span className="text-stone-400 text-[10px] uppercase font-semibold">
+                      Curated Products ({viewingSection.products?.length || viewingSection.items?.length || 0})
+                    </span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                      {(viewingSection.products || viewingSection.items || []).map((item, idx) => {
+                        const img =
+                          item.colorImages?.[0]?.images?.[0]?.url ||
+                          item.images?.[0] ||
+                          item.image?.url ||
+                          '';
+                        const title = item.basicInfo?.title || item.title || '';
+                        const price = item.pricing?.salePrice || item.price || 0;
+                        const sku = item.basicInfo?.sku || item.sku || '';
+                        return (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-3 p-2.5 rounded-xl bg-white border border-stone-200/80 shadow-2xs"
+                          >
+                            <div className="w-12 h-12 rounded-lg bg-stone-50 border border-stone-100 flex items-center justify-center p-1 shrink-0 overflow-hidden">
+                              {img ? (
+                                <img
+                                  src={img}
+                                  alt={title}
+                                  className="w-full h-full object-contain"
+                                />
+                              ) : (
+                                <IoDiamondOutline className="w-5 h-5 text-stone-400" />
                               )}
                             </div>
-                            <p className="font-semibold text-stone-900 text-xs truncate mt-0.5">{title}</p>
-                            <div className="flex items-center justify-between text-[11px] text-stone-500 mt-0.5">
-                              {price > 0 && (
-                                <span className="font-bold text-stone-900">
-                                  ₹{Number(price).toLocaleString('en-IN')}
-                                </span>
-                              )}
-                              {sku && (
-                                <span className="text-[10px] font-mono text-stone-400 truncate max-w-[80px]">
-                                  {sku}
-                                </span>
-                              )}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-[10px] font-bold text-stone-400 font-mono">#{idx + 1}</span>
+                                {item.productType && (
+                                  <span className="text-[9px] font-bold text-[#8b6f4e] bg-[#faf3e8] px-1 py-0.2 rounded uppercase">
+                                    {item.productType}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="font-semibold text-stone-900 text-xs truncate mt-0.5">{title}</p>
+                              <div className="flex items-center justify-between text-[11px] text-stone-500 mt-0.5">
+                                {price > 0 && (
+                                  <span className="font-bold text-stone-900">
+                                    ₹{Number(price).toLocaleString('en-IN')}
+                                  </span>
+                                )}
+                                {sku && (
+                                  <span className="text-[10px] font-mono text-stone-400 truncate max-w-[80px]">
+                                    {sku}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
             </div>
 
             <div className="p-4 border-t border-stone-200 bg-stone-50 flex justify-end">

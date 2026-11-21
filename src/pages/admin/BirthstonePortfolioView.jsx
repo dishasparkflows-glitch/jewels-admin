@@ -433,9 +433,8 @@ export default function BirthstonePortfolioView() {
                     <tr
                       key={item._id}
                       onClick={() => handleOpenConfigure(item)}
-                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${
-                        isSelected ? 'bg-[#faf6f0]' : ''
-                      }`}
+                      className={`hover:bg-[#faf7f2] transition-colors cursor-pointer group ${isSelected ? 'bg-[#faf6f0]' : ''
+                        }`}
                     >
                       {/* Checkbox */}
                       <td className="py-2.5 pl-4 pr-1 text-center" onClick={(e) => e.stopPropagation()}>
@@ -509,16 +508,14 @@ export default function BirthstonePortfolioView() {
                         <button
                           type="button"
                           onClick={() => handleToggleStatus(item)}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${
-                            item.isActive
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${item.isActive
                               ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/60'
                               : 'bg-stone-100 text-stone-500 border border-stone-200 hover:bg-stone-200/60'
-                          }`}
+                            }`}
                         >
                           <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              item.isActive ? 'bg-emerald-500' : 'bg-stone-400'
-                            }`}
+                            className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-stone-400'
+                              }`}
                           />
                           <span>{item.isActive ? 'Active' : 'Inactive'}</span>
                         </button>
@@ -591,20 +588,50 @@ export default function BirthstonePortfolioView() {
 
             {/* Modal Form */}
             <form onSubmit={handleSave} className="p-6 space-y-5">
-              {/* Select Month */}
-              <div>
-                <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-2">
-                  CALENDAR MONTH <span className="text-rose-500">*</span>
-                </label>
-                <Dropdown
-                  value={formMonth}
-                  onChange={handleMonthChangeInForm}
-                  options={MONTHS.map((m) => ({
-                    value: m.full,
-                    label: `${m.full} (${m.defaultStone})`,
-                  }))}
-                  buttonClassName="h-11 rounded-lg text-xs font-semibold"
-                />
+              {/* Row 1: Select Month & Storefront Visibility */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-2">
+                    CALENDAR MONTH <span className="text-rose-500">*</span>
+                  </label>
+                  <Dropdown
+                    value={formMonth}
+                    onChange={handleMonthChangeInForm}
+                    options={MONTHS.map((m) => ({
+                      value: m.full,
+                      label: `${m.full} (${m.defaultStone})`,
+                    }))}
+                    buttonClassName="h-11 rounded-lg text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-2">
+                    STOREFRONT VISIBILITY
+                  </label>
+                  <div className="h-11 px-3.5 bg-stone-50 border border-stone-200 rounded-lg flex items-center justify-between">
+                    <span className="text-xs font-semibold text-stone-700">
+                      {formIsActive ? 'Visible in Collections' : 'Hidden from Store'}
+                    </span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={formIsActive}
+                      onClick={() => setFormIsActive(!formIsActive)}
+                      style={formIsActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                        formIsActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
+                      }`}
+                      title={`Click to set ${formIsActive ? 'Hidden' : 'Visible'}`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          formIsActive ? 'translate-x-4' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* Gemstone Name */}
@@ -685,36 +712,10 @@ export default function BirthstonePortfolioView() {
                         Reset to 3D Sphere
                       </button>
                     )}
-                    <p className="text-[10px] text-stone-400">
-                      Supports PNG, WEBP, or JPG. If empty, the default 3D photorealistic sphere will be rendered.
-                    </p>
                   </div>
                 </div>
               </div>
 
-              {/* Status Switch */}
-              <div className="pt-2 flex items-center justify-between border-t border-stone-100">
-                <div>
-                  <span className="block text-xs font-semibold text-stone-900">
-                    Storefront Visibility
-                  </span>
-                  <span className="text-[11px] text-stone-400">
-                    Show this birthstone in customer collections
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setFormIsActive(!formIsActive)}
-                  style={formIsActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none ${formIsActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                >
-                  <span
-                    className={`block w-5 h-5 rounded-full bg-white shadow-xs transition-transform absolute top-0.5 ${
-                      formIsActive ? 'translate-x-6' : 'translate-x-0.5'
-                    }`}
-                  />
-                </button>
-              </div>
 
               {/* Form Buttons */}
               <div className="pt-4 flex items-center justify-end gap-3 border-t border-stone-100">
@@ -799,9 +800,8 @@ export default function BirthstonePortfolioView() {
               <div className="w-full pt-4 border-t border-stone-100 flex items-center justify-between text-xs">
                 <span className="text-stone-400">Visibility:</span>
                 <span
-                  className={`font-bold uppercase tracking-wider ${
-                    viewingMonth.isActive ? 'text-emerald-600' : 'text-stone-400'
-                  }`}
+                  className={`font-bold uppercase tracking-wider ${viewingMonth.isActive ? 'text-emerald-600' : 'text-stone-400'
+                    }`}
                 >
                   {viewingMonth.status}
                 </span>

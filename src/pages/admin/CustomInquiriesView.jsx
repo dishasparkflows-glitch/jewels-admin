@@ -11,6 +11,7 @@ import {
   HiOutlineRefresh,
   HiOutlineSearch,
   HiOutlineBan,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -128,12 +129,49 @@ export default function CustomInquiriesView() {
       toast.success('Inquiry deleted successfully');
       setInquiries((prev) => prev.filter((i) => (i._id || i.id) !== id));
       setSelectedIds((prev) => prev.filter((i) => i !== id));
+      if (serverTotal !== null) {
+        setServerTotal((prev) => Math.max(0, prev - 1));
+      }
       if (viewingInquiry && (viewingInquiry._id || viewingInquiry.id) === id) {
         setViewingInquiry(null);
       }
     } catch (err) {
       console.error('Delete request failed:', err);
       toast.error(err.response?.data?.message || 'Failed to delete inquiry');
+    }
+  };
+
+  // Action: Bulk Delete Inquiries
+  const handleBulkDelete = async () => {
+    const count = selectedIds.length;
+    if (count === 0) {
+      toast.error('Please select inquiries to delete');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: `Delete ${count} Custom Inquiry${count > 1 ? 's' : ''}`,
+      message: `Are you sure you want to permanently delete ${count} selected inquiry${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete ${count} Inquiry${count > 1 ? 's' : ''}`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      await api.post('/custom-inquiries/bulk-delete', { ids: selectedIds });
+      toast.success(`${count} custom inquiry${count > 1 ? 's' : ''} deleted successfully`);
+      setInquiries((prev) => prev.filter((i) => !selectedIds.includes(i._id || i.id)));
+      if (serverTotal !== null) {
+        setServerTotal((prev) => Math.max(0, prev - count));
+      }
+      if (viewingInquiry && selectedIds.includes(viewingInquiry._id || viewingInquiry.id)) {
+        setViewingInquiry(null);
+      }
+      setSelectedIds([]);
+    } catch (err) {
+      console.error('Failed to bulk delete custom inquiries:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete selected inquiries');
     }
   };
 
@@ -310,8 +348,8 @@ export default function CustomInquiriesView() {
 
       {/* ─── Status Filter Tabs & Search Bar Row ─── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        {/* Left: Filter Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none shrink-0">
+        {/* Left: Filter Tabs & Bulk Delete */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none shrink-0 flex-wrap">
           {STATUS_TABS.map((tab) => {
             const isActive = statusFilter === tab.value;
             return (
@@ -337,6 +375,30 @@ export default function CustomInquiriesView() {
               </button>
             );
           })}
+
+          {/* Bulk Delete Button */}
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            disabled={selectedIds.length === 0}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all border shadow-2xs whitespace-nowrap ${
+              selectedIds.length > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50 cursor-pointer'
+                : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
+            }`}
+            title={
+              selectedIds.length > 0
+                ? `Delete ${selectedIds.length} selected inquiry${selectedIds.length > 1 ? 's' : ''}`
+                : 'Select inquiries to delete'
+            }
+          >
+            <HiOutlineTrash
+              className={`w-3.5 h-3.5 shrink-0 ${
+                selectedIds.length > 0 ? 'text-[#ef4444]' : 'text-stone-300'
+              }`}
+            />
+            <span>Delete{selectedIds.length > 0 ? ` (${selectedIds.length})` : ''}</span>
+          </button>
         </div>
 
         {/* Right: Search Input */}

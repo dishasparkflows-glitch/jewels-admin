@@ -36,6 +36,7 @@ export default function MenuItemSelect({
   const [dropdownAlign, setDropdownAlign] = useState('left');
   const root = useRef(null);
   const trigger = useRef(null);
+  const searchInputRef = useRef(null);
   const isPointerDownRef = useRef(false);
   const prevCatIdRef = useRef(categoryId);
   const id = useId();
@@ -44,13 +45,24 @@ export default function MenuItemSelect({
   useEffect(() => {
     if (open && trigger.current) {
       const rect = trigger.current.getBoundingClientRect();
-      const spaceRight = window.innerWidth - rect.left;
-      const spaceLeft = rect.right;
-      if (spaceRight < 540 && spaceLeft > spaceRight) {
+      const container =
+        trigger.current.closest('.overflow-y-auto, [role="dialog"], .rounded-3xl, .shadow-2xl') ||
+        document.body;
+      const containerRect = container ? container.getBoundingClientRect() : { right: window.innerWidth, left: 0 };
+      const spaceRight = Math.min(window.innerWidth, containerRect.right) - rect.left;
+      const spaceLeft = rect.right - Math.max(0, containerRect.left);
+      if (spaceRight < 520 && spaceLeft > spaceRight) {
         setDropdownAlign('right');
       } else {
         setDropdownAlign('left');
       }
+    }
+  }, [open]);
+
+  // Focus search input safely without triggering browser container auto-scroll
+  useEffect(() => {
+    if (open && searchInputRef.current) {
+      searchInputRef.current.focus({ preventScroll: true });
     }
   }, [open]);
 
@@ -232,14 +244,14 @@ export default function MenuItemSelect({
           id={id}
           role="group"
           aria-label="Menu item choices"
-          className={`absolute top-full z-50 mt-1 w-full sm:w-[560px] md:w-[620px] sm:min-w-[460px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-2xl animate-fadeIn ${
+          className={`absolute top-full z-50 mt-1 w-full sm:w-[500px] md:w-[540px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-2xl animate-fadeIn ${
             dropdownAlign === 'right' ? 'right-0' : 'left-0'
           }`}
         >
           <div className="relative border-b border-stone-100 p-2">
             <HiOutlineSearch className="absolute left-4 top-4 text-stone-400" />
             <input
-              autoFocus
+              ref={searchInputRef}
               aria-label="Search menu items"
               value={search}
               onChange={(event) => setSearch(event.target.value)}

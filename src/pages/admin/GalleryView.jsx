@@ -807,8 +807,8 @@ export default function GalleryView() {
                       {item.themeName || 'Global'}
                     </span>
                   </td>
-                  <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center gap-2">
+                  <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-center">
                       <button
                         type="button"
                         role="switch"
@@ -826,15 +826,6 @@ export default function GalleryView() {
                           }`}
                         />
                       </button>
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                          item.status === 'active'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-stone-100 text-stone-500 border border-stone-200'
-                        }`}
-                      >
-                        {item.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
                     </div>
                   </td>
                   <td className="py-2.5 px-3 text-right">

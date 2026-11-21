@@ -435,7 +435,7 @@ export default function DiamondShapesView() {
 
                       {/* Status */}
                       <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center">
                           <button
                             type="button"
                             role="switch"
@@ -451,15 +451,6 @@ export default function DiamondShapesView() {
                               }`}
                             />
                           </button>
-                          <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              s.status === 'active'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-stone-100 text-stone-500 border border-stone-200'
-                            }`}
-                          >
-                            {s.status === 'active' ? 'Active' : 'Inactive'}
-                          </span>
                         </div>
                       </td>
 

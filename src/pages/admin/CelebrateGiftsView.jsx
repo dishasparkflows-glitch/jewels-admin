@@ -121,9 +121,13 @@ export default function CelebrateGiftsView() {
     }
   }, [isModalOpen, isMediaPickerOpen]);
 
+  const modalFormRef = useRef(null);
   useEffect(() => {
     if (isModalOpen) {
       fetchThemesLookup();
+      if (modalFormRef.current) {
+        modalFormRef.current.scrollLeft = 0;
+      }
     }
   }, [isModalOpen]);
 
@@ -897,7 +901,7 @@ export default function CelebrateGiftsView() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSaveGroup} className="p-6 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto">
+            <form ref={modalFormRef} onSubmit={handleSaveGroup} className="p-6 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto overflow-x-hidden">
               {/* GROUP TITLE, SLUG & SHOWCASE STATUS */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 {/* GROUP TITLE */}
@@ -939,7 +943,7 @@ export default function CelebrateGiftsView() {
                   <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
                     SHOWCASE STATUS
                   </label>
-                  <div className="flex items-center gap-2.5 h-[42px] px-3.5 rounded-xl border border-stone-200 bg-stone-50/60">
+                  <div className="flex items-center justify-center h-[42px] px-3.5 rounded-xl border border-stone-200 bg-stone-50/60">
                     <button
                       type="button"
                       role="switch"
@@ -956,9 +960,6 @@ export default function CelebrateGiftsView() {
                         }`}
                       />
                     </button>
-                    <span className="text-xs font-semibold text-stone-700 select-none">
-                      {status === 'active' ? 'Active' : 'Inactive'}
-                    </span>
                   </div>
                 </div>
               </div>
