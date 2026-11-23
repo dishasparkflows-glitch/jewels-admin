@@ -10,7 +10,7 @@ import {
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { uploadWithPresignedUrl, deleteUploadedFile } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -67,10 +67,48 @@ export default function BirthstonePortfolioView() {
   // Form State
   const [formMonth, setFormMonth] = useState('January');
   const [formStoneName, setFormStoneName] = useState('');
+  const [formOrder, setFormOrder] = useState(1);
   const [formIsActive, setFormIsActive] = useState(true);
   const [formImageUrl, setFormImageUrl] = useState('');
 
+  // Storefront Display Setting
+  const [showOnStorefront, setShowOnStorefront] = useState(true);
+  const [togglingStorefront, setTogglingStorefront] = useState(false);
+
   const fileInputRef = useRef(null);
+
+  // Fetch settings for birthstones storefront visibility
+  const fetchStorefrontSetting = async () => {
+    try {
+      const res = await api.get('/settings');
+      const s = res.data?.data || res.data;
+      if (s) {
+        const isVisible = s.birthstones?.showOnStorefront !== false;
+        setShowOnStorefront(isVisible);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch storefront setting:', err);
+    }
+  };
+
+  const handleToggleStorefront = async () => {
+    const nextVal = !showOnStorefront;
+    setTogglingStorefront(true);
+    try {
+      await api.put('/settings', { birthstones: { showOnStorefront: nextVal } });
+      setShowOnStorefront(nextVal);
+      toast.success(
+        nextVal
+          ? 'Birthstones section is now visible on storefront'
+          : 'Birthstones section is now hidden from storefront'
+      );
+    } catch (err) {
+      console.error('Failed to update storefront visibility:', err);
+      toast.error('Failed to update storefront display setting');
+    } finally {
+      setTogglingStorefront(false);
+    }
+  };
 
   // Fetch all birthstones from API
   const fetchBirthstones = async () => {
@@ -96,6 +134,7 @@ export default function BirthstonePortfolioView() {
 
   useEffect(() => {
     fetchBirthstones();
+    fetchStorefrontSetting();
   }, []);
 
   // Combine 12 months with API records
@@ -106,10 +145,12 @@ export default function BirthstonePortfolioView() {
       const stoneName = existing?.stoneName ? existing.stoneName.toUpperCase() : m.defaultStone;
       const status = existing?.status || 'active';
       const imageUrl = existing?.image?.url || '';
+      const order = existing?.order !== undefined && existing?.order !== null ? Number(existing.order) : m.num;
 
       return {
         _id: existing?._id || `month-${m.num}`,
         num: m.num,
+        order,
         code: `#MTH-${String(m.num).padStart(2, '0')}`,
         short: m.short,
         month: m.full,
@@ -124,7 +165,7 @@ export default function BirthstonePortfolioView() {
         gradient: GEM_GRADIENTS[stoneName] || GEM_GRADIENTS[m.defaultStone] || GEM_GRADIENTS.GARNET,
         dbRecord: existing || null,
       };
-    });
+    }).sort((a, b) => (a.order ?? a.num) - (b.order ?? b.num));
   }, [birthstonesMap]);
 
   // Filtered list (search query only - no active/inactive filter)
@@ -166,10 +207,11 @@ export default function BirthstonePortfolioView() {
 
   // Open Configure Modal
   const handleOpenConfigure = (monthItem = null) => {
-    const targetMonth = monthItem || { month: 'January', stoneName: '', isActive: true, imageUrl: '' };
+    const targetMonth = monthItem || { month: 'January', stoneName: '', order: 1, isActive: true, imageUrl: '' };
     setEditingMonth(targetMonth);
     setFormMonth(targetMonth.month);
     setFormStoneName(targetMonth.stoneName);
+    setFormOrder(targetMonth.order ?? targetMonth.num ?? 1);
     setFormIsActive(targetMonth.isActive);
     setFormImageUrl(targetMonth.imageUrl || '');
     setIsModalOpen(true);
@@ -181,20 +223,30 @@ export default function BirthstonePortfolioView() {
     const target = allMonthsData.find((m) => m.month.toLowerCase() === monthName.toLowerCase());
     if (target) {
       setFormStoneName(target.stoneName);
+      setFormOrder(target.order ?? target.num ?? 1);
       setFormIsActive(target.isActive);
       setFormImageUrl(target.imageUrl || '');
+    } else {
+      const monthObj = MONTHS.find((m) => m.full.toLowerCase() === monthName.toLowerCase());
+      setFormOrder(monthObj?.num ?? 1);
     }
   };
 
-  // Upload image handler
+  // Upload image handler, deleting old image on replace
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       setUploadingImage(true);
+      const prevUrl = formImageUrl;
       const { fileUrl } = await uploadWithPresignedUrl(file, 'birthstones');
       if (fileUrl) {
+        if (prevUrl) {
+          try {
+            await deleteUploadedFile(prevUrl);
+          } catch {}
+        }
         setFormImageUrl(fileUrl);
         toast.success('Gemstone portrait uploaded successfully');
       }
@@ -216,6 +268,7 @@ export default function BirthstonePortfolioView() {
       const payload = {
         month: formMonth,
         stoneName: formStoneName.trim().toUpperCase(),
+        order: Number(formOrder) || 1,
         status: formIsActive ? 'active' : 'inactive',
         image: { url: formImageUrl },
       };
@@ -239,11 +292,28 @@ export default function BirthstonePortfolioView() {
 
   // Toggle status
   const handleToggleStatus = async (item) => {
+    const nextStatus = item.status === 'active' ? 'inactive' : 'active';
+    const monthKey = item.month.toLowerCase();
+    const prevEntry = birthstonesMap[monthKey];
+
+    // Optimistic UI update
+    setBirthstonesMap((prev) => ({
+      ...prev,
+      [monthKey]: {
+        ...(prev[monthKey] || {}),
+        month: item.month,
+        stoneName: item.stoneName,
+        order: item.order,
+        status: nextStatus,
+        image: { url: item.imageUrl || '' },
+      },
+    }));
+
     try {
-      const nextStatus = item.status === 'active' ? 'inactive' : 'active';
       const payload = {
         month: item.month,
         stoneName: item.stoneName,
+        order: item.order,
         status: nextStatus,
         image: { url: item.imageUrl || '' },
       };
@@ -257,6 +327,11 @@ export default function BirthstonePortfolioView() {
       toast.success(`${item.month} set to ${nextStatus}`);
       fetchBirthstones();
     } catch {
+      // Revert on error
+      setBirthstonesMap((prev) => ({
+        ...prev,
+        [monthKey]: prevEntry,
+      }));
       toast.error('Failed to update status');
     }
   };
@@ -289,6 +364,7 @@ export default function BirthstonePortfolioView() {
   // Export handlers
   const handleExport = (format) => {
     const dataToExport = filteredMonths.map((m) => ({
+      Order: m.order,
       Code: m.code,
       Month: m.month,
       Quarter: m.quarter,
@@ -374,6 +450,34 @@ export default function BirthstonePortfolioView() {
         onExport={handleExport}
         onAdd={() => handleOpenConfigure()}
         addLabel="Configure Birthstone"
+        extraActions={
+          <div className="flex items-center gap-3 bg-white border border-stone-200/90 rounded-xl px-3.5 py-1.5 shadow-2xs">
+            <div className="flex flex-col text-left">
+              <span className="text-xs font-bold text-stone-800 leading-tight">
+                Storefront Display
+              </span>
+              <span className="text-[10.5px] text-stone-500 font-medium">
+                {showOnStorefront ? 'Visible on Homepage' : 'Hidden from Homepage'}
+              </span>
+            </div>
+            <button
+              type="button"
+              disabled={togglingStorefront}
+              onClick={handleToggleStorefront}
+              style={showOnStorefront ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer disabled:opacity-50 ${
+                showOnStorefront ? 'bg-[var(--theme-primary,#8b6f4e)]' : 'bg-stone-300'
+              }`}
+              title={showOnStorefront ? 'Click to hide from storefront' : 'Click to display on storefront'}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-xs transition-transform ${
+                  showOnStorefront ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        }
       />
 
       {/* ─── 4 Stat Cards ─── */}
@@ -404,6 +508,7 @@ export default function BirthstonePortfolioView() {
                   />
                 </th>
                 <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
+                <th className="py-3 px-3 text-center w-14 whitespace-nowrap">ORDER</th>
                 <th className="py-3 px-3 whitespace-nowrap">MONTH</th>
                 <th className="py-3 px-3 whitespace-nowrap">GEM PORTRAIT</th>
                 <th className="py-3 px-3 whitespace-nowrap">ASSIGNED GEMSTONE</th>
@@ -414,14 +519,14 @@ export default function BirthstonePortfolioView() {
             <tbody className="divide-y divide-stone-100 font-sans">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-stone-400">
+                  <td colSpan="8" className="py-8 text-center text-stone-400">
                     <div className="animate-spin w-4 h-4 border-2 border-[#8b6f4e] border-t-transparent rounded-full mx-auto mb-1.5" />
                     Loading birthstone collection...
                   </td>
                 </tr>
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-8 text-center text-stone-400">
+                  <td colSpan="8" className="py-8 text-center text-stone-400">
                     No birthstones found matching &ldquo;{search}&rdquo;.
                   </td>
                 </tr>
@@ -449,6 +554,13 @@ export default function BirthstonePortfolioView() {
                       {/* Sr No */}
                       <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
                         {(currentPage - 1) * pageSize + idx + 1}
+                      </td>
+
+                      {/* Display Order */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <span className="inline-flex items-center justify-center min-w-[28px] h-6 px-1.5 rounded-md border border-stone-200 text-xs font-bold text-stone-700 bg-stone-50">
+                          {item.order}
+                        </span>
                       </td>
 
                       {/* Month */}
@@ -503,22 +615,27 @@ export default function BirthstonePortfolioView() {
 
 
 
-                      {/* Status Toggle Pill */}
-                      <td className="py-2.5 px-3">
-                        <button
-                          type="button"
-                          onClick={() => handleToggleStatus(item)}
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase transition-colors cursor-pointer ${item.isActive
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100/60'
-                              : 'bg-stone-100 text-stone-500 border border-stone-200 hover:bg-stone-200/60'
+                      {/* Status Toggle Switch */}
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center">
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={item.isActive}
+                            onClick={() => handleToggleStatus(item)}
+                            style={item.isActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
+                              item.isActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
                             }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${item.isActive ? 'bg-emerald-500' : 'bg-stone-400'
+                            title={`Click to set ${item.isActive ? 'Inactive' : 'Active'}`}
+                          >
+                            <span
+                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                                item.isActive ? 'translate-x-4' : 'translate-x-0'
                               }`}
-                          />
-                          <span>{item.isActive ? 'Active' : 'Inactive'}</span>
-                        </button>
+                            />
+                          </button>
+                        </div>
                       </td>
 
                       {/* Actions */}
@@ -588,7 +705,7 @@ export default function BirthstonePortfolioView() {
 
             {/* Modal Form */}
             <form onSubmit={handleSave} className="p-6 space-y-5">
-              {/* Row 1: Select Month & Storefront Visibility */}
+              {/* Row 1: Select Month & Display Order */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-2">
@@ -602,6 +719,38 @@ export default function BirthstonePortfolioView() {
                       label: `${m.full} (${m.defaultStone})`,
                     }))}
                     buttonClassName="h-11 rounded-lg text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-2">
+                    DISPLAY ORDER <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    required
+                    value={formOrder}
+                    onChange={(e) => setFormOrder(e.target.value)}
+                    placeholder="e.g. 1"
+                    className="w-full h-11 px-4 text-xs font-bold text-stone-900 bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/30 focus:border-[#8b6f4e] transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Assigned Gemstone Name & Storefront Visibility */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-2">
+                    ASSIGNED GEMSTONE NAME <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formStoneName}
+                    onChange={(e) => setFormStoneName(e.target.value.toUpperCase())}
+                    placeholder="e.g. GARNET, SAPPHIRE"
+                    className="w-full h-11 px-4 text-xs font-bold tracking-wider uppercase text-stone-900 bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/30 focus:border-[#8b6f4e] transition-all"
                   />
                 </div>
 
@@ -632,21 +781,6 @@ export default function BirthstonePortfolioView() {
                     </button>
                   </div>
                 </div>
-              </div>
-
-              {/* Gemstone Name */}
-              <div>
-                <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-2">
-                  ASSIGNED GEMSTONE NAME <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={formStoneName}
-                  onChange={(e) => setFormStoneName(e.target.value.toUpperCase())}
-                  placeholder="e.g. GARNET, SAPPHIRE"
-                  className="w-full h-11 px-4 text-xs font-bold tracking-wider uppercase text-stone-900 bg-stone-50 border border-stone-200 rounded-lg focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/30 focus:border-[#8b6f4e] transition-all"
-                />
               </div>
 
               {/* Gem Portrait Upload / Preview */}
@@ -706,7 +840,15 @@ export default function BirthstonePortfolioView() {
                     {formImageUrl && (
                       <button
                         type="button"
-                        onClick={() => setFormImageUrl('')}
+                        onClick={async () => {
+                          const prev = formImageUrl;
+                          setFormImageUrl('');
+                          if (prev) {
+                            try {
+                              await deleteUploadedFile(prev);
+                            } catch {}
+                          }
+                        }}
                         className="block text-[11px] text-rose-600 hover:underline cursor-pointer"
                       >
                         Reset to 3D Sphere
@@ -798,6 +940,13 @@ export default function BirthstonePortfolioView() {
               </div>
 
               <div className="w-full pt-4 border-t border-stone-100 flex items-center justify-between text-xs">
+                <span className="text-stone-400">Display Order:</span>
+                <span className="font-bold text-stone-800">
+                  #{viewingMonth.order}
+                </span>
+              </div>
+
+              <div className="w-full pt-2 flex items-center justify-between text-xs">
                 <span className="text-stone-400">Visibility:</span>
                 <span
                   className={`font-bold uppercase tracking-wider ${viewingMonth.isActive ? 'text-emerald-600' : 'text-stone-400'

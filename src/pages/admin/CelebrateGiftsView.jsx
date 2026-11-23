@@ -1081,46 +1081,17 @@ export default function CelebrateGiftsView() {
 
               {/* WEBSITE THEME & MEDIA */}
               <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
-                {/* Top: Website Theme Selector & Direct View in Gallery Action */}
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-stone-200/70">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-stone-900">
-                      <HiOutlineColorSwatch className="w-4 h-4 text-[var(--theme-primary,#8a6d4b)]" />
-                      <h3 className="text-xs font-bold uppercase tracking-wider">
-                        Website Theme & Media
-                      </h3>
-                    </div>
-                    <p className="text-[11px] text-stone-500 mt-0.5">
-                      Select a website theme for this campaign or browse available media in gallery.
-                    </p>
+                {/* Top: Section Header */}
+                <div className="pb-3 border-b border-stone-200/70">
+                  <div className="flex items-center gap-2 text-stone-900">
+                    <HiOutlineColorSwatch className="w-4 h-4 text-[var(--theme-primary,#8a6d4b)]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider">
+                      Website Theme & Media
+                    </h3>
                   </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="w-48 sm:w-56">
-                      <Dropdown
-                        value={themeId}
-                        onChange={(val) => setThemeId(val)}
-                        options={[
-                          { value: '', label: 'All Website Themes' },
-                          ...themes.map((t) => ({
-                            value: t._id,
-                            label: `${t.name}${t.status === 'active' ? ' · Active' : ''}`,
-                          })),
-                        ]}
-                        buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)]"
-                        menuClassName="z-30"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setIsMediaPickerOpen(true)}
-                      className="inline-flex items-center gap-1.5 px-3.5 h-9 rounded-xl border border-[var(--theme-primary,#8a6d4b)]/40 bg-white hover:bg-[#faf6f0] text-xs font-semibold text-[var(--theme-primary,#8a6d4b)] hover:text-[#785b3a] shadow-2xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                    >
-                      <HiOutlinePhotograph className="w-3.5 h-3.5" />
-                      <span>View in Gallery</span>
-                    </button>
-                  </div>
+                  <p className="text-[11px] text-stone-500 mt-0.5">
+                    Select campaign cover image from the media gallery.
+                  </p>
                 </div>
 
                 {/* Cover Image Box */}
@@ -1128,11 +1099,7 @@ export default function CelebrateGiftsView() {
                   label="Cover Image"
                   value={imageUrl}
                   alt="Cover Preview"
-                  uploading={uploading}
-                  uploadProgress={uploadProgress}
-                  onFileSelect={handleImageFile}
                   onChooseGallery={() => setIsMediaPickerOpen(true)}
-                  onRemove={handleRemoveImage}
                 />
               </div>
 
@@ -1153,15 +1120,17 @@ export default function CelebrateGiftsView() {
                     </p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setIsProductPickerOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white shadow-2xs transition-all cursor-pointer self-start sm:self-auto hover:opacity-90"
-                    style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
-                  >
-                    <HiOutlinePlus className="w-4 h-4" />
-                    <span>Browse & Select Products</span>
-                  </button>
+                  {selectedProducts.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsProductPickerOpen(true)}
+                      className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white shadow-2xs transition-all cursor-pointer self-start sm:self-auto hover:opacity-90"
+                      style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
+                    >
+                      <HiOutlinePlus className="w-4 h-4" />
+                      <span>Browse & Select Products</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Selected Products Area: Empty State vs Cards Grid */}
@@ -1173,9 +1142,6 @@ export default function CelebrateGiftsView() {
                     <h4 className="text-xs font-bold text-stone-800 mb-0.5">
                       No products added to this group yet
                     </h4>
-                    <p className="text-[11px] text-stone-500 max-w-sm mx-auto mb-3">
-                      Click below to open the catalog popup, search pieces, and select items.
-                    </p>
                     <button
                       type="button"
                       onClick={() => setIsProductPickerOpen(true)}

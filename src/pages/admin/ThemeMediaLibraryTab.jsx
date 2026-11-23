@@ -418,13 +418,6 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
                     </span>
                   </div>
                 </div>
-
-                {/* Media Info: Clean File Name Only */}
-                <div className="p-2.5 bg-white">
-                  <p className="text-xs font-bold text-stone-800 truncate" title={fileName}>
-                    {fileName}
-                  </p>
-                </div>
               </div>
             );
           })}
@@ -463,7 +456,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
               <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-3 gap-3">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-bold text-stone-900 truncate">
-                    {getMediaFileName(previewItem)}
+                    {previewItem.title || previewItem.name || previewItem.typeLabel || getPlacementLabel(previewItem.placement)}
                   </h3>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-stone-500">
                     <span>{previewItem.typeLabel || getPlacementLabel(previewItem.placement)}</span>

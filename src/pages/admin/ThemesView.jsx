@@ -471,17 +471,6 @@ export default function ThemesView() {
               <HiOutlineSave className="h-3.5 w-3.5" />
               {saving ? 'Saving…' : 'Save Changes'}
             </button>
-            {editing._id && !isLive && (
-              <button
-                type="button"
-                onClick={() => activateTheme(editing)}
-                disabled={activatingId === editing._id}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition disabled:opacity-50 cursor-pointer"
-              >
-                <HiOutlineCheck className="h-3.5 w-3.5" />
-                {activatingId === editing._id ? 'Activating…' : 'Activate Theme'}
-              </button>
-            )}
           </div>
         </header>
 

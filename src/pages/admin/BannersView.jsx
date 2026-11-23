@@ -1553,46 +1553,17 @@ export default function BannersView() {
 
                 {/* 2. Banner Images & Theme Placement Media Card */}
                 <div className="bg-[#f8fafc] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
-                  {/* Top: Website Theme Selector & Direct Browse in Gallery Action */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-stone-200/70">
-                    <div>
-                      <div className="flex items-center gap-2 text-stone-900">
-                        <HiOutlineColorSwatch className="w-4 h-4 text-[#8a6d4b]" />
-                        <h3 className="text-xs font-bold uppercase tracking-wider">
-                          Website Theme & Media
-                        </h3>
-                      </div>
-                      <p className="text-[11px] text-stone-500 mt-0.5">
-                        Select a website theme for this banner or browse available media in gallery.
-                      </p>
+                  {/* Top: Section Header */}
+                  <div className="pb-3 border-b border-stone-200/70">
+                    <div className="flex items-center gap-2 text-stone-900">
+                      <HiOutlineColorSwatch className="w-4 h-4 text-[#8a6d4b]" />
+                      <h3 className="text-xs font-bold uppercase tracking-wider">
+                        Website Theme & Media
+                      </h3>
                     </div>
-
-                    <div className="flex items-center gap-2 shrink-0">
-                      <div className="w-48 sm:w-56">
-                        <Dropdown
-                          value={themeId}
-                          onChange={(val) => setThemeId(val)}
-                          options={[
-                            { value: '', label: 'All Website Themes' },
-                            ...themes.map((t) => ({
-                              value: t._id,
-                              label: `${t.name}${t.status === 'active' ? ' · Active' : ''}`,
-                            })),
-                          ]}
-                          buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)]"
-                          menuClassName="z-30"
-                        />
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => openMediaPicker('desktop')}
-                        className="inline-flex items-center gap-1.5 px-3 h-9 rounded-xl border border-[var(--theme-primary,#8b6f4e)]/40 bg-white hover:bg-[#faf6f0] text-xs font-semibold text-[var(--theme-primary,#8b6f4e)] hover:text-[#785b3a] shadow-2xs transition-colors cursor-pointer whitespace-nowrap shrink-0"
-                      >
-                        <HiOutlinePhotograph className="w-3.5 h-3.5" />
-                        <span>View in Gallery</span>
-                      </button>
-                    </div>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Select banner media from the gallery.
+                    </p>
                   </div>
 
                   {/* Desktop and Mobile Banner Upload Boxes matching screenshot */}
@@ -1603,17 +1574,8 @@ export default function BannersView() {
                         required
                         value={imageUrl}
                         alt="Desktop Banner"
-                        uploading={isUploadingDesktop}
-                        onFileSelect={(file) => handleFileUpload(file, 'desktop')}
                         onChooseGallery={() => openMediaPicker('desktop')}
-                        onRemove={() => handleRemoveUploadedImage('desktop')}
                       />
-                      {currentBannerType.key === 'categorybanner' && (
-                        <p className="text-[11px] text-stone-500 mt-1.5 flex flex-wrap items-center gap-1">
-                          <span className="font-semibold text-stone-700">Recommended Size:</span>
-                          <span>1920 × 360 px (or 1920 × 400 px, 16:3 or 21:9 ratio). Displays full width capped at 360px height.</span>
-                        </p>
-                      )}
                     </div>
 
                     {currentBannerType.key !== 'categorybanner' && (
@@ -1622,10 +1584,7 @@ export default function BannersView() {
                         required
                         value={mobileImageUrl}
                         alt="Mobile Banner"
-                        uploading={isUploadingMobile}
-                        onFileSelect={(file) => handleFileUpload(file, 'mobile')}
                         onChooseGallery={() => openMediaPicker('mobile')}
-                        onRemove={() => handleRemoveUploadedImage('mobile')}
                       />
                     )}
                   </div>

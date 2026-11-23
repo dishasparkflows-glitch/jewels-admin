@@ -80,14 +80,14 @@ export const websiteThemesAPI = themesAPI;
 export const topAnnouncementsAPI = {
   getAll: (params) => api.get('/top-announcements', { params }),
   getById: (id) => api.get(`/top-announcements/${id}`),
-  getSettings: () => api.get('/top-announcements/settings'),
-  updateSettings: (data) => api.put('/top-announcements/settings', data),
+  getSettings: () => api.get('/settings'),
+  updateSettings: (data) => api.put('/settings', { topAnnouncement: data }),
   create: (data) => api.post('/top-announcements', data),
   update: (id, data) => api.put(`/top-announcements/${id}`, data),
   delete: (id) => api.delete(`/top-announcements/${id}`),
   toggleStatus: (id) => api.patch(`/top-announcements/${id}/toggle-status`),
-  duplicate: (id) => api.post(`/top-announcements/${id}/duplicate`),
   reorder: (items) => api.put('/top-announcements/reorder', { items }),
+  getPublic: () => api.get('/top-announcements/public'),
 };
 
 // ─── Diamonds ─────────────────────────────────────

@@ -120,10 +120,14 @@ export default function NavigationMenusView() {
   async function handleUploadItemIcon(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const prevIcon = itemModal.data?.iconKey || itemModal.data?.iconUrl ? { key: itemModal.data.iconKey, url: itemModal.data.iconUrl } : null;
     setIsUploadingItemIcon(true);
     try {
       const res = await uploadWithPresignedUrl(file, 'navigation-icons');
       const uploadedUrl = res.fileUrl || res.url;
+      if (prevIcon) {
+        try { await deleteUploadedFile(prevIcon); } catch {}
+      }
       setItemModal((prev) => ({
         ...prev,
         data: { ...prev.data, iconUrl: uploadedUrl, iconKey: res.key || '' },
@@ -140,10 +144,14 @@ export default function NavigationMenusView() {
   async function handleUploadBannerImage(e) {
     const file = e.target.files?.[0];
     if (!file) return;
+    const prevBanner = bannerModal.data?.imageKey || bannerModal.data?.imageUrl ? { key: bannerModal.data.imageKey, url: bannerModal.data.imageUrl } : null;
     setIsUploadingBanner(true);
     try {
       const res = await uploadWithPresignedUrl(file, 'promo-banners');
       const uploadedUrl = res.fileUrl || res.url;
+      if (prevBanner) {
+        try { await deleteUploadedFile(prevBanner); } catch {}
+      }
       setBannerModal((prev) => ({
         ...prev,
         data: { ...prev.data, imageUrl: uploadedUrl, imageKey: res.key || '' },

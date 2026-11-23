@@ -107,6 +107,21 @@ const VTO_ENV_OPTIONS = [
   { id: 'wrist', value: 'wrist', label: 'Wrist View (Bracelets & Bangles)' },
 ];
 
+const DEFAULT_BIRTHSTONE_OPTIONS = [
+  { value: 'January', label: 'January', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795418921098-4371.jpg' },
+  { value: 'February', label: 'February', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795418999242-e8ce.jpg' },
+  { value: 'March', label: 'March', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419008948-a439.jpg' },
+  { value: 'April', label: 'April', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419023689-7a82.jpg' },
+  { value: 'May', label: 'May', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419032422-72b1.jpg' },
+  { value: 'June', label: 'June', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419039036-338c.jpg' },
+  { value: 'July', label: 'July', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419044668-810b.jpg' },
+  { value: 'August', label: 'August', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419055381-7c13.jpg' },
+  { value: 'September', label: 'September', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419062183-b68d.jpg' },
+  { value: 'October', label: 'October', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419079046-f50b.jpg' },
+  { value: 'November', label: 'November', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419087346-166c.jpg' },
+  { value: 'December', label: 'December', image: 'https://pub-82427c7fd20e4acaa4bdb3b933c0a3bf.r2.dev/birthstones/birthstone-1795419094246-c787.jpg' },
+];
+
 const formatMediaSize = (bytes = 0) => {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
@@ -566,12 +581,47 @@ export default function AddJewelryProduct() {
   }, [productId, navigate, productListPath, isSilverProduct]);
 
   // ─── Step 1: Basic Details ──────────────────────────────
+  const [birthstoneOptions, setBirthstoneOptions] = useState(DEFAULT_BIRTHSTONE_OPTIONS);
+
+  useEffect(() => {
+    let isMounted = true;
+    api
+      .get('/birthstones?limit=50')
+      .then((res) => {
+        if (!isMounted) return;
+        const items = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
+        if (Array.isArray(items) && items.length > 0) {
+          const monthOrder = [
+            'January', 'February', 'March', 'April', 'May', 'June',
+            'July', 'August', 'September', 'October', 'November', 'December',
+          ];
+          const sorted = [...items].sort(
+            (a, b) => monthOrder.indexOf(a.month) - monthOrder.indexOf(b.month)
+          );
+          setBirthstoneOptions(
+            sorted.map((item) => ({
+              value: item.month,
+              label: item.month,
+              image: item.image?.url || '',
+            }))
+          );
+        }
+      })
+      .catch((err) => {
+        console.warn('Failed to load birthstones list:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const [basicDetails, setBasicDetails] = useState({
     title: '',
     sku: '',
     category: '',
     promoBanner: [],
     gender: [],
+    birthMonth: [],
     description: '',
     isOrnate: false,
     soldCount: '',
@@ -618,6 +668,12 @@ export default function AddJewelryProduct() {
           );
           return matched || g;
         }).filter(Boolean);
+      })(),
+      birthMonth: (() => {
+        const rawBirth = productRecord.birthMonth ?? basicInfo.birthMonth ?? [];
+        return Array.isArray(rawBirth)
+          ? rawBirth.map(String).filter(Boolean)
+          : (rawBirth ? [String(rawBirth)] : []);
       })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
@@ -2649,6 +2705,12 @@ export default function AddJewelryProduct() {
           return matched || g;
         }).filter(Boolean);
       })(),
+      birthMonth: (() => {
+        const rawBirth = productRecord.birthMonth ?? basicInfo.birthMonth ?? [];
+        return Array.isArray(rawBirth)
+          ? rawBirth.map(String).filter(Boolean)
+          : (rawBirth ? [String(rawBirth)] : []);
+      })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
       soldCount: productRecord.demoMetrics?.soldCount ?? '',
@@ -3284,6 +3346,9 @@ export default function AddJewelryProduct() {
         const promoArr = Array.isArray(basicDetails.promoBanner)
           ? basicDetails.promoBanner.filter(Boolean)
           : (basicDetails.promoBanner ? [basicDetails.promoBanner] : []);
+        const birthMonthArr = Array.isArray(basicDetails.birthMonth)
+          ? basicDetails.birthMonth.filter(Boolean)
+          : (basicDetails.birthMonth ? [basicDetails.birthMonth] : []);
         const payload = {
         ...(!productId ? { _id: draftProductId } : {}),
         productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
@@ -3292,6 +3357,7 @@ export default function AddJewelryProduct() {
           app: Boolean(basicDetails.showInApp),
           web: Boolean(basicDetails.showOnWeb),
         },
+        birthMonth: birthMonthArr,
         demoMetrics: {
           soldCount:
             basicDetails.soldCount !== '' && basicDetails.soldCount !== undefined && basicDetails.soldCount !== null
@@ -3311,6 +3377,7 @@ export default function AddJewelryProduct() {
           description: activeDesc,
           gender: genderArr,
           promoBanner: promoArr,
+          birthMonth: birthMonthArr,
         }),
         status: statusOverride === 'preserve'
           ? (productRecord?.status || seo.status || (productId ? 'approved' : 'draft'))
@@ -3688,8 +3755,8 @@ export default function AddJewelryProduct() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5 items-start">
-                <div className="sm:col-span-3 space-y-1.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 items-start">
+                <div className="sm:col-span-2 lg:col-span-4 space-y-1.5">
                   <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
                     Product Title <span className="text-rose-500 font-bold">*</span>
                   </label>
@@ -3771,82 +3838,103 @@ export default function AddJewelryProduct() {
                   />
                 </div>
 
-                <div className="space-y-1.5 sm:col-span-1">
-                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
-                    Category <span className="text-rose-500 font-bold">*</span>
-                  </label>
-                  <CategorySelect
-                    categoryId={basicDetails.category}
-                    selectedCollectionIds={selectedCollectionIds}
-                    categories={categoryList}
-                    onChangeCategory={(catId) => {
-                      if (catId !== basicDetails.category) {
-                        setMenuItemIds([]);
-                        setBasicDetails((prev) => ({
-                          ...prev,
-                          category: catId,
-                          promoBanner: [],
-                        }));
-                      } else {
-                        setBasicDetails((prev) => ({
-                          ...prev,
-                          category: catId,
-                        }));
-                      }
-                      if (catId) setAutoOpenMenu(true);
-                    }}
-                    onChangeCollections={setSelectedCollectionIds}
-                    placeholder="Select Category"
-                    className="w-full"
-                  />
-                </div>
-
-                <div className="sm:col-span-1 space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">Menu Items</label>
-                  <MenuItemSelect
-                    key={basicDetails.category}
-                    categoryId={basicDetails.category}
-                    value={menuItemIds}
-                    onChange={setMenuItemIds}
-                    disabled={saving}
-                    autoOpen={autoOpenMenu}
-                    onOpenChange={(isOpen) => {
-                      if (!isOpen) setAutoOpenMenu(false);
-                    }}
-                  />
-                </div>
-
-                <div className="sm:col-span-1 space-y-1.5">
-                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
-                    Promo Banner
-                  </label>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">Birthstone</label>
                   <Dropdown
                     size="field"
                     variant="input"
                     multiple
-                    value={basicDetails.promoBanner}
+                    value={basicDetails.birthMonth}
                     onChange={(val) =>
                       setBasicDetails((prev) => ({
                         ...prev,
-                        promoBanner: Array.isArray(val) ? val : [val].filter(Boolean),
+                        birthMonth: Array.isArray(val) ? val : [val].filter(Boolean),
                       }))
                     }
-                    placeholder={
-                      !basicDetails.category
-                        ? 'Select Category first'
-                        : promoBannerOptions.length === 0
-                        ? 'No promo banners'
-                        : 'Select Promo Banner'
-                    }
-                    disabled={saving || !basicDetails.category || promoBannerOptions.length === 0}
-                    options={promoBannerOptions}
+                    placeholder="Select Birthstone"
+                    options={birthstoneOptions}
                     className="w-full"
                   />
                 </div>
 
+                <div className="sm:col-span-2 lg:col-span-4 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                      Category <span className="text-rose-500 font-bold">*</span>
+                    </label>
+                    <CategorySelect
+                      categoryId={basicDetails.category}
+                      selectedCollectionIds={selectedCollectionIds}
+                      categories={categoryList}
+                      onChangeCategory={(catId) => {
+                        if (catId !== basicDetails.category) {
+                          setMenuItemIds([]);
+                          setBasicDetails((prev) => ({
+                            ...prev,
+                            category: catId,
+                            promoBanner: [],
+                          }));
+                        } else {
+                          setBasicDetails((prev) => ({
+                            ...prev,
+                            category: catId,
+                          }));
+                        }
+                        if (catId) setAutoOpenMenu(true);
+                      }}
+                      onChangeCollections={setSelectedCollectionIds}
+                      placeholder="Select Category"
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">Menu Items</label>
+                    <MenuItemSelect
+                      key={basicDetails.category}
+                      categoryId={basicDetails.category}
+                      value={menuItemIds}
+                      onChange={setMenuItemIds}
+                      disabled={saving}
+                      autoOpen={autoOpenMenu}
+                      onOpenChange={(isOpen) => {
+                        if (!isOpen) setAutoOpenMenu(false);
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+                      Promo Banner
+                    </label>
+                    <Dropdown
+                      size="field"
+                      variant="input"
+                      multiple
+                      value={basicDetails.promoBanner}
+                      onChange={(val) =>
+                        setBasicDetails((prev) => ({
+                          ...prev,
+                          promoBanner: Array.isArray(val) ? val : [val].filter(Boolean),
+                        }))
+                      }
+                      placeholder={
+                        !basicDetails.category
+                          ? 'Select Category first'
+                          : promoBannerOptions.length === 0
+                          ? 'No promo banners'
+                          : 'Select Promo Banner'
+                      }
+                      disabled={saving || !basicDetails.category || promoBannerOptions.length === 0}
+                      options={promoBannerOptions}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+
                 {/* Available Sizes for Selected Category */}
                 {basicDetails.category && (
-                  <div className="sm:col-span-3 space-y-2 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 shadow-2xs">
+                  <div className="sm:col-span-2 lg:col-span-4 space-y-2 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 shadow-2xs">
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2">
                         <span className="text-sm">📏</span>
@@ -3917,7 +4005,7 @@ export default function AddJewelryProduct() {
                   </div>
                 )}
 
-                <div className="sm:col-span-3 space-y-1.5">
+                <div className="sm:col-span-2 lg:col-span-4 space-y-1.5">
                   <label className="text-xs font-bold text-stone-900">Luxury Description</label>
                   <textarea
                     rows={4}
@@ -3931,7 +4019,7 @@ export default function AddJewelryProduct() {
                 </div>
 
                 {/* Social Proof & Urgency (Demo Metrics) */}
-                <div className="sm:col-span-3 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 space-y-3 shadow-2xs">
+                <div className="sm:col-span-2 lg:col-span-4 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 space-y-3 shadow-2xs">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-base">🔥</span>
@@ -4279,20 +4367,21 @@ export default function AddJewelryProduct() {
                       </div>
 
                       {/* Carat Tags with Delete 'x' */}
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      <div className="flex flex-wrap gap-2 pt-1">
                         {centerDiamondCarats.map((ct) => (
                           <span
                             key={ct}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#8b6f4e] text-white text-xs font-semibold shadow-2xs"
+                            className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-lg bg-[#8b6f4e] text-white text-[13px] font-semibold shadow-xs select-none"
                           >
                             <span>{ct} ct</span>
                             <button
                               type="button"
                               onClick={() => handleRemoveCarat(ct)}
-                              className="text-white/80 hover:text-white cursor-pointer leading-none text-xs"
+                              className="w-4 h-4 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-black/20 transition-all cursor-pointer shrink-0"
                               title={`Remove ${ct} ct`}
+                              aria-label={`Remove ${ct} ct`}
                             >
-                              ×
+                              <HiOutlineX className="w-3.5 h-3.5 stroke-[2.5]" />
                             </button>
                           </span>
                         ))}

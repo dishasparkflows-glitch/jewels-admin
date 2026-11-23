@@ -15,7 +15,7 @@ import {
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { uploadWithPresignedUrl, deleteUploadedFile } from '../../utils/uploadWithPresignedUrl';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
@@ -178,10 +178,13 @@ export default function BeforeAfterView() {
     setIsViewModalOpen(true);
   };
 
-  // Handle Image Upload with Presigned URL and local preview fallback
+  // Handle Image Upload with Presigned URL and local preview fallback, deleting old image on replace
   const handleImageUpload = async (e, type) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Capture the existing image before replacement
+    const prevImage = type === 'before' ? beforeImage : afterImage;
 
     // Set local preview immediately
     const reader = new FileReader();
@@ -204,6 +207,15 @@ export default function BeforeAfterView() {
         key: uploaded.key || '',
       };
 
+      // If replacing an existing image, delete the old file from Cloudflare R2
+      if (prevImage && (prevImage.key || prevImage.url)) {
+        try {
+          await deleteUploadedFile(prevImage);
+        } catch (delErr) {
+          console.warn('[BeforeAfterView] Failed to delete previous image from storage:', delErr);
+        }
+      }
+
       if (type === 'before') {
         setBeforeImage(imgData);
         setBeforePreview(imgData.url);
@@ -218,8 +230,34 @@ export default function BeforeAfterView() {
       if (type === 'before') setBeforePreview(beforeImage.url || '');
       else setAfterPreview(afterImage.url || '');
     } finally {
-      if (type === 'before') setUploadingBefore(false);
-      else setUploadingAfter(false);
+      if (type === 'before') {
+        setUploadingBefore(false);
+        if (beforeFileRef.current) beforeFileRef.current.value = '';
+      } else {
+        setUploadingAfter(false);
+        if (afterFileRef.current) afterFileRef.current.value = '';
+      }
+    }
+  };
+
+  // Remove existing image from storage and state
+  const handleRemoveImage = async (type) => {
+    const targetImage = type === 'before' ? beforeImage : afterImage;
+    if (targetImage && (targetImage.key || targetImage.url)) {
+      try {
+        await deleteUploadedFile(targetImage);
+      } catch (err) {
+        console.warn('Failed to delete image:', err);
+      }
+    }
+    if (type === 'before') {
+      setBeforeImage({ url: '', key: '' });
+      setBeforePreview('');
+      if (beforeFileRef.current) beforeFileRef.current.value = '';
+    } else {
+      setAfterImage({ url: '', key: '' });
+      setAfterPreview('');
+      if (afterFileRef.current) afterFileRef.current.value = '';
     }
   };
 
@@ -826,15 +864,28 @@ export default function BeforeAfterView() {
                       />
                       <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-all gap-1.5 font-semibold text-xs">
                         <HiOutlineUpload className="w-4 h-4" />
-                        <span>Replace Image</span>
+                        <span>{uploadingBefore ? 'Replacing Image...' : 'Replace Image'}</span>
                         <input
                           type="file"
                           ref={beforeFileRef}
                           className="hidden"
                           accept="image/*"
+                          disabled={uploadingBefore}
                           onChange={(e) => handleImageUpload(e, 'before')}
                         />
                       </label>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleRemoveImage('before');
+                        }}
+                        className="absolute top-2 right-2 z-10 w-7 h-7 rounded-lg bg-red-600/90 hover:bg-red-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
+                        title="Delete image"
+                      >
+                        <HiOutlineTrash className="w-4 h-4" />
+                      </button>
                     </div>
                   ) : (
                     <label className="h-44 rounded-xl bg-stone-50/70 border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] flex flex-col items-center justify-center text-stone-400 hover:text-[#8b6f4e] cursor-pointer transition-all shadow-inner group">
@@ -871,15 +922,28 @@ export default function BeforeAfterView() {
                       />
                       <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-all gap-1.5 font-semibold text-xs">
                         <HiOutlineUpload className="w-4 h-4" />
-                        <span>Replace Image</span>
+                        <span>{uploadingAfter ? 'Replacing Image...' : 'Replace Image'}</span>
                         <input
                           type="file"
                           ref={afterFileRef}
                           className="hidden"
                           accept="image/*"
+                          disabled={uploadingAfter}
                           onChange={(e) => handleImageUpload(e, 'after')}
                         />
                       </label>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          handleRemoveImage('after');
+                        }}
+                        className="absolute top-2 right-2 z-10 w-7 h-7 rounded-lg bg-red-600/90 hover:bg-red-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer shadow-md"
+                        title="Delete image"
+                      >
+                        <HiOutlineTrash className="w-4 h-4" />
+                      </button>
                     </div>
                   ) : (
                     <label className="h-44 rounded-xl bg-stone-50/70 border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] flex flex-col items-center justify-center text-stone-400 hover:text-[#8b6f4e] cursor-pointer transition-all shadow-inner group">

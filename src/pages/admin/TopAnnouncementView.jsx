@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
   HiOutlineEye,
-  HiOutlineDuplicate,
   HiOutlineCalendar,
   HiOutlineLink,
   HiOutlinePlus,
@@ -81,11 +80,19 @@ export default function TopAnnouncementView() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await topAnnouncementsAPI.getAll({ limit: 100 });
-      const items = res.data?.data || [];
-      setAnnouncements(items);
-      if (res.data?.settings) {
-        setSettings(res.data.settings);
+      const [announcementsRes, settingsRes] = await Promise.allSettled([
+        topAnnouncementsAPI.getAll({ limit: 100 }),
+        topAnnouncementsAPI.getSettings(),
+      ]);
+      if (announcementsRes.status === 'fulfilled') {
+        const items = announcementsRes.value.data?.data || [];
+        setAnnouncements(Array.isArray(items) ? items : []);
+      }
+      if (settingsRes.status === 'fulfilled') {
+        const topSetting = settingsRes.value.data?.data?.topAnnouncement;
+        if (topSetting) {
+          setSettings((prev) => ({ ...prev, ...topSetting }));
+        }
       }
     } catch (err) {
       console.error('Failed to load top announcements:', err);
@@ -244,18 +251,6 @@ export default function TopAnnouncementView() {
       setAnnouncements((prev) =>
         prev.map((a) => (a._id === item._id ? { ...a, isActive: item.isActive } : a))
       );
-    }
-  };
-
-  // Duplicate an announcement
-  const handleDuplicate = async (item) => {
-    try {
-      await topAnnouncementsAPI.duplicate(item._id);
-      toast.success('Announcement duplicated');
-      fetchData();
-    } catch (err) {
-      console.error('Failed to duplicate announcement:', err);
-      toast.error('Failed to duplicate announcement');
     }
   };
 
@@ -532,7 +527,7 @@ export default function TopAnnouncementView() {
               <thead>
                 <tr className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
                   <th className="w-8 pb-1 pl-2"></th>
-                  <th className="w-12 pb-1 text-center">#</th>
+                  <th className="w-16 pb-1 text-center whitespace-nowrap">SR NO</th>
                   <th className="pb-1 min-w-[280px]">MESSAGE</th>
                   <th className="pb-1 min-w-[160px]">LINK (OPTIONAL)</th>
                   <th className="pb-1 w-24 text-center">STATUS</th>
@@ -623,16 +618,7 @@ export default function TopAnnouncementView() {
                           editTitle="Edit Announcement"
                           onDelete={() => handleDelete(item)}
                           deleteTitle="Delete Announcement"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleDuplicate(item)}
-                            className="w-7 h-7 rounded-lg border border-stone-200/90 bg-white text-stone-500 hover:text-stone-900 hover:bg-stone-50 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                            title="Duplicate Announcement"
-                          >
-                            <HiOutlineDuplicate className="w-3.5 h-3.5" />
-                          </button>
-                        </RowActions>
+                        />
                       </td>
                     </tr>
                   );

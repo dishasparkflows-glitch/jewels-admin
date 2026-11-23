@@ -34,7 +34,7 @@ export default function ImageUploadDropzone({
 
   const handleDrop = (e) => {
     e.preventDefault();
-    if (disabled || uploading) return;
+    if (disabled || uploading || !onFileSelect) return;
     const file = e.dataTransfer?.files?.[0];
     if (file && onFileSelect) {
       onFileSelect(file);
@@ -56,6 +56,15 @@ export default function ImageUploadDropzone({
     openImagePreview(getMediaUrl(value), {
       title: label || alt || 'Image Preview',
     });
+  };
+
+  const handleTriggerAction = () => {
+    if (disabled || uploading) return;
+    if (onChooseGallery) {
+      onChooseGallery();
+    } else if (onFileSelect) {
+      fileInputRef.current?.click();
+    }
   };
 
   const isVideo = typeof value === 'string' && /\.(mp4|webm|mov|m4v)(?:[?#]|$)/i.test(value);
@@ -162,11 +171,11 @@ export default function ImageUploadDropzone({
           data-upload-trigger="true"
           onDragOver={handleDragOver}
           onDrop={handleDrop}
-          onClick={() => !disabled && fileInputRef.current?.click()}
+          onClick={handleTriggerAction}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
-              fileInputRef.current?.click();
+              handleTriggerAction();
             }
           }}
           className={`border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[var(--theme-primary,#8b6f4e)]/20 focus:outline-hidden bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all ${heightClass} flex flex-col items-center justify-center group shadow-2xs ${
@@ -186,23 +195,29 @@ export default function ImageUploadDropzone({
           ) : (
             <>
               <div
-                onClick={() => !disabled && fileInputRef.current?.click()}
                 className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#ecf7f7] border border-[#cbebeb] flex items-center justify-center text-[#1c7878] group-hover:scale-105 mb-1 transition-transform cursor-pointer shadow-2xs"
               >
                 <HiOutlinePhotograph className="w-4 h-4 stroke-[1.8]" />
               </div>
-              <p
-                onClick={() => !disabled && fileInputRef.current?.click()}
-                className="text-[11px] sm:text-xs font-semibold text-stone-800 cursor-pointer"
-              >
-                Click to upload <span className="font-normal text-stone-500">or drag and drop</span>
+              <p className="text-[11px] sm:text-xs font-semibold text-stone-800 cursor-pointer">
+                {onChooseGallery && !onFileSelect ? (
+                  <span>Click to select media from gallery</span>
+                ) : (
+                  <>
+                    Click to upload <span className="font-normal text-stone-500">or drag and drop</span>
+                  </>
+                )}
               </p>
 
               {onChooseGallery && (
                 <button
                   type="button"
-                  onClick={onChooseGallery}
-                  className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-stone-300 bg-white hover:bg-stone-50 text-[11px] sm:text-xs font-semibold text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] hover:text-[var(--theme-primary,#8b6f4e)] transition-all cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChooseGallery();
+                  }}
+                  style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
+                  className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-white text-[11px] sm:text-xs font-semibold hover:opacity-90 shadow-2xs transition-all cursor-pointer"
                 >
                   <HiOutlinePhotograph className="w-3.5 h-3.5" />
                   <span>{chooseButtonText}</span>
@@ -211,14 +226,16 @@ export default function ImageUploadDropzone({
             </>
           )}
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept={accept}
-            onChange={handleFileInputChange}
-            className="hidden"
-            disabled={disabled || uploading}
-          />
+          {onFileSelect && (
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={accept}
+              onChange={handleFileInputChange}
+              className="hidden"
+              disabled={disabled || uploading}
+            />
+          )}
         </div>
       )}
     </div>

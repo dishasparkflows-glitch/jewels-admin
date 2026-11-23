@@ -171,7 +171,7 @@ export const navSections = [
         children: [
           { id: 'home-sections', title: 'Home Sections', path: '/home-sections', icon: HiOutlineTemplate, apiEndpoint: '/home-sections' },
           { id: 'banners', title: 'Banners', path: '/banners', icon: HiOutlinePhotograph, apiEndpoint: '/banners' },
-          { id: 'top-announcement', title: 'Top Announcement', path: '/top-announcements', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
+          // { id: 'top-announcement', title: 'Top Announcement', path: '/top-announcements', icon: HiOutlineSpeakerphone, apiEndpoint: '/top-announcements' },
           // { id: 'footer-management', title: 'Footer Management', path: '/footer-settings', icon: HiOutlineTemplate, apiEndpoint: '/footer-settings' },
         ],
       },

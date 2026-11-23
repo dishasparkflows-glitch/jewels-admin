@@ -133,6 +133,7 @@ export default function Dropdown({
         label: opt.label !== undefined ? opt.label : (opt.name || String(opt.value)),
         sublabel: opt.sublabel,
         icon: opt.icon,
+        image: opt.image || opt.imageUrl,
         dotColor: opt.dotColor,
         badge: opt.badge,
         disabled: Boolean(opt.disabled),
@@ -659,9 +660,28 @@ export default function Dropdown({
       >
         <span className="flex items-center gap-2 truncate">
           {prefixIcon && <span className="shrink-0 text-stone-400">{renderDropdownIcon(prefixIcon, sizeStyles.icon || 'w-4 h-4')}</span>}
-          {selectedOption?.icon && !prefixIcon && (
+          {multiple && selectedOptions.length > 0 && selectedOptions.some((o) => o.image) ? (
+            <div className="flex items-center -space-x-1.5 shrink-0">
+              {selectedOptions.filter((o) => o.image).slice(0, 3).map((o, idx) => (
+                <img
+                  key={idx}
+                  src={o.image}
+                  alt=""
+                  className="w-5 h-5 rounded-full object-cover border border-white shadow-2xs shrink-0"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+              ))}
+            </div>
+          ) : !multiple && selectedOption?.image && !prefixIcon ? (
+            <img
+              src={selectedOption.image}
+              alt=""
+              className="w-5 h-5 rounded-full object-cover border border-stone-200 shrink-0"
+              onError={(e) => { e.currentTarget.style.display = 'none'; }}
+            />
+          ) : selectedOption?.icon && !prefixIcon ? (
             <span className="shrink-0 text-stone-500">{renderDropdownIcon(selectedOption.icon, sizeStyles.icon || 'w-4 h-4')}</span>
-          )}
+          ) : null}
           {showStatusDot && value && renderStatusDot(value, selectedOption)}
           <span
             className={`truncate ${
@@ -809,7 +829,16 @@ export default function Dropdown({
                         {isSelected && <HiOutlineCheck className="w-3 h-3 stroke-[3]" />}
                       </span>
                     )}
-                    {opt.icon && <span className="shrink-0 text-stone-400 group-hover:text-stone-600">{renderDropdownIcon(opt.icon, sizeStyles.icon || 'w-4 h-4')}</span>}
+                    {opt.image ? (
+                      <img
+                        src={opt.image}
+                        alt=""
+                        className="w-5 h-5 rounded-full object-cover border border-stone-200/90 shadow-2xs shrink-0"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
+                    ) : opt.icon ? (
+                      <span className="shrink-0 text-stone-400 group-hover:text-stone-600">{renderDropdownIcon(opt.icon, sizeStyles.icon || 'w-4 h-4')}</span>
+                    ) : null}
                     {showStatusDot && renderStatusDot(opt.value, opt)}
                     <span className="truncate">{opt.label}</span>
                     {opt.sublabel && (
