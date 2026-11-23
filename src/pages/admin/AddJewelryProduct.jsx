@@ -3419,22 +3419,28 @@ export default function AddJewelryProduct() {
         ...(variant.diamondClarityId ? { diamondClarityId: variant.diamondClarityId } : {}),
         caratWeight: numberValue(variant.caratWeight),
       })).filter((variant) => Object.keys(variant).length);
-      const centerDiamondRows = centerDiamondCombinations.map((combination) => withDiamondIds({
-        diamondType: combination.diamondType,
-        diamondShape: combination.shape,
-        diamondColor: combination.color,
-        diamondClarity: combination.clarity,
-        caratWeight: numberValue(combination.carat),
-        pricePerCarat: numberValue(combination.rate),
-        rateSource: customComboRates[combination.id] !== undefined ? 'manual' : 'master',
-      }));
-      const validColorStoneRows = stoneConfigType === 'colorStone'
-        ? colorStoneCombinations.map((combination) => withDiamondIds({
+      const centerDiamondRows = stoneConfigType === 'centerDiamond'
+        ? centerDiamondCombinations.map((combination) => withDiamondIds({
             diamondType: combination.diamondType,
             diamondShape: combination.shape,
+            diamondColor: combination.color,
+            diamondClarity: combination.clarity,
             caratWeight: numberValue(combination.carat),
-            pricePerCarat: 3000,
+            pricePerCarat: numberValue(combination.rate),
+            rateSource: customComboRates[combination.id] !== undefined ? 'manual' : 'master',
           }))
+        : [];
+      const validColorStoneRows = stoneConfigType === 'colorStone'
+        ? colorStoneCombinations.map((combination) => {
+            const typeId = resolveDiamondId(diamondMasters.types, combination.diamondType) || masterId(diamondMasters.types, combination.diamondType);
+            const shapeId = resolveDiamondId(diamondMasters.shapes, combination.shape) || masterId(diamondMasters.shapes, combination.shape);
+            return {
+              diamondTypeId: typeId,
+              diamondShapeId: shapeId,
+              caratWeight: numberValue(combination.carat),
+              pricePerCarat: 3000,
+            };
+          })
         : [];
       // Only include side diamonds that have actual attributes configured, avoid blank template rows
       const validSideDiamondRows = (sideRows || [])
@@ -3584,10 +3590,10 @@ export default function AddJewelryProduct() {
         ...(!isSilverProduct && variantRows.length ? { variants: variantRows } : {}),
         stoneConfigType,
         sideStoneConfigType,
-        ...(!isSilverProduct && stoneConfigType === 'colorStone' && validColorStoneRows.length ? { colorStoneRows: validColorStoneRows } : {}),
-        ...(!isSilverProduct && stoneConfigType === 'centerDiamond' && centerDiamondRows.length ? { centerDiamondRows } : {}),
-        ...(!isSilverProduct && (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both') && validSideColorStoneRows.length ? { sideColorStoneRows: validSideColorStoneRows } : {}),
-        ...(!isSilverProduct && (sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both') && validSideDiamondRows.length ? { sideDiamondRows: validSideDiamondRows } : {}),
+        ...(!isSilverProduct && stoneConfigType === 'colorStone' ? { colorStoneRows: validColorStoneRows, centerDiamondRows: [] } : {}),
+        ...(!isSilverProduct && stoneConfigType === 'centerDiamond' ? { centerDiamondRows, colorStoneRows: [] } : {}),
+        ...(!isSilverProduct && (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both') ? { sideColorStoneRows: validSideColorStoneRows } : { sideColorStoneRows: [] }),
+        ...(!isSilverProduct && (sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both') ? { sideDiamondRows: validSideDiamondRows } : { sideDiamondRows: [] }),
         ...(descriptionSections.length ? { descriptionSections } : {}),
         ...(productSpecifications.length ? { productSpecifications } : {}),
         ...(Object.keys(seoData).length ? { seo: seoData } : {}),
