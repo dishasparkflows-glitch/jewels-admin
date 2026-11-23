@@ -53,12 +53,17 @@ export default function PricingBreakdownModal({
     ? Number(breakdown?.centerDiamondRate || variant?.centerDiamondRate || Math.round(centerCost / centerCarat))
     : 0;
 
+  // 2b. Center Color Stone / Gemstone (Flat ₹3,000 / ct)
+  const colorStoneCost = Number(breakdown?.colorStoneCost ?? variant?.colorStoneCost ?? 0);
+  const colorStoneWeight = Number(breakdown?.colorStoneWeight ?? variant?.colorStoneWeight ?? (colorStoneCost > 0 ? (variant?.caratWeight || 0) : 0));
+  const colorStoneRate = Number(breakdown?.colorStoneRate || variant?.colorStoneRate || 3000);
+
   // 3. Side Diamonds (Rule 1: Matching quality only)
   const sideCost = Number(breakdown?.sideDiamondCost ?? variant?.sideDiamondCost ?? 0);
   const sideWeight = Number(
     breakdown?.sideDiamondWeight ||
     variant?.sideDiamondWeight ||
-    (!centerCost && variant?.caratWeight ? variant.caratWeight : 0) ||
+    (!centerCost && !colorStoneCost && variant?.caratWeight ? variant.caratWeight : 0) ||
     (Array.isArray(variant?.sideDiamonds)
       ? variant.sideDiamonds.reduce((sum, s) => sum + Number(s.caratWeight || 0), 0)
       : 0)
@@ -66,6 +71,11 @@ export default function PricingBreakdownModal({
   const sideRate = (sideWeight > 0 && sideCost > 0)
     ? Number(breakdown?.sideDiamondRate || Math.round(sideCost / sideWeight))
     : Number(variant?.sideDiamonds?.[0]?.priceINR || 0);
+
+  // 3b. Side Color Stone / Gemstone (Flat ₹3,000 / ct)
+  const sideColorStoneCost = Number(breakdown?.sideColorStoneCost ?? variant?.sideColorStoneCost ?? 0);
+  const sideColorStoneWeight = Number(breakdown?.sideColorStoneWeight ?? variant?.sideColorStoneWeight ?? 0);
+  const sideColorStoneRate = Number(breakdown?.sideColorStoneRate || variant?.sideColorStoneRate || 3000);
 
   // 4. Labour / Making Charge
   const labourCost = Number(breakdown?.totalMakingCharge ?? variant?.computedMakingCharge ?? variant?.labourCharge ?? 0);
@@ -75,7 +85,7 @@ export default function PricingBreakdownModal({
   const certCost = Number(breakdown?.certificateCharge ?? variant?.certificateCharge ?? specs?.certificateCharge ?? 0);
 
   // 6. Subtotal
-  const subtotal = Number(breakdown?.subtotal ?? (Math.round(((metalCost + centerCost + sideCost + labourCost + certCost) + Number.EPSILON) * 100) / 100));
+  const subtotal = Number(breakdown?.subtotal ?? (Math.round(((metalCost + centerCost + colorStoneCost + sideCost + sideColorStoneCost + labourCost + certCost) + Number.EPSILON) * 100) / 100));
 
   // 7. GST
   const gstPercent = Number(breakdown?.appliedGst ?? specs?.gstPercentage ?? 3);
@@ -188,6 +198,22 @@ export default function PricingBreakdownModal({
                     </tr>
                   )}
 
+                  {/* Center Color Stone / Gemstone (Only show if Color Stone Cost > 0) */}
+                  {colorStoneCost > 0 && (
+                    <tr>
+                      <td className="py-3 pr-2">
+                        <p className="font-bold text-stone-800 text-xs">Center Color Stone / Gemstone</p>
+                        <p className="text-[11px] text-stone-400 mt-0.5">Carat: {colorStoneWeight} ct (Fixed ₹3,000/ct)</p>
+                      </td>
+                      <td className="py-3 px-2 text-center text-xs text-stone-600 font-mono">
+                        {colorStoneWeight} ct &times; {formatINR(colorStoneRate)}
+                      </td>
+                      <td className="py-3 pl-2 text-right font-mono font-bold text-stone-900 text-xs sm:text-sm">
+                        {formatINR(colorStoneCost)}
+                      </td>
+                    </tr>
+                  )}
+
                   {/* Side Diamonds (Only show if Side Diamond Cost > 0) */}
                   {sideCost > 0 && (
                     <tr>
@@ -202,6 +228,22 @@ export default function PricingBreakdownModal({
                       </td>
                       <td className="py-3 pl-2 text-right font-mono font-bold text-stone-900 text-xs sm:text-sm">
                         {formatINR(sideCost)}
+                      </td>
+                    </tr>
+                  )}
+
+                  {/* Side Color Stone / Gemstone (Only show if Side Color Stone Cost > 0) */}
+                  {sideColorStoneCost > 0 && (
+                    <tr>
+                      <td className="py-3 pr-2">
+                        <p className="font-bold text-stone-800 text-xs">Side Color Stone / Gemstone</p>
+                        <p className="text-[11px] text-stone-400 mt-0.5">Carat: {sideColorStoneWeight} ct (Fixed ₹3,000/ct)</p>
+                      </td>
+                      <td className="py-3 px-2 text-center text-xs text-stone-600 font-mono">
+                        {sideColorStoneWeight} ct &times; {formatINR(sideColorStoneRate)}
+                      </td>
+                      <td className="py-3 pl-2 text-right font-mono font-bold text-stone-900 text-xs sm:text-sm">
+                        {formatINR(sideColorStoneCost)}
                       </td>
                     </tr>
                   )}

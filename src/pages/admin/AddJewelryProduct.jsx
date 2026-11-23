@@ -805,6 +805,23 @@ export default function AddJewelryProduct() {
   // Primary active preview color pill
   const [activeColorPill, setActiveColorPill] = useState('');
 
+  // ─── Center Stone & Side Stone Configuration Modes ──
+  const [stoneConfigType, setStoneConfigType] = useState('centerDiamond'); // 'centerDiamond' | 'colorStone'
+  const [sideStoneConfigType, setSideStoneConfigType] = useState('sideDiamond'); // 'sideDiamond' | 'sideColorStone' | 'both' | 'none'
+
+  // Center Color Stone State
+  const [colorStoneType, setColorStoneType] = useState('');
+  const [colorStoneShape, setColorStoneShape] = useState('');
+  const [colorStoneCarats, setColorStoneCarats] = useState([]);
+  const [colorStoneCaratInput, setColorStoneCaratInput] = useState('');
+
+  // Side Color Stone State
+  const [sideColorStoneRows, setSideColorStoneRows] = useState([]);
+  const [sideColorStoneType, setSideColorStoneType] = useState('');
+  const [sideColorStoneShape, setSideColorStoneShape] = useState('');
+  const [sideColorStoneCarat, setSideColorStoneCarat] = useState('');
+  const [sideColorStonePieces, setSideColorStonePieces] = useState('');
+
   // ─── Step 2: Center Diamond Configuration (Portal Match) ──
   const [centerDiamondType, setCenterDiamondType] = useState('');
   const [centerDiamondShape, setCenterDiamondShape] = useState('');
@@ -997,6 +1014,68 @@ export default function AddJewelryProduct() {
       ...prev,
       [comboId]: newRate,
     }));
+  };
+
+  const handleAddColorStoneCarat = () => {
+    const val = parseFloat(colorStoneCaratInput.trim());
+    if (isNaN(val) || val <= 0) {
+      toast.error('Please enter a valid carat weight');
+      return;
+    }
+    if (colorStoneCarats.includes(val)) {
+      toast.error('Carat weight already added');
+      return;
+    }
+    setColorStoneCarats((prev) => [...prev, val].sort((a, b) => a - b));
+    setColorStoneCaratInput('');
+  };
+
+  const handleRemoveColorStoneCarat = (val) => {
+    const target = Number(val);
+    setColorStoneCarats((prev) => prev.filter((c) => Number(c) !== target));
+  };
+
+  const colorStoneCombinations = useMemo(() => {
+    if (stoneConfigType !== 'colorStone') return [];
+    const combos = [];
+    colorStoneCarats.forEach((carat) => {
+      const comboId = `CS-${colorStoneType}-${colorStoneShape}-${carat}`;
+      const rate = 3000;
+      combos.push({
+        id: comboId,
+        diamondType: colorStoneType,
+        shape: colorStoneShape,
+        carat: Number(carat),
+        rate,
+        totalPrice: Number(carat) * rate,
+      });
+    });
+    return combos;
+  }, [stoneConfigType, colorStoneType, colorStoneShape, colorStoneCarats]);
+
+  const handleAddSideColorStoneRow = () => {
+    const val = parseFloat(sideColorStoneCarat.trim());
+    if (isNaN(val) || val <= 0) {
+      toast.error('Please enter a valid carat weight');
+      return;
+    }
+    const newRow = {
+      id: Date.now(),
+      diamondTypeId: masterId(diamondMasters.types, sideColorStoneType) || sideColorStoneType,
+      diamondShapeId: masterId(diamondMasters.shapes, sideColorStoneShape) || sideColorStoneShape,
+      diamondType: sideColorStoneType,
+      diamondShape: sideColorStoneShape,
+      caratWeight: val,
+      pieces: Number(sideColorStonePieces) || 1,
+      pricePerCarat: 3000,
+    };
+    setSideColorStoneRows((prev) => [...prev, newRow]);
+    setSideColorStoneCarat('');
+    setSideColorStonePieces('');
+  };
+
+  const handleRemoveSideColorStoneRow = (idToRemove) => {
+    setSideColorStoneRows((prev) => prev.filter((r) => r.id !== idToRemove));
   };
 
   // ─── Step 2: Auto-Generated Combinations & Preview Variants Collapse States ─────
@@ -2394,16 +2473,45 @@ export default function AddJewelryProduct() {
   };
   const pricingInput = () => ({
     basicInfo: { sku: basicDetails.sku },
-    pricing: { baseCarat: Number(baseCarat || centerDiamondCarats[0] || 1), gstPercentage: Number(gstPercentage), baseLabourCharge: Number(specs.baseLabourCharge), certificateCharge: Number(specs.certificateCharge), otherAmountPercentage: Number(specs.otherAmountPercentage) },
+    pricing: {
+      baseCarat: Number(baseCarat || (stoneConfigType === 'colorStone' ? colorStoneCarats[0] : centerDiamondCarats[0]) || 1),
+      gstPercentage: Number(gstPercentage),
+      baseLabourCharge: Number(specs.baseLabourCharge),
+      certificateCharge: Number(specs.certificateCharge),
+      otherAmountPercentage: Number(specs.otherAmountPercentage),
+    },
     specifications: { metalWeight: Number(specs.metalWeight) },
     metalPurityIds: selectedPurities.map((name) => masterId(purityMasterList, name)),
     metalColorIds: selectedColors.map((name) => masterId(colorsList, name)),
-    centerDiamondRows: centerDiamondCombinations.map((row) => ({
-      diamondTypeId: masterId(diamondMasters.types, row.diamondType), diamondShapeId: masterId(diamondMasters.shapes, row.shape),
-      diamondColorId: masterId(diamondMasters.colors, row.color), diamondClarityId: masterId(diamondMasters.clarities, row.clarity),
-      caratWeight: Number(row.carat), pricePerCarat: Number(row.rate), rateSource: customComboRates[row.id] !== undefined ? 'manual' : 'master',
-    })),
-    sideDiamondRows: sideRows.map((row) => ({ ...row, pieces: Number(row.pieces), caratWeight: Number(row.caratWeight), priceINR: Number(row.priceINR || 0) })),
+    stoneConfigType,
+    colorStoneRows: stoneConfigType === 'colorStone' ? colorStoneCombinations.map((row) => ({
+      diamondTypeId: masterId(diamondMasters.types, row.diamondType),
+      diamondShapeId: masterId(diamondMasters.shapes, row.shape),
+      caratWeight: Number(row.carat),
+      pricePerCarat: 3000,
+    })) : [],
+    centerDiamondRows: stoneConfigType === 'centerDiamond' ? centerDiamondCombinations.map((row) => ({
+      diamondTypeId: masterId(diamondMasters.types, row.diamondType),
+      diamondShapeId: masterId(diamondMasters.shapes, row.shape),
+      diamondColorId: masterId(diamondMasters.colors, row.color),
+      diamondClarityId: masterId(diamondMasters.clarities, row.clarity),
+      caratWeight: Number(row.carat),
+      pricePerCarat: Number(row.rate),
+      rateSource: customComboRates[row.id] !== undefined ? 'manual' : 'master',
+    })) : [],
+    sideStoneConfigType,
+    sideColorStoneRows: (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both')
+      ? sideColorStoneRows.map((row) => ({
+          diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
+          diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
+          caratWeight: Number(row.caratWeight),
+          pieces: Number(row.pieces || 1),
+          pricePerCarat: 3000,
+        }))
+      : [],
+    sideDiamondRows: (sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both')
+      ? sideRows.map((row) => ({ ...row, pieces: Number(row.pieces), caratWeight: Number(row.caratWeight), priceINR: Number(row.priceINR || 0) }))
+      : [],
     variants: variants.map((row) => ({ ...row, _id: row._id, stock: Number(row.stock || 0) })),
   });
   const handleRegenerateVariants = async () => {
@@ -2414,12 +2522,30 @@ export default function AddJewelryProduct() {
       const { data } = await api.post('/products/pricing-preview', pricingInput());
       const result = data.data;
       const name = (list, value) => list.find((item) => String(item._id || item.id) === String(value))?.name || '';
-      setVariants(result.variants.map((row, index) => ({ ...row,
-        id: row._id || row.pricingKey || index,
-        purity: name(purityMasterList, row.metalPurityId), color: name(colorsList, row.metalColorId),
-        diamondDetails: { center: [name(diamondMasters.types, row.diamondTypeId), name(diamondMasters.colors, row.diamondColorId), name(diamondMasters.clarities, row.diamondClarityId), row.caratWeight ? row.caratWeight + 'ct' : ''].filter(Boolean).join(' · '), side: row.sideDiamondWeight ? 'Side: ' + row.sideDiamondWeight + 'ct' : '' },
-        weight: String(row.metalWeight), price: String(row.price), priceRaw: row.price, stock: String(row.stock),
-      })));
+      setVariants(result.variants.map((row, index) => {
+        const centerDesc = stoneConfigType === 'colorStone'
+          ? [name(diamondMasters.types, row.diamondTypeId), name(diamondMasters.shapes, row.diamondShapeId), row.caratWeight ? row.caratWeight + 'ct Gemstone' : ''].filter(Boolean).join(' · ')
+          : [name(diamondMasters.types, row.diamondTypeId), name(diamondMasters.colors, row.diamondColorId), name(diamondMasters.clarities, row.diamondClarityId), row.caratWeight ? row.caratWeight + 'ct' : ''].filter(Boolean).join(' · ');
+
+        const sideParts = [];
+        if (row.sideDiamondWeight) sideParts.push('Side Dia: ' + row.sideDiamondWeight + 'ct');
+        if (row.sideColorStoneWeight) sideParts.push('Side Gem: ' + row.sideColorStoneWeight + 'ct');
+
+        return {
+          ...row,
+          id: row._id || row.pricingKey || index,
+          purity: name(purityMasterList, row.metalPurityId),
+          color: name(colorsList, row.metalColorId),
+          diamondDetails: {
+            center: centerDesc,
+            side: sideParts.join(' · '),
+          },
+          weight: String(row.metalWeight),
+          price: String(row.price),
+          priceRaw: row.price,
+          stock: String(row.stock),
+        };
+      }));
       setAutomaticPricing(true);
       setPricing((previous) => ({ ...previous, salePrice: String(result.salePrice) }));
       setIsVariantsPreviewCollapsed(false);
@@ -2456,12 +2582,18 @@ export default function AddJewelryProduct() {
       const cCost = Number(v.centerDiamondCost || 0);
       const cWeight = Number(v.centerDiamondWeight || 0);
       const cRate = Number(v.centerDiamondRate || (cWeight > 0 && cCost > 0 ? cCost / cWeight : 0));
+      const csCost = Number(v.colorStoneCost || 0);
+      const csWeight = Number(v.colorStoneWeight || 0);
+      const csRate = Number(v.colorStoneRate || 3000);
       const sCost = Number(v.sideDiamondCost || 0);
       const sWeight = Number(v.sideDiamondWeight || 0);
       const sRate = Number(sWeight > 0 && sCost > 0 ? sCost / sWeight : (v.sideDiamonds?.[0]?.priceINR || 0));
+      const scsCost = Number(v.sideColorStoneCost || 0);
+      const scsWeight = Number(v.sideColorStoneWeight || 0);
+      const scsRate = Number(v.sideColorStoneRate || 3000);
       const labour = Number(v.computedMakingCharge ?? v.labourCharge ?? (effWeight * Number(specs.baseLabourCharge || 0)));
       const cert = Number(v.certificateCharge ?? specs.certificateCharge ?? 0);
-      const sub = Number(v.subtotal || (mCost + cCost + sCost + labour + cert));
+      const sub = Number(v.subtotal || (mCost + cCost + csCost + sCost + scsCost + labour + cert));
       const gstPct = Number(gstPercentage || 3);
       const gst = Number(v.computedGst || (sub * gstPct / 100));
       const final = Number(v.priceRaw ?? v.price ?? (sub + gst));
@@ -2472,10 +2604,16 @@ export default function AddJewelryProduct() {
         centerDiamondCost: cCost,
         centerDiamondWeight: cWeight,
         centerDiamondRate: cRate,
+        colorStoneCost: csCost,
+        colorStoneWeight: csWeight,
+        colorStoneRate: csRate,
         sideDiamondCost: sCost,
         sideDiamondWeight: sWeight,
         sideDiamondRate: sRate,
-        diamondCost: Number(v.diamondCost || (cCost + sCost)),
+        sideColorStoneCost: scsCost,
+        sideColorStoneWeight: scsWeight,
+        sideColorStoneRate: scsRate,
+        diamondCost: Number(v.diamondCost || (cCost + csCost + sCost + scsCost)),
         totalMakingCharge: labour,
         certificateCharge: cert,
         subtotal: sub,
@@ -2752,6 +2890,36 @@ export default function AddJewelryProduct() {
     }
     setGstPercentage(String(productRecord.pricing?.gstPercentage ?? 3));
     setSideRows((productRecord.sideDiamondRows || []).map((row) => ({ ...row, rateSource: row.rateSource || (row.priceINR ? 'manual' : 'master') })));
+    const loadedStoneConfigType = productRecord.stoneConfigType ||
+      (Array.isArray(productRecord.colorStoneRows) && productRecord.colorStoneRows.length > 0 ? 'colorStone' : 'centerDiamond');
+    setStoneConfigType(loadedStoneConfigType);
+
+    const loadedSideStoneConfigType = productRecord.sideStoneConfigType ||
+      (productRecord.sideColorStoneRows?.length && productRecord.sideDiamondRows?.length ? 'both'
+        : (productRecord.sideColorStoneRows?.length ? 'sideColorStone'
+          : (productRecord.sideDiamondRows?.length ? 'sideDiamond' : 'none')));
+    setSideStoneConfigType(loadedSideStoneConfigType);
+
+    const csRows = Array.isArray(productRecord.colorStoneRows) ? productRecord.colorStoneRows : [];
+    if (csRows.length > 0) {
+      const firstCs = csRows[0];
+      setColorStoneType(resolveName(firstCs.diamondTypeId || firstCs.diamondType, diamondMasters.types));
+      setColorStoneShape(resolveName(firstCs.diamondShapeId || firstCs.diamondShape, diamondMasters.shapes));
+      const csCarats = unique(csRows.map((r) => Number(r.caratWeight)).filter(Number.isFinite)).sort((a, b) => a - b);
+      setColorStoneCarats(csCarats);
+    }
+
+    const scsRows = Array.isArray(productRecord.sideColorStoneRows) ? productRecord.sideColorStoneRows : [];
+    setSideColorStoneRows(scsRows.map((r) => ({
+      id: r._id || Date.now() + Math.random(),
+      diamondTypeId: r.diamondTypeId?._id || r.diamondTypeId || r.diamondType,
+      diamondShapeId: r.diamondShapeId?._id || r.diamondShapeId || r.diamondShape,
+      diamondType: resolveName(r.diamondTypeId || r.diamondType, diamondMasters.types),
+      diamondShape: resolveName(r.diamondShapeId || r.diamondShape, diamondMasters.shapes),
+      caratWeight: Number(r.caratWeight || 0),
+      pieces: Number(r.pieces || 1),
+      pricePerCarat: Number(r.pricePerCarat || 3000),
+    })));
     setProductColors(colorNames);
     setActiveColorPill(colorNames[0] || '');
     setActiveMediaColor(colorNames[0] || '');
@@ -3260,6 +3428,14 @@ export default function AddJewelryProduct() {
         pricePerCarat: numberValue(combination.rate),
         rateSource: customComboRates[combination.id] !== undefined ? 'manual' : 'master',
       }));
+      const validColorStoneRows = stoneConfigType === 'colorStone'
+        ? colorStoneCombinations.map((combination) => withDiamondIds({
+            diamondType: combination.diamondType,
+            diamondShape: combination.shape,
+            caratWeight: numberValue(combination.carat),
+            pricePerCarat: 3000,
+          }))
+        : [];
       // Only include side diamonds that have actual attributes configured, avoid blank template rows
       const validSideDiamondRows = (sideRows || [])
         .filter((row) => row.diamondTypeId && (row.diamondShapeId || Number(row.caratWeight) > 0 || Number(row.pieces) > 0))
@@ -3269,6 +3445,17 @@ export default function AddJewelryProduct() {
           caratWeight: numberValue(row.caratWeight),
           priceINR: numberValue(row.priceINR),
         }));
+      const validSideColorStoneRows = (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both')
+        ? (sideColorStoneRows || [])
+            .filter((row) => (row.diamondTypeId || row.diamondType) && Number(row.caratWeight) > 0)
+            .map((row) => compactObject({
+              diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
+              diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
+              caratWeight: numberValue(row.caratWeight),
+              pieces: numberValue(row.pieces || 1),
+              pricePerCarat: 3000,
+            }))
+        : [];
       const descriptionSections = careSections
         .filter((section) => section.header?.trim() || section.description?.trim())
         .map((section) => compactObject({
@@ -3395,8 +3582,12 @@ export default function AddJewelryProduct() {
           ? (silverColorImageRows.length ? { colorImages: silverColorImageRows } : {})
           : (colorImageRows.length ? { colorImages: colorImageRows } : {})),
         ...(!isSilverProduct && variantRows.length ? { variants: variantRows } : {}),
-        ...(!isSilverProduct && centerDiamondRows.length ? { centerDiamondRows } : {}),
-        ...(!isSilverProduct && validSideDiamondRows.length ? { sideDiamondRows: validSideDiamondRows } : {}),
+        stoneConfigType,
+        sideStoneConfigType,
+        ...(!isSilverProduct && stoneConfigType === 'colorStone' && validColorStoneRows.length ? { colorStoneRows: validColorStoneRows } : {}),
+        ...(!isSilverProduct && stoneConfigType === 'centerDiamond' && centerDiamondRows.length ? { centerDiamondRows } : {}),
+        ...(!isSilverProduct && (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both') && validSideColorStoneRows.length ? { sideColorStoneRows: validSideColorStoneRows } : {}),
+        ...(!isSilverProduct && (sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both') && validSideDiamondRows.length ? { sideDiamondRows: validSideDiamondRows } : {}),
         ...(descriptionSections.length ? { descriptionSections } : {}),
         ...(productSpecifications.length ? { productSpecifications } : {}),
         ...(Object.keys(seoData).length ? { seo: seoData } : {}),
@@ -4220,21 +4411,218 @@ export default function AddJewelryProduct() {
               </div>
 
 
-              {/* ─── Sub-Section 3: Center & Side Diamond Configuration ──── */}
+              {/* ─── Sub-Section 3: Center & Side Stone Configuration ──── */}
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
                     3
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold text-stone-900">Diamond Configuration</h3>
+                    <h3 className="text-xs font-bold text-stone-900">Stone Configuration</h3>
                     <p className="text-[10px] text-stone-400">
-                      Configure multi-stone center combinations and optional side diamonds.
+                      Configure multi-stone center diamonds or gemstones and optional side accent stones.
                     </p>
                   </div>
                 </div>
 
+                {/* ── Center Stone Switcher ── */}
+                <div className="flex items-center gap-2 mb-1">
+                  <button
+                    type="button"
+                    onClick={() => setStoneConfigType('centerDiamond')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      stoneConfigType === 'centerDiamond'
+                        ? 'bg-[#8b6f4e] text-white shadow-sm'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    Center Diamond
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setStoneConfigType('colorStone')}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                      stoneConfigType === 'colorStone'
+                        ? 'bg-[#8b6f4e] text-white shadow-sm'
+                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                    }`}
+                  >
+                    Color Stone
+                  </button>
+                </div>
+
+                {/* ── Color Stone Configuration Card ── */}
+                {stoneConfigType === 'colorStone' && (
+                  <div className="p-5 rounded-2xl border border-stone-200/90 bg-white space-y-4 shadow-2xs">
+                    {/* Card Header */}
+                    <div className="flex items-center justify-between pb-3 border-b border-stone-100 flex-wrap gap-2">
+                      <div className="flex items-center gap-2">
+                        <IoDiamondOutline className="w-4 h-4 text-[#8b6f4e]" />
+                        <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
+                          COLOR STONE CONFIGURATION
+                        </h4>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-bold text-[#8b6f4e] bg-amber-50 px-2.5 py-1 rounded-full border border-[#8b6f4e]/20">
+                          Rate: ₹3,000 / ct (Fixed)
+                        </span>
+                        <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d8c0]">
+                          {colorStoneCombinations.length} {colorStoneCombinations.length === 1 ? 'Combination' : 'Combinations'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Top Controls Grid: Type, Shape, Carat Weight */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start pt-1">
+                      {/* 1. STONE TYPE */}
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                          STONE TYPE
+                        </label>
+                        <Dropdown
+                          size="sm"
+                          value={colorStoneType}
+                          onChange={(val) => setColorStoneType(val)}
+                          options={diamondTypesList}
+                          placeholder="Select Stone Type"
+                          buttonClassName="h-8 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800"
+                        />
+                      </div>
+
+                      {/* 2. STONE SHAPE */}
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                          STONE SHAPE
+                        </label>
+                        <Dropdown
+                          size="sm"
+                          value={colorStoneShape}
+                          onChange={(val) => setColorStoneShape(val)}
+                          options={diamondShapesList}
+                          placeholder="Select Stone Shape"
+                          buttonClassName="h-8 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
+                        />
+                      </div>
+
+                      {/* 3. TOTAL CARAT WEIGHT (CT) */}
+                      <div className="space-y-2">
+                        <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+                          TOTAL CARAT WEIGHT (CT)
+                        </label>
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="number"
+                            step="0.01"
+                            placeholder="e.g. 1.5"
+                            value={colorStoneCaratInput}
+                            onChange={(e) => setColorStoneCaratInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                handleAddColorStoneCarat();
+                              }
+                            }}
+                            className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                          <button
+                            type="button"
+                            onClick={handleAddColorStoneCarat}
+                            className="w-8 h-8 flex-shrink-0 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer"
+                            title="Add Carat Weight"
+                          >
+                            +
+                          </button>
+                        </div>
+
+                        {/* Carat Tags with Delete 'x' */}
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {colorStoneCarats.map((ct) => (
+                            <span
+                              key={ct}
+                              className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-lg bg-[#8b6f4e] text-white text-[13px] font-semibold shadow-xs select-none"
+                            >
+                              <span>{ct} ct</span>
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveColorStoneCarat(ct)}
+                                className="w-4 h-4 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-black/20 transition-all cursor-pointer shrink-0"
+                                title={`Remove ${ct} ct`}
+                                aria-label={`Remove ${ct} ct`}
+                              >
+                                <HiOutlineX className="w-3.5 h-3.5 stroke-[2.5]" />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Auto-Generated Combinations Table */}
+                    <div className="pt-3 space-y-2.5">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
+                          <h5 className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                            COLOR STONE COMBINATIONS ({colorStoneCombinations.length})
+                          </h5>
+                        </div>
+                      </div>
+
+                      {colorStoneCombinations.length === 0 ? (
+                        <div className="py-8 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200">
+                          <p className="text-xs text-stone-400">
+                            Select stone type, shape, and add carat weights to generate color stone combinations.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto rounded-xl border border-stone-200/80 bg-white">
+                          <table className="w-full text-left text-xs">
+                            <thead>
+                              <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                                <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
+                                <th className="py-2.5 px-4 font-bold">STONE TYPE</th>
+                                <th className="py-2.5 px-3 font-bold">SHAPE</th>
+                                <th className="py-2.5 px-3 font-bold">CARAT</th>
+                                <th className="py-2.5 px-3 font-bold">RATE / CT</th>
+                                <th className="py-2.5 px-4 font-bold text-right">TOTAL PRICE</th>
+                                <th className="py-2.5 px-3 font-bold text-center w-16">ACTION</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-stone-100">
+                              {colorStoneCombinations.map((combo, idx) => (
+                                <tr key={combo.id} className="hover:bg-stone-50/60 transition-colors">
+                                  <td className="py-2.5 px-3 text-center font-medium text-stone-400">{idx + 1}</td>
+                                  <td className="py-2.5 px-4 font-bold text-stone-800">{combo.diamondType || '—'}</td>
+                                  <td className="py-2.5 px-3 font-semibold text-stone-800 uppercase">{combo.shape || '—'}</td>
+                                  <td className="py-2.5 px-3 font-semibold text-stone-800">{combo.carat} ct</td>
+                                  <td className="py-2.5 px-3 font-semibold text-[#8b6f4e]">
+                                    ₹3,000 / ct (Fixed)
+                                  </td>
+                                  <td className="py-2.5 px-4 text-right font-bold text-stone-900">
+                                    ₹{combo.totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveColorStoneCarat(combo.carat)}
+                                      className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
+                                      title="Remove combination"
+                                    >
+                                      <HiOutlineTrash className="w-4 h-4" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* ── Center Diamond Configuration Card (Exact match to portal screenshot) ── */}
+                {stoneConfigType === 'centerDiamond' && (
                 <div className="p-5 rounded-2xl border border-stone-200/90 bg-white space-y-4 shadow-2xs">
                   {/* Card Header */}
                   <div className="flex items-center justify-between pb-3 border-b border-stone-100">
@@ -4500,8 +4888,178 @@ export default function AddJewelryProduct() {
                     )}
                   </div>
                 </div>
+                )}
 
-                <SideDiamondEditor rows={sideRows} onChange={setSideRows} masters={diamondMasters} />
+                {/* ── Side Stone Configuration Card ── */}
+                <div className="p-5 rounded-2xl border border-stone-200/90 bg-white space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-100 flex-wrap gap-2">
+                    <div>
+                      <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
+                        SIDE STONE CONFIGURATION
+                      </h4>
+                      <p className="text-[10px] text-stone-400 mt-0.5">
+                        Configure accent diamonds and/or gemstones.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl">
+                      {[
+                        { id: 'sideDiamond', label: 'Side Diamond' },
+                        { id: 'sideColorStone', label: 'Side Color Stone' },
+                        { id: 'both', label: 'Both' },
+                        { id: 'none', label: 'None' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.id}
+                          type="button"
+                          onClick={() => setSideStoneConfigType(opt.id)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                            sideStoneConfigType === opt.id
+                              ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                              : 'text-stone-600 hover:text-stone-900'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Side Diamond Editor (if sideDiamond or both) */}
+                  {(sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both') && (
+                    <div className="pt-2">
+                      <h5 className="text-[10.5px] font-bold text-stone-700 uppercase tracking-wider mb-2">Side Diamonds</h5>
+                      <SideDiamondEditor rows={sideRows} onChange={setSideRows} masters={diamondMasters} />
+                    </div>
+                  )}
+
+                  {/* Side Color Stone Section (if sideColorStone or both) */}
+                  {(sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both') && (
+                    <div className="pt-3 space-y-3 border-t border-stone-100">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <IoDiamondOutline className="w-4 h-4 text-[#8b6f4e]" />
+                          <h5 className="text-[10.5px] font-bold text-stone-700 uppercase tracking-wider">
+                            SIDE COLOR STONE CONFIGURATION
+                          </h5>
+                        </div>
+                        <span className="text-[11px] font-bold text-[#8b6f4e] bg-amber-50 px-2.5 py-0.5 rounded-full border border-[#8b6f4e]/20">
+                          Rate: ₹3,000 / ct (Fixed)
+                        </span>
+                      </div>
+
+                      {/* Add Side Color Stone Row Bar */}
+                      <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end p-3 rounded-xl bg-stone-50 border border-stone-200/80">
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
+                            STONE TYPE
+                          </label>
+                          <Dropdown
+                            size="sm"
+                            value={sideColorStoneType}
+                            onChange={(val) => setSideColorStoneType(val)}
+                            options={diamondTypesList}
+                            placeholder="Select Type"
+                            buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
+                            STONE SHAPE
+                          </label>
+                          <Dropdown
+                            size="sm"
+                            value={sideColorStoneShape}
+                            onChange={(val) => setSideColorStoneShape(val)}
+                            options={diamondShapesList}
+                            placeholder="Select Shape"
+                            buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
+                            PIECES
+                          </label>
+                          <input
+                            type="number"
+                            min="1"
+                            value={sideColorStonePieces}
+                            onChange={(e) => setSideColorStonePieces(e.target.value)}
+                            placeholder="e.g. 2"
+                            className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
+                            CARAT WEIGHT
+                          </label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0.01"
+                            value={sideColorStoneCarat}
+                            onChange={(e) => setSideColorStoneCarat(e.target.value)}
+                            placeholder="e.g. 0.50"
+                            className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                          />
+                        </div>
+                        <div>
+                          <button
+                            type="button"
+                            onClick={handleAddSideColorStoneRow}
+                            className="w-full h-8 px-3 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center gap-1 font-bold text-xs transition-colors cursor-pointer"
+                          >
+                            <HiOutlinePlus className="w-4 h-4" /> Add Row
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Side Color Stone Table */}
+                      {sideColorStoneRows.length > 0 && (
+                        <div className="overflow-x-auto rounded-xl border border-stone-200/80 bg-white">
+                          <table className="w-full text-left text-xs">
+                            <thead>
+                              <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                                <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
+                                <th className="py-2.5 px-4 font-bold">TYPE</th>
+                                <th className="py-2.5 px-3 font-bold">SHAPE</th>
+                                <th className="py-2.5 px-3 font-bold text-center">PIECES</th>
+                                <th className="py-2.5 px-3 font-bold text-center">CARAT WEIGHT</th>
+                                <th className="py-2.5 px-3 font-bold">RATE / CT</th>
+                                <th className="py-2.5 px-4 font-bold text-right">TOTAL</th>
+                                <th className="py-2.5 px-3 w-14 font-bold text-center">ACTION</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-stone-100">
+                              {sideColorStoneRows.map((row, idx) => (
+                                <tr key={row.id} className="hover:bg-stone-50/60 transition-colors">
+                                  <td className="py-2.5 px-3 text-center font-medium text-stone-400">{idx + 1}</td>
+                                  <td className="py-2.5 px-4 font-bold text-stone-800">{row.diamondType || '—'}</td>
+                                  <td className="py-2.5 px-3 font-semibold text-stone-800 uppercase">{row.diamondShape || '—'}</td>
+                                  <td className="py-2.5 px-3 text-center font-semibold text-stone-800">{row.pieces || 1}</td>
+                                  <td className="py-2.5 px-3 text-center font-semibold text-stone-800">{row.caratWeight} ct</td>
+                                  <td className="py-2.5 px-3 font-semibold text-[#8b6f4e]">₹3,000 / ct (Fixed)</td>
+                                  <td className="py-2.5 px-4 text-right font-bold text-stone-900">
+                                    ₹{(Number(row.caratWeight || 0) * 3000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </td>
+                                  <td className="py-2.5 px-3 text-center">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveSideColorStoneRow(row.id)}
+                                      className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
+                                      title="Remove row"
+                                    >
+                                      <HiOutlineTrash className="w-4 h-4" />
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* ─── Sub-Section 3: Preview Variants ───────── */}
