@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlineUpload,
@@ -8,6 +8,8 @@ import {
   HiOutlineCheck,
   HiOutlinePhotograph,
   HiOutlineLink,
+  HiOutlineEye,
+  HiOutlineExternalLink,
 } from 'react-icons/hi';
 import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -47,6 +49,20 @@ export default function GalleryUploadModal({
   const [loadingRecords, setLoadingRecords] = useState(false);
   const [selectedRecordIds, setSelectedRecordIds] = useState([]);
   const [imageRecordMap, setImageRecordMap] = useState({});
+  const [previewModalData, setPreviewModalData] = useState(null);
+
+  const recordDropdownOptions = useMemo(() => [
+    { value: '', label: '(None / General Asset)' },
+    ...availableRecords.map((r) => {
+      const displayName = r.title || r.name || 'Untitled';
+      const cat = r.categoryName ? ` · ${r.categoryName}` : '';
+      const badge = r.displayType || r.display?.type ? ` [${r.displayType || r.display?.type}]` : '';
+      return {
+        value: r._id,
+        label: `${displayName}${cat}${badge}`,
+      };
+    }),
+  ], [availableRecords]);
 
   const BANNER_TYPES = [
     'herobanner',
@@ -174,6 +190,19 @@ export default function GalleryUploadModal({
     }
   }, [isOpen, uploadType, uploadThemeId]);
 
+  useEffect(() => {
+    if (previewModalData) {
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation();
+          setPreviewModalData(null);
+        }
+      };
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [previewModalData]);
+
   const resetUploadModal = () => {
     selectedFiles.forEach((f) => {
       if (f.previewUrl?.startsWith('blob:')) {
@@ -183,6 +212,7 @@ export default function GalleryUploadModal({
     setSelectedFiles([]);
     setSelectedRecordIds([]);
     setImageRecordMap({});
+    setPreviewModalData(null);
     setIsDragging(false);
     setIsUploading(false);
     setUploadProgress(0);
@@ -627,9 +657,29 @@ export default function GalleryUploadModal({
                                   {isSelected && <HiOutlineCheck className="h-3 w-3 stroke-[3]" />}
                                 </div>
 
-                                <div className="h-10 w-14 shrink-0 rounded-lg overflow-hidden border border-stone-200 bg-stone-100 flex items-center justify-center">
+                                <div
+                                  onClick={(e) => {
+                                    if (thumbUrl) {
+                                      e.stopPropagation();
+                                      setPreviewModalData({
+                                        url: thumbUrl,
+                                        title: displayName,
+                                        subtitle: `${targetSingularLabel} • ${categoryLabel || badgeType}`,
+                                      });
+                                    }
+                                  }}
+                                  className={`h-10 w-14 shrink-0 rounded-lg overflow-hidden border border-stone-200 bg-stone-100 flex items-center justify-center relative group/thumb ${
+                                    thumbUrl ? 'cursor-pointer hover:ring-2 hover:ring-[#8b6c3a]/50' : ''
+                                  }`}
+                                  title={thumbUrl ? "Click to preview banner image" : undefined}
+                                >
                                   {thumbUrl ? (
-                                    <img src={thumbUrl} alt={displayName} className="h-full w-full object-cover" />
+                                    <>
+                                      <img src={thumbUrl} alt={displayName} className="h-full w-full object-cover transition-transform duration-300 group-hover/thumb:scale-110" />
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+                                        <HiOutlineEye className="w-3.5 h-3.5 text-white drop-shadow" />
+                                      </div>
+                                    </>
                                   ) : (
                                     <HiOutlinePhotograph className="h-5 w-5 text-stone-400" />
                                   )}
@@ -651,12 +701,26 @@ export default function GalleryUploadModal({
                                         </span>
                                       </>
                                     )}
-                                    <span className="text-stone-300">•</span>
-                                    <span className="text-[9px] font-mono text-stone-400">
-                                      #{r._id.slice(-6)}
-                                    </span>
                                   </div>
                                 </div>
+
+                                {thumbUrl && (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPreviewModalData({
+                                        url: thumbUrl,
+                                        title: displayName,
+                                        subtitle: `${targetSingularLabel} • ${categoryLabel || badgeType}`,
+                                      });
+                                    }}
+                                    className="shrink-0 p-1.5 rounded-lg border border-stone-200 bg-stone-50 hover:bg-[#8b6c3a]/10 hover:border-[#8b6c3a] text-stone-500 hover:text-[#8b6c3a] transition cursor-pointer shadow-2xs"
+                                    title="Preview banner image"
+                                  >
+                                    <HiOutlineEye className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
 
                                 {isSelected && (
                                   <span className="shrink-0 text-[10px] font-bold text-[#8b6c3a] bg-[#8b6c3a]/10 px-2 py-0.5 rounded-full">
@@ -764,20 +828,15 @@ export default function GalleryUploadModal({
                   </div>
 
                   {/* Smart Image Compression Info Banner */}
-                  <div className="flex items-start gap-2.5 rounded-xl border border-emerald-200/90 bg-emerald-50/70 p-2.5 text-[11px] text-emerald-900 shadow-2xs">
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-[11px] shadow-2xs mt-0.5">
+                  <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200/90 bg-emerald-50/70 p-2 text-[11px] text-emerald-900 shadow-2xs">
+                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-[11px] shadow-2xs">
                       ⚡
                     </div>
-                    <div className="flex-1 leading-relaxed">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-emerald-950">Smart Image Compression Active</span>
-                        <span className="inline-flex items-center rounded-md bg-emerald-200/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-emerald-800">
-                          Auto WebP · ~82% Quality
-                        </span>
-                      </div>
-                      <p className="mt-0.5 text-[10.5px] text-emerald-800">
-                        Heavy original photos are automatically compressed to ultra-fast lightweight WebP before upload with zero visible jewellery clarity loss.
-                      </p>
+                    <div className="flex-1 flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-emerald-950">Smart Image Compression Active</span>
+                      <span className="inline-flex items-center rounded-md bg-emerald-200/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-emerald-800">
+                        Auto WebP · ~82% Quality
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -824,9 +883,6 @@ export default function GalleryUploadModal({
                     </div>
                     <p className="mt-3 text-sm font-bold text-stone-800">
                       Click or drag and drop images here
-                    </p>
-                    <p className="mt-1 text-xs text-stone-400 max-w-sm">
-                      Upload single or multiple images (PNG, JPG, WebP). Automatic compression optimizes heavy MB files to lightweight KB.
                     </p>
                     <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-stone-200 shadow-2xs text-xs font-semibold text-stone-700 hover:bg-stone-50">
                       Browse Files
@@ -907,19 +963,32 @@ export default function GalleryUploadModal({
                               </span>
                             )}
 
-                            {!isUploading && (
+                            <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10" onClick={(e) => e.stopPropagation()}>
                               <button
                                 type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeFile(item.id);
-                                }}
-                                className="absolute top-1.5 right-1.5 h-6 w-6 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
-                                title="Remove image"
+                                onClick={() =>
+                                  setPreviewModalData({
+                                    url: item.previewUrl,
+                                    title: item.name,
+                                    subtitle: `Staged File • ${formatBytes(item.compressedSize || item.size)}`,
+                                  })
+                                }
+                                className="h-6 w-6 rounded-full bg-black/60 hover:bg-[#8b6c3a] text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
+                                title="Preview image"
                               >
-                                <HiOutlineX className="w-3.5 h-3.5 stroke-[3]" />
+                                <HiOutlineEye className="w-3.5 h-3.5" />
                               </button>
-                            )}
+                              {!isUploading && (
+                                <button
+                                  type="button"
+                                  onClick={() => removeFile(item.id)}
+                                  className="h-6 w-6 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
+                                  title="Remove image"
+                                >
+                                  <HiOutlineX className="w-3.5 h-3.5 stroke-[3]" />
+                                </button>
+                              )}
+                            </div>
                           </div>
 
                           {/* Card Meta with Original (OG) vs Compressed Size */}
@@ -957,30 +1026,22 @@ export default function GalleryUploadModal({
                                     <span className="text-[9px] text-stone-400">Default</span>
                                   )}
                                 </label>
-                                <select
+                                <Dropdown
+                                  size="sm"
+                                  portal={true}
+                                  menuClassName="z-[10000]"
+                                  buttonClassName="w-full h-8 text-[11px] px-2 bg-stone-50 border-stone-200 font-medium text-stone-800 focus:bg-white focus:border-[#8b6c3a] rounded-xl"
                                   value={
                                     imageRecordMap[item.id] !== undefined
                                       ? imageRecordMap[item.id]
                                       : (selectedRecordIds[idx % selectedRecordIds.length] || selectedRecordIds[0] || '')
                                   }
-                                  onChange={(e) => {
-                                    const val = e.target.value;
-                                    setImageRecordMap((prev) => ({ ...prev, [item.id]: val }));
+                                  onChange={(val) => {
+                                    setImageRecordMap((prev) => ({ ...prev, [item.id]: val || '' }));
                                   }}
-                                  className="w-full text-[10.5px] py-1.5 px-2 rounded-xl border border-stone-200 bg-stone-50 font-medium text-stone-800 focus:border-[#8b6c3a] focus:bg-white outline-none cursor-pointer transition shadow-2xs"
-                                >
-                                  <option value="">(None / General Asset)</option>
-                                  {availableRecords.map((r) => {
-                                    const displayName = r.title || r.name || 'Untitled';
-                                    const cat = r.categoryName ? ` · ${r.categoryName}` : '';
-                                    const badge = r.displayType || r.display?.type ? ` [${r.displayType || r.display?.type}]` : '';
-                                    return (
-                                      <option key={r._id} value={r._id}>
-                                        {displayName}{cat}{badge} (#{r._id.slice(-6)})
-                                      </option>
-                                    );
-                                  })}
-                                </select>
+                                  options={recordDropdownOptions}
+                                  placeholder="Select linked item..."
+                                />
                               </div>
                             )}
                           </div>
@@ -1064,6 +1125,72 @@ export default function GalleryUploadModal({
           </div>
         </form>
       </div>
+
+      {/* ─── 4. IMAGE PREVIEW LIGHTBOX MODAL ─── */}
+      {previewModalData && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[10005] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setPreviewModalData(null)}
+        >
+          <div
+            className="relative flex flex-col max-h-[92vh] max-w-4xl w-full rounded-3xl border border-stone-800 bg-stone-900 shadow-2xl overflow-hidden animate-scaleUp text-white"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-stone-800 px-6 py-4 shrink-0 bg-stone-900">
+              <div className="min-w-0 pr-4">
+                <h3 className="text-base font-bold text-white truncate">
+                  {previewModalData.title || 'Image Preview'}
+                </h3>
+                {previewModalData.subtitle && (
+                  <p className="text-xs text-stone-400 mt-0.5 truncate">{previewModalData.subtitle}</p>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setPreviewModalData(null)}
+                className="rounded-xl p-2 text-stone-400 hover:bg-stone-800 hover:text-white transition cursor-pointer shrink-0"
+              >
+                <HiOutlineX className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Image Preview Canvas */}
+            <div className="flex-1 flex items-center justify-center p-6 bg-stone-950/90 overflow-hidden min-h-[300px]">
+              <img
+                src={previewModalData.url}
+                alt={previewModalData.title || 'Preview'}
+                className="max-h-[62vh] max-w-full rounded-xl object-contain shadow-2xl"
+              />
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-stone-800 px-6 py-3.5 bg-stone-900 shrink-0">
+              <span className="text-[11px] text-stone-400">Click backdrop or press Esc to close</span>
+              <div className="flex items-center gap-2">
+                <a
+                  href={previewModalData.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-xs font-semibold text-white transition cursor-pointer"
+                >
+                  <HiOutlineExternalLink className="w-3.5 h-3.5" />
+                  <span>Open Full Image</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setPreviewModalData(null)}
+                  className="px-4 py-2 rounded-xl bg-[#8b6c3a] hover:bg-[#765a2d] text-xs font-semibold text-white transition cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>,
     document.body
   );

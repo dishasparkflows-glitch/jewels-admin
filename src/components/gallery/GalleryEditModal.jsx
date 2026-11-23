@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePencil,
   HiOutlineX,
   HiOutlineDesktopComputer,
   HiOutlineDeviceMobile,
+  HiOutlineEye,
 } from 'react-icons/hi';
 import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -24,14 +25,54 @@ export default function GalleryEditModal({
   const [editStatus, setEditStatus] = useState('active');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  // Ensure the item's assigned theme object is always present in dropdown options
+  const effectiveThemeOptions = useMemo(() => {
+    const rawTheme = item?.themeId || item?.theme;
+    if (typeof rawTheme === 'object' && rawTheme !== null && (rawTheme._id || rawTheme.id)) {
+      const id = String(rawTheme._id || rawTheme.id);
+      const exists = modalThemeOptions.some((opt) => String(opt.value) === id);
+      if (!exists) {
+        return [
+          ...modalThemeOptions,
+          {
+            value: id,
+            label: rawTheme.name ? `${rawTheme.name}${rawTheme.status ? ` (${rawTheme.status})` : ''}` : 'Assigned Theme',
+            dotColor: rawTheme.status === 'active' ? 'bg-emerald-500' : 'bg-amber-400',
+          },
+        ];
+      }
+    }
+    return modalThemeOptions;
+  }, [item, modalThemeOptions]);
+
   useEffect(() => {
     if (item) {
-      setEditThemeId(item.themeId || '');
-      setEditPlacement(item.placement || 'herobanner');
+      // Resolve string theme ID from object or string
+      const rawTheme = item.themeId || item.theme;
+      let resolvedThemeId = '';
+      if (typeof rawTheme === 'object' && rawTheme !== null) {
+        resolvedThemeId = String(rawTheme._id || rawTheme.id || '');
+      } else if (rawTheme) {
+        resolvedThemeId = String(rawTheme);
+      }
+
+      // Fallback matching by theme name if ID wasn't directly found
+      if (!resolvedThemeId && item.themeName && item.themeName !== 'Global / Unassigned' && item.themeName !== 'Global') {
+        const found = effectiveThemeOptions.find((opt) =>
+          opt.value && (
+            opt.label?.toLowerCase().includes(item.themeName.toLowerCase()) ||
+            opt.raw?.name?.toLowerCase() === item.themeName.toLowerCase()
+          )
+        );
+        if (found) resolvedThemeId = String(found.value);
+      }
+
+      setEditThemeId(resolvedThemeId);
+      setEditPlacement(item.placement || item.type || 'herobanner');
       setEditPlatform(item.platform || 'web');
       setEditStatus(item.status || 'active');
     }
-  }, [item]);
+  }, [item, effectiveThemeOptions]);
 
   if (!item) return null;
 
@@ -98,16 +139,37 @@ export default function GalleryEditModal({
         <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
           {/* Media Preview Banner */}
           <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-3">
-            <img
-              src={item.url}
-              alt={item.name}
-              className="h-14 w-20 rounded-xl object-cover border border-stone-200 bg-white shadow-2xs"
-            />
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="relative group/preview shrink-0 block overflow-hidden rounded-xl border border-stone-200 bg-white shadow-2xs"
+              title="Click to preview full image"
+            >
+              <img
+                src={item.url}
+                alt={item.name}
+                className="h-14 w-20 object-cover transition-transform group-hover/preview:scale-105"
+              />
+              <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/preview:opacity-100 transition-opacity flex items-center justify-center">
+                <HiOutlineEye className="w-4 h-4 text-white drop-shadow" />
+              </div>
+            </a>
             <div className="flex-1 min-w-0">
               <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">Image Asset</span>
               <p className="text-xs font-bold text-stone-900 truncate">{item.typeLabel || item.placement}</p>
               <span className="text-[10px] text-stone-500 truncate block">{item.url}</span>
             </div>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs font-semibold transition cursor-pointer shadow-2xs"
+              title="Preview image in new tab"
+            >
+              <HiOutlineEye className="w-4 h-4 text-[#8b6c3a]" />
+              <span>Preview</span>
+            </a>
           </div>
 
           {/* Theme Dropdown */}
@@ -118,7 +180,7 @@ export default function GalleryEditModal({
               showStatusDot={true}
               value={editThemeId}
               onChange={(val) => setEditThemeId(val || '')}
-              options={modalThemeOptions}
+              options={effectiveThemeOptions}
               placeholder="Select theme…"
               portal={true}
               menuClassName="z-[10000]"

@@ -4,6 +4,7 @@ import {
   HiOutlineRefresh,
   HiOutlineSearch,
   HiOutlineX,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import { TbCoins } from 'react-icons/tb';
 import toast from 'react-hot-toast';
@@ -20,6 +21,7 @@ export default function CurrenciesView() {
   const [syncingAll, setSyncingAll] = useState(false);
   const [syncingId, setSyncingId] = useState(null);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -194,6 +196,11 @@ export default function CurrenciesView() {
     try {
       await api.delete(`/currencies/${item._id}`);
       toast.success(`${item.currencyInfo?.code} deleted successfully`);
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(item._id);
+        return next;
+      });
       setCurrencies((prev) => prev.filter((c) => c._id !== item._id));
     } catch (err) {
       console.error('Delete failed:', err);
@@ -221,6 +228,66 @@ export default function CurrenciesView() {
     totalItems,
     paginatedItems,
   } = usePagination(filteredCurrencies);
+
+  // Selection handlers for bulk operations (excluding base currency which cannot be deleted)
+  const selectableItems = useMemo(
+    () => paginatedItems.filter((c) => !c.settings?.isBaseCurrency),
+    [paginatedItems]
+  );
+
+  const isAllSelected =
+    selectableItems.length > 0 &&
+    selectableItems.every((c) => selectedIds.has(c._id));
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        selectableItems.forEach((c) => next.delete(c._id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        selectableItems.forEach((c) => next.add(c._id));
+        return next;
+      });
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected Currencies',
+      message: `Are you sure you want to delete ${count} selected currenc${count > 1 ? 'ies' : 'y'}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    const idsToDelete = Array.from(selectedIds);
+    try {
+      await api.post('/currencies/bulk-delete', { ids: idsToDelete });
+      setCurrencies((prev) => prev.filter((c) => !selectedIds.has(c._id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} currenc${count > 1 ? 'ies' : 'y'} deleted successfully`);
+    } catch (err) {
+      console.error('Failed to delete selected currencies:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete selected currencies');
+    }
+  };
 
   // Format Date helpers matching Screenshot
   const formatTime = (dateStr) => {
@@ -278,7 +345,7 @@ export default function CurrenciesView() {
       </div>
 
       {/* ─── Search & Count Row (Exact match to Screenshot) ─── */}
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         {/* Search input with pill styling */}
         <div className="relative flex-1 max-w-sm">
           <HiOutlineSearch className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
@@ -300,9 +367,26 @@ export default function CurrenciesView() {
           )}
         </div>
 
-        {/* Currency Count Counter */}
-        <div className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
-          {filteredCurrencies.length} CURRENCIES CONFIGURED
+        <div className="flex items-center gap-3">
+          {/* Bulk Delete Button */}
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            disabled={selectedIds.size === 0}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap ${
+              selectedIds.size > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50 cursor-pointer'
+                : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
+            }`}
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 shrink-0 text-[#ef4444]" />
+            <span>Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}</span>
+          </button>
+
+          {/* Currency Count Counter */}
+          <div className="text-[11px] font-bold tracking-wider text-stone-400 uppercase">
+            {filteredCurrencies.length} CURRENCIES CONFIGURED
+          </div>
         </div>
       </div>
 
@@ -312,7 +396,17 @@ export default function CurrenciesView() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                <th className="py-3 pl-4 pr-2 w-12 text-center whitespace-nowrap">SR NO</th>
+                <th className="py-3 pl-4 pr-1 w-8">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    disabled={selectableItems.length === 0}
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                    title="Select all on this page"
+                  />
+                </th>
+                <th className="py-3 px-3 w-12 text-center whitespace-nowrap">SR NO</th>
                 <th className="py-3 px-4 whitespace-nowrap">CURRENCY</th>
                 <th className="py-3 px-4 text-center whitespace-nowrap">SYMBOL</th>
                 <th className="py-3 px-4 whitespace-nowrap">VALUE IN INR (1 UNIT)</th>
@@ -325,7 +419,7 @@ export default function CurrenciesView() {
             <tbody className="divide-y divide-stone-100/90 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-16 text-center text-stone-400">
+                  <td colSpan={9} className="py-16 text-center text-stone-400">
                     <div className="flex flex-col items-center justify-center gap-2">
                       <div className="w-5 h-5 border-2 border-stone-300 border-t-[#8b6f4e] rounded-full animate-spin" />
                       <span className="text-[11px] font-bold tracking-wider uppercase text-stone-400">
@@ -336,7 +430,7 @@ export default function CurrenciesView() {
                 </tr>
               ) : filteredCurrencies.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-stone-400 text-xs">
+                  <td colSpan={9} className="py-12 text-center text-stone-400 text-xs">
                     No matching currencies found
                   </td>
                 </tr>
@@ -348,15 +442,32 @@ export default function CurrenciesView() {
                   const inrRate = item.exchangeRate?.inrRate || 1;
                   const rateVsInr = item.exchangeRate?.rate || (inrRate > 0 ? 1 / inrRate : 1);
                   const isSyncingThis = syncingId === item._id;
+                  const isSelected = selectedIds.has(item._id);
 
                   return (
                     <tr
                       key={item._id}
                       onClick={() => openEditModal(item)}
-                      className="hover:bg-[#faf8f5]/60 transition-colors cursor-pointer group"
+                      className={`hover:bg-[#faf8f5]/60 transition-colors cursor-pointer group ${
+                        isSelected ? 'bg-amber-50/40' : ''
+                      }`}
                     >
+                      {/* Checkbox */}
+                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={isBase}
+                          onChange={() => handleToggleSelect(item._id)}
+                          className={`w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 accent-[#8b6f4e] ${
+                            isBase ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                          }`}
+                          title={isBase ? 'Base currency cannot be deleted' : undefined}
+                        />
+                      </td>
+
                       {/* Sr No */}
-                      <td className="py-3.5 pl-4 pr-2 text-center text-xs font-semibold text-stone-400 whitespace-nowrap">
+                      <td className="py-3.5 px-3 text-center text-xs font-semibold text-stone-400 whitespace-nowrap">
                         {serialNumber}
                       </td>
 

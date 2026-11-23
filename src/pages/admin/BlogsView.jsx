@@ -5,6 +5,7 @@ import {
   HiOutlineClock,
   HiOutlineTag,
   HiOutlineSparkles,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { blogsAPI, blogCategoriesAPI } from '../../api/services';
@@ -31,6 +32,7 @@ export default function BlogsView() {
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   // Form & Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -266,6 +268,61 @@ export default function BlogsView() {
     }
   };
 
+  // Selection handlers for bulk operations
+  const isAllSelected =
+    paginatedItems.length > 0 &&
+    paginatedItems.every((b) => selectedIds.has(b._id));
+
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginatedItems.forEach((b) => next.delete(b._id));
+        return next;
+      });
+    } else {
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        paginatedItems.forEach((b) => next.add(b._id));
+        return next;
+      });
+    }
+  };
+
+  const handleToggleSelect = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    if (count === 0) return;
+
+    const isConfirmed = await confirm({
+      title: 'Delete Selected Blog Articles',
+      message: `Are you sure you want to delete ${count} selected blog article${count > 1 ? 's' : ''}? This action cannot be undone.`,
+      confirmText: `Delete (${count})`,
+      cancelText: 'Cancel',
+      type: 'danger',
+    });
+    if (!isConfirmed) return;
+
+    const idsToDelete = Array.from(selectedIds);
+    try {
+      await blogsAPI.bulkDelete(idsToDelete);
+      setBlogs((prev) => prev.filter((b) => !selectedIds.has(b._id)));
+      setSelectedIds(new Set());
+      toast.success(`${count} blog article${count > 1 ? 's' : ''} deleted successfully`);
+    } catch (err) {
+      console.error('Failed to delete selected blog articles:', err);
+      toast.error(err.response?.data?.message || 'Failed to delete selected blog articles');
+    }
+  };
+
   // Delete Blog
   const handleDelete = async (blog) => {
     const blogTitle = blog.basicInfo?.title || blog.title || 'this article';
@@ -282,6 +339,11 @@ export default function BlogsView() {
     try {
       await blogsAPI.delete(blog._id);
       toast.success('Blog post deleted successfully');
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(blog._id);
+        return next;
+      });
       fetchData();
     } catch (err) {
       console.error('Failed to delete blog:', err);
@@ -382,6 +444,21 @@ export default function BlogsView() {
               Draft
             </button>
           </div>
+
+          {/* Bulk Delete Button */}
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            disabled={selectedIds.size === 0}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap ${
+              selectedIds.size > 0
+                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50 cursor-pointer'
+                : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
+            }`}
+          >
+            <HiOutlineTrash className="w-3.5 h-3.5 shrink-0 text-[#ef4444]" />
+            <span>Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}</span>
+          </button>
         </div>
       </div>
 
@@ -391,6 +468,15 @@ export default function BlogsView() {
           <table className="w-full text-left text-xs sm:text-sm text-stone-700">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                <th className="py-3 pl-4 pr-1 w-8">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={handleSelectAll}
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                    title="Select all on this page"
+                  />
+                </th>
                 <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
                 <th className="py-3 px-4 whitespace-nowrap">Article</th>
                 <th className="py-3 px-4 whitespace-nowrap">Category</th>
@@ -404,7 +490,7 @@ export default function BlogsView() {
             <tbody className="divide-y divide-stone-100">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-stone-400">
+                  <td colSpan="9" className="py-12 text-center text-stone-400">
                     <div className="inline-flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin" />
                       <span>Loading luxury journal articles...</span>
@@ -413,7 +499,7 @@ export default function BlogsView() {
                 </tr>
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-stone-500">
+                  <td colSpan="9" className="py-12 text-center text-stone-500">
                     <HiOutlineDocumentText className="w-8 h-8 text-stone-300 mx-auto mb-2" />
                     <p className="font-semibold text-stone-700">No blog posts found</p>
                     <p className="text-xs text-stone-400 mt-1">
@@ -425,6 +511,7 @@ export default function BlogsView() {
                 </tr>
               ) : (
                 paginatedItems.map((blog, idx) => {
+                  const isSelected = selectedIds.has(blog._id);
                   const imageUrl = blog.image?.url || (typeof blog.image === 'string' ? blog.image : '');
                   const categoryName = blog.blogCategory?.name || 'Uncategorized';
                   const dateStr = blog.meta?.createdAt
@@ -443,8 +530,20 @@ export default function BlogsView() {
                     <tr
                       key={blog._id}
                       onClick={() => navigate(`/blogs/edit/${blog._id}`)}
-                      className="hover:bg-stone-50/70 transition-colors cursor-pointer"
+                      className={`hover:bg-stone-50/70 transition-colors cursor-pointer ${
+                        isSelected ? 'bg-amber-50/40' : ''
+                      }`}
                     >
+                      {/* Checkbox */}
+                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelect(blog._id)}
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                        />
+                      </td>
+
                       {/* Sr No */}
                       <td className="py-3.5 px-3 text-center align-middle text-xs font-semibold text-stone-500 whitespace-nowrap">
                         {(currentPage - 1) * pageSize + idx + 1}

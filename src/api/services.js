@@ -110,6 +110,7 @@ export const blogCategoriesAPI = {
   getById: (id) => api.get(`/blog-categories/${id}`),
   getBySlug: (slug) => api.get(`/blog-categories/slug/${slug}`),
   create: (data) => api.post('/blog-categories', data),
+  bulkDelete: (ids) => api.post('/blog-categories/bulk-delete', { ids }),
   update: (id, data) => api.put(`/blog-categories/${id}`, data),
   delete: (id) => api.delete(`/blog-categories/${id}`),
 };
@@ -121,6 +122,7 @@ export const blogsAPI = {
   getBySlug: (slug) => api.get(`/blogs/slug/${slug}`),
   getRecent: (limit = 4) => api.get(`/blogs/recent?limit=${limit}`),
   create: (data) => api.post('/blogs', data),
+  bulkDelete: (ids) => api.post('/blogs/bulk-delete', { ids }),
   update: (id, data) => api.put(`/blogs/${id}`, data),
   delete: (id) => api.delete(`/blogs/${id}`),
 };
@@ -163,6 +165,7 @@ export const staticPagesAPI = {
   getById: (id) => api.get(`/static-pages/${id}`),
   getBySlug: (slug) => api.get(`/static-pages/slug/${slug}`),
   create: (data) => api.post('/static-pages', data),
+  bulkDelete: (ids) => api.post('/static-pages/bulk-delete', { ids }),
   update: (id, data) => api.put(`/static-pages/${id}`, data),
   delete: (id) => api.delete(`/static-pages/${id}`),
 };
@@ -194,6 +197,19 @@ export const galleryAPI = {
   deleteItem: (id, params) => api.delete('/gallery/' + id, { params }),
 };
 
+// ─── Currencies ───────────────────────────────────
+export const currenciesAPI = {
+  getAll: (params) => api.get('/currencies', { params }),
+  getById: (id) => api.get(`/currencies/${id}`),
+  getByCode: (code) => api.get(`/currencies/code/${code}`),
+  create: (data) => api.post('/currencies', data),
+  bulkDelete: (ids) => api.post('/currencies/bulk-delete', { ids }),
+  update: (id, data) => api.put(`/currencies/${id}`, data),
+  delete: (id) => api.delete(`/currencies/${id}`),
+  syncLiveRates: () => api.post('/currencies/sync-rates'),
+  syncOneRate: (id) => api.post(`/currencies/${id}/sync`),
+};
+
 // ─── Shiprocket Logistics ──────────────────────────
 export const logisticsAPI = {
   getCourierRates: (orderId) => api.get(`/shiprocket/rates/${orderId}`),
@@ -206,5 +222,16 @@ export const logisticsAPI = {
   createReturnShipment: (returnId, data) => api.post(`/shiprocket/create-return-shipment/${returnId}`, data),
   getReturnLabel: (returnId) => api.get(`/shiprocket/return-label/${returnId}`),
   trackReturn: (returnId) => api.get(`/shiprocket/track-return/${returnId}`),
+};
+
+// ─── Analytics ────────────────────────────────────
+export const analyticsAPI = {
+  getOverview: (params) => api.get('/analytics/overview', { params }),
+  getDashboard: (params) => api.get('/analytics/dashboard', { params }),
+  getAddToCartReport: (params) => api.get('/analytics/products/add-to-cart', { params }),
+  getWishlistReport: (params) => api.get('/analytics/products/wishlist', { params }),
+  getViewsReport: (params) => api.get('/analytics/products/views', { params }),
+  getStatus: () => api.get('/analytics/status'),
+  getHealth: () => api.get('/analytics/health'),
 };
 

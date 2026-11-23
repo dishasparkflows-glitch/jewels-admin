@@ -34,6 +34,8 @@ export default function MenuItemSelect({
   const [search, setSearch] = useState('');
   const [retry, setRetry] = useState(0);
   const [dropdownAlign, setDropdownAlign] = useState('left');
+  const [dropUp, setDropUp] = useState(false);
+  const [maxListHeight, setMaxListHeight] = useState(360);
   const root = useRef(null);
   const trigger = useRef(null);
   const searchInputRef = useRef(null);
@@ -41,14 +43,22 @@ export default function MenuItemSelect({
   const prevCatIdRef = useRef(categoryId);
   const id = useId();
 
-  // Position calculation: align dropdown left or right depending on viewport clearance
+  // Position calculation: align dropdown left/right and smart drop-up/down depending on viewport clearance
   useEffect(() => {
-    if (open && trigger.current) {
+    if (!open || !trigger.current) return;
+
+    const updatePosition = () => {
+      if (!trigger.current) return;
       const rect = trigger.current.getBoundingClientRect();
       const container =
         trigger.current.closest('.overflow-y-auto, [role="dialog"], .rounded-3xl, .shadow-2xl') ||
         document.body;
-      const containerRect = container ? container.getBoundingClientRect() : { right: window.innerWidth, left: 0 };
+      const isBody = container === document.body;
+      const containerRect = isBody
+        ? { left: 0, right: window.innerWidth, top: 0, bottom: window.innerHeight }
+        : container.getBoundingClientRect();
+
+      // Horizontal clearance
       const spaceRight = Math.min(window.innerWidth, containerRect.right) - rect.left;
       const spaceLeft = rect.right - Math.max(0, containerRect.left);
       if (spaceRight < 520 && spaceLeft > spaceRight) {
@@ -56,7 +66,27 @@ export default function MenuItemSelect({
       } else {
         setDropdownAlign('left');
       }
-    }
+
+      // Vertical clearance
+      const spaceBelow = Math.min(window.innerHeight, containerRect.bottom) - rect.bottom;
+      const spaceAbove = rect.top - Math.max(0, containerRect.top);
+
+      // Estimated overhead: search input header (~48px) + footer (~40px) + padding/margins (~30px) = ~118px
+      const overhead = 118;
+      const shouldDropUp = spaceBelow < 360 && spaceAbove > spaceBelow;
+      setDropUp(shouldDropUp);
+
+      const availableForList = (shouldDropUp ? spaceAbove : spaceBelow) - overhead - 16;
+      setMaxListHeight(Math.max(160, Math.min(384, Math.floor(availableForList))));
+    };
+
+    updatePosition();
+    window.addEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true);
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+    };
   }, [open]);
 
   // Focus search input safely without triggering browser container auto-scroll
@@ -244,7 +274,9 @@ export default function MenuItemSelect({
           id={id}
           role="group"
           aria-label="Menu item choices"
-          className={`absolute top-full z-50 mt-1 w-full sm:w-[500px] md:w-[540px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-2xl animate-fadeIn ${
+          className={`absolute z-50 w-full sm:w-[500px] md:w-[540px] max-w-[calc(100vw-2rem)] overflow-hidden rounded-2xl border border-stone-200/90 bg-white shadow-2xl animate-fadeIn ${
+            dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5'
+          } ${
             dropdownAlign === 'right' ? 'right-0' : 'left-0'
           }`}
         >
@@ -259,7 +291,10 @@ export default function MenuItemSelect({
               className="w-full rounded-lg border border-stone-200 py-1.5 pl-8 pr-2 text-xs outline-none focus:border-[#8b6f4e]"
             />
           </div>
-          <div className="max-h-96 overflow-y-auto overscroll-contain p-3 space-y-3">
+          <div
+            style={{ maxHeight: `${maxListHeight}px` }}
+            className="overflow-y-auto overscroll-contain p-3 space-y-3 luxury-scrollbar"
+          >
             {loading ? (
               <p role="status" className="p-3 text-xs text-stone-500">
                 Loading menu items…
@@ -314,7 +349,13 @@ export default function MenuItemSelect({
                                   {section.items.length}
                                 </span>
                               </div>
-                              <div className="space-y-1.5 pt-1">
+                              <div
+                                className={
+                                  sectionCount === 1
+                                    ? 'grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1'
+                                    : 'space-y-1.5 pt-1'
+                                }
+                              >
                                 {section.items.map((item) => {
                                   const isSelected = value.includes(item._id);
                                   return (
@@ -382,16 +423,27 @@ export default function MenuItemSelect({
               </>
             )}
           </div>
-          <div className="flex justify-between border-t border-stone-100 px-3 py-2 text-xs text-stone-500">
-            <span>{value.length} selected</span>
-            <button
-              type="button"
-              disabled={!value.length}
-              onClick={() => onChange([])}
-              className="text-[#8b6f4e] disabled:opacity-40 cursor-pointer font-semibold"
-            >
-              Clear selection
-            </button>
+          <div className="flex items-center justify-between border-t border-stone-100 px-3.5 py-2.5 text-xs text-stone-500 bg-stone-50/70">
+            <span className="font-medium text-stone-700">{value.length} selected</span>
+            <div className="flex items-center gap-3">
+              {allItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => onChange(allItems.map((item) => item._id))}
+                  className="text-[#8b6f4e] hover:text-[#725a3d] cursor-pointer font-semibold transition"
+                >
+                  Select all ({allItems.length})
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={!value.length}
+                onClick={() => onChange([])}
+                className="text-stone-500 hover:text-stone-800 disabled:opacity-40 cursor-pointer font-semibold transition"
+              >
+                Clear
+              </button>
+            </div>
           </div>
         </div>
       )}

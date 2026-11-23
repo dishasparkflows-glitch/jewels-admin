@@ -794,10 +794,10 @@ export default function ThemesView() {
       {/* ─── 3. FILTER & TOOLBAR (Compact Layout like Media & Theme Gallery) ─── */}
       <div className="rounded-lg border border-stone-200/90 bg-white p-2 sm:p-2.5 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
         <div className="relative flex-1 min-w-[240px] max-w-md">
-          <HiOutlineSearch className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400" />
+          <HiOutlineSearch className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400 pointer-events-none" />
           <input
             type="text"
-            className="w-full rounded-md border border-stone-200 bg-stone-50/70 pl-8.5 pr-7 py-1.5 text-xs text-stone-800 placeholder-stone-400 outline-none transition focus:border-[#8b6f4e] focus:bg-white focus:ring-1 focus:ring-[#8b6f4e]/20"
+            className="w-full rounded-md border border-stone-200 bg-stone-50/70 pl-9 pr-7 py-1.5 text-xs text-stone-800 placeholder-stone-400 outline-none transition focus:border-[#8b6f4e] focus:bg-white focus:ring-1 focus:ring-[#8b6f4e]/20"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search themes by name or code…"

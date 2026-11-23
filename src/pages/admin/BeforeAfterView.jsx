@@ -10,12 +10,14 @@ import {
   HiOutlineViewList,
   HiOutlineSparkles,
   HiOutlineCube,
+  HiOutlineEye,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
@@ -27,6 +29,7 @@ import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function BeforeAfterView() {
   const confirm = useConfirm();
+  const { openImagePreview } = useImagePreview();
 
   // State
   const [items, setItems] = useState([]);
@@ -467,17 +470,12 @@ export default function BeforeAfterView() {
                 >
                   {/* Card Header */}
                   <div className="p-3 border-b border-stone-100 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => handleSelectItem(item._id)}
-                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
-                      />
-                      <span className="text-[10px] font-bold font-mono text-stone-400 uppercase tracking-wider">
-                        #{item.position || (currentPage - 1) * pageSize + idx + 1}
-                      </span>
-                    </div>
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => handleSelectItem(item._id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                    />
 
                     {/* Status Badge & Toggle */}
                     <button
@@ -500,18 +498,7 @@ export default function BeforeAfterView() {
                   </div>
 
                   {/* Card Body: Dual Images Side-by-Side */}
-                  <div className="p-3 flex-1 flex flex-col justify-between space-y-2.5">
-                    {/* Alt Description in quotes */}
-                    {item.alt ? (
-                      <p className="text-xs text-stone-700 font-medium italic line-clamp-2 min-h-[32px] leading-tight" title={item.alt}>
-                        &ldquo;{item.alt}&rdquo;
-                      </p>
-                    ) : (
-                      <p className="text-xs text-stone-400 italic min-h-[32px] leading-tight">
-                        &ldquo;Custom Jewelry Redesign Transformation&rdquo;
-                      </p>
-                    )}
-
+                  <div className="p-3 flex-1 flex flex-col justify-between">
                     {/* Dual Before / After Image Containers */}
                     <div className="grid grid-cols-2 gap-2">
                       {/* BEFORE IMAGE CONTAINER */}
@@ -524,14 +511,30 @@ export default function BeforeAfterView() {
                           className="relative aspect-[3/4] rounded-lg overflow-hidden bg-stone-50 border border-stone-200/80 shadow-2xs flex items-center justify-center cursor-pointer group/img"
                         >
                           {item.beforeImage?.url ? (
-                            <img
-                              src={item.beforeImage.url}
-                              alt="Before Transformation"
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
+                            <>
+                              <img
+                                src={item.beforeImage.url}
+                                alt="Before Transformation"
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openImagePreview(item.beforeImage.url, {
+                                    title: `Before: ${item.alt || 'Custom Jewellery Transformation'}`,
+                                    gallery: [item.beforeImage?.url, item.afterImage?.url].filter(Boolean),
+                                  });
+                                }}
+                                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-white/95 hover:bg-white text-stone-700 hover:text-[#8b6f4e] shadow-xs flex items-center justify-center transition-all cursor-pointer z-10 hover:scale-110 border border-stone-200/80"
+                                title="Preview Before Image"
+                              >
+                                <HiOutlineEye className="w-3.5 h-3.5" />
+                              </button>
+                            </>
                           ) : (
                             <HiOutlinePhotograph className="w-6 h-6 text-stone-300" />
                           )}
@@ -548,14 +551,30 @@ export default function BeforeAfterView() {
                           className="relative aspect-[3/4] rounded-lg overflow-hidden bg-stone-50 border border-stone-200/80 shadow-2xs flex items-center justify-center cursor-pointer group/img"
                         >
                           {item.afterImage?.url ? (
-                            <img
-                              src={item.afterImage.url}
-                              alt="After Transformation"
-                              className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                              }}
-                            />
+                            <>
+                              <img
+                                src={item.afterImage.url}
+                                alt="After Transformation"
+                                className="w-full h-full object-cover transition-transform duration-300 group-hover/img:scale-105"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openImagePreview(item.afterImage.url, {
+                                    title: `After: ${item.alt || 'Custom Jewellery Transformation'}`,
+                                    gallery: [item.beforeImage?.url, item.afterImage?.url].filter(Boolean),
+                                  });
+                                }}
+                                className="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-white/95 hover:bg-white text-stone-700 hover:text-[#8b6f4e] shadow-xs flex items-center justify-center transition-all cursor-pointer z-10 hover:scale-110 border border-stone-200/80"
+                                title="Preview After Image"
+                              >
+                                <HiOutlineEye className="w-3.5 h-3.5" />
+                              </button>
+                            </>
                           ) : (
                             <HiOutlinePhotograph className="w-6 h-6 text-stone-300" />
                           )}
@@ -658,24 +677,46 @@ export default function BeforeAfterView() {
                       </td>
 
                       {/* Dual Thumbnails (Before & After) */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
+                      <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center gap-1.5">
                           {/* Before Thumbnail */}
-                          <div className="relative w-8 h-10 rounded bg-stone-100 border border-stone-200 overflow-hidden shadow-2xs shrink-0" title="Before Image">
+                          <div
+                            onClick={() => {
+                              if (item.beforeImage?.url) {
+                                openImagePreview(item.beforeImage.url, {
+                                  title: `Before: ${item.alt || 'Showcase'}`,
+                                  gallery: [item.beforeImage?.url, item.afterImage?.url].filter(Boolean),
+                                });
+                              }
+                            }}
+                            className="relative w-8 h-10 rounded bg-stone-100 border border-stone-200 overflow-hidden shadow-2xs shrink-0 cursor-pointer hover:border-[#8b6f4e] group/thumb"
+                            title="Preview Before Image"
+                          >
                             <img
                               src={item.beforeImage?.url}
                               alt="Before"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover transition-transform group-hover/thumb:scale-105"
                             />
                             <span className="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[7px] font-bold text-center uppercase">B</span>
                           </div>
                           <span className="text-stone-300 font-bold">›</span>
                           {/* After Thumbnail */}
-                          <div className="relative w-8 h-10 rounded bg-stone-100 border border-[#8b6f4e]/40 overflow-hidden shadow-2xs shrink-0" title="After Image">
+                          <div
+                            onClick={() => {
+                              if (item.afterImage?.url) {
+                                openImagePreview(item.afterImage.url, {
+                                  title: `After: ${item.alt || 'Showcase'}`,
+                                  gallery: [item.beforeImage?.url, item.afterImage?.url].filter(Boolean),
+                                });
+                              }
+                            }}
+                            className="relative w-8 h-10 rounded bg-stone-100 border border-[#8b6f4e]/40 overflow-hidden shadow-2xs shrink-0 cursor-pointer hover:border-[#8b6f4e] group/thumb"
+                            title="Preview After Image"
+                          >
                             <img
                               src={item.afterImage?.url}
                               alt="After"
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-cover transition-transform group-hover/thumb:scale-105"
                             />
                             <span className="absolute bottom-0 inset-x-0 bg-[#8b6f4e] text-white text-[7px] font-bold text-center uppercase">A</span>
                           </div>
@@ -686,9 +727,6 @@ export default function BeforeAfterView() {
                       <td className="py-2.5 px-3 text-xs">
                         <span className="font-semibold text-stone-900 block max-w-sm truncate" title={item.alt}>
                           {item.alt || 'Untitled Transformation'}
-                        </span>
-                        <span className="text-[10px] text-stone-400 font-mono">
-                          Position #{item.position || idx + 1}
                         </span>
                       </td>
 
@@ -946,7 +984,7 @@ export default function BeforeAfterView() {
               <div>
                 <h3 className="font-bold text-stone-900 text-base">Transformation Details</h3>
                 <span className="text-[10px] font-bold text-[#8b6f4e] uppercase tracking-wider">
-                  Position #{viewingItem.position || 1} &bull; {viewingItem.status?.toUpperCase()}
+                  {viewingItem.status?.toUpperCase()}
                 </span>
               </div>
               <button

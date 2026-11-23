@@ -28,7 +28,6 @@ import {
 } from 'react-icons/hi';
 import { logisticsAPI } from '../../api/services';
 import { ShiprocketDispatchModal, ShiprocketTrackingModal } from '../../components/common/ShiprocketModals';
-import { RxDragHandleDots2 } from 'react-icons/rx';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -2826,9 +2825,6 @@ const DynamicModuleView = () => {
                                 key={banner._id || index}
                                 className="rounded-xl border border-stone-200 bg-white p-2.5 flex items-center gap-2.5 shadow-2xs hover:border-stone-300 transition-colors"
                               >
-                                {/* Grip Icon */}
-                                <RxDragHandleDots2 className="w-4 h-4 text-stone-400 shrink-0 cursor-grab" />
-
                                 {/* Thumbnail */}
                                 <div
                                   onClick={() => {

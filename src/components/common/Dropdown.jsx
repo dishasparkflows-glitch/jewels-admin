@@ -167,11 +167,17 @@ export default function Dropdown({
     );
   }, [multiple, normalizedOptions, selectedValues]);
 
+  // Normalize comparison value in case an object (e.g. { _id, name } or { value, label }) was passed
+  const compareTarget =
+    typeof value === 'object' && value !== null
+      ? (value.value !== undefined ? value.value : (value._id || value.id || ''))
+      : (value !== undefined && value !== null ? value : '');
+
   // Find currently selected option (for single-select)
   const selectedIndex = normalizedOptions.findIndex(
     (opt) =>
-      String(opt.value) === String(value) ||
-      (value && String(opt.label).toLowerCase() === String(value).toLowerCase())
+      String(opt.value) === String(compareTarget) ||
+      (compareTarget && String(opt.label).toLowerCase() === String(compareTarget).toLowerCase())
   );
   const selectedOption = selectedIndex >= 0 ? normalizedOptions[selectedIndex] : null;
 

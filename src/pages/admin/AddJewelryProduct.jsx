@@ -2353,6 +2353,7 @@ export default function AddJewelryProduct() {
   const handleRegenerateVariants = async () => {
     if (computingPrices) return;
     setComputingPrices(true);
+    setIsVariantsPreviewCollapsed(false);
     try {
       const { data } = await api.post('/products/pricing-preview', pricingInput());
       const result = data.data;
@@ -2365,6 +2366,7 @@ export default function AddJewelryProduct() {
       })));
       setAutomaticPricing(true);
       setPricing((previous) => ({ ...previous, salePrice: String(result.salePrice) }));
+      setIsVariantsPreviewCollapsed(false);
       toast.success('Calculated ' + result.variants.length + ' variants using current rates');
     } catch (error) { toast.error(error.response?.data?.message || 'Could not calculate variants'); }
     finally { setComputingPrices(false); }

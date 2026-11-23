@@ -22,6 +22,7 @@ import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import Pagination from '../common/Pagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { analyticsAPI } from '../../api/services';
 
 const PRESET_DATE_RANGES = [
   { label: 'Today', value: 'today' },
@@ -32,170 +33,18 @@ const PRESET_DATE_RANGES = [
   { label: 'Custom Range', value: 'custom' },
 ];
 
-// Sample enriched data for UI preview (prevents hitting client credentials in dev/test)
-const SAMPLE_ANALYTICS_DATA = {
+const INITIAL_ANALYTICS_STATE = {
   summary: {
-    totalUsers: 1420,
-    totalSessions: 2150,
-    pageViews: 8420,
-    productViews: 3120,
-    addToCart: 184,
-    addToWishlist: 95,
-    trends: {
-      users: '+14.2%',
-      sessions: '+18.0%',
-      pageViews: '+8.5%',
-      productViews: '+21.0%',
-      addToCart: '+12.4%',
-      addToWishlist: '+5.1%',
-    },
+    totalUsers: 0,
+    totalSessions: 0,
+    pageViews: 0,
+    productViews: 0,
+    addToCart: 0,
+    addToWishlist: 0,
   },
-  cartProducts: [
-    {
-      itemId: 'prod_001',
-      name: 'Round Cut Solitaire Diamond Ring',
-      count: 28,
-      product: {
-        id: 'prod_001',
-        title: 'Round Cut Solitaire Diamond Ring',
-        sku: 'NR-RNG-001',
-        slug: 'round-cut-solitaire-diamond-ring',
-        price: 85200,
-        category: 'Rings',
-        productType: 'gold',
-        image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=400&q=80',
-      },
-      users: [
-        { id: 'u_1', name: 'Priya Sharma', email: 'priya.s@example.com', phone: '+91 98765 43210' },
-        { id: 'u_2', name: 'Aarav Mehta', email: 'aarav.m@example.com', phone: '+91 98220 11223' },
-      ],
-    },
-    {
-      itemId: 'prod_002',
-      name: 'Emerald Cut Tennis Bracelet',
-      count: 22,
-      product: {
-        id: 'prod_002',
-        title: 'Emerald Cut Tennis Bracelet',
-        sku: 'NR-BRC-014',
-        slug: 'emerald-cut-tennis-bracelet',
-        price: 142000,
-        category: 'Bracelets',
-        productType: 'gold',
-        image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80',
-      },
-      users: [
-        { id: 'u_3', name: 'Neha Verma', email: 'neha.v@example.com', phone: '+91 97112 33445' },
-      ],
-    },
-    {
-      itemId: 'prod_003',
-      name: 'Floral Diamond Pendant Necklace',
-      count: 17,
-      product: {
-        id: 'prod_003',
-        title: 'Floral Diamond Pendant Necklace',
-        sku: 'NR-NCK-032',
-        slug: 'floral-diamond-pendant-necklace',
-        price: 54900,
-        category: 'Necklaces',
-        productType: 'gold',
-        image: 'https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?auto=format&fit=crop&w=400&q=80',
-      },
-      users: [
-        { id: 'u_4', name: 'Rohan Gupta', email: 'rohan.g@example.com', phone: '+91 99887 66554' },
-      ],
-    },
-  ],
-  wishlistProducts: [
-    {
-      itemId: 'prod_004',
-      name: 'Vintage Halo Pear Diamond Ring',
-      count: 34,
-      product: {
-        id: 'prod_004',
-        title: 'Vintage Halo Pear Diamond Ring',
-        sku: 'NR-RNG-088',
-        slug: 'vintage-halo-pear-diamond-ring',
-        price: 98000,
-        category: 'Rings',
-        productType: 'gold',
-        image: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&w=400&q=80',
-      },
-      users: [
-        { id: 'u_5', name: 'Ananya Roy', email: 'ananya.roy@example.com', phone: '+91 98450 12345' },
-        { id: 'u_6', name: 'Karan Singhal', email: 'karan.s@example.com', phone: '+91 98711 55667' },
-      ],
-    },
-    {
-      itemId: 'prod_005',
-      name: 'Classic Diamond Stud Earrings',
-      count: 29,
-      product: {
-        id: 'prod_005',
-        title: 'Classic Diamond Stud Earrings',
-        sku: 'NR-EAR-005',
-        slug: 'classic-diamond-stud-earrings',
-        price: 36500,
-        category: 'Earrings',
-        productType: 'gold',
-        image: 'https://images.unsplash.com/photo-1630019852942-f89202989a59?auto=format&fit=crop&w=400&q=80',
-      },
-      users: [
-        { id: 'u_7', name: 'Simran Kaur', email: 'simran.k@example.com', phone: '+91 99100 88776' },
-      ],
-    },
-  ],
-  viewedProducts: [
-    {
-      itemId: 'prod_001',
-      name: 'Round Cut Solitaire Diamond Ring',
-      count: 412,
-      product: {
-        id: 'prod_001',
-        title: 'Round Cut Solitaire Diamond Ring',
-        sku: 'NR-RNG-001',
-        slug: 'round-cut-solitaire-diamond-ring',
-        price: 85200,
-        category: 'Rings',
-        productType: 'gold',
-        image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=400&q=80',
-      },
-      users: [],
-    },
-    {
-      itemId: 'prod_002',
-      name: 'Emerald Cut Tennis Bracelet',
-      count: 365,
-      product: {
-        id: 'prod_002',
-        title: 'Emerald Cut Tennis Bracelet',
-        sku: 'NR-BRC-014',
-        slug: 'emerald-cut-tennis-bracelet',
-        price: 142000,
-        category: 'Bracelets',
-        productType: 'gold',
-        image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?auto=format&fit=crop&w=400&q=80',
-      },
-      users: [],
-    },
-    {
-      itemId: 'prod_004',
-      name: 'Vintage Halo Pear Diamond Ring',
-      count: 290,
-      product: {
-        id: 'prod_004',
-        title: 'Vintage Halo Pear Diamond Ring',
-        sku: 'NR-RNG-088',
-        slug: 'vintage-halo-pear-diamond-ring',
-        price: 98000,
-        category: 'Rings',
-        productType: 'gold',
-        image: 'https://images.unsplash.com/photo-1603561591411-07134e71a2a9?auto=format&fit=crop&w=400&q=80',
-      },
-      users: [],
-    },
-  ],
+  cartProducts: [],
+  wishlistProducts: [],
+  viewedProducts: [],
 };
 
 export default function GoogleAnalyticsSection() {
@@ -206,7 +55,7 @@ export default function GoogleAnalyticsSection() {
 
   const [activeTab, setActiveTab] = useState('cart'); // 'cart' | 'wishlist' | 'views'
   const [loading, setLoading] = useState(false);
-  const [data, setData] = useState(SAMPLE_ANALYTICS_DATA);
+  const [data, setData] = useState(INITIAL_ANALYTICS_STATE);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortField] = useState('count'); // 'count' | 'name'
   const [sortAsc, setSortAsc] = useState(false);
@@ -227,15 +76,74 @@ export default function GoogleAnalyticsSection() {
     setTimeout(() => setCopiedPhone(null), 2500);
   };
 
-  const fetchData = useCallback(() => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
+    try {
+      const startDate = isCustomDate && customStartDate ? customStartDate : selectedRange;
+      const endDate = isCustomDate && customEndDate ? customEndDate : 'today';
+      const params = { startDate, endDate, limit: 100 };
 
-    // Simulated short delay for UI state demonstration
-    setTimeout(() => {
-      setData(SAMPLE_ANALYTICS_DATA);
+      const [overviewRes, cartRes, wishlistRes, viewsRes] = await Promise.allSettled([
+        analyticsAPI.getOverview({ startDate, endDate }),
+        analyticsAPI.getAddToCartReport(params),
+        analyticsAPI.getWishlistReport(params),
+        analyticsAPI.getViewsReport(params),
+      ]);
+
+      const nextData = {
+        summary: {
+          totalUsers: 0,
+          totalSessions: 0,
+          pageViews: 0,
+          productViews: 0,
+          addToCart: 0,
+          addToWishlist: 0,
+        },
+        cartProducts: [],
+        wishlistProducts: [],
+        viewedProducts: [],
+      };
+
+      if (overviewRes.status === 'fulfilled' && overviewRes.value?.data?.data) {
+        const ov = overviewRes.value.data.data;
+        if (ov.summary) {
+          nextData.summary = { ...nextData.summary, ...ov.summary };
+        }
+      }
+
+      if (cartRes.status === 'fulfilled' && cartRes.value?.data) {
+        const cData = cartRes.value.data.data || [];
+        nextData.cartProducts = cData;
+        if (cartRes.value.data.totals?.totalItemsAdded !== undefined) {
+          nextData.summary.addToCart = cartRes.value.data.totals.totalItemsAdded;
+        } else {
+          nextData.summary.addToCart = cData.reduce((sum, item) => sum + (item.count || 0), 0);
+        }
+      }
+
+      if (wishlistRes.status === 'fulfilled' && wishlistRes.value?.data) {
+        const wData = wishlistRes.value.data.data || [];
+        nextData.wishlistProducts = wData;
+        if (wishlistRes.value.data.totals?.totalItemsAdded !== undefined) {
+          nextData.summary.addToWishlist = wishlistRes.value.data.totals.totalItemsAdded;
+        } else {
+          nextData.summary.addToWishlist = wData.reduce((sum, item) => sum + (item.count || 0), 0);
+        }
+      }
+
+      if (viewsRes.status === 'fulfilled' && viewsRes.value?.data) {
+        const vData = viewsRes.value.data.data || [];
+        nextData.viewedProducts = vData;
+      }
+
+      setData(nextData);
+    } catch (err) {
+      console.error('Failed to load GA4 analytics reports:', err);
+      toast.error('Failed to load analytics data');
+    } finally {
       setLoading(false);
-    }, 300);
-  }, []);
+    }
+  }, [selectedRange, isCustomDate, customStartDate, customEndDate]);
 
   useEffect(() => {
     fetchData();
@@ -317,9 +225,6 @@ export default function GoogleAnalyticsSection() {
                 Google Analytics 4 (GA4) Analytics & Lead Intelligence
               </h2>
             </div>
-            <p className="text-xs text-stone-500 mt-1">
-              Storefront traffic, item engagement, cart activity, and identified CRM outreach leads.
-            </p>
           </div>
 
           {/* Date Range Selector */}
@@ -396,10 +301,6 @@ export default function GoogleAnalyticsSection() {
           <div className="text-xl sm:text-2xl font-bold text-stone-900 mt-2">
             {(summary.totalUsers || 0).toLocaleString()}
           </div>
-          <div className="text-[11px] font-semibold text-emerald-600 mt-1 flex items-center">
-            <HiOutlineArrowSmUp className="w-3.5 h-3.5 inline mr-0.5" />
-            {summary.trends?.users || '+0%'}
-          </div>
         </div>
 
         {/* 2. Total Sessions */}
@@ -410,10 +311,6 @@ export default function GoogleAnalyticsSection() {
           </div>
           <div className="text-xl sm:text-2xl font-bold text-stone-900 mt-2">
             {(summary.totalSessions || 0).toLocaleString()}
-          </div>
-          <div className="text-[11px] font-semibold text-emerald-600 mt-1 flex items-center">
-            <HiOutlineArrowSmUp className="w-3.5 h-3.5 inline mr-0.5" />
-            {summary.trends?.sessions || '+0%'}
           </div>
         </div>
 
@@ -433,10 +330,6 @@ export default function GoogleAnalyticsSection() {
           <div className="text-xl sm:text-2xl font-bold text-stone-900 mt-2">
             {(summary.addToCart || 0).toLocaleString()}
           </div>
-          <div className="text-[11px] font-semibold text-emerald-600 mt-1 flex items-center">
-            <HiOutlineArrowSmUp className="w-3.5 h-3.5 inline mr-0.5" />
-            {summary.trends?.addToCart || '+0%'}
-          </div>
         </div>
 
         {/* 4. Wishlist Add Events (Clickable card switches to wishlist tab) */}
@@ -454,10 +347,6 @@ export default function GoogleAnalyticsSection() {
           </div>
           <div className="text-xl sm:text-2xl font-bold text-stone-900 mt-2">
             {(summary.addToWishlist || 0).toLocaleString()}
-          </div>
-          <div className="text-[11px] font-semibold text-emerald-600 mt-1 flex items-center">
-            <HiOutlineArrowSmUp className="w-3.5 h-3.5 inline mr-0.5" />
-            {summary.trends?.addToWishlist || '+0%'}
           </div>
         </div>
 
@@ -477,10 +366,6 @@ export default function GoogleAnalyticsSection() {
           <div className="text-xl sm:text-2xl font-bold text-stone-900 mt-2">
             {(summary.productViews || 0).toLocaleString()}
           </div>
-          <div className="text-[11px] font-semibold text-emerald-600 mt-1 flex items-center">
-            <HiOutlineArrowSmUp className="w-3.5 h-3.5 inline mr-0.5" />
-            {summary.trends?.productViews || '+0%'}
-          </div>
         </div>
 
         {/* 6. Page Views */}
@@ -491,10 +376,6 @@ export default function GoogleAnalyticsSection() {
           </div>
           <div className="text-xl sm:text-2xl font-bold text-stone-900 mt-2">
             {(summary.pageViews || 0).toLocaleString()}
-          </div>
-          <div className="text-[11px] font-semibold text-emerald-600 mt-1 flex items-center">
-            <HiOutlineArrowSmUp className="w-3.5 h-3.5 inline mr-0.5" />
-            {summary.trends?.pageViews || '+0%'}
           </div>
         </div>
       </div>
@@ -604,6 +485,7 @@ export default function GoogleAnalyticsSection() {
           <table className="w-full text-left text-xs text-stone-700">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                <th className="py-3 px-3 text-center w-12 whitespace-nowrap">SR NO</th>
                 <th className="py-3 px-4 whitespace-nowrap">Product Details</th>
                 <th className="py-3 px-4">SKU / Code</th>
                 <th className="py-3 px-4">Category</th>
@@ -619,9 +501,18 @@ export default function GoogleAnalyticsSection() {
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100">
-              {paginatedItems.length === 0 ? (
+              {loading ? (
                 <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400 text-xs">
+                  <td colSpan="7" className="py-12 text-center text-stone-400 text-xs">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <HiOutlineRefresh className="w-5 h-5 animate-spin text-[#8b6f4e]" />
+                      <span>Loading analytics report...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : paginatedItems.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="py-8 text-center text-stone-400 text-xs">
                     No activity found for this date range or filter.
                   </td>
                 </tr>
@@ -633,6 +524,11 @@ export default function GoogleAnalyticsSection() {
 
                   return (
                     <tr key={item.itemId || idx} className="hover:bg-stone-50/50 transition-colors">
+                      {/* SR NO */}
+                      <td className="py-3 px-3 text-center align-middle text-xs font-semibold text-stone-400 whitespace-nowrap">
+                        {(currentPageSafe - 1) * pageSize + idx + 1}
+                      </td>
+
                       {/* Product Thumbnail & Title */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">

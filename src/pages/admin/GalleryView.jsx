@@ -294,7 +294,16 @@ export default function GalleryView() {
   // ─── Open Edit Modal ────────────────────────────────────────
   const handleOpenEdit = (item) => {
     fetchThemesLookup();
-    setEditingItem(item);
+    const rawTheme = item.themeId || item.theme;
+    const resolvedThemeId =
+      typeof rawTheme === 'object' && rawTheme !== null
+        ? String(rawTheme._id || rawTheme.id || '')
+        : (rawTheme ? String(rawTheme) : '');
+
+    setEditingItem({
+      ...item,
+      themeId: resolvedThemeId || item.themeId,
+    });
   };
 
   const handleOpenUploadModal = () => {
@@ -830,6 +839,14 @@ export default function GalleryView() {
                   </td>
                   <td className="py-2.5 px-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setPreviewItem(item)}
+                        className="p-1 rounded-lg border border-[#e0e7ff] bg-[#eef2ff] text-[#4f46e5] hover:bg-[#dbeafe] hover:border-[#bfdbfe] transition cursor-pointer"
+                        title="Preview Media Image"
+                      >
+                        <HiOutlineEye className="w-3.5 h-3.5" />
+                      </button>
                       <EditActionButton
                         onClick={() => handleOpenEdit(item)}
                         title="Edit Details"
@@ -913,20 +930,17 @@ export default function GalleryView() {
                 {/* Card Info Content */}
                 <div className="p-1.5 flex flex-col justify-between flex-1">
                   <div>
-                    <h4 className="text-[10px] font-bold text-stone-900 truncate" title={fileName}>
-                      {fileName}
-                    </h4>
                     {item.themeName ? (
-                      <p className="mt-0.5 text-[8.5px] text-stone-400 font-normal truncate">
+                      <h4 className="text-[10px] font-bold text-stone-900 truncate" title={item.themeName}>
                         {item.themeName}
-                      </p>
+                      </h4>
                     ) : null}
                     {item.linkedBanner?.title ? (
                       <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedBanner.title}>
                         <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>{item.linkedBanner.title}</span>
                       </p>
-                    ) : item.linkedFeatured?.title ? (
+                    ) : item.linkedFeatured?.title ? (  
                       <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedFeatured.title}>
                         <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>Celebrate: {item.linkedFeatured.title}</span>
@@ -941,11 +955,25 @@ export default function GalleryView() {
                         <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>Celebrate #{String(item.linkedRecord.recordId).slice(-4)}</span>
                       </p>
+                    ) : item.typeLabel ? (
+                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
+                        <span>{item.typeLabel}</span>
+                      </p>
                     ) : null}
                   </div>
 
                   {/* Action Buttons Row */}
                   <div className="mt-1.5 flex items-center justify-between gap-1 pt-1 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewItem(item)}
+                      className="flex-1 py-0.5 flex items-center justify-center rounded border border-[#e0e7ff] bg-[#eef2ff] text-[#4f46e5] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                      title="Preview Media Item"
+                    >
+                      <HiOutlineEye className="h-2.5 w-2.5 stroke-[2]" />
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(item)}
