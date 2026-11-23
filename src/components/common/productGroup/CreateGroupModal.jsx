@@ -4,27 +4,8 @@ import { HiOutlineSearch, HiOutlineX } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import Modal from '../Modal';
 import api from '../../../api/axios';
-
-const money = (val) => {
-  if (val == null || val === '') return '₹ 0';
-  return `₹ ${Number(val).toLocaleString('en-IN')}`;
-};
-
-const getProductImage = (p) => {
-  if (p.images && p.images[0]) {
-    const img = p.images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (p.ornate?.ornateImages && p.ornate.ornateImages[0]) {
-    const img = p.ornate.ornateImages[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (p.colorImages && p.colorImages[0]?.images?.[0]) {
-    const img = p.colorImages[0].images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  return null;
-};
+import { money } from '../../../utils/formatters';
+import { getProductImage } from '../../../utils/imageUrl';
 
 export default function CreateGroupModal({
   isOpen,

@@ -9,28 +9,8 @@ import { IoDiamondOutline } from 'react-icons/io5';
 import Modal from '../Modal';
 import Dropdown from '../Dropdown';
 import api from '../../../api/axios';
-
-const getProductImage = (p) => {
-  if (!p) return null;
-  if (p.images && p.images[0]) {
-    const img = p.images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (p.ornate?.ornateImages && p.ornate.ornateImages[0]) {
-    const img = p.ornate.ornateImages[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (p.colorImages && p.colorImages[0]?.images?.[0]) {
-    const img = p.colorImages[0].images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  return null;
-};
-
-const money = (amount) => {
-  if (typeof amount !== 'number' || isNaN(amount)) return '—';
-  return `₹${amount.toLocaleString('en-IN')}`;
-};
+import { money } from '../../../utils/formatters';
+import { getProductImage } from '../../../utils/imageUrl';
 
 const getAutoGroupName = (p) => {
   if (!p) return 'New Common Group';

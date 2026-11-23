@@ -10,7 +10,6 @@ import {
   HiOutlineX,
   HiOutlineSparkles,
   HiOutlineTag,
-  HiOutlineRefresh,
   HiOutlineDeviceMobile,
   HiOutlineDesktopComputer,
   HiOutlineViewGrid,
@@ -27,6 +26,7 @@ import GalleryUploadModal from '../../components/gallery/GalleryUploadModal';
 import GalleryEditModal from '../../components/gallery/GalleryEditModal';
 import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { DeleteActionButton, EditActionButton } from '../../components/common/RowActions';
@@ -101,7 +101,7 @@ export default function GalleryView() {
   // ─── Modals State ───────────────────────────────────────────
   const [searchParams, setSearchParams] = useSearchParams();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
-  const [initialUploadType, setInitialUploadType] = useState('herobanner');
+  const [initialUploadType, setInitialUploadType] = useState('asset');
   const [previewItem, setPreviewItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
   const [, setIsDeleting] = useState(false);
@@ -178,7 +178,7 @@ export default function GalleryView() {
       const normalizedItems = rawItems.map((item) => {
         const url = item.url || item.image?.url || '';
         const key = item.key || item.image?.key || '';
-        const placement = item.placement || item.type || 'herobanner';
+        const placement = item.placement || item.type || 'asset';
         const bt = BANNER_TYPES.find((b) => b.key === placement);
         const typeLabel = item.typeLabel || bt?.label || placement;
         const themeObj = typeof item.themeId === 'object' && item.themeId !== null ? item.themeId : null;
@@ -455,17 +455,6 @@ export default function GalleryView() {
 
         {/* Header Actions */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={fetchGallery}
-            disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 rounded-lg text-xs font-semibold shadow-2xs transition cursor-pointer"
-            title="Refresh Gallery"
-          >
-            <HiOutlineRefresh className={`w-3.5 h-3.5 stroke-2 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh</span>
-          </button>
-
           <button
             type="button"
             onClick={handleOpenUploadModal}
@@ -818,23 +807,12 @@ export default function GalleryView() {
                   </td>
                   <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-center">
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={item.status === 'active'}
-                        onClick={() => handleToggleStatus(item)}
-                        style={item.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                          item.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
-                        }`}
-                        title={`Click to set ${item.status === 'active' ? 'Inactive' : 'Active'}`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                            item.status === 'active' ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
+                      <ToggleSwitch
+                        checked={item.status === 'active'}
+                        onChange={() => handleToggleStatus(item)}
+                        size="sm"
+                        ariaLabel={`Set ${item.title || 'asset'} ${item.status === 'active' ? 'Inactive' : 'Active'}`}
+                      />
                     </div>
                   </td>
                   <td className="py-2.5 px-3 text-right">

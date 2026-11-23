@@ -23,6 +23,7 @@ import StatCards from '../../components/common/StatCards';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import ProductPickerModal from '../../components/common/ProductPickerModal';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 const getProductBadgeLabel = (prod) => {
@@ -618,23 +619,15 @@ export default function HomeSectionsView() {
                       </td>
 
                       {/* Status Toggle */}
-                      <td className="py-2.5 px-3 text-center align-middle whitespace-nowrap w-24" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 px-3 text-center align-middle whitespace-nowrap w-24">
                         <div className="flex items-center justify-center">
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={sec.status === 'active'}
-                            onClick={() => handleToggleStatus(sec)}
-                            style={sec.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${sec.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
-                              }`}
-                            title={sec.status === 'active' ? 'Active' : 'Inactive'}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${sec.status === 'active' ? 'translate-x-4' : 'translate-x-0'
-                                }`}
-                            />
-                          </button>
+                          <ToggleSwitch
+                            checked={sec.status === 'active'}
+                            onChange={() => handleToggleStatus(sec)}
+                            size="sm"
+                            stopPropagation={true}
+                            ariaLabel={sec.status === 'active' ? 'Active' : 'Inactive'}
+                          />
                         </div>
                       </td>
 

@@ -8,8 +8,10 @@ import {
   HiOutlineRefresh,
   HiOutlineCheck,
   HiOutlineEye,
+  HiOutlineUpload,
 } from 'react-icons/hi';
 import Dropdown from './Dropdown';
+import GalleryUploadModal from '../gallery/GalleryUploadModal';
 import api from '../../api/axios';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
@@ -25,6 +27,18 @@ const DEFAULT_PLACEMENTS = [
   { value: 'custom', label: 'Custom' },
   { value: 'celebrate', label: 'Celebrate & Gifts' },
   { value: 'asset', label: 'Media Library Assets' },
+];
+
+const DEFAULT_UPLOAD_PLACEMENTS = [
+  { value: 'herobanner', label: 'Hero Banner', sublabel: 'Homepage main hero slider' },
+  { value: 'collectionbanner', label: 'Collection Banner', sublabel: '4-tile curated collection showcase' },
+  { value: 'categorybanner', label: 'Category Banner', sublabel: 'Category page top header banner' },
+  { value: 'offerbanner', label: 'Offer Banner', sublabel: 'Promotional deals & discount banner' },
+  { value: 'celebrate', label: 'Celebrate & Gifts', sublabel: 'Gift guide and celebrate showcase item' },
+  { value: 'mobileappbanner', label: 'Mobile App Banner', sublabel: 'Mobile app download promotion' },
+  { value: 'bookappointbanner', label: 'Appointment Banner', sublabel: 'In-store appointment booking section' },
+  { value: 'customizebanner', label: 'Custom Banner', sublabel: 'Custom pages and seasonal campaigns' },
+  { value: 'asset', label: 'Media Library Asset', sublabel: 'General asset stored in theme media library' },
 ];
 
 export default function GalleryMediaPickerModal({
@@ -47,6 +61,7 @@ export default function GalleryMediaPickerModal({
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerImages, setPickerImages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const { openImagePreview } = useImagePreview();
 
   const handlePreview = (e, img, idx) => {
@@ -155,6 +170,41 @@ export default function GalleryMediaPickerModal({
   const activeThemes = passedThemes || internalThemes;
   const activePlacements = placementOptions || DEFAULT_PLACEMENTS;
 
+  const modalThemeOptions = useMemo(() => {
+    return [
+      {
+        value: '',
+        label: 'Global / Unassigned Theme',
+        sublabel: 'Available across all storefront themes',
+        dotColor: 'bg-stone-300',
+      },
+      ...activeThemes.map((t) => ({
+        value: String(t._id),
+        label: `${t.name}${t.isLive || t.status === 'active' ? ' ★ (Current Live Theme)' : ` (${t.status})`}`,
+        sublabel: t.isLive || t.status === 'active' ? 'Current Live Storefront Theme' : `Status: ${t.status}`,
+        dotColor: t.isLive || t.status === 'active' ? 'bg-emerald-500' : 'bg-amber-400',
+      })),
+    ];
+  }, [activeThemes]);
+
+  const uploadDefaultType = useMemo(() => {
+    if (pickerPlacementFilter && pickerPlacementFilter !== 'all') {
+      if (pickerPlacementFilter === 'mobileapp') return 'mobileappbanner';
+      if (pickerPlacementFilter === 'appointments') return 'bookappointbanner';
+      if (pickerPlacementFilter === 'custom') return 'customizebanner';
+      return pickerPlacementFilter;
+    }
+    return 'herobanner';
+  }, [pickerPlacementFilter]);
+
+  const uploadDefaultThemeId = useMemo(() => {
+    if (pickerThemeFilter && pickerThemeFilter !== 'all') {
+      return pickerThemeFilter;
+    }
+    const liveTheme = activeThemes.find((t) => t.isLive || t.status === 'active');
+    return liveTheme ? String(liveTheme._id) : '';
+  }, [pickerThemeFilter, activeThemes]);
+
   if (!isOpen) return null;
 
   return createPortal(
@@ -182,13 +232,25 @@ export default function GalleryMediaPickerModal({
               <p className="text-[11px] sm:text-xs text-stone-500 line-clamp-1">{subtitle}</p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-8 h-8 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
-          >
-            <HiOutlineX className="w-4 h-4 stroke-2" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setIsUploadModalOpen(true)}
+              style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-white text-xs font-semibold hover:opacity-90 shadow-2xs transition-all cursor-pointer shrink-0"
+              title="Upload new media asset to gallery"
+            >
+              <HiOutlineUpload className="w-3.5 h-3.5 stroke-[2]" />
+              <span>Upload Media</span>
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-8 h-8 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-stone-400 hover:text-stone-700 flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+            >
+              <HiOutlineX className="w-4 h-4 stroke-2" />
+            </button>
+          </div>
         </div>
 
         {/* Filter Controls Bar */}
@@ -285,6 +347,15 @@ export default function GalleryMediaPickerModal({
               <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto">
                 No images matching the selected theme and placement. Try switching to "All Website Themes" or "All Placements".
               </p>
+              <button
+                type="button"
+                onClick={() => setIsUploadModalOpen(true)}
+                style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
+                className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-white text-xs font-semibold hover:opacity-90 shadow-2xs transition-all cursor-pointer"
+              >
+                <HiOutlineUpload className="w-4 h-4 stroke-[2]" />
+                <span>Upload Media</span>
+              </button>
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
@@ -402,6 +473,23 @@ export default function GalleryMediaPickerModal({
           </button>
         </div>
       </div>
+
+      {/* ─── Upload Media to Gallery Modal ─── */}
+      {isUploadModalOpen && (
+        <GalleryUploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          defaultThemeId={uploadDefaultThemeId}
+          defaultType={uploadDefaultType}
+          modalThemeOptions={modalThemeOptions}
+          placementTypeOptions={DEFAULT_UPLOAD_PLACEMENTS}
+          onSuccess={() => {
+            setIsUploadModalOpen(false);
+            fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter);
+          }}
+          zIndexClass="z-[10500]"
+        />
+      )}
     </div>,
     document.body
   );

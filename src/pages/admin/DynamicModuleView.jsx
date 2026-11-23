@@ -26,8 +26,6 @@ import {
   HiOutlineDocumentText,
   HiOutlineTag,
 } from 'react-icons/hi';
-import { logisticsAPI } from '../../api/services';
-import { ShiprocketDispatchModal, ShiprocketTrackingModal } from '../../components/common/ShiprocketModals';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -76,19 +74,7 @@ const routeMap = {
       { name: 'banner', label: 'Banner', type: 'banner', placeholder: 'Upload Banner' },
     ],
   },
-
-  // ─── 2. Operations (Orders & Returns) ─────────────
-  '/orders': { endpoint: '/orders', title: 'Orders' },
-  '/returns': { endpoint: '/returns', title: 'Returns' },
 };
-
-const ORDER_TABS = [
-  { key: 'pending', label: 'PENDING' },
-  { key: 'processing', label: 'PROCESSING' },
-  { key: 'delivered', label: 'DELIVERED' },
-  { key: 'cancelled', label: 'CANCELLED' },
-  { key: 'returned', label: 'RETURNED' },
-];
 
 const DynamicModuleView = () => {
   const confirm = useConfirm();
@@ -113,77 +99,8 @@ const DynamicModuleView = () => {
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
-  const [orderStatusTab, setOrderStatusTab] = useState('pending');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
-
-  // Shiprocket Logistics states
-  const [shiprocketDispatchOpen, setShiprocketDispatchOpen] = useState(false);
-  const [shiprocketTrackingOpen, setShiprocketTrackingOpen] = useState(false);
-  const [shiprocketTrackingOrderId, setShiprocketTrackingOrderId] = useState(null);
-
-  const handleOpenDispatchModal = (record) => {
-    setViewingRecord(record);
-    setShiprocketDispatchOpen(true);
-  };
-
-  const handleOpenTracking = (orderId) => {
-    setShiprocketTrackingOrderId(orderId);
-    setShiprocketTrackingOpen(true);
-  };
-
-  const handlePrintLabel = async (orderId, existingUrl) => {
-    try {
-      if (existingUrl) {
-        window.open(existingUrl, '_blank');
-        return;
-      }
-      const res = await logisticsAPI.getLabel(orderId);
-      const url = res?.data?.data?.labelUrl || res?.data?.labelUrl;
-      if (url) window.open(url, '_blank');
-      else toast.error('Label URL not generated yet');
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to open shipping label');
-    }
-  };
-
-  const handleDownloadManifest = async (orderId, existingUrl) => {
-    try {
-      if (existingUrl) {
-        window.open(existingUrl, '_blank');
-        return;
-      }
-      const res = await logisticsAPI.getManifest(orderId);
-      const url = res?.data?.data?.manifestUrl || res?.data?.manifestUrl;
-      if (url) window.open(url, '_blank');
-      else toast.error('Manifest URL not generated yet');
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to open manifest');
-    }
-  };
-
-  const handleCancelShipment = async (orderId) => {
-    const isConfirmed = await confirm({
-      title: 'Cancel Shiprocket Shipment',
-      message: 'Are you sure you want to cancel this courier shipment and AWB in Shiprocket?',
-      confirmText: 'Cancel Shipment',
-      cancelText: 'Keep Active',
-      type: 'danger',
-    });
-    if (!isConfirmed) return;
-
-    try {
-      await logisticsAPI.cancelShipment(orderId);
-      toast.success('Shiprocket shipment cancelled');
-      setViewingRecord((prev) => (prev ? {
-        ...prev,
-        shiprocketInfo: { ...(prev.shiprocketInfo || {}), status: 'cancelled' },
-      } : null));
-      fetchItems();
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Failed to cancel shipment');
-    }
-  };
 
   // Demo Metrics Quick Edit Modal state
   const [editingMetricsProduct, setEditingMetricsProduct] = useState(null);
@@ -260,7 +177,6 @@ const DynamicModuleView = () => {
   }, [isCategoryPage]);
 
   const handleOpenAdd = () => {
-    if (isOrdersPage || isReturnsPage) return;
     if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
       navigate('/catalog/jewelry-products/add');
     } else if (pathname === '/catalog/silver-products' || pathname.includes('silver-products')) {
@@ -301,10 +217,6 @@ const DynamicModuleView = () => {
   };
 
   const handleOpenEdit = (row) => {
-    if (isOrdersPage || isReturnsPage || row?.orderNumber) {
-      setViewingRecord(row);
-      return;
-    }
     setEditingRecord(row);
     const initial = {};
     if (isCategoryPage) {
@@ -558,26 +470,6 @@ const DynamicModuleView = () => {
   const isJewelryPage = pathname.includes('jewelry-products');
   const isSilverPage = pathname.includes('silver-products');
   const isProductCatalogPage = isOrnatePage || isJewelryPage || isSilverPage;
-  const isOrdersPage = pathname === '/orders' || pathname.startsWith('/orders');
-  const isReturnsPage = pathname === '/returns' || pathname.startsWith('/returns');
-
-  const formatOrderDate = (dateVal) => {
-    if (!dateVal) return '';
-    try {
-      const d = new Date(dateVal);
-      if (isNaN(d.getTime())) return '';
-      return d.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } catch {
-      return '';
-    }
-  };
 
   const handleEditProductRecord = (row) => {
     const id = row?._id || row?.id;
@@ -588,60 +480,17 @@ const DynamicModuleView = () => {
       navigate(`/catalog/silver-products/edit/${id}`);
     } else if (isJewelryPage) {
       navigate(`/catalog/jewelry-products/edit/${id}`);
-    } else if (isOrdersPage || isReturnsPage || row.orderNumber) {
-      setViewingRecord(row);
     } else {
       handleOpenEdit(row);
     }
   };
 
-  const [updatingOrderStatus, setUpdatingOrderStatus] = useState(false);
-
-  const handleUpdateOrderStatus = async (orderId, newStatus) => {
-    if (!orderId) return;
-    try {
-      setUpdatingOrderStatus(true);
-      const res = await api.patch(`/orders/${orderId}/status`, { orderStatus: newStatus });
-      const updatedOrder = res?.data?.data || res?.data;
-      setItems((prev) =>
-        prev.map((item) =>
-          (item._id === orderId || item.id === orderId)
-            ? { ...item, ...(updatedOrder || {}), orderStatus: newStatus }
-            : item
-        )
-      );
-      if (viewingRecord && (viewingRecord._id === orderId || viewingRecord.id === orderId)) {
-        setViewingRecord((prev) => ({ ...prev, ...(updatedOrder || {}), orderStatus: newStatus }));
-      }
-      toast.success(
-        newStatus === 'processing'
-          ? 'Order accepted! Moved to Processing.'
-          : newStatus === 'confirmed'
-          ? 'Order accepted and confirmed!'
-          : newStatus === 'shipped'
-          ? 'Order marked as Shipped!'
-          : newStatus === 'delivered'
-          ? 'Order marked as Delivered!'
-          : newStatus === 'cancelled'
-          ? 'Order cancelled successfully'
-          : `Order status updated to ${newStatus}`
-      );
-    } catch (err) {
-      toast.error(err.response?.data?.message || `Failed to update order status to ${newStatus}`);
-    } finally {
-      setUpdatingOrderStatus(false);
-    }
-  };
-
   const fetchItems = useCallback(
-    async (page = currentPage, limit = pageSize, q = search, orderTab = orderStatusTab) => {
+    async (page = currentPage, limit = pageSize, q = search) => {
       try {
         setLoading(true);
         const params = { page, limit };
         if (q && q.trim()) params.search = q.trim();
-        if (isOrdersPage && orderTab) {
-          params.orderStatus = orderTab;
-        }
         const res = await api.get(config.endpoint, { params });
         const data = res.data?.data?.items || res.data?.data || [];
         setItems(Array.isArray(data) ? data : [data].filter(Boolean));
@@ -660,7 +509,7 @@ const DynamicModuleView = () => {
         setLoading(false);
       }
     },
-    [config.endpoint, currentPage, pageSize, search, isOrdersPage, orderStatusTab]
+    [config.endpoint, currentPage, pageSize, search]
   );
 
   useEffect(() => {
@@ -670,8 +519,8 @@ const DynamicModuleView = () => {
   }, [pathname]);
 
   useEffect(() => {
-    fetchItems(currentPage, pageSize, search, orderStatusTab);
-  }, [fetchItems, currentPage, pageSize, search, orderStatusTab]);
+    fetchItems(currentPage, pageSize, search);
+  }, [fetchItems, currentPage, pageSize, search]);
 
   // Fetch lookup options when modal opens for fields with type: 'lookup'
   useEffect(() => {
@@ -1156,19 +1005,6 @@ const DynamicModuleView = () => {
 
   const filteredItems = useMemo(() => {
     let list = items;
-    if (isOrdersPage && orderStatusTab) {
-      if (orderStatusTab === 'pending') {
-        list = list.filter((row) => String(row.orderStatus).toLowerCase() === 'pending');
-      } else if (orderStatusTab === 'processing') {
-        list = list.filter((row) => ['processing', 'shipped', 'out_for_delivery'].includes(String(row.orderStatus).toLowerCase()));
-      } else if (orderStatusTab === 'delivered') {
-        list = list.filter((row) => String(row.orderStatus).toLowerCase() === 'delivered');
-      } else if (orderStatusTab === 'cancelled') {
-        list = list.filter((row) => String(row.orderStatus).toLowerCase() === 'cancelled');
-      } else if (orderStatusTab === 'returned') {
-        list = list.filter((row) => String(row.orderStatus).toLowerCase() === 'returned');
-      }
-    }
     if (serverTotal !== null && !search.trim()) return list;
     if (!search.trim()) return list;
     const q = search.toLowerCase();
@@ -1178,7 +1014,7 @@ const DynamicModuleView = () => {
       const sku = String(row.basicInfo?.sku || row.ornate?.tagNo || row.sku || '').toLowerCase();
       return label.includes(q) || id.includes(q) || sku.includes(q);
     });
-  }, [items, search, serverTotal, isOrdersPage, orderStatusTab]);
+  }, [items, search, serverTotal]);
 
   const {
     totalItems,
@@ -1221,33 +1057,6 @@ const DynamicModuleView = () => {
           color: 'gold',
         },
       ]
-    : isOrdersPage
-    ? [
-        {
-          label: 'Total Orders',
-          value: serverTotal !== null ? serverTotal : (items.length || 0),
-          icon: HiOutlineShoppingBag,
-          color: 'bronze',
-        },
-        {
-          label: 'Pending Orders',
-          value: items.filter((o) => String(o.orderStatus).toLowerCase() === 'pending').length,
-          icon: HiOutlineClock,
-          color: 'gold',
-        },
-        {
-          label: 'Processing / Shipped',
-          value: items.filter((o) => ['processing', 'shipped', 'out_for_delivery'].includes(String(o.orderStatus).toLowerCase())).length,
-          icon: HiOutlineTruck,
-          color: 'green',
-        },
-        {
-          label: 'Total Revenue',
-          value: `₹${items.reduce((acc, o) => acc + (Number(o.pricing?.total) || 0), 0).toLocaleString('en-IN')}`,
-          icon: HiOutlineCreditCard,
-          color: 'peach',
-        },
-      ]
     : [
         {
           label: `Total ${config.title}`,
@@ -1284,17 +1093,11 @@ const DynamicModuleView = () => {
         subtitle={
           isOrnatePage
             ? 'Real-time synchronization and catalog management of Ornate ERP jewellery products.'
-            : isOrdersPage
-            ? 'View, manage, and process real-time storefront customer orders.'
-            : isReturnsPage
-            ? 'View, review, and manage customer return and exchange requests.'
             : `Configure, manage and update real-time ${config.title.toLowerCase()} catalog data.`
         }
-        onAdd={isOrdersPage || isReturnsPage ? undefined : handleOpenAdd}
+        onAdd={handleOpenAdd}
         addLabel={
-          isOrdersPage || isReturnsPage
-            ? undefined
-            : pathname.includes('jewelry-products')
+          pathname.includes('jewelry-products')
             ? 'Add Jewellery Product'
             : isSilverPage
             ? 'Add Silver Product'
@@ -1351,32 +1154,6 @@ const DynamicModuleView = () => {
         }
       />
 
-      {/* ─── Orders Status Filter Tabs ─── */}
-      {isOrdersPage && (
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 pt-0.5 luxury-scrollbar">
-          {ORDER_TABS.map((tab) => {
-            const isActive = orderStatusTab === tab.key;
-            return (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => {
-                  setOrderStatusTab(tab.key);
-                  setCurrentPage(1);
-                }}
-                className={`px-2.5 py-1 sm:px-3 sm:py-1 rounded-lg text-[10px] sm:text-[10.5px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
-                  isActive
-                    ? 'bg-[#8c6536] text-white shadow-xs ring-1 ring-[#8c6536]'
-                    : 'bg-white text-stone-500 hover:text-stone-800 border border-stone-200/80 hover:bg-stone-50'
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
-
       {/* ─── Table Card Container ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         {/* Table view */}
@@ -1412,31 +1189,20 @@ const DynamicModuleView = () => {
                     <th className="py-3 px-2 text-center w-12 whitespace-nowrap">
                       SR NO
                     </th>
-                    {isOrdersPage ? (
-                      <>
-                        <th className="py-3 px-3 whitespace-nowrap">ORDER INFO</th>
-                        <th className="py-3 px-3 whitespace-nowrap">PRODUCTS</th>
-                        <th className="py-3 px-3 whitespace-nowrap">CUSTOMER</th>
-                        <th className="py-3 px-3 whitespace-nowrap">PRICING & PAYMENT</th>
-                      </>
-                    ) : (
-                      <>
-                        <th className="py-3 px-3 whitespace-nowrap">
-                          {isProductCatalogPage ? 'PRODUCT' : 'ITEM / RECORD'}
-                        </th>
-                        <th className="py-3 px-3 whitespace-nowrap">
-                          SPECIFICATIONS
-                        </th>
-                        {isProductCatalogPage && (
-                          <th className="py-3 px-3 whitespace-nowrap text-center">DEMO METRICS</th>
-                        )}
-                        {isProductCatalogPage && (
-                          <th className="py-3 px-3 whitespace-nowrap text-center">VISIBILITY</th>
-                        )}
-                        {isCategoryPage && (
-                          <th className="py-3 px-3 whitespace-nowrap text-center w-28">ORDER</th>
-                        )}
-                      </>
+                    <th className="py-3 px-3 whitespace-nowrap">
+                      {isProductCatalogPage ? 'PRODUCT' : 'ITEM / RECORD'}
+                    </th>
+                    <th className="py-3 px-3 whitespace-nowrap">
+                      SPECIFICATIONS
+                    </th>
+                    {isProductCatalogPage && (
+                      <th className="py-3 px-3 whitespace-nowrap text-center">DEMO METRICS</th>
+                    )}
+                    {isProductCatalogPage && (
+                      <th className="py-3 px-3 whitespace-nowrap text-center">VISIBILITY</th>
+                    )}
+                    {isCategoryPage && (
+                      <th className="py-3 px-3 whitespace-nowrap text-center w-28">ORDER</th>
                     )}
                     <th className="py-3 px-3 whitespace-nowrap text-center">STATUS</th>
                     <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
@@ -1522,180 +1288,8 @@ const DynamicModuleView = () => {
                           {(currentPage - 1) * pageSize + idx + 1}
                         </td>
 
-                        {isOrdersPage ? (
-                          <>
-                            {/* 1. ORDER INFO COLUMN */}
-                            <td className="py-2.5 px-3 text-stone-900 text-xs whitespace-nowrap">
-                              <div className="space-y-1">
-                                <span className="font-mono font-bold text-xs text-[#8b6f4e] bg-[#faf5ed] border border-[#8b6f4e]/30 px-2 py-0.5 rounded shadow-2xs inline-block">
-                                  {row.orderNumber || 'Order'}
-                                </span>
-                                {(row.meta?.createdAt || row.createdAt) && (
-                                  <div className="text-[11px] text-stone-500 font-medium flex items-center gap-1">
-                                    <HiOutlineClock className="w-3.5 h-3.5 text-stone-400 shrink-0" />
-                                    <span>{formatOrderDate(row.meta?.createdAt || row.createdAt)}</span>
-                                  </div>
-                                )}
-                                <div className="text-[10px] text-stone-400 font-medium">
-                                  {row.items?.length || 0} {row.items?.length === 1 ? 'item' : 'items'}
-                                </div>
-                              </div>
-                            </td>
-
-                            {/* 2. PRODUCTS COLUMN (Beside Order Info) */}
-                            <td className="py-2.5 px-3 text-stone-900 text-xs">
-                              <div className="min-w-[190px] max-w-xs space-y-1.5">
-                                {Array.isArray(row.items) && row.items.slice(0, 2).map((item, i) => {
-                                  const itemThumb = getMediaUrl(
-                                    item.image ||
-                                    item.thumbnail ||
-                                    item.productId?.ornate?.ornateImages?.[0]?.url ||
-                                    item.productId?.colorImages?.[0]?.images?.[0]?.url ||
-                                    item.productId?.media ||
-                                    item.productId?.basicInfo?.images?.[0] ||
-                                    item.productId?.assets?.thumbnail
-                                  );
-                                  return (
-                                    <div key={item._id || i} className="flex items-center gap-2">
-                                      <div className="w-8 h-8 rounded-lg bg-[#faf6f0] border border-stone-200/80 overflow-hidden flex items-center justify-center shrink-0 shadow-2xs">
-                                        {itemThumb ? (
-                                          <img
-                                            src={itemThumb}
-                                            alt={item.title || 'Product'}
-                                            className="w-full h-full object-cover"
-                                            onError={(e) => {
-                                              e.currentTarget.style.display = 'none';
-                                              if (e.currentTarget.parentElement) {
-                                                e.currentTarget.parentElement.innerHTML = '<span class="text-[9px] text-[#8b6f4e]">💍</span>';
-                                              }
-                                            }}
-                                          />
-                                        ) : (
-                                          <span className="text-[11px]">💍</span>
-                                        )}
-                                      </div>
-                                      <div className="min-w-0 flex-1">
-                                        <span
-                                          className="font-semibold text-stone-900 text-xs block leading-tight truncate hover:text-[#8b6f4e] transition-colors"
-                                          title={item.title || 'Jewellery Item'}
-                                        >
-                                          {item.title || 'Jewellery Item'}
-                                        </span>
-                                        <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-stone-500">
-                                          {item.selectedMetal && (
-                                            <span className="px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-medium border border-stone-200/60">
-                                              {item.selectedMetal}
-                                            </span>
-                                          )}
-                                          {(item.sku || item.productId?.basicInfo?.sku || item.productId?.ornate?.tagNo) && (
-                                            <span className="px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-medium border border-stone-200/60">
-                                              SKU: {item.sku || item.productId?.basicInfo?.sku || item.productId?.ornate?.tagNo}
-                                            </span>
-                                          )}
-                                          <span className="font-medium text-stone-600">
-                                            Qty: {item.quantity || 1}
-                                          </span>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                                {Array.isArray(row.items) && row.items.length > 2 && (
-                                  <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-bold">
-                                    +{row.items.length - 2} more item{row.items.length - 2 > 1 ? 's' : ''}
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* 3. CUSTOMER DETAILS COLUMN */}
-                            <td className="py-2.5 px-3 text-stone-600 text-xs">
-                              <div className="min-w-[150px] max-w-xs space-y-0.5">
-                                <div className="font-semibold text-stone-900 text-xs truncate">
-                                  {row.customer?.firstName
-                                    ? `${row.customer.firstName} ${row.customer.lastName || ''}`.trim()
-                                    : row.shippingAddress?.fullName ||
-                                      row.shippingAddress?.firstName ||
-                                      'Customer'}
-                                </div>
-                                {(row.customer?.phone || row.shippingAddress?.phone) && (
-                                  <div className="text-[11px] text-stone-500 truncate">
-                                    {row.customer?.phone || row.shippingAddress?.phone}
-                                  </div>
-                                )}
-                                {(row.customer?.email || row.shippingAddress?.email) && (
-                                  <div className="text-[10px] text-stone-400 truncate">
-                                    {row.customer?.email || row.shippingAddress?.email}
-                                  </div>
-                                )}
-                                {row.shippingAddress?.city && (
-                                  <div className="text-[10.5px] text-stone-500 truncate">
-                                    {row.shippingAddress.city}
-                                    {row.shippingAddress.state ? `, ${row.shippingAddress.state}` : ''}
-                                    {row.shippingAddress.postalCode ? ` - ${row.shippingAddress.postalCode}` : ''}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* 4. PRICING & PAYMENT COLUMN (After Customer Details) */}
-                            <td className="py-2.5 px-3 text-stone-900 text-xs whitespace-nowrap">
-                              <div className="space-y-1">
-                                <div className="font-bold text-sm text-[#8b6f4e]">
-                                  ₹{Number(row.pricing?.total ?? row.totalAmount ?? 0).toLocaleString('en-IN')}
-                                </div>
-                                <div className="flex items-center gap-1.5 flex-wrap">
-                                  <span
-                                    className={`capitalize px-2 py-0.5 rounded text-[10px] font-semibold border ${
-                                      String(row.payment?.method).toLowerCase() === 'cod'
-                                        ? 'bg-amber-50 text-amber-800 border-amber-200'
-                                        : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                    }`}
-                                  >
-                                    {row.payment?.method || 'Online'}
-                                  </span>
-                                  {row.payment?.status && (
-                                    <span
-                                      className={`capitalize px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                        String(row.payment.status).toLowerCase() === 'paid'
-                                          ? 'text-emerald-700 bg-emerald-50/80'
-                                          : 'text-stone-600 bg-stone-100'
-                                      }`}
-                                    >
-                                      {row.payment.status}
-                                    </span>
-                                  )}
-                                </div>
-                                {row.coupon?.code && (
-                                  <div className="flex items-center gap-1 text-[10.5px] text-emerald-700 pt-0.5 flex-wrap">
-                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 font-mono font-bold text-[10px] border border-emerald-200">
-                                      <HiOutlineTag className="w-2.5 h-2.5 text-emerald-600" />
-                                      {row.coupon.code}
-                                    </span>
-                                    {row.coupon?.discountType === 'Percentage' && Number(row.coupon?.discountValue) > 0 && (
-                                      <span className="text-[10px] text-emerald-600 font-semibold">
-                                        ({row.coupon.discountValue}% off)
-                                      </span>
-                                    )}
-                                    {row.coupon?.discountType === 'Fixed' && Number(row.coupon?.discountValue) > 0 && (
-                                      <span className="text-[10px] text-emerald-600 font-semibold">
-                                        (₹{Number(row.coupon.discountValue).toLocaleString('en-IN')} off)
-                                      </span>
-                                    )}
-                                    {Number(row.pricing?.discount || row.coupon?.discountAmount) > 0 && (
-                                      <span className="text-[10px] text-emerald-600 font-medium">
-                                        (-₹{Number(row.pricing?.discount || row.coupon.discountAmount).toLocaleString('en-IN')})
-                                      </span>
-                                    )}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            {/* PRODUCT / ITEM COLUMN */}
-                            <td className="py-2.5 px-3 text-stone-900 text-xs">
+                        {/* PRODUCT / ITEM COLUMN */}
+                        <td className="py-2.5 px-3 text-stone-900 text-xs">
                               <div className="flex items-center gap-3">
                                 <div
                                   onClick={(e) => {
@@ -1866,8 +1460,6 @@ const DynamicModuleView = () => {
                             </div>
                           )}
                         </td>
-                      </>
-                    )}
 
                         {/* DEMO METRICS COLUMN */}
                         {isProductCatalogPage && (
@@ -1978,203 +1570,32 @@ const DynamicModuleView = () => {
 
                         {/* STATUS COLUMN */}
                         <td className="py-2.5 px-3 text-center" onClick={(e) => isProductCatalogPage && handleToggleProductStatus(row, e)}>
-                          {isOrdersPage ? (
-                            <span
-                              className={`inline-block px-2.5 py-1 rounded-full text-[10px] font-bold border capitalize tracking-wider ${
-                                String(row.orderStatus).toLowerCase() === 'pending'
-                                  ? 'bg-amber-50 text-amber-800 border-amber-300'
-                                  : String(row.orderStatus).toLowerCase() === 'processing'
-                                  ? 'bg-blue-50 text-blue-800 border-blue-300'
-                                  : String(row.orderStatus).toLowerCase() === 'shipped'
-                                  ? 'bg-sky-50 text-sky-800 border-sky-300'
-                                  : String(row.orderStatus).toLowerCase() === 'out_for_delivery'
-                                  ? 'bg-indigo-50 text-indigo-800 border-indigo-300'
-                                  : String(row.orderStatus).toLowerCase() === 'delivered'
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : String(row.orderStatus).toLowerCase() === 'cancelled'
-                                  ? 'bg-rose-50 text-rose-800 border-rose-300'
-                                  : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
-                              }`}
-                            >
-                              {row.orderStatus || 'pending'}
-                            </span>
-                          ) : (
-                            <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize transition-all ${
-                                isProductCatalogPage ? 'cursor-pointer hover:scale-105 select-none' : ''
-                              } ${
-                                isInactive
-                                  ? 'bg-stone-100 text-stone-600 border-stone-200'
-                                  : statusStr === 'approved'
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                                  : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
-                              }`}
-                              title={isProductCatalogPage ? 'Click to toggle status (draft / approved)' : undefined}
-                            >
-                              {statusStr}
-                            </span>
-                          )}
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize transition-all ${
+                              isProductCatalogPage ? 'cursor-pointer hover:scale-105 select-none' : ''
+                            } ${
+                              isInactive
+                                ? 'bg-stone-100 text-stone-600 border-stone-200'
+                                : statusStr === 'approved'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
+                            }`}
+                            title={isProductCatalogPage ? 'Click to toggle status (draft / approved)' : undefined}
+                          >
+                            {statusStr}
+                          </span>
                         </td>
 
                         {/* ACTIONS */}
                         <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
-                          {isOrdersPage ? (
-                            <div className="flex items-center justify-end gap-1.5">
-                              {/* Quick Accept & Cancel on table row for pending orders */}
-                              {(String(row.orderStatus).toLowerCase() === 'pending' &&
-                                orderStatusTab === 'pending') && (
-                                <>
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const isConfirmed = await confirm({
-                                        title: `Accept Order ${row.orderNumber || ''}`,
-                                        message: `Are you sure you want to accept order ${row.orderNumber || ''}? This will move the order to Processing.`,
-                                        confirmText: 'Accept Order',
-                                        cancelText: 'Cancel',
-                                        type: 'success',
-                                      });
-                                      if (isConfirmed) {
-                                        handleUpdateOrderStatus(row._id || row.id, 'processing');
-                                      }
-                                    }}
-                                    disabled={updatingOrderStatus}
-                                    title="Accept Order"
-                                    className="p-1.5 rounded-lg text-emerald-700 hover:text-emerald-800 hover:bg-emerald-50 border border-emerald-200/80 transition-all cursor-pointer shadow-2xs"
-                                  >
-                                    <HiOutlineCheck className="w-3.5 h-3.5 stroke-2" />
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={async (e) => {
-                                      e.stopPropagation();
-                                      const isConfirmed = await confirm({
-                                        title: `Cancel Order ${row.orderNumber || ''}`,
-                                        message: `Are you sure you want to cancel order ${row.orderNumber || ''}?`,
-                                        confirmText: 'Yes, Cancel Order',
-                                        cancelText: 'Keep Order',
-                                        type: 'danger',
-                                      });
-                                      if (isConfirmed) {
-                                        handleUpdateOrderStatus(row._id || row.id, 'cancelled');
-                                      }
-                                    }}
-                                    disabled={updatingOrderStatus}
-                                    title="Cancel Order"
-                                    className="p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200/80 transition-all cursor-pointer shadow-2xs"
-                                  >
-                                    <HiOutlineX className="w-3.5 h-3.5 stroke-2" />
-                                  </button>
-                                </>
-                              )}
-
-                              {/* Quick Actions for processing tab */}
-                              {orderStatusTab === 'processing' && (
-                                <>
-                                  {String(row.orderStatus).toLowerCase() === 'processing' && (
-                                    <button
-                                      type="button"
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        const isConfirmed = await confirm({
-                                          title: `Mark Order as Shipped`,
-                                          message: `Update status of order ${row.orderNumber || ''} to Shipped?`,
-                                          confirmText: 'Mark as Shipped',
-                                          cancelText: 'Cancel',
-                                          type: 'info',
-                                        });
-                                        if (isConfirmed) {
-                                          handleUpdateOrderStatus(row._id || row.id, 'shipped');
-                                        }
-                                      }}
-                                      disabled={updatingOrderStatus}
-                                      title="Mark as Shipped"
-                                      className="p-1.5 rounded-lg text-[#8b6f4e] hover:text-[#785e40] hover:bg-[#faf5ed] border border-[#8b6f4e]/30 transition-all cursor-pointer shadow-2xs"
-                                    >
-                                      <HiOutlineTruck className="w-3.5 h-3.5 stroke-2" />
-                                    </button>
-                                  )}
-
-                                  {['shipped', 'out_for_delivery'].includes(String(row.orderStatus).toLowerCase()) && (
-                                    <button
-                                      type="button"
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        const isConfirmed = await confirm({
-                                          title: `Mark Order as Delivered`,
-                                          message: `Confirm that order ${row.orderNumber || ''} has been delivered?`,
-                                          confirmText: 'Mark Delivered',
-                                          cancelText: 'Cancel',
-                                          type: 'success',
-                                        });
-                                        if (isConfirmed) {
-                                          handleUpdateOrderStatus(row._id || row.id, 'delivered');
-                                        }
-                                      }}
-                                      disabled={updatingOrderStatus}
-                                      title="Mark as Delivered"
-                                      className="p-1.5 rounded-lg text-purple-700 hover:text-purple-800 hover:bg-purple-50 border border-purple-200/80 transition-all cursor-pointer shadow-2xs"
-                                    >
-                                      <HiOutlineCheckCircle className="w-3.5 h-3.5 stroke-2" />
-                                    </button>
-                                  )}
-
-                                  {String(row.orderStatus).toLowerCase() !== 'cancelled' && (
-                                    <button
-                                      type="button"
-                                      onClick={async (e) => {
-                                        e.stopPropagation();
-                                        const isConfirmed = await confirm({
-                                          title: `Cancel Order ${row.orderNumber || ''}`,
-                                          message: `Are you sure you want to cancel order ${row.orderNumber || ''}?`,
-                                          confirmText: 'Yes, Cancel Order',
-                                          cancelText: 'Keep Order',
-                                          type: 'danger',
-                                        });
-                                        if (isConfirmed) {
-                                          handleUpdateOrderStatus(row._id || row.id, 'cancelled');
-                                        }
-                                      }}
-                                      disabled={updatingOrderStatus}
-                                      title="Cancel Order"
-                                      className="p-1.5 rounded-lg text-rose-600 hover:text-rose-800 hover:bg-rose-50 border border-rose-200/80 transition-all cursor-pointer shadow-2xs"
-                                    >
-                                      <HiOutlineX className="w-3.5 h-3.5 stroke-2" />
-                                    </button>
-                                  )}
-                                </>
-                              )}
-
-                              <button
-                                type="button"
-                                onClick={() => handleEditProductRecord(row)}
-                                title="View Order Details"
-                                className="p-1.5 rounded-lg text-stone-600 hover:text-stone-900 hover:bg-stone-100 border border-stone-200/80 transition-all cursor-pointer shadow-2xs"
-                              >
-                                <HiOutlineEye className="w-3.5 h-3.5" />
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDelete(row._id || row.id, row.orderNumber || rowLabel)}
-                                title="Delete Order"
-                                className="p-1.5 rounded-lg text-rose-500 hover:text-rose-700 hover:bg-rose-50 border border-rose-200/60 transition-all cursor-pointer shadow-2xs"
-                              >
-                                <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#ef4444]" />
-                              </button>
-                            </div>
-                          ) : (
-                            <RowActions
-                              record={row}
-                              detailsEndpoint={config.endpoint}
-                              onView={() => handleEditProductRecord(row)}
-                              onOpenWebsite={isProductCatalogPage ? () => openProductPreview(row) : undefined}
-                              onEdit={isOrdersPage || isReturnsPage ? undefined : () => handleEditProductRecord(row)}
-                              onDelete={() => handleDelete(row._id || row.id, row.orderNumber || rowLabel)}
-                            />
-                          )}
+                          <RowActions
+                            record={row}
+                            detailsEndpoint={config.endpoint}
+                            onView={() => handleEditProductRecord(row)}
+                            onOpenWebsite={isProductCatalogPage ? () => openProductPreview(row) : undefined}
+                            onEdit={() => handleEditProductRecord(row)}
+                            onDelete={() => handleDelete(row._id || row.id, rowLabel)}
+                          />
                         </td>
                       </tr>
                     );
@@ -3434,21 +2855,17 @@ const DynamicModuleView = () => {
           onClick={() => setViewingRecord(null)}
         >
           <div
-            className={`bg-white rounded-2xl ${viewingRecord.orderNumber ? 'max-w-2xl' : 'max-w-lg'} w-full p-4 sm:p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto`}
+            className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl border border-stone-200/90 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#faf5ed] text-[#8b6f4e] flex items-center justify-center font-bold text-sm">
-                  {viewingRecord.orderNumber ? (
-                    <HiOutlineShoppingBag className="w-4 h-4" />
-                  ) : (
-                    <HiOutlineEye className="w-4 h-4" />
-                  )}
+                  <HiOutlineEye className="w-4 h-4" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-stone-900 leading-tight">
-                    {viewingRecord.orderNumber ? `Order ${viewingRecord.orderNumber}` : `${singleName} Details`}
+                    {`${singleName} Details`}
                   </h3>
                 </div>
               </div>
@@ -3460,536 +2877,6 @@ const DynamicModuleView = () => {
                 <HiOutlineX className="w-4 h-4" />
               </button>
             </div>
-
-            {viewingRecord.orderNumber ? (
-              <div className="space-y-4 text-xs">
-                {/* Header Card: Order # + Status + Date */}
-                <div className="bg-[#faf5ed] p-3.5 rounded-xl border border-[#8b6f4e]/20 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-[#8b6f4e]">Order Reference</span>
-                      <h4 className="text-base font-mono font-bold text-stone-900">{viewingRecord.orderNumber}</h4>
-                    </div>
-                    <span
-                      className={`px-3 py-1 rounded-full text-xs font-bold border capitalize ${
-                        String(viewingRecord.orderStatus).toLowerCase() === 'pending'
-                          ? 'bg-amber-50 text-amber-800 border-amber-300'
-                          : String(viewingRecord.orderStatus).toLowerCase() === 'processing'
-                          ? 'bg-blue-50 text-blue-800 border-blue-300'
-                          : String(viewingRecord.orderStatus).toLowerCase() === 'shipped'
-                          ? 'bg-sky-50 text-sky-800 border-sky-300'
-                          : String(viewingRecord.orderStatus).toLowerCase() === 'out_for_delivery'
-                          ? 'bg-indigo-50 text-indigo-800 border-indigo-300'
-                          : String(viewingRecord.orderStatus).toLowerCase() === 'delivered'
-                          ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                          : String(viewingRecord.orderStatus).toLowerCase() === 'cancelled'
-                          ? 'bg-rose-50 text-rose-800 border-rose-300'
-                          : 'bg-stone-100 text-stone-700 border-stone-200'
-                      }`}
-                    >
-                      {viewingRecord.orderStatus || 'pending'}
-                    </span>
-                  </div>
-                  {(viewingRecord.meta?.createdAt || viewingRecord.createdAt) && (
-                    <div className="text-[11px] text-stone-500 flex items-center gap-1.5 pt-1 border-t border-[#8b6f4e]/10">
-                      <HiOutlineClock className="w-3.5 h-3.5 text-stone-400" />
-                      Placed on {formatOrderDate(viewingRecord.meta?.createdAt || viewingRecord.createdAt)}
-                    </div>
-                  )}
-                </div>
-
-                {/* Customer & Shipping Details */}
-                <div className="bg-stone-50/80 p-3.5 rounded-xl border border-stone-200/70 space-y-2">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 block">Customer & Shipping Address</span>
-                  <div className="font-semibold text-stone-900 text-sm">
-                    {viewingRecord.customer?.firstName
-                      ? `${viewingRecord.customer.firstName} ${viewingRecord.customer.lastName || ''}`.trim()
-                      : viewingRecord.shippingAddress?.fullName || 'Customer'}
-                  </div>
-                  <div className="text-stone-600 space-y-0.5 text-xs">
-                    {(viewingRecord.customer?.email || viewingRecord.shippingAddress?.email) && (
-                      <div>Email: {viewingRecord.customer?.email || viewingRecord.shippingAddress?.email}</div>
-                    )}
-                    {(viewingRecord.customer?.phone || viewingRecord.shippingAddress?.phone) && (
-                      <div>Phone: {viewingRecord.customer?.phone || viewingRecord.shippingAddress?.phone}</div>
-                    )}
-                    {viewingRecord.shippingAddress && (
-                      <div className="pt-1 text-stone-500 text-[11px]">
-                        {[
-                          viewingRecord.shippingAddress.addressLine,
-                          viewingRecord.shippingAddress.apartment,
-                          viewingRecord.shippingAddress.city,
-                          viewingRecord.shippingAddress.state,
-                          viewingRecord.shippingAddress.postalCode,
-                          viewingRecord.shippingAddress.country,
-                        ].filter(Boolean).join(', ')}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Items List */}
-                <div className="space-y-2">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 block">
-                    Ordered Items ({viewingRecord.items?.length || 0})
-                  </span>
-                  <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                    {Array.isArray(viewingRecord.items) && viewingRecord.items.map((item, i) => (
-                      <div key={item._id || i} className="p-2.5 rounded-xl bg-stone-50 border border-stone-200/70 flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <p className="font-semibold text-stone-900 text-xs leading-snug">
-                            {item.title}
-                          </p>
-                          <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-stone-500">
-                            {item.selectedMetal && (
-                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 font-medium">
-                                {item.selectedMetal}
-                              </span>
-                            )}
-                            {(item.sku || item.productId?.basicInfo?.sku || item.productId?.ornate?.tagNo) && (
-                              <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 font-medium">
-                                SKU: {item.sku || item.productId?.basicInfo?.sku || item.productId?.ornate?.tagNo}
-                              </span>
-                            )}
-                            <span className="text-stone-500">Qty: {item.quantity || 1}</span>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <div className="font-bold text-stone-900 text-xs">
-                            ₹{Number(item.totalItemPrice || item.price || 0).toLocaleString('en-IN')}
-                          </div>
-                          {item.quantity > 1 && (
-                            <div className="text-[10px] text-stone-400">
-                              ₹{Number(item.price || 0).toLocaleString('en-IN')} each
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Pricing & Payment Summary */}
-                <div className="bg-stone-50/80 p-3.5 rounded-xl border border-stone-200/70 space-y-2">
-                  <span className="text-[10px] uppercase font-bold tracking-wider text-stone-400 block">Payment & Pricing Breakdown</span>
-                  <div className="space-y-1 text-xs">
-                    {viewingRecord.pricing?.subtotal !== undefined && (
-                      <div className="flex justify-between text-stone-600">
-                        <span>Subtotal</span>
-                        <span>₹{Number(viewingRecord.pricing.subtotal).toLocaleString('en-IN')}</span>
-                      </div>
-                    )}
-                    {(Number(viewingRecord.pricing?.discount) > 0 || viewingRecord.coupon?.code) && (
-                      <div className="flex items-center justify-between text-emerald-700 font-medium text-xs">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span>Discount</span>
-                          {viewingRecord.coupon?.code && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/70 text-emerald-800 font-mono font-bold text-[10.5px] tracking-wide border border-emerald-300 shadow-2xs">
-                              <HiOutlineTag className="w-3 h-3 text-emerald-600" />
-                              <span>{viewingRecord.coupon.code}</span>
-                            </span>
-                          )}
-                          {viewingRecord.coupon?.discountType === 'Percentage' && Number(viewingRecord.coupon?.discountValue) > 0 ? (
-                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded border border-emerald-200">
-                              {viewingRecord.coupon.discountValue}% OFF
-                            </span>
-                          ) : viewingRecord.coupon?.discountType === 'Fixed' && Number(viewingRecord.coupon?.discountValue) > 0 ? (
-                            <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-100/60 px-1.5 py-0.5 rounded border border-emerald-200">
-                              ₹{Number(viewingRecord.coupon.discountValue).toLocaleString('en-IN')} OFF
-                            </span>
-                          ) : null}
-                        </div>
-                        <span className="font-semibold">-₹{Number(viewingRecord.pricing?.discount || viewingRecord.coupon?.discountAmount || 0).toLocaleString('en-IN')}</span>
-                      </div>
-                    )}
-                    {viewingRecord.pricing?.tax !== undefined && (
-                      <div className="flex justify-between text-stone-600">
-                        <span>Estimated Tax</span>
-                        <span>₹{Number(viewingRecord.pricing.tax).toLocaleString('en-IN')}</span>
-                      </div>
-                    )}
-                    {viewingRecord.pricing?.shipping !== undefined && (
-                      <div className="flex justify-between text-stone-600">
-                        <span>Shipping</span>
-                        <span>{viewingRecord.pricing.shipping === 0 ? 'FREE' : `₹${Number(viewingRecord.pricing.shipping).toLocaleString('en-IN')}`}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-stone-900 font-bold text-sm pt-2 border-t border-stone-200">
-                      <span>Total Amount</span>
-                      <span className="text-[#8b6f4e]">₹{Number(viewingRecord.pricing?.total ?? viewingRecord.totalAmount ?? 0).toLocaleString('en-IN')}</span>
-                    </div>
-                  </div>
-                  {viewingRecord.payment && (
-                    <div className="pt-2 border-t border-stone-200/60 flex items-center justify-between text-[11px]">
-                      <span className="text-stone-500 font-medium">Payment Method</span>
-                      <span className="capitalize font-semibold text-stone-800">
-                        {viewingRecord.payment.method || 'Online'} ({viewingRecord.payment.status || 'Pending'})
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* ─── Shiprocket Logistics Fulfillment Section ─── */}
-                <div className="p-3.5 rounded-xl bg-gradient-to-br from-stone-50 to-stone-100/80 border border-stone-200/90 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-lg bg-[#8b6f4e] text-white flex items-center justify-center shadow-2xs">
-                        <HiOutlineTruck className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                          <span>Shiprocket Logistics v2</span>
-                          {viewingRecord.shiprocketInfo?.awbCode && (
-                            <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[10px] font-semibold uppercase">
-                              {viewingRecord.shiprocketInfo.status || 'Active'}
-                            </span>
-                          )}
-                        </h4>
-                        <p className="text-[10.5px] text-stone-500">
-                          Multi-carrier fulfillment, live tracking &amp; label dispatch
-                        </p>
-                      </div>
-                    </div>
-
-                    {viewingRecord.shiprocketInfo?.awbCode ? (
-                      <span className="px-2.5 py-1 rounded-lg bg-stone-900 text-white font-mono text-[11px] font-bold tracking-wider">
-                        AWB: {viewingRecord.shiprocketInfo.awbCode}
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDispatchModal(viewingRecord)}
-                        className="px-3.5 py-1.5 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-lg shadow-2xs flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer"
-                      >
-                        <HiOutlineTruck className="w-4 h-4" />
-                        <span>Dispatch via Shiprocket</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {viewingRecord.shiprocketInfo?.awbCode && (
-                    <div className="pt-2 border-t border-stone-200/70 space-y-2">
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[11px]">
-                        <div className="bg-white p-2 rounded-lg border border-stone-200/80">
-                          <span className="text-[10px] text-stone-400 block font-medium">Assigned Courier</span>
-                          <span className="font-bold text-stone-800">{viewingRecord.shiprocketInfo.courierName || 'Shiprocket Partner'}</span>
-                        </div>
-                        <div className="bg-white p-2 rounded-lg border border-stone-200/80">
-                          <span className="text-[10px] text-stone-400 block font-medium">Pickup Date</span>
-                          <span className="font-semibold text-stone-700">{viewingRecord.shiprocketInfo.pickupScheduledDate || 'Immediate'}</span>
-                        </div>
-                        <div className="bg-white p-2 rounded-lg border border-stone-200/80 col-span-2 sm:col-span-1">
-                          <span className="text-[10px] text-stone-400 block font-medium">Shipment ID</span>
-                          <span className="font-mono text-stone-700 truncate block">{viewingRecord.shiprocketInfo.shiprocketShipmentId || viewingRecord.shiprocketInfo.shiprocketOrderId || '—'}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 flex-wrap pt-1">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenTracking(viewingRecord._id || viewingRecord.id)}
-                          className="px-3 py-1.5 bg-stone-900 hover:bg-stone-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                        >
-                          <HiOutlineTruck className="w-3.5 h-3.5" />
-                          <span>Track Live Scans</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handlePrintLabel(viewingRecord._id || viewingRecord.id, viewingRecord.shiprocketInfo?.labelUrl)}
-                          className="px-3 py-1.5 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                        >
-                          <HiOutlinePrinter className="w-3.5 h-3.5 text-stone-600" />
-                          <span>Shipping Label</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleDownloadManifest(viewingRecord._id || viewingRecord.id, viewingRecord.shiprocketInfo?.manifestUrl)}
-                          className="px-3 py-1.5 bg-white hover:bg-stone-50 border border-stone-300 text-stone-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer shadow-2xs"
-                        >
-                          <HiOutlineDocumentText className="w-3.5 h-3.5 text-stone-600" />
-                          <span>Manifest</span>
-                        </button>
-
-                        {viewingRecord.shiprocketInfo.status !== 'cancelled' && (
-                          <button
-                            type="button"
-                            onClick={() => handleCancelShipment(viewingRecord._id || viewingRecord.id)}
-                            className="px-2.5 py-1.5 text-rose-700 hover:bg-rose-50 rounded-lg text-xs font-medium ml-auto transition cursor-pointer"
-                          >
-                            Cancel AWB
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* ─── Order Timeline ─── */}
-                {(() => {
-                  const timeline = viewingRecord.orderTimeline || {};
-                  const isCancelled = String(viewingRecord.orderStatus).toLowerCase() === 'cancelled' || timeline.cancelled?.at;
-
-                  const formatActor = (actor) => {
-                    if (!actor) return null;
-                    if (typeof actor === 'object') {
-                      const name = [actor.profile?.firstName, actor.profile?.lastName].filter(Boolean).join(' ');
-                      if (name) return name;
-                      return actor.auth?.email || actor.email || actor._id || 'User';
-                    }
-                    return String(actor);
-                  };
-
-                  const formatDate = (val) => {
-                    if (!val) return null;
-                    try {
-                      const d = new Date(val);
-                      if (isNaN(d.getTime())) return null;
-                      return d.toLocaleString('en-IN', {
-                        day: '2-digit',
-                        month: 'short',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                        hour12: true,
-                      });
-                    } catch {
-                      return null;
-                    }
-                  };
-
-                  const steps = [
-                    {
-                      key: 'placed',
-                      label: 'Order Placed',
-                      at: timeline.placed?.at || viewingRecord.createdAt || viewingRecord.meta?.createdAt,
-                      by: formatActor(timeline.placed?.by || viewingRecord.userId),
-                      done: true,
-                      color: 'emerald',
-                    },
-                    {
-                      key: 'accepted',
-                      label: 'Order Accepted',
-                      at: timeline.accepted?.at,
-                      by: formatActor(timeline.accepted?.by),
-                      done: Boolean(timeline.accepted?.at) || ['processing', 'shipped', 'out_for_delivery', 'delivered'].includes(String(viewingRecord.orderStatus).toLowerCase()),
-                      color: 'emerald',
-                    },
-                    {
-                      key: 'packed',
-                      label: 'Packed',
-                      at: timeline.packed?.at,
-                      by: null,
-                      done: Boolean(timeline.packed?.at),
-                      color: 'blue',
-                    },
-                    {
-                      key: 'shipped',
-                      label: 'Shipped',
-                      at: timeline.shipped?.at,
-                      by: formatActor(timeline.shipped?.by),
-                      done: Boolean(timeline.shipped?.at) || ['shipped', 'out_for_delivery', 'delivered'].includes(String(viewingRecord.orderStatus).toLowerCase()),
-                      color: 'amber',
-                    },
-                    {
-                      key: 'delivered',
-                      label: 'Delivered',
-                      at: timeline.delivered?.at,
-                      by: formatActor(timeline.delivered?.by),
-                      done: Boolean(timeline.delivered?.at) || String(viewingRecord.orderStatus).toLowerCase() === 'delivered',
-                      color: 'purple',
-                    },
-                  ];
-
-                  if (isCancelled) {
-                    steps.push({
-                      key: 'cancelled',
-                      label: 'Cancelled',
-                      at: timeline.cancelled?.at,
-                      by: formatActor(timeline.cancelled?.by),
-                      done: true,
-                      color: 'rose',
-                    });
-                  }
-
-                  return (
-                    <div className="p-3.5 rounded-xl bg-stone-50/80 border border-stone-200/90 space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                          <HiOutlineClock className="w-4 h-4 text-[#8b6f4e]" />
-                          Order Timeline
-                        </span>
-                        <span className="text-[10.5px] font-semibold text-stone-500 uppercase tracking-wider">
-                          Status: <span className="text-stone-800">{viewingRecord.orderStatus || 'Pending'}</span>
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 pt-1">
-                        {steps.map((step) => {
-                          const dateStr = formatDate(step.at);
-                          return (
-                            <div
-                              key={step.key}
-                              className={`p-2.5 rounded-lg border text-[11px] transition-all ${
-                                step.done
-                                  ? step.color === 'rose'
-                                    ? 'bg-rose-50/80 border-rose-200/90 text-rose-900'
-                                    : 'bg-white border-stone-200/90 text-stone-800 shadow-2xs'
-                                  : 'bg-stone-100/50 border-dashed border-stone-200 text-stone-400'
-                              }`}
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="font-semibold text-xs flex items-center gap-1">
-                                  {step.done ? (
-                                    step.color === 'rose' ? (
-                                      <HiOutlineX className="w-3.5 h-3.5 text-rose-600" />
-                                    ) : (
-                                      <HiOutlineCheckCircle className="w-3.5 h-3.5 text-emerald-600" />
-                                    )
-                                  ) : (
-                                    <span className="w-2 h-2 rounded-full bg-stone-300 inline-block" />
-                                  )}
-                                  {step.label}
-                                </span>
-                                {step.done && (
-                                  <span className={`text-[9.5px] font-bold px-1.5 py-0.2 rounded ${
-                                    step.color === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-800'
-                                  }`}>
-                                    {step.color === 'rose' ? 'Cancelled' : 'Completed'}
-                                  </span>
-                                )}
-                              </div>
-                              {dateStr ? (
-                                <p className="text-[10.5px] text-stone-600 font-medium">{dateStr}</p>
-                              ) : (
-                                <p className="text-[10px] text-stone-400 italic">Pending</p>
-                              )}
-                              {step.by && (
-                                <p className="text-[10px] text-stone-500 truncate mt-0.5" title={`By: ${step.by}`}>
-                                  By: <span className="font-semibold text-stone-700">{step.by}</span>
-                                </p>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* ─── Order Status Workflow Actions ─── */}
-                <div className="pt-3 border-t border-stone-200/80 flex flex-wrap items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {/* Accept Order Button (for pending orders awaiting store acceptance) */}
-                    {String(viewingRecord.orderStatus).toLowerCase() === 'pending' && (
-                      <button
-                        type="button"
-                        disabled={updatingOrderStatus}
-                        onClick={async () => {
-                          const isConfirmed = await confirm({
-                            title: `Accept Order ${viewingRecord.orderNumber || ''}`,
-                            message: `Are you sure you want to accept order ${viewingRecord.orderNumber || ''}? This will move the order to Processing.`,
-                            confirmText: 'Accept Order',
-                            cancelText: 'Cancel',
-                            type: 'success',
-                          });
-                          if (isConfirmed) {
-                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'processing');
-                          }
-                        }}
-                        className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 active:scale-95 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                      >
-                        <HiOutlineCheckCircle className="w-4 h-4" />
-                        <span>Accept Order</span>
-                      </button>
-                    )}
-
-                    {/* Mark as Shipped Button (when order is accepted and in processing) */}
-                    {String(viewingRecord.orderStatus).toLowerCase() === 'processing' && (
-                      <button
-                        type="button"
-                        disabled={updatingOrderStatus}
-                        onClick={async () => {
-                          const isConfirmed = await confirm({
-                            title: `Mark Order as Shipped`,
-                            message: `Update status of order ${viewingRecord.orderNumber || ''} to Shipped?`,
-                            confirmText: 'Mark as Shipped',
-                            cancelText: 'Cancel',
-                            type: 'info',
-                          });
-                          if (isConfirmed) {
-                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'shipped');
-                          }
-                        }}
-                        className="px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] active:scale-95 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                      >
-                        <HiOutlineTruck className="w-4 h-4" />
-                        <span>Mark as Shipped</span>
-                      </button>
-                    )}
-
-                    {/* Mark as Delivered Button (if shipped) */}
-                    {['shipped', 'out_for_delivery'].includes(String(viewingRecord.orderStatus).toLowerCase()) && (
-                      <button
-                        type="button"
-                        disabled={updatingOrderStatus}
-                        onClick={async () => {
-                          const isConfirmed = await confirm({
-                            title: `Mark Order as Delivered`,
-                            message: `Confirm that order ${viewingRecord.orderNumber || ''} has been delivered to customer?`,
-                            confirmText: 'Mark Delivered',
-                            cancelText: 'Cancel',
-                            type: 'success',
-                          });
-                          if (isConfirmed) {
-                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'delivered');
-                          }
-                        }}
-                        className="px-4 py-2 bg-purple-700 hover:bg-purple-800 active:scale-95 text-white text-xs font-semibold rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                      >
-                        <HiOutlineCheckCircle className="w-4 h-4" />
-                        <span>Mark as Delivered</span>
-                      </button>
-                    )}
-
-                    {/* Cancel Order Button */}
-                    {String(viewingRecord.orderStatus).toLowerCase() !== 'cancelled' &&
-                     String(viewingRecord.orderStatus).toLowerCase() !== 'delivered' && (
-                      <button
-                        type="button"
-                        disabled={updatingOrderStatus}
-                        onClick={async () => {
-                          const isConfirmed = await confirm({
-                            title: `Cancel Order ${viewingRecord.orderNumber || ''}`,
-                            message: 'Are you sure you want to cancel this order? This action will set the order status to Cancelled.',
-                            confirmText: 'Yes, Cancel Order',
-                            cancelText: 'Keep Order',
-                            type: 'danger',
-                          });
-                          if (isConfirmed) {
-                            handleUpdateOrderStatus(viewingRecord._id || viewingRecord.id, 'cancelled');
-                          }
-                        }}
-                        className="px-4 py-2 bg-white border border-rose-300 hover:bg-rose-50 text-rose-700 active:scale-95 text-xs font-semibold rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                      >
-                        <HiOutlineX className="w-4 h-4" />
-                        <span>Cancel Order</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setViewingRecord(null)}
-                    className="px-4 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            ) : (
-            <>
-
             {/* Media thumbnail if exists */}
             {(() => {
               const rawMedia = getRowThumbnail(viewingRecord);
@@ -4474,18 +3361,14 @@ const DynamicModuleView = () => {
                 <span>View on Store</span>
               </button>
             )}
-            </>
-            )}
 
-            {!viewingRecord.orderNumber && (
-              <button
-                type="button"
-                onClick={() => setViewingRecord(null)}
-                className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setViewingRecord(null)}
+              className="w-full py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+            >
+              Close
+            </button>
           </div>
         </div>, document.body)
       )}
@@ -4618,37 +3501,6 @@ const DynamicModuleView = () => {
           </div>
         </div>, document.body)
       )}
-
-      {/* Shiprocket Forward Dispatch Modal */}
-      <ShiprocketDispatchModal
-        isOpen={shiprocketDispatchOpen}
-        onClose={() => setShiprocketDispatchOpen(false)}
-        order={viewingRecord}
-        onSuccess={(updatedInfo) => {
-          setViewingRecord((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  shiprocketInfo: updatedInfo,
-                  orderStatus: prev.orderStatus === 'pending' ? 'processing' : prev.orderStatus,
-                }
-              : null
-          );
-          fetchItems();
-        }}
-      />
-
-      {/* Shiprocket Live Tracking Modal */}
-      <ShiprocketTrackingModal
-        isOpen={shiprocketTrackingOpen}
-        onClose={() => {
-          setShiprocketTrackingOpen(false);
-          setShiprocketTrackingOrderId(null);
-        }}
-        orderId={shiprocketTrackingOrderId}
-        awbCode={viewingRecord?.shiprocketInfo?.awbCode}
-      />
-
     </div>
   );
 };

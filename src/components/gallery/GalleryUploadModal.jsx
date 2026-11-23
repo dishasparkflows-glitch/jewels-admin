@@ -30,13 +30,14 @@ export default function GalleryUploadModal({
   isOpen,
   onClose,
   defaultThemeId = '',
-  defaultType = 'herobanner',
+  defaultType = 'asset',
   modalThemeOptions = [],
   placementTypeOptions = [],
   onSuccess,
+  zIndexClass = 'z-[10500]',
 }) {
   const [uploadThemeId, setUploadThemeId] = useState('');
-  const [uploadType, setUploadType] = useState(defaultType || 'herobanner');
+  const [uploadType, setUploadType] = useState(defaultType || 'asset');
   const [uploadPlatform, setUploadPlatform] = useState('web');
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -174,7 +175,7 @@ export default function GalleryUploadModal({
 
   useEffect(() => {
     if (isOpen) {
-      const initialType = defaultType || 'herobanner';
+      const initialType = defaultType || 'asset';
       setUploadThemeId(defaultThemeId || '');
       setUploadType(initialType);
       setUploadPlatform('web');
@@ -496,7 +497,7 @@ export default function GalleryUploadModal({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 bg-stone-900/60 backdrop-blur-sm overflow-y-auto animate-fadeIn"
+      className={`fixed inset-0 ${zIndexClass || 'z-[10500]'} flex items-center justify-center p-4 sm:p-6 bg-stone-900/60 backdrop-blur-sm overflow-y-auto animate-fadeIn`}
       onClick={() => {
         if (!isUploading) onClose();
       }}
@@ -558,7 +559,7 @@ export default function GalleryUploadModal({
                     options={modalThemeOptions}
                     placeholder="Select a website theme…"
                     portal={true}
-                    menuClassName="z-[10000]"
+                    menuClassName="z-[11000]"
                   />
                 </div>
 
@@ -573,11 +574,11 @@ export default function GalleryUploadModal({
                   <Dropdown
                     size="field"
                     value={uploadType}
-                    onChange={(val) => setUploadType(val || 'herobanner')}
+                    onChange={(val) => setUploadType(val || 'asset')}
                     options={placementTypeOptions}
                     placeholder="Select image placement type…"
                     portal={true}
-                    menuClassName="z-[10000]"
+                    menuClassName="z-[11000]"
                   />
                 </div>
 
@@ -1029,7 +1030,7 @@ export default function GalleryUploadModal({
                                 <Dropdown
                                   size="sm"
                                   portal={true}
-                                  menuClassName="z-[10000]"
+                                  menuClassName="z-[11000]"
                                   buttonClassName="w-full h-8 text-[11px] px-2 bg-stone-50 border-stone-200 font-medium text-stone-800 focus:bg-white focus:border-[#8b6c3a] rounded-xl"
                                   value={
                                     imageRecordMap[item.id] !== undefined
@@ -1131,7 +1132,7 @@ export default function GalleryUploadModal({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-[10005] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm animate-fadeIn"
+          className="fixed inset-0 z-[11100] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-sm animate-fadeIn"
           onClick={() => setPreviewModalData(null)}
         >
           <div

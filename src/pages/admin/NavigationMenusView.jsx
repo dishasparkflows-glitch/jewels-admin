@@ -20,6 +20,7 @@ import Dropdown from '../../components/common/Dropdown';
 import { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import { deleteUploadedFile, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import AdminImage from '../../components/common/AdminImage';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { VITE_FRONT_URL } from '../../config/env';
 
 // Preset luxury jewelry icons for 1-click selection
@@ -908,28 +909,18 @@ export default function NavigationMenusView() {
                   <span className="text-[10px] font-semibold tracking-wider uppercase text-stone-400">
                     Status
                   </span>
-                  <button
-                    type="button"
-                    disabled={statusUpdating}
-                    onClick={handleToggleCategoryStatus}
-                    className="flex items-center gap-2 cursor-pointer group"
-                  >
-                    <div
-                      style={selectedCategory.status === 'active' ? { backgroundColor: 'var(--theme-primary, #85583f)' } : {}}
-                      className={`w-11 h-6 rounded-full transition-colors p-0.5 relative ${
-                        selectedCategory.status === 'active' ? '' : 'bg-stone-300'
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white shadow-xs transition-transform transform ${
-                          selectedCategory.status === 'active' ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <ToggleSwitch
+                      checked={selectedCategory.status === 'active'}
+                      onChange={handleToggleCategoryStatus}
+                      disabled={statusUpdating}
+                      size="md"
+                      ariaLabel="Toggle category visibility"
+                    />
                     <span className="text-xs font-semibold text-stone-700 w-12 text-left">
                       {selectedCategory.status === 'active' ? 'Visible' : 'Hidden'}
                     </span>
-                  </button>
+                  </div>
                 </div>
               </div>
 
@@ -1061,33 +1052,13 @@ export default function NavigationMenusView() {
                               </button>
 
                               {/* Direct On/Off Toggle Button for Section */}
-                              <button
-                                type="button"
+                              <ToggleSwitch
+                                checked={section.status === 'active' || !section.status}
+                                onChange={() => handleToggleSectionStatus(section)}
                                 disabled={togglingSectionId === section._id}
-                                onClick={() => handleToggleSectionStatus(section)}
-                                title={
-                                  section.status === 'active' || !section.status
-                                    ? 'Click to turn off section'
-                                    : 'Click to turn on section'
-                                }
-                                className="flex items-center gap-1.5 cursor-pointer group focus:outline-none mr-1"
-                              >
-                                <div
-                                  className={`w-8 h-4.5 rounded-full transition-colors p-0.5 relative ${
-                                    section.status === 'active' || !section.status
-                                      ? 'bg-[#85583f]'
-                                      : 'bg-stone-300'
-                                  } ${togglingSectionId === section._id ? 'opacity-60' : ''}`}
-                                >
-                                  <div
-                                    className={`w-3.5 h-3.5 rounded-full bg-white shadow-xs transition-transform transform ${
-                                      section.status === 'active' || !section.status
-                                        ? 'translate-x-3.5'
-                                        : 'translate-x-0'
-                                    }`}
-                                  />
-                                </div>
-                              </button>
+                                size="xs"
+                                ariaLabel="Toggle Section Status"
+                              />
                               <EditActionButton
                                 title="Edit Section"
                                 onClick={() => openEditSectionModal(section)}
@@ -1173,33 +1144,13 @@ export default function NavigationMenusView() {
                                           onMouseDown={(e) => e.stopPropagation()}
                                         >
                                           {/* Direct On/Off Toggle Button */}
-                                          <button
-                                            type="button"
+                                          <ToggleSwitch
+                                            checked={item.status === 'active' || !item.status}
+                                            onChange={() => handleToggleMenuItemStatus(item, section._id)}
                                             disabled={togglingItemId === item._id}
-                                            onClick={() => handleToggleMenuItemStatus(item, section._id)}
-                                            title={
-                                              item.status === 'active' || !item.status
-                                                ? 'Click to turn off (Hide)'
-                                                : 'Click to turn on (Show)'
-                                            }
-                                            className="flex items-center gap-2 cursor-pointer group focus:outline-none"
-                                          >
-                                            <div
-                                              className={`w-9 h-5 rounded-full transition-colors p-0.5 relative ${
-                                                item.status === 'active' || !item.status
-                                                  ? 'bg-[#85583f]'
-                                                  : 'bg-stone-300'
-                                              } ${togglingItemId === item._id ? 'opacity-60' : ''}`}
-                                            >
-                                              <div
-                                                className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform transform ${
-                                                  item.status === 'active' || !item.status
-                                                    ? 'translate-x-4'
-                                                    : 'translate-x-0'
-                                                }`}
-                                              />
-                                            </div>
-                                          </button>
+                                            size="xs"
+                                            ariaLabel="Toggle Item Status"
+                                          />
 
                                           {/* Direct Edit & Delete Buttons */}
                                           <div className="flex items-center gap-1.5">
@@ -1390,8 +1341,7 @@ export default function NavigationMenusView() {
                       <label className="block text-xs font-semibold text-stone-700">
                         Visibility
                       </label>
-                      <button
-                        type="button"
+                      <div
                         onClick={() =>
                           setSectionModal((prev) => ({
                             ...prev,
@@ -1416,22 +1366,12 @@ export default function NavigationMenusView() {
                             {(sectionModal.data?.status || 'active') === 'active' ? 'Visible' : 'Hidden'}
                           </span>
                         </div>
-                        <div
-                          className={`w-9 h-5 rounded-full transition-colors p-0.5 relative shrink-0 ${
-                            (sectionModal.data?.status || 'active') === 'active'
-                              ? 'bg-emerald-500'
-                              : 'bg-stone-300'
-                          }`}
-                        >
-                          <div
-                            className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform transform ${
-                              (sectionModal.data?.status || 'active') === 'active'
-                                ? 'translate-x-[16px]'
-                                : 'translate-x-0'
-                            }`}
-                          />
-                        </div>
-                      </button>
+                        <ToggleSwitch
+                          checked={(sectionModal.data?.status || 'active') === 'active'}
+                          size="sm"
+                          ariaLabel="Toggle section status"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1672,8 +1612,7 @@ export default function NavigationMenusView() {
                       <label className="block text-xs font-semibold text-stone-700">
                         Visibility
                       </label>
-                      <button
-                        type="button"
+                      <div
                         onClick={() =>
                           setItemModal((prev) => ({
                             ...prev,
@@ -1698,22 +1637,12 @@ export default function NavigationMenusView() {
                             {(itemModal.data?.status || 'active') === 'active' ? 'Visible' : 'Hidden'}
                           </span>
                         </div>
-                        <div
-                          className={`w-9 h-5 rounded-full transition-colors p-0.5 relative shrink-0 ${
-                            (itemModal.data?.status || 'active') === 'active'
-                              ? 'bg-emerald-500'
-                              : 'bg-stone-300'
-                          }`}
-                        >
-                          <div
-                            className={`w-4 h-4 rounded-full bg-white shadow-xs transition-transform transform ${
-                              (itemModal.data?.status || 'active') === 'active'
-                                ? 'translate-x-[16px]'
-                                : 'translate-x-0'
-                            }`}
-                          />
-                        </div>
-                      </button>
+                        <ToggleSwitch
+                          checked={(itemModal.data?.status || 'active') === 'active'}
+                          size="sm"
+                          ariaLabel="Toggle item status"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>

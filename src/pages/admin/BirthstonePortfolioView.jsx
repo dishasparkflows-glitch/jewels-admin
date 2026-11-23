@@ -19,6 +19,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 
 const MONTHS = [
   { short: 'JAN', full: 'January', num: 1, defaultStone: 'GARNET', color: '#d97706', quarter: 'Q1' },
@@ -616,25 +617,15 @@ export default function BirthstonePortfolioView() {
 
 
                       {/* Status Toggle Switch */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center">
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={item.isActive}
-                            onClick={() => handleToggleStatus(item)}
-                            style={item.isActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                              item.isActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
-                            }`}
-                            title={`Click to set ${item.isActive ? 'Inactive' : 'Active'}`}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                                item.isActive ? 'translate-x-4' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
+                          <ToggleSwitch
+                            checked={item.isActive}
+                            onChange={() => handleToggleStatus(item)}
+                            size="sm"
+                            stopPropagation={true}
+                            ariaLabel={`Set status ${item.isActive ? 'Inactive' : 'Active'}`}
+                          />
                         </div>
                       </td>
 
@@ -762,23 +753,12 @@ export default function BirthstonePortfolioView() {
                     <span className="text-xs font-semibold text-stone-700">
                       {formIsActive ? 'Visible in Collections' : 'Hidden from Store'}
                     </span>
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={formIsActive}
-                      onClick={() => setFormIsActive(!formIsActive)}
-                      style={formIsActive ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                      className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                        formIsActive ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
-                      }`}
-                      title={`Click to set ${formIsActive ? 'Hidden' : 'Visible'}`}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                          formIsActive ? 'translate-x-4' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
+                    <ToggleSwitch
+                      checked={formIsActive}
+                      onChange={(nextVal) => setFormIsActive(nextVal)}
+                      size="sm"
+                      ariaLabel={`Set ${formIsActive ? 'Hidden' : 'Visible'}`}
+                    />
                   </div>
                 </div>
               </div>

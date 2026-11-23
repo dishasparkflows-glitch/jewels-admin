@@ -33,6 +33,7 @@ import useCategoryLookup from '../../hooks/useCategoryLookup';
 import ProductPickerModal from '../../components/common/ProductPickerModal';
 import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
 export default function CelebrateGiftsView() {
@@ -944,22 +945,12 @@ export default function CelebrateGiftsView() {
                     SHOWCASE STATUS
                   </label>
                   <div className="flex items-center justify-center h-[42px] px-3.5 rounded-xl border border-stone-200 bg-stone-50/60">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={status === 'active'}
-                      onClick={() => setStatus(status === 'active' ? 'inactive' : 'active')}
-                      style={status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                      className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${
-                        status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          status === 'active' ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
+                    <ToggleSwitch
+                      checked={status === 'active'}
+                      onChange={(nextVal) => setStatus(nextVal ? 'active' : 'inactive')}
+                      size="md"
+                      ariaLabel="Showcase Status"
+                    />
                   </div>
                 </div>
               </div>

@@ -37,11 +37,20 @@ const colorStyles = {
   },
 };
 
-export default function StatCards({ cards = [] }) {
+export default function StatCards({ cards = [], className = '' }) {
   if (!cards || cards.length === 0) return null;
 
+  const defaultGrid =
+    cards.length === 6
+      ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5'
+      : cards.length === 5
+      ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-2.5'
+      : cards.length === 3
+      ? 'grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-2.5'
+      : 'grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5';
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
+    <div className={className || defaultGrid}>
       {cards.map((card, idx) => {
         const Icon = card.icon;
         const color = colorStyles[card.color || 'bronze'] || colorStyles.bronze;
@@ -51,7 +60,7 @@ export default function StatCards({ cards = [] }) {
 
         return (
           <div
-            key={card.label || idx}
+            key={card.label || card.title || idx}
             onClick={card.onClick}
             role={isClickable ? 'button' : undefined}
             tabIndex={isClickable ? 0 : undefined}
@@ -64,7 +73,8 @@ export default function StatCards({ cards = [] }) {
               isActive
                 ? {
                     borderColor: 'var(--theme-primary, #8b6f4e)',
-                    boxShadow: '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)',
+                    boxShadow: '0 0 0 1.5px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)',
+                    backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.04)',
                   }
                 : undefined
             }
@@ -89,7 +99,7 @@ export default function StatCards({ cards = [] }) {
             )}
             <div className="min-w-0 flex-1">
               <p className="text-[10px] font-semibold text-stone-500 truncate leading-none">
-                {card.label}
+                {card.label || card.title}
               </p>
               <p className="text-base sm:text-lg font-bold text-stone-900 tracking-tight mt-0.5 truncate leading-none">
                 {card.value}

@@ -15,19 +15,9 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import Modal from '../../components/common/Modal';
 import DatePicker from '../../components/common/DatePicker';
 import RowActions from '../../components/common/RowActions';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { VITE_FRONT_URL } from '../../config/env';
-
-// Helper to format dates matching the exact screenshot: "13 Oct 2026 - No end"
-const formatDate = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
-  return d.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  });
-};
+import { formatDate, toInputDate } from '../../utils/formatters';
 
 const formatSchedule = (item) => {
   const start = formatDate(item.date?.start || item.startDate) || formatDate(new Date());
@@ -36,14 +26,6 @@ const formatSchedule = (item) => {
   }
   const end = formatDate(item.date?.end || item.endDate);
   return `${start} - ${end}`;
-};
-
-// Input date helper: yyyy-mm-dd for input[type="date"]
-const toInputDate = (dateStr) => {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return '';
-  return d.toISOString().split('T')[0];
 };
 
 export default function TopAnnouncementView() {
@@ -366,21 +348,13 @@ export default function TopAnnouncementView() {
                 Shows at the top of website header
               </span>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={settings.isEnabled}
+            <ToggleSwitch
+              checked={Boolean(settings.isEnabled)}
+              onChange={() => handleToggleGlobal(!settings.isEnabled)}
               disabled={savingSettings}
-              onClick={() => handleToggleGlobal(!settings.isEnabled)}
-              style={settings.isEnabled ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${settings.isEnabled ? '' : 'bg-stone-300'
-                }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${settings.isEnabled ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-              />
-            </button>
+              size="md"
+              ariaLabel="Enable Announcement Bar"
+            />
           </div>
 
           {/* View on Website Button */}
@@ -585,22 +559,14 @@ export default function TopAnnouncementView() {
                       </td>
 
                       {/* Status Toggle Switch */}
-                      <td className="text-center align-middle px-2" onClick={(e) => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={item.isActive}
-                          onClick={() => handleToggleStatus(item)}
-                          style={item.isActive ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${item.isActive ? '' : 'bg-stone-300'
-                            }`}
-                          title={`Click to set ${item.isActive ? 'Inactive' : 'Active'}`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${item.isActive ? 'translate-x-5' : 'translate-x-0'
-                              }`}
-                          />
-                        </button>
+                      <td className="text-center align-middle px-2">
+                        <ToggleSwitch
+                          checked={item.isActive}
+                          onChange={() => handleToggleStatus(item)}
+                          size="md"
+                          stopPropagation={true}
+                          ariaLabel={`Set announcement status ${item.isActive ? 'Inactive' : 'Active'}`}
+                        />
                       </td>
 
                       {/* Schedule Badge */}
@@ -730,20 +696,12 @@ export default function TopAnnouncementView() {
                 {formData.isActive ? 'Active and visible on rotating banner' : 'Inactive (hidden from rotation)'}
               </span>
             </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={formData.isActive}
-              onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
-              style={formData.isActive ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
-              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${formData.isActive ? '' : 'bg-stone-300'
-                }`}
-            >
-              <span
-                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${formData.isActive ? 'translate-x-5' : 'translate-x-0'
-                  }`}
-              />
-            </button>
+            <ToggleSwitch
+              checked={Boolean(formData.isActive)}
+              onChange={() => setFormData({ ...formData, isActive: !formData.isActive })}
+              size="md"
+              ariaLabel="Toggle Announcement Status"
+            />
           </div>
 
           {/* Schedule Configuration */}

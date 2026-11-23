@@ -4,11 +4,7 @@ import { HiOutlineRefresh, HiOutlineCheckCircle, HiOutlineArrowLeft } from 'reac
 import Modal from '../Modal';
 import Dropdown from '../Dropdown';
 import api from '../../../api/axios';
-
-const money = (val) => {
-  if (val == null || val === '') return '₹ 0';
-  return `₹ ${Number(val).toLocaleString('en-IN')}`;
-};
+import { money } from '../../../utils/formatters';
 
 const SYNC_FIELDS = [
   { id: 'gender', label: 'Gender', desc: 'Target audience / gender classification' },

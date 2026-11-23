@@ -19,95 +19,22 @@ import {
 import { IoDiamondOutline } from 'react-icons/io5';
 import Dropdown from '../Dropdown';
 import Pagination from '../Pagination';
-import { EditActionButton, DeleteActionButton, MoveActionButton } from '../RowActions';
+import { EditActionButton, DeleteActionButton, MoveActionButton, RepresentativeActionButton } from '../RowActions';
 import SyncPreviewModal from './SyncPreviewModal';
 import MoveProductModal from './MoveProductModal';
+import StatusBadge from '../StatusBadge';
 import api from '../../../api/axios';
 import { useConfirm } from '../../../contexts/ConfirmContext';
 import { openProductPreview } from '../../../utils/productPreview';
+import { money } from '../../../utils/formatters';
+import { getProductImage } from '../../../utils/imageUrl';
 
-const money = (val) => {
-  if (val == null || val === '') return '₹ 0';
-  return `₹ ${Number(val).toLocaleString('en-IN')}`;
-};
-
-const getProductImage = (p) => {
-  if (!p) return null;
-  if (p.images && p.images[0]) {
-    const img = p.images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (p.ornate?.ornateImages && p.ornate.ornateImages[0]) {
-    const img = p.ornate.ornateImages[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (p.colorImages && p.colorImages[0]?.images?.[0]) {
-    const img = p.colorImages[0].images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  return null;
-};
-
-const renderStatusBadge = (p) => {
-  const status = (p.status || 'draft').toLowerCase();
-  if (status === 'approved') {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 capitalize">
-        Approved
-      </span>
-    );
-  }
-  if (status === 'draft') {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 capitalize">
-        Draft
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-600 border border-stone-200 capitalize">
-      {status}
-    </span>
-  );
-};
+const renderStatusBadge = (p) => <StatusBadge status={p.status || 'draft'} size="xs" />;
 
 const renderStockStatusBadge = (p) => {
   const isSold = p.ornate?.isSold || p.stockStatus === 'Sold' || p.status === 'sold';
-  if (isSold) {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-        Sold
-      </span>
-    );
-  }
-
-  const stock = p.stockStatus || 'In Stock';
-  if (stock === 'In Stock') {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-        In Stock
-      </span>
-    );
-  }
-  if (stock === 'Out of Stock') {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
-        Out of Stock
-      </span>
-    );
-  }
-  if (stock === 'Made to Order') {
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-        Made to Order
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-600 border border-stone-200">
-      {stock}
-    </span>
-  );
+  const stock = isSold ? 'sold' : (p.stockStatus || 'in_stock');
+  return <StatusBadge status={stock} size="xs" />;
 };
 
 export default function ManageGroupDrawer({
@@ -855,18 +782,10 @@ export default function ManageGroupDrawer({
                                         onClick={() => handleOpenMoveSingle(p)}
                                         title="Move to another group or create new group"
                                       />
-                                      <button
-                                        type="button"
+                                      <RepresentativeActionButton
+                                        isPrimary={isPrimary}
                                         onClick={() => handleSetRepresentative(p._id)}
-                                        className={`w-7 h-7 rounded-lg border inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer active:scale-95 ${
-                                          isPrimary
-                                            ? 'bg-amber-50 border-amber-300 text-amber-600'
-                                            : 'bg-white border-stone-200 text-stone-400 hover:text-amber-500 hover:border-amber-200'
-                                        }`}
-                                        title={isPrimary ? 'Current Primary Representative' : 'Set as Primary Representative'}
-                                      >
-                                        <HiOutlineStar className="w-3.5 h-3.5 fill-current" />
-                                      </button>
+                                      />
                                       <EditActionButton
                                         onClick={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
                                         title="Edit Product"
@@ -928,16 +847,11 @@ export default function ManageGroupDrawer({
                                   {renderStatusBadge(p)}
                                   {renderStockStatusBadge(p)}
                                 </div>
-                                <button
-                                  type="button"
+                                <RepresentativeActionButton
+                                  isPrimary={isPrimary}
                                   onClick={() => handleSetRepresentative(p._id)}
-                                  className={`p-1 rounded-lg shrink-0 ${
-                                    isPrimary ? 'text-amber-500' : 'text-stone-300 hover:text-amber-500'
-                                  }`}
-                                  title="Set as representative"
-                                >
-                                  <HiOutlineStar className="w-4 h-4 fill-current" />
-                                </button>
+                                  className="shrink-0"
+                                />
                               </div>
 
                               <div

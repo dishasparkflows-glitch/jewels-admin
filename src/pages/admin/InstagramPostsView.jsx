@@ -15,6 +15,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
 import RowActions from '../../components/common/RowActions';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 // Helper to extract clean embed URL from Instagram URL
@@ -763,20 +764,12 @@ export default function InstagramPostsView() {
                     Show this post in customer social feeds
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setIsActive(!isActive)}
-                  style={isActive ? { backgroundColor: 'var(--theme-primary, #8c6d46)' } : {}}
-                  className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none ${
-                    isActive ? '' : 'bg-stone-300'
-                  }`}
-                >
-                  <span
-                    className={`block w-5 h-5 rounded-full bg-white shadow-xs transition-transform absolute top-0.5 ${
-                      isActive ? 'translate-x-6' : 'translate-x-0.5'
-                    }`}
-                  />
-                </button>
+                <ToggleSwitch
+                  checked={isActive}
+                  onChange={() => setIsActive(!isActive)}
+                  size="md"
+                  ariaLabel="Toggle Storefront Visibility"
+                />
               </div>
 
               {/* Form Buttons */}

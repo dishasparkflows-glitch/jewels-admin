@@ -20,6 +20,8 @@ import {
   HiOutlinePaperAirplane,
   HiOutlineLocationMarker,
   HiOutlinePhone,
+  HiOutlineXCircle,
+  HiOutlineReply,
 } from 'react-icons/hi';
 import { IoLogoWhatsapp } from 'react-icons/io5';
 import { ShiprocketDispatchModal, ShiprocketTrackingModal } from '../../components/common/ShiprocketModals';
@@ -48,16 +50,40 @@ export default function OrdersView() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [orderStatusTab, setOrderStatusTab] = useState('all');
   const [pageSize, setPageSize] = useAdminPageSize();
+  const [serverTotal, setServerTotal] = useState(null);
+  const [statusCounts, setStatusCounts] = useState({
+    all: 0,
+    total: 0,
+    pending: 0,
+    processing: 0,
+    shipped: 0,
+    delivered: 0,
+    cancelled: 0,
+    returned: 0,
+  });
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [viewingOrder, setViewingOrder] = useState(null);
   const [updatingOrderStatus, setUpdatingOrderStatus] = useState(false);
+
+  // Debounce search input to avoid spamming API on keystrokes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   // Shiprocket states
   const [shiprocketDispatchOpen, setShiprocketDispatchOpen] = useState(false);
   const [shiprocketTrackingOpen, setShiprocketTrackingOpen] = useState(false);
   const [shiprocketTrackingOrderId, setShiprocketTrackingOrderId] = useState(null);
+
+  // Mark as Delivered with Typed Confirmation state
+  const [markDeliveredOrder, setMarkDeliveredOrder] = useState(null);
+  const [typedConfirmText, setTypedConfirmText] = useState('');
 
   // Invoice Dispatch State
   const [showInvoiceDispatch, setShowInvoiceDispatch] = useState(false);
@@ -131,94 +157,146 @@ export default function OrdersView() {
     }
   };
 
-  // Fetch orders from API
-  const fetchOrders = useCallback(async () => {
-    try {
-      setLoading(true);
-      const params = { limit: 500 };
-      if (orderStatusTab && orderStatusTab !== 'all') {
-        params.status = orderStatusTab;
-      }
-      const res = await api.get('/orders', { params });
-      const list = res.data?.data?.items || res.data?.data || res.data?.orders || [];
-      setOrders(Array.isArray(list) ? list : []);
-    } catch (err) {
-      console.error('Failed to load orders:', err);
-      toast.error('Failed to load orders from database');
-    } finally {
-      setLoading(false);
-    }
-  }, [orderStatusTab]);
-
-  useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
-
-  // Filter orders by search query
-  const filteredOrders = useMemo(() => {
-    let list = orders;
-    if (orderStatusTab && orderStatusTab !== 'all') {
-      list = list.filter((ord) => String(ord.orderStatus || ord.status).toLowerCase() === orderStatusTab.toLowerCase());
-    }
-    if (!search.trim()) return list;
-    const q = search.toLowerCase();
-    return list.filter((ord) => {
-      const orderNo = (ord.orderNumber || '').toLowerCase();
-      const custName = (
-        ord.customer?.firstName
-          ? `${ord.customer.firstName} ${ord.customer.lastName || ''}`
-          : ord.shippingAddress?.fullName || ord.shippingAddress?.firstName || ''
-      ).toLowerCase();
-      const phone = (ord.customer?.phone || ord.shippingAddress?.phone || '').toLowerCase();
-      const email = (ord.customer?.email || ord.shippingAddress?.email || '').toLowerCase();
-      const city = (ord.shippingAddress?.city || '').toLowerCase();
-      return orderNo.includes(q) || custName.includes(q) || phone.includes(q) || email.includes(q) || city.includes(q);
-    });
-  }, [orders, search, orderStatusTab]);
-
-  // Pagination hook
+  // Pagination hook with serverTotal
   const {
     currentPage,
     setCurrentPage,
     paginatedItems,
     totalPages,
     totalItems,
-  } = usePagination(filteredOrders, pageSize);
+  } = usePagination(orders, pageSize, serverTotal);
 
-  // Stat cards calculation
+  // Fetch orders from API with server-side pagination
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        limit: pageSize,
+      };
+      if (orderStatusTab && orderStatusTab !== 'all') {
+        params.status = orderStatusTab;
+      }
+      if (debouncedSearch && debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+      const res = await api.get('/orders', { params });
+      const list = res.data?.data?.items || res.data?.data || res.data?.orders || [];
+      setOrders(Array.isArray(list) ? list : []);
+
+      const pagination = res.data?.data?.pagination || res.data?.pagination;
+      if (pagination?.totalDocs !== undefined) {
+        setServerTotal(pagination.totalDocs);
+      } else if (pagination?.total !== undefined) {
+        setServerTotal(pagination.total);
+      } else {
+        setServerTotal(Array.isArray(list) ? list.length : 0);
+      }
+
+      if (res.data?.data?.counts) {
+        setStatusCounts(res.data.data.counts);
+      } else if (orderStatusTab === 'all' && Array.isArray(list)) {
+        const counts = { all: list.length, total: list.length, pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0, returned: 0 };
+        list.forEach((ord) => {
+          const st = String(ord.orderStatus || ord.status || '').toLowerCase();
+          if (st === 'pending') counts.pending += 1;
+          else if (st === 'processing' || st === 'accepted' || st === 'confirmed') counts.processing += 1;
+          else if (st === 'shipped' || st === 'out_for_delivery') counts.shipped += 1;
+          else if (st === 'delivered') counts.delivered += 1;
+          else if (st === 'cancelled') counts.cancelled += 1;
+          else if (st === 'returned') counts.returned += 1;
+        });
+        setStatusCounts(counts);
+      }
+    } catch (err) {
+      console.error('Failed to load orders:', err);
+      toast.error('Failed to load orders from database');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize, orderStatusTab, debouncedSearch]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  // 6 status-wise stat cards matching the status tabs
   const statCardsData = useMemo(() => {
-    const total = orders.length;
-    const pending = orders.filter((o) => String(o.orderStatus || o.status).toLowerCase() === 'pending').length;
-    const processing = orders.filter((o) => ['processing', 'confirmed'].includes(String(o.orderStatus || o.status).toLowerCase())).length;
-    const delivered = orders.filter((o) => String(o.orderStatus || o.status).toLowerCase() === 'delivered').length;
-
     return [
       {
-        title: 'Total Orders',
-        value: total,
-        subtitle: 'All recorded storefront orders',
-        color: 'stone',
+        id: 'pending',
+        label: 'Pending',
+        value: statusCounts.pending ?? 0,
+        icon: HiOutlineClock,
+        color: 'gold',
+        onClick: () => {
+          setOrderStatusTab((prev) => (prev === 'pending' ? 'all' : 'pending'));
+          setCurrentPage(1);
+        },
+        active: orderStatusTab === 'pending',
       },
       {
-        title: 'Pending Action',
-        value: pending,
-        subtitle: 'Awaiting merchant acceptance',
-        color: 'amber',
-      },
-      {
-        title: 'Processing',
-        value: processing,
-        subtitle: 'Being prepared or fulfilled',
+        id: 'processing',
+        label: 'Processing',
+        value: statusCounts.processing ?? 0,
+        icon: HiOutlineRefresh,
         color: 'blue',
+        onClick: () => {
+          setOrderStatusTab((prev) => (prev === 'processing' ? 'all' : 'processing'));
+          setCurrentPage(1);
+        },
+        active: orderStatusTab === 'processing',
       },
       {
-        title: 'Delivered',
-        value: delivered,
-        subtitle: 'Successfully completed orders',
-        color: 'emerald',
+        id: 'shipped',
+        label: 'Shipped',
+        value: statusCounts.shipped ?? 0,
+        icon: HiOutlineTruck,
+        color: 'purple',
+        onClick: () => {
+          setOrderStatusTab((prev) => (prev === 'shipped' ? 'all' : 'shipped'));
+          setCurrentPage(1);
+        },
+        active: orderStatusTab === 'shipped',
+      },
+      {
+        id: 'delivered',
+        label: 'Delivered',
+        value: statusCounts.delivered ?? 0,
+        icon: HiOutlineCheckCircle,
+        color: 'green',
+        onClick: () => {
+          setOrderStatusTab((prev) => (prev === 'delivered' ? 'all' : 'delivered'));
+          setCurrentPage(1);
+        },
+        active: orderStatusTab === 'delivered',
+      },
+      {
+        id: 'cancelled',
+        label: 'Cancelled',
+        value: statusCounts.cancelled ?? 0,
+        icon: HiOutlineXCircle,
+        color: 'rose',
+        onClick: () => {
+          setOrderStatusTab((prev) => (prev === 'cancelled' ? 'all' : 'cancelled'));
+          setCurrentPage(1);
+        },
+        active: orderStatusTab === 'cancelled',
+      },
+      {
+        id: 'returned',
+        label: 'Returned',
+        value: statusCounts.returned ?? 0,
+        icon: HiOutlineReply,
+        color: 'peach',
+        onClick: () => {
+          setOrderStatusTab((prev) => (prev === 'returned' ? 'all' : 'returned'));
+          setCurrentPage(1);
+        },
+        active: orderStatusTab === 'returned',
       },
     ];
-  }, [orders]);
+  }, [statusCounts, orderStatusTab, setCurrentPage]);
 
   // Handle Order Status Update
   const handleUpdateOrderStatus = async (orderId, newStatus) => {
@@ -232,6 +310,7 @@ export default function OrdersView() {
       if (viewingOrder && (viewingOrder._id || viewingOrder.id) === orderId) {
         setViewingOrder((prev) => ({ ...prev, orderStatus: newStatus, status: newStatus }));
       }
+      fetchOrders();
     } catch (err) {
       console.error('Failed to update status:', err);
       toast.error(err.response?.data?.message || 'Failed to update order status');
@@ -239,6 +318,27 @@ export default function OrdersView() {
       setUpdatingOrderStatus(false);
     }
   };
+
+  // Handle Open Mark as Delivered Modal
+  const handleOpenMarkDelivered = (order) => {
+    setMarkDeliveredOrder(order);
+    setTypedConfirmText('');
+  };
+
+  // Handle Confirm Mark as Delivered
+  const handleConfirmMarkDelivered = async () => {
+    if (!markDeliveredOrder) return;
+    const orderId = markDeliveredOrder._id || markDeliveredOrder.id;
+    await handleUpdateOrderStatus(orderId, 'delivered');
+    setMarkDeliveredOrder(null);
+    setTypedConfirmText('');
+  };
+
+  const normalizedTyped = typedConfirmText.trim().toLowerCase();
+  const isDeliveredTypedValid =
+    normalizedTyped === 'mark as delivered' ||
+    normalizedTyped === 'mark as deliveded' ||
+    normalizedTyped === 'mark as delived';
 
   // Handle Delete Order
   const handleDeleteOrder = async (orderId, orderNo) => {
@@ -263,6 +363,7 @@ export default function OrdersView() {
       if (viewingOrder && (viewingOrder._id || viewingOrder.id) === orderId) {
         setViewingOrder(null);
       }
+      fetchOrders();
     } catch (err) {
       console.error('Failed to delete order:', err);
       toast.error(err.response?.data?.message || 'Failed to delete order');
@@ -295,6 +396,7 @@ export default function OrdersView() {
       }
       setSelectedIds(new Set());
       toast.success(`${count} order${count > 1 ? 's' : ''} deleted successfully`);
+      fetchOrders();
     } catch (err) {
       console.error('Failed to bulk delete orders:', err);
       toast.error(err.response?.data?.message || 'Failed to delete selected orders');
@@ -435,7 +537,7 @@ export default function OrdersView() {
               <HiOutlineRefresh className="w-5 h-5 animate-spin text-[#8b6f4e]" />
               <span>Loading orders from database...</span>
             </div>
-          ) : filteredOrders.length === 0 ? (
+          ) : orders.length === 0 ? (
             <div className="py-16 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-2">
               <div className="w-10 h-10 rounded-xl bg-[#faf6f0] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e]">
                 <HiOutlineShoppingBag className="w-5 h-5" />
@@ -735,25 +837,20 @@ export default function OrdersView() {
                             )
                           )}
 
-                          {statusStr === 'shipped' && (
+                          {/* Mark as Delivered Button */}
+                          {!['delivered', 'cancelled'].includes(statusStr) && statusStr !== 'pending' && (
                             <button
                               type="button"
-                              onClick={async (e) => {
+                              onClick={(e) => {
                                 e.stopPropagation();
-                                const isConfirmed = await confirm({
-                                  title: `Mark Order as Delivered`,
-                                  message: `Confirm that order ${orderNo} has been delivered?`,
-                                  confirmText: 'Mark Delivered',
-                                  cancelText: 'Cancel',
-                                  type: 'success',
-                                });
-                                if (isConfirmed) handleUpdateOrderStatus(orderId, 'delivered');
+                                handleOpenMarkDelivered(ord);
                               }}
                               disabled={updatingOrderStatus}
                               title="Mark as Delivered"
-                              className="p-1.5 rounded-lg text-purple-700 hover:text-purple-800 hover:bg-purple-50 border border-purple-200/80 transition-all cursor-pointer shadow-2xs"
+                              className="px-2.5 py-1.5 rounded-lg text-emerald-700 hover:text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all cursor-pointer shadow-2xs inline-flex items-center gap-1.5 text-xs font-semibold"
                             >
                               <HiOutlineCheckCircle className="w-3.5 h-3.5 stroke-2" />
+                              <span className="hidden sm:inline">Mark as Delivered</span>
                             </button>
                           )}
 
@@ -812,7 +909,10 @@ export default function OrdersView() {
               totalItems={totalItems}
               pageSize={pageSize}
               onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
             />
           </div>
         )}
@@ -1269,6 +1369,19 @@ export default function OrdersView() {
               </div>
 
               <div className="flex items-center gap-2">
+                {/* Mark as Delivered in Modal */}
+                {!['delivered', 'cancelled'].includes(String(viewingOrder.orderStatus || viewingOrder.status || '').toLowerCase()) && (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenMarkDelivered(viewingOrder)}
+                    disabled={updatingOrderStatus}
+                    className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-2xs transition-all cursor-pointer inline-flex items-center gap-1.5"
+                  >
+                    <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
+                    <span>Mark as Delivered</span>
+                  </button>
+                )}
+
                 <button
                   type="button"
                   onClick={() => {
@@ -1313,6 +1426,120 @@ export default function OrdersView() {
         orderId={shiprocketTrackingOrderId}
         awbCode={viewingOrder?.shiprocketInfo?.awbCode}
       />
+
+      {/* ─── Mark as Delivered Confirmation Modal (Type to Confirm) ─── */}
+      {markDeliveredOrder && createPortal(
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs transition-opacity duration-200 animate-fadeIn"
+          onClick={() => {
+            if (!updatingOrderStatus) {
+              setMarkDeliveredOrder(null);
+              setTypedConfirmText('');
+            }
+          }}
+        >
+          <div
+            className="relative w-full max-w-[440px] bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl p-6 sm:p-7 text-left transition-all transform duration-200 animate-scaleUp overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Close Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setMarkDeliveredOrder(null);
+                setTypedConfirmText('');
+              }}
+              disabled={updatingOrderStatus}
+              title="Close"
+              className="absolute top-4 right-4 sm:top-5 sm:right-5 p-1 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-full transition-colors cursor-pointer disabled:opacity-30"
+            >
+              <HiOutlineX className="w-5 h-5 stroke-[2]" />
+            </button>
+
+            {/* Icon Header */}
+            <div className="flex items-center gap-3.5 mb-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 border border-emerald-200/80 flex items-center justify-center text-emerald-600 shrink-0">
+                <HiOutlineCheckCircle className="w-7 h-7 stroke-[2]" />
+              </div>
+              <div>
+                <h3 className="font-sans font-bold text-lg text-stone-900 tracking-tight leading-snug">
+                  Mark Order as Delivered
+                </h3>
+                <span className="font-mono text-xs font-bold text-[#8b6f4e] bg-[#faf5ed] border border-[#8b6f4e]/30 px-2 py-0.5 rounded shadow-2xs inline-block mt-0.5">
+                  {markDeliveredOrder.orderNumber || 'Order'}
+                </span>
+              </div>
+            </div>
+
+            {/* Warning / Explanation Text */}
+            <p className="text-xs text-stone-600 leading-relaxed mb-4">
+              This action will permanently set the order status to <span className="font-bold text-emerald-700">Delivered</span>, record delivery timestamp, and complete this order.
+            </p>
+
+            {/* Typed Confirmation Prompt */}
+            <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200/80 mb-5 space-y-2">
+              <label className="block text-xs font-semibold text-stone-800">
+                Please type <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 select-all">mark as delivered</span> to confirm:
+              </label>
+              <input
+                type="text"
+                autoFocus
+                value={typedConfirmText}
+                onChange={(e) => setTypedConfirmText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && isDeliveredTypedValid && !updatingOrderStatus) {
+                    handleConfirmMarkDelivered();
+                  }
+                }}
+                placeholder="type: mark as delivered"
+                disabled={updatingOrderStatus}
+                className="w-full h-10 px-3.5 bg-white rounded-lg border border-stone-300 text-xs text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 transition-all font-medium"
+              />
+            </div>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-2 gap-3 font-sans">
+              <button
+                type="button"
+                onClick={() => {
+                  setMarkDeliveredOrder(null);
+                  setTypedConfirmText('');
+                }}
+                disabled={updatingOrderStatus}
+                className="h-10 px-4 text-xs font-semibold rounded-xl border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-40 text-center"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmMarkDelivered}
+                disabled={!isDeliveredTypedValid || updatingOrderStatus}
+                className={`h-10 px-4 text-xs font-bold rounded-xl transition-all active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-xs ${
+                  isDeliveredTypedValid && !updatingOrderStatus
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20 cursor-pointer'
+                    : 'bg-stone-200 text-stone-400 cursor-not-allowed opacity-60'
+                }`}
+              >
+                {updatingOrderStatus ? (
+                  <>
+                    <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    <span>Updating...</span>
+                  </>
+                ) : (
+                  <>
+                    <HiOutlineCheck className="w-4 h-4 stroke-2" />
+                    <span>Confirm Delivered</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }

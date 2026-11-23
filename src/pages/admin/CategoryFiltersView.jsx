@@ -13,6 +13,7 @@ import {
   HiOutlineFilter,
 } from 'react-icons/hi';
 import api from '../../api/axios';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 
 export default function CategoryFiltersView() {
   const [filters, setFilters] = useState([]);
@@ -421,21 +422,12 @@ export default function CategoryFiltersView() {
                       {/* Middle & Right: Switch + 3-Dots */}
                       <div className="flex items-center gap-4 sm:shrink-0 self-end sm:self-center">
                         {/* Toggle Switch */}
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={cat.enabled}
-                          onClick={() => handleToggleCategory(cat.categoryId)}
-                          style={cat.enabled ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                          className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${cat.enabled ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                        >
-                          <span
-                            aria-hidden="true"
-                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
-                              cat.enabled ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
+                        <ToggleSwitch
+                          checked={cat.enabled}
+                          onChange={() => handleToggleCategory(cat.categoryId)}
+                          size="md"
+                          ariaLabel="Toggle category filter"
+                        />
 
                         {/* Three-dots Action Menu (⋮) */}
                         <div className="relative" data-dropdown-container>

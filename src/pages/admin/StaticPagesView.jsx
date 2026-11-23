@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import { staticPagesAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Modal from '../../components/common/Modal';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import RichTextEditor from '../../components/common/RichTextEditor';
@@ -663,25 +664,17 @@ export default function StaticPagesView() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() =>
+              <ToggleSwitch
+                checked={formData.status === 'published'}
+                onChange={() =>
                   setFormData({
                     ...formData,
                     status: formData.status === 'published' ? 'draft' : 'published',
                   })
                 }
-                style={formData.status === 'published' ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                  formData.status === 'published' ? 'bg-[var(--theme-primary,#8b6f4e)]' : 'bg-stone-300'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    formData.status === 'published' ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+                size="md"
+                ariaLabel="Toggle Page Status"
+              />
               <span className="text-xs font-bold text-stone-700 min-w-[60px]">
                 {formData.status === 'published' ? 'Published' : 'Draft'}
               </span>

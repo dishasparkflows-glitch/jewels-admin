@@ -6,8 +6,7 @@ import Dropdown from './Dropdown';
 import Pagination from './Pagination';
 import { useAdminPageSize, PAGE_SIZE_OPTIONS } from '../../utils/adminPagination';
 import api from '../../api/axios';
-
-const money = (value) => value == null || value === '' ? '—' : new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(Number(value));
+import { money } from '../../utils/formatters';
 const valueOrDash = (value) => value == null || value === '' ? '—' : String(value);
 const weight = (value) => value == null || value === '' ? '—' : `${value} g`;
 // Only use image URLs supplied with the product; never substitute catalog photos.

@@ -20,6 +20,7 @@ import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import Dropdown from '../../components/common/Dropdown';
 import RowActions from '../../components/common/RowActions';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function DiamondsView() {
@@ -1095,25 +1096,13 @@ export default function DiamondsView() {
                 </div>
 
                 <div className="flex items-center gap-2.5">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={editStatus === 'active'}
-                    onClick={() => setEditStatus(editStatus === 'active' ? 'inactive' : 'active')}
-                    style={editStatus === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                      editStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
-                    }`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        editStatus === 'active' ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                  <span className="text-xs font-bold text-stone-800 w-14">
-                    {editStatus === 'active' ? 'Active' : 'Inactive'}
-                  </span>
+                  <ToggleSwitch
+                    checked={editStatus === 'active'}
+                    onChange={() => setEditStatus(editStatus === 'active' ? 'inactive' : 'active')}
+                    size="md"
+                    showStatusText={true}
+                    ariaLabel="Toggle Diamond Status"
+                  />
                 </div>
               </div>
 

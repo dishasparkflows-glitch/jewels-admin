@@ -20,7 +20,7 @@ export default function GalleryEditModal({
   onSuccess,
 }) {
   const [editThemeId, setEditThemeId] = useState('');
-  const [editPlacement, setEditPlacement] = useState('herobanner');
+  const [editPlacement, setEditPlacement] = useState('asset');
   const [editPlatform, setEditPlatform] = useState('web');
   const [editStatus, setEditStatus] = useState('active');
   const [isUpdating, setIsUpdating] = useState(false);
@@ -68,7 +68,7 @@ export default function GalleryEditModal({
       }
 
       setEditThemeId(resolvedThemeId);
-      setEditPlacement(item.placement || item.type || 'herobanner');
+      setEditPlacement(item.placement || item.type || 'asset');
       setEditPlatform(item.platform || 'web');
       setEditStatus(item.status || 'active');
     }
@@ -193,7 +193,7 @@ export default function GalleryEditModal({
             <Dropdown
               size="field"
               value={editPlacement}
-              onChange={(val) => setEditPlacement(val || 'herobanner')}
+              onChange={(val) => setEditPlacement(val || 'asset')}
               options={placementTypeOptions}
               placeholder="Select placement type…"
               portal={true}

@@ -27,36 +27,10 @@ import {
 import { getAdminPageSize, setAdminPageSize } from '../../utils/adminPagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { openProductPreview } from '../../utils/productPreview';
+import StatusBadge from '../../components/common/StatusBadge';
+import { money } from '../../utils/formatters';
+import { getProductImage } from '../../utils/imageUrl';
 import api from '../../api/axios';
-
-const money = (val) => {
-  if (val == null || val === '') return '₹ 0';
-  return `₹ ${Number(val).toLocaleString('en-IN')}`;
-};
-
-const getProductImage = (p) => {
-  if (!p) return null;
-  if (p.images && p.images[0]) {
-    const img = p.images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (p.ornate?.ornateImages) {
-    if (Array.isArray(p.ornate.ornateImages) && p.ornate.ornateImages[0]) {
-      const img = p.ornate.ornateImages[0];
-      return typeof img === 'string' ? img : img.url;
-    }
-    if (typeof p.ornate.ornateImages === 'string' && p.ornate.ornateImages.startsWith('http')) {
-      return p.ornate.ornateImages;
-    }
-  }
-  if (p.colorImages && p.colorImages[0]?.images?.[0]) {
-    const img = p.colorImages[0].images[0];
-    return typeof img === 'string' ? img : img.url;
-  }
-  if (p.media?.gallery?.[0]?.url) return p.media.gallery[0].url;
-  if (p.imageUrl) return p.imageUrl;
-  return null;
-};
 
 export default function OrnateProductsView() {
   const navigate = useNavigate();
@@ -356,25 +330,9 @@ export default function OrnateProductsView() {
 
   // Status Badge Component for products
   const renderStatusBadge = (p) => {
-    if (p.ornate?.isSold || p.stockStatus === 'Sold' || p.status === 'sold') {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
-          Sold
-        </span>
-      );
-    }
-    if (p.status === 'draft' || p.status === 'inactive') {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-          Draft
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-        Approved
-      </span>
-    );
+    const isSold = p.ornate?.isSold || p.stockStatus === 'Sold' || p.status === 'sold';
+    const status = isSold ? 'sold' : (p.status === 'draft' || p.status === 'inactive' ? 'draft' : 'approved');
+    return <StatusBadge status={status} size="xs" />;
   };
 
   const [updatingVisibilityId, setUpdatingVisibilityId] = useState(null);

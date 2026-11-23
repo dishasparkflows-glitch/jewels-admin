@@ -9,7 +9,41 @@ import {
   HiOutlineX,
   HiOutlineClock,
   HiOutlineSwitchHorizontal,
+  HiOutlineStar,
+  HiStar,
 } from 'react-icons/hi';
+
+export function RepresentativeActionButton({
+  isPrimary = false,
+  onClick,
+  title,
+  className = '',
+  iconClassName = 'w-3.5 h-3.5',
+  disabled = false,
+  ...props
+}) {
+  const activeTitle = title || (isPrimary ? 'Current Primary Representative' : 'Set as Primary Representative');
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={activeTitle}
+      disabled={disabled}
+      className={`w-7 h-7 rounded-lg border inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${
+        isPrimary
+          ? 'bg-amber-500 border-amber-500 text-white shadow-xs hover:bg-amber-600'
+          : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:border-amber-300 hover:text-amber-700'
+      } ${className}`}
+      {...props}
+    >
+      {isPrimary ? (
+        <HiStar className={iconClassName} />
+      ) : (
+        <HiOutlineStar className={`${iconClassName} stroke-[2]`} />
+      )}
+    </button>
+  );
+}
 
 export function MoveActionButton({
   onClick,

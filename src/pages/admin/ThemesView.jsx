@@ -875,26 +875,6 @@ export default function ThemesView() {
                         {theme.code}
                       </span>
                     </div>
-
-                    {/* Top-Right: Status Badge */}
-                    <div className="absolute right-2 top-2 z-10">
-                      <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold capitalize shadow-xs backdrop-blur-md ${
-                          theme.status === 'active'
-                            ? 'bg-emerald-600/90 text-white'
-                            : theme.status === 'scheduled'
-                            ? 'bg-sky-600/90 text-white'
-                            : theme.status === 'archived'
-                            ? 'bg-stone-600/90 text-white'
-                            : 'bg-amber-600/90 text-white'
-                        }`}
-                      >
-                        {theme.status === 'active' && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />
-                        )}
-                        <span>{theme.status}</span>
-                      </span>
-                    </div>
                   </div>
 
                   {/* Card Content (Compact padding matching Media Gallery) */}

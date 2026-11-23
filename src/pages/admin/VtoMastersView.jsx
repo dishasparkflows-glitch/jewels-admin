@@ -15,6 +15,7 @@ import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 
 const ORDERED_PARTS = ['hand', 'neck', 'ear'];
 
@@ -487,21 +488,13 @@ export default function VtoMastersView() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setStatus(status === 'active' ? 'inactive' : 'active')}
-                    style={status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-hidden cursor-pointer ${status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        status === 'active' ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
-                  </button>
-                  <span className="text-xs font-semibold text-stone-700 w-14">
-                    {status === 'active' ? 'Active' : 'Inactive'}
-                  </span>
+                  <ToggleSwitch
+                    checked={status === 'active'}
+                    onChange={() => setStatus(status === 'active' ? 'inactive' : 'active')}
+                    size="md"
+                    showStatusText={true}
+                    ariaLabel="Toggle Asset Status"
+                  />
                 </div>
               </div>
 

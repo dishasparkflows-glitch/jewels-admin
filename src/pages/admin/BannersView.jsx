@@ -33,6 +33,7 @@ import { useAdminPageSize } from '../../utils/adminPagination';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
 import ImageUploadDropzone from '../../components/common/ImageUploadDropzone';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 
 const getMediaUrl = (url) => {
@@ -1710,23 +1711,13 @@ export default function BannersView() {
                             {formStatus === 'active' ? 'Active' : 'Inactive'}
                           </span>
                         </div>
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={formStatus === 'active'}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFormStatus((prev) => (prev === 'active' ? 'inactive' : 'active'));
-                          }}
-                          style={formStatus === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                              formStatus === 'active' ? 'translate-x-4' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
+                        <ToggleSwitch
+                          checked={formStatus === 'active'}
+                          onChange={(nextVal) => setFormStatus(nextVal ? 'active' : 'inactive')}
+                          size="sm"
+                          stopPropagation={true}
+                          ariaLabel="Banner Status"
+                        />
                       </div>
                     </div>
 

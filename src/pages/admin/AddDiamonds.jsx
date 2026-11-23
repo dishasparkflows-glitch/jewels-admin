@@ -15,6 +15,7 @@ import { diamondsAPI } from '../../api/services';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
 import { DeleteActionButton } from '../../components/common/RowActions';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function AddDiamonds() {
@@ -912,23 +913,14 @@ export default function AddDiamonds() {
 
                       {/* Status Toggle */}
                       <td className="text-center align-middle px-2">
-                        <button
-                          type="button"
-                          role="switch"
-                          aria-checked={v.status === 'active'}
-                          onClick={() =>
+                        <ToggleSwitch
+                          checked={v.status === 'active'}
+                          onChange={() =>
                             handleUpdateVariant(v.id, 'status', v.status === 'active' ? 'inactive' : 'active')
                           }
-                          style={v.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${v.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                          title={v.status === 'active' ? 'Active' : 'Inactive'}
-                        >
-                          <span
-                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                              v.status === 'active' ? 'translate-x-4' : 'translate-x-0'
-                            }`}
-                          />
-                        </button>
+                          size="sm"
+                          ariaLabel={`Set variant ${v.status === 'active' ? 'inactive' : 'active'}`}
+                        />
                       </td>
 
                       {/* Action */}

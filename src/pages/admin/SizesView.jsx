@@ -19,6 +19,7 @@ import RowActions from '../../components/common/RowActions';
 import CuteLoader from '../../components/common/CuteLoader';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 
 export default function SizesView() {
   const confirm = useConfirm();
@@ -533,25 +534,15 @@ export default function SizesView() {
                       </td>
 
                       {/* Status Toggle */}
-                      <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
                         <div className="flex items-center">
-                          <button
-                            type="button"
-                            role="switch"
-                            aria-checked={s.status === 'active'}
-                            onClick={() => handleToggleVisibility(s)}
-                            style={s.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                              s.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'
-                            }`}
-                            title={`Click to set ${s.status === 'active' ? 'Inactive' : 'Active'}`}
-                          >
-                            <span
-                              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                                s.status === 'active' ? 'translate-x-4' : 'translate-x-0'
-                              }`}
-                            />
-                          </button>
+                          <ToggleSwitch
+                            checked={s.status === 'active'}
+                            onChange={() => handleToggleVisibility(s)}
+                            size="sm"
+                            stopPropagation={true}
+                            ariaLabel={`Set size status ${s.status === 'active' ? 'Inactive' : 'Active'}`}
+                          />
                         </div>
                       </td>
 
@@ -654,31 +645,13 @@ export default function SizesView() {
 
               {/* Status Toggle */}
               <div className="flex items-center justify-between p-3 rounded-xl border border-stone-200 bg-stone-50/60">
-                <div>
-                  <span className="text-xs font-bold text-stone-800 block">Status</span>
-                  <span className="text-[11px] text-stone-400">
-                    Control visibility across storefront size filters
-                  </span>
-                </div>
-                <div className="flex items-center gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={sizeStatus === 'active'}
-                    onClick={() => setSizeStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
-                    style={sizeStatus === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${sizeStatus === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                  >
-                    <span
-                      className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                        sizeStatus === 'active' ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                    />
-                  </button>
-                  <span className="text-xs font-bold text-stone-800">
-                    {sizeStatus === 'active' ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
+                <span className="text-xs font-bold text-stone-800">Status</span>
+                <ToggleSwitch
+                  checked={sizeStatus === 'active'}
+                  onChange={(nextVal) => setSizeStatus(nextVal ? 'active' : 'inactive')}
+                  size="md"
+                  ariaLabel="Size Status Toggle"
+                />
               </div>
 
               {/* Modal Footer Actions (Matches Screenshot 2) */}
