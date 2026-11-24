@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     port: 5175,
     headers: {
-      'Permissions-Policy': 'unload=*',
+      'Permissions-Policy': 'unload=(*)',
     },
     proxy: {
       '/uploads': {

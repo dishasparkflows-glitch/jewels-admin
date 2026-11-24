@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import {
   HiOutlineArrowLeft,
   HiOutlinePhotograph,
@@ -14,6 +15,7 @@ import {
   HiOutlineCheckCircle,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
+import api from '../../api/axios';
 import { themesAPI } from '../../api/services';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import DatePicker from '../../components/common/DatePicker';
@@ -124,6 +126,92 @@ export default function ThemesView() {
   const [serverTotal, setServerTotal] = useState(null);
   const location = useLocation();
 
+  // Active storefront theme state synced with Settings page
+  const [activeStorefrontThemeId, setActiveStorefrontThemeId] = useState('');
+  const [settingActiveTheme, setSettingActiveTheme] = useState(false);
+
+  // Theme Chooser Modal state
+  const [isThemeChooserOpen, setIsThemeChooserOpen] = useState(false);
+  const [allThemesForChooser, setAllThemesForChooser] = useState([]);
+  const [selectedThemeToActivate, setSelectedThemeToActivate] = useState(null);
+
+  // Fetch current active theme from Settings (matching SettingsView process)
+  const fetchActiveThemeFromSettings = useCallback(async () => {
+    try {
+      const res = await api.get('/settings');
+      const cur = res.data?.data?.currentThemeId;
+      const curId = typeof cur === 'object' ? cur?._id : cur;
+      if (curId) setActiveStorefrontThemeId(String(curId));
+    } catch (err) {
+      console.warn('Could not fetch active storefront theme from settings:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchActiveThemeFromSettings();
+  }, [fetchActiveThemeFromSettings]);
+
+  // Load all available themes when theme chooser modal opens
+  useEffect(() => {
+    if (isThemeChooserOpen) {
+      themesAPI
+        .getAll({ limit: 100 })
+        .then((res) => {
+          const items = getData(res);
+          if (Array.isArray(items)) {
+            setAllThemesForChooser(items);
+            const currentActive = items.find((t) =>
+              activeStorefrontThemeId
+                ? String(t._id) === String(activeStorefrontThemeId)
+                : t.status === 'active'
+            );
+            setSelectedThemeToActivate(currentActive ? currentActive._id : items[0]?._id);
+          }
+        })
+        .catch((e) => {
+          console.error('Failed to load themes for chooser:', e);
+        });
+    }
+  }, [isThemeChooserOpen, activeStorefrontThemeId]);
+
+  // Activate theme using POST /api/themes/:themeId/activate (@theme.routes.js:L14)
+  const handleSetActiveTheme = async (themeToActivate) => {
+    if (!themeToActivate?._id) return;
+    try {
+      setSettingActiveTheme(true);
+      const targetId = themeToActivate._id;
+
+      // 1. Call POST /api/themes/:themeId/activate (@theme.routes.js:L14)
+      const res = await themesAPI.activateTheme(targetId);
+
+      // 2. Also sync storefront settings with theme colors (matching SettingsView process)
+      const payload = {
+        currentThemeId: targetId,
+      };
+      if (themeToActivate.config?.colors) {
+        const c = themeToActivate.config.colors;
+        payload.themeColors = {
+          buttonColor: c.primary || '#8b6f4e',
+          buttonHoverColor: c.accent || c.primary || '#755c3e',
+          buttonTextColor: '#ffffff',
+          topBarBgColor: '#201e1b',
+          topBarTextColor: '#ffffff',
+        };
+      }
+      await api.put('/settings', payload);
+
+      setActiveStorefrontThemeId(String(targetId));
+      toast.success(res.data?.message || `Theme "${themeToActivate.name}" activated successfully!`);
+      setIsThemeChooserOpen(false);
+      fetchThemes();
+    } catch (err) {
+      console.error('Failed to set active theme:', err);
+      toast.error(err.response?.data?.message || 'Failed to activate theme');
+    } finally {
+      setSettingActiveTheme(false);
+    }
+  };
+
   // Reset to Theme Management list view whenever "Themes" is clicked in sidebar or route reset
   useEffect(() => {
     const handleNavReset = (e) => {
@@ -216,8 +304,8 @@ export default function ThemesView() {
           t.status === 'active'
             ? 'bg-emerald-500'
             : t.status === 'scheduled'
-            ? 'bg-amber-500'
-            : 'bg-stone-400',
+              ? 'bg-amber-500'
+              : 'bg-stone-400',
       }));
 
     return [...list, ...eligible];
@@ -342,8 +430,8 @@ export default function ThemesView() {
   }, [themes]);
 
   const activeThemeObj = useMemo(
-    () => themes.find((t) => t.status === 'active'),
-    [themes]
+    () => themes.find((t) => (activeStorefrontThemeId ? String(t._id) === String(activeStorefrontThemeId) : t.status === 'active')),
+    [themes, activeStorefrontThemeId]
   );
 
   // ─────────────────────────────────────────────────────────────
@@ -420,11 +508,10 @@ export default function ThemesView() {
             <button
               key={key}
               onClick={() => setTab(key)}
-              className={`shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${
-                tab === key
+              className={`shrink-0 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition cursor-pointer ${tab === key
                   ? 'bg-[#8b6f4e] text-white shadow-2xs'
                   : 'text-stone-600 hover:bg-stone-50 hover:text-stone-900'
-              }`}
+                }`}
               style={
                 tab === key
                   ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' }
@@ -549,8 +636,8 @@ export default function ThemesView() {
                   {publishStart && new Date(istDateToIso(publishStart)) > new Date()
                     ? 'Schedule Theme Release'
                     : isLive
-                    ? 'Update Schedule Settings'
-                    : 'Publish Live Storefront Now'}
+                      ? 'Update Schedule Settings'
+                      : 'Publish Live Storefront Now'}
                 </button>
               </div>
             </section>
@@ -603,19 +690,29 @@ export default function ThemesView() {
   return (
     <div className="space-y-2.5 sm:space-y-3">
       {/* ─── 1. COMPACT MODULE HEADER (Matching Media & Theme Gallery) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div className="flex items-center gap-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
           <h1 className="text-lg sm:text-xl font-bold tracking-tight text-stone-900 leading-tight">
             Theme Management
           </h1>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-            Live: {activeThemeObj?.name || 'diwali 2026'}
+            Live: {activeThemeObj?.name || 'Storefront Default'}
           </span>
         </div>
 
-        {/* Header Actions */}
+        {/* Header Actions: Choose Live Theme & Add Theme */}
         <div className="flex items-center gap-2">
+          {/* Button in the red box */}
+          <button
+            type="button"
+            onClick={() => setIsThemeChooserOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 border border-stone-200/90 bg-white hover:bg-[#FAF7F2] hover:border-[#8b6f4e] text-stone-700 hover:text-[#8b6f4e] rounded-lg text-xs font-semibold tracking-wide transition-all shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer"
+          >
+            <HiOutlineColorSwatch className="w-3.5 h-3.5 text-[#8b6f4e]" />
+            <span>Choose Live Theme</span>
+          </button>
+
           <button
             type="button"
             onClick={() => openEditor(null)}
@@ -637,9 +734,8 @@ export default function ThemesView() {
             borderColor: filter === 'active' ? 'var(--theme-primary, #8b6f4e)' : undefined,
             boxShadow: filter === 'active' ? '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)' : undefined,
           }}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            filter !== 'active' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
-          }`}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${filter !== 'active' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#effaf2] text-[#16a34a] border border-emerald-200/50 flex items-center justify-center shrink-0">
             <HiOutlineCheckCircle className="w-3.5 h-3.5 stroke-[2]" />
@@ -659,9 +755,8 @@ export default function ThemesView() {
             borderColor: filter === 'scheduled' ? 'var(--theme-primary, #8b6f4e)' : undefined,
             boxShadow: filter === 'scheduled' ? '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)' : undefined,
           }}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            filter !== 'scheduled' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
-          }`}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${filter !== 'scheduled' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#eff6ff] text-[#2563eb] border border-blue-200/50 flex items-center justify-center shrink-0">
             <HiOutlineClock className="w-3.5 h-3.5 stroke-[2]" />
@@ -681,9 +776,8 @@ export default function ThemesView() {
             borderColor: filter === 'draft' ? 'var(--theme-primary, #8b6f4e)' : undefined,
             boxShadow: filter === 'draft' ? '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)' : undefined,
           }}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            filter !== 'draft' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
-          }`}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${filter !== 'draft' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#fef6ee] text-[#ea580c] border border-orange-200/50 flex items-center justify-center shrink-0">
             <HiOutlineColorSwatch className="w-3.5 h-3.5 stroke-[2]" />
@@ -703,9 +797,8 @@ export default function ThemesView() {
             borderColor: filter === 'archived' ? 'var(--theme-primary, #8b6f4e)' : undefined,
             boxShadow: filter === 'archived' ? '0 0 0 1px rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)' : undefined,
           }}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            filter !== 'archived' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
-          }`}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${filter !== 'archived' ? 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs' : ''
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#f5f5f4] text-[#78716c] border border-stone-200/50 flex items-center justify-center shrink-0">
             <HiOutlineShieldCheck className="w-3.5 h-3.5 stroke-[2]" />
@@ -747,11 +840,10 @@ export default function ThemesView() {
               key={val}
               type="button"
               onClick={() => setFilter(val)}
-              className={`rounded-lg px-3 py-1 text-xs font-semibold capitalize transition cursor-pointer ${
-                filter === val
+              className={`rounded-lg px-3 py-1 text-xs font-semibold capitalize transition cursor-pointer ${filter === val
                   ? 'text-white shadow-xs'
                   : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900'
-              }`}
+                }`}
               style={
                 filter === val
                   ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' }
@@ -781,6 +873,9 @@ export default function ThemesView() {
         <div className="space-y-3">
           <div className="grid grid-cols-1 gap-2.5 sm:gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {paginatedItems.map((theme) => {
+              const isActiveTheme =
+                String(theme._id) === String(activeStorefrontThemeId) ||
+                (!activeStorefrontThemeId && theme.status === 'active');
               // Pick cover image or theme brand gradient for card cover
               const coverUrl =
                 theme.galleryPhoto ||
@@ -799,7 +894,10 @@ export default function ThemesView() {
                 <article
                   key={theme._id}
                   onClick={() => openEditor(theme, 'details')}
-                  className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs hover:border-stone-300 transition-all overflow-hidden cursor-pointer"
+                  className={`group relative flex flex-col justify-between rounded-xl border bg-white shadow-2xs hover:shadow-xs transition-all overflow-hidden cursor-pointer ${isActiveTheme
+                      ? 'border-emerald-400 ring-1 ring-emerald-300/60'
+                      : 'border-stone-200/90 hover:border-stone-300'
+                    }`}
                 >
                   {/* Cover Image Header (16:10 aspect ratio matching Media Gallery) */}
                   <div className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden bg-cover bg-center">
@@ -829,16 +927,46 @@ export default function ThemesView() {
                         {theme.code}
                       </span>
                     </div>
+
+                    {/* Top-Right: Live Status Badge */}
+                    {isActiveTheme && (
+                      <div className="absolute right-2 top-2 z-10">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/95 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                          Live Theme
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Card Content (Centered compact footer) */}
-                  <div className="p-2.5 flex items-center justify-center flex-1">
+                  {/* Card Content & Activate Button */}
+                  <div className="p-2.5 flex flex-col items-center justify-between flex-1 gap-2">
                     <h4
-                      className="text-xs font-bold text-stone-900 group-hover:text-[var(--theme-primary,#8b6f4e)] transition truncate text-center"
+                      className="text-xs font-bold text-stone-900 group-hover:text-[var(--theme-primary,#8b6f4e)] transition truncate text-center w-full"
                       title={theme.name}
                     >
                       {theme.name}
                     </h4>
+
+                    {/* Activation button matching Settings page process */}
+                    {isActiveTheme ? (
+                      <div className="w-full py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-800 text-[10px] font-bold text-center flex items-center justify-center gap-1">
+                        <HiOutlineCheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span>Active on Storefront</span>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={settingActiveTheme}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSetActiveTheme(theme);
+                        }}
+                        className="w-full py-1 rounded-lg border border-stone-200 bg-stone-50 hover:bg-[#FAF7F2] hover:border-[#8b6f4e] text-stone-700 hover:text-[#8b6f4e] text-[10px] font-semibold transition-all active:scale-[0.98] cursor-pointer"
+                      >
+                        {settingActiveTheme ? 'Activating…' : 'Set as Active Theme'}
+                      </button>
+                    )}
                   </div>
                 </article>
               );
@@ -878,6 +1006,185 @@ export default function ThemesView() {
           if (!deletingId) setThemeToDelete(null);
         }}
       />
+
+      {/* ─── CHOOSE LIVE STOREFRONT THEME MODAL ─── */}
+      {isThemeChooserOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-fadeIn"
+            onClick={() => {
+              if (!settingActiveTheme) setIsThemeChooserOpen(false);
+            }}
+          >
+            <div
+              className="relative w-full max-w-xl rounded-2xl bg-white shadow-2xl border border-stone-200 overflow-hidden flex flex-col max-h-[90vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 bg-stone-50/70">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-full bg-[#FAF7F2] border border-[#E8DFC9] flex items-center justify-center text-[#8b6f4e]">
+                    <HiOutlineColorSwatch className="w-4 h-4 stroke-[2]" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-base font-bold text-stone-900 leading-tight">
+                      Choose Live Storefront Theme
+                    </h3>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Select which theme should be active on your storefront right now.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsThemeChooserOpen(false)}
+                  disabled={settingActiveTheme}
+                  className="rounded-lg p-1.5 text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+                >
+                  <HiOutlineX className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Theme Options List */}
+              <div className="p-6 overflow-y-auto space-y-3 flex-1">
+                {allThemesForChooser.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-stone-400">
+                    Loading available themes…
+                  </div>
+                ) : (
+                  allThemesForChooser.map((t) => {
+                    const isSelected = String(selectedThemeToActivate) === String(t._id);
+                    const isLive =
+                      String(t._id) === String(activeStorefrontThemeId) ||
+                      (!activeStorefrontThemeId && t.status === 'active');
+                    const coverUrl =
+                      t.galleryPhoto ||
+                      t.coverUrl ||
+                      t.coverImage?.url ||
+                      t.coverImage ||
+                      t.thumbnail ||
+                      t.image ||
+                      t.config?.bannerSelections?.[0]?.bannerId?.image?.url ||
+                      '';
+                    const themePrimary = t.config?.colors?.primary || '#8B6C3A';
+                    const themeSecondary = t.config?.colors?.secondary || '#EADCC8';
+                    const fallbackGradient = `linear-gradient(135deg, ${themeSecondary}, ${themePrimary})`;
+
+                    return (
+                      <div
+                        key={t._id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedThemeToActivate(t._id)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedThemeToActivate(t._id);
+                          }
+                        }}
+                        style={{
+                          borderColor: isSelected ? 'var(--theme-primary, #8b6f4e)' : undefined,
+                          backgroundColor: isSelected ? '#FAF7F2' : undefined,
+                        }}
+                        className={`flex items-center gap-3.5 p-3 rounded-xl border transition-all cursor-pointer ${isSelected
+                            ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20 shadow-xs'
+                            : 'border-stone-200 hover:border-stone-300 hover:bg-stone-50/50'
+                          }`}
+                      >
+                        {/* Radio indicator */}
+                        <div
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center shrink-0 transition-all ${isSelected
+                              ? 'border-[#8b6f4e] bg-[#8b6f4e]'
+                              : 'border-stone-300 bg-white'
+                            }`}
+                        >
+                          {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+
+                        {/* Thumbnail */}
+                        <div className="w-16 h-11 rounded-lg overflow-hidden bg-stone-100 shrink-0 border border-stone-200/80">
+                          {coverUrl ? (
+                            <img src={coverUrl} alt={t.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full" style={{ background: fallbackGradient }} />
+                          )}
+                        </div>
+
+                        {/* Theme details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-stone-900 truncate">
+                              {t.name}
+                            </span>
+                            <span className="text-[10px] font-mono text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200/70">
+                              {t.code}
+                            </span>
+                            {isLive && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Live Now
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-stone-400 truncate mt-0.5">
+                            {t.description || 'Custom website theme with banners & sections'}
+                          </p>
+                        </div>
+
+                        {/* Color swatches */}
+                        <div className="flex items-center gap-1 shrink-0">
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-stone-200 shadow-2xs"
+                            style={{ backgroundColor: themePrimary }}
+                            title="Primary Color"
+                          />
+                          <span
+                            className="w-3.5 h-3.5 rounded-full border border-stone-200 shadow-2xs"
+                            style={{ backgroundColor: themeSecondary }}
+                            title="Secondary Color"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="flex items-center justify-between px-6 py-3.5 border-t border-stone-100 bg-stone-50/70">
+                <span className="text-[11px] text-stone-500">
+                  Activates media mappings and applies storefront theme.
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsThemeChooserOpen(false)}
+                    disabled={settingActiveTheme}
+                    className="rounded-lg px-3.5 py-1.5 text-xs font-semibold text-stone-600 hover:text-stone-900 hover:bg-stone-100 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const targetTheme = allThemesForChooser.find(
+                        (t) => String(t._id) === String(selectedThemeToActivate)
+                      );
+                      if (targetTheme) handleSetActiveTheme(targetTheme);
+                    }}
+                    disabled={settingActiveTheme || !selectedThemeToActivate}
+                    style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                    className="rounded-lg px-4 py-1.5 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <HiOutlineCheckCircle className="w-3.5 h-3.5" />
+                    <span>{settingActiveTheme ? 'Activating…' : 'Activate Theme'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

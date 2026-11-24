@@ -526,7 +526,7 @@ export default function SettingsView() {
   const fetchThemesLookup = async () => {
     try {
       setLoadingThemes(true);
-      const res = await api.get('/website/themes/lookup').catch(() => api.get('/themes/lookup'));
+      const res = await api.get('/themes/lookup');
       const list = res.data?.data || [];
       setThemesList(list);
       if (selectedThemeId) {
@@ -898,7 +898,7 @@ export default function SettingsView() {
                   {activeModal === 'trust' && 'Manage trust badges shown in the storefront assurance strip.'}
                   {activeModal === 'business' && 'Store name, credentials, address, and policies.'}
                   {activeModal === 'monetary' && 'Bank settlement details and payout credentials.'}
-                  {activeModal === 'theme' && 'Select the active theme that controls storefront layout, banners, and media.'}
+                  {activeModal === 'theme' && 'Current storefront theme and styling colors for header, banners, buttons, and footer.'}
                   {activeModal === 'socialProof' && 'Manage sold count urgency, review badges, and dynamic time window shown on the product page.'}
                   {activeModal === 'socialMedia' && 'Manage official social profiles and chat channels shown in the storefront footer.'}
                 </p>
@@ -1882,110 +1882,40 @@ export default function SettingsView() {
                     </div>
                   </div>
 
-                  {/* ── Section B: Storefront Active Theme Selector ── */}
-                  <div className="rounded-2xl border border-stone-200/80 bg-white p-4 sm:p-5 space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1.5">
-                      <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">Active Storefront Theme</h4>
-                        <p className="mt-0.5 text-[11px] text-stone-500">Choose which theme the storefront should use.</p>
+                  {/* ── Section B: Current Storefront Theme ── */}
+                  <div className="rounded-2xl border border-stone-200/80 bg-white p-4 sm:p-5">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#8f6d43]/10 text-[#8f6d43]">
+                          <HiOutlineColorSwatch className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <div className="text-[11px] font-bold uppercase tracking-wider text-stone-500">
+                            Current Storefront Theme
+                          </div>
+                          <div className="text-base font-bold text-stone-900 flex items-center gap-2 mt-0.5">
+                            <span>
+                              {selectedThemeName ||
+                                themesList.find((t) => String(t._id) === String(selectedThemeId))?.name ||
+                                (typeof settings?.currentThemeId === 'object' ? settings.currentThemeId?.name : '') ||
+                                'Default Theme'}
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              Active
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                      {!loadingThemes && themesList.length > 0 && (
-                        <span className="text-[10px] font-semibold text-stone-500 bg-stone-50 border border-stone-200 rounded-full px-2.5 py-1">
-                          {themesList.length} {themesList.length === 1 ? 'theme' : 'themes'} available
-                        </span>
-                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => { setActiveModal(null); navigate('/themes'); }}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3.5 py-2 text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 hover:border-stone-300 transition-colors"
+                      >
+                        <HiOutlineExternalLink className="h-3.5 w-3.5 text-stone-500" />
+                        Manage in Themes
+                      </button>
                     </div>
-
-                    {loadingThemes ? (
-                      <div className="py-12 flex flex-col items-center justify-center gap-2">
-                        <div className="w-6 h-6 border-2 border-[#8f6d43] border-t-transparent rounded-full animate-spin" />
-                        <span className="text-xs text-stone-500">Loading themes...</span>
-                      </div>
-                    ) : themesList.length === 0 ? (
-                      <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50/70 px-4 py-8 text-center">
-                        <HiOutlineColorSwatch className="mx-auto h-7 w-7 text-stone-400" />
-                        <p className="mt-2 text-sm font-semibold text-stone-800">No storefront themes yet</p>
-                        <p className="mx-auto mt-1 max-w-md text-xs leading-5 text-stone-500">
-                          Create a theme first, then return here to select it and apply your color settings.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => { setActiveModal(null); navigate('/website/themes'); }}
-                          className="mt-4 inline-flex items-center gap-2 rounded-lg bg-[#8f6d43] px-3.5 py-2 text-xs font-semibold text-white shadow-xs transition hover:bg-[#7a5c36]"
-                        >
-                          <HiOutlineExternalLink className="h-3.5 w-3.5" />
-                          Go to Website Themes
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                        {themesList.map((t) => {
-                          const isSelected = String(selectedThemeId) === String(t._id);
-                          return (
-                              <div
-                                role="button"
-                                tabIndex={0}
-                                aria-pressed={isSelected}
-                              key={t._id}
-                              onClick={() => setSelectedThemeId(t._id)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter' || event.key === ' ') {
-                                  event.preventDefault();
-                                  setSelectedThemeId(t._id);
-                                }
-                              }}
-                              className={`relative w-full text-left cursor-pointer rounded-xl border p-4 transition-all duration-150 flex flex-col justify-between focus:outline-none focus-visible:ring-2 focus-visible:ring-[#8f6d43] ${
-                                isSelected
-                                  ? 'border-[#8f6d43] bg-[#faf6f0]/70 ring-2 ring-[#8f6d43]/20 shadow-xs'
-                                  : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50/50'
-                              }`}
-                            >
-                              <div>
-                                <div className="flex items-start justify-between gap-2">
-                                  <h4 className="text-sm font-bold text-stone-900">{t.name}</h4>
-                                  <span
-                                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider ${
-                                      t.status === 'active'
-                                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                                        : 'bg-stone-100 text-stone-600 border border-stone-200'
-                                    }`}
-                                  >
-                                    {t.status}
-                                  </span>
-                                </div>
-                                <p className="mt-1 font-mono text-[11px] text-stone-400">{t.code}</p>
-                                {t.description && (
-                                  <p className="mt-2 text-xs text-stone-600 line-clamp-2">
-                                    {t.description}
-                                  </p>
-                                )}
-                              </div>
-
-                              <div className="mt-3 pt-3 border-t border-stone-100 flex items-center justify-between text-xs">
-                                <span className="text-[11px] text-stone-500">
-                                  {isSelected ? (
-                                    <span className="font-semibold text-[#8f6d43] flex items-center gap-1">
-                                      <HiOutlineCheck className="w-3.5 h-3.5" /> Selected
-                                    </span>
-                                  ) : (
-                                    <span className="text-stone-400">Click to select</span>
-                                  )}
-                                </span>
-                                <div
-                                  className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                                    isSelected
-                                      ? 'border-[#8f6d43] bg-[#8f6d43]'
-                                      : 'border-stone-300 bg-white'
-                                  }`}
-                                >
-                                  {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 </div>
               )}
@@ -2355,7 +2285,7 @@ export default function SettingsView() {
                   style={{ backgroundColor: buttonColor || '#8b6f4e', color: buttonTextColor || '#ffffff' }}
                   className="rounded-lg px-5 py-2 text-xs font-semibold shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
-                  {savingTheme ? 'Saving…' : selectedThemeId ? 'Apply Theme & Colors' : 'Save Storefront Colors'}
+                  {savingTheme ? 'Saving…' : 'Save Storefront Colors'}
                 </button>
               )}
 

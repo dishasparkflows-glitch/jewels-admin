@@ -7,6 +7,44 @@
     <meta name="description" content="NEIRAH Jewellers — Luxury Management Portal" />
     <meta name="theme-color" content="#8b6f4e" />
     <title>NEIRAH Admin | Fine Jewellery Portal</title>
+    <!-- Polyfill to eliminate Chromium Permissions Policy violations for deprecated unload events -->
+    <script>
+      (function() {
+        if (typeof window !== 'undefined') {
+          if (window.EventTarget && EventTarget.prototype.addEventListener) {
+            var originalAddEventListener = EventTarget.prototype.addEventListener;
+            EventTarget.prototype.addEventListener = function(type, listener, options) {
+              if (type === 'unload') {
+                return originalAddEventListener.call(this, 'pagehide', listener, options);
+              }
+              return originalAddEventListener.call(this, type, listener, options);
+            };
+          }
+          try {
+            Object.defineProperty(window, 'onunload', {
+              get: function() { return null; },
+              set: function(fn) {
+                if (typeof fn === 'function') {
+                  window.addEventListener('pagehide', fn);
+                }
+              },
+              configurable: true,
+            });
+          } catch (_) {}
+
+          try {
+            var origCreateElement = Document.prototype.createElement;
+            Document.prototype.createElement = function(tagName, options) {
+              var el = origCreateElement.call(this, tagName, options);
+              if (tagName && typeof tagName === 'string' && tagName.toLowerCase() === 'iframe') {
+                el.setAttribute('allow', 'unload');
+              }
+              return el;
+            };
+          } catch (_) {}
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,400;1,600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
