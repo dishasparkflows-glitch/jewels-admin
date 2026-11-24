@@ -14,7 +14,7 @@ import {
   HiOutlineCheckCircle,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
-import { themesAPI, bannersAPI, featuredAPI } from '../../api/services';
+import { themesAPI } from '../../api/services';
 import ConfirmModal from '../../components/common/ConfirmModal';
 import DatePicker from '../../components/common/DatePicker';
 import Dropdown from '../../components/common/Dropdown';
@@ -103,10 +103,6 @@ export default function ThemesView() {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
 
-  // Related data
-  const [, setAvailableBanners] = useState([]);
-  const [, setAvailableFeatured] = useState([]);
-
   // Editor states
   const [editing, setEditing] = useState(null);
   const [tab, setTab] = useState('details');
@@ -126,7 +122,6 @@ export default function ThemesView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize(10);
   const [serverTotal, setServerTotal] = useState(null);
-  const [allThemesLookup, setAllThemesLookup] = useState([]);
   const location = useLocation();
 
   // Reset to Theme Management list view whenever "Themes" is clicked in sidebar or route reset
@@ -160,17 +155,6 @@ export default function ThemesView() {
     return () => window.removeEventListener('click', handleOutsideClick);
   }, []);
 
-  // Fetch themes lookup (for global stats counts and active theme indicator)
-  const fetchLookup = useCallback(async () => {
-    try {
-      const res = await themesAPI.getLookup();
-      const items = getData(res);
-      setAllThemesLookup(Array.isArray(items) ? items : []);
-    } catch (err) {
-      console.error('Failed to load theme lookup:', err);
-    }
-  }, []);
-
   // Fetch paginated themes from backend
   const fetchThemes = useCallback(async () => {
     try {
@@ -182,10 +166,7 @@ export default function ThemesView() {
       if (filter && filter !== 'all') params.status = filter;
       if (search && search.trim()) params.search = search.trim();
 
-      const [res] = await Promise.all([
-        themesAPI.getAll(params),
-        fetchLookup(),
-      ]);
+      const res = await themesAPI.getAll(params);
 
       const items = getData(res);
       setThemes(Array.isArray(items) ? items : []);
@@ -198,30 +179,14 @@ export default function ThemesView() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, pageSize, filter, search, fetchLookup]);
+  }, [currentPage, pageSize, filter, search]);
 
-  const relatedDataLoaded = useRef(false);
-
-  // Fetch related database records (lazy-loaded only when admin creates or edits a theme)
-  const fetchRelatedData = useCallback(async () => {
-    if (relatedDataLoaded.current) return;
-    try {
-      const [bannersRes, featRes] = await Promise.all([
-        bannersAPI.getThemeLookup({ status: 'active' }),
-        featuredAPI.getThemeLookup({ status: 'active' }),
-      ]);
-      setAvailableBanners(getData(bannersRes) || []);
-      setAvailableFeatured(getData(featRes) || []);
-      relatedDataLoaded.current = true;
-    } catch (err) {
-      console.error('Failed to load related data:', err);
-    }
-  }, []);
-
-  // Fetch themes when page, limit, filter or search changes
+  // Fetch themes when page, limit, filter or search changes (only when in list view)
   useEffect(() => {
-    fetchThemes();
-  }, [fetchThemes]);
+    if (!editing) {
+      fetchThemes();
+    }
+  }, [fetchThemes, editing]);
 
   // Reset page when filter or search changes
   useEffect(() => {
@@ -235,7 +200,6 @@ export default function ThemesView() {
 
   // Fallback Theme Options for Common Dropdown
   const fallbackThemeOptions = useMemo(() => {
-    const source = allThemesLookup.length > 0 ? allThemesLookup : themes;
     const list = [
       {
         value: '',
@@ -243,7 +207,7 @@ export default function ThemesView() {
       },
     ];
 
-    const eligible = (source || [])
+    const eligible = (themes || [])
       .filter((t) => t._id !== editing?._id && t.status !== 'archived')
       .map((t) => ({
         value: t._id,
@@ -257,13 +221,10 @@ export default function ThemesView() {
       }));
 
     return [...list, ...eligible];
-  }, [allThemesLookup, themes, editing?._id]);
+  }, [themes, editing?._id]);
 
   // Open theme editor
   const openEditor = async (theme = null, initialTab = 'details') => {
-    // Lazily fetch related data (banners, featured, categories) only when opening the editor
-    fetchRelatedData();
-
     if (!theme) {
       setEditing(emptyTheme());
       setTab('details');
@@ -374,16 +335,15 @@ export default function ThemesView() {
   };
 
   const counts = useMemo(() => {
-    const source = allThemesLookup.length > 0 ? allThemesLookup : themes;
     return ['active', 'scheduled', 'draft', 'archived'].reduce(
-      (acc, st) => ({ ...acc, [st]: source.filter((t) => t.status === st).length }),
+      (acc, st) => ({ ...acc, [st]: themes.filter((t) => t.status === st).length }),
       {}
     );
-  }, [allThemesLookup, themes]);
+  }, [themes]);
 
   const activeThemeObj = useMemo(
-    () => (allThemesLookup.length > 0 ? allThemesLookup : themes).find((t) => t.status === 'active'),
-    [allThemesLookup, themes]
+    () => themes.find((t) => t.status === 'active'),
+    [themes]
   );
 
   // ─────────────────────────────────────────────────────────────
@@ -611,7 +571,6 @@ export default function ThemesView() {
             theme={editing}
             onThemeUpdated={(updatedTheme) => {
               setEditing(updatedTheme);
-              fetchThemes();
             }}
             onPreview={(t) => {
               window.open(`${VITE_FRONT_URL}?previewTheme=${t._id}`, '_blank');
@@ -783,7 +742,7 @@ export default function ThemesView() {
         </div>
 
         <div className="flex flex-wrap items-center gap-1">
-          {['all', 'active', 'scheduled', 'draft', 'archived'].map((val) => (
+          {['all', 'active', 'draft'].map((val) => (
             <button
               key={val}
               type="button"

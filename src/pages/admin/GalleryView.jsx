@@ -709,11 +709,6 @@ export default function GalleryView() {
             <HiOutlinePhotograph className="h-6 w-6" />
           </div>
           <h3 className="mt-3 text-sm font-bold text-stone-800">No media found</h3>
-          <p className="mt-1 max-w-md text-xs text-stone-500">
-            {search || selectedType !== 'all' || selectedTheme !== 'all' || selectedPlatform !== 'all'
-              ? 'No images match the current filters. Try adjusting your search query or theme/platform filter.'
-              : 'Your gallery is empty. Upload your first Hero Banner or Collection Banner image to get started!'}
-          </p>
           <button
             type="button"
             onClick={handleOpenUploadModal}
@@ -837,8 +832,8 @@ export default function GalleryView() {
           </table>
         </div>
       ) : (
-        /* ─── GRID VIEW (7 items per row on desktop for larger card sizing) ─────────────── */
-        <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-7">
+        /* ─── GRID VIEW (6 items per row on desktop for larger card sizing) ─────────────── */
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6">
           {effectiveItems.map((item) => {
             const bt = BANNER_TYPES.find((b) => b.key === item.type) || { icon: HiOutlinePhotograph };
             const Icon = bt.icon;
@@ -902,35 +897,35 @@ export default function GalleryView() {
                 </div>
 
                 {/* Card Info Content */}
-                <div className="p-1.5 flex flex-col justify-between flex-1">
+                <div className="p-2 flex flex-col justify-between flex-1">
                   <div>
                     {item.themeName ? (
-                      <h4 className="text-[10px] font-bold text-stone-900 truncate" title={item.themeName}>
+                      <h4 className="text-[11px] font-bold text-stone-900 truncate" title={item.themeName}>
                         {item.themeName}
                       </h4>
                     ) : null}
                     {item.linkedBanner?.title ? (
-                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedBanner.title}>
+                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedBanner.title}>
                         <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>{item.linkedBanner.title}</span>
                       </p>
                     ) : item.linkedFeatured?.title ? (  
-                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedFeatured.title}>
+                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedFeatured.title}>
                         <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>Celebrate: {item.linkedFeatured.title}</span>
                       </p>
                     ) : item.linkedRecord?.module === 'banner' ? (
-                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
                         <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>Banner #{String(item.linkedRecord.recordId).slice(-4)}</span>
                       </p>
                     ) : item.linkedRecord?.module === 'featured' ? (
-                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
                         <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>Celebrate #{String(item.linkedRecord.recordId).slice(-4)}</span>
                       </p>
                     ) : item.typeLabel ? (
-                      <p className="mt-0.5 text-[8.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
                         <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
                         <span>{item.typeLabel}</span>
                       </p>
@@ -938,32 +933,32 @@ export default function GalleryView() {
                   </div>
 
                   {/* Action Buttons Row */}
-                  <div className="mt-1.5 flex items-center justify-between gap-1 pt-1 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+                  <div className="mt-1.5 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       onClick={() => setPreviewItem(item)}
-                      className="flex-1 py-0.5 flex items-center justify-center rounded border border-[#e0e7ff] bg-[#eef2ff] text-[#4f46e5] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-[#e0e7ff] bg-[#eef2ff] text-[#4f46e5] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
                       title="Preview Media Item"
                     >
-                      <HiOutlineEye className="h-2.5 w-2.5 stroke-[2]" />
+                      <HiOutlineEye className="h-3 w-3 stroke-[2]" />
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleOpenEdit(item)}
-                      className="flex-1 py-0.5 flex items-center justify-center rounded border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
                       title="Edit Media Item"
                     >
-                      <HiOutlinePencil className="h-2.5 w-2.5 stroke-[2]" />
+                      <HiOutlinePencil className="h-3 w-3 stroke-[2]" />
                     </button>
 
                     <button
                       type="button"
                       onClick={() => handleDeleteItem(item)}
-                      className="flex-1 py-0.5 flex items-center justify-center rounded border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 transition-all shadow-2xs cursor-pointer"
                       title="Remove Media Item"
                     >
-                      <HiOutlineTrash className="h-2.5 w-2.5 stroke-[2]" />
+                      <HiOutlineTrash className="h-3 w-3 stroke-[2]" />
                     </button>
                   </div>
                 </div>

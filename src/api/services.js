@@ -63,25 +63,15 @@ export const themesAPI = {
   getById: (id) => api.get(`/themes/${id}`),
   create: (data) => api.post('/themes', data),
   update: (id, data) => api.put(`/themes/${id}`, data),
-  duplicate: (id) => api.post(`/themes/${id}/duplicate`),
-  preview: (id) => api.get(`/themes/${id}/preview`),
   publish: (id, data = {}) => api.post(`/themes/${id}/publish`, data),
-  rollback: (id) => api.post(`/themes/${id}/rollback`),
-  archive: (id) => api.post(`/themes/${id}/archive`),
   remove: (id) => api.delete(`/themes/${id}`),
   // Theme Media Mapping & Activation
-  getModules: () => api.get('/themes/modules'),
   getMappingRecords: (themeId, params) => api.get(`/themes/${themeId}/media-mapping/records`, { params }),
   getMappingSummary: (themeId) => api.get(`/themes/${themeId}/media-mapping/summary`),
-  getMappings: (themeId, params) => api.get(`/themes/${themeId}/media-mappings`, { params }),
   saveMapping: (themeId, data) => api.put(`/themes/${themeId}/media-mappings`, data),
-  saveMappingsBulk: (themeId, data) => api.put(`/themes/${themeId}/media-mappings/bulk`, data),
-  deleteMapping: (themeId, mappingId) => api.delete(`/themes/${themeId}/media-mappings/${mappingId}`),
   deleteMappingByTarget: (themeId, params) => api.delete(`/themes/${themeId}/media-mappings`, { params }),
   activateTheme: (themeId) => api.post(`/themes/${themeId}/activate`),
-  getHistory: (themeId) => api.get('/themes/history', { params: themeId ? { themeId } : {} }),
   getLookup: () => api.get('/themes/lookup'),
-  getMediaLibrary: (themeId) => api.get(`/themes/${themeId}/media-library`),
   saveMedia: (themeId, data) => api.put(`/themes/${themeId}/media`, data),
 };
 export const websiteThemesAPI = themesAPI;
@@ -238,7 +228,7 @@ export const logisticsAPI = {
 export const analyticsAPI = {
   getOverview: (params) => api.get('/analytics/overview', { params }),
   getDashboard: (params) => api.get('/analytics/dashboard', { params }),
-  getDashboardSales: () => api.get('/analytics/dashboard-sales'),
+  getDashboardSales: (params) => api.get('/analytics/dashboard-sales', { params }),
   getAddToCartReport: (params) => api.get('/analytics/products/add-to-cart', { params }),
   getWishlistReport: (params) => api.get('/analytics/products/wishlist', { params }),
   getViewsReport: (params) => api.get('/analytics/products/views', { params }),
@@ -250,6 +240,9 @@ export const analyticsAPI = {
 export const dashboardAPI = {
   getCounts: () => api.get('/dashboard/stats'),
   getSales: () => api.get('/dashboard/sales'),
+  getTopSellingProducts: (params) => api.get('/dashboard/top-selling-products', { params }),
+  getRecentOrders: (params) => api.get('/dashboard/recent-orders', { params }),
+  getSections: (params) => api.get('/dashboard/sections', { params }),
 };
 
 // ─── Metal Colors ─────────────────────────────────

@@ -620,8 +620,9 @@ export default function DatePicker({
         <PopupLayer enabled={portal}>
           <div
             ref={popupRef}
+            data-datepicker-popup="true"
             style={portal ? popupPosition : undefined}
-            className={`${
+            className={`datepicker-popup ${
               portal
                 ? ''
                 : `absolute left-0 ${

@@ -6,6 +6,7 @@ import Header from './Header';
 import ErrorBoundary from '../common/ErrorBoundary';
 import CuteLoader from '../common/CuteLoader';
 import CuteTopProgressBar from '../common/CuteTopProgressBar';
+import GlobalTooltip from '../common/GlobalTooltip';
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -46,6 +47,9 @@ const AdminLayout = () => {
 
   return (
     <div id="admin-root-layout" className="min-h-screen bg-[#f8fafc] text-stone-900 relative admin-page-bg" style={{ backgroundColor: "#f8fafc" }}>
+      {/* Unified Luxury Tooltip Provider for entire Admin Panel */}
+      <GlobalTooltip />
+
       {/* Sleek Golden Shimmer Progress Bar across the top on menu transitions */}
       <CuteTopProgressBar />
 

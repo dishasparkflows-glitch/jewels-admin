@@ -499,6 +499,18 @@ export default function AppointmentsView() {
       },
       active: statusFilter === 'completed',
     },
+    {
+      id: 'cancelled',
+      label: 'Cancelled',
+      value: cancelledCount,
+      icon: HiOutlineXCircle,
+      color: 'rose',
+      onClick: () => {
+        setStatusFilter('cancelled');
+        setCurrentPage(1);
+      },
+      active: statusFilter === 'cancelled',
+    },
   ];
 
   // Status Badge Helper matching the screenshot with bullet dot

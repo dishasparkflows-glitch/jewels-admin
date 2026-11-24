@@ -38,7 +38,7 @@ export default function OrnateProductsView() {
 
   // Tab & View State
   const [activeTab, setActiveTab] = useState('all'); // all, draft, approved, sold, ungrouped
-  const [groupFilterType, setGroupFilterType] = useState('all'); // 'all' (shows 2 parts), 'single', 'multi'
+  const [groupFilterType, setGroupFilterType] = useState('single'); // 'single', 'multi'
   const [collapsedSections, setCollapsedSections] = useState({ single: false, multi: false });
   const [viewMode, setViewMode] = useState('grid'); // grid, list
   const [searchQuery, setSearchQuery] = useState('');
@@ -566,14 +566,6 @@ export default function OrnateProductsView() {
             <HiOutlinePlus className="w-3.5 h-3.5" />
             <span>Add Ornate Product</span>
           </button>
-          <button
-            type="button"
-            onClick={() => setIsCreateGroupModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs cursor-pointer"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            <span>Create Group</span>
-          </button>
         </div>
       </div>
 
@@ -605,21 +597,9 @@ export default function OrnateProductsView() {
             )}
           </div>
 
-          {/* Sub-Filter: 2-Part View vs 1-Product Only vs Multi-Product Only */}
+          {/* Sub-Filter: 1-Product Only vs Multi-Product Only */}
           {activeTab !== 'ungrouped' && (
             <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0 w-full lg:w-auto justify-center overflow-x-auto">
-              <button
-                type="button"
-                onClick={() => setGroupFilterType('all')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
-                  groupFilterType === 'all'
-                    ? 'bg-white text-stone-900 shadow-2xs font-bold ring-1 ring-stone-200'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-                title="Show both 1-product and multi-product groups broken into 2 parts"
-              >
-                <span>2 Parts (All)</span>
-              </button>
               <button
                 type="button"
                 onClick={() => setGroupFilterType('single')}
@@ -721,7 +701,7 @@ export default function OrnateProductsView() {
 
       {/* ─── 4. Main Tab Content ─── */}
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-7 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3.5">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="bg-white border border-stone-200 rounded-2xl p-4 space-y-3 animate-pulse">
               <div className="h-32 bg-stone-100 rounded-xl" />
@@ -761,7 +741,7 @@ export default function OrnateProductsView() {
                 <div
                   className={
                     viewMode === 'grid'
-                      ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-7 gap-3'
+                      ? 'grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3.5'
                       : 'space-y-3'
                   }
                 >
@@ -1189,7 +1169,7 @@ export default function OrnateProductsView() {
 
             {/* Ungrouped Grid / List */}
             {viewMode === 'grid' ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-7 2xl:grid-cols-7 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3.5">
                 {products.map((p) => {
                   const isSelected = selectedIds.has(p._id);
                   const imgUrl = getProductImage(p);
@@ -1201,7 +1181,7 @@ export default function OrnateProductsView() {
                   return (
                     <div
                       key={p._id}
-                      className={`bg-white border rounded-2xl p-3.5 flex flex-col justify-between transition-all hover:shadow-md relative group ${
+                      className={`bg-white border rounded-2xl p-3 sm:p-3.5 flex flex-col justify-between transition-all hover:shadow-md relative group ${
                         isSelected ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]' : 'border-stone-200'
                       }`}
                     >
@@ -1219,7 +1199,7 @@ export default function OrnateProductsView() {
 
                       <div
                         onClick={() => setViewingProduct(p)}
-                        className="h-28 sm:h-32 w-full flex items-center justify-center p-1.5 rounded-xl bg-stone-50/60 my-1 cursor-pointer overflow-hidden"
+                        className="h-36 sm:h-40 xl:h-44 w-full flex items-center justify-center p-2 rounded-xl bg-stone-50/60 my-1 cursor-pointer overflow-hidden"
                       >
                         {imgUrl ? (
                           <img

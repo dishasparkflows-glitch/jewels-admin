@@ -1,7 +1,6 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect, useMemo } from 'react';
 import {
-  HiOutlineRefresh,
   HiOutlineCheck,
   HiOutlineX,
 } from 'react-icons/hi';
@@ -252,19 +251,6 @@ export default function MetalRatesView() {
     }
   };
 
-  // Sync ERP rates
-  const handleSyncERP = async () => {
-    try {
-      setSaving(true);
-      await api.post('/ornate/sync-metal-rates');
-      toast.success('ERP metal rates synchronized successfully!');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'ERP sync completed');
-    } finally {
-      setSaving(false);
-    }
-  };
-
   // Stat cards matching Diamond rates exact proportions
   const statCardsData = [
     {
@@ -309,18 +295,6 @@ export default function MetalRatesView() {
         subtitle="Formula-based pricing and real-time metal rates for all jewelry variants."
         onAdd={openEditModal}
         addLabel="Update Metal rates"
-        extraActions={
-          <button
-            type="button"
-            onClick={handleSyncERP}
-            disabled={saving || loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 border border-stone-200/90 bg-white hover:bg-stone-50 text-stone-700 rounded-lg text-xs font-semibold shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-            title="Synchronize ERP metal rates"
-          >
-            <HiOutlineRefresh className={`w-3.5 h-3.5 ${saving ? 'animate-spin' : ''}`} />
-            <span>Sync All</span>
-          </button>
-        }
       />
 
       {/* ─── 4 Stat Cards Row (Exact Match to Diamond rates) ─── */}

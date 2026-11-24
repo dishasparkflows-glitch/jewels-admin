@@ -14,7 +14,6 @@ import {
   HiOutlineGift,
   HiOutlineViewGrid,
   HiOutlineInformationCircle,
-  HiOutlineUpload,
   HiOutlineEye,
   HiOutlineCalendar,
   HiOutlineCode,
@@ -25,12 +24,11 @@ import {
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
-import { themesAPI, galleryAPI, bannersAPI, featuredAPI } from '../../api/services';
+import { themesAPI, bannersAPI } from '../../api/services';
 import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import { getMediaUrl } from '../../utils/imageUrl';
-import useCategoryLookup from '../../hooks/useCategoryLookup';
 
 const BANNER_TYPES = [
   {
@@ -114,7 +112,6 @@ export default function ThemeMediaMappingTab({
   const [sortBy] = useState('newest'); // newest, oldest, order
   const [search] = useState('');
   const [celebratePlacementFilter, setCelebratePlacementFilter] = useState('Celebrate'); // Celebrate, Gifts, all
-  const { categories } = useCategoryLookup({ enabled: true });
 
   // Data state
   const [loading, setLoading] = useState(false);
@@ -169,12 +166,6 @@ export default function ThemeMediaMappingTab({
     }
   };
 
-  // Side panel gallery state
-  const [sideGalleryItems, setSideGalleryItems] = useState([]);
-  const [, setGalleryLoading] = useState(false);
-  const [galleryScope] = useState('theme'); // 'theme' or 'all'
-  const [galleryPlacementFilter] = useState('all');
-  const [galleryPlatformFilter] = useState('all');
 
   // Drag and drop & active target state
   const draggedAssetRef = useRef(null);
@@ -224,7 +215,7 @@ export default function ThemeMediaMappingTab({
         )
       );
       toast.success(`Reset ${mapped.length} tile(s) to default.`);
-      await Promise.all([fetchRecords(), fetchSummary(), fetchSideGallery()]);
+      await Promise.all([fetchRecords(), fetchSummary()]);
     } catch (err) {
       console.error('Failed to reset tiles:', err);
       toast.error('Failed to reset some tiles');
@@ -243,47 +234,19 @@ export default function ThemeMediaMappingTab({
     }
   }, [themeId]);
 
-  // ─── 2. Load Records for Current Module (Calls banners or featured API) ──────────────────
+  // ─── 2. Load Records for Current Module ──────────────────
   const fetchRecords = useCallback(async () => {
     if (!themeId) return;
     try {
       setLoading(true);
-      if (mappingMode === 'banner') {
-        // Concurrently invoke bannersAPI.getThemeLookup and mapping records
-        const [mappingRes] = await Promise.all([
-          themesAPI.getMappingRecords(themeId, {
-            module: activeModule,
-            search,
-            limit: 100,
-          }),
-          bannersAPI.getThemeLookup({
-            type: activeModule,
-            status: 'active',
-          }).catch((err) => {
-            console.warn('bannersAPI.getThemeLookup error:', err);
-            return null;
-          }),
-        ]);
-        const data = mappingRes?.data?.data || mappingRes?.data || {};
-        setRecords(data.items || data.records || []);
-      } else {
-        // Concurrently invoke featuredAPI.getThemeLookup and mapping records
-        const [mappingRes] = await Promise.all([
-          themesAPI.getMappingRecords(themeId, {
-            module: 'celebrate',
-            search,
-            limit: 100,
-          }),
-          featuredAPI.getThemeLookup({
-            status: 'active',
-          }).catch((err) => {
-            console.warn('featuredAPI.getThemeLookup error:', err);
-            return null;
-          }),
-        ]);
-        const data = mappingRes?.data?.data || mappingRes?.data || {};
-        setRecords(data.items || data.records || []);
-      }
+      const moduleName = mappingMode === 'banner' ? activeModule : 'celebrate';
+      const mappingRes = await themesAPI.getMappingRecords(themeId, {
+        module: moduleName,
+        search,
+        limit: 100,
+      });
+      const data = mappingRes?.data?.data || mappingRes?.data || {};
+      setRecords(data.items || data.records || []);
       setSelectedIds(new Set());
     } catch (err) {
       console.error('Failed to load module records for mapping:', err);
@@ -293,34 +256,6 @@ export default function ThemeMediaMappingTab({
     }
   }, [themeId, mappingMode, activeModule, search]);
 
-  // ─── 3. Load Side Panel Theme Gallery Items ──────────────
-  const fetchSideGallery = useCallback(async () => {
-    if (!themeId) return;
-    try {
-      setGalleryLoading(true);
-      const params = {
-        limit: 100,
-      };
-      if (galleryScope === 'theme') {
-        params.themeId = themeId;
-      }
-      if (galleryPlacementFilter && galleryPlacementFilter !== 'all') {
-        params.type = galleryPlacementFilter;
-      }
-      if (galleryPlatformFilter && galleryPlatformFilter !== 'all') {
-        params.platform = galleryPlatformFilter;
-      }
-      const res = await galleryAPI.getLookup(params);
-      const data = res.data?.data || res.data || [];
-      const items = Array.isArray(data) ? data : (data.items || []);
-      setSideGalleryItems(items);
-    } catch (err) {
-      console.error('Failed to load gallery for side panel:', err);
-    } finally {
-      setGalleryLoading(false);
-    }
-  }, [themeId, galleryScope, galleryPlacementFilter, galleryPlatformFilter]);
-
   useEffect(() => {
     fetchSummary();
   }, [fetchSummary]);
@@ -328,10 +263,6 @@ export default function ThemeMediaMappingTab({
   useEffect(() => {
     fetchRecords();
   }, [fetchRecords]);
-
-  useEffect(() => {
-    fetchSideGallery();
-  }, [fetchSideGallery]);
 
   // Current banner type config (for Banner Management view matching)
   const currentBannerType = useMemo(() => {
@@ -348,7 +279,7 @@ export default function ThemeMediaMappingTab({
         result = result.filter((r) => {
           const t = (r.content?.title || r.title || '').toLowerCase();
           const d = (r.content?.description || r.subtitle || '').toLowerCase();
-          const cat = categories.find((c) => String(c._id) === String(r.display?.categoryId?._id || r.display?.categoryId))?.name?.toLowerCase() || '';
+          const cat = (r.display?.categoryId?.name || '').toLowerCase();
           return t.includes(q) || d.includes(q) || cat.includes(q);
         });
       }
@@ -400,7 +331,7 @@ export default function ThemeMediaMappingTab({
     }
 
     return result;
-  }, [records, mappingMode, search, statusFilter, deviceFilter, sortBy, celebratePlacementFilter, categories]);
+  }, [records, mappingMode, search, statusFilter, deviceFilter, sortBy, celebratePlacementFilter]);
 
   // ─── Selection Handlers ──────────────────────────────────
   const isAllSelected =
@@ -476,7 +407,7 @@ export default function ThemeMediaMappingTab({
       });
 
       toast.success(`Theme mapping removed. Reverted to default storefront image.`);
-      await Promise.all([fetchRecords(), fetchSummary(), fetchSideGallery()]);
+      await Promise.all([fetchRecords(), fetchSummary()]);
     } catch (err) {
       console.error('Failed to remove mapping:', err);
       toast.error(err.response?.data?.message || 'Could not remove theme mapping');
@@ -517,7 +448,7 @@ export default function ThemeMediaMappingTab({
       await Promise.all(promises);
       toast.success(`Reverted ${selectedIds.size} items to default images.`);
       setSelectedIds(new Set());
-      await Promise.all([fetchRecords(), fetchSummary(), fetchSideGallery()]);
+      await Promise.all([fetchRecords(), fetchSummary()]);
     } catch (err) {
       console.error('Bulk clear failed:', err);
       toast.error('Failed to clear some mappings');
@@ -540,7 +471,7 @@ export default function ThemeMediaMappingTab({
           try {
             mediaAsset = JSON.parse(raw);
           } catch {
-            mediaAsset = sideGalleryItems.find((i) => String(i._id) === String(raw));
+            mediaAsset = null;
           }
         }
       } catch (err) {
@@ -622,9 +553,6 @@ export default function ThemeMediaMappingTab({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Hero banners, collection banners & promotional sliders
-                </p>
               </div>
             </div>
             <div className="text-right shrink-0">
@@ -671,9 +599,6 @@ export default function ThemeMediaMappingTab({
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Curated festive gifting showcase cards & category highlights
-                </p>
               </div>
             </div>
             <div className="text-right shrink-0">
@@ -814,16 +739,7 @@ export default function ThemeMediaMappingTab({
                     <span>Browse Gallery</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigate(`/gallery?openUpload=true&themeId=${themeId || ''}&type=${activeModule || 'herobanner'}`);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#8b6f4e] text-white hover:brightness-95 transition-colors cursor-pointer shadow-2xs"
-                  >
-                    <HiOutlineUpload className="h-3.5 w-3.5" />
-                    <span>+ Upload Media</span>
-                  </button>
+
                 </div>
               </div>
 
@@ -884,10 +800,7 @@ export default function ThemeMediaMappingTab({
                                         originalUrl: ci.url,
                                         imageUrl: ci.url,
                                         categoryId: ci.categoryId?._id || ci.categoryId,
-                                        categoryName:
-                                          ci.categoryId?.name ||
-                                          categories.find((c) => String(c._id) === String(ci.categoryId?._id || ci.categoryId))?.name ||
-                                          '',
+                                        categoryName: ci.categoryId?.name || '',
                                         isMapped: false,
                                       }))
                                     : []))
@@ -896,7 +809,7 @@ export default function ThemeMediaMappingTab({
                           const isExpanded = !collapsedBanners.has(String(banner._id));
 
                           const bTitle = currentBannerType.key === 'categorybanner'
-                            ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || banner.title || 'Category Banner')
+                            ? (banner.display?.categoryId?.name || banner.content?.title || banner.title || 'Category Banner')
                             : (banner.content?.title || banner.title || (isCollectionBanner ? 'Collection Banner' : 'Hero Banner'));
                           const bDesc = banner.content?.description || '';
                           const defaultAssetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url) || banner.originalDesktopImage;
@@ -916,9 +829,7 @@ export default function ThemeMediaMappingTab({
                             dragOverSlot?.device === 'desktop';
 
                           const catObj = banner.display?.categoryId;
-                          const catName = typeof catObj === 'object' && catObj?.name
-                            ? catObj.name
-                            : categories.find((c) => String(c._id) === String(catObj?._id || catObj))?.name;
+                          const catName = typeof catObj === 'object' && catObj?.name ? catObj.name : '';
 
                           return (
                             <Fragment key={banner._id}>
@@ -1262,7 +1173,6 @@ export default function ThemeMediaMappingTab({
                                           const tileEffectiveImg = tile.mappedImageUrl || tile.imageUrl || tile.originalUrl;
                                           const catName =
                                             tile.categoryName ||
-                                            categories.find((c) => String(c._id) === String(tile.categoryId))?.name ||
                                             `Category ${tile.order}`;
 
                                           return (
@@ -1530,16 +1440,7 @@ export default function ThemeMediaMappingTab({
                     <span>Browse Gallery</span>
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigate(`/gallery?openUpload=true&themeId=${themeId || ''}&type=celebrate`);
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-[#8b6f4e] text-white hover:brightness-95 transition-colors cursor-pointer shadow-2xs"
-                  >
-                    <HiOutlineUpload className="h-3.5 w-3.5" />
-                    <span>+ Upload Media</span>
-                  </button>
+
                 </div>
               </div>
 

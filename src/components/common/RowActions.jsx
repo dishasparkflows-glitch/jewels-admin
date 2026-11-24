@@ -27,7 +27,9 @@ export function RepresentativeActionButton({
     <button
       type="button"
       onClick={onClick}
-      title={activeTitle}
+      data-tooltip={activeTitle}
+      data-tooltip-position="top"
+      aria-label={activeTitle}
       disabled={disabled}
       className={`w-7 h-7 rounded-lg border inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${
         isPrimary
@@ -57,7 +59,9 @@ export function MoveActionButton({
     <button
       type="button"
       onClick={onClick}
-      title={title}
+      data-tooltip={title}
+      data-tooltip-position="top"
+      aria-label={title}
       disabled={disabled}
       className={`w-7 h-7 rounded-lg border border-purple-200 bg-purple-50 text-purple-600 hover:bg-purple-100 hover:border-purple-300 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
       {...props}
@@ -79,7 +83,9 @@ export function EditActionButton({
     <button
       type="button"
       onClick={onClick}
-      title={title}
+      data-tooltip={title}
+      data-tooltip-position="top"
+      aria-label={title}
       disabled={disabled}
       className={`w-7 h-7 rounded-lg border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
       {...props}
@@ -101,7 +107,9 @@ export function ViewActionButton({
     <button
       type="button"
       onClick={onClick}
-      title={title}
+      data-tooltip={title}
+      data-tooltip-position="top"
+      aria-label={title}
       disabled={disabled}
       className={`w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf5ed] text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
       {...props}
@@ -123,7 +131,9 @@ export function DeleteActionButton({
     <button
       type="button"
       onClick={onClick}
-      title={title}
+      data-tooltip={title}
+      data-tooltip-position="top"
+      aria-label={title}
       disabled={disabled}
       className={`w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:pointer-events-none ${className}`}
       {...props}
@@ -153,11 +163,15 @@ export function StatusActionButton({
     ? 'Status: Rejected (Click to change)'
     : 'Status: Pending (Click to change)';
 
+  const activeTitle = title || defaultTitle;
+
   return (
     <button
       type="button"
       onClick={onClick}
-      title={title || defaultTitle}
+      data-tooltip={activeTitle}
+      data-tooltip-position="top"
+      aria-label={activeTitle}
       disabled={disabled || loading}
       className={`w-7 h-7 rounded-lg border inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${
         isApproved
@@ -220,7 +234,8 @@ export default function RowActions({
         <button
           type="button"
           onClick={onOpenWebsite}
-          title={websiteTitle}
+          data-tooltip={websiteTitle}
+          data-tooltip-position="top"
           aria-label={websiteTitle}
           className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-white text-[#8b6f4e] hover:bg-[#f3ece0] hover:text-[#735839] active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer"
         >

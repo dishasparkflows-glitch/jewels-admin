@@ -23,7 +23,7 @@ import toast from 'react-hot-toast';
 import { galleryAPI } from '../../api/services';
 import Pagination from '../../components/common/Pagination';
 import Dropdown from '../../components/common/Dropdown';
-import { useAdminPageSize } from '../../utils/adminPagination';
+import useDebounce from '../../hooks/useDebounce';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 
 const PLACEMENT_LABELS = {
@@ -135,11 +135,12 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [selectedPlacement, setSelectedPlacement] = useState('all');
 
   // Pagination state
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useAdminPageSize(10);
+  const [pageSize, setPageSize] = useState(10);
   const [, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
@@ -149,32 +150,36 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
 
   const fileInputRef = useRef(null);
 
-  // ─── Fetch Media from Gallery Lookup API (ThemeId Wise) ───
+  // ─── Fetch Media from Gallery Lookup API (ThemeId Wise with page & limit) ───
   const fetchGalleryMedia = useCallback(async () => {
     try {
       setLoading(true);
       const params = {
         themeId: currentThemeId || undefined,
         type: selectedPlacement !== 'all' ? selectedPlacement : undefined,
-        search: search.trim() || undefined,
+        search: debouncedSearch.trim() || undefined,
+        page,
+        limit: pageSize,
       };
 
       const res = await galleryAPI.getLookup(params);
-      const data = res.data?.data || res.data || [];
-      const fetchedItems = Array.isArray(data) ? data : (data.items || []);
+      const data = res.data?.data;
+      const fetchedItems = Array.isArray(data) ? data : (data?.items || res.data?.items || []);
+      const pagination = res.data?.pagination || data?.pagination || {};
 
       setItems(fetchedItems);
-      setTotalPages(Math.max(1, Math.ceil(fetchedItems.length / pageSize)));
-      setTotalItems(fetchedItems.length);
+      const total = pagination.total ?? pagination.totalDocs ?? pagination.totalItems ?? fetchedItems.length;
+      setTotalItems(total);
+      setTotalPages(pagination.totalPages || Math.max(1, Math.ceil(total / pageSize)));
     } catch (err) {
       console.error('Failed to load gallery lookup:', err);
       toast.error('Could not load gallery media');
     } finally {
       setLoading(false);
     }
-  }, [currentThemeId, selectedPlacement, search, pageSize]);
+  }, [currentThemeId, selectedPlacement, debouncedSearch, page, pageSize]);
 
-  // On mount and when search, placement or theme changes
+  // On mount and when search, placement, theme, page or pageSize changes
   useEffect(() => {
     fetchGalleryMedia();
   }, [fetchGalleryMedia]);
@@ -182,13 +187,10 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
   // Reset to page 1 on search, placement, or theme change
   useEffect(() => {
     setPage(1);
-  }, [search, selectedPlacement, currentThemeId]);
+  }, [debouncedSearch, selectedPlacement, currentThemeId]);
 
-  // Client-side paginated items for display
-  const displayedItems = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    return items.slice(start, start + pageSize);
-  }, [items, page, pageSize]);
+  // Items are already paginated by the backend
+  const displayedItems = items;
 
   // ─── Handle Upload Media for This Theme ───
   const handleFileUpload = async (e) => {
@@ -226,8 +228,11 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
       );
 
       // Re-fetch gallery on page 1
-      setPage(1);
-      fetchGalleryMedia();
+      if (page === 1) {
+        fetchGalleryMedia();
+      } else {
+        setPage(1);
+      }
     } catch (err) {
       console.error('Failed to upload theme media:', err);
       toast.error(err.response?.data?.message || 'Upload failed. Please try again.', {
@@ -505,11 +510,11 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
                 </div>
               </div>
 
-              <div className="flex items-center justify-center overflow-auto max-h-[70vh] bg-stone-950 rounded-xl p-2">
+              <div className="flex items-center justify-center overflow-auto max-h-[72vh] rounded-xl bg-stone-50/50 border border-stone-200/60 overflow-hidden">
                 <img
                   src={previewItem.url || previewItem.image?.url}
                   alt={getMediaFileName(previewItem)}
-                  className="max-h-[68vh] w-auto max-w-full object-contain rounded-lg"
+                  className="max-h-[72vh] w-auto max-w-full object-contain"
                 />
               </div>
             </div>

@@ -1,14 +1,54 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import {
+  HiOutlineCalendar,
+  HiOutlineChevronDown,
+  HiOutlineCheck,
+  HiOutlineShoppingBag,
+  HiOutlineClipboardList,
+} from 'react-icons/hi';
+import { IoDiamondOutline } from 'react-icons/io5';
 import ModuleHeader from '../../components/common/ModuleHeader';
+import DatePicker from '../../components/common/DatePicker';
 import { analyticsAPI, dashboardAPI } from '../../api/services';
+
+const DATE_OPTIONS = [
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: '7days', label: 'Last 7 Days' },
+  { value: '30days', label: 'Last 30 Days' },
+  { value: '90days', label: 'Last 90 Days' },
+  { value: 'thisYear', label: 'This Year' },
+  { value: 'custom', label: 'Custom Range' },
+];
 
 const metrics = [
   { label: 'Products', path: '/catalog/jewelry-products' },
-  { label: 'Categories', path: '/catalog/categories' },
+  { label: 'Appointments', path: '/appointments' },
   { label: 'Customers', path: '/customers' },
   { label: 'Reviews', path: '/reviews' },
+  { label: 'Orders', path: '/orders' },
 ];
+
+function getOrderStatusBadgeClass(status = '') {
+  const s = String(status).toLowerCase();
+  switch (s) {
+    case 'delivered':
+      return 'bg-emerald-50 text-emerald-700 border border-emerald-200/60';
+    case 'processing':
+      return 'bg-amber-50 text-amber-700 border border-amber-200/60';
+    case 'shipped':
+      return 'bg-sky-50 text-sky-700 border border-sky-200/60';
+    case 'accepted':
+      return 'bg-blue-50 text-blue-700 border border-blue-200/60';
+    case 'cancelled':
+    case 'returned':
+      return 'bg-rose-50 text-rose-700 border border-rose-200/60';
+    case 'pending':
+    default:
+      return 'bg-stone-100 text-stone-700 border border-stone-200/60';
+  }
+}
 
 // Helper: Convert polar coordinates to Cartesian for SVG donut arcs
 function polarToCartesian(centerX, centerY, radius, angleInDegrees) {
@@ -63,12 +103,69 @@ export default function Dashboard() {
   const [loadingCounts, setLoadingCounts] = useState(true);
   const [salesData, setSalesData] = useState(null);
   const [loadingSales, setLoadingSales] = useState(true);
+  const [topSellingProducts, setTopSellingProducts] = useState([]);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loadingSections, setLoadingSections] = useState(true);
   const [revision, setRevision] = useState(0);
 
   // 'revenue' | 'orders' toggle for Sales Overview
   const [activeMetric, setActiveMetric] = useState('revenue');
   const [hoveredPointIndex, setHoveredPointIndex] = useState(null);
   const [hoveredCategory, setHoveredCategory] = useState(null);
+
+  // Date Filter State
+  const [datePeriod, setDatePeriod] = useState('30days');
+  const [isDateMenuOpen, setIsDateMenuOpen] = useState(false);
+  const [customRange, setCustomRange] = useState({ start: '', end: '' });
+  const [tempCustomRange, setTempCustomRange] = useState({ start: '', end: '' });
+  const dateMenuRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      // 1. If clicking inside the dateMenu dropdown, don't close
+      if (dateMenuRef.current && dateMenuRef.current.contains(e.target)) {
+        return;
+      }
+      // 2. If clicking inside any portaled DatePicker popup or calendar, don't close
+      if (
+        e.target.closest?.('[data-datepicker-popup]') ||
+        e.target.closest?.('.datepicker-popup') ||
+        e.target.closest?.('.z-\\[100000\\]')
+      ) {
+        return;
+      }
+      setIsDateMenuOpen(false);
+    };
+    window.addEventListener('mousedown', handleClickOutside);
+    return () => window.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSelectPeriod = (val) => {
+    if (val === 'custom') {
+      setDatePeriod('custom');
+      if (!tempCustomRange.start || !tempCustomRange.end) {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const weekAgoStr = weekAgo.toISOString().split('T')[0];
+        setTempCustomRange({
+          start: customRange.start || weekAgoStr,
+          end: customRange.end || todayStr,
+        });
+      }
+    } else {
+      setDatePeriod(val);
+      setIsDateMenuOpen(false);
+    }
+  };
+
+  const currentPeriodLabel = useMemo(() => {
+    if (datePeriod === 'custom' && customRange.start && customRange.end) {
+      return `${customRange.start} to ${customRange.end}`;
+    }
+    const found = DATE_OPTIONS.find((o) => o.value === datePeriod);
+    return found ? found.label : 'Last 30 Days';
+  }, [datePeriod, customRange]);
 
   // Fetch top summary counts via single dashboard counts API
   useEffect(() => {
@@ -81,9 +178,10 @@ export default function Dashboard() {
         const data = res.data?.data || res.data || {};
         setCounts({
           Products: data.products ?? data.Products ?? 0,
-          Categories: data.categories ?? data.Categories ?? 0,
+          Appointments: data.appointments ?? data.Appointments ?? 0,
           Customers: data.customers ?? data.Customers ?? 0,
           Reviews: data.reviews ?? data.Reviews ?? 0,
+          Orders: data.orders ?? data.Orders ?? 0,
         });
       })
       .catch((err) => {
@@ -102,8 +200,20 @@ export default function Dashboard() {
   useEffect(() => {
     let isMounted = true;
     setLoadingSales(true);
+    const params = {};
+    if (datePeriod === 'custom') {
+      if (!customRange.start || !customRange.end) {
+        setLoadingSales(false);
+        return;
+      }
+      params.startDate = customRange.start;
+      params.endDate = customRange.end;
+    } else {
+      params.period = datePeriod;
+    }
+
     analyticsAPI
-      .getDashboardSales()
+      .getDashboardSales(params)
       .then((res) => {
         if (!isMounted) return;
         const data = res.data?.data || res.data;
@@ -114,6 +224,31 @@ export default function Dashboard() {
       })
       .finally(() => {
         if (isMounted) setLoadingSales(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [revision, datePeriod, customRange]);
+
+  // Fetch dashboard bottom sections (top selling products & recent orders)
+  useEffect(() => {
+    let isMounted = true;
+    setLoadingSections(true);
+
+    dashboardAPI
+      .getSections({ limit: 5 })
+      .then((res) => {
+        if (!isMounted) return;
+        const data = res.data?.data || res.data || {};
+        setTopSellingProducts(data.topSellingProducts || []);
+        setRecentOrders(data.recentOrders || []);
+      })
+      .catch((err) => {
+        console.error('Failed to load dashboard overview sections:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingSections(false);
       });
 
     return () => {
@@ -233,7 +368,7 @@ export default function Dashboard() {
       />
 
       {/* Top Count Metrics */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
         {metrics.map((metric) => (
           <Link
             key={metric.label}
@@ -262,36 +397,125 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
         {/* Card 1: Sales Overview */}
         <div className="xl:col-span-8 bg-white border border-stone-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
-          {/* Card Header & Toggle */}
+          {/* Card Header & Controls */}
           <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
             <div>
               <h2 className="text-lg font-bold text-stone-900 tracking-tight">Sales Overview</h2>
             </div>
 
-            {/* Segmented Control Pill */}
-            <div className="inline-flex items-center rounded-xl border border-stone-200 bg-stone-50 p-1 shadow-inner">
-              <button
-                type="button"
-                onClick={() => setActiveMetric('revenue')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 ${
-                  activeMetric === 'revenue'
-                    ? 'bg-[#84562b] text-white shadow-sm'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                Revenue
-              </button>
-              <button
-                type="button"
-                onClick={() => setActiveMetric('orders')}
-                className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 ${
-                  activeMetric === 'orders'
-                    ? 'bg-[#84562b] text-white shadow-sm'
-                    : 'text-stone-600 hover:text-stone-900'
-                }`}
-              >
-                Orders
-              </button>
+            <div className="flex items-center gap-2.5">
+              {/* Date Filter Dropdown */}
+              <div className="relative" ref={dateMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setIsDateMenuOpen((prev) => !prev)}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition-all shadow-2xs cursor-pointer"
+                >
+                  <HiOutlineCalendar className="w-3.5 h-3.5 text-[#84562b]" />
+                  <span>{currentPeriodLabel}</span>
+                  <HiOutlineChevronDown
+                    className={`w-3.5 h-3.5 text-stone-400 transition-transform ${
+                      isDateMenuOpen ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {isDateMenuOpen && (
+                  <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-xl border border-stone-200 py-1.5 z-30 animate-fadeIn">
+                    <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
+                      Filter Period
+                    </div>
+                    {DATE_OPTIONS.map((opt) => (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => handleSelectPeriod(opt.value)}
+                        className={`w-full text-left px-3.5 py-1.5 text-xs font-medium cursor-pointer transition-colors flex items-center justify-between ${
+                          datePeriod === opt.value
+                            ? 'text-[#84562b] bg-[#fbf7f2] font-semibold'
+                            : 'text-stone-700 hover:bg-stone-50'
+                        }`}
+                      >
+                        <span>{opt.label}</span>
+                        {datePeriod === opt.value && <HiOutlineCheck className="w-3.5 h-3.5 text-[#84562b]" />}
+                      </button>
+                    ))}
+
+                    {datePeriod === 'custom' && (
+                      <div className="border-t border-stone-100 p-2.5 mt-1 space-y-2 bg-stone-50/70 rounded-b-xl">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-semibold uppercase text-stone-500">From</label>
+                          <DatePicker
+                            value={tempCustomRange.start}
+                            onChange={(dateStr) => {
+                              const cleanDate = typeof dateStr === 'string' ? dateStr : dateStr?.target?.value || '';
+                              setTempCustomRange((prev) => ({ ...prev, start: cleanDate }));
+                            }}
+                            placeholder="Start Date"
+                            size="sm"
+                            maxDate={tempCustomRange.end ? new Date(tempCustomRange.end) : new Date()}
+                            buttonClassName="w-full text-xs h-8 px-2"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-semibold uppercase text-stone-500">To</label>
+                          <DatePicker
+                            value={tempCustomRange.end}
+                            onChange={(dateStr) => {
+                              const cleanDate = typeof dateStr === 'string' ? dateStr : dateStr?.target?.value || '';
+                              setTempCustomRange((prev) => ({ ...prev, end: cleanDate }));
+                            }}
+                            placeholder="End Date"
+                            size="sm"
+                            minDate={tempCustomRange.start ? new Date(tempCustomRange.start) : undefined}
+                            maxDate={new Date()}
+                            buttonClassName="w-full text-xs h-8 px-2"
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (tempCustomRange.start && tempCustomRange.end) {
+                              setCustomRange({ ...tempCustomRange });
+                              setIsDateMenuOpen(false);
+                            }
+                          }}
+                          disabled={!tempCustomRange.start || !tempCustomRange.end}
+                          className="w-full mt-1.5 py-1.5 rounded-lg bg-[#84562b] text-white text-xs font-semibold hover:bg-[#6e4622] transition-colors disabled:opacity-50 cursor-pointer"
+                        >
+                          Apply Range
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Segmented Control Pill */}
+              <div className="inline-flex items-center rounded-xl border border-stone-200 bg-stone-50 p-1 shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setActiveMetric('revenue')}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 ${
+                    activeMetric === 'revenue'
+                      ? 'bg-[#84562b] text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  Revenue
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveMetric('orders')}
+                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 ${
+                    activeMetric === 'orders'
+                      ? 'bg-[#84562b] text-white shadow-sm'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  Orders
+                </button>
+              </div>
             </div>
           </div>
 
@@ -303,7 +527,7 @@ export default function Dashboard() {
               </div>
             ) : points.length === 0 ? (
               <div className="h-60 w-full flex items-center justify-center text-stone-400 text-sm">
-                No sales data recorded in the last 30 days.
+                No sales data recorded for the selected period.
               </div>
             ) : (
               <svg
@@ -522,6 +746,147 @@ export default function Dashboard() {
                     })
                   )}
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* ─── Bottom Section: Top Selling Products & Recent Orders ─── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Card 1: Top Selling Products */}
+        <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100">
+              <div className="flex items-center gap-2.5">
+                <span className="p-1.5 rounded-lg bg-amber-50 text-[#8b6f4e]">
+                  <HiOutlineShoppingBag className="w-5 h-5" />
+                </span>
+                <h2 className="text-lg font-bold text-stone-900 tracking-tight">Top Selling Products</h2>
+              </div>
+              <Link
+                to="/catalog/jewelry-products"
+                className="text-xs font-semibold text-[#8b6f4e] hover:text-[#73583c] flex items-center gap-1 transition-colors"
+              >
+                View All <span aria-hidden="true">&rarr;</span>
+              </Link>
+            </div>
+
+            {loadingSections ? (
+              <div className="h-64 flex items-center justify-center text-xs text-stone-400 animate-pulse">
+                Loading top products...
+              </div>
+            ) : topSellingProducts.length === 0 ? (
+              <div className="py-12 text-center text-xs text-stone-400">
+                No top selling products recorded yet
+              </div>
+            ) : (
+              <div className="divide-y divide-stone-100 mt-2">
+                {topSellingProducts.map((item, index) => (
+                  <div key={item._id || index} className="py-3.5 flex items-center gap-4 first:pt-2 last:pb-1">
+                    {/* Rank Circle */}
+                    <span className="w-7 h-7 rounded-full bg-[#fbf6f0] text-[#8b6f4e] font-bold text-xs flex items-center justify-center shrink-0">
+                      {item.rank || index + 1}
+                    </span>
+
+                    {/* Thumbnail */}
+                    <div className="w-12 h-12 rounded-xl bg-stone-900/90 border border-stone-200/50 overflow-hidden shrink-0 flex items-center justify-center">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <IoDiamondOutline className="w-5 h-5 text-amber-200/60" />
+                      )}
+                    </div>
+
+                    {/* Details */}
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-sm font-semibold text-stone-900 truncate" title={item.title}>
+                        {item.title}
+                      </h4>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        SKU: {item.sku || 'N/A'}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-xs font-bold text-stone-900">
+                          {item.formattedPrice || `₹${Number(item.price || 0).toLocaleString('en-IN')}`}
+                        </span>
+                        <span className="text-stone-300">|</span>
+                        <span className="text-xs text-stone-500 font-medium">
+                          {item.ordersCount ?? 0} {item.ordersCount === 1 ? 'order' : 'orders'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Card 2: Recent Orders */}
+        <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between pb-4 border-b border-stone-100">
+              <div className="flex items-center gap-2.5">
+                <span className="p-1.5 rounded-lg bg-amber-50 text-[#8b6f4e]">
+                  <HiOutlineClipboardList className="w-5 h-5" />
+                </span>
+                <h2 className="text-lg font-bold text-stone-900 tracking-tight">Recent Orders</h2>
+              </div>
+              <Link
+                to="/orders"
+                className="text-xs font-semibold text-[#8b6f4e] hover:text-[#73583c] flex items-center gap-1 transition-colors"
+              >
+                View All <span aria-hidden="true">&rarr;</span>
+              </Link>
+            </div>
+
+            {loadingSections ? (
+              <div className="h-64 flex items-center justify-center text-xs text-stone-400 animate-pulse">
+                Loading recent orders...
+              </div>
+            ) : recentOrders.length === 0 ? (
+              <div className="py-12 text-center text-xs text-stone-400">
+                No recent orders recorded yet
+              </div>
+            ) : (
+              <div className="overflow-x-auto mt-2">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-stone-100 text-stone-500 font-medium">
+                      <th className="py-2.5 font-semibold">Order ID</th>
+                      <th className="py-2.5 font-semibold">Customer</th>
+                      <th className="py-2.5 font-semibold">Amount</th>
+                      <th className="py-2.5 font-semibold text-right">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-stone-100 text-stone-700">
+                    {recentOrders.map((order, idx) => (
+                      <tr key={order._id || idx} className="hover:bg-stone-50/60 transition-colors">
+                        <td className="py-3 font-semibold text-stone-900">
+                          <Link to="/orders" className="hover:underline text-stone-900">
+                            {order.orderId || order.orderNumber}
+                          </Link>
+                        </td>
+                        <td className="py-3 text-stone-700 font-medium truncate max-w-[140px]">
+                          {order.customer}
+                        </td>
+                        <td className="py-3 font-bold text-stone-900">
+                          {order.formattedAmount || `₹${Number(order.amount || 0).toLocaleString('en-IN')}`}
+                        </td>
+                        <td className="py-3 text-right">
+                          <span
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize ${getOrderStatusBadgeClass(
+                              order.status
+                            )}`}
+                          >
+                            {order.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>

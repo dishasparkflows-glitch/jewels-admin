@@ -60,7 +60,6 @@ export default function ManageGroupDrawer({
   // Details Tab state
   const [editName, setEditName] = useState('');
   const [editSlug, setEditSlug] = useState('');
-  const [editDesc, setEditDesc] = useState('');
   const [editStatus, setEditStatus] = useState('active');
   const [savingDetails, setSavingDetails] = useState(false);
 
@@ -131,7 +130,6 @@ export default function ManageGroupDrawer({
       if (data) {
         setEditName(data.groupName || '');
         setEditSlug(data.slug || '');
-        setEditDesc(data.description || '');
         setEditStatus(data.status || 'active');
       }
     } catch (err) {
@@ -304,7 +302,6 @@ export default function ManageGroupDrawer({
       await api.patch(`/product-groups/${group._id}`, {
         groupName: editName.trim(),
         slug: editSlug.trim() || undefined,
-        description: editDesc,
         status: editStatus,
       });
       toast.success('Group details updated');
@@ -543,10 +540,10 @@ export default function ManageGroupDrawer({
               onClick={() => setSyncModalOpen(true)}
               disabled={loading || products.length < 2}
               className="px-3.5 py-2 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
-              title="Synchronize selected fields across group members"
+              title="Synchronize selected product information across group members"
             >
               <HiOutlineRefresh className="w-3.5 h-3.5 text-stone-500" />
-              <span>Sync Group</span>
+              <span>Sync Product Info</span>
             </button>
           </div>
         </div>
@@ -959,17 +956,6 @@ export default function ManageGroupDrawer({
                     type="text"
                     value={editSlug}
                     onChange={(e) => setEditSlug(e.target.value)}
-                    className="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl bg-stone-50/50 focus:outline-none focus:border-[#8b6f4e]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 mb-1">Description</label>
-                  <textarea
-                    rows={4}
-                    value={editDesc}
-                    onChange={(e) => setEditDesc(e.target.value)}
-                    placeholder="Provide details about this group collection..."
                     className="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl bg-stone-50/50 focus:outline-none focus:border-[#8b6f4e]"
                   />
                 </div>

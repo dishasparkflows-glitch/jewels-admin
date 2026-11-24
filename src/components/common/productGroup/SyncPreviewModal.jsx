@@ -122,11 +122,11 @@ export default function SyncPreviewModal({
         fields,
       });
 
-      toast.success('Group synchronization completed successfully!');
+      toast.success('Product info synchronization completed successfully!');
       onSuccess?.(res.data?.data);
       onClose();
     } catch (err) {
-      const msg = err.response?.data?.message || err.message || 'Failed to sync group';
+      const msg = err.response?.data?.message || err.message || 'Failed to sync product info';
       toast.error(msg);
     } finally {
       setSyncing(false);
@@ -166,11 +166,11 @@ export default function SyncPreviewModal({
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={previewData ? 'Review Proposed Field Synchronization' : `Sync Products in Group — ${group?.groupName}`}
+      title={previewData ? 'Review Proposed Field Synchronization' : `Sync Product Info — ${group?.groupName}`}
       subtitle={
         previewData
           ? 'Review proposed field changes across target products before executing.'
-          : 'Synchronize selected field values across products in this group.'
+          : 'Synchronize selected product information across products in this group.'
       }
       maxWidth="max-w-3xl"
       zIndex="z-[1050]"
