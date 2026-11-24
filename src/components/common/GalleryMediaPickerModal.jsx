@@ -14,8 +14,32 @@ import Dropdown from './Dropdown';
 import Pagination from './Pagination';
 import GalleryUploadModal from '../gallery/GalleryUploadModal';
 import api from '../../api/axios';
+import { themesAPI } from '../../api/services';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
+
+// Cache themes lookup across modal mounts for instant rendering
+let cachedThemesLookup = null;
+
+const loadThemesLookup = async () => {
+  if (cachedThemesLookup && cachedThemesLookup.length > 0) return cachedThemesLookup;
+  try {
+    const res = await themesAPI.getLookup();
+    const raw = res.data?.data || res.data || [];
+    const list = Array.isArray(raw)
+      ? raw.map((t) => ({
+          ...t,
+          _id: String(t._id),
+          isLive: Boolean(t.isLive || t.status === 'active'),
+        }))
+      : [];
+    cachedThemesLookup = list;
+    return list;
+  } catch (err) {
+    console.error('Failed to load themes lookup in GalleryMediaPickerModal:', err);
+    return [];
+  }
+};
 
 const DEFAULT_PLACEMENTS = [
   { value: 'all', label: 'All Placements' },
@@ -55,8 +79,8 @@ export default function GalleryMediaPickerModal({
   title = 'Gallery Media Picker',
   subtitle = 'Select an uploaded placement image from your active website themes or media gallery.',
 }) {
-  const [internalThemes, setInternalThemes] = useState([]);
-  const [pickerThemeFilter, setPickerThemeFilter] = useState(initialTheme || 'all');
+  const [internalThemes, setInternalThemes] = useState(() => cachedThemesLookup || []);
+  const [pickerThemeFilter, setPickerThemeFilter] = useState(initialTheme ? String(initialTheme) : 'all');
   const [pickerPlacementFilter, setPickerPlacementFilter] = useState(initialPlacement || 'all');
   const [pickerDeviceFilter, setPickerDeviceFilter] = useState(initialPlatform || 'web');
   const [pickerSearch, setPickerSearch] = useState('');
@@ -84,7 +108,7 @@ export default function GalleryMediaPickerModal({
   // Sync initial filters when modal opens
   useEffect(() => {
     if (isOpen) {
-      setPickerThemeFilter(initialTheme || 'all');
+      setPickerThemeFilter(initialTheme ? String(initialTheme) : 'all');
       setPickerPlacementFilter(initialPlacement || 'all');
       setPickerDeviceFilter(initialPlatform || 'web');
       setPickerSearch('');
@@ -92,12 +116,22 @@ export default function GalleryMediaPickerModal({
     }
   }, [isOpen, initialTheme, initialPlacement, initialPlatform]);
 
-  // Synchronize passed themes if provided
+  // Synchronize passed themes if provided, else load via theme lookup API
   useEffect(() => {
-    if (Array.isArray(passedThemes)) {
+    if (Array.isArray(passedThemes) && passedThemes.length > 0) {
       setInternalThemes(passedThemes);
+      return;
     }
-  }, [passedThemes]);
+    let isMounted = true;
+    loadThemesLookup().then((list) => {
+      if (isMounted && list && list.length > 0) {
+        setInternalThemes(list);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [passedThemes, isOpen]);
 
   // Fetch images matching filters and pagination via /gallery/lookup
   const fetchImages = useCallback(
@@ -157,7 +191,14 @@ export default function GalleryMediaPickerModal({
     }
   }, [isOpen, pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch, fetchImages]);
 
-  const activeThemes = passedThemes || internalThemes;
+  const activeThemes = useMemo(() => {
+    const list = Array.isArray(passedThemes) && passedThemes.length > 0 ? passedThemes : internalThemes;
+    return (list || []).map((t) => ({
+      ...t,
+      _id: String(t._id),
+      isLive: Boolean(t.isLive || t.status === 'active'),
+    }));
+  }, [passedThemes, internalThemes]);
   const activePlacements = placementOptions || DEFAULT_PLACEMENTS;
 
   const modalThemeOptions = useMemo(() => {
@@ -279,8 +320,8 @@ export default function GalleryMediaPickerModal({
               options={[
                 { value: 'all', label: 'All Website Themes' },
                 ...activeThemes.map((t) => ({
-                  value: t._id,
-                  label: `${t.name}${t.status === 'active' ? ' · Active' : ''}`,
+                  value: String(t._id),
+                  label: `${t.name}${t.isLive || t.status === 'active' ? ' · Active' : ''}`,
                 })),
               ]}
               buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
@@ -365,7 +406,10 @@ export default function GalleryMediaPickerModal({
                 const imgUrl = img.image?.url || img.url;
                 const imgTitle = img.name || img.title || img.recordTitle || `Theme Image ${idx + 1}`;
                 const imgPlacement = img.type || img.filterType || 'banner';
-                const imgTheme = img.themeId?.name || '';
+                const imgTheme =
+                  img.themeId?.name ||
+                  (activeThemes.find((t) => String(t._id) === String(img.themeId))?.name) ||
+                  '';
                 const isCurrentlySelected = currentSelectedUrl && currentSelectedUrl === imgUrl;
 
                 return (

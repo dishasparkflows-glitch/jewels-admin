@@ -783,6 +783,8 @@ export default function ThemesView() {
             {paginatedItems.map((theme) => {
               // Pick cover image or theme brand gradient for card cover
               const coverUrl =
+                theme.galleryPhoto ||
+                theme.coverUrl ||
                 theme.coverImage?.url ||
                 theme.coverImage ||
                 theme.thumbnail ||
@@ -800,14 +802,27 @@ export default function ThemesView() {
                   className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs hover:border-stone-300 transition-all overflow-hidden cursor-pointer"
                 >
                   {/* Cover Image Header (16:10 aspect ratio matching Media Gallery) */}
-                  <div
-                    className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden bg-cover bg-center"
-                    style={{
-                      backgroundImage: coverUrl
-                        ? `linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.45) 100%), url("${coverUrl}")`
-                        : fallbackGradient,
-                    }}
-                  >
+                  <div className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden bg-cover bg-center">
+                    {coverUrl ? (
+                      <img
+                        src={coverUrl}
+                        alt={theme.name}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div
+                        className="w-full h-full"
+                        style={{ background: fallbackGradient }}
+                      />
+                    )}
+
+                    {/* Gradient overlay for contrast with code badge */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-transparent to-black/15 pointer-events-none" />
+
                     {/* Top-Left: Code Badge */}
                     <div className="absolute left-2 top-2 z-10">
                       <span className="inline-flex items-center gap-1 rounded-full bg-black/60 backdrop-blur-md px-2 py-0.5 text-[10px] font-medium text-white shadow-xs font-mono">
@@ -816,25 +831,14 @@ export default function ThemesView() {
                     </div>
                   </div>
 
-                  {/* Card Content (Compact padding matching Media Gallery) */}
-                  <div className="p-2.5 flex flex-col justify-between flex-1">
-                    <div>
-                      <h4
-                        className="text-xs font-bold text-stone-900 group-hover:text-[var(--theme-primary,#8b6f4e)] transition truncate"
-                        title={theme.name}
-                      >
-                        {theme.name}
-                      </h4>
-                      <p className="mt-0.5 text-[10px] text-stone-400 font-normal">
-                        Last updated: {theme.meta?.updatedAt
-                          ? new Date(theme.meta.updatedAt).toLocaleDateString('en-IN', {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            })
-                          : '28 Oct 2026'}
-                      </p>
-                    </div>
+                  {/* Card Content (Centered compact footer) */}
+                  <div className="p-2.5 flex items-center justify-center flex-1">
+                    <h4
+                      className="text-xs font-bold text-stone-900 group-hover:text-[var(--theme-primary,#8b6f4e)] transition truncate text-center"
+                      title={theme.name}
+                    >
+                      {theme.name}
+                    </h4>
                   </div>
                 </article>
               );

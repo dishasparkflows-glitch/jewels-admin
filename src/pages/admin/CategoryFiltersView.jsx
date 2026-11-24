@@ -117,6 +117,45 @@ export default function CategoryFiltersView() {
     saveCategoryChanges(nextCategories, 'Category visibility updated');
   };
 
+  // Toggle master filter status (active / inactive)
+  const handleToggleFilterStatus = async (e, flt) => {
+    if (e && typeof e.stopPropagation === 'function') {
+      e.stopPropagation();
+    }
+    const isCurrentlyActive = flt.status === 'active' || (flt.status !== 'inactive' && flt.enabled !== false);
+    const nextStatus = isCurrentlyActive ? 'inactive' : 'active';
+
+    // Optimistic UI update
+    setFilters((prev) =>
+      prev.map((f) =>
+        f.filterId === flt.filterId
+          ? { ...f, status: nextStatus, enabled: nextStatus === 'active' }
+          : f
+      )
+    );
+    if (selectedFilter?.filterId === flt.filterId) {
+      setSelectedFilter((prev) => ({
+        ...prev,
+        status: nextStatus,
+        enabled: nextStatus === 'active',
+      }));
+    }
+
+    try {
+      await api.put(`/filters/${flt.filterId}`, {
+        status: nextStatus,
+      });
+      toast.success(
+        `Filter "${flt.title}" set to ${nextStatus}`,
+        { id: `filter-status-${flt.filterId}`, duration: 1500 }
+      );
+    } catch (err) {
+      console.error('Failed to update filter status:', err);
+      toast.error('Failed to update filter status');
+      loadFiltersData();
+    }
+  };
+
   // Move filter order up / down in the sidebar
   const handleMoveFilterOrder = async (e, index, direction) => {
     e.stopPropagation();
@@ -279,8 +318,16 @@ export default function CategoryFiltersView() {
                       </div>
                     </div>
 
-                    {/* Up & Down Order Reorder Arrows + Chevron Indicator */}
-                    <div className="flex items-center gap-1 shrink-0 ml-1.5">
+                    {/* Active/Inactive Toggle + Up & Down Order Reorder Arrows + Chevron Indicator */}
+                    <div className="flex items-center gap-2 shrink-0 ml-1.5">
+                      <ToggleSwitch
+                        checked={flt.status === 'active' || (flt.status !== 'inactive' && flt.enabled !== false)}
+                        onChange={() => handleToggleFilterStatus(null, flt)}
+                        size="sm"
+                        stopPropagation={true}
+                        ariaLabel={`Toggle status for ${flt.title}`}
+                      />
+
                       <div className="flex flex-col items-center">
                         <button
                           type="button"
@@ -336,9 +383,18 @@ export default function CategoryFiltersView() {
                 </div>
               </div>
 
-              {/* Right Status Indicator: e.g. 5 of 5 Categories Enabled */}
-              <div className="flex items-center gap-2 self-start sm:self-center">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              {/* Right Status Indicator: Filter Status & Enabled Categories Count */}
+              <div className="flex items-center gap-2.5 self-start sm:self-center">
+                <span
+                  className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${
+                    (selectedFilter?.status === 'active' || (selectedFilter?.status !== 'inactive' && selectedFilter?.enabled !== false))
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                      : 'bg-stone-100 text-stone-500 border border-stone-200'
+                  }`}
+                >
+                  {(selectedFilter?.status === 'active' || (selectedFilter?.status !== 'inactive' && selectedFilter?.enabled !== false)) ? 'Active' : 'Inactive'}
+                </span>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse ml-1" />
                 <span className="text-xs font-semibold text-stone-800">
                   {enabledCategoryCount} of {categoriesForSelectedFilter.length} Categories Enabled
                 </span>
@@ -526,8 +582,14 @@ export default function CategoryFiltersView() {
                       {f.type} • Key: {f.key}
                     </p>
                   </div>
-                  <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold">
-                    Active
+                  <span
+                    className={`text-[11px] font-mono px-2 py-0.5 rounded font-bold ${
+                      (f.status === 'active' || (f.status !== 'inactive' && f.enabled !== false))
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-stone-100 text-stone-500'
+                    }`}
+                  >
+                    {(f.status === 'active' || (f.status !== 'inactive' && f.enabled !== false)) ? 'Active' : 'Inactive'}
                   </span>
                 </div>
               ))}

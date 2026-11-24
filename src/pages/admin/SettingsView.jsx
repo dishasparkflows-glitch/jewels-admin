@@ -67,6 +67,8 @@ const DEFAULT_HEADER_FOOTER_COLORS = {
   topBarTextColor: '#ffffff',
   headerBgColor: '#201e1b',
   headerTextColor: '#ffffff',
+  couponBgColor: '#201e1b',
+  couponTextColor: '#ffffff',
   footerBgColor: '#0f0d0b',
   footerTextColor: '#c8b89e',
 };
@@ -96,6 +98,8 @@ export default function SettingsView() {
   const [topBarTextColor, setTopBarTextColor] = useState('#ffffff');
   const [headerBgColor, setHeaderBgColor] = useState('#201e1b');
   const [headerTextColor, setHeaderTextColor] = useState('#ffffff');
+  const [couponBgColor, setCouponBgColor] = useState('#201e1b');
+  const [couponTextColor, setCouponTextColor] = useState('#ffffff');
   const [footerBgColor, setFooterBgColor] = useState('#0f0d0b');
   const [footerTextColor, setFooterTextColor] = useState('#c8b89e');
 
@@ -232,6 +236,8 @@ export default function SettingsView() {
       setTopBarTextColor(colors.topBarTextColor || '#ffffff');
       setHeaderBgColor(colors.headerBgColor || '#201e1b');
       setHeaderTextColor(colors.headerTextColor || '#ffffff');
+      setCouponBgColor(colors.couponBgColor || '#201e1b');
+      setCouponTextColor(colors.couponTextColor || '#ffffff');
       setFooterBgColor(colors.footerBgColor || '#0f0d0b');
       setFooterTextColor(colors.footerTextColor || '#c8b89e');
     } catch (err) {
@@ -296,6 +302,8 @@ export default function SettingsView() {
       setTopBarTextColor(colors.topBarTextColor || '#ffffff');
       setHeaderBgColor(colors.headerBgColor || '#201e1b');
       setHeaderTextColor(colors.headerTextColor || '#ffffff');
+      setCouponBgColor(colors.couponBgColor || '#201e1b');
+      setCouponTextColor(colors.couponTextColor || '#ffffff');
       setFooterBgColor(colors.footerBgColor || '#0f0d0b');
       setFooterTextColor(colors.footerTextColor || '#c8b89e');
     }
@@ -539,6 +547,8 @@ export default function SettingsView() {
     setTopBarTextColor(DEFAULT_HEADER_FOOTER_COLORS.topBarTextColor);
     setHeaderBgColor(DEFAULT_HEADER_FOOTER_COLORS.headerBgColor);
     setHeaderTextColor(DEFAULT_HEADER_FOOTER_COLORS.headerTextColor);
+    setCouponBgColor(DEFAULT_HEADER_FOOTER_COLORS.couponBgColor);
+    setCouponTextColor(DEFAULT_HEADER_FOOTER_COLORS.couponTextColor);
     setFooterBgColor(DEFAULT_HEADER_FOOTER_COLORS.footerBgColor);
     setFooterTextColor(DEFAULT_HEADER_FOOTER_COLORS.footerTextColor);
     toast.success('Header & footer colors reset to defaults');
@@ -578,6 +588,8 @@ export default function SettingsView() {
           topBarTextColor,
           headerBgColor,
           headerTextColor,
+          couponBgColor,
+          couponTextColor,
           footerBgColor,
           footerTextColor,
         },
@@ -1586,10 +1598,10 @@ export default function SettingsView() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                          Storefront Header & Footer Colors
+                          Storefront Header, Banner & Footer Colors
                         </h4>
                         <p className="text-[11px] text-stone-500 mt-0.5">
-                          Customize background and text colors for the top announcement bar, main header, and footer.
+                          Customize background and text colors for the top announcement bar, main header, coupon promotional banner, and footer.
                         </p>
                       </div>
                       <button
@@ -1638,6 +1650,16 @@ export default function SettingsView() {
                         </button>
                       </div>
 
+                      {/* Coupon Banner Strip Preview */}
+                      <div
+                        style={{ backgroundColor: couponBgColor, color: couponTextColor }}
+                        className="px-3 py-1.5 flex items-center justify-center gap-1.5 transition-colors border-t border-b border-black/10"
+                      >
+                        <span className="font-medium text-[10px] tracking-wide">
+                          🏷️ USE CODE &apos;FLAT500&apos; GET 500 RS OFF
+                        </span>
+                      </div>
+
                       {/* Footer Preview */}
                       <div
                         style={{ backgroundColor: footerBgColor, color: footerTextColor }}
@@ -1649,7 +1671,7 @@ export default function SettingsView() {
                     </div>
 
                     {/* Pickers Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-1">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
                       {/* 1. Top Bar */}
                       <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
                         <div className="flex items-center justify-between">
@@ -1754,7 +1776,59 @@ export default function SettingsView() {
                         </div>
                       </div>
 
-                      {/* 3. Footer */}
+                      {/* 3. Coupon Banner */}
+                      <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[11px] font-bold text-stone-800">Coupon Banner Strip</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCouponBgColor(DEFAULT_HEADER_FOOTER_COLORS.couponBgColor);
+                              setCouponTextColor(DEFAULT_HEADER_FOOTER_COLORS.couponTextColor);
+                            }}
+                            className="text-[10px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                            title="Reset coupon banner colors to default"
+                          >
+                            Default
+                          </button>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
+                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
+                            <input
+                              type="color"
+                              value={couponBgColor}
+                              onChange={(e) => setCouponBgColor(e.target.value)}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              value={couponBgColor}
+                              onChange={(e) => setCouponBgColor(e.target.value)}
+                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Text Color</label>
+                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
+                            <input
+                              type="color"
+                              value={couponTextColor}
+                              onChange={(e) => setCouponTextColor(e.target.value)}
+                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                            />
+                            <input
+                              type="text"
+                              value={couponTextColor}
+                              onChange={(e) => setCouponTextColor(e.target.value)}
+                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 4. Footer */}
                       <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-stone-800">Footer Section</span>

@@ -69,7 +69,6 @@ export const themesAPI = {
   getMappingRecords: (themeId, params) => api.get(`/themes/${themeId}/media-mapping/records`, { params }),
   getMappingSummary: (themeId) => api.get(`/themes/${themeId}/media-mapping/summary`),
   saveMapping: (themeId, data) => api.put(`/themes/${themeId}/media-mappings`, data),
-  deleteMappingByTarget: (themeId, params) => api.delete(`/themes/${themeId}/media-mappings`, { params }),
   activateTheme: (themeId) => api.post(`/themes/${themeId}/activate`),
   getLookup: () => api.get('/themes/lookup'),
   saveMedia: (themeId, data) => api.put(`/themes/${themeId}/media`, data),

@@ -6,8 +6,6 @@ import {
   HiOutlineCheck,
   HiOutlineCheckCircle,
   HiOutlineX,
-  HiOutlineTrash,
-  HiOutlineRefresh,
   HiOutlineDesktopComputer,
   HiOutlineDeviceMobile,
   HiOutlineTag,
@@ -110,14 +108,12 @@ export default function ThemeMediaMappingTab({
   const [statusFilter] = useState('all'); // all, active, draft, mapped, unmapped
   const [deviceFilter] = useState('all'); // all, web, mobile
   const [sortBy] = useState('newest'); // newest, oldest, order
-  const [search] = useState('');
   const [celebratePlacementFilter, setCelebratePlacementFilter] = useState('Celebrate'); // Celebrate, Gifts, all
 
   // Data state
   const [loading, setLoading] = useState(false);
   const [records, setRecords] = useState([]);
   const [summary, setSummary] = useState(null);
-  const [selectedIds, setSelectedIds] = useState(new Set());
   const [bannerCounts, setBannerCounts] = useState({});
 
   // Fetch live counts from banners API
@@ -133,7 +129,6 @@ export default function ThemeMediaMappingTab({
 
   const handleSelectBannerType = (key) => {
     setActiveModule(key);
-    setSelectedIds(new Set());
     setActiveTargetSlot(null);
   };
 
@@ -157,7 +152,6 @@ export default function ThemeMediaMappingTab({
   // Handler when clicking on either Banner Mapping or Celebrate & Gift Mapping box
   const handleSelectMappingMode = (mode) => {
     setMappingMode(mode);
-    setSelectedIds(new Set());
     setActiveTargetSlot(null);
     if (mode === 'banner') {
       setActiveModule('herobanner');
@@ -176,7 +170,6 @@ export default function ThemeMediaMappingTab({
   const [pickerTarget, setPickerTarget] = useState(null); // { record, device, placement, currentGalleryId, currentMediaId }
   const [showActivateModal, setShowActivateModal] = useState(false);
   const [activating, setActivating] = useState(false);
-  const [bulkActionLoading, setBulkActionLoading] = useState(false);
 
   // Expanded/collapsed collection banner rows (default expanded)
   const [collapsedBanners, setCollapsedBanners] = useState(() => new Set());
@@ -188,38 +181,6 @@ export default function ThemeMediaMappingTab({
       else next.add(sid);
       return next;
     });
-  };
-
-  // Revert all tiles of a collection banner back to default
-  const handleResetAllTiles = async (tiles) => {
-    if (!tiles || !tiles.length || !themeId) return;
-    const mapped = tiles.filter((t) => t.isMapped);
-    if (mapped.length === 0) {
-      toast.info('No tiles are currently mapped.');
-      return;
-    }
-    const confirmed = await confirm({
-      title: 'Reset Collection Tiles',
-      message: `Revert ${mapped.length} mapped collection tile(s) back to original storefront images?`,
-      confirmText: 'Reset Tiles',
-      cancelText: 'Cancel',
-      variant: 'danger',
-    });
-    if (!confirmed) return;
-    try {
-      await Promise.all(
-        mapped.map((t) =>
-          themesAPI.deleteMappingByTarget(themeId, {
-            recordId: t._id,
-          })
-        )
-      );
-      toast.success(`Reset ${mapped.length} tile(s) to default.`);
-      await Promise.all([fetchRecords(), fetchSummary()]);
-    } catch (err) {
-      console.error('Failed to reset tiles:', err);
-      toast.error('Failed to reset some tiles');
-    }
   };
 
   // ─── 1. Load Summary Across All Modules ──────────────────
@@ -242,19 +203,17 @@ export default function ThemeMediaMappingTab({
       const moduleName = mappingMode === 'banner' ? activeModule : 'celebrate';
       const mappingRes = await themesAPI.getMappingRecords(themeId, {
         module: moduleName,
-        search,
         limit: 100,
       });
       const data = mappingRes?.data?.data || mappingRes?.data || {};
       setRecords(data.items || data.records || []);
-      setSelectedIds(new Set());
     } catch (err) {
       console.error('Failed to load module records for mapping:', err);
       toast.error('Could not load module records');
     } finally {
       setLoading(false);
     }
-  }, [themeId, mappingMode, activeModule, search]);
+  }, [themeId, mappingMode, activeModule]);
 
   useEffect(() => {
     fetchSummary();
@@ -274,16 +233,6 @@ export default function ThemeMediaMappingTab({
     let result = [...records];
 
     if (mappingMode === 'banner') {
-      if (search.trim()) {
-        const q = search.toLowerCase().trim();
-        result = result.filter((r) => {
-          const t = (r.content?.title || r.title || '').toLowerCase();
-          const d = (r.content?.description || r.subtitle || '').toLowerCase();
-          const cat = (r.display?.categoryId?.name || '').toLowerCase();
-          return t.includes(q) || d.includes(q) || cat.includes(q);
-        });
-      }
-
       if (statusFilter !== 'all') {
         if (statusFilter === 'active' || statusFilter === 'published') {
           result = result.filter((r) => r.status === 'active');
@@ -319,10 +268,6 @@ export default function ThemeMediaMappingTab({
           return p === celebratePlacementFilter.toLowerCase();
         });
       }
-      if (search.trim()) {
-        const q = search.toLowerCase().trim();
-        result = result.filter((r) => (r.name || r.title || '').toLowerCase().includes(q));
-      }
       if (statusFilter === 'mapped') {
         result = result.filter((r) => r.isMapped || Boolean(r.desktopMapping?.imageUrl));
       } else if (statusFilter === 'unmapped') {
@@ -331,30 +276,7 @@ export default function ThemeMediaMappingTab({
     }
 
     return result;
-  }, [records, mappingMode, search, statusFilter, deviceFilter, sortBy, celebratePlacementFilter]);
-
-  // ─── Selection Handlers ──────────────────────────────────
-  const isAllSelected =
-    filteredRecords.length > 0 &&
-    filteredRecords.every((r) => selectedIds.has(String(r._id)));
-
-  const toggleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredRecords.map((r) => String(r._id))));
-    }
-  };
-
-  const toggleSelectRow = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      const sid = String(id);
-      if (next.has(sid)) next.delete(sid);
-      else next.add(sid);
-      return next;
-    });
-  };
+  }, [records, mappingMode, statusFilter, deviceFilter, sortBy, celebratePlacementFilter]);
 
   // ─── Single Save Mapping Handler ─────────────────────────
   const handleSaveMapping = async (mediaAsset, customTarget = null) => {
@@ -395,66 +317,6 @@ export default function ThemeMediaMappingTab({
     }
     await handleSaveMapping(selectedAsset, pickerTarget);
     setPickerTarget(null);
-  };
-
-  // ─── Delete Single Mapping Handler ───────────────────────
-  const handleDeleteMapping = async (record) => {
-    if (!themeId) return;
-
-    try {
-      await themesAPI.deleteMappingByTarget(themeId, {
-        recordId: record._id,
-      });
-
-      toast.success(`Theme mapping removed. Reverted to default storefront image.`);
-      await Promise.all([fetchRecords(), fetchSummary()]);
-    } catch (err) {
-      console.error('Failed to remove mapping:', err);
-      toast.error(err.response?.data?.message || 'Could not remove theme mapping');
-    }
-  };
-
-  // ─── Bulk Clear Mappings ─────────────────────────────────
-  const handleBulkClear = async () => {
-    if (selectedIds.size === 0 || !themeId) return;
-
-    const confirmed = await confirm({
-      title: 'Revert Selected Mappings to Default',
-      message: `Are you sure you want to revert ${selectedIds.size} selected item(s) to their default storefront images?`,
-      confirmText: 'Revert to Default',
-      cancelText: 'Cancel',
-      variant: 'danger',
-    });
-
-    if (!confirmed) return;
-
-    try {
-      setBulkActionLoading(true);
-      const allTargetIds = [];
-      selectedIds.forEach((recId) => {
-        allTargetIds.push(recId);
-        const item = records.find((r) => String(r._id) === String(recId));
-        if (item?.tiles && Array.isArray(item.tiles)) {
-          item.tiles.forEach((t) => {
-            if (t._id) allTargetIds.push(t._id);
-          });
-        }
-      });
-      const promises = allTargetIds.map((recId) =>
-        themesAPI.deleteMappingByTarget(themeId, {
-          recordId: recId,
-        })
-      );
-      await Promise.all(promises);
-      toast.success(`Reverted ${selectedIds.size} items to default images.`);
-      setSelectedIds(new Set());
-      await Promise.all([fetchRecords(), fetchSummary()]);
-    } catch (err) {
-      console.error('Bulk clear failed:', err);
-      toast.error('Failed to clear some mappings');
-    } finally {
-      setBulkActionLoading(false);
-    }
   };
 
   // ─── Drag & Drop Event Handlers ──────────────────────────
@@ -691,72 +553,12 @@ export default function ThemeMediaMappingTab({
                BANNER TYPE LIST VIEW (Matches Screen 2 of BannersView.jsx)
                ═══════════════════════════════════════════════════════════ */
             <>
-              {/* Header: Type Icon + Title + Description + Selected Bulk Action */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3.5 sm:p-4 bg-white rounded-2xl border border-stone-200/90 shadow-2xs">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#fbf5ed] border border-[#f5e3cc]/60 flex items-center justify-center text-[#8a6d4b] shrink-0">
-                    {(() => {
-                      const TypeIcon = currentBannerType.icon || HiOutlinePhotograph;
-                      return <TypeIcon className="w-5 h-5 stroke-[1.8]" />;
-                    })()}
-                  </div>
-                  <div>
-                    <h2 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight font-playfair">
-                      {currentBannerType.label}
-                    </h2>
-                    <p className="text-xs text-stone-500 font-normal">
-                      {currentBannerType.desc}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  {selectedIds.size > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleBulkClear}
-                      disabled={bulkActionLoading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition-colors cursor-pointer"
-                    >
-                      <HiOutlineTrash className="w-3.5 h-3.5" />
-                      <span>Revert Selected ({selectedIds.size})</span>
-                    </button>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPickerTarget({
-                        record: null,
-                        device: 'desktop',
-                        placement: activeModule,
-                        isBrowsing: true,
-                      });
-                    }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-white border border-stone-200 text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer shadow-2xs"
-                  >
-                    <HiOutlinePhotograph className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                    <span>Browse Gallery</span>
-                  </button>
-
-
-                </div>
-              </div>
-
               {/* Banners Table */}
               <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                        <th className="py-3 px-3.5 w-10">
-                          <input
-                            type="checkbox"
-                            checked={isAllSelected}
-                            onChange={toggleSelectAll}
-                            className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
-                          />
-                        </th>
                         <th className="py-3 px-3.5 whitespace-nowrap">PREVIEW</th>
                         <th className="py-3 px-3.5 whitespace-nowrap">
                           {currentBannerType.key === 'categorybanner' ? 'CATEGORY' : 'TITLE'}
@@ -771,14 +573,14 @@ export default function ThemeMediaMappingTab({
                     <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
                       {loading ? (
                         <tr>
-                          <td colSpan="7" className="py-16 text-center text-stone-400">
+                          <td colSpan="6" className="py-16 text-center text-stone-400">
                             <div className="w-7 h-7 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
                             <span>Loading banners...</span>
                           </td>
                         </tr>
                       ) : filteredRecords.length === 0 ? (
                         <tr>
-                          <td colSpan="7" className="py-16 text-center text-stone-400">
+                          <td colSpan="6" className="py-16 text-center text-stone-400">
                             <HiOutlinePhotograph className="w-10 h-10 mx-auto text-stone-300 mb-2 stroke-1" />
                             <p className="text-sm font-medium text-stone-600">No {currentBannerType.label}s found</p>
                             <p className="text-xs text-stone-400 mt-1">
@@ -814,7 +616,6 @@ export default function ThemeMediaMappingTab({
                           const bDesc = banner.content?.description || '';
                           const defaultAssetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url) || banner.originalDesktopImage;
                           const isPublished = banner.status === 'active';
-                          const isSelected = selectedIds.has(String(banner._id));
 
                           const desktopMappedImg = banner.desktopMapping?.imageUrl;
                           const hasDesktopOverride = Boolean(desktopMappedImg) || (isCollectionBanner && mappedTilesCount > 0);
@@ -839,21 +640,9 @@ export default function ThemeMediaMappingTab({
                                     ? 'bg-[#8b6f4e]/15 ring-2 ring-inset ring-[#8b6f4e]'
                                     : isTargetActive
                                     ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-400'
-                                    : isSelected
-                                    ? 'bg-[#fcfaf7]'
                                     : ''
                                 }`}
                               >
-                                {/* Checkbox */}
-                                <td className="py-3 px-3.5">
-                                  <input
-                                    type="checkbox"
-                                    checked={isSelected}
-                                    onChange={() => toggleSelectRow(banner._id)}
-                                    className="rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b] cursor-pointer"
-                                  />
-                                </td>
-
                                 {/* PREVIEW */}
                                 <td className="py-3 px-3.5 whitespace-nowrap">
                                   {isCollectionBanner ? (
@@ -1085,14 +874,6 @@ export default function ThemeMediaMappingTab({
                                           <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
                                           <span>Change</span>
                                         </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleDeleteMapping(banner)}
-                                          className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
-                                          title="Reset to default storefront image"
-                                        >
-                                          <HiOutlineRefresh className="w-3.5 h-3.5" />
-                                        </button>
                                       </>
                                     ) : (
                                       <>
@@ -1120,7 +901,7 @@ export default function ThemeMediaMappingTab({
                               {/* EXPANDED 4-TILES GRID FOR COLLECTION BANNER */}
                               {isCollectionBanner && isExpanded && (
                                 <tr className="bg-gradient-to-b from-[#fbf9f6] to-[#f7f3ed]/60 border-b-2 border-stone-200">
-                                  <td colSpan="7" className="p-3.5 sm:p-5">
+                                  <td colSpan="6" className="p-3.5 sm:p-5">
                                     <div className="bg-white rounded-2xl border border-[#e8dfd3] shadow-xs p-4 sm:p-5 space-y-4">
                                       {/* Header bar */}
                                       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-stone-150">
@@ -1153,15 +934,6 @@ export default function ThemeMediaMappingTab({
                                           >
                                             {mappedTilesCount} of {bannerTiles.length} Tiles Mapped
                                           </span>
-                                          {mappedTilesCount > 0 && (
-                                            <button
-                                              type="button"
-                                              onClick={() => handleResetAllTiles(bannerTiles)}
-                                              className="text-[11.5px] font-medium text-stone-500 hover:text-red-600 px-2.5 py-1 rounded-lg hover:bg-red-50 border border-stone-200 hover:border-red-200 transition cursor-pointer"
-                                            >
-                                              Reset All Tiles
-                                            </button>
-                                          )}
                                         </div>
                                       </div>
 
@@ -1412,18 +1184,6 @@ export default function ThemeMediaMappingTab({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {selectedIds.size > 0 && (
-                    <button
-                      type="button"
-                      onClick={handleBulkClear}
-                      disabled={bulkActionLoading}
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-red-50 text-red-700 border border-red-200 hover:bg-red-100 transition cursor-pointer"
-                    >
-                      <HiOutlineTrash className="w-3.5 h-3.5" />
-                      <span>Revert Selected ({selectedIds.size})</span>
-                    </button>
-                  )}
-
                   <button
                     type="button"
                     onClick={() => {
@@ -1449,14 +1209,6 @@ export default function ThemeMediaMappingTab({
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-stone-200 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                      <th className="py-3 px-3.5 w-10">
-                        <input
-                          type="checkbox"
-                          checked={isAllSelected}
-                          onChange={toggleSelectAll}
-                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
-                        />
-                      </th>
                       <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
                       <th className="py-3 px-3 whitespace-nowrap">COVER</th>
                       <th className="py-3 px-3 whitespace-nowrap">SHOWCASE NAME</th>
@@ -1468,20 +1220,19 @@ export default function ThemeMediaMappingTab({
                   <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
                     {loading ? (
                       <tr>
-                        <td colSpan="7" className="py-12 text-center text-stone-400">
+                        <td colSpan="6" className="py-12 text-center text-stone-400">
                           <div className="w-7 h-7 border-2 border-stone-300 border-t-[#8a6d4b] rounded-full animate-spin mx-auto mb-3" />
                           <span>Loading showcase items...</span>
                         </td>
                       </tr>
                     ) : filteredRecords.length === 0 ? (
                       <tr>
-                        <td colSpan="7" className="py-12 text-center text-stone-400">
+                        <td colSpan="6" className="py-12 text-center text-stone-400">
                           No showcase items found.
                         </td>
                       </tr>
                     ) : (
                       filteredRecords.map((item, idx) => {
-                        const isSelected = selectedIds.has(String(item._id));
                         const isMapped = item.isMapped || Boolean(item.desktopMapping?.imageUrl);
                         const currentCover = item.desktopMapping?.imageUrl || item.image?.url || item.originalDesktopImage;
 
@@ -1500,19 +1251,9 @@ export default function ThemeMediaMappingTab({
                                 ? 'bg-[#8b6f4e]/15 ring-2 ring-inset ring-[#8b6f4e]'
                                 : isTargetActive
                                 ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-400'
-                                : isSelected
-                                ? 'bg-[#fcfaf7]'
                                 : ''
                             }`}
                           >
-                            <td className="py-2.5 px-3.5">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => toggleSelectRow(item._id)}
-                                className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
-                              />
-                            </td>
                             <td className="py-2.5 px-2 text-center font-bold text-stone-500">
                               {idx + 1}
                             </td>
@@ -1603,14 +1344,6 @@ export default function ThemeMediaMappingTab({
                                       <HiOutlineSwitchHorizontal className="w-3.5 h-3.5" />
                                       <span>Change</span>
                                     </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteMapping(item)}
-                                      className="p-1 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition cursor-pointer"
-                                      title="Reset to default storefront image"
-                                    >
-                                      <HiOutlineRefresh className="w-3.5 h-3.5" />
-                                    </button>
                                   </>
                                 ) : (
                                   <button
@@ -1659,7 +1392,7 @@ export default function ThemeMediaMappingTab({
             ? pickerTarget?.record?.mobileMapping?.imageUrl || pickerTarget?.record?.mobileImage?.url || ''
             : pickerTarget?.record?.desktopMapping?.imageUrl || pickerTarget?.record?.image?.url || ''
         }
-        initialTheme={themeId || 'all'}
+        initialTheme={themeId ? String(themeId) : 'all'}
         initialPlacement={
           mappingMode === 'celebrate'
             ? 'celebrate'

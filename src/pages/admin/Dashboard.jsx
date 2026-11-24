@@ -236,13 +236,16 @@ export default function Dashboard() {
     let isMounted = true;
     setLoadingSections(true);
 
-    dashboardAPI
-      .getSections({ limit: 5 })
-      .then((res) => {
+    Promise.all([
+      dashboardAPI.getTopSellingProducts({ limit: 5 }),
+      dashboardAPI.getRecentOrders({ limit: 5 }),
+    ])
+      .then(([topRes, ordersRes]) => {
         if (!isMounted) return;
-        const data = res.data?.data || res.data || {};
-        setTopSellingProducts(data.topSellingProducts || []);
-        setRecentOrders(data.recentOrders || []);
+        const topData = topRes.data?.data ?? topRes.data ?? [];
+        const ordersData = ordersRes.data?.data ?? ordersRes.data ?? [];
+        setTopSellingProducts(Array.isArray(topData) ? topData : []);
+        setRecentOrders(Array.isArray(ordersData) ? ordersData : []);
       })
       .catch((err) => {
         console.error('Failed to load dashboard overview sections:', err);
