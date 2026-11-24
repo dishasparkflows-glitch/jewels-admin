@@ -472,17 +472,6 @@ export default function CategoryFiltersView() {
                                 <HiOutlineChevronDown className="w-3.5 h-3.5 text-stone-400" />
                                 <span>Move Down</span>
                               </button>
-                              <div className="my-1 border-t border-stone-100" />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  handleToggleCategory(cat.categoryId);
-                                  setOpenActionId(null);
-                                }}
-                                className="w-full text-left px-3.5 py-1.5 text-stone-600 hover:bg-[#FAF8F5] flex items-center gap-2 cursor-pointer"
-                              >
-                                <span>{cat.enabled ? 'Disable for Category' : 'Enable for Category'}</span>
-                              </button>
                             </div>
                           )}
                         </div>

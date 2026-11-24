@@ -2,7 +2,6 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import {
   HiOutlineArrowLeft,
-  HiOutlineCheck,
   HiOutlinePhotograph,
   HiOutlinePlus,
   HiOutlineSave,
@@ -117,7 +116,6 @@ export default function ThemesView() {
   const [publishStart, setPublishStart] = useState('');
   const [publishEnd, setPublishEnd] = useState('');
   const [fallbackThemeId, setFallbackThemeId] = useState('');
-  const [activatingId, setActivatingId] = useState(null);
 
   // Modals & Menu
   const [themeToDelete, setThemeToDelete] = useState(null);
@@ -335,24 +333,6 @@ export default function ThemesView() {
       toast.error(error.response?.data?.message || 'Could not save theme');
     } finally {
       setSaving(false);
-    }
-  };
-
-  // Activate theme
-  const activateTheme = async (theme) => {
-    if (!theme?._id || activatingId) return;
-    setActivatingId(theme._id);
-    try {
-      const result = getData(await themesAPI.publish(theme._id, {}));
-      toast.success(`Theme "${theme.name}" is now live on the storefront!`);
-      await fetchThemes();
-      if (editing?._id === theme._id) {
-        setEditing(result?.theme || { ...theme, status: 'active' });
-      }
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Could not activate theme');
-    } finally {
-      setActivatingId(null);
     }
   };
 

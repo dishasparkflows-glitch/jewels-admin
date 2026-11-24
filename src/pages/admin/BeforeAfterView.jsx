@@ -23,6 +23,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -489,7 +490,7 @@ export default function BeforeAfterView() {
         /* ─── Grid Mode: Dual Image Luxury Cards (Matches Screenshot Background) ─── */
         <div className="space-y-2">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2.5">
-            {paginatedItems.map((item, idx) => {
+            {paginatedItems.map((item) => {
               const isSelected = selectedIds.includes(item._id);
               const createdDate = item.meta?.createdAt
                 ? new Date(item.meta.createdAt).toLocaleDateString('en-GB', {
@@ -998,17 +999,24 @@ export default function BeforeAfterView() {
                   <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
                     STATUS
                   </label>
-                  <Dropdown
-                    value={status}
-                    onChange={(val) => setStatus(val)}
-                    options={[
-                      { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
-                      { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
-                    ]}
-                    showStatusDot
-                    size="sm"
-                    buttonClassName="h-9 px-3 rounded-lg text-xs font-semibold"
-                  />
+                  <div className="h-9 px-3 rounded-lg border border-stone-200 bg-white flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
+                        }`}
+                      />
+                      <span className="text-xs font-semibold text-stone-800">
+                        {status === 'active' ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+                    <ToggleSwitch
+                      checked={status === 'active'}
+                      onChange={(checked) => setStatus(checked ? 'active' : 'inactive')}
+                      size="sm"
+                      ariaLabel="Status"
+                    />
+                  </div>
                 </div>
               </div>
 

@@ -163,13 +163,13 @@ export default function StaticPagesView() {
     if (!isConfirmed) return;
 
     try {
-      await Promise.all(Array.from(selectedIds).map((id) => staticPagesAPI.delete(id)));
+      await staticPagesAPI.bulkDelete(Array.from(selectedIds));
       toast.success(`${count} static page${count > 1 ? 's' : ''} deleted successfully`);
       setSelectedIds(new Set());
       await fetchPages();
     } catch (err) {
       console.error('Failed to bulk delete pages:', err);
-      toast.error('Failed to delete selected pages');
+      toast.error(err.response?.data?.message || 'Failed to delete selected pages');
     }
   };
 

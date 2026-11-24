@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   HiOutlineDocumentText,
   HiOutlinePhotograph,
@@ -17,9 +17,11 @@ import RowActions from '../../components/common/RowActions';
 import Modal from '../../components/common/Modal';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
+import useDebounce from '../../hooks/useDebounce';
 import RichTextEditor from '../../components/common/RichTextEditor';
 import { useNavigate } from 'react-router-dom';
 import Dropdown from '../../components/common/Dropdown';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 
 export default function BlogsView() {
   const navigate = useNavigate();
@@ -30,9 +32,12 @@ export default function BlogsView() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [serverTotal, setServerTotal] = useState(null);
+  const [serverFacets, setServerFacets] = useState(null);
 
   // Form & Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -57,62 +62,20 @@ export default function BlogsView() {
     tags: '',
   });
 
-  // Fetch blogs & categories
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [blogsRes, catsRes] = await Promise.all([
-        blogsAPI.getAll({ limit: 100 }),
-        blogCategoriesAPI.getLookup(),
-      ]);
-
-      const blogItems = blogsRes.data?.data || [];
-      const catItems = catsRes.data?.data || [];
-
-      setBlogs(blogItems);
-      setCategories(catItems);
-    } catch (err) {
-      console.error('Failed to load blog data:', err);
-      toast.error('Failed to load blogs');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Load category lookup once on mount
   useEffect(() => {
-    fetchData();
+    blogCategoriesAPI
+      .getLookup()
+      .then((res) => {
+        const catItems = res.data?.data || [];
+        setCategories(catItems);
+      })
+      .catch((err) => {
+        console.error('Failed to load blog categories:', err);
+      });
   }, []);
 
-  // Filtered blogs
-  const filteredBlogs = useMemo(() => {
-    return blogs.filter((blog) => {
-      const bTitle = blog.basicInfo?.title || blog.title || '';
-      const bSlug = blog.basicInfo?.slug || blog.slug || '';
-      const bShortDesc = blog.basicInfo?.shortDescription || blog.shortDescription || '';
-      const bDesc = blog.basicInfo?.description || blog.description || '';
-
-      const matchesSearch =
-        !search ||
-        bTitle.toLowerCase().includes(search.toLowerCase()) ||
-        bSlug.toLowerCase().includes(search.toLowerCase()) ||
-        bShortDesc.toLowerCase().includes(search.toLowerCase()) ||
-        bDesc.toLowerCase().includes(search.toLowerCase());
-
-      const matchesCategory =
-        categoryFilter === 'all' ||
-        (blog.blogCategory?._id || blog.blogCategory) === categoryFilter;
-
-      const matchesStatus =
-        statusFilter === 'all' ||
-        (statusFilter === 'published'
-          ? (blog.status === 'active' || blog.status === 'published')
-          : (blog.status === 'inactive' || blog.status === 'draft'));
-
-      return matchesSearch && matchesCategory && matchesStatus;
-    });
-  }, [blogs, search, categoryFilter, statusFilter]);
-
-  // Pagination hook
+  // Pagination hook with server-side total
   const {
     currentPage,
     setCurrentPage,
@@ -121,20 +84,66 @@ export default function BlogsView() {
     paginatedItems,
     totalPages,
     totalItems,
-  } = usePagination(filteredBlogs, 10);
+  } = usePagination(blogs, null, serverTotal);
+
+  // Fetch blogs with admin selected page, limit, and active filters
+  const fetchBlogs = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        limit: pageSize,
+      };
+      if (debouncedSearch && debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+      if (categoryFilter && categoryFilter !== 'all') {
+        params.category = categoryFilter;
+      }
+      if (statusFilter && statusFilter !== 'all') {
+        params.status = statusFilter === 'published' ? 'active' : 'inactive';
+      }
+
+      const res = await blogsAPI.getAll(params);
+      const items = res.data?.data?.items || res.data?.data || [];
+      const pagination = res.data?.pagination || res.data?.data?.pagination;
+      const facets = res.data?.facets || res.data?.data?.facets;
+
+      setBlogs(Array.isArray(items) ? items : []);
+      if (pagination?.totalDocs !== undefined) {
+        setServerTotal(pagination.totalDocs);
+      } else if (pagination?.total !== undefined) {
+        setServerTotal(pagination.total);
+      } else {
+        setServerTotal(Array.isArray(items) ? items.length : 0);
+      }
+      if (facets) {
+        setServerFacets(facets);
+      }
+    } catch (err) {
+      console.error('Failed to load blog data:', err);
+      toast.error('Failed to load blogs');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize, debouncedSearch, categoryFilter, statusFilter]);
+
+  useEffect(() => {
+    fetchBlogs();
+  }, [fetchBlogs]);
 
   // Stats calculation
   const stats = useMemo(() => {
-    const total = blogs.length;
-    const published = blogs.filter((b) => b.status === 'active' || b.status === 'published').length;
-    const draft = blogs.filter((b) => b.status === 'inactive' || b.status === 'draft').length;
+    const total = serverFacets?.total ?? (serverTotal || blogs.length);
+    const published = serverFacets?.published ?? blogs.filter((b) => b.status === 'active' || b.status === 'published').length;
+    const draft = serverFacets?.draft ?? blogs.filter((b) => b.status === 'inactive' || b.status === 'draft').length;
     return [
       { label: 'Total Articles', value: total, color: 'text-stone-900' },
       { label: 'Published', value: published, color: 'text-emerald-700' },
       { label: 'Drafts', value: draft, color: 'text-amber-700' },
       { label: 'Categories Available', value: categories.length, color: 'text-[#8b6f4e]' },
     ];
-  }, [blogs, categories]);
+  }, [serverFacets, serverTotal, blogs, categories]);
 
   // Auto-calculate read time helper
   const calculateReadTimeFromText = (htmlText) => {
@@ -243,7 +252,7 @@ export default function BlogsView() {
         toast.success('Blog article published successfully');
       }
       setIsModalOpen(false);
-      fetchData();
+      fetchBlogs();
     } catch (err) {
       console.error('Failed to save blog:', err);
       toast.error(err.response?.data?.message || 'Failed to save blog article');
@@ -344,7 +353,7 @@ export default function BlogsView() {
         next.delete(blog._id);
         return next;
       });
-      fetchData();
+      fetchBlogs();
     } catch (err) {
       console.error('Failed to delete blog:', err);
       toast.error('Failed to delete blog post');
@@ -653,7 +662,10 @@ export default function BlogsView() {
               totalItems={totalItems}
               pageSize={pageSize}
               onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
             />
           </div>
         )}
@@ -891,17 +903,26 @@ export default function BlogsView() {
                   <label className="block text-xs font-bold text-stone-800 mb-1">
                     Publication Status
                   </label>
-                  <Dropdown
-                    value={formData.status}
-                    onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
-                    options={[
-                      { value: 'active', label: 'Published', dotColor: 'bg-emerald-500' },
-                      { value: 'inactive', label: 'Draft', dotColor: 'bg-stone-400' },
-                    ]}
-                    showStatusDot
-                    buttonClassName="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] font-semibold text-stone-800 bg-white shadow-2xs hover:border-[#8b6f4e] focus:border-[#8b6f4e]"
-                    menuClassName="z-[70]"
-                  />
+                  <div className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={`w-2 h-2 rounded-full ${
+                          formData.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
+                        }`}
+                      />
+                      <span className="text-xs font-semibold text-stone-800">
+                        {formData.status === 'active' ? 'Published' : 'Draft'}
+                      </span>
+                    </div>
+                    <ToggleSwitch
+                      checked={formData.status === 'active'}
+                      onChange={(checked) =>
+                        setFormData((prev) => ({ ...prev, status: checked ? 'active' : 'inactive' }))
+                      }
+                      size="sm"
+                      ariaLabel="Publication Status"
+                    />
+                  </div>
                 </div>
 
                 {/* Author */}

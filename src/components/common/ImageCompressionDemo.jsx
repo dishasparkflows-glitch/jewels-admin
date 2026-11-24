@@ -2,10 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   HiOutlineRefresh,
   HiOutlineEye,
-  HiOutlineSparkles,
   HiOutlineUpload,
   HiOutlineX,
-  HiOutlinePhotograph,
 } from 'react-icons/hi';
 import { compressImage, formatFileSize } from '../../utils/imageCompressor';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
@@ -56,7 +54,6 @@ export default function ImageCompressionDemo({
   quality = 82,
   format = 'image/webp',
   enabled = true,
-  onQualityChange,
 }) {
   const [activePreset, setActivePreset] = useState('ring');
   const [customFileMeta, setCustomFileMeta] = useState(null);
@@ -77,7 +74,9 @@ export default function ImageCompressionDemo({
     const cleanup = () => {
       try {
         localStorage.removeItem(STORAGE_KEY);
-      } catch (_) {}
+      } catch {
+        // ignore storage cleanup error
+      }
     };
 
     window.addEventListener('beforeunload', cleanup);

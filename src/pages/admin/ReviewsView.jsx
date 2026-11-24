@@ -48,7 +48,6 @@ export default function ReviewsView() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
-  const [, setProductsList] = useState([]);
 
   // Form State
   const [formData, setFormData] = useState({
@@ -65,19 +64,6 @@ export default function ReviewsView() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        const res = await api.get('/products/lookup?limit=200');
-        const items = res.data?.data?.items || res.data?.data || [];
-        setProductsList(Array.isArray(items) ? items : []);
-      } catch (err) {
-        console.warn('Could not load products lookup:', err);
-      }
-    };
-    fetchProducts();
-  }, []);
 
   const fetchReviews = async (page = currentPage, limit = pageSize) => {
     try {

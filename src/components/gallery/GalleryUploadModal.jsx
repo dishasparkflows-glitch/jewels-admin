@@ -396,7 +396,6 @@ export default function GalleryUploadModal({
   const totalSavingsBytes = Math.max(0, totalOriginalBytes - totalCompressedBytes);
   const totalSavingsPercent =
     totalOriginalBytes > 0 ? Math.round((totalSavingsBytes / totalOriginalBytes) * 100) : 0;
-  const isAnyCompressing = selectedFiles.some((f) => f.isCompressing);
 
   const handleUploadAndAssign = async (e) => {
     e?.preventDefault();

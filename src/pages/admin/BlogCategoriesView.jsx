@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   HiOutlineTag,
   HiOutlineRefresh,
@@ -13,15 +13,19 @@ import RowActions from '../../components/common/RowActions';
 import Modal from '../../components/common/Modal';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
-import Dropdown from '../../components/common/Dropdown';
+import useDebounce from '../../hooks/useDebounce';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 
 export default function BlogCategoriesView() {
   const confirm = useConfirm();
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [serverTotal, setServerTotal] = useState(null);
+  const [serverFacets, setServerFacets] = useState(null);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -37,42 +41,7 @@ export default function BlogCategoriesView() {
     order: 0,
   });
 
-  // Fetch categories
-  const fetchCategories = async () => {
-    try {
-      setLoading(true);
-      const res = await blogCategoriesAPI.getAll({ limit: 100 });
-      const items = res.data?.data || [];
-      setCategories(items);
-    } catch (err) {
-      console.error('Failed to load blog categories:', err);
-      toast.error('Failed to load blog categories');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  // Filtered categories
-  const filteredCategories = useMemo(() => {
-    return categories.filter((cat) => {
-      const matchesSearch =
-        !search ||
-        cat.name?.toLowerCase().includes(search.toLowerCase()) ||
-        cat.slug?.toLowerCase().includes(search.toLowerCase()) ||
-        cat.description?.toLowerCase().includes(search.toLowerCase());
-
-      const matchesStatus =
-        statusFilter === 'all' || cat.status === statusFilter;
-
-      return matchesSearch && matchesStatus;
-    });
-  }, [categories, search, statusFilter]);
-
-  // Pagination hook
+  // Pagination hook with serverTotal
   const {
     currentPage,
     setCurrentPage,
@@ -81,19 +50,62 @@ export default function BlogCategoriesView() {
     paginatedItems,
     totalPages,
     totalItems,
-  } = usePagination(filteredCategories, 10);
+  } = usePagination(categories, null, serverTotal);
+
+  // Fetch categories with server pagination and filters
+  const fetchCategories = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: currentPage,
+        limit: pageSize,
+      };
+      if (debouncedSearch && debouncedSearch.trim()) {
+        params.search = debouncedSearch.trim();
+      }
+      if (statusFilter && statusFilter !== 'all') {
+        params.status = statusFilter;
+      }
+
+      const res = await blogCategoriesAPI.getAll(params);
+      const items = res.data?.data?.items || res.data?.data || [];
+      const pagination = res.data?.pagination || res.data?.data?.pagination;
+      const facets = res.data?.facets || res.data?.data?.facets;
+
+      setCategories(Array.isArray(items) ? items : []);
+      if (pagination?.totalDocs !== undefined) {
+        setServerTotal(pagination.totalDocs);
+      } else if (pagination?.total !== undefined) {
+        setServerTotal(pagination.total);
+      } else {
+        setServerTotal(Array.isArray(items) ? items.length : 0);
+      }
+      if (facets) {
+        setServerFacets(facets);
+      }
+    } catch (err) {
+      console.error('Failed to load blog categories:', err);
+      toast.error('Failed to load blog categories');
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pageSize, debouncedSearch, statusFilter]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
   // Stats calculation
   const stats = useMemo(() => {
-    const total = categories.length;
-    const active = categories.filter((c) => c.status === 'active').length;
-    const inactive = categories.filter((c) => c.status === 'inactive').length;
+    const total = serverFacets?.total ?? (serverTotal || categories.length);
+    const active = serverFacets?.active ?? categories.filter((c) => c.status === 'active').length;
+    const inactive = serverFacets?.inactive ?? categories.filter((c) => c.status === 'inactive').length;
     return [
       { label: 'Total Categories', value: total, color: 'text-stone-900' },
       { label: 'Active Topics', value: active, color: 'text-emerald-700' },
       { label: 'Inactive', value: inactive, color: 'text-amber-700' },
     ];
-  }, [categories]);
+  }, [serverFacets, serverTotal, categories]);
 
   // Open Add Modal
   const handleOpenAdd = () => {
@@ -169,9 +181,7 @@ export default function BlogCategoriesView() {
     try {
       await blogCategoriesAPI.update(category._id, { status: newStatus });
       toast.success(`Category set to ${newStatus}`);
-      setCategories((prev) =>
-        prev.map((c) => (c._id === category._id ? { ...c, status: newStatus } : c))
-      );
+      fetchCategories();
     } catch (err) {
       console.error('Failed to toggle status:', err);
       toast.error('Failed to update status');
@@ -224,9 +234,9 @@ export default function BlogCategoriesView() {
     const idsToDelete = Array.from(selectedIds);
     try {
       await blogCategoriesAPI.bulkDelete(idsToDelete);
-      setCategories((prev) => prev.filter((c) => !selectedIds.has(c._id)));
       setSelectedIds(new Set());
       toast.success(`${count} blog categor${count > 1 ? 'ies' : 'y'} deleted successfully`);
+      fetchCategories();
     } catch (err) {
       console.error('Failed to delete selected blog categories:', err);
       toast.error(err.response?.data?.message || 'Failed to delete selected blog categories');
@@ -491,7 +501,10 @@ export default function BlogCategoriesView() {
               totalItems={totalItems}
               pageSize={pageSize}
               onPageChange={setCurrentPage}
-              onPageSizeChange={setPageSize}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setCurrentPage(1);
+              }}
             />
           </div>
         )}
@@ -549,17 +562,26 @@ export default function BlogCategoriesView() {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-stone-700 mb-1">Status</label>
-              <Dropdown
-                value={formData.status}
-                onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
-                options={[
-                  { value: 'active', label: 'Active (Visible)', dotColor: 'bg-emerald-500' },
-                  { value: 'inactive', label: 'Inactive (Hidden)', dotColor: 'bg-stone-400' },
-                ]}
-                showStatusDot
-                buttonClassName="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] font-semibold text-stone-800 bg-white shadow-2xs hover:border-[#8b6f4e] focus:border-[#8b6f4e]"
-                menuClassName="z-[70]"
-              />
+              <div className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      formData.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
+                    }`}
+                  />
+                  <span className="text-xs font-semibold text-stone-800">
+                    {formData.status === 'active' ? 'Active (Visible)' : 'Inactive (Hidden)'}
+                  </span>
+                </div>
+                <ToggleSwitch
+                  checked={formData.status === 'active'}
+                  onChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, status: checked ? 'active' : 'inactive' }))
+                  }
+                  size="sm"
+                  ariaLabel="Category Status"
+                />
+              </div>
             </div>
 
             <div>

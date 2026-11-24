@@ -3,9 +3,7 @@ import {
   HiOutlineCube,
   HiOutlineSparkles,
   HiOutlineTag,
-  HiOutlineTrash,
   HiOutlineX,
-  HiOutlinePlus,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -18,7 +16,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from './ModuleHeader';
 import StatCards from './StatCards';
 import SearchFilterBar from './SearchFilterBar';
-import RowActions, { EditActionButton, DeleteActionButton } from './RowActions';
+import RowActions from './RowActions';
 import Modal from './Modal';
 import ToggleSwitch from './ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -285,13 +283,22 @@ export default function ConfigEntityView({
     if (!isConfirmed) return;
 
     try {
-      await Promise.all(selectedIds.map((id) => api.delete(`${endpoint}/${id}`)));
+      const cleanEndpoint = endpoint.split('?')[0];
+      try {
+        await api.post(`${cleanEndpoint}/bulk-delete`, { ids: selectedIds });
+      } catch (bulkErr) {
+        if (bulkErr?.response?.status === 404) {
+          await Promise.all(selectedIds.map((id) => api.delete(`${cleanEndpoint}/${id}`)));
+        } else {
+          throw bulkErr;
+        }
+      }
       toast.success(`${selectedIds.length} ${title.toLowerCase()} deleted successfully`);
       setItems((prev) => prev.filter((it) => !selectedIds.includes(it._id)));
       setSelectedIds([]);
     } catch (err) {
       console.error(`Failed to bulk delete ${title.toLowerCase()}:`, err);
-      toast.error(`Failed to delete selected items`);
+      toast.error(err.response?.data?.message || `Failed to delete selected items`);
     }
   };
 
@@ -311,7 +318,7 @@ export default function ConfigEntityView({
 
   const handleSelectItem = (id) => {
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, item]
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
     );
   };
 

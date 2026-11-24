@@ -13,6 +13,7 @@ import { blogsAPI, blogCategoriesAPI } from '../../api/services';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import RichTextEditor from '../../components/common/RichTextEditor';
 import Dropdown from '../../components/common/Dropdown';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
 import DatePicker from '../../components/common/DatePicker';
 
 // Helper to format file size
@@ -76,7 +77,7 @@ export default function WriteBlogView() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await blogCategoriesAPI.getAll({ limit: 100 });
+        const res = await blogCategoriesAPI.getLookup();
         const items = res.data?.data || [];
         setCategories(items);
         if (!isEditing && items.length > 0) {
@@ -716,17 +717,26 @@ export default function WriteBlogView() {
               <label className="block text-xs font-semibold text-stone-700 mb-1.5">
                 Publication Status
               </label>
-              <Dropdown
-                value={formData.status}
-                onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
-                showStatusDot
-                options={[
-                  { value: 'active', label: 'Published', dotColor: 'bg-emerald-500' },
-                  { value: 'inactive', label: 'Draft', dotColor: 'bg-stone-400' },
-                ]}
-                buttonClassName="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs font-semibold text-stone-800 bg-white shadow-2xs hover:border-[#8b6f4e]"
-                menuClassName="z-[60]"
-              />
+              <div className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      formData.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
+                    }`}
+                  />
+                  <span className="text-xs font-semibold text-stone-800">
+                    {formData.status === 'active' ? 'Published' : 'Draft'}
+                  </span>
+                </div>
+                <ToggleSwitch
+                  checked={formData.status === 'active'}
+                  onChange={(checked) =>
+                    setFormData((prev) => ({ ...prev, status: checked ? 'active' : 'inactive' }))
+                  }
+                  size="sm"
+                  ariaLabel="Publication Status"
+                />
+              </div>
             </div>
 
             {/* Publish Date */}

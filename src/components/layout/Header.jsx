@@ -6,7 +6,6 @@ import { useTheme } from '../../contexts/ThemeContext';
 import {
   HiOutlineBell,
   HiOutlineMenu,
-  HiOutlineSearch,
   HiOutlineChevronDown,
   HiOutlineUser,
   HiOutlineColorSwatch,
@@ -14,7 +13,6 @@ import {
   HiOutlineCheck,
   HiOutlineSparkles,
   HiOutlineSwitchHorizontal,
-  HiOutlineX,
 } from 'react-icons/hi';
 
 const Header = ({ onMobileToggle }) => {

@@ -3,31 +3,22 @@ import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
-  HiOutlineSearch,
   HiOutlineCheck,
   HiOutlineCheckCircle,
   HiOutlineX,
   HiOutlineTrash,
-  HiOutlineExternalLink,
   HiOutlineRefresh,
   HiOutlineDesktopComputer,
   HiOutlineDeviceMobile,
   HiOutlineTag,
   HiOutlineGift,
-  HiOutlineSparkles,
   HiOutlineViewGrid,
   HiOutlineInformationCircle,
   HiOutlineUpload,
   HiOutlineEye,
-  HiOutlineViewList,
-  HiOutlineCloudUpload,
-  HiOutlineCursorClick,
-  HiOutlineLink,
   HiOutlineCalendar,
-  HiOutlineCollection,
   HiOutlineCode,
   HiOutlineDotsHorizontal,
-  HiOutlineChevronRight,
   HiOutlineChevronDown,
   HiOutlineChevronUp,
   HiOutlineSwitchHorizontal,
@@ -35,97 +26,11 @@ import {
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { themesAPI, galleryAPI, bannersAPI, featuredAPI } from '../../api/services';
-import Dropdown from '../../components/common/Dropdown';
 import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
-import { uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
-import { VITE_FRONT_URL } from '../../config/env';
-
-const formatDateDisplay = (dateStr) => {
-  if (!dateStr) return { date: '—', time: '' };
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return { date: '—', time: '' };
-    const day = d.getDate();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = months[d.getMonth()];
-    const year = d.getFullYear();
-    let hours = d.getHours();
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const padHours = String(hours).padStart(2, '0');
-    return {
-      date: `${day} ${month} ${year}`,
-      time: `${padHours}:${minutes} ${ampm}`,
-    };
-  } catch {
-    return { date: '—', time: '' };
-  }
-};
-
-const MODULE_TABS = [
-  {
-    key: 'herobanner',
-    label: 'Hero Banners',
-    icon: HiOutlineDesktopComputer,
-    description: 'Main homepage hero carousel. Displayed prominently at the very top of the website.',
-    recommendedDesktop: '1920 × 600 px (Landscape)',
-    recommendedMobile: '768 × 1200 px (Portrait)',
-  },
-  {
-    key: 'celebrate',
-    label: 'Celebrate & Gifts',
-    icon: IoDiamondOutline,
-    description: 'Festive gift categories and gifting showcase cards on the homepage.',
-    recommendedDesktop: '800 × 800 px (1:1 Square)',
-    recommendedMobile: '800 × 800 px (1:1 Square)',
-  },
-  {
-    key: 'category',
-    label: 'Categories',
-    icon: HiOutlineViewGrid,
-    description: 'Category navigation icons and category page top header banners.',
-    recommendedDesktop: 'Icon: 500 × 500 px · Banner: 1200 × 400 px',
-    recommendedMobile: 'Icon: 500 × 500 px · Banner: 768 × 500 px',
-  },
-  {
-    key: 'collectionbanner',
-    label: 'Collections',
-    icon: HiOutlineTag,
-    description: 'Featured collection banners and seasonal curated collection cards.',
-    recommendedDesktop: '1920 × 600 px (Wide)',
-    recommendedMobile: '768 × 1000 px',
-  },
-  {
-    key: 'offerbanner',
-    label: 'Offer Banners',
-    icon: HiOutlineGift,
-    description: 'Special coupon, festival sale, and promotional offer banners.',
-    recommendedDesktop: '1920 × 450 px',
-    recommendedMobile: '768 × 800 px',
-  },
-  {
-    key: 'mobileappbanner',
-    label: 'App Banners',
-    icon: HiOutlineDeviceMobile,
-    description: 'App store download strips and mobile app promotional blocks.',
-    recommendedDesktop: '1920 × 500 px',
-    recommendedMobile: '768 × 800 px',
-  },
-  {
-    key: 'customizebanner',
-    label: 'Custom & Other',
-    icon: HiOutlineSparkles,
-    description: 'Bespoke jewelry, book appointment, and custom section banners.',
-    recommendedDesktop: '1600 × 600 px',
-    recommendedMobile: '768 × 800 px',
-  },
-];
 
 const BANNER_TYPES = [
   {
@@ -178,82 +83,6 @@ const BANNER_TYPES = [
   },
 ];
 
-const PLACEMENT_OPTIONS = [
-  {
-    value: 'all',
-    label: 'All Placement Types',
-    sublabel: 'Show all banner and media placements',
-    icon: HiOutlineCollection,
-    module: null,
-  },
-  {
-    value: 'herobanner',
-    label: 'Hero Banner',
-    sublabel: 'Homepage main hero slider',
-    icon: HiOutlineDesktopComputer,
-    module: 'herobanner',
-  },
-  {
-    value: 'collectionbanner',
-    label: 'Collection Banner',
-    sublabel: '4-tile curated collection showcase',
-    icon: HiOutlineTag,
-    module: 'collectionbanner',
-  },
-  {
-    value: 'categorybanner',
-    label: 'Category Banner',
-    sublabel: 'Category page top header banner & icons',
-    icon: HiOutlineViewGrid,
-    module: 'category',
-  },
-  {
-    value: 'offerbanner',
-    label: 'Offer Banner',
-    sublabel: 'Promotional deals & discount banner',
-    icon: HiOutlineGift,
-    module: 'offerbanner',
-  },
-  {
-    value: 'celebrate',
-    label: 'Celebrate & Gifts',
-    sublabel: 'Gift guide and celebrate showcase item',
-    icon: IoDiamondOutline,
-    module: 'celebrate',
-  },
-  {
-    value: 'mobileappbanner',
-    label: 'Mobile App Banner',
-    sublabel: 'Mobile app download promotion',
-    icon: HiOutlineDeviceMobile,
-    module: 'mobileappbanner',
-  },
-  {
-    value: 'bookappointbanner',
-    label: 'Appointment Banner',
-    sublabel: 'In-store appointment booking section',
-    icon: HiOutlineCalendar,
-    module: 'customizebanner',
-  },
-  {
-    value: 'customizebanner',
-    label: 'Custom Banner',
-    sublabel: 'Custom pages and seasonal campaigns',
-    icon: HiOutlineSparkles,
-    module: 'customizebanner',
-  },
-];
-
-const MODULE_TO_PLACEMENT = {
-  herobanner: 'herobanner',
-  celebrate: 'celebrate',
-  category: 'categorybanner',
-  collectionbanner: 'collectionbanner',
-  offerbanner: 'offerbanner',
-  mobileappbanner: 'mobileappbanner',
-  customizebanner: 'customizebanner',
-};
-
 // Filter options matching gallery.model.js L23-L38 (placement enum)
 const GALLERY_PLACEMENT_FILTER_OPTIONS = [
   { value: 'all', label: 'All Placements' },
@@ -268,18 +97,9 @@ const GALLERY_PLACEMENT_FILTER_OPTIONS = [
   { value: 'asset', label: 'Asset' },
 ];
 
-// Filter options matching gallery.model.js L39-L44 (platform enum)
-const GALLERY_PLATFORM_FILTER_OPTIONS = [
-  { value: 'all', label: 'All Platforms' },
-  { value: 'web', label: 'Web' },
-  { value: 'app', label: 'App' },
-  { value: 'common', label: 'Common' },
-];
-
 export default function ThemeMediaMappingTab({
   theme,
   onThemeUpdated,
-  onPreview,
 }) {
   const navigate = useNavigate();
   const confirm = useConfirm();
@@ -289,14 +109,12 @@ export default function ThemeMediaMappingTab({
   // Active mapping mode ('banner' or 'celebrate')
   const [mappingMode, setMappingMode] = useState('banner');
   const [activeModule, setActiveModule] = useState('herobanner');
-  const [selectedPlacement, setSelectedPlacement] = useState('herobanner');
-  const [statusFilter, setStatusFilter] = useState('all'); // all, active, draft, mapped, unmapped
-  const [deviceFilter, setDeviceFilter] = useState('all'); // all, web, mobile
-  const [sortBy, setSortBy] = useState('newest'); // newest, oldest, order
-  const [search, setSearch] = useState('');
+  const [statusFilter] = useState('all'); // all, active, draft, mapped, unmapped
+  const [deviceFilter] = useState('all'); // all, web, mobile
+  const [sortBy] = useState('newest'); // newest, oldest, order
+  const [search] = useState('');
   const [celebratePlacementFilter, setCelebratePlacementFilter] = useState('Celebrate'); // Celebrate, Gifts, all
   const { categories } = useCategoryLookup({ enabled: true });
-  const [viewMode, setViewMode] = useState('table'); // standard table layout matching main screens
 
   // Data state
   const [loading, setLoading] = useState(false);
@@ -318,7 +136,6 @@ export default function ThemeMediaMappingTab({
 
   const handleSelectBannerType = (key) => {
     setActiveModule(key);
-    setSelectedPlacement(key);
     setSelectedIds(new Set());
     setActiveTargetSlot(null);
   };
@@ -347,39 +164,17 @@ export default function ThemeMediaMappingTab({
     setActiveTargetSlot(null);
     if (mode === 'banner') {
       setActiveModule('herobanner');
-      setSelectedPlacement('herobanner');
     } else {
       setActiveModule('celebrate');
-      setSelectedPlacement('celebrate');
     }
   };
 
   // Side panel gallery state
   const [sideGalleryItems, setSideGalleryItems] = useState([]);
-  const [galleryLoading, setGalleryLoading] = useState(false);
-  const [galleryScope, setGalleryScope] = useState('theme'); // 'theme' or 'all'
-  const [galleryPlacementFilter, setGalleryPlacementFilter] = useState('all');
-  const [galleryPlatformFilter, setGalleryPlatformFilter] = useState('all');
-  const [panelUploading, setPanelUploading] = useState(false);
-  const panelFileInputRef = useRef(null);
-
-  // Synchronized placement dropdown handler (updates both left module and right gallery filter)
-  const handlePlacementSelect = (val) => {
-    setSelectedPlacement(val);
-    setSelectedIds(new Set());
-    setActiveTargetSlot(null);
-
-    if (val === 'all') {
-      setGalleryPlacementFilter('all');
-      return;
-    }
-
-    const opt = PLACEMENT_OPTIONS.find((o) => o.value === val);
-    if (opt?.module) {
-      setActiveModule(opt.module);
-    }
-    setGalleryPlacementFilter(val);
-  };
+  const [, setGalleryLoading] = useState(false);
+  const [galleryScope] = useState('theme'); // 'theme' or 'all'
+  const [galleryPlacementFilter] = useState('all');
+  const [galleryPlatformFilter] = useState('all');
 
   // Drag and drop & active target state
   const draggedAssetRef = useRef(null);
@@ -538,13 +333,6 @@ export default function ThemeMediaMappingTab({
     fetchSideGallery();
   }, [fetchSideGallery]);
 
-  // Active module config details
-  const activeModuleConfig = useMemo(() => {
-    return (
-      MODULE_TABS.find((t) => t.key === activeModule) || MODULE_TABS[0]
-    );
-  }, [activeModule]);
-
   // Current banner type config (for Banner Management view matching)
   const currentBannerType = useMemo(() => {
     return BANNER_TYPES.find((t) => t.key === activeModule) || BANNER_TYPES[0];
@@ -641,7 +429,7 @@ export default function ThemeMediaMappingTab({
   const handleSaveMapping = async (mediaAsset, customTarget = null) => {
     const target = customTarget || pickerTarget;
     if (!target || !themeId) return;
-    const { record, device, placement } = target;
+    const { record } = target;
 
     try {
       await themesAPI.saveMapping(themeId, {
@@ -676,94 +464,6 @@ export default function ThemeMediaMappingTab({
     }
     await handleSaveMapping(selectedAsset, pickerTarget);
     setPickerTarget(null);
-  };
-
-  // ─── Direct File Upload & Map Immediately ────────────────
-  const handleDirectUpload = async (file, record, device = 'desktop', placement = 'primary') => {
-    if (!file || !themeId) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please choose a valid image file');
-      return;
-    }
-
-    const toastId = toast.loading(`Uploading & optimizing ${file.name}…`);
-    try {
-      // 1. Upload file via presigned URL with auto-compression
-      const upload = await uploadWithPresignedUrl(file, 'website-themes');
-
-      // 2. Register media in Gallery with themeId and linkedRecord
-      const galleryRes = await galleryAPI.create({
-        themeId,
-        name: file.name.replace(/\.[^/.]+$/, ''),
-        type: activeModule,
-        placement: device,
-        linkedRecord: {
-          module: activeModule,
-          recordId: record._id,
-        },
-        image: {
-          url: upload.fileUrl,
-          key: upload.key,
-        },
-      });
-
-      const mediaAsset = galleryRes.data?.data || galleryRes.data;
-
-      // 3. Save Theme Mapping
-      await themesAPI.saveMapping(themeId, {
-        recordId: record._id,
-        galleryId: mediaAsset._id,
-        status: 'active',
-      });
-
-      toast.success(
-        `Theme image saved! (${formatBytes(upload.originalSize)} → ${formatBytes(upload.compressedSize)})`,
-        { id: toastId }
-      );
-
-      await Promise.all([fetchRecords(), fetchSummary(), fetchSideGallery()]);
-    } catch (err) {
-      console.error('Direct upload failed:', err);
-      toast.error(err.response?.data?.message || 'Could not upload theme image', {
-        id: toastId,
-      });
-    }
-  };
-
-  // ─── Upload to Side Panel Gallery ─────────────────────────
-  const handleSidePanelUpload = async (file) => {
-    if (!file || !themeId) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please choose a valid image file');
-      return;
-    }
-
-    setPanelUploading(true);
-    const toastId = toast.loading(`Uploading to Theme Gallery: ${file.name}…`);
-    try {
-      const upload = await uploadWithPresignedUrl(file, 'website-themes');
-      await galleryAPI.create({
-        themeId,
-        name: file.name.replace(/\.[^/.]+$/, ''),
-        type: activeModule,
-        platform: 'common',
-        image: {
-          url: upload.fileUrl,
-          key: upload.key,
-        },
-      });
-
-      toast.success(
-        `Added to Theme Gallery! (${formatBytes(upload.originalSize)} → ${formatBytes(upload.compressedSize)})`,
-        { id: toastId }
-      );
-      await fetchSideGallery();
-    } catch (err) {
-      console.error('Failed to upload image to gallery:', err);
-      toast.error(err.response?.data?.message || 'Upload failed', { id: toastId });
-    } finally {
-      setPanelUploading(false);
-    }
   };
 
   // ─── Delete Single Mapping Handler ───────────────────────
@@ -864,16 +564,6 @@ export default function ThemeMediaMappingTab({
     }
   };
 
-  const handleGalleryItemClick = async (item) => {
-    if (activeTargetSlot) {
-      await handleSaveMapping(item, activeTargetSlot);
-    } else {
-      openImagePreview(item.image?.url || item.url, {
-        title: item.name || 'Theme Gallery Asset',
-      });
-    }
-  };
-
   // ─── One-Click Theme Activation ──────────────────────────
   const handleActivateTheme = async () => {
     if (!themeId) return;
@@ -894,33 +584,6 @@ export default function ThemeMediaMappingTab({
     } finally {
       setActivating(false);
     }
-  };
-
-  // Active module breakdown stats
-  const activeBreakdown = summary?.breakdown?.find(
-    (b) => b.module === activeModule
-  );
-  const totalAllRecords = summary?.summary?.totalRecords || 0;
-  const mappedAllRecords = summary?.summary?.mappedRecords || 0;
-  const completionPct = summary?.summary?.completionPercentage || 0;
-  const isLive = theme?.status === 'active';
-
-  // Helper to resolve fallback images robustly
-  const resolveFallbackMedia = (record) => {
-    if (activeModule === 'category') {
-      return {
-        primary: record.originalIcon || record.originalMedia?.iconUrl || record.originalDesktopImage,
-        secondary: record.originalBanner || record.originalMedia?.bannerUrl,
-        primaryLabel: 'Default Category Icon',
-        secondaryLabel: 'Default Category Banner',
-      };
-    }
-    return {
-      primary: record.originalDesktopImage || record.originalMedia?.desktopImageUrl || record.image?.url,
-      secondary: record.originalMobileImage || record.originalMedia?.mobileImageUrl || record.mobileImage?.url,
-      primaryLabel: 'Default Desktop Banner',
-      secondaryLabel: 'Default Mobile Banner',
-    };
   };
 
   return (
@@ -1235,10 +898,9 @@ export default function ThemeMediaMappingTab({
                           const bTitle = currentBannerType.key === 'categorybanner'
                             ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || banner.title || 'Category Banner')
                             : (banner.content?.title || banner.title || (isCollectionBanner ? 'Collection Banner' : 'Hero Banner'));
-                          const bDesc = banner.content?.description || (banner.display?.collectionGroup ? `Collection Group: ${banner.display.collectionGroup.toUpperCase()}` : '');
+                          const bDesc = banner.content?.description || '';
                           const defaultAssetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url) || banner.originalDesktopImage;
                           const isPublished = banner.status === 'active';
-                          const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);
                           const isSelected = selectedIds.has(String(banner._id));
 
                           const desktopMappedImg = banner.desktopMapping?.imageUrl;
@@ -2102,9 +1764,7 @@ export default function ThemeMediaMappingTab({
             ? 'celebrate'
             : (activeModule || 'herobanner')
         }
-        initialPlatform={
-          pickerTarget?.device === 'mobile' ? 'app' : pickerTarget?.device === 'desktop' ? 'web' : 'all'
-        }
+        initialPlatform="web"
         placementOptions={GALLERY_PLACEMENT_FILTER_OPTIONS}
         title="Gallery Media Picker"
         subtitle={

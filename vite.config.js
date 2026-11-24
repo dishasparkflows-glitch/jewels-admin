@@ -6,6 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5175,
+    headers: {
+      'Permissions-Policy': 'unload=*',
+    },
     proxy: {
       '/uploads': {
         target: 'http://localhost:5001',

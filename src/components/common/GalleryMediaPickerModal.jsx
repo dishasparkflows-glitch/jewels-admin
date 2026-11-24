@@ -49,7 +49,7 @@ export default function GalleryMediaPickerModal({
   currentSelectedUrl = '',
   initialTheme = 'all',
   initialPlacement = 'all',
-  initialPlatform = 'all',
+  initialPlatform = 'web',
   placementOptions = null,
   themes: passedThemes = null,
   title = 'Gallery Media Picker',
@@ -58,7 +58,7 @@ export default function GalleryMediaPickerModal({
   const [internalThemes, setInternalThemes] = useState([]);
   const [pickerThemeFilter, setPickerThemeFilter] = useState(initialTheme || 'all');
   const [pickerPlacementFilter, setPickerPlacementFilter] = useState(initialPlacement || 'all');
-  const [pickerDeviceFilter, setPickerDeviceFilter] = useState(initialPlatform || 'all');
+  const [pickerDeviceFilter, setPickerDeviceFilter] = useState(initialPlatform || 'web');
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerImages, setPickerImages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -86,7 +86,7 @@ export default function GalleryMediaPickerModal({
     if (isOpen) {
       setPickerThemeFilter(initialTheme || 'all');
       setPickerPlacementFilter(initialPlacement || 'all');
-      setPickerDeviceFilter(initialPlatform || 'all');
+      setPickerDeviceFilter(initialPlatform || 'web');
       setPickerSearch('');
       setPage(1);
     }

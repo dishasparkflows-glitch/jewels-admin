@@ -17,7 +17,6 @@ import {
 import { IoCubeOutline, IoDiamondOutline, IoLayersOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { deleteUploadedFile, formatBytes, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -74,7 +73,6 @@ export default function CelebrateGiftsView() {
   // Website Themes State
   const [themes, setThemes] = useState([]);
   const [, setLoadingThemes] = useState(false);
-  const imageInputRef = useRef(null);
 
   // Theme Media Picker Modal State
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
@@ -132,8 +130,7 @@ export default function CelebrateGiftsView() {
   }, [isModalOpen]);
 
   // Upload state
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Reorder state
@@ -388,43 +385,6 @@ export default function CelebrateGiftsView() {
   const openViewModal = (item) => {
     setViewingItem(item);
     setIsViewModalOpen(true);
-  };
-
-  // Image upload handler with support for file drop and input ref
-  const handleImageFile = async (file) => {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please upload an image file (JPG, PNG, WebP)');
-      return;
-    }
-
-    const localPreview = URL.createObjectURL(file);
-    setImageUrl(localPreview);
-
-    try {
-      setUploading(true);
-      setUploadProgress(0);
-      const res = await uploadWithPresignedUrl(file, 'featured', setUploadProgress);
-      setImageUrl(res.fileUrl);
-      setImagePublicId(res.key || '');
-      toast.success(`Cover image uploaded · ${formatBytes(res.originalSize)} → ${formatBytes(res.compressedSize)}${res.wasCompressed ? ' compressed' : ''}`);
-    } catch (err) {
-      console.error('Upload error:', err);
-      toast.error('Failed to upload image');
-    } finally {
-      setUploading(false);
-      if (imageInputRef.current) imageInputRef.current.value = '';
-    }
-  };
-
-  const handleRemoveImage = async () => {
-    try {
-      await deleteUploadedFile({ key: imagePublicId, url: imageUrl });
-      setImageUrl('');
-      setImagePublicId('');
-    } catch (err) {
-      toast.error(err.response?.data?.message || err.message || 'Could not delete image from storage');
-    }
   };
 
   // Save / Update Group

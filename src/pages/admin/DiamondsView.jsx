@@ -92,22 +92,21 @@ export default function DiamondsView() {
     fetchData();
   }, [page, pageSize, typeFilter, shapeFilter]);
 
-  // Fetch filter lookups
-  useEffect(() => {
-    const fetchLookups = async () => {
-      try {
-        const res = await api.get('/diamonds/attributes');
-        const data = res.data?.data || {};
-        if (data.types) setTypes(data.types);
-        if (data.shapes) setShapes(data.shapes);
-        if (data.colors) setColors(data.colors);
-        if (data.clarities) setClarities(data.clarities);
-      } catch {
-        // Fallback
-      }
-    };
-    fetchLookups();
-  }, []);
+  // Lazy fetch filter lookups only when needed (e.g. user opens filters or edits a diamond)
+  const fetchLookups = async () => {
+    if (types.length > 0 && shapes.length > 0) return { types, shapes, colors, clarities };
+    try {
+      const res = await api.get('/diamonds/attributes');
+      const data = res.data?.data || {};
+      if (data.diamondTypes) setTypes(data.diamondTypes);
+      if (data.diamondShapes) setShapes(data.diamondShapes);
+      if (data.diamondColors) setColors(data.diamondColors);
+      if (data.diamondClarities) setClarities(data.diamondClarities);
+      return data;
+    } catch {
+      return {};
+    }
+  };
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -315,14 +314,20 @@ export default function DiamondsView() {
   };
 
   // Open Edit Modal
-  const handleOpenEdit = (item) => {
+  const handleOpenEdit = async (item) => {
+    const data = await fetchLookups();
+    const currTypes = data?.types || types;
+    const currShapes = data?.shapes || shapes;
+    const currColors = data?.colors || colors;
+    const currClarities = data?.clarities || clarities;
+
     setEditingDiamond(item);
     setEditSku(item.sku || '');
     setEditTitle(item.title || '');
-    setEditTypeId(item.typeId?._id || item.typeId || (types[0]?._id || ''));
-    setEditShapeId(item.shapeId?._id || item.shapeId || (shapes[0]?._id || ''));
-    setEditColorId(item.colorId?._id || item.colorId || (colors[0]?._id || ''));
-    setEditClarityId(item.clarityId?._id || item.clarityId || (clarities[0]?._id || ''));
+    setEditTypeId(item.typeId?._id || item.typeId || (currTypes[0]?._id || ''));
+    setEditShapeId(item.shapeId?._id || item.shapeId || (currShapes[0]?._id || ''));
+    setEditColorId(item.colorId?._id || item.colorId || (currColors[0]?._id || ''));
+    setEditClarityId(item.clarityId?._id || item.clarityId || (currClarities[0]?._id || ''));
     setEditCarat(item.carat !== undefined ? String(item.carat) : '');
     setEditRate(item.rate !== undefined ? String(item.rate) : '');
     setEditPrice(item.price !== undefined ? String(item.price) : '');
@@ -504,7 +509,7 @@ export default function DiamondsView() {
         {/* Filter dropdowns */}
         <div className="flex items-center gap-2.5 flex-wrap">
           {/* Shape filter */}
-          <div className="w-36">
+          <div className="w-36" onMouseDown={fetchLookups} onTouchStart={fetchLookups}>
             <Dropdown
               value={shapeFilter}
               onChange={(val) => setShapeFilter(val)}
@@ -518,7 +523,7 @@ export default function DiamondsView() {
           </div>
 
           {/* Type filter */}
-          <div className="w-36">
+          <div className="w-36" onMouseDown={fetchLookups} onTouchStart={fetchLookups}>
             <Dropdown
               value={typeFilter}
               onChange={(val) => setTypeFilter(val)}

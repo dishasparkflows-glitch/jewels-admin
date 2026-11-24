@@ -8,6 +8,16 @@ export const authAPI = {
   changePassword: (data) => api.post('/auth/change-password', data),
 };
 
+// ─── Products ─────────────────────────────────────
+export const productsAPI = {
+  getAll: (params) => api.get('/products', { params }),
+  getById: (id) => api.get(`/products/${id}`),
+  create: (data) => api.post('/products', data),
+  update: (id, data) => api.put(`/products/${id}`, data),
+  delete: (id) => api.delete(`/products/${id}`),
+  bulkDelete: (ids) => api.post('/products/bulk-delete', { ids }),
+};
+
 // ─── Users ────────────────────────────────────────
 export const usersAPI = {
   getAll: (params) => api.get('/users', { params }),
@@ -228,10 +238,23 @@ export const logisticsAPI = {
 export const analyticsAPI = {
   getOverview: (params) => api.get('/analytics/overview', { params }),
   getDashboard: (params) => api.get('/analytics/dashboard', { params }),
+  getDashboardSales: () => api.get('/analytics/dashboard-sales'),
   getAddToCartReport: (params) => api.get('/analytics/products/add-to-cart', { params }),
   getWishlistReport: (params) => api.get('/analytics/products/wishlist', { params }),
   getViewsReport: (params) => api.get('/analytics/products/views', { params }),
   getStatus: () => api.get('/analytics/status'),
   getHealth: () => api.get('/analytics/health'),
+};
+
+// ─── Dashboard ────────────────────────────────────
+export const dashboardAPI = {
+  getCounts: () => api.get('/dashboard/stats'),
+  getSales: () => api.get('/dashboard/sales'),
+};
+
+// ─── Metal Colors ─────────────────────────────────
+export const metalColorsAPI = {
+  getLookup: () => api.get('/metal-colors/lookup'),
+  getAll: (params) => api.get('/metal-colors', { params }),
 };
 

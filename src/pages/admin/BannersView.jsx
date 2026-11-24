@@ -3,10 +3,9 @@ import { createPortal } from 'react-dom';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   HiOutlinePlus,
-  HiOutlinePencil,
   HiOutlineTrash,
   HiOutlineX,
-    HiOutlinePhotograph,
+  HiOutlinePhotograph,
   HiOutlineDeviceMobile,
   HiOutlineViewGrid,
   HiOutlineCalendar,
@@ -23,7 +22,7 @@ import {
     } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
+import { uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -52,30 +51,6 @@ const formatForInput = (dateStr) => {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   } catch {
     return '';
-  }
-};
-
-const formatDateDisplay = (dateStr) => {
-  if (!dateStr) return { date: '—', time: '' };
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return { date: '—', time: '' };
-    const day = d.getDate();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const month = months[d.getMonth()];
-    const year = d.getFullYear();
-    let hours = d.getHours();
-    const minutes = String(d.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;
-    const padHours = String(hours).padStart(2, '0');
-    return {
-      date: `${day} ${month} ${year}`,
-      time: `${padHours}:${minutes} ${ampm}`,
-    };
-  } catch {
-    return { date: '—', time: '' };
   }
 };
 
@@ -233,7 +208,6 @@ export default function BannersView() {
   const [endDate, setEndDate] = useState('');
   const [collectionImages, setCollectionImages] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('');
-  const [collectionGroup, setCollectionGroup] = useState('gold');
   const [selectedMenuItemIds, setSelectedMenuItemIds] = useState([]);
   const [, setNavigationCategories] = useState([]);
   const [pendingThemeImages, setPendingThemeImages] = useState({});
@@ -248,9 +222,9 @@ export default function BannersView() {
   const [mediaPickerSlotIndex, setMediaPickerSlotIndex] = useState(null);
 
   // Image Upload States
-  const [isUploadingDesktop, setIsUploadingDesktop] = useState(false);
+  const [, setIsUploadingDesktop] = useState(false);
   const [, setDesktopUploadStats] = useState(null);
-  const [isUploadingMobile, setIsUploadingMobile] = useState(false);
+  const [, setIsUploadingMobile] = useState(false);
   const [, setMobileUploadStats] = useState(null);
   const desktopInputRef = useRef(null);
   const mobileInputRef = useRef(null);
@@ -474,7 +448,6 @@ export default function BannersView() {
 
     const catObj = banner.display?.categoryId || banner.display?.category;
     setSelectedCategory(typeof catObj === 'object' ? catObj?._id : catObj || '');
-    setCollectionGroup(banner.display?.collectionGroup || 'gold');
     setSelectedMenuItemIds((banner.display?.menuItemIds || []).map((i) => String(i?._id || i)));
 
     setCollectionImages((banner.collectionImages?.length ? banner.collectionImages : (banner.image?.url ? [banner.image] : [])).map((img, idx) => ({
@@ -509,7 +482,6 @@ export default function BannersView() {
     setEndDate('');
     setCollectionImages([]);
     setSelectedCategory('');
-    setCollectionGroup('gold');
     setSelectedMenuItemIds([]);
     setThemeId('');
     setPendingThemeImages({});
@@ -594,25 +566,6 @@ export default function BannersView() {
     }
   };
 
-  // Remove uploaded image
-  const handleRemoveUploadedImage = async (device) => {
-    if (device === 'desktop') {
-      if (imageUrl) {
-        try { await deleteUploadedFile(imageUrl); } catch {}
-      }
-      setImageUrl('');
-      setImageKey('');
-      setDesktopUploadStats(null);
-    } else {
-      if (mobileImageUrl) {
-        try { await deleteUploadedFile(mobileImageUrl); } catch {}
-      }
-      setMobileImageUrl('');
-      setMobileImageKey('');
-      setMobileUploadStats(null);
-    }
-  };
-
   // Submit banner from Modal
   const handleSaveBanner = async (saveStatus = null) => {
     const effectiveType = typeKey || editingBanner?.display?.type || currentBannerType?.key || 'herobanner';
@@ -662,7 +615,6 @@ export default function BannersView() {
         payloadDisplay.categoryId = null;
       }
       if (effectiveType === 'collectionbanner') {
-        if (collectionGroup) payloadDisplay.collectionGroup = collectionGroup;
         if (selectedMenuItemIds?.length > 0) payloadDisplay.menuItemIds = selectedMenuItemIds;
       }
 
@@ -1086,7 +1038,6 @@ export default function BannersView() {
                     const bDesc = banner.content?.description || '';
                     const assetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url);
                     const isPublished = banner.status === 'active';
-                    const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);
                     const isSelected = selectedIds.includes(banner._id);
 
                     return (
@@ -1454,24 +1405,7 @@ export default function BannersView() {
                       {/* Collection Banner extra options */}
                       {currentBannerType.key === 'collectionbanner' && (
                         <div className="pt-2 border-t border-stone-200/60 space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="block text-xs font-semibold text-stone-700 mb-1">
-                                Collection Group
-                              </label>
-                              <Dropdown
-                                value={collectionGroup}
-                                onChange={setCollectionGroup}
-                                options={[
-                                  { value: 'gold', label: 'Gold Collection' },
-                                  { value: 'silver', label: 'Silver Collection' },
-                                  { value: 'spiritual', label: 'Spiritual Collection' },
-                                ]}
-                                buttonClassName="w-full h-10 px-3 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white"
-                                menuClassName="z-30"
-                              />
-                            </div>
-
+                          <div className="grid grid-cols-1 gap-3">
                             <div>
                               <label className="block text-xs font-semibold text-stone-700 mb-1">
                                 Associated Category
@@ -1761,9 +1695,7 @@ export default function BannersView() {
           }
           initialTheme={themeId || 'all'}
           initialPlacement={currentBannerType.key}
-          initialPlatform={
-            mediaPickerSlot === 'desktop' ? 'web' : mediaPickerSlot === 'mobile' ? 'app' : 'all'
-          }
+          initialPlatform="web"
           themes={themes}
           title="Gallery Media Picker"
           subtitle={`Select an image for ${currentBannerType.label} · ${

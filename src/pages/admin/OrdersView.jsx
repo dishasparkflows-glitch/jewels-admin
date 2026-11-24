@@ -27,6 +27,7 @@ import { IoLogoWhatsapp } from 'react-icons/io5';
 import { ShiprocketDispatchModal, ShiprocketTrackingModal } from '../../components/common/ShiprocketModals';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
+import useDebounce from '../../hooks/useDebounce';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
@@ -50,7 +51,7 @@ export default function OrdersView() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 300);
   const [orderStatusTab, setOrderStatusTab] = useState('all');
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
@@ -67,14 +68,6 @@ export default function OrdersView() {
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [viewingOrder, setViewingOrder] = useState(null);
   const [updatingOrderStatus, setUpdatingOrderStatus] = useState(false);
-
-  // Debounce search input to avoid spamming API on keystrokes
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-    }, 300);
-    return () => clearTimeout(timer);
-  }, [search]);
 
   // Shiprocket states
   const [shiprocketDispatchOpen, setShiprocketDispatchOpen] = useState(false);
@@ -718,10 +711,12 @@ export default function OrdersView() {
                                 className={`capitalize px-1.5 py-0.5 rounded text-[10px] font-medium ${
                                   String(ord.payment.status).toLowerCase() === 'paid'
                                     ? 'text-emerald-700 bg-emerald-50/80'
+                                    : String(ord.payment.status).toLowerCase() === 'partially_paid'
+                                    ? 'text-amber-700 bg-amber-50/80 border border-amber-200/60'
                                     : 'text-stone-600 bg-stone-100'
                                 }`}
                               >
-                                {ord.payment.status}
+                                {String(ord.payment.status).replace(/_/g, ' ')}
                               </span>
                             )}
                           </div>

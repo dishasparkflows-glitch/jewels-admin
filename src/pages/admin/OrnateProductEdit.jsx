@@ -1,9 +1,8 @@
-import { createPortal } from "react-dom";
 import ColorStatusToggle from '../../components/common/ColorStatusToggle';
 import CategorySelect from '../../components/common/CategorySelect';
 import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import toast from 'react-hot-toast';
@@ -12,24 +11,19 @@ import Dropdown from '../../components/common/Dropdown';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import {
   HiOutlineArrowLeft,
-  HiOutlineArrowRight,
   HiOutlineCheck,
   HiOutlineTrash,
   HiOutlinePlus,
-  HiOutlineMinus,
   HiOutlinePhotograph,
-  HiOutlineEye,
-  HiOutlineRefresh,
   HiOutlineUpload,
-  HiOutlineX,
   HiOutlineChevronRight,
-  HiOutlineChevronLeft,
   HiOutlineChevronUp,
   HiOutlineExternalLink,
   HiOutlineGlobeAlt,
   HiOutlineLockClosed,
 } from 'react-icons/hi';
 import { openProductPreview } from '../../utils/productPreview';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import {
   IoColorPaletteOutline,
   IoCheckmarkCircle,
@@ -39,6 +33,7 @@ import WeightsErpTab from '../../components/ornate/tabs/WeightsErpTab';
 import OrnateImagesTab from '../../components/ornate/tabs/OrnateImagesTab';
 import CareSpecsTab from '../../components/ornate/tabs/CareSpecsTab';
 import SeoConfigTab from '../../components/ornate/tabs/SeoConfigTab';
+import ProductStepFooter from '../../components/common/ProductStepFooter';
 
 const buildColorOption = (item = {}) => {
   const name = item.name || '';
@@ -82,127 +77,11 @@ export default function OrnateProductEdit() {
   const [saving, setSaving] = useState(false);
   const [productRecord, setProductRecord] = useState(null);
 
-  const [previewModalImage, setPreviewModalImage] = useState(null);
-  const [previewModalGallery, setPreviewModalGallery] = useState([]);
-  const [previewModalIndex, setPreviewModalIndex] = useState(0);
-  const [zoomScale, setZoomScale] = useState(1);
-  const [panPosition, setPanPosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStartRef = useRef({ x: 0, y: 0 });
-
+  const { openImagePreview } = useImagePreview();
   const handleOpenImagePreview = (imageUrl, gallery = []) => {
-    if (!imageUrl) return;
-    const list = Array.isArray(gallery) && gallery.length > 0 ? gallery : [imageUrl];
-    const idx = list.indexOf(imageUrl);
-    setPreviewModalGallery(list);
-    setPreviewModalIndex(idx >= 0 ? idx : 0);
-    setPreviewModalImage(imageUrl);
-    setZoomScale(1);
-    setPanPosition({ x: 0, y: 0 });
+    openImagePreview(imageUrl, { gallery });
   };
 
-  const handleCloseImagePreview = () => {
-    setPreviewModalImage(null);
-    setZoomScale(1);
-    setPanPosition({ x: 0, y: 0 });
-    setIsDragging(false);
-  };
-
-  const handleZoomIn = (e) => {
-    e?.stopPropagation?.();
-    setZoomScale((prev) => Math.min(Number((prev + 0.25).toFixed(2)), 4));
-  };
-
-  const handleZoomOut = (e) => {
-    e?.stopPropagation?.();
-    setZoomScale((prev) => {
-      const next = Math.max(Number((prev - 0.25).toFixed(2)), 0.5);
-      if (next <= 1) setPanPosition({ x: 0, y: 0 });
-      return next;
-    });
-  };
-
-  const handleResetZoom = (e) => {
-    e?.stopPropagation?.();
-    setZoomScale(1);
-    setPanPosition({ x: 0, y: 0 });
-  };
-
-  const handlePrevPreviewImage = (e) => {
-    e?.stopPropagation?.();
-    if (previewModalGallery.length <= 1) return;
-    const nextIdx = (previewModalIndex - 1 + previewModalGallery.length) % previewModalGallery.length;
-    setPreviewModalIndex(nextIdx);
-    setPreviewModalImage(previewModalGallery[nextIdx]);
-    setZoomScale(1);
-    setPanPosition({ x: 0, y: 0 });
-  };
-
-  const handleNextPreviewImage = (e) => {
-    e?.stopPropagation?.();
-    if (previewModalGallery.length <= 1) return;
-    const nextIdx = (previewModalIndex + 1) % previewModalGallery.length;
-    setPreviewModalIndex(nextIdx);
-    setPreviewModalImage(previewModalGallery[nextIdx]);
-    setZoomScale(1);
-    setPanPosition({ x: 0, y: 0 });
-  };
-
-  useEffect(() => {
-    if (!previewModalImage) return;
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') {
-        handleCloseImagePreview();
-      } else if (e.key === 'ArrowLeft') {
-        handlePrevPreviewImage();
-      } else if (e.key === 'ArrowRight') {
-        handleNextPreviewImage();
-      } else if (e.key === '+' || e.key === '=') {
-        handleZoomIn();
-      } else if (e.key === '-') {
-        handleZoomOut();
-      } else if (e.key === '0') {
-        handleResetZoom();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [previewModalImage, previewModalGallery, previewModalIndex]);
-
-  const handlePreviewMouseDown = (e) => {
-    if (zoomScale <= 1) return;
-    e.preventDefault();
-    setIsDragging(true);
-    dragStartRef.current = {
-      x: e.clientX - panPosition.x,
-      y: e.clientY - panPosition.y,
-    };
-  };
-
-  const handlePreviewMouseMove = (e) => {
-    if (!isDragging || zoomScale <= 1) return;
-    setPanPosition({
-      x: e.clientX - dragStartRef.current.x,
-      y: e.clientY - dragStartRef.current.y,
-    });
-  };
-
-  const handlePreviewMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const handlePreviewWheel = (e) => {
-    e.preventDefault();
-    if (e.deltaY < 0) {
-      setZoomScale((prev) => Math.min(Number((prev + 0.2).toFixed(2)), 4));
-    } else {
-      setZoomScale((prev) => {
-        const next = Math.max(Number((prev - 0.2).toFixed(2)), 0.5);
-        if (next <= 1) setPanPosition({ x: 0, y: 0 });
-        return next;
-      });
-    }
-  };
   const [draggedCareIndex, setDraggedCareIndex] = useState(null);
   const [dragOverCareIndex, setDragOverCareIndex] = useState(null);
 
@@ -2459,188 +2338,16 @@ export default function OrnateProductEdit() {
       </div>
 
       {/* ─── Bottom Navigation Bar (Sticky Footer) ──────────────────── */}
-      <div className="sticky bottom-4 z-30 bg-white/95 backdrop-blur-md rounded-2xl border border-stone-200/90 p-3 sm:p-4 shadow-xl flex items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={handlePrevStep}
-          className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-stone-700 bg-stone-50 border border-stone-200 rounded-xl hover:bg-stone-100 active:scale-[0.98] transition-all cursor-pointer"
-        >
-          <HiOutlineArrowLeft className="w-3.5 h-3.5 stroke-[2.5]" />
-          <span>{activeStep === 1 ? 'Back to List' : 'Previous Tab'}</span>
-        </button>
-
-        <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-stone-500">
-          <span>Step {activeStep} of {steps.length} &bull;</span>
-          <span className="text-[#8b6f4e] font-bold">{steps[activeStep - 1]?.title}</span>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {activeStep < steps.length ? (
-            <button
-              type="button"
-              onClick={handleNextStep}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer"
-            >
-              <span>Next: {steps[activeStep]?.title}</span>
-              <HiOutlineArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={() => handleSaveProduct()}
-              disabled={saving}
-              className="flex items-center gap-1.5 px-5 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50"
-            >
-              <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>{saving ? 'Saving...' : isEditMode ? 'Update Product' : 'Publish Product'}</span>
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ─── Image Zoom Preview Modal with - / + Controls ───────────── */}
-      {previewModalImage && (
-        createPortal(<div
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center p-3 sm:p-6 bg-stone-950/85 backdrop-blur-md animate-fadeIn select-none"
-          onClick={handleCloseImagePreview}
-        >
-          {/* Top Bar: Counter / Instructions & Close Button */}
-          <div
-            className="w-full max-w-5xl flex items-center justify-between pb-3 text-white z-20 shrink-0"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center gap-2.5 sm:gap-3">
-              <span className="px-3 py-1 rounded-full text-xs font-mono font-semibold bg-white/10 border border-white/15 backdrop-blur-md text-stone-200">
-                {previewModalGallery.length > 1
-                  ? `Image ${previewModalIndex + 1} of ${previewModalGallery.length}`
-                  : 'Image Preview'}
-              </span>
-              <span className="text-xs text-stone-400 hidden sm:inline">
-                Scroll or use <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-stone-200 text-[11px]">-</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-white/10 font-mono text-stone-200 text-[11px]">+</kbd> to zoom &bull; Drag to pan
-              </span>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleCloseImagePreview}
-              className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-lg border border-white/15"
-              title="Close (Esc)"
-            >
-              <HiOutlineX className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* Image Viewport / Canvas */}
-          <div
-            className="relative w-full max-w-5xl h-[72vh] sm:h-[78vh] flex items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-black/50 backdrop-blur-xs shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={handlePreviewMouseDown}
-            onMouseMove={handlePreviewMouseMove}
-            onMouseUp={handlePreviewMouseUp}
-            onMouseLeave={handlePreviewMouseUp}
-            onWheel={handlePreviewWheel}
-          >
-            {/* Gallery Navigation: Previous */}
-            {previewModalGallery.length > 1 && (
-              <button
-                type="button"
-                onClick={handlePrevPreviewImage}
-                className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-stone-900/80 hover:bg-stone-900 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-xl border border-white/20 active:scale-95"
-                title="Previous image (Left Arrow)"
-              >
-                <HiOutlineChevronLeft className="w-6 h-6 stroke-[2.2]" />
-              </button>
-            )}
-
-            {/* Gallery Navigation: Next */}
-            {previewModalGallery.length > 1 && (
-              <button
-                type="button"
-                onClick={handleNextPreviewImage}
-                className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-stone-900/80 hover:bg-stone-900 text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md shadow-xl border border-white/20 active:scale-95"
-                title="Next image (Right Arrow)"
-              >
-                <HiOutlineChevronRight className="w-6 h-6 stroke-[2.2]" />
-              </button>
-            )}
-
-            {/* Scaled & Panned Image */}
-            <div
-              style={{
-                transform: `translate(${panPosition.x}px, ${panPosition.y}px) scale(${zoomScale})`,
-                transition: isDragging ? 'none' : 'transform 0.15s cubic-bezier(0.2, 0, 0, 1)',
-                cursor: zoomScale > 1 ? (isDragging ? 'grabbing' : 'grab') : 'zoom-in',
-              }}
-              onDoubleClick={(e) => {
-                e.stopPropagation();
-                if (zoomScale > 1) {
-                  handleResetZoom();
-                } else {
-                  setZoomScale(2);
-                }
-              }}
-              className="flex items-center justify-center max-w-full max-h-full"
-            >
-              <img
-                src={previewModalImage}
-                alt="Product Preview"
-                draggable={false}
-                className="max-w-[85vw] max-h-[68vh] object-contain rounded-xl shadow-2xl pointer-events-none"
-              />
-            </div>
-
-            {/* Floating Zoom Bar with - and + buttons */}
-            <div
-              className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-2xl bg-stone-900/90 border border-white/15 text-white shadow-2xl backdrop-blur-md max-w-[calc(100vw-2rem)] overflow-x-auto"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Zoom Out Button (-) */}
-              <button
-                type="button"
-                onClick={handleZoomOut}
-                disabled={zoomScale <= 0.5}
-                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Zoom Out (-)"
-              >
-                <HiOutlineMinus className="w-4 h-4 stroke-[2.5]" />
-              </button>
-
-              {/* Reset / Percentage Display */}
-              <button
-                type="button"
-                onClick={handleResetZoom}
-                className="px-2.5 h-8 rounded-xl hover:bg-white/15 text-xs font-mono font-semibold text-stone-200 flex items-center justify-center cursor-pointer transition-colors"
-                title="Click to reset (100%)"
-              >
-                {Math.round(zoomScale * 100)}%
-              </button>
-
-              {/* Zoom In Button (+) */}
-              <button
-                type="button"
-                onClick={handleZoomIn}
-                disabled={zoomScale >= 4}
-                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 active:scale-95 flex items-center justify-center text-white transition-all cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-                title="Zoom In (+)"
-              >
-                <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-              </button>
-
-              <div className="w-[1px] h-4 bg-white/20 mx-1" />
-
-              {/* Reset to 1:1 Icon */}
-              <button
-                type="button"
-                onClick={handleResetZoom}
-                className="p-1.5 rounded-xl hover:bg-white/15 text-stone-300 hover:text-white transition-colors cursor-pointer"
-                title="Reset zoom to 100% (0)"
-              >
-                <HiOutlineRefresh className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>, document.body)
-      )}
+      <ProductStepFooter
+        currentStepIndex={activeStep - 1}
+        totalSteps={steps.length}
+        currentStepTitle={steps[activeStep - 1]?.title}
+        nextStepTitle={steps[activeStep]?.title}
+        onPrev={handlePrevStep}
+        onNext={activeStep < steps.length ? handleNextStep : () => handleSaveProduct()}
+        saving={saving}
+        isEditMode={isEditMode}
+      />
     </div>
   );
 }

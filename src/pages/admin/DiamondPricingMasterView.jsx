@@ -498,7 +498,7 @@ export default function DiamondPricingMasterView() {
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                <th className="py-3 px-4 w-14 text-center font-bold">#</th>
+                <th className="py-3 px-4 w-16 text-center font-bold whitespace-nowrap">SR NO</th>
                 <th className="py-3 px-4 min-w-[160px] font-bold">SHAPE</th>
                 <th className="py-3 px-4 min-w-[140px] font-bold">COLOR</th>
                 <th className="py-3 px-4 min-w-[140px] font-bold">CLARITY</th>

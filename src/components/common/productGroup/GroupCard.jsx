@@ -1,4 +1,4 @@
-import { HiOutlineEye, HiOutlineCheckCircle } from 'react-icons/hi';
+import { HiOutlineEye, HiOutlineCheckCircle, HiOutlineTrash } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import { EditActionButton, DeleteActionButton } from '../RowActions';
 

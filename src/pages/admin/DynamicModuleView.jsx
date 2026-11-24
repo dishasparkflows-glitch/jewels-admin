@@ -12,19 +12,10 @@ import {
   HiOutlineEye,
   HiOutlinePencil,
   HiOutlineX,
-  HiOutlineCheck,
   HiOutlineUpload,
   HiOutlinePhotograph,
   HiOutlineSparkles,
   HiOutlineExternalLink,
-  HiOutlineShoppingBag,
-  HiOutlineClock,
-  HiOutlineCheckCircle,
-  HiOutlineTruck,
-  HiOutlineCreditCard,
-  HiOutlinePrinter,
-  HiOutlineDocumentText,
-  HiOutlineTag,
 } from 'react-icons/hi';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -534,10 +525,10 @@ const DynamicModuleView = () => {
         try {
           const res = await api.get('/diamonds/attributes');
           const data = res.data?.data || {};
-          const shapeList = data.shapes || data.diamondShapes || [];
-          const colorList = data.colors || data.diamondColors || [];
-          const clarityList = data.clarities || data.diamondClarities || [];
-          const typeList = data.types || data.diamondTypes || [];
+          const shapeList = data.diamondShapes || [];
+          const colorList = data.diamondColors || [];
+          const clarityList = data.diamondClarities || [];
+          const typeList = data.diamondTypes || [];
 
           setLookupData((prev) => ({
             ...prev,

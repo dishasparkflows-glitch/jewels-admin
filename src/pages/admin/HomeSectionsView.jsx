@@ -21,7 +21,6 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import RowActions from '../../components/common/RowActions';
-import Dropdown from '../../components/common/Dropdown';
 import ProductPickerModal from '../../components/common/ProductPickerModal';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -306,35 +305,6 @@ export default function HomeSectionsView() {
       );
     } finally {
       setUpdatingVisibilityId(null);
-    }
-  };
-
-  // Quick Move Up / Down
-  const handleMoveOrder = async (index, direction) => {
-    const newItems = [...sections];
-    const targetIdx = direction === 'up' ? index - 1 : index + 1;
-    if (targetIdx < 0 || targetIdx >= newItems.length) return;
-
-    // Swap
-    const temp = newItems[index];
-    newItems[index] = newItems[targetIdx];
-    newItems[targetIdx] = temp;
-
-    const reorderPayload = newItems.map((item, idx) => ({
-      id: item._id,
-      order: idx + 1,
-    }));
-
-    // Optimistic
-    setSections(newItems.map((item, idx) => ({ ...item, order: idx + 1 })));
-
-    try {
-      await api.put('/home-sections/reorder', { items: reorderPayload });
-      toast.success('Display order updated');
-    } catch (err) {
-      console.error('Failed to reorder:', err);
-      toast.error('Failed to reorder sections');
-      fetchSections();
     }
   };
 
@@ -760,17 +730,26 @@ export default function HomeSectionsView() {
                     <label className="block text-[11px] font-bold text-stone-800 uppercase tracking-wider mb-2">
                       STATUS
                     </label>
-                    <Dropdown
-                      value={formData.status}
-                      onChange={(val) => setFormData((prev) => ({ ...prev, status: val }))}
-                      options={[
-                        { value: 'active', label: 'Active (Live)', dotColor: 'bg-emerald-500' },
-                        { value: 'inactive', label: 'Inactive (Draft)', dotColor: 'bg-stone-400' },
-                      ]}
-                      showStatusDot
-                      size="sm"
-                      buttonClassName="w-full h-[42px] rounded-xl text-xs bg-white border-[#d6cfc2] shadow-2xs"
-                    />
+                    <div className="w-full h-[42px] px-3.5 rounded-xl text-xs bg-white border border-[#d6cfc2] shadow-2xs flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`w-2 h-2 rounded-full ${
+                            formData.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
+                          }`}
+                        />
+                        <span className="text-xs font-semibold text-stone-800">
+                          {formData.status === 'active' ? 'Active (Live)' : 'Inactive (Draft)'}
+                        </span>
+                      </div>
+                      <ToggleSwitch
+                        checked={formData.status === 'active'}
+                        onChange={(checked) =>
+                          setFormData((prev) => ({ ...prev, status: checked ? 'active' : 'inactive' }))
+                        }
+                        size="sm"
+                        ariaLabel="Section Status"
+                      />
+                    </div>
                   </div>
 
                   <div>

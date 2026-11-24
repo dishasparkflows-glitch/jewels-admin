@@ -15,7 +15,6 @@ import {
   HiOutlineTemplate,
   HiOutlineChatAlt2,
   HiOutlineCog,
-  HiOutlineSpeakerphone,
   HiOutlineBookOpen,
   HiOutlineTrendingUp,
   HiOutlineUser,

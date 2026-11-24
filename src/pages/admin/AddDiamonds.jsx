@@ -61,16 +61,16 @@ export default function AddDiamonds() {
         const res = await api.get('/diamonds/attributes');
 
         const data = res.data?.data || {};
-        if (data.types?.length) setTypes(data.types);
-        if (data.shapes?.length) setShapes(data.shapes);
-        if (data.colors?.length) setColors(data.colors);
-        if (data.clarities?.length) setClarities(data.clarities);
+        if (data.diamondTypes?.length) setTypes(data.diamondTypes);
+        if (data.diamondShapes?.length) setShapes(data.diamondShapes);
+        if (data.diamondColors?.length) setColors(data.diamondColors);
+        if (data.diamondClarities?.length) setClarities(data.diamondClarities);
 
         // Pre-select first available option from API
-        if (data.types?.length) setSelectedType(data.types[0].name);
-        if (data.shapes?.length) setSelectedShape(data.shapes[0].name);
-        if (data.colors?.length) setSelectedColor(data.colors[0].name);
-        if (data.clarities?.length) setSelectedClarity(data.clarities[0].name);
+        if (data.diamondTypes?.length) setSelectedType(data.diamondTypes[0].name);
+        if (data.diamondShapes?.length) setSelectedShape(data.diamondShapes[0].name);
+        if (data.diamondColors?.length) setSelectedColor(data.diamondColors[0].name);
+        if (data.diamondClarities?.length) setSelectedClarity(data.diamondClarities[0].name);
       } catch (err) {
         console.error('Failed to load diamond attribute lookups:', err);
       } finally {
@@ -775,7 +775,7 @@ export default function AddDiamonds() {
             <table className="w-full text-left border-separate border-spacing-y-2">
               <thead>
                 <tr className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
-                  <th className="w-10 pb-1 text-center">#</th>
+                  <th className="w-12 pb-1 text-center whitespace-nowrap">SR NO</th>
                   <th className="pb-1 w-16 text-center">IMAGE</th>
                   <th className="pb-1 min-w-[210px]">SKU (DETERMINISTIC)</th>
                   <th className="pb-1 min-w-[240px]">DIAMOND TITLE</th>

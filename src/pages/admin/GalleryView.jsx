@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
-  HiOutlineSearch,
   HiOutlineEye,
   HiOutlineTrash,
   HiOutlineExternalLink,
@@ -94,7 +93,7 @@ export default function GalleryView() {
   const [selectedTheme, setSelectedTheme] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedPlatform, setSelectedPlatform] = useState('all'); // 'all' | 'web' | 'mobile' | 'common'
-  const [search, setSearch] = useState('');
+  const [search] = useState('');
   const [sortBy] = useState('newest');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
@@ -109,7 +108,7 @@ export default function GalleryView() {
   // ─── Pagination State ──────────────────────────────────────
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize(10);
-  const [totalPages, setTotalPages] = useState(1);
+  const [, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
   const handlePageSizeChange = (newSize) => {
@@ -313,13 +312,6 @@ export default function GalleryView() {
   const handleOpenUploadModal = () => {
     fetchThemesLookup();
     setUploadModalOpen(true);
-  };
-
-  // ─── Clipboard Helper ───────────────────────────────────────
-  const copyToClipboard = (text, label = 'Image URL') => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    toast.success(`${label} copied to clipboard!`, { icon: '📋' });
   };
 
   // ─── Filtered Items & Themes ────────────────────────────────
