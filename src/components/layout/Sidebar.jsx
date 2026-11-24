@@ -163,8 +163,6 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
         (location.pathname === '/blogs' || location.pathname.startsWith('/blogs/'))) ||
       (childPath === '/blog-categories' &&
         (location.pathname === '/blog-categories' || location.pathname.startsWith('/blog-categories/'))) ||
-      (childPath === '/footer-settings' &&
-        (location.pathname === '/footer-settings' || location.pathname === '/marketing/footer')) ||
       (childPath === '/system/whatsapp' &&
         (location.pathname === '/system/whatsapp' ||
           location.pathname === '/whatsapp' ||

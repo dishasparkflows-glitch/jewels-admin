@@ -238,19 +238,9 @@ export default function BannersView() {
   const [, setNavigationCategories] = useState([]);
   const [pendingThemeImages, setPendingThemeImages] = useState({});
 
-  // Theme lookup & Theme placement images states
+  // Theme lookup states
   const [themes, setThemes] = useState([]);
   const [, setLoadingThemes] = useState(false);
-  const [selectedPlacementTab, setSelectedPlacementTab] = useState(currentBannerType?.key || 'herobanner');
-  const [, setThemePlacementImages] = useState([]);
-  const [, setLoadingPlacementImages] = useState(false);
-
-    // Keep placement tab synced with current banner type when route changes
-  useEffect(() => {
-    if (currentBannerType?.key) {
-      setSelectedPlacementTab(currentBannerType.key);
-    }
-  }, [currentBannerType?.key]);
 
   // Theme Media Picker Modal State
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
@@ -373,12 +363,7 @@ export default function BannersView() {
   const fetchThemesLookup = async () => {
     try {
       setLoadingThemes(true);
-      let res;
-      try {
-        res = await api.get('/website/themes/lookup').catch(() => api.get('/themes/lookup'));
-      } catch {
-        res = await api.get('/gallery/themes');
-      }
+      const res = await api.get('/themes/lookup');
       const items = res.data?.data || [];
       setThemes(Array.isArray(items) ? items : []);
     } catch (err) {
@@ -388,42 +373,18 @@ export default function BannersView() {
     }
   };
 
-  const fetchThemePlacementImages = async (tId = themeId, placement = selectedPlacementTab) => {
-    try {
-      setLoadingPlacementImages(true);
-      const params = { limit: 100 };
-      if (tId && tId !== 'all') params.themeId = tId;
-      if (placement && placement !== 'all') {
-        params.placement = placement;
-        params.type = placement;
-      }
-      let res;
-      try {
-        res = await api.get('/banners/theme-images', { params });
-      } catch {
-        res = await api.get('/gallery', { params });
-      }
-      const items = res.data?.data?.items || res.data?.data || [];
-      setThemePlacementImages(Array.isArray(items) ? items : []);
-    } catch (err) {
-      console.error('Failed to load theme placement images:', err);
-      setThemePlacementImages([]);
-    } finally {
-      setLoadingPlacementImages(false);
-    }
-  };
-
-  // Open Theme Media Picker Modal
+  // Open Theme Media Picker Modal (fetch themes lookup only when admin clicks Choose Media)
   const openMediaPicker = (slot, index = null) => {
     setMediaPickerSlot(slot);
     setMediaPickerSlotIndex(index);
+    fetchThemesLookup();
     setIsMediaPickerOpen(true);
   };
 
   // On selecting an image from Theme Media Picker
   const handleSelectPickerImage = (item) => {
-    const chosenUrl = item.url || item.image?.url;
-    const chosenKey = item.key || item.image?.key || '';
+    const chosenUrl = item.image?.url || item.url;
+    const chosenKey = item.image?.key || item.key || '';
     if (!chosenUrl) {
       toast.error('Selected item does not have a valid image URL');
       return;
@@ -458,14 +419,6 @@ export default function BannersView() {
     setIsMediaPickerOpen(false);
   };
 
-  // When form modal opens, fetch themes lookup and placement images
-  useEffect(() => {
-    if (isFormModalOpen) {
-      fetchThemesLookup();
-      fetchThemePlacementImages(themeId || 'all', currentBannerType.key);
-    }
-  }, [isFormModalOpen, themeId, currentBannerType.key]);
-
   // Synchronize modal state when entering Edit or New mode via URL
   useEffect(() => {
     if (location.pathname.endsWith('/new')) {
@@ -497,7 +450,7 @@ export default function BannersView() {
   const populateFormWithBanner = (banner) => {
     setEditingBanner(banner);
     setTitle(banner.content?.title || banner.title || '');
-    setDescription(banner.content?.description || banner.content?.subtitle || banner.subtitle || '');
+    setDescription(banner.content?.description || '');
     setImageUrl(banner.image?.url || (banner.mediaType !== 'video' ? banner.image?.url : '') || '');
     setImageKey(banner.image?.key || '');
     setMobileImageUrl(banner.mobileImage?.url || '');
@@ -537,11 +490,6 @@ export default function BannersView() {
     setPendingThemeImages({});
     setDesktopUploadStats(null);
     setMobileUploadStats(null);
-
-    fetchThemesLookup();
-    const activePlacement = banner.display?.type || currentBannerType.key || 'herobanner';
-    setSelectedPlacementTab(activePlacement);
-    fetchThemePlacementImages(currentThemeId || 'all', activePlacement);
   };
 
   const resetForm = () => {
@@ -567,11 +515,6 @@ export default function BannersView() {
     setPendingThemeImages({});
     setDesktopUploadStats(null);
     setMobileUploadStats(null);
-
-    fetchThemesLookup();
-    const initialPlacement = typeKey || 'herobanner';
-    setSelectedPlacementTab(initialPlacement);
-    fetchThemePlacementImages('all', initialPlacement);
   };
 
   // Paginated items for Screen 2
@@ -705,7 +648,6 @@ export default function BannersView() {
       };
       if (!isCategoryBanner && description.trim()) {
         payloadContent.description = description.trim();
-        payloadContent.subtitle = description.trim();
       }
 
       const payloadDisplay = {
@@ -1141,7 +1083,7 @@ export default function BannersView() {
                     const bTitle = currentBannerType.key === 'categorybanner'
                       ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || 'Category Banner')
                       : (banner.content?.title || 'Untitled Banner');
-                    const bDesc = banner.content?.description || banner.content?.subtitle || '';
+                    const bDesc = banner.content?.description || '';
                     const assetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url);
                     const isPublished = banner.status === 'active';
                     const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);

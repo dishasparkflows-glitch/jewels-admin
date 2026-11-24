@@ -120,9 +120,6 @@ export default function ImageUploadDropzone({
                   {label || 'Image'} Uploaded
                 </span>
               </div>
-              <p className="text-[11px] text-stone-500 mt-0.5">
-                Click the image box to open a high-resolution preview.
-              </p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2 pt-0.5">

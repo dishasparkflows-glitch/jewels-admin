@@ -131,21 +131,21 @@ export const blogsAPI = {
 export const bannersAPI = {
   getAll: (params) => api.get('/banners', { params }),
   getLookup: (params) => api.get('/banners/lookup', { params }),
-  getThemeLookup: (params) => api.get('/banners/theme-lookup', { params }),
+  getThemeLookup: (params) => api.get('/banners/lookup', { params }),
   getById: (id) => api.get(`/banners/${id}`),
   create: (data) => api.post('/banners', data),
   update: (id, data) => api.put(`/banners/${id}`, data),
   delete: (id) => api.delete(`/banners/${id}`),
   getCounts: () => api.get('/banners/counts'),
   getThemesLookup: () => api.get('/themes/lookup'),
-  getThemeImages: (params) => api.get('/banners/theme-images', { params }),
+  getThemeImages: (params) => api.get('/gallery', { params }),
 };
 
 // ─── Featured (Celebrate & Gifts) ─────────────────
 export const featuredAPI = {
   getAll: (params) => api.get('/featured', { params }),
   getLookup: (params) => api.get('/featured/lookup', { params }),
-  getThemeLookup: (params) => api.get('/featured/theme-lookup', { params }),
+  getThemeLookup: (params) => api.get('/featured/lookup', { params: { theme: true, ...params } }),
   getById: (id) => api.get(`/featured/${id}`),
   create: (data) => api.post('/featured', data),
   update: (id, data) => api.put(`/featured/${id}`, data),
@@ -191,7 +191,7 @@ export const galleryAPI = {
   uploadAssign: (data) => api.post('/gallery/upload-assign', data),
   update: (id, data) => api.put('/gallery/' + id, data),
   toggleStatus: (id) => api.patch('/gallery/' + id + '/status'),
-  getThemes: () => api.get('/gallery/themes'),
+  getThemes: () => api.get('/themes/lookup'),
   getBanners: (params) => api.get('/gallery/banners', { params }),
   getFeatureds: (params) => api.get('/gallery/featured', { params }),
   deleteItem: (id, params) => api.delete('/gallery/' + id, { params }),

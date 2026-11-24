@@ -45,7 +45,10 @@ export async function getUploadCompressionSettings() {
   }
   if (!uploadCompressionSettingsRequest) {
     uploadCompressionSettingsRequest = api.get('/settings')
-      .then((response) => setUploadCompressionSettings(response.data?.data?.mediaCompression))
+      .then((response) => {
+        const payload = response.data?.data || response.data;
+        return setUploadCompressionSettings(payload?.mediaCompression);
+      })
       .catch((error) => {
         console.warn('[uploadWithPresignedUrl] Could not load global image compression settings; using defaults:', error?.message);
         return setUploadCompressionSettings(DEFAULT_UPLOAD_COMPRESSION_SETTINGS);

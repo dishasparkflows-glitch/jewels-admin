@@ -51,6 +51,7 @@ export default function GalleryUploadModal({
   const [selectedRecordIds, setSelectedRecordIds] = useState([]);
   const [imageRecordMap, setImageRecordMap] = useState({});
   const [previewModalData, setPreviewModalData] = useState(null);
+  const [compressionSettings, setCompressionSettings] = useState(DEFAULT_UPLOAD_COMPRESSION_SETTINGS);
 
   const recordDropdownOptions = useMemo(() => [
     { value: '', label: '(None / General Asset)' },
@@ -180,6 +181,9 @@ export default function GalleryUploadModal({
       setUploadType(initialType);
       setUploadPlatform('web');
       fetchTargetRecords(initialType, defaultThemeId);
+      getUploadCompressionSettings().then((settings) => {
+        if (settings) setCompressionSettings(settings);
+      });
     } else {
       resetUploadModal();
     }
@@ -457,7 +461,7 @@ export default function GalleryUploadModal({
 
       const payload = {
         themeId: uploadThemeId || undefined,
-        placement: uploadType,
+        type: uploadType,
         images: uploadedImages,
         platform: uploadPlatform,
         status: 'active',
@@ -834,10 +838,14 @@ export default function GalleryUploadModal({
                       ⚡
                     </div>
                     <div className="flex-1 flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-emerald-950">Smart Image Compression Active</span>
-                      <span className="inline-flex items-center rounded-md bg-emerald-200/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-emerald-800">
-                        Auto WebP · ~82% Quality
+                      <span className="font-bold text-emerald-950">
+                        {compressionSettings.enabled !== false ? 'Smart Image Compression Active' : 'Image Compression Inactive'}
                       </span>
+                      {compressionSettings.enabled !== false && (
+                        <span className="inline-flex items-center rounded-md bg-emerald-200/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-emerald-800">
+                          Auto WebP · ~{compressionSettings.quality || 60}% Quality
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

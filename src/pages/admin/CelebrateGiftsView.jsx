@@ -82,12 +82,7 @@ export default function CelebrateGiftsView() {
   const fetchThemesLookup = async () => {
     try {
       setLoadingThemes(true);
-      let res;
-      try {
-        res = await api.get('/website/themes/lookup').catch(() => api.get('/themes/lookup'));
-      } catch {
-        res = await api.get('/gallery/themes');
-      }
+      const res = await api.get('/themes/lookup');
       const items = res.data?.data || [];
       setThemes(Array.isArray(items) ? items : []);
     } catch (err) {
@@ -97,9 +92,14 @@ export default function CelebrateGiftsView() {
     }
   };
 
+  const openMediaPicker = () => {
+    fetchThemesLookup();
+    setIsMediaPickerOpen(true);
+  };
+
   const handleSelectPickerImage = (item) => {
-    const chosenUrl = item.url || item.image?.url;
-    const chosenKey = item.key || '';
+    const chosenUrl = item.image?.url || item.url;
+    const chosenKey = item.image?.key || item.key || '';
     if (chosenUrl) {
       setImageUrl(chosenUrl);
       setImagePublicId(chosenKey);
@@ -125,7 +125,6 @@ export default function CelebrateGiftsView() {
   const modalFormRef = useRef(null);
   useEffect(() => {
     if (isModalOpen) {
-      fetchThemesLookup();
       if (modalFormRef.current) {
         modalFormRef.current.scrollLeft = 0;
       }
@@ -292,7 +291,6 @@ export default function CelebrateGiftsView() {
     setImagePublicId('');
     setStatus('active');
     setSelectedProducts([]);
-    fetchThemesLookup();
     setIsModalOpen(true);
   };
 
@@ -383,7 +381,6 @@ export default function CelebrateGiftsView() {
         .catch(() => {});
     }
 
-    fetchThemesLookup();
     setIsModalOpen(true);
   };
 
@@ -1090,7 +1087,7 @@ export default function CelebrateGiftsView() {
                   label="Cover Image"
                   value={imageUrl}
                   alt="Cover Preview"
-                  onChooseGallery={() => setIsMediaPickerOpen(true)}
+                  onChooseGallery={openMediaPicker}
                 />
               </div>
 

@@ -1035,6 +1035,53 @@ export default function AddJewelryProduct() {
     setColorStoneCarats((prev) => prev.filter((c) => Number(c) !== target));
   };
 
+  const handleUpdateColorStoneCarat = (oldVal, newVal) => {
+    const oldNum = Number(oldVal);
+    const newNum = Number(newVal);
+    if (isNaN(newNum) || newNum <= 0) return;
+    if (oldNum === newNum) return;
+    if (colorStoneCarats.some((c) => Number(c) === newNum)) {
+      toast.error(`Carat weight ${newNum} ct already exists`);
+      return;
+    }
+    setColorStoneCarats((prev) =>
+      prev.map((c) => (Number(c) === oldNum ? newNum : c)).sort((a, b) => a - b)
+    );
+    toast.success(`Updated carat to ${newNum} ct`);
+  };
+
+  const handleAddColorStoneRow = () => {
+    if (!colorStoneType && diamondTypesList.length > 0) {
+      setColorStoneType(diamondTypesList[0]?.value || diamondTypesList[0]?.label || '');
+    }
+    if (!colorStoneShape && diamondShapesList.length > 0) {
+      setColorStoneShape(diamondShapesList[0]?.value || diamondShapesList[0]?.label || '');
+    }
+
+    const inputVal = parseFloat(colorStoneCaratInput.trim());
+    if (!isNaN(inputVal) && inputVal > 0) {
+      if (colorStoneCarats.map(Number).includes(inputVal)) {
+        toast.error(`Carat weight ${inputVal} ct already exists`);
+        return;
+      }
+      setColorStoneCarats((prev) => [...prev, inputVal].sort((a, b) => a - b));
+      setColorStoneCaratInput('');
+      toast.success(`Added ${inputVal} ct combination row`);
+      return;
+    }
+
+    let nextCarat = 1;
+    if (colorStoneCarats.length > 0) {
+      const maxVal = Math.max(...colorStoneCarats.map(Number));
+      nextCarat = Math.round((maxVal + 0.5) * 100) / 100;
+      while (colorStoneCarats.map(Number).includes(nextCarat)) {
+        nextCarat = Math.round((nextCarat + 0.5) * 100) / 100;
+      }
+    }
+    setColorStoneCarats((prev) => [...prev, nextCarat].sort((a, b) => a - b));
+    toast.success(`Added new row (${nextCarat} ct)`);
+  };
+
   const colorStoneCombinations = useMemo(() => {
     if (stoneConfigType !== 'colorStone') return [];
     const combos = [];
@@ -1052,6 +1099,14 @@ export default function AddJewelryProduct() {
     });
     return combos;
   }, [stoneConfigType, colorStoneType, colorStoneShape, colorStoneCarats]);
+
+  const totalColorStoneWeight = useMemo(() => {
+    return colorStoneCombinations.reduce((sum, c) => sum + (Number(c.carat) || 0), 0);
+  }, [colorStoneCombinations]);
+
+  const totalColorStonePrice = useMemo(() => {
+    return colorStoneCombinations.reduce((sum, c) => sum + (Number(c.totalPrice) || 0), 0);
+  }, [colorStoneCombinations]);
 
   const handleAddSideColorStoneRow = () => {
     const val = parseFloat(sideColorStoneCarat.trim());
@@ -4572,55 +4627,112 @@ export default function AddJewelryProduct() {
                             COLOR STONE COMBINATIONS ({colorStoneCombinations.length})
                           </h5>
                         </div>
+                        <button
+                          type="button"
+                          onClick={handleAddColorStoneRow}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e42] active:scale-95 transition-all shadow-xs hover:shadow cursor-pointer"
+                        >
+                          <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
+                          <span>Add Row</span>
+                        </button>
                       </div>
 
                       {colorStoneCombinations.length === 0 ? (
-                        <div className="py-8 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200">
+                        <div className="py-8 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200 flex flex-col items-center justify-center gap-2">
                           <p className="text-xs text-stone-400">
                             Select stone type, shape, and add carat weights to generate color stone combinations.
                           </p>
+                          <button
+                            type="button"
+                            onClick={handleAddColorStoneRow}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e42] active:scale-95 transition-all shadow-xs cursor-pointer"
+                          >
+                            <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
+                            <span>Add Row</span>
+                          </button>
                         </div>
                       ) : (
-                        <div className="overflow-x-auto rounded-xl border border-stone-200/80 bg-white">
-                          <table className="w-full text-left text-xs">
-                            <thead>
-                              <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                                <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
-                                <th className="py-2.5 px-4 font-bold">STONE TYPE</th>
-                                <th className="py-2.5 px-3 font-bold">SHAPE</th>
-                                <th className="py-2.5 px-3 font-bold">CARAT</th>
-                                <th className="py-2.5 px-3 font-bold">RATE / CT</th>
-                                <th className="py-2.5 px-4 font-bold text-right">TOTAL PRICE</th>
-                                <th className="py-2.5 px-3 font-bold text-center w-16">ACTION</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-stone-100">
-                              {colorStoneCombinations.map((combo, idx) => (
-                                <tr key={combo.id} className="hover:bg-stone-50/60 transition-colors">
-                                  <td className="py-2.5 px-3 text-center font-medium text-stone-400">{idx + 1}</td>
-                                  <td className="py-2.5 px-4 font-bold text-stone-800">{combo.diamondType || '—'}</td>
-                                  <td className="py-2.5 px-3 font-semibold text-stone-800 uppercase">{combo.shape || '—'}</td>
-                                  <td className="py-2.5 px-3 font-semibold text-stone-800">{combo.carat} ct</td>
-                                  <td className="py-2.5 px-3 font-semibold text-[#8b6f4e]">
-                                    ₹3,000 / ct (Fixed)
-                                  </td>
-                                  <td className="py-2.5 px-4 text-right font-bold text-stone-900">
-                                    ₹{combo.totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </td>
-                                  <td className="py-2.5 px-3 text-center">
-                                    <button
-                                      type="button"
-                                      onClick={() => handleRemoveColorStoneCarat(combo.carat)}
-                                      className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
-                                      title="Remove combination"
-                                    >
-                                      <HiOutlineTrash className="w-4 h-4" />
-                                    </button>
-                                  </td>
+                        <div className="space-y-2">
+                          <div className="overflow-x-auto rounded-xl border border-stone-200/80 bg-white">
+                            <table className="w-full text-left text-xs">
+                              <thead>
+                                <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                                  <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
+                                  <th className="py-2.5 px-4 font-bold">STONE TYPE</th>
+                                  <th className="py-2.5 px-3 font-bold">SHAPE</th>
+                                  <th className="py-2.5 px-3 font-bold">CARAT</th>
+                                  <th className="py-2.5 px-3 font-bold">RATE / CT</th>
+                                  <th className="py-2.5 px-4 font-bold text-right">TOTAL PRICE</th>
+                                  <th className="py-2.5 px-3 font-bold text-center w-16">ACTION</th>
                                 </tr>
-                              ))}
-                            </tbody>
-                          </table>
+                              </thead>
+                              <tbody className="divide-y divide-stone-100">
+                                {colorStoneCombinations.map((combo, idx) => (
+                                  <tr key={combo.id} className="hover:bg-stone-50/60 transition-colors">
+                                    <td className="py-2.5 px-3 text-center font-medium text-stone-400">{idx + 1}</td>
+                                    <td className="py-2.5 px-4 font-bold text-stone-800">{combo.diamondType || '—'}</td>
+                                    <td className="py-2.5 px-3 font-semibold text-stone-800 uppercase">{combo.shape || '—'}</td>
+                                    <td className="py-2.5 px-3 font-semibold text-stone-800">
+                                      <div className="flex items-center gap-1.5">
+                                        <input
+                                          type="number"
+                                          step="0.01"
+                                          min="0.01"
+                                          defaultValue={combo.carat}
+                                          key={`carat-${combo.carat}-${idx}`}
+                                          onBlur={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            if (!isNaN(val) && val > 0 && val !== combo.carat) {
+                                              handleUpdateColorStoneCarat(combo.carat, val);
+                                            } else {
+                                              e.target.value = combo.carat;
+                                            }
+                                          }}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.target.blur();
+                                            }
+                                          }}
+                                          className="w-20 h-7 px-2 text-xs font-semibold rounded border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] text-stone-800"
+                                        />
+                                        <span className="text-xs text-stone-500 font-medium">ct</span>
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 px-3 font-semibold text-[#8b6f4e]">
+                                      ₹3,000 / ct (Fixed)
+                                    </td>
+                                    <td className="py-2.5 px-4 text-right font-bold text-stone-900">
+                                      ₹{combo.totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </td>
+                                    <td className="py-2.5 px-3 text-center">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveColorStoneCarat(combo.carat)}
+                                        className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
+                                        title="Remove combination"
+                                      >
+                                        <HiOutlineTrash className="w-4 h-4" />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                          <div className="flex justify-end items-center gap-2.5 pt-0.5">
+                            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50/80 border border-[#8b6f4e]/20 text-xs shadow-2xs">
+                              <span className="font-semibold text-stone-600">Total Price:</span>
+                              <span className="font-extrabold text-[#8b6f4e] text-sm">
+                                ₹{totalColorStonePrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50/80 border border-[#8b6f4e]/20 text-xs shadow-2xs">
+                              <span className="font-semibold text-stone-600">Total Stone Weight:</span>
+                              <span className="font-extrabold text-[#8b6f4e] text-sm">
+                                {Number(totalColorStoneWeight.toFixed(2))} ct
+                              </span>
+                            </div>
+                          </div>
                         </div>
                       )}
                     </div>

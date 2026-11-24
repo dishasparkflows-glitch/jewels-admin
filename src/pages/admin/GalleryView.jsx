@@ -21,7 +21,7 @@ import {
 } from 'react-icons/hi';
 import { IoDiamondOutline, IoSparklesOutline, IoLayersOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
-import { galleryAPI } from '../../api/services';
+import { galleryAPI, themesAPI } from '../../api/services';
 import GalleryUploadModal from '../../components/gallery/GalleryUploadModal';
 import GalleryEditModal from '../../components/gallery/GalleryEditModal';
 import Dropdown from '../../components/common/Dropdown';
@@ -61,7 +61,7 @@ function getMediaDisplayInfo(item) {
     }
   }
   if (!fileName || fileName.length > 40 || /^[a-f0-9-]{24,}/i.test(fileName)) {
-    const cleanPlacement = (item.typeLabel || item.placement || 'media').toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const cleanPlacement = (item.typeLabel || item.type || 'media').toLowerCase().replace(/[^a-z0-9]/g, '-');
     fileName = `${cleanPlacement}-${(item.id || item._id || '').slice(-6) || 'img'}.jpg`;
   }
 
@@ -123,8 +123,12 @@ export default function GalleryView() {
   // ─── Fetch Themes Lookup (Only called when uploading/editing images) ────────
   const fetchThemesLookup = useCallback(async () => {
     try {
-      const themesRes = await galleryAPI.getThemes();
-      const themeList = themesRes.data?.data || [];
+      const themesRes = await themesAPI.getLookup();
+      const rawList = themesRes.data?.data || [];
+      const themeList = rawList.map((t) => ({
+        ...t,
+        isLive: t.isLive ?? t.status === 'active',
+      }));
       setThemes(themeList);
       const active = themeList.find((t) => t.isLive);
       if (active && !uploadThemeId) {
@@ -141,7 +145,7 @@ export default function GalleryView() {
   useEffect(() => {
     const shouldOpen = searchParams.get('openUpload') === 'true' || searchParams.get('upload') === 'true';
     const paramTheme = searchParams.get('themeId');
-    const paramType = searchParams.get('type') || searchParams.get('placement');
+    const paramType = searchParams.get('type');
 
     if (paramTheme) {
       setSelectedTheme(paramTheme);
@@ -178,9 +182,9 @@ export default function GalleryView() {
       const normalizedItems = rawItems.map((item) => {
         const url = item.url || item.image?.url || '';
         const key = item.key || item.image?.key || '';
-        const placement = item.placement || item.type || 'asset';
-        const bt = BANNER_TYPES.find((b) => b.key === placement);
-        const typeLabel = item.typeLabel || bt?.label || placement;
+        const type = item.type || 'asset';
+        const bt = BANNER_TYPES.find((b) => b.key === type);
+        const typeLabel = item.typeLabel || bt?.label || type;
         const themeObj = typeof item.themeId === 'object' && item.themeId !== null ? item.themeId : null;
         const themeName = item.themeName || themeObj?.name || 'Global / Unassigned';
         const isThemeLive = item.isThemeLive !== undefined ? item.isThemeLive : (themeObj?.status === 'active');
@@ -189,7 +193,7 @@ export default function GalleryView() {
           id: item.id || item._id,
           url,
           key,
-          type: placement,
+          type,
           typeLabel,
           themeName,
           isThemeLive,
@@ -256,7 +260,7 @@ export default function GalleryView() {
     }
     const isConfirmed = await confirm({
       title: 'Remove Media Item',
-      message: `Are you sure you want to remove "${item.typeLabel || item.placement || 'this media item'}"?\nThis image will be unassigned from its banner and theme.`,
+      message: `Are you sure you want to remove "${item.typeLabel || item.type || 'this media item'}"?\nThis image will be unassigned from its banner and theme.`,
       confirmText: 'Delete',
       cancelText: 'Cancel',
       type: 'danger',
@@ -281,7 +285,7 @@ export default function GalleryView() {
     try {
       const nextStatus = item.status === 'active' ? 'inactive' : 'active';
       await galleryAPI.toggleStatus(item.id);
-      toast.success(`${item.typeLabel || item.placement || 'Media'} set to ${nextStatus}`);
+      toast.success(`${item.typeLabel || item.type || 'Media'} set to ${nextStatus}`);
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, status: nextStatus } : i))
       );
@@ -329,8 +333,8 @@ export default function GalleryView() {
       { value: 'all', label: 'All Website Themes', dotColor: 'bg-stone-400' },
       ...themes.map((t) => ({
         value: String(t._id),
-        label: `${t.name}${t.isLive ? ' (Live)' : ` (${t.status})`}`,
-        dotColor: t.isLive ? 'bg-emerald-500' : 'bg-amber-400',
+        label: t.isLive ? `${t.name} (Live)` : t.status ? `${t.name} (${t.status})` : t.name,
+        dotColor: t.isLive ? 'bg-emerald-500' : 'bg-stone-300',
       })),
     ];
   }, [themes]);
@@ -345,9 +349,9 @@ export default function GalleryView() {
       },
       ...themes.map((t) => ({
         value: String(t._id),
-        label: `${t.name}${t.isLive ? ' ★ (Current Live Theme)' : ` (${t.status})`}`,
-        sublabel: t.isLive ? 'Current Live Storefront Theme' : `Status: ${t.status}`,
-        dotColor: t.isLive ? 'bg-emerald-500' : 'bg-amber-400',
+        label: t.isLive ? `${t.name} ★ (Current Live Theme)` : t.status ? `${t.name} (${t.status})` : t.name,
+        sublabel: t.isLive ? 'Current Live Storefront Theme' : t.status ? `Status: ${t.status}` : t.code || '',
+        dotColor: t.isLive ? 'bg-emerald-500' : 'bg-stone-300',
       })),
     ];
   }, [themes]);
@@ -650,9 +654,9 @@ export default function GalleryView() {
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedPlatform('mobile')}
+                onClick={() => setSelectedPlatform('app')}
                 className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
-                  selectedPlatform === 'mobile'
+                  selectedPlatform === 'app'
                     ? 'bg-white text-stone-900 shadow-2xs'
                     : 'text-stone-500 hover:text-stone-800'
                 }`}
@@ -759,7 +763,7 @@ export default function GalleryView() {
                   </td>
                   <td className="py-2.5 px-3 font-semibold text-stone-900">
                     <div className="flex flex-col">
-                      <span className="truncate max-w-xs">{item.typeLabel || item.placement}</span>
+                      <span className="truncate max-w-xs">{item.typeLabel || item.type}</span>
                       {item.linkedBanner?.title ? (
                         <span className="text-[10px] text-[#8b6c3a] font-medium truncate">
                           Banner: {item.linkedBanner.title}
@@ -783,9 +787,9 @@ export default function GalleryView() {
                       <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
                         <IoSparklesOutline className="h-3 w-3 text-amber-600" /> Common (Web & App)
                       </span>
-                    ) : item.platform === 'mobile' || item.platform === 'app' ? (
+                    ) : item.platform === 'app' ? (
                       <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 border border-sky-200">
-                        <HiOutlineDeviceMobile className="h-3 w-3" /> Mobile App
+                        <HiOutlineDeviceMobile className="h-3 w-3" /> App
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-700">
@@ -890,7 +894,7 @@ export default function GalleryView() {
                           <IoSparklesOutline className="h-2 w-2 text-amber-300" />
                           <span>Common</span>
                         </>
-                      ) : item.platform === 'app' || item.platform === 'mobile' ? (
+                      ) : item.platform === 'app' ? (
                         <>
                           <HiOutlineDeviceMobile className="h-2 w-2 text-sky-300" />
                           <span>App</span>
@@ -1020,9 +1024,9 @@ export default function GalleryView() {
               {/* Modal Header */}
               <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4">
                 <div>
-                  <h3 className="text-base font-bold text-stone-900">{previewItem.typeLabel || previewItem.placement}</h3>
+                  <h3 className="text-base font-bold text-stone-900">{previewItem.typeLabel || previewItem.type}</h3>
                   <span className="text-xs text-stone-400">
-                    {previewItem.typeLabel} · {previewItem.platform === 'common' ? 'Common (Web & App)' : previewItem.platform === 'mobile' || previewItem.platform === 'app' ? 'Mobile App' : 'Web'} · Theme: {previewItem.themeName || 'Global'}
+                    {previewItem.typeLabel} · {previewItem.platform === 'common' ? 'Common (Web & App)' : previewItem.platform === 'app' ? 'App' : 'Web'} · Theme: {previewItem.themeName || 'Global'}
                   </span>
                 </div>
                 <button
@@ -1061,8 +1065,8 @@ export default function GalleryView() {
                       <span className="text-stone-900 font-bold capitalize">
                         {previewItem.platform === 'common'
                           ? 'Common (Web & App Universal)'
-                          : previewItem.platform === 'mobile' || previewItem.platform === 'app'
-                          ? 'Mobile App'
+                          : previewItem.platform === 'app'
+                          ? 'App'
                           : 'Web'}
                       </span>
                     </div>

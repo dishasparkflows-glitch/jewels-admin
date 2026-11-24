@@ -155,7 +155,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
       setLoading(true);
       const params = {
         themeId: currentThemeId || undefined,
-        placement: selectedPlacement !== 'all' ? selectedPlacement : undefined,
+        type: selectedPlacement !== 'all' ? selectedPlacement : undefined,
         search: search.trim() || undefined,
       };
 
@@ -209,7 +209,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
         // 2. Register media in Gallery with themeId
         await galleryAPI.create({
           themeId: currentThemeId || null,
-          placement: 'asset',
+          type: 'asset',
           platform: 'common',
           image: {
             url: upload.fileUrl,
@@ -363,7 +363,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
           {displayedItems.map((item) => {
             const fileName = getMediaFileName(item);
             const mediaUrl = item.url || item.image?.url;
-            const placementLabel = item.typeLabel || getPlacementLabel(item.placement);
+            const placementLabel = item.typeLabel || getPlacementLabel(item.type);
             const platform = item.platform || 'common';
 
             return (
@@ -456,10 +456,10 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
               <div className="flex items-center justify-between border-b border-stone-200 pb-3 mb-3 gap-3">
                 <div className="min-w-0 flex-1">
                   <h3 className="text-sm font-bold text-stone-900 truncate">
-                    {previewItem.title || previewItem.name || previewItem.typeLabel || getPlacementLabel(previewItem.placement)}
+                    {previewItem.title || previewItem.name || previewItem.typeLabel || getPlacementLabel(previewItem.type)}
                   </h3>
                   <div className="flex items-center gap-2 mt-0.5 text-xs text-stone-500">
-                    <span>{previewItem.typeLabel || getPlacementLabel(previewItem.placement)}</span>
+                    <span>{previewItem.typeLabel || getPlacementLabel(previewItem.type)}</span>
                     <span>·</span>
                     <span className="uppercase">{previewItem.platform || 'common'}</span>
                     {(previewItem.themeName || previewItem.themeId?.name || currentThemeName) && (

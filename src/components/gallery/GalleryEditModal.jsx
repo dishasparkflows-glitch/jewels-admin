@@ -68,7 +68,7 @@ export default function GalleryEditModal({
       }
 
       setEditThemeId(resolvedThemeId);
-      setEditPlacement(item.placement || item.type || 'asset');
+      setEditPlacement(item.type || 'asset');
       setEditPlatform(item.platform || 'web');
       setEditStatus(item.status || 'active');
     }
@@ -84,7 +84,7 @@ export default function GalleryEditModal({
       setIsUpdating(true);
       await galleryAPI.update(item.id, {
         themeId: editThemeId || null,
-        placement: editPlacement,
+        type: editPlacement,
         platform: editPlatform,
         status: editStatus,
       });
@@ -157,7 +157,7 @@ export default function GalleryEditModal({
             </a>
             <div className="flex-1 min-w-0">
               <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">Image Asset</span>
-              <p className="text-xs font-bold text-stone-900 truncate">{item.typeLabel || item.placement}</p>
+              <p className="text-xs font-bold text-stone-900 truncate">{item.typeLabel || item.type}</p>
               <span className="text-[10px] text-stone-500 truncate block">{item.url}</span>
             </div>
             <a

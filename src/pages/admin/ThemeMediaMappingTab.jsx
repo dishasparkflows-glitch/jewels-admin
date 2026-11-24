@@ -511,7 +511,6 @@ export default function ThemeMediaMappingTab({
       }
       if (galleryPlacementFilter && galleryPlacementFilter !== 'all') {
         params.type = galleryPlacementFilter;
-        params.placement = galleryPlacementFilter;
       }
       if (galleryPlatformFilter && galleryPlatformFilter !== 'all') {
         params.platform = galleryPlatformFilter;
@@ -746,7 +745,7 @@ export default function ThemeMediaMappingTab({
       await galleryAPI.create({
         themeId,
         name: file.name.replace(/\.[^/.]+$/, ''),
-        placement: activeModule,
+        type: activeModule,
         platform: 'common',
         image: {
           url: upload.fileUrl,
@@ -1236,7 +1235,7 @@ export default function ThemeMediaMappingTab({
                           const bTitle = currentBannerType.key === 'categorybanner'
                             ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || banner.title || 'Category Banner')
                             : (banner.content?.title || banner.title || (isCollectionBanner ? 'Collection Banner' : 'Hero Banner'));
-                          const bDesc = banner.content?.description || banner.content?.subtitle || banner.subtitle || (banner.display?.collectionGroup ? `Collection Group: ${banner.display.collectionGroup.toUpperCase()}` : '');
+                          const bDesc = banner.content?.description || (banner.display?.collectionGroup ? `Collection Group: ${banner.display.collectionGroup.toUpperCase()}` : '');
                           const defaultAssetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url) || banner.originalDesktopImage;
                           const isPublished = banner.status === 'active';
                           const dateInfo = formatDateDisplay(banner.updatedAt || banner.createdAt);

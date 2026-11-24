@@ -18,7 +18,6 @@ const AppointmentsView = lazy(() => import('./pages/admin/AppointmentsView'));
 const CustomInquiriesView = lazy(() => import('./pages/admin/CustomInquiriesView'));
 const ReviewsView = lazy(() => import('./pages/admin/ReviewsView'));
 const SettingsView = lazy(() => import('./pages/admin/SettingsView'));
-const FooterSettingsView = lazy(() => import('./pages/admin/FooterSettingsView'));
 const InstagramPostsView = lazy(() => import('./pages/admin/InstagramPostsView'));
 const BirthstonePortfolioView = lazy(() => import('./pages/admin/BirthstonePortfolioView'));
 const CouponsView = lazy(() => import('./pages/admin/CouponsView'));
@@ -62,7 +61,7 @@ import CuteLoader from './components/common/CuteLoader';
 
 function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <ThemeProvider>
           <ConfirmProvider>
@@ -153,8 +152,8 @@ function App() {
             <Route path="/diamonds/new" element={<AddDiamonds />} />
             <Route path="/diamonds" element={<DiamondsView />} />
             <Route path="/settings" element={<SettingsView />} />
-            <Route path="/footer-settings" element={<FooterSettingsView />} />
-            <Route path="/marketing/footer" element={<FooterSettingsView />} />
+            <Route path="/footer-settings" element={<Navigate to="/settings" replace />} />
+            <Route path="/marketing/footer" element={<Navigate to="/settings" replace />} />
             <Route path="/instagram-posts" element={<InstagramPostsView />} />
             <Route path="/marketing/instagram" element={<InstagramPostsView />} />
             <Route path="/birthstones" element={<BirthstonePortfolioView />} />

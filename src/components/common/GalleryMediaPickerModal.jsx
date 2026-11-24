@@ -11,6 +11,7 @@ import {
   HiOutlineUpload,
 } from 'react-icons/hi';
 import Dropdown from './Dropdown';
+import Pagination from './Pagination';
 import GalleryUploadModal from '../gallery/GalleryUploadModal';
 import api from '../../api/axios';
 import { getMediaUrl } from '../../utils/imageUrl';
@@ -61,14 +62,18 @@ export default function GalleryMediaPickerModal({
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerImages, setPickerImages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const { openImagePreview } = useImagePreview();
 
   const handlePreview = (e, img, idx) => {
     e.stopPropagation();
-    const targetUrl = getMediaUrl(img.url || img.image?.url);
+    const targetUrl = getMediaUrl(img.image?.url || img.url);
     const title = img.name || img.title || img.recordTitle || `Placement Image ${idx + 1}`;
-    const gallery = filteredImages.map((item) => getMediaUrl(item.url || item.image?.url));
+    const gallery = pickerImages.map((item) => getMediaUrl(item.image?.url || item.url));
     openImagePreview(targetUrl, {
       title,
       gallery,
@@ -83,89 +88,74 @@ export default function GalleryMediaPickerModal({
       setPickerPlacementFilter(initialPlacement || 'all');
       setPickerDeviceFilter(initialPlatform || 'all');
       setPickerSearch('');
+      setPage(1);
     }
   }, [isOpen, initialTheme, initialPlacement, initialPlatform]);
 
-  // Fetch themes if not passed as prop
+  // Synchronize passed themes if provided
   useEffect(() => {
-    if (!isOpen) return;
-    if (Array.isArray(passedThemes) && passedThemes.length > 0) {
+    if (Array.isArray(passedThemes)) {
       setInternalThemes(passedThemes);
-      return;
     }
-    let cancelled = false;
-    api
-      .get('/website/themes', { params: { status: 'all', limit: 100 } })
-      .then((res) => {
-        if (cancelled) return;
-        const list = Array.isArray(res.data?.data)
-          ? res.data.data
-          : res.data?.data?.items || [];
-        setInternalThemes(list.filter((t) => t.status !== 'archived'));
-      })
-      .catch((err) => {
-        console.error('Failed to load themes for media picker:', err);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [isOpen, passedThemes]);
+  }, [passedThemes]);
 
-  // Fetch images matching filters
+  // Fetch images matching filters and pagination via /gallery/lookup
   const fetchImages = useCallback(
     async (
       theme = pickerThemeFilter,
       placement = pickerPlacementFilter,
-      platform = pickerDeviceFilter
+      platform = pickerDeviceFilter,
+      currentPage = page,
+      limit = pageSize,
+      search = pickerSearch
     ) => {
       try {
         setLoading(true);
-        const params = { limit: 100 };
+        const params = {
+          page: currentPage,
+          limit,
+        };
         if (theme && theme !== 'all') params.themeId = theme;
         if (placement && placement !== 'all') {
-          params.placement = placement;
           params.type = placement;
         }
         if (platform && platform !== 'all') {
           params.platform = platform;
         }
-
-        let res;
-        try {
-          res = await api.get('/banners/theme-images', { params });
-        } catch {
-          res = await api.get('/gallery', { params });
+        if (search && search.trim()) {
+          params.search = search.trim();
         }
-        const items = res.data?.data?.items || res.data?.data || [];
-        setPickerImages(Array.isArray(items) ? items : []);
+
+        const res = await api.get('/gallery/lookup', { params });
+        const data = res.data?.data;
+        const items = Array.isArray(data) ? data : (data?.items || []);
+        const pagination = res.data?.pagination || data?.pagination || {};
+
+        setPickerImages(items);
+        const total = pagination.totalDocs ?? pagination.totalItems ?? items.length;
+        setTotalItems(total);
+        setTotalPages(pagination.totalPages || Math.max(1, Math.ceil(total / limit)));
       } catch (err) {
         console.error('Failed to load picker images:', err);
         setPickerImages([]);
+        setTotalItems(0);
+        setTotalPages(1);
       } finally {
         setLoading(false);
       }
     },
-    [pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter]
+    [pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch]
   );
 
-  // Trigger fetch when modal opens or primary filters change
+  // Trigger fetch when modal opens or primary filters/search/page change
   useEffect(() => {
     if (isOpen) {
-      fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter);
+      const timer = setTimeout(() => {
+        fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch);
+      }, pickerSearch ? 300 : 0);
+      return () => clearTimeout(timer);
     }
-  }, [isOpen, pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, fetchImages]);
-
-  // Filtered by search query
-  const filteredImages = useMemo(() => {
-    if (!pickerSearch.trim()) return pickerImages;
-    const q = pickerSearch.trim().toLowerCase();
-    return pickerImages.filter((img) => {
-      const name = (img.name || img.title || img.recordTitle || '').toLowerCase();
-      const pl = (img.placement || img.type || '').toLowerCase();
-      const th = (img.themeName || img.themeId?.name || '').toLowerCase();
-      return name.includes(q) || pl.includes(q) || th.includes(q);
-    });
-  }, [pickerImages, pickerSearch]);
+  }, [isOpen, pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch, fetchImages]);
 
   const activeThemes = passedThemes || internalThemes;
   const activePlacements = placementOptions || DEFAULT_PLACEMENTS;
@@ -180,9 +170,17 @@ export default function GalleryMediaPickerModal({
       },
       ...activeThemes.map((t) => ({
         value: String(t._id),
-        label: `${t.name}${t.isLive || t.status === 'active' ? ' ★ (Current Live Theme)' : ` (${t.status})`}`,
-        sublabel: t.isLive || t.status === 'active' ? 'Current Live Storefront Theme' : `Status: ${t.status}`,
-        dotColor: t.isLive || t.status === 'active' ? 'bg-emerald-500' : 'bg-amber-400',
+        label: t.isLive || t.status === 'active'
+          ? `${t.name} ★ (Current Live Theme)`
+          : t.status
+          ? `${t.name} (${t.status})`
+          : t.name,
+        sublabel: t.isLive || t.status === 'active'
+          ? 'Current Live Storefront Theme'
+          : t.status
+          ? `Status: ${t.status}`
+          : t.code || '',
+        dotColor: t.isLive || t.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300',
       })),
     ];
   }, [activeThemes]);
@@ -261,7 +259,10 @@ export default function GalleryMediaPickerModal({
             <input
               type="text"
               value={pickerSearch}
-              onChange={(e) => setPickerSearch(e.target.value)}
+              onChange={(e) => {
+                setPickerSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search by name, placement or theme..."
               className="w-full pl-9 pr-3.5 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[var(--theme-primary,#8a6d4b)] focus:border-[var(--theme-primary,#8a6d4b)]"
             />
@@ -273,7 +274,7 @@ export default function GalleryMediaPickerModal({
               value={pickerThemeFilter}
               onChange={(val) => {
                 setPickerThemeFilter(val);
-                fetchImages(val, pickerPlacementFilter, pickerDeviceFilter);
+                setPage(1);
               }}
               options={[
                 { value: 'all', label: 'All Website Themes' },
@@ -293,7 +294,7 @@ export default function GalleryMediaPickerModal({
               value={pickerPlacementFilter}
               onChange={(val) => {
                 setPickerPlacementFilter(val);
-                fetchImages(pickerThemeFilter, val, pickerDeviceFilter);
+                setPage(1);
               }}
               options={activePlacements}
               buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
@@ -307,12 +308,13 @@ export default function GalleryMediaPickerModal({
               value={pickerDeviceFilter}
               onChange={(val) => {
                 setPickerDeviceFilter(val);
-                fetchImages(pickerThemeFilter, pickerPlacementFilter, val);
+                setPage(1);
               }}
               options={[
                 { value: 'all', label: 'All Platforms' },
-                { value: 'web', label: 'Web (Desktop)' },
-                { value: 'app', label: 'App (Mobile)' },
+                { value: 'web', label: 'Web' },
+                { value: 'app', label: 'App' },
+                { value: 'common', label: 'Common' },
               ]}
               buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
               menuClassName="z-30"
@@ -322,7 +324,7 @@ export default function GalleryMediaPickerModal({
           {/* Refresh */}
           <button
             type="button"
-            onClick={() => fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter)}
+            onClick={() => fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch)}
             title="Refresh images"
             className="w-9 h-9 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
           >
@@ -340,7 +342,7 @@ export default function GalleryMediaPickerModal({
               />
               <p className="text-xs font-medium text-stone-600">Loading placement images...</p>
             </div>
-          ) : filteredImages.length === 0 ? (
+          ) : pickerImages.length === 0 ? (
             <div className="py-20 text-center text-stone-400">
               <HiOutlinePhotograph className="w-12 h-12 mx-auto text-stone-300 mb-2 stroke-1" />
               <p className="text-sm font-medium text-stone-600">No images found</p>
@@ -359,11 +361,11 @@ export default function GalleryMediaPickerModal({
             </div>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
-              {filteredImages.map((img, idx) => {
-                const imgUrl = img.url || img.image?.url;
+              {pickerImages.map((img, idx) => {
+                const imgUrl = img.image?.url || img.url;
                 const imgTitle = img.name || img.title || img.recordTitle || `Theme Image ${idx + 1}`;
-                const imgPlacement = img.placement || img.type || img.filterType || 'banner';
-                const imgTheme = img.themeName || img.themeId?.name || '';
+                const imgPlacement = img.type || img.filterType || 'banner';
+                const imgTheme = img.themeId?.name || '';
                 const isCurrentlySelected = currentSelectedUrl && currentSelectedUrl === imgUrl;
 
                 return (
@@ -439,18 +441,13 @@ export default function GalleryMediaPickerModal({
                     </div>
 
                     {/* Metadata Card Footer */}
-                    <div className="p-2.5 bg-white flex flex-col gap-0.5 min-w-0">
-                      <p className="text-xs font-bold text-stone-800 truncate" title={imgTitle}>
-                        {imgTitle}
-                      </p>
-                      <div className="flex items-center justify-between text-[10px] text-stone-400 gap-1">
-                        <span className="truncate">{imgTheme || 'Default Theme'}</span>
-                        {img.platform && (
-                          <span className="shrink-0 uppercase font-mono px-1 py-0.2 rounded bg-stone-100 text-stone-600">
-                            {img.platform}
-                          </span>
-                        )}
-                      </div>
+                    <div className="p-2 bg-white flex items-center justify-between text-[10px] text-stone-500 gap-1 min-w-0">
+                      <span className="truncate font-medium">{imgTheme || 'Default Theme'}</span>
+                      {img.platform && (
+                        <span className="shrink-0 uppercase font-mono px-1 py-0.5 rounded bg-stone-100 text-stone-600">
+                          {img.platform}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -459,15 +456,35 @@ export default function GalleryMediaPickerModal({
           )}
         </div>
 
-        {/* Modal Footer */}
-        <div className="p-3.5 sm:p-4 border-t border-stone-150 bg-stone-50/80 flex items-center justify-between shrink-0">
-          <span className="text-xs text-stone-500 font-medium">
-            {filteredImages.length} image{filteredImages.length === 1 ? '' : 's'} available
-          </span>
+        {/* Modal Footer with Pagination */}
+        <div className="p-3 sm:p-4 border-t border-stone-150 bg-stone-50/90 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
+          <div className="flex-1 w-full sm:w-auto">
+            {totalItems > 0 ? (
+              <Pagination
+                currentPage={page}
+                totalItems={totalItems}
+                pageSize={pageSize}
+                totalPages={totalPages}
+                onPageChange={(p) => setPage(p)}
+                onPageSizeChange={(newSize) => {
+                  setPageSize(Number(newSize));
+                  setPage(1);
+                }}
+                pageSizeOptions={[12, 24, 48, 96]}
+                showPageSize={true}
+                itemLabel="images"
+                className="border-t-0 !px-0 !py-0 !bg-transparent shadow-none"
+              />
+            ) : (
+              <span className="text-xs text-stone-500 font-medium">
+                {loading ? 'Loading images...' : '0 images available'}
+              </span>
+            )}
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-xs font-semibold text-stone-700 transition cursor-pointer shadow-2xs"
+            className="px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-100 text-xs font-semibold text-stone-700 transition cursor-pointer shadow-2xs shrink-0 self-end sm:self-auto"
           >
             Close
           </button>
@@ -485,7 +502,8 @@ export default function GalleryMediaPickerModal({
           placementTypeOptions={DEFAULT_UPLOAD_PLACEMENTS}
           onSuccess={() => {
             setIsUploadModalOpen(false);
-            fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter);
+            setPage(1);
+            fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, 1, pageSize, pickerSearch);
           }}
           zIndexClass="z-[10500]"
         />
