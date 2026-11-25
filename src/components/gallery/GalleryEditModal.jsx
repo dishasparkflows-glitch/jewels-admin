@@ -10,6 +10,7 @@ import {
 import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import Dropdown from '../common/Dropdown';
+import PlacementSelect, { PLACEMENT_OPTIONS } from '../common/PlacementSelect';
 import { galleryAPI } from '../../api/services';
 
 export default function GalleryEditModal({
@@ -158,7 +159,6 @@ export default function GalleryEditModal({
             <div className="flex-1 min-w-0">
               <span className="text-[10px] uppercase font-bold text-stone-400 block tracking-wider">Image Asset</span>
               <p className="text-xs font-bold text-stone-900 truncate">{item.typeLabel || item.type}</p>
-              <span className="text-[10px] text-stone-500 truncate block">{item.url}</span>
             </div>
             <a
               href={item.url}
@@ -190,11 +190,11 @@ export default function GalleryEditModal({
           {/* Placement Type Dropdown */}
           <div className="space-y-1.5">
             <label className="block text-xs font-bold text-stone-800">Image Placement Type</label>
-            <Dropdown
+            <PlacementSelect
               size="field"
               value={editPlacement}
               onChange={(val) => setEditPlacement(val || 'asset')}
-              options={placementTypeOptions}
+              options={placementTypeOptions && placementTypeOptions.length > 0 ? placementTypeOptions : PLACEMENT_OPTIONS}
               placeholder="Select placement type…"
               portal={true}
               menuClassName="z-[10000]"

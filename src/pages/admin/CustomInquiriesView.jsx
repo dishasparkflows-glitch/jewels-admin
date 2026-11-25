@@ -12,11 +12,15 @@ import {
   HiOutlineSearch,
   HiOutlineBan,
   HiOutlineTrash,
+  HiOutlineEye,
+  HiOutlineExternalLink,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import { DeleteActionButton } from '../../components/common/RowActions';
+import TableSrNo from '../../components/common/TableSrNo';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import StatCards from '../../components/common/StatCards';
 import Pagination from '../../components/common/Pagination';
@@ -31,6 +35,7 @@ const STATUS_TABS = [
 
 export default function CustomInquiriesView() {
   const confirm = useConfirm();
+  const { openImagePreview } = useImagePreview();
   const [inquiries, setInquiries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -431,6 +436,9 @@ export default function CustomInquiriesView() {
                     className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                   />
                 </th>
+                <th className="py-3 px-3 text-center whitespace-nowrap w-12 text-stone-500 font-bold">
+                  SR NO
+                </th>
                 <th className="py-3 px-4 whitespace-nowrap">CLIENT INFO</th>
                 <th className="py-3 px-4 whitespace-nowrap">CONTACT</th>
                 <th className="py-3 px-4 whitespace-nowrap">DESIGN DETAILS</th>
@@ -442,19 +450,19 @@ export default function CustomInquiriesView() {
             <tbody className="divide-y divide-stone-100 text-xs">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-stone-400">
+                  <td colSpan="8" className="py-12 text-center text-stone-400">
                     <div className="animate-spin w-5 h-5 border-2 border-t-transparent rounded-full mx-auto mb-2" style={{ borderColor: "var(--theme-primary, #8b6f4e)", borderTopColor: "transparent" }} />
                     Loading custom design inquiries...
                   </td>
                 </tr>
               ) : paginatedItems.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="py-12 text-center text-stone-400">
+                  <td colSpan="8" className="py-12 text-center text-stone-400">
                     No custom design inquiries found.
                   </td>
                 </tr>
               ) : (
-                paginatedItems.map((inq) => {
+                paginatedItems.map((inq, idx) => {
                   const id = inq._id || inq.id;
                   const isSelected = selectedIds.includes(id);
                   const clientName = inq.customer?.name || '—';
@@ -493,6 +501,9 @@ export default function CustomInquiriesView() {
                           style={{ accentColor: "var(--theme-primary, #8b6f4e)" }} className="w-3.5 h-3.5 rounded border-stone-300 cursor-pointer"
                         />
                       </td>
+
+                      {/* Sr No */}
+                      <TableSrNo currentPage={currentPage} pageSize={pageSize} index={idx} className="py-3 px-3 text-center text-xs font-semibold text-stone-500 whitespace-nowrap" />
 
                       {/* Client Info */}
                       <td className="py-3 px-4 whitespace-nowrap">
@@ -566,28 +577,42 @@ export default function CustomInquiriesView() {
                         )}
                       </td>
 
-                      {/* Actions: Confirm, Cancel, Delete */}
+                      {/* Actions: View Details, Confirm, Cancel, Delete */}
                       <td className="py-3 pr-5 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
-                          {/* Confirm Green Check Button */}
+                          {/* View Details Eye Button */}
                           <button
                             type="button"
-                            onClick={() => setConfirmModalInquiry(inq)}
-                            title="Confirm Inquiry"
-                            className="w-7 h-7 rounded-lg border border-emerald-200/80 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                            onClick={() => setViewingInquiry(inq)}
+                            title="View Inquiry Details"
+                            className="w-7 h-7 rounded-lg border border-stone-200/80 bg-stone-50 text-stone-600 hover:bg-stone-100 hover:text-stone-900 hover:border-stone-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                           >
-                            <HiOutlineCheck className="w-3.5 h-3.5 stroke-2" />
+                            <HiOutlineEye className="w-3.5 h-3.5" />
                           </button>
 
+                          {/* Confirm Green Check Button */}
+                          {statusFilter !== 'all' && statusFilter !== 'cancelled' && statusFilter !== 'confirmed' && (
+                            <button
+                              type="button"
+                              onClick={() => setConfirmModalInquiry(inq)}
+                              title="Confirm Inquiry"
+                              className="w-7 h-7 rounded-lg border border-emerald-200/80 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                            >
+                              <HiOutlineCheck className="w-3.5 h-3.5 stroke-2" />
+                            </button>
+                          )}
+
                           {/* Cancel Red X Button */}
-                          <button
-                            type="button"
-                            onClick={() => setCancelModalInquiry(inq)}
-                            title="Cancel Inquiry"
-                            className="w-7 h-7 rounded-lg border border-rose-200/80 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
-                          >
-                            <HiOutlineX className="w-3.5 h-3.5 stroke-2" />
-                          </button>
+                          {statusFilter !== 'all' && statusFilter !== 'cancelled' && (
+                            <button
+                              type="button"
+                              onClick={() => setCancelModalInquiry(inq)}
+                              title="Cancel Inquiry"
+                              className="w-7 h-7 rounded-lg border border-rose-200/80 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                            >
+                              <HiOutlineX className="w-3.5 h-3.5 stroke-2" />
+                            </button>
+                          )}
 
                           {/* Delete Trash Button */}
                           <DeleteActionButton
@@ -736,9 +761,6 @@ export default function CustomInquiriesView() {
                 <h3 className="text-base font-bold text-stone-900">
                   Custom Jewelry Inquiry Details
                 </h3>
-                <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider">
-                  Request ID: {(viewingInquiry._id || viewingInquiry.id || '').slice(-8)}
-                </span>
               </div>
               <button
                 type="button"
@@ -801,38 +823,112 @@ export default function CustomInquiriesView() {
                 </div>
               </div>
 
-              {Array.isArray(viewingInquiry.referenceImages) && viewingInquiry.referenceImages.length > 0 && (
-                <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/60 space-y-2">
-                  <span
-                    className="block text-[10px] font-bold uppercase tracking-wider"
-                    style={{ color: 'var(--theme-primary, #8b6f4e)' }}
-                  >
-                    Uploaded Reference Images ({viewingInquiry.referenceImages.length})
-                  </span>
-                  <div className="grid grid-cols-3 gap-2.5 pt-1">
-                    {viewingInquiry.referenceImages.map((img, idx) => {
-                      const imgUrl = img.url || (typeof img === 'string' ? img : '');
-                      if (!imgUrl) return null;
-                      return (
-                        <a
+              {Array.isArray(viewingInquiry.referenceImages) && viewingInquiry.referenceImages.length > 0 && (() => {
+                const allImageUrls = viewingInquiry.referenceImages
+                  .map((img) => img.url || (typeof img === 'string' ? img : ''))
+                  .filter(Boolean);
+
+                return (
+                  <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200/60 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span
+                        className="block text-[10px] font-bold uppercase tracking-wider"
+                        style={{ color: 'var(--theme-primary, #8b6f4e)' }}
+                      >
+                        Uploaded Reference Images ({allImageUrls.length})
+                      </span>
+                      {allImageUrls.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            openImagePreview(allImageUrls[0], {
+                              gallery: allImageUrls,
+                              title: `${viewingInquiry.customer?.name || 'Inquiry'} - Reference Gallery`,
+                              initialIndex: 0,
+                            })
+                          }
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                        >
+                          <HiOutlineEye className="w-3.5 h-3.5" />
+                          <span>Preview All</span>
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5 pt-1">
+                      {allImageUrls.map((imgUrl, idx) => (
+                        <div
                           key={idx}
-                          href={imgUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="block aspect-square rounded-xl overflow-hidden border border-stone-200 hover:border-[#8b6f4e] hover:shadow-xs transition-all group relative bg-white"
-                          title="Click to view full image in new tab"
+                          className="aspect-square rounded-xl overflow-hidden border border-stone-200 hover:border-[#8b6f4e] hover:shadow-xs transition-all group relative bg-white"
                         >
                           <img
                             src={imgUrl}
                             alt={`Reference ${idx + 1}`}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                           />
-                        </a>
-                      );
-                    })}
+
+                          {/* Hover Overlay with Centered Preview Button & Open in New Tab */}
+                          <div
+                            onClick={() =>
+                              openImagePreview(imgUrl, {
+                                gallery: allImageUrls,
+                                title: `${viewingInquiry.customer?.name || 'Inquiry'} - Reference Image ${idx + 1}`,
+                                initialIndex: idx,
+                              })
+                            }
+                            className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1.5 p-2 cursor-pointer"
+                          >
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openImagePreview(imgUrl, {
+                                  gallery: allImageUrls,
+                                  title: `${viewingInquiry.customer?.name || 'Inquiry'} - Reference Image ${idx + 1}`,
+                                  initialIndex: idx,
+                                });
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/95 text-stone-900 text-[11px] font-bold shadow-md hover:bg-white hover:text-[#8b6f4e] hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                            >
+                              <HiOutlineEye className="w-3.5 h-3.5 text-[#8b6f4e]" />
+                              <span>Preview</span>
+                            </button>
+
+                            <a
+                              href={imgUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-[10px] text-white/90 hover:text-white hover:underline flex items-center gap-1"
+                              title="Open original image in new tab"
+                            >
+                              <span>Open tab</span>
+                              <HiOutlineExternalLink className="w-3 h-3" />
+                            </a>
+                          </div>
+
+                          {/* Subtle Preview badge in corner for quick touch/click */}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openImagePreview(imgUrl, {
+                                gallery: allImageUrls,
+                                title: `${viewingInquiry.customer?.name || 'Inquiry'} - Reference Image ${idx + 1}`,
+                                initialIndex: idx,
+                              });
+                            }}
+                            className="absolute bottom-1.5 right-1.5 p-1 rounded-md bg-black/60 text-white hover:bg-[#8b6f4e] transition-colors cursor-pointer group-hover:hidden"
+                            title="Preview image"
+                          >
+                            <HiOutlineEye className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {viewingInquiry.requirements?.comments && (
                 <div className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-1">

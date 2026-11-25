@@ -24,6 +24,7 @@ import { galleryAPI, themesAPI } from '../../api/services';
 import GalleryUploadModal from '../../components/gallery/GalleryUploadModal';
 import GalleryEditModal from '../../components/gallery/GalleryEditModal';
 import Dropdown from '../../components/common/Dropdown';
+import PlacementSelect, { PLACEMENT_OPTIONS } from '../../components/common/PlacementSelect';
 import Pagination from '../../components/common/Pagination';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -348,62 +349,7 @@ export default function GalleryView() {
     ];
   }, [themes]);
 
-  const placementTypeOptions = useMemo(() => [
-    {
-      value: 'herobanner',
-      label: 'Hero Banner',
-      sublabel: 'Homepage main hero slider',
-      icon: HiOutlineDesktopComputer,
-    },
-    {
-      value: 'collectionbanner',
-      label: 'Collection Banner',
-      sublabel: '4-tile curated collection showcase',
-      icon: HiOutlineTag,
-    },
-    {
-      value: 'categorybanner',
-      label: 'Category Banner',
-      sublabel: 'Category page top header banner',
-      icon: HiOutlineViewGrid,
-    },
-    {
-      value: 'offerbanner',
-      label: 'Offer Banner',
-      sublabel: 'Promotional deals & discount banner',
-      icon: HiOutlineGift,
-    },
-    {
-      value: 'celebrate',
-      label: 'Celebrate & Gifts',
-      sublabel: 'Gift guide and celebrate showcase item',
-      icon: IoDiamondOutline,
-    },
-    {
-      value: 'mobileappbanner',
-      label: 'Mobile App Banner',
-      sublabel: 'Mobile app download promotion',
-      icon: HiOutlineDeviceMobile,
-    },
-    {
-      value: 'bookappointbanner',
-      label: 'Appointment Banner',
-      sublabel: 'In-store appointment booking section',
-      icon: HiOutlineCalendar,
-    },
-    {
-      value: 'customizebanner',
-      label: 'Custom Banner',
-      sublabel: 'Custom pages and seasonal campaigns',
-      icon: HiOutlineSparkles,
-    },
-    {
-      value: 'asset',
-      label: 'Media Library Asset',
-      sublabel: 'General asset stored in theme media library',
-      icon: HiOutlinePhotograph,
-    },
-  ], []);
+  const placementTypeOptions = PLACEMENT_OPTIONS;
 
   const displayCounts = {
     total: counts.total ?? items.length ?? 0,
@@ -594,12 +540,12 @@ export default function GalleryView() {
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="text-[11px] font-semibold text-stone-600 whitespace-nowrap">Placement:</span>
               <div className="w-48 sm:w-52">
-                <Dropdown
+                <PlacementSelect
                   size="sm"
+                  includeAll={true}
+                  allLabel="All Placements"
                   value={selectedType}
                   onChange={(val) => setSelectedType(val || 'all')}
-                  options={filterPlacementOptions}
-                  placeholder="All Placements"
                 />
               </div>
             </div>

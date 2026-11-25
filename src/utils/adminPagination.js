@@ -78,3 +78,11 @@ export function useAdminPageSize(initialFallback = DEFAULT_PAGE_SIZE) {
 
   return [pageSize, changePageSize];
 }
+
+/**
+ * Calculate serial number (SR NO) based on 1-based currentPage, pageSize, and 0-based row index.
+ */
+export function getSrNo(currentPage = 1, pageSize = 10, index = 0) {
+  return (Number(currentPage) - 1) * Number(pageSize) + Number(index) + 1;
+}
+

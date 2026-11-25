@@ -89,6 +89,7 @@ const DynamicModuleView = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(null);
+  const [serverMaxOrder, setServerMaxOrder] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -154,18 +155,6 @@ const DynamicModuleView = () => {
     order: 0,
   });
   const [isUploadingBannerImage, setIsUploadingBannerImage] = useState(false);
-  const [availableThemes, setAvailableThemes] = useState([]);
-
-  useEffect(() => {
-    if (isCategoryPage) {
-      api.get('/website/themes', { params: { status: 'all', limit: 100 } })
-        .then(({ data }) => {
-          const rows = Array.isArray(data.data) ? data.data : data.data?.items || [];
-          setAvailableThemes(rows.filter((t) => t.status !== 'archived'));
-        })
-        .catch(() => {});
-    }
-  }, [isCategoryPage]);
 
   const handleOpenAdd = () => {
     if (pathname === '/catalog/jewelry-products' || pathname.includes('jewelry-products')) {
@@ -200,6 +189,17 @@ const DynamicModuleView = () => {
       (config.fields || []).forEach((f) => {
         if (f.default !== undefined) defaults[f.name] = f.default;
       });
+      if (isCategoryPage) {
+        const itemsMaxOrder = items.reduce((max, item) => {
+          const ord = Number(item?.order);
+          return Number.isFinite(ord) && ord > max ? ord : max;
+        }, 0);
+        const hasAllRows = !search.trim() && (serverTotal === null || items.length >= serverTotal);
+        const lastOrder = hasAllRows
+          ? itemsMaxOrder
+          : Math.max(itemsMaxOrder, Number(serverMaxOrder) || 0);
+        defaults.order = lastOrder + 1;
+      }
       setFormData(defaults);
       setBannerFormOpen(false);
       setEditingBannerIndex(null);
@@ -492,10 +492,13 @@ const DynamicModuleView = () => {
         } else {
           setServerTotal(null);
         }
+        const maxOrd = res.data?.pagination?.maxOrder ?? res.data?.data?.pagination?.maxOrder;
+        setServerMaxOrder(maxOrd !== undefined && maxOrd !== null ? Number(maxOrd) : null);
       } catch (err) {
         console.error('Failed to load records for', config.endpoint, err);
         setItems([]);
         setServerTotal(null);
+        setServerMaxOrder(null);
       } finally {
         setLoading(false);
       }
@@ -507,6 +510,7 @@ const DynamicModuleView = () => {
     setCurrentPage(1);
     setSearch('');
     setSelectedIds([]);
+    setServerMaxOrder(null);
   }, [pathname]);
 
   useEffect(() => {
@@ -581,7 +585,11 @@ const DynamicModuleView = () => {
       if (cleanEndpoint === '/categories') {
         payload.themeId = payload.themeId || null;
         payload.type = (payload.type || 'category').toLowerCase();
-        payload.order = Number(payload.order ?? 0) || 0;
+        if (!editingRecord && (payload.order === '' || payload.order === undefined || payload.order === null)) {
+          delete payload.order;
+        } else {
+          payload.order = Number(payload.order ?? 0) || 0;
+        }
         delete payload.categoryType;
         const iconVal = typeof payload.icon === 'object' ? (payload.icon?.url || '') : (payload.icon || '');
         const iconKey = payload.iconKey || (typeof payload.icon === 'object' ? payload.icon?.key : '') || '';
@@ -1646,10 +1654,10 @@ const DynamicModuleView = () => {
 
             {isCategoryPage ? (
               <form onSubmit={handleSubmit} className="space-y-5">
-                {/* ─── TOP ROW: Category Name, Theme, Category Type, Order & Category Status ─── */}
+                {/* ─── TOP ROW: Category Name, Category Type, Order & Category Status ─── */}
                 <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-start">
                   {/* Category Name */}
-                  <div className="sm:col-span-3">
+                  <div className="sm:col-span-5">
                     <label className="text-xs font-bold text-stone-800 mb-1.5 block">
                       Category Name <span className="text-rose-500 font-bold">*</span>
                     </label>
@@ -1665,32 +1673,8 @@ const DynamicModuleView = () => {
                     />
                   </div>
 
-                  {/* Theme */}
-                  <div className="sm:col-span-3">
-                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
-                      Theme <span className="text-rose-500 font-bold">*</span>
-                    </label>
-                    <Dropdown
-                      value={formData.themeId || ''}
-                      onChange={(val) => {
-                        setFormData((prev) => ({ ...prev, themeId: val }));
-                        setPendingThemeImages({});
-                      }}
-                      options={[
-                        { value: '', label: 'Select Theme (or Default)' },
-                        ...availableThemes.map((theme) => ({
-                          value: theme._id,
-                          label: `${theme.name}${theme.status ? ` - ${theme.status}` : ''}`,
-                        })),
-                      ]}
-                      placeholder="Select Theme"
-                      size="field"
-                      buttonClassName="w-full h-10 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
-                    />
-                  </div>
-
                   {/* Category Type */}
-                  <div className="sm:col-span-2">
+                  <div className="sm:col-span-3">
                     <label className="text-xs font-bold text-stone-800 mb-1.5 block">
                       Category Type
                     </label>

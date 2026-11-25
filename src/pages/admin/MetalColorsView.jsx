@@ -16,6 +16,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import CuteLoader from '../../components/common/CuteLoader';
+import TableSrNo from '../../components/common/TableSrNo';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 /**
@@ -343,9 +344,7 @@ export default function MetalColorsView() {
                       </td>
 
                       {/* Sr No */}
-                      <td className="py-2.5 px-2 text-center text-xs font-semibold text-stone-500 whitespace-nowrap">
-                        {(currentPage - 1) * pageSize + idx + 1}
-                      </td>
+                      <TableSrNo currentPage={currentPage} pageSize={pageSize} index={idx} />
 
                       {/* Swatch */}
                       <td className="py-2.5 px-3 whitespace-nowrap">

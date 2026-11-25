@@ -11,6 +11,7 @@ import {
   HiOutlineUpload,
 } from 'react-icons/hi';
 import Dropdown from './Dropdown';
+import PlacementSelect, { PLACEMENT_OPTIONS, FILTER_PLACEMENT_OPTIONS } from './PlacementSelect';
 import Pagination from './Pagination';
 import GalleryUploadModal from '../gallery/GalleryUploadModal';
 import api from '../../api/axios';
@@ -41,30 +42,8 @@ const loadThemesLookup = async () => {
   }
 };
 
-const DEFAULT_PLACEMENTS = [
-  { value: 'all', label: 'All Placements' },
-  { value: 'herobanner', label: 'Hero Banner' },
-  { value: 'categorybanner', label: 'Category Banner' },
-  { value: 'collectionbanner', label: 'Collection Banner' },
-  { value: 'offerbanner', label: 'Offer Banner' },
-  { value: 'mobileapp', label: 'Mobile App' },
-  { value: 'appointments', label: 'Appointments' },
-  { value: 'custom', label: 'Custom' },
-  { value: 'celebrate', label: 'Celebrate & Gifts' },
-  { value: 'asset', label: 'Media Library Assets' },
-];
-
-const DEFAULT_UPLOAD_PLACEMENTS = [
-  { value: 'herobanner', label: 'Hero Banner', sublabel: 'Homepage main hero slider' },
-  { value: 'collectionbanner', label: 'Collection Banner', sublabel: '4-tile curated collection showcase' },
-  { value: 'categorybanner', label: 'Category Banner', sublabel: 'Category page top header banner' },
-  { value: 'offerbanner', label: 'Offer Banner', sublabel: 'Promotional deals & discount banner' },
-  { value: 'celebrate', label: 'Celebrate & Gifts', sublabel: 'Gift guide and celebrate showcase item' },
-  { value: 'mobileappbanner', label: 'Mobile App Banner', sublabel: 'Mobile app download promotion' },
-  { value: 'bookappointbanner', label: 'Appointment Banner', sublabel: 'In-store appointment booking section' },
-  { value: 'customizebanner', label: 'Custom Banner', sublabel: 'Custom pages and seasonal campaigns' },
-  { value: 'asset', label: 'Media Library Asset', sublabel: 'General asset stored in theme media library' },
-];
+const DEFAULT_PLACEMENTS = FILTER_PLACEMENT_OPTIONS;
+const DEFAULT_UPLOAD_PLACEMENTS = PLACEMENT_OPTIONS;
 
 export default function GalleryMediaPickerModal({
   isOpen = false,
@@ -331,13 +310,15 @@ export default function GalleryMediaPickerModal({
 
           {/* Filter Placement */}
           <div className="w-full sm:w-48">
-            <Dropdown
+            <PlacementSelect
+              includeAll={true}
+              allLabel="All Placements"
               value={pickerPlacementFilter}
               onChange={(val) => {
-                setPickerPlacementFilter(val);
+                setPickerPlacementFilter(val || 'all');
                 setPage(1);
               }}
-              options={activePlacements}
+              options={placementOptions}
               buttonClassName="w-full h-9 px-3 rounded-xl border border-stone-200 text-xs text-stone-700 bg-white"
               menuClassName="z-30"
             />

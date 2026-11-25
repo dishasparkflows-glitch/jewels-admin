@@ -25,6 +25,7 @@ import {
   DEFAULT_UPLOAD_COMPRESSION_SETTINGS,
 } from '../../utils/uploadWithPresignedUrl';
 import { galleryAPI } from '../../api/services';
+import PlacementSelect, { PLACEMENT_OPTIONS } from '../common/PlacementSelect';
 
 export default function GalleryUploadModal({
   isOpen,
@@ -574,11 +575,11 @@ export default function GalleryUploadModal({
                     </label>
                     <span className="text-[10px] font-semibold text-stone-400">Slot Type</span>
                   </div>
-                  <Dropdown
+                  <PlacementSelect
                     size="field"
                     value={uploadType}
                     onChange={(val) => setUploadType(val || 'asset')}
-                    options={placementTypeOptions}
+                    options={placementTypeOptions && placementTypeOptions.length > 0 ? placementTypeOptions : PLACEMENT_OPTIONS}
                     placeholder="Select image placement type…"
                     portal={true}
                     menuClassName="z-[11000]"

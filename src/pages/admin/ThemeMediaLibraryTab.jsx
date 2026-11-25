@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
@@ -11,96 +11,16 @@ import {
   HiOutlineUpload,
   HiOutlineClipboardCopy,
   HiOutlineCheck,
-  HiOutlineTag,
-  HiOutlineViewGrid,
-  HiOutlineGift,
-  HiOutlineCalendar,
-  HiOutlineSparkles,
-  HiOutlineCollection,
 } from 'react-icons/hi';
-import { IoSparklesOutline, IoDiamondOutline } from 'react-icons/io5';
+import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { galleryAPI } from '../../api/services';
 import Pagination from '../../components/common/Pagination';
-import Dropdown from '../../components/common/Dropdown';
+import PlacementSelect, { PLACEMENT_LABELS } from '../../components/common/PlacementSelect';
 import useDebounce from '../../hooks/useDebounce';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 
-const PLACEMENT_LABELS = {
-  herobanner: 'Hero Banner',
-  collectionbanner: 'Collection Banner',
-  categorybanner: 'Category Banner',
-  offerbanner: 'Offer Banner',
-  celebrate: 'Celebrate & Gifts',
-  mobileappbanner: 'Mobile App Banner',
-  bookappointbanner: 'Appointment Banner',
-  customizebanner: 'Custom Banner',
-  websitebanner: 'Website Banner',
-  asset: 'Media Library Asset',
-};
 
-const PLACEMENT_OPTIONS = [
-  {
-    value: 'all',
-    label: 'All Placement Types',
-    sublabel: 'Show all banner and media placements',
-    icon: HiOutlineCollection,
-  },
-  {
-    value: 'herobanner',
-    label: 'Hero Banner',
-    sublabel: 'Homepage main hero slider',
-    icon: HiOutlineDesktopComputer,
-  },
-  {
-    value: 'collectionbanner',
-    label: 'Collection Banner',
-    sublabel: '4-tile curated collection showcase',
-    icon: HiOutlineTag,
-  },
-  {
-    value: 'categorybanner',
-    label: 'Category Banner',
-    sublabel: 'Category page top header banner',
-    icon: HiOutlineViewGrid,
-  },
-  {
-    value: 'offerbanner',
-    label: 'Offer Banner',
-    sublabel: 'Promotional deals & discount banner',
-    icon: HiOutlineGift,
-  },
-  {
-    value: 'celebrate',
-    label: 'Celebrate & Gifts',
-    sublabel: 'Gift guide and celebrate showcase item',
-    icon: IoDiamondOutline,
-  },
-  {
-    value: 'mobileappbanner',
-    label: 'Mobile App Banner',
-    sublabel: 'Mobile app download promotion',
-    icon: HiOutlineDeviceMobile,
-  },
-  {
-    value: 'bookappointbanner',
-    label: 'Appointment Banner',
-    sublabel: 'In-store appointment booking section',
-    icon: HiOutlineCalendar,
-  },
-  {
-    value: 'customizebanner',
-    label: 'Custom Banner',
-    sublabel: 'Custom pages and seasonal campaigns',
-    icon: HiOutlineSparkles,
-  },
-  {
-    value: 'asset',
-    label: 'Media Library Asset',
-    sublabel: 'General asset stored in theme media library',
-    icon: HiOutlinePhotograph,
-  },
-];
 
 function getPlacementLabel(placement) {
   if (!placement) return 'Media';
@@ -275,13 +195,14 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
           <div className="flex items-center gap-2.5 flex-wrap">
             {/* Placement Type Filter Dropdown */}
             <div className="w-full sm:w-64">
-              <Dropdown
+              <PlacementSelect
                 size="sm"
+                includeAll={true}
+                allLabel="All Placement Types"
                 value={selectedPlacement}
                 onChange={(val) => {
                   setSelectedPlacement(val || 'all');
                 }}
-                options={PLACEMENT_OPTIONS}
                 placeholder="Filter placement type…"
                 portal={true}
                 menuClassName="z-[10000]"

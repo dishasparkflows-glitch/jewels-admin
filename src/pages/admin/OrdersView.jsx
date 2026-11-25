@@ -615,13 +615,16 @@ export default function OrdersView() {
                         <div className="min-w-[190px] max-w-xs space-y-1.5">
                           {Array.isArray(ord.items) &&
                             ord.items.slice(0, 2).map((item, i) => {
+                              const refDoc = item.refId;
                               const itemThumb = getMediaUrl(
                                 item.image ||
                                 item.thumbnail ||
-                                item.productId?.ornate?.ornateImages?.[0]?.url ||
-                                item.productId?.colorImages?.[0]?.images?.[0]?.url ||
-                                item.productId?.media ||
-                                item.productId?.basicInfo?.images?.[0]
+                                refDoc?.image?.url ||
+                                (typeof refDoc?.image === 'string' ? refDoc.image : '') ||
+                                refDoc?.ornate?.ornateImages?.[0]?.url ||
+                                refDoc?.colorImages?.[0]?.images?.[0]?.url ||
+                                refDoc?.media ||
+                                refDoc?.basicInfo?.images?.[0]
                               );
                               return (
                                 <div key={item._id || i} className="flex items-center gap-2">
@@ -1099,13 +1102,16 @@ export default function OrdersView() {
                 </span>
                 <div className="divide-y divide-stone-100 border border-stone-200/80 rounded-xl overflow-hidden bg-white">
                   {(viewingOrder.items || []).map((item, i) => {
+                    const refDoc = item.refId;
                     const itemThumb = getMediaUrl(
                       item.image ||
                       item.thumbnail ||
-                      item.productId?.ornate?.ornateImages?.[0]?.url ||
-                      item.productId?.colorImages?.[0]?.images?.[0]?.url ||
-                      item.productId?.media ||
-                      item.productId?.basicInfo?.images?.[0]
+                      refDoc?.image?.url ||
+                      (typeof refDoc?.image === 'string' ? refDoc.image : '') ||
+                      refDoc?.ornate?.ornateImages?.[0]?.url ||
+                      refDoc?.colorImages?.[0]?.images?.[0]?.url ||
+                      refDoc?.media ||
+                      refDoc?.basicInfo?.images?.[0]
                     );
                     return (
                       <div key={item._id || i} className="p-3 flex items-center gap-3">

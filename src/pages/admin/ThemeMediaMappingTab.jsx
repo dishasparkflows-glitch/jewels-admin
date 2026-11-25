@@ -1,5 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef, Fragment } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback, Fragment } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlinePhotograph,
@@ -24,7 +23,6 @@ import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import { themesAPI, bannersAPI } from '../../api/services';
 import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
-import { useConfirm } from '../../contexts/ConfirmContext';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import { getMediaUrl } from '../../utils/imageUrl';
 
@@ -79,35 +77,16 @@ const BANNER_TYPES = [
   },
 ];
 
-// Filter options matching gallery.model.js L23-L38 (placement enum)
-const GALLERY_PLACEMENT_FILTER_OPTIONS = [
-  { value: 'all', label: 'All Placements' },
-  { value: 'herobanner', label: 'Hero Banner' },
-  { value: 'collectionbanner', label: 'Collection Banner' },
-  { value: 'categorybanner', label: 'Category Banner' },
-  { value: 'offerbanner', label: 'Offer Banner' },
-  { value: 'celebrate', label: 'Celebrate & Gifts' },
-  { value: 'mobileappbanner', label: 'App Banner' },
-  { value: 'bookappointbanner', label: 'Appointment Banner' },
-  { value: 'customizebanner', label: 'Custom Banner' },
-  { value: 'asset', label: 'Asset' },
-];
-
 export default function ThemeMediaMappingTab({
   theme,
   onThemeUpdated,
 }) {
-  const navigate = useNavigate();
-  const confirm = useConfirm();
   const { openImagePreview } = useImagePreview();
   const themeId = theme?._id;
 
   // Active mapping mode ('banner' or 'celebrate')
   const [mappingMode, setMappingMode] = useState('banner');
   const [activeModule, setActiveModule] = useState('herobanner');
-  const [statusFilter] = useState('all'); // all, active, draft, mapped, unmapped
-  const [deviceFilter] = useState('all'); // all, web, mobile
-  const [sortBy] = useState('newest'); // newest, oldest, order
   const [celebratePlacementFilter, setCelebratePlacementFilter] = useState('Celebrate'); // Celebrate, Gifts, all
 
   // Data state
@@ -129,7 +108,6 @@ export default function ThemeMediaMappingTab({
 
   const handleSelectBannerType = (key) => {
     setActiveModule(key);
-    setActiveTargetSlot(null);
   };
 
   // Aggregate stats for the 2 primary mapping boxes
@@ -152,19 +130,12 @@ export default function ThemeMediaMappingTab({
   // Handler when clicking on either Banner Mapping or Celebrate & Gift Mapping box
   const handleSelectMappingMode = (mode) => {
     setMappingMode(mode);
-    setActiveTargetSlot(null);
     if (mode === 'banner') {
       setActiveModule('herobanner');
     } else {
       setActiveModule('celebrate');
     }
   };
-
-
-  // Drag and drop & active target state
-  const draggedAssetRef = useRef(null);
-  const [dragOverSlot, setDragOverSlot] = useState(null); // { recordId, device, placement }
-  const [activeTargetSlot, setActiveTargetSlot] = useState(null); // { record, device, placement }
 
   // Modal states
   const [pickerTarget, setPickerTarget] = useState(null); // { record, device, placement, currentGalleryId, currentMediaId }
@@ -230,53 +201,14 @@ export default function ThemeMediaMappingTab({
 
   // ─── Filtered Records ────────────────────────────────────
   const filteredRecords = useMemo(() => {
-    let result = [...records];
-
-    if (mappingMode === 'banner') {
-      if (statusFilter !== 'all') {
-        if (statusFilter === 'active' || statusFilter === 'published') {
-          result = result.filter((r) => r.status === 'active');
-        } else if (statusFilter === 'draft' || statusFilter === 'inactive') {
-          result = result.filter((r) => r.status !== 'active');
-        } else if (statusFilter === 'mapped') {
-          result = result.filter((r) => r.isMapped || Boolean(r.desktopMapping?.imageUrl));
-        } else if (statusFilter === 'unmapped') {
-          result = result.filter((r) => !r.isMapped && !r.desktopMapping?.imageUrl);
-        }
-      }
-
-      if (deviceFilter !== 'all') {
-        result = result.filter((r) => {
-          if (deviceFilter === 'web') return Boolean(r.image?.url || r.desktopMapping?.imageUrl);
-          if (deviceFilter === 'mobile') return Boolean(r.mobileImage?.url || r.mobileMapping?.imageUrl);
-          return true;
-        });
-      }
-
-      if (sortBy === 'order') {
-        result.sort((a, b) => (a.display?.order ?? a.order ?? 0) - (b.display?.order ?? b.order ?? 0));
-      } else if (sortBy === 'oldest') {
-        result.sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
-      } else if (sortBy === 'newest') {
-        result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      }
-    } else {
-      // celebrate mode
-      if (celebratePlacementFilter !== 'all') {
-        result = result.filter((r) => {
-          const p = (r.display?.type || r.placement || r.type || '').toLowerCase();
-          return p === celebratePlacementFilter.toLowerCase();
-        });
-      }
-      if (statusFilter === 'mapped') {
-        result = result.filter((r) => r.isMapped || Boolean(r.desktopMapping?.imageUrl));
-      } else if (statusFilter === 'unmapped') {
-        result = result.filter((r) => !r.isMapped && !r.desktopMapping?.imageUrl);
-      }
+    if (mappingMode === 'celebrate' && celebratePlacementFilter !== 'all') {
+      return records.filter((r) => {
+        const p = (r.display?.type || r.placement || r.type || '').toLowerCase();
+        return p === celebratePlacementFilter.toLowerCase();
+      });
     }
-
-    return result;
-  }, [records, mappingMode, statusFilter, deviceFilter, sortBy, celebratePlacementFilter]);
+    return records;
+  }, [records, mappingMode, celebratePlacementFilter]);
 
   // ─── Single Save Mapping Handler ─────────────────────────
   const handleSaveMapping = async (mediaAsset, customTarget = null) => {
@@ -296,7 +228,6 @@ export default function ThemeMediaMappingTab({
       );
 
       setPickerTarget(null);
-      setActiveTargetSlot(null);
       await Promise.all([fetchRecords(), fetchSummary()]);
     } catch (err) {
       console.error('Failed to save mapping:', err);
@@ -317,44 +248,6 @@ export default function ThemeMediaMappingTab({
     }
     await handleSaveMapping(selectedAsset, pickerTarget);
     setPickerTarget(null);
-  };
-
-  // ─── Drag & Drop Event Handlers ──────────────────────────
-  const handleDropOnSlot = async (e, record, device = 'desktop', placement = 'primary') => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverSlot(null);
-
-    let mediaAsset = draggedAssetRef.current;
-    if (!mediaAsset) {
-      try {
-        const raw = e.dataTransfer.getData('application/json') || e.dataTransfer.getData('text/plain');
-        if (raw) {
-          try {
-            mediaAsset = JSON.parse(raw);
-          } catch {
-            mediaAsset = null;
-          }
-        }
-      } catch (err) {
-        console.warn('Could not read from dataTransfer:', err);
-      }
-    }
-
-    if (!mediaAsset || !mediaAsset._id) {
-      toast.error('Could not detect dropped image. Try selecting the slot with "Map" then clicking the image.');
-      return;
-    }
-
-    try {
-      await handleSaveMapping(mediaAsset, {
-        record,
-        device,
-        placement,
-      });
-    } catch (err) {
-      console.error('Error handling dropped image:', err);
-    }
   };
 
   // ─── One-Click Theme Activation ──────────────────────────
@@ -621,28 +514,12 @@ export default function ThemeMediaMappingTab({
                           const hasDesktopOverride = Boolean(desktopMappedImg) || (isCollectionBanner && mappedTilesCount > 0);
                           const currentEffectiveImg = desktopMappedImg || defaultAssetUrl;
 
-                          const isTargetActive =
-                            activeTargetSlot?.record?._id === banner._id &&
-                            activeTargetSlot?.device === 'desktop';
-
-                          const isSlotHovered =
-                            dragOverSlot?.recordId === banner._id &&
-                            dragOverSlot?.device === 'desktop';
-
                           const catObj = banner.display?.categoryId;
                           const catName = typeof catObj === 'object' && catObj?.name ? catObj.name : '';
 
                           return (
                             <Fragment key={banner._id}>
-                              <tr
-                                className={`hover:bg-[#faf8f5]/70 transition-colors ${
-                                  isSlotHovered
-                                    ? 'bg-[#8b6f4e]/15 ring-2 ring-inset ring-[#8b6f4e]'
-                                    : isTargetActive
-                                    ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-400'
-                                    : ''
-                                }`}
-                              >
+                              <tr className="hover:bg-[#faf8f5]/70 transition-colors">
                                 {/* PREVIEW */}
                                 <td className="py-3 px-3.5 whitespace-nowrap">
                                   {isCollectionBanner ? (
@@ -670,24 +547,8 @@ export default function ThemeMediaMappingTab({
                                       </div>
                                     </div>
                                   ) : (
-                                    /* Standard Droppable Thumbnail matching BannersView */
+                                    /* Standard Thumbnail matching BannersView */
                                     <div
-                                      onDragOver={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        e.dataTransfer.dropEffect = 'copy';
-                                        setDragOverSlot({ recordId: banner._id, device: 'desktop' });
-                                      }}
-                                      onDragLeave={(e) => {
-                                        if (!e.currentTarget.contains(e.relatedTarget)) {
-                                          setDragOverSlot(null);
-                                        }
-                                      }}
-                                      onDrop={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        handleDropOnSlot(e, banner, 'desktop', 'primary');
-                                      }}
                                       onClick={() => {
                                         setPickerTarget({
                                           record: banner,
@@ -700,7 +561,7 @@ export default function ThemeMediaMappingTab({
                                           ? 'border-emerald-400 ring-1 ring-emerald-300'
                                           : 'border-stone-200 bg-stone-100 hover:border-[#8b6f4e]'
                                       }`}
-                                      title="Click to select image from Gallery Media Picker or drag an image here"
+                                      title="Click to select image from Gallery Media Picker"
                                     >
                                       {currentEffectiveImg ? (
                                         <img
@@ -917,7 +778,7 @@ export default function ThemeMediaMappingTab({
                                               </span>
                                             </h4>
                                             <p className="text-[11px] text-stone-500 mt-0.5">
-                                              Drag &amp; drop photos from the Theme Media Gallery on the right onto any tile, or click &ldquo;Map Tile&rdquo; to assign.
+                                              Click &ldquo;Map Tile&rdquo; or click a tile to assign photos from the gallery.
                                             </p>
                                           </div>
                                         </div>
@@ -940,8 +801,6 @@ export default function ThemeMediaMappingTab({
                                       {/* 4 Tiles Grid */}
                                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                                         {bannerTiles.map((tile) => {
-                                          const isTileTarget = activeTargetSlot?.record?._id === tile._id;
-                                          const isTileHovered = dragOverSlot?.recordId === tile._id;
                                           const tileEffectiveImg = tile.mappedImageUrl || tile.imageUrl || tile.originalUrl;
                                           const catName =
                                             tile.categoryName ||
@@ -951,11 +810,7 @@ export default function ThemeMediaMappingTab({
                                             <div
                                               key={tile._id}
                                               className={`rounded-xl border transition-all duration-200 p-3 flex flex-col justify-between ${
-                                                isTileHovered
-                                                  ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e] bg-[#8b6f4e]/5'
-                                                  : isTileTarget
-                                                  ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/40 bg-amber-50/40 shadow-sm'
-                                                  : tile.isMapped
+                                                tile.isMapped
                                                   ? 'border-emerald-200 bg-emerald-50/20'
                                                   : 'border-stone-200/90 bg-white hover:border-stone-300'
                                               }`}
@@ -982,54 +837,21 @@ export default function ThemeMediaMappingTab({
                                                 )}
                                               </div>
 
-                                              {/* Droppable Image Slot */}
+                                              {/* Image Slot */}
                                               <div
-                                                onDragOver={(e) => {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                                  e.dataTransfer.dropEffect = 'copy';
-                                                  setDragOverSlot({ recordId: tile._id, device: 'desktop' });
-                                                }}
-                                                onDragLeave={(e) => {
-                                                  if (!e.currentTarget.contains(e.relatedTarget)) {
-                                                    setDragOverSlot(null);
-                                                  }
-                                                }}
-                                                onDrop={(e) => {
-                                                  e.preventDefault();
-                                                  e.stopPropagation();
-                                                  handleDropOnSlot(
-                                                    e,
-                                                    { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
-                                                    'desktop',
-                                                    'primary'
-                                                  );
-                                                }}
                                                 onClick={() => {
-                                                  setActiveTargetSlot((prev) =>
-                                                    prev?.record?._id === tile._id
-                                                      ? null
-                                                      : {
-                                                          record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
-                                                          device: 'desktop',
-                                                          placement: 'primary',
-                                                        }
-                                                  );
+                                                  setPickerTarget({
+                                                    record: { _id: tile._id, title: `Collection Tile #${tile.order} (${catName})` },
+                                                    device: 'desktop',
+                                                    placement: 'primary',
+                                                  });
                                                 }}
                                                 className={`w-full aspect-[4/3] rounded-lg border overflow-hidden relative cursor-pointer group flex items-center justify-center transition-all bg-stone-900 ${
-                                                  isTileHovered
-                                                    ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e] scale-101'
-                                                    : isTileTarget
-                                                    ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]'
-                                                    : tile.isMapped
+                                                  tile.isMapped
                                                     ? 'border-emerald-300 ring-1 ring-emerald-200'
                                                     : 'border-stone-200'
                                                 }`}
-                                                title={
-                                                  isTileTarget
-                                                    ? 'Target selected! Click any image in the gallery on the right to map.'
-                                                    : 'Click to select as target, or drag an image here.'
-                                                }
+                                                title="Click to map image from gallery"
                                               >
                                                 {tileEffectiveImg ? (
                                                   <img
@@ -1045,20 +867,7 @@ export default function ThemeMediaMappingTab({
                                                 )}
 
                                                 {/* Overlays */}
-                                                {isTileHovered ? (
-                                                  <div className="absolute inset-0 bg-[#8b6f4e]/90 text-white flex items-center justify-center text-xs font-bold animate-pulse z-10">
-                                                    ⚡ Drop to Map Tile #{tile.order}
-                                                  </div>
-                                                ) : isTileTarget ? (
-                                                  <div className="absolute inset-0 bg-[#8b6f4e]/30 flex flex-col items-center justify-center gap-1 z-10">
-                                                    <span className="bg-[#8b6f4e] text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">
-                                                      Selected
-                                                    </span>
-                                                    <span className="text-[9.5px] text-white bg-black/60 px-1.5 py-0.5 rounded font-medium">
-                                                      Click gallery photo
-                                                    </span>
-                                                  </div>
-                                                ) : tile.isMapped ? (
+                                                {tile.isMapped ? (
                                                   <div className="absolute top-1 left-1 z-10">
                                                     <span className="bg-emerald-600/90 text-white text-[8.5px] font-bold px-1.5 py-0.5 rounded shadow-xs uppercase tracking-wider">
                                                       Theme
@@ -1067,7 +876,7 @@ export default function ThemeMediaMappingTab({
                                                 ) : null}
 
                                                 {/* High-res preview eye button */}
-                                                {tileEffectiveImg && !isTileHovered && !isTileTarget && (
+                                                {tileEffectiveImg && (
                                                   <button
                                                     type="button"
                                                     onClick={(e) => {
@@ -1236,23 +1045,10 @@ export default function ThemeMediaMappingTab({
                         const isMapped = item.isMapped || Boolean(item.desktopMapping?.imageUrl);
                         const currentCover = item.desktopMapping?.imageUrl || item.image?.url || item.originalDesktopImage;
 
-                        const isTargetActive =
-                          activeTargetSlot?.record?._id === item._id &&
-                          activeTargetSlot?.placement === 'celebrate';
-
-                        const isSlotHovered =
-                          dragOverSlot?.recordId === item._id;
-
                         return (
                           <tr
                             key={item._id}
-                            className={`hover:bg-[#faf7f2] transition-colors ${
-                              isSlotHovered
-                                ? 'bg-[#8b6f4e]/15 ring-2 ring-inset ring-[#8b6f4e]'
-                                : isTargetActive
-                                ? 'bg-amber-50/80 ring-1 ring-inset ring-amber-400'
-                                : ''
-                            }`}
+                            className="hover:bg-[#faf7f2] transition-colors"
                           >
                             <td className="py-2.5 px-2 text-center font-bold text-stone-500">
                               {idx + 1}
@@ -1399,7 +1195,6 @@ export default function ThemeMediaMappingTab({
             : (activeModule || 'herobanner')
         }
         initialPlatform="web"
-        placementOptions={GALLERY_PLACEMENT_FILTER_OPTIONS}
         title="Gallery Media Picker"
         subtitle={
           pickerTarget?.record
