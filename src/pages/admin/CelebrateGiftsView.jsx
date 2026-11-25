@@ -72,21 +72,17 @@ export default function CelebrateGiftsView() {
 
   // Website Themes State
   const [themes, setThemes] = useState([]);
-  const [, setLoadingThemes] = useState(false);
 
   // Theme Media Picker Modal State
   const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
 
   const fetchThemesLookup = async () => {
     try {
-      setLoadingThemes(true);
       const res = await api.get('/themes/lookup');
       const items = res.data?.data || [];
       setThemes(Array.isArray(items) ? items : []);
     } catch (err) {
       console.error('Failed to load themes lookup:', err);
-    } finally {
-      setLoadingThemes(false);
     }
   };
 
@@ -130,7 +126,6 @@ export default function CelebrateGiftsView() {
   }, [isModalOpen]);
 
   // Upload state
-  const [uploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Reorder state
@@ -552,9 +547,7 @@ export default function CelebrateGiftsView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Marketing', 'Celebrate & Gifts']}
-        title="Celebrate & Gifts"
+      <ModuleHeader        title="Celebrate & Gifts"
         subtitle="Configure promotional product showcases, seasonal gift curations and storefront groupings."
         onAdd={openAddModal}
         addLabel={
@@ -563,10 +556,7 @@ export default function CelebrateGiftsView() {
             : placementFilter === 'Gifts'
             ? 'Add Gift Showcase'
             : 'Add Showcase'
-        }
-        exportData={filteredItems}
-        exportFileName={`celebrate_gifts_${placementFilter.toLowerCase()}_export`}
-      />
+        }      />
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />
@@ -1190,7 +1180,7 @@ export default function CelebrateGiftsView() {
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || uploading}
+                  disabled={submitting}
                   className="px-7 py-2.5 rounded-xl text-xs font-bold text-white bg-[#8f6d43] hover:bg-[#7b5e39] shadow-sm transition-colors cursor-pointer disabled:opacity-50 tracking-wider uppercase"
                 >
                   {submitting

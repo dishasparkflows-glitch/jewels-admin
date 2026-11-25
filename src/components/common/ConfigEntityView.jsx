@@ -372,10 +372,6 @@ export default function ConfigEntityView({
         <ModuleHeader
           title={title}
           subtitle={`Manage, organize, and configure catalog ${title.toLowerCase()}`}
-          breadcrumbs={[
-            { label: 'Catalog' },
-            { label: title },
-          ]}
           onAdd={handleOpenAdd}
           addLabel={addLabel || `Add ${singularTitle}`}
         />

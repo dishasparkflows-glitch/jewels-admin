@@ -24,6 +24,7 @@ import RowActions from '../../components/common/RowActions';
 import ProductPickerModal from '../../components/common/ProductPickerModal';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { slugify } from '../../utils/formatters';
 
 const getProductBadgeLabel = (prod) => {
   if (prod.isOrnate || prod.productType === 'ornate') return 'ORNATE';
@@ -39,8 +40,6 @@ export default function HomeSectionsView() {
   // State
   const [sections, setSections] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search] = useState('');
-  const [statusFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState([]);
 
   // Modals
@@ -101,20 +100,8 @@ export default function HomeSectionsView() {
     fetchSections(currentPage, pageSize);
   }, [currentPage, pageSize]);
 
-  // Filter sections
-  const filteredSections = useMemo(() => {
-    return sections.filter((sec) => {
-      const matchSearch =
-        !search ||
-        sec.title?.toLowerCase().includes(search.toLowerCase()) ||
-        sec.sectionKey?.toLowerCase().includes(search.toLowerCase()) ||
-        sec.subtitle?.toLowerCase().includes(search.toLowerCase());
-
-      const matchStatus = statusFilter === 'all' || sec.status === statusFilter;
-
-      return matchSearch && matchStatus;
-    });
-  }, [sections, search, statusFilter]);
+  // Filtered sections
+  const filteredSections = sections;
 
   // Pagination hook
   const {
@@ -140,16 +127,6 @@ export default function HomeSectionsView() {
     { label: 'Draft / Inactive', value: stats.inactive, color: 'peach', icon: HiOutlineX },
     { label: 'Curated Cards & Slides', value: stats.totalItems, color: 'gold', icon: IoDiamondOutline },
   ];
-
-  // Slugify helper
-  const slugify = (text) => {
-    return text
-      .toString()
-      .toLowerCase()
-      .trim()
-      .replace(/[\s\W-]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  };
 
   const handleOpenProductPicker = () => {
     setIsProductPickerOpen(true);
@@ -404,15 +381,10 @@ export default function HomeSectionsView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Marketing', 'Home Sections']}
-        title="Home Sections"
+      <ModuleHeader        title="Home Sections"
         subtitle="Organize, curate, and reorder dynamic homepage sections and marketing banners."
         onAdd={handleOpenAdd}
-        addLabel="Add Section"
-        exportData={sections}
-        exportFileName="home_sections_export"
-        extraActions={
+        addLabel="Add Section"        extraActions={
           <button
             type="button"
             onClick={handleOpenReorderModal}

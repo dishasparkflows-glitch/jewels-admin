@@ -1,6 +1,7 @@
 import { HiOutlineCalculator, HiOutlineInformationCircle } from 'react-icons/hi';
 import Modal from './Modal';
 import { useTheme } from '../../contexts/ThemeContext';
+import { formatCurrency } from '../../utils/formatters';
 
 export default function PricingBreakdownModal({
   isOpen,
@@ -31,10 +32,7 @@ export default function PricingBreakdownModal({
 
   const sku = variant?.sku || '';
 
-  const formatINR = (val) => {
-    const num = Number(val || 0);
-    return '₹' + num.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  };
+  const formatINR = (val) => formatCurrency(val || 0, { includeDecimals: true });
 
   // 1. Metal
   const effectiveWeight = Number(breakdown?.effectiveWeight || variant?.metalWeight || variant?.weight || 0);

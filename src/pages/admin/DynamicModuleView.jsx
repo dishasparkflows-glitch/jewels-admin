@@ -139,7 +139,6 @@ const DynamicModuleView = () => {
   const [formData, setFormData] = useState({});
   const [pendingThemeImages, setPendingThemeImages] = useState({});
   const [saving, setSaving] = useState(false);
-  const [isSyncing] = useState(false);
   const [isOrnateSyncModalOpen, setIsOrnateSyncModalOpen] = useState(false);
   const [lookupData, setLookupData] = useState({}); // { fieldName: [{ value, label }] }
   const [uploadingField, setUploadingField] = useState(null);
@@ -1055,7 +1054,7 @@ const DynamicModuleView = () => {
         },
         {
           label: 'ERP Live Sync',
-          value: isSyncing ? 'Syncing...' : 'Connected',
+          value: 'Connected',
           icon: HiOutlineRefresh,
           color: 'gold',
         },
@@ -1090,9 +1089,7 @@ const DynamicModuleView = () => {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', config.title]}
-        title={config.title}
+      <ModuleHeader        title={config.title}
         subtitle={
           isOrnatePage
             ? 'Real-time synchronization and catalog management of Ornate ERP jewellery products.'
@@ -1113,11 +1110,10 @@ const DynamicModuleView = () => {
             <button
               type="button"
               onClick={() => setIsOrnateSyncModalOpen(true)}
-              disabled={isSyncing}
-              className="flex items-center gap-2 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] disabled:opacity-75 disabled:pointer-events-none text-white rounded-lg text-xs sm:text-[13px] font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
+              className="flex items-center gap-2 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] text-white rounded-lg text-xs sm:text-[13px] font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
             >
-              <HiOutlineRefresh className={`w-4 h-4 stroke-[2.5] ${isSyncing ? 'animate-spin' : ''}`} />
-              <span>{isSyncing ? 'Syncing Products...' : 'Sync Products'}</span>
+              <HiOutlineRefresh className="w-4 h-4 stroke-[2.5]" />
+              <span>Sync Products</span>
             </button>
           )
         }
@@ -2680,7 +2676,7 @@ const DynamicModuleView = () => {
                             }}
                             className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] cursor-pointer transition-colors"
                           >
-                            ✨ Bracelets (7.0" · Step 0.5" · ±3.0%)
+                            ✨ Bracelets (7.0&quot; · Step 0.5&quot; · ±3.0%)
                           </button>
 
                           <button
@@ -2699,7 +2695,7 @@ const DynamicModuleView = () => {
                             }}
                             className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] cursor-pointer transition-colors"
                           >
-                            📿 Necklaces (16.0" · Step 2.0" · ±10.0%)
+                            📿 Necklaces (16.0&quot; · Step 2.0&quot; · ±10.0%)
                           </button>
                         </div>
                       </div>

@@ -273,9 +273,7 @@ export default function BlogCategoriesView() {
   return (
     <div className="space-y-5 animate-fadeIn">
       {/* ─── Module Header ─── */}
-      <ModuleHeader
-        breadcrumbs={['Marketing', 'Blog Categories']}
-        title="Blog Categories"
+      <ModuleHeader        title="Blog Categories"
         subtitle="Manage and organize article categories, jewelry guides, and editorial topics"
         onAdd={handleOpenAdd}
         addLabel="+ Add Blog Category"

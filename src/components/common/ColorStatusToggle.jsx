@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import ToggleSwitch from './ToggleSwitch';
 
 export default function ColorStatusToggle({ status = 'active', onChange, disabled = false, name }) {

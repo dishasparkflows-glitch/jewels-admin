@@ -1,6 +1,5 @@
 import { HiOutlinePhotograph, HiOutlineEye, HiOutlineCheck } from 'react-icons/hi';
 
-/* eslint-disable react/prop-types */
 
 export default function OrnateImagesTab({
   ornateImages,

@@ -276,15 +276,10 @@ export default function DiamondSizesView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Diamond Config', 'Diamond Sizes']}
-        title="Diamond Sizes"
+      <ModuleHeader        title="Diamond Sizes"
         subtitle="Manage and define physical side diamond size ranges, calibrations and millimeter tolerances."
         onAdd={handleOpenAdd}
-        addLabel="Add Size Range"
-        exportData={sizes}
-        exportFileName="diamond_sizes_export"
-      />
+        addLabel="Add Size Range"      />
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />

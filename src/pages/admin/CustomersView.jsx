@@ -21,13 +21,23 @@ import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import CountryCodeSelect from '../../components/common/CountryCodeSelect';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import useSelection from '../../hooks/useSelection';
+import { extractListItems, extractPaginationTotal } from '../../utils/apiHelpers';
+import { formatDate, getInitials } from '../../utils/formatters';
 
 export default function CustomersView() {
   const confirm = useConfirm();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const {
+    selectedIds,
+    toggleSelect: handleSelectRow,
+    toggleSelectAll,
+    isAllSelected,
+    clearSelection,
+    removeFromSelection,
+  } = useSelection();
   const [viewingCustomer, setViewingCustomer] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -51,11 +61,12 @@ export default function CustomersView() {
     try {
       setLoading(true);
       const res = await api.get(`/users?page=${page}&limit=${limit}`);
-      const allUsers = res.data?.data?.users || res.data?.data || [];
+      const allUsers = extractListItems(res, 'users');
       const userList = allUsers.filter((u) => u.role === 'user' || !u.role);
       setUsers(userList);
-      if (res.data?.pagination?.totalDocs !== undefined) {
-        setServerTotal(res.data.pagination.totalDocs);
+      const total = extractPaginationTotal(res, null);
+      if (total !== null) {
+        setServerTotal(total);
       }
     } catch (err) {
       console.warn('Could not load customers:', err);
@@ -83,11 +94,7 @@ export default function CustomersView() {
       await api.delete(`/users/${id}`);
       toast.success('Customer deleted successfully');
       setUsers((prev) => prev.filter((u) => (u._id || u.id) !== id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      removeFromSelection(id);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not delete customer');
     }
@@ -113,7 +120,7 @@ export default function CustomersView() {
     try {
       await api.post('/users/bulk-delete', { ids: idsToDelete });
       setUsers((prev) => prev.filter((u) => !selectedIds.has(u._id || u.id)));
-      setSelectedIds(new Set());
+      clearSelection();
       toast.success(`${count} customer${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
       toast.error('Could not delete selected customers');
@@ -186,45 +193,10 @@ export default function CustomersView() {
   } = usePagination(filteredUsers, pageSize, serverTotal);
 
   // Checkbox Selection
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(new Set(paginatedItems.map((u) => u._id || u.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  };
+  const handleSelectAll = () => toggleSelectAll(paginatedItems);
+  const allSelected = isAllSelected(paginatedItems);
 
-  const handleSelectRow = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const allSelected = paginatedItems.length > 0 && paginatedItems.every((u) => selectedIds.has(u._id || u.id));
-
-  const getInitials = (user) => {
-    const firstName = user.profile?.firstName;
-    const lastName = user.profile?.lastName;
-    if (firstName && lastName) {
-      return `${firstName[0]}${lastName[0]}`.toUpperCase();
-    }
-    if (firstName) return firstName.slice(0, 2).toUpperCase();
-    const email = user.auth?.email || 'CU';
-    return email.slice(0, 2).toUpperCase();
-  };
-
-  const formatJoinedDate = (dateString) => {
-    if (!dateString) return '—';
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return '—';
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = d.toLocaleString('en-US', { month: 'short' });
-    const year = d.getFullYear();
-    return `${day} ${month} ${year}`;
-  };
+  const formatJoinedDate = (dateString) => formatDate(dateString, '—');
 
   const getCustomerId = (user) => {
     if (user.customId) return user.customId;
@@ -266,13 +238,10 @@ export default function CustomersView() {
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
       <ModuleHeader
-        breadcrumbs={['Home', 'Customers']}
         title="Customers"
         subtitle="Manage customer profiles and purchase activity."
         onAdd={() => setIsAddModalOpen(true)}
         addLabel="Add Customer"
-        exportData={users}
-        exportFileName="customers_export"
       />
 
       {/* ─── 4 Stat Cards Row ─── */}
@@ -348,7 +317,7 @@ export default function CustomersView() {
                 paginatedItems.map((client, idx) => {
                   const id = client._id || client.id || `row_${idx}`;
                   const isSelected = selectedIds.has(id);
-                  const initials = getInitials(client);
+                  const initials = getInitials(client, 'CU');
                   const firstName = client.profile?.firstName || '';
                   const lastName = client.profile?.lastName || '';
                   const fullName = firstName ? `${firstName} ${lastName}`.trim() : (client.auth?.email || 'Client');

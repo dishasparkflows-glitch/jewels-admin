@@ -372,15 +372,10 @@ export default function SizesView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Product Config', 'Sizes']}
-        title="Sizes"
+      <ModuleHeader        title="Sizes"
         subtitle="Manage jewelry sizes, finger diameters, bracelet inner circumferences and necklace chain lengths."
         onAdd={handleOpenAdd}
-        addLabel="Add Size"
-        exportData={sizes}
-        exportFileName="sizes_export"
-      />
+        addLabel="Add Size"      />
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />

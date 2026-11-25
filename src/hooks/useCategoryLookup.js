@@ -48,7 +48,6 @@ export default function useCategoryLookup(opts = {}) {
       cancelled = true;
     };
     // Re-fetch when the type filter or enabled changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opts.type, opts.enabled]);
 
   // Regular categories (excluding collections)

@@ -16,26 +16,7 @@ import Dropdown from '../../components/common/Dropdown';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import DatePicker from '../../components/common/DatePicker';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
-
-// Helper to format file size
-const formatFileSize = (bytes) => {
-  if (!bytes || isNaN(bytes)) return '';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-};
-
-// Helper to format Date for input
-const formatDateForInput = (d) => {
-  if (!d) return '';
-  try {
-    const date = new Date(d);
-    if (isNaN(date.getTime())) return '';
-    return date.toISOString().split('T')[0];
-  } catch {
-    return '';
-  }
-};
+import { formatBytes, slugify, toInputDate } from '../../utils/formatters';
 
 export default function WriteBlogView() {
   const navigate = useNavigate();
@@ -45,7 +26,6 @@ export default function WriteBlogView() {
 
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [, setUploadingImage] = useState(false);
   const [categories, setCategories] = useState([]);
   const [isEditingSlug, setIsEditingSlug] = useState(false);
   const [tagInput, setTagInput] = useState('');
@@ -66,7 +46,7 @@ export default function WriteBlogView() {
     },
     readTime: '1 min read',
     status: 'active',
-    publishDate: formatDateForInput(new Date()),
+    publishDate: toInputDate(new Date()),
     author: '',
     tags: [],
     metaTitle: '',
@@ -121,7 +101,7 @@ export default function WriteBlogView() {
             },
             readTime: blog.readTime || '1 min read',
             status: blog.status || 'active',
-            publishDate: formatDateForInput(blog.publishDate || blog.createdAt || new Date()),
+            publishDate: toInputDate(blog.publishDate || blog.createdAt || new Date()),
             author: blog.author || 'Neirah Atelier',
             tags: Array.isArray(blog.tags)
               ? blog.tags
@@ -163,11 +143,7 @@ export default function WriteBlogView() {
   };
 
   const handleRegenerateSlug = () => {
-    const newSlug = (formData.title || '')
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+    const newSlug = slugify(formData.title || '');
     setIsEditingSlug(false);
     setFormData((prev) => ({ ...prev, slug: newSlug }));
     toast.success('URL slug regenerated from title');
@@ -205,7 +181,6 @@ export default function WriteBlogView() {
     }
 
     try {
-      setUploadingImage(true);
       const loadingToast = toast.loading('Uploading featured image...');
       const uploaded = await uploadWithPresignedUrl(file, 'blog');
       toast.dismiss(loadingToast);
@@ -218,7 +193,7 @@ export default function WriteBlogView() {
             key: uploaded.key || '',
             alt: file.name.replace(/\.[^/.]+$/, ''),
             name: file.name,
-            size: formatFileSize(file.size),
+            size: formatBytes(file.size),
           },
         }));
         toast.success('Featured image updated!');
@@ -227,7 +202,6 @@ export default function WriteBlogView() {
       console.error('Image upload failed:', err);
       toast.error('Failed to upload image. Please try again.');
     } finally {
-      setUploadingImage(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
@@ -249,13 +223,7 @@ export default function WriteBlogView() {
       return;
     }
 
-    const generatedSlug =
-      formData.slug ||
-      formData.title
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+    const generatedSlug = formData.slug || slugify(formData.title);
 
     const payload = {
       blogCategory: formData.blogCategory,

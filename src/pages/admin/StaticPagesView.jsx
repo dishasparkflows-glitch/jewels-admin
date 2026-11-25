@@ -17,6 +17,9 @@ import usePagination from '../../hooks/usePagination';
 import RichTextEditor from '../../components/common/RichTextEditor';
 import { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import { VITE_FRONT_URL } from '../../config/env';
+import useSelection from '../../hooks/useSelection';
+import { slugify } from '../../utils/formatters';
+import { extractListItems } from '../../utils/apiHelpers';
 
 // Helper to format date display (e.g. "24 Oct 2026", "10:45 AM")
 const formatDateParts = (dateString) => {
@@ -57,7 +60,14 @@ export default function StaticPagesView() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Selection State for Checkboxes & Bulk Actions
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const {
+    selectedIds,
+    toggleSelect: handleToggleSelect,
+    toggleSelectAll,
+    isAllSelected: checkAllSelected,
+    clearSelection,
+    removeFromSelection,
+  } = useSelection();
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -73,8 +83,7 @@ export default function StaticPagesView() {
     try {
       setLoading(true);
       const res = await staticPagesAPI.getAll();
-      const list = res.data?.data || res.data || [];
-      setPages(Array.isArray(list) ? list : []);
+      setPages(extractListItems(res));
     } catch (err) {
       console.error('Failed to load static pages:', err);
       toast.error('Failed to load static pages');
@@ -120,34 +129,9 @@ export default function StaticPagesView() {
   } = usePagination(filteredPages, 10);
 
   // Selection handlers for checkboxes & bulk operations
-  const isAllSelected =
-    paginatedItems.length > 0 &&
-    paginatedItems.every((p) => selectedIds.has(p._id));
+  const isAllSelected = checkAllSelected(paginatedItems);
 
-  const handleSelectAll = () => {
-    if (isAllSelected) {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        paginatedItems.forEach((p) => next.delete(p._id));
-        return next;
-      });
-    } else {
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        paginatedItems.forEach((p) => next.add(p._id));
-        return next;
-      });
-    }
-  };
-
-  const handleToggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  const handleSelectAll = () => toggleSelectAll(paginatedItems);
 
   const handleBulkDelete = async () => {
     const count = selectedIds.size;
@@ -165,7 +149,7 @@ export default function StaticPagesView() {
     try {
       await staticPagesAPI.bulkDelete(Array.from(selectedIds));
       toast.success(`${count} static page${count > 1 ? 's' : ''} deleted successfully`);
-      setSelectedIds(new Set());
+      clearSelection();
       await fetchPages();
     } catch (err) {
       console.error('Failed to bulk delete pages:', err);
@@ -205,11 +189,7 @@ export default function StaticPagesView() {
   const handleTitleChange = (val) => {
     const updated = { ...formData, title: val };
     if (isCreatingNew || !formData.slug) {
-      updated.slug = val
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+      updated.slug = slugify(val);
     }
     setFormData(updated);
   };
@@ -237,12 +217,7 @@ export default function StaticPagesView() {
       toast.error('Please enter a page title');
       return;
     }
-    const cleanSlug = (formData.slug || formData.title)
-      .toLowerCase()
-      .trim()
-      .replace(/^\/+|\/+$/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
+    const cleanSlug = slugify(String(formData.slug || formData.title).replace(/^\/+|\/+$/g, ''));
 
     if (!cleanSlug) {
       toast.error('Please enter a valid URL slug');
@@ -290,11 +265,7 @@ export default function StaticPagesView() {
     try {
       await staticPagesAPI.delete(pageId);
       toast.success('Page deleted successfully');
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(pageId);
-        return next;
-      });
+      removeFromSelection(pageId);
       await fetchPages();
     } catch (err) {
       console.error('Failed to delete page:', err);

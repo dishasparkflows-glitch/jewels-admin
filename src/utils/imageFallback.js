@@ -55,6 +55,8 @@ export function initImageFallback() {
       fallbackImages.forEach((img) => {
         img.src = newSvg;
       });
-    } catch {}
+    } catch {
+      // Ignore DOM fallback refresh failures
+    }
   });
 }

@@ -522,7 +522,7 @@ export default function DiamondPricingMasterView() {
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-stone-400">
                     <p className="font-semibold text-stone-700 mb-1">No diamond rates found</p>
-                    <p className="text-xs">Click "+ Add Row" or "Upload Excel" to configure prices.</p>
+                    <p className="text-xs">Click &quot;+ Add Row&quot; or &quot;Upload Excel&quot; to configure prices.</p>
                   </td>
                 </tr>
               ) : (

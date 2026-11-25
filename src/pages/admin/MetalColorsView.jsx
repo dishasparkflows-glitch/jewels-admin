@@ -262,15 +262,10 @@ export default function MetalColorsView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Product Config', 'Metal Color']}
-        title="Metal Color"
+      <ModuleHeader        title="Metal Color"
         subtitle="Manage precious metal alloys, rose/yellow/white gold tones and gradient finishes."
         onAdd={handleOpenAdd}
-        addLabel="Add Color"
-        exportData={colors}
-        exportFileName="metal_colors_export"
-      />
+        addLabel="Add Color"      />
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />

@@ -259,15 +259,10 @@ export default function MetalPuritiesView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Product Config', 'Metal Purity']}
-        title="Metal Purity"
+      <ModuleHeader        title="Metal Purity"
         subtitle="Manage gold purities (14K, 18K, 22K), density factors and alloy specifications."
         onAdd={handleOpenAdd}
-        addLabel="Add Purity"
-        exportData={purities}
-        exportFileName="metal_purities_export"
-      />
+        addLabel="Add Purity"      />
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />

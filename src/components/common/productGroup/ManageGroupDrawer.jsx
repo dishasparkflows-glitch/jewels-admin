@@ -21,6 +21,7 @@ import Pagination from '../Pagination';
 import { EditActionButton, DeleteActionButton, MoveActionButton, RepresentativeActionButton } from '../RowActions';
 import SyncPreviewModal from './SyncPreviewModal';
 import MoveProductModal from './MoveProductModal';
+import ProductPickerModal from '../ProductPickerModal';
 import StatusBadge from '../StatusBadge';
 import api from '../../../api/axios';
 import { useConfirm } from '../../../contexts/ConfirmContext';
@@ -70,10 +71,6 @@ export default function ManageGroupDrawer({
   const [moveInitialMode, setMoveInitialMode] = useState(null);
   const [moveTargetProducts, setMoveTargetProducts] = useState([]);
   const [addProductsOpen, setAddProductsOpen] = useState(false);
-  const [ungroupedPool, setUngroupedPool] = useState([]);
-  const [selectedToAdd, setSelectedToAdd] = useState(new Set());
-  const [searchAdd, setSearchAdd] = useState('');
-  const [savingAdd, setSavingAdd] = useState(false);
   const [approving, setApproving] = useState(false);
   const [drafting, setDrafting] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
@@ -413,35 +410,32 @@ export default function ManageGroupDrawer({
     }
   };
 
-  // Open Add Products Drawer / Modal
-  const openAddProducts = async () => {
-    try {
-      setSearchAdd('');
-      setSelectedToAdd(new Set());
-      setAddProductsOpen(true);
-      const res = await api.get('/product-groups/ungrouped-products?limit=100');
-      const items = res.data?.data?.items || res.data?.data || [];
-      setUngroupedPool(items);
-    } catch {
-      toast.error('Failed to load ungrouped products');
-    }
+  // Open Add Products Modal
+  const openAddProducts = () => {
+    setAddProductsOpen(true);
   };
 
-  const handleConfirmAddProducts = async () => {
-    if (!selectedToAdd.size) return;
+  const handleApplyAddProducts = async (selectedList) => {
+    const existingSet = new Set((products || []).map((p) => String(p._id)));
+    const newIds = (selectedList || [])
+      .map((p) => String(p._id || p.id))
+      .filter((id) => id && !existingSet.has(id));
+
+    if (!newIds.length) {
+      setAddProductsOpen(false);
+      return;
+    }
+
     try {
-      setSavingAdd(true);
       await api.post(`/product-groups/${group._id}/products`, {
-        productIds: Array.from(selectedToAdd),
+        productIds: newIds,
       });
-      toast.success(`Added ${selectedToAdd.size} product(s) to group`);
+      toast.success(`Added ${newIds.length} product(s) to group`);
       setAddProductsOpen(false);
       fetchGroup();
       onRefreshParent?.();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Could not add products');
-    } finally {
-      setSavingAdd(false);
     }
   };
 
@@ -1242,147 +1236,23 @@ export default function ManageGroupDrawer({
         }}
       />
 
-      {/* Quick Add Products Drawer / Modal */}
-      {addProductsOpen && (
-        <div
-          className="fixed inset-0 z-[1050] flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs"
-          onClick={() => setAddProductsOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl w-full max-w-xl max-h-[90vh] sm:max-h-[85vh] flex flex-col p-4 sm:p-5 shadow-2xl space-y-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-sm font-bold text-stone-900">Add Products to {group?.groupName}</h3>
-                <p className="text-[11px] text-stone-500">Select ungrouped Ornate products to add</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setAddProductsOpen(false)}
-                className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="relative">
-              <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
-              <input
-                type="text"
-                value={searchAdd}
-                onChange={(e) => setSearchAdd(e.target.value)}
-                placeholder="Search ungrouped products by title, SKU, tag..."
-                className="w-full pl-8 pr-3 py-1.5 text-xs border border-stone-200 rounded-lg bg-stone-50/50"
-              />
-            </div>
-
-            <div className="flex-1 overflow-y-auto border border-stone-200 rounded-xl divide-y divide-stone-100 max-h-64">
-              {ungroupedPool
-                .filter((p) => {
-                  if (!searchAdd.trim()) return true;
-                  const term = searchAdd.toLowerCase().trim();
-                  return (
-                    (p.basicInfo?.title || '').toLowerCase().includes(term) ||
-                    (p.basicInfo?.sku || '').toLowerCase().includes(term) ||
-                    (p.ornate?.tagNo || '').toLowerCase().includes(term)
-                  );
-                })
-                .map((p) => {
-                  const isChecked = selectedToAdd.has(p._id);
-                  const img = getProductImage(p);
-                  return (
-                    <label
-                      key={p._id}
-                      className="flex items-center gap-3 p-2.5 hover:bg-stone-50 cursor-pointer"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={() => {
-                          setSelectedToAdd((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(p._id)) next.delete(p._id);
-                            else next.add(p._id);
-                            return next;
-                          });
-                        }}
-                        className="rounded text-[#8b6f4e] focus:ring-[#8b6f4e] w-4 h-4"
-                      />
-                      <div
-                        className={`w-9 h-9 rounded-lg bg-stone-50 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5 ${
-                          img ? 'cursor-pointer hover:border-[#8b6f4e] hover:scale-105 transition-all' : ''
-                        }`}
-                        onClick={(e) => {
-                          if (img) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setPreviewImage({
-                              url: img,
-                              title: p.basicInfo?.title || p.name || 'Ornate Product',
-                              tag: p.ornate?.tagNo,
-                              sku: p.basicInfo?.sku,
-                            });
-                          }
-                        }}
-                        title={img ? 'Click to preview image' : undefined}
-                      >
-                        {img ? (
-                          <img src={img} alt="" className="w-full h-full object-contain pointer-events-none" />
-                        ) : (
-                          <IoDiamondOutline className="w-4 h-4 text-stone-300" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-xs font-semibold text-stone-800 truncate">
-                          {p.basicInfo?.title || 'Ornate Product'}
-                        </p>
-                        <p className="text-[10px] text-stone-700 font-mono truncate" title={`Tag: ${p.ornate?.tagNo || '—'} · Barcode: ${p.ornate?.barcode || p.barcode || '—'}`}>
-                          Tag: <span className="font-semibold text-stone-900">{p.ornate?.tagNo || '—'}</span> · Barcode: <span className="font-semibold text-stone-900">{p.ornate?.barcode || '—'}</span>
-                        </p>
-                      </div>
-                      <span className="text-xs font-bold text-stone-800 shrink-0">
-                        {money(p.pricing?.salePrice || p.pricing?.mrp)}
-                      </span>
-                    </label>
-                  );
-                })}
-              {ungroupedPool.length === 0 && (
-                <div className="p-6 text-center text-xs text-stone-400">
-                  No ungrouped products available.
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-between pt-2 border-t border-stone-100">
-              <span className="text-xs text-stone-500">{selectedToAdd.size} selected</span>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setAddProductsOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-100 rounded-xl"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleConfirmAddProducts}
-                  disabled={savingAdd || !selectedToAdd.size}
-                  className="px-5 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs disabled:opacity-50"
-                >
-                  {savingAdd ? 'Adding...' : 'Add Selected'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Add Products Picker Modal */}
+      <ProductPickerModal
+        isOpen={addProductsOpen}
+        onClose={() => setAddProductsOpen(false)}
+        onApply={handleApplyAddProducts}
+        defaultTab="ornate"
+        statusFilter="all"
+        excludeIds={(products || []).map((p) => String(p._id))}
+        title={`Add Products to ${group?.groupName || 'Group'}`}
+        subtitle="Search and select products across pages. Selections stay saved when navigating pages."
+      />
 
       {/* Image Preview Modal (Lightbox) */}
       {previewImage &&
         createPortal(
           <div
-            className="fixed inset-0 z-[1200] flex items-center justify-center p-3 sm:p-6 bg-stone-950/85 backdrop-blur-md animate-fadeIn select-none"
+            className="fixed inset-0 z-[100060] flex items-center justify-center p-3 sm:p-6 bg-stone-950/85 backdrop-blur-md animate-fadeIn select-none"
             onClick={() => setPreviewImage(null)}
           >
             <div

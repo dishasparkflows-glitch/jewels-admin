@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -366,7 +365,7 @@ export default function GalleryMediaPickerModal({
               <HiOutlinePhotograph className="w-12 h-12 mx-auto text-stone-300 mb-2 stroke-1" />
               <p className="text-sm font-medium text-stone-600">No images found</p>
               <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto">
-                No images matching the selected theme and placement. Try switching to "All Website Themes" or "All Placements".
+                No images matching the selected theme and placement. Try switching to &quot;All Website Themes&quot; or &quot;All Placements&quot;.
               </p>
               <button
                 type="button"

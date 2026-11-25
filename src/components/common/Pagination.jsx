@@ -99,7 +99,9 @@ export default function Pagination({
   const scrollToTop = () => {
     try {
       window.scrollTo({ top: 0, behavior: 'smooth' });
-    } catch {}
+    } catch {
+      // Ignore scroll errors in restricted environments
+    }
   };
 
   const handlePageClick = (page) => {

@@ -338,9 +338,7 @@ export default function CouponsView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Coupons']}
-        title="Coupons"
+      <ModuleHeader        title="Coupons"
         subtitle="Manage promotional discount codes, validity rules and order promotions."
         onAdd={handleOpenAdd}
         addLabel="Add Coupon"

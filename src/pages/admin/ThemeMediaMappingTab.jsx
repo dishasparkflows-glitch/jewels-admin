@@ -1256,7 +1256,7 @@ function ActivationConfirmModal({ theme, summary, activating, onClose, onConfirm
         {/* Content */}
         <div className="p-4 sm:p-5 space-y-4 text-xs text-stone-700 overflow-y-auto">
           <p>
-            You are about to activate theme <span className="font-bold text-stone-900">"{theme?.name}"</span> as the live storefront theme.
+            You are about to activate theme <span className="font-bold text-stone-900">&quot;{theme?.name}&quot;</span> as the live storefront theme.
           </p>
 
           <div className="rounded-xl border border-stone-200 bg-stone-50 p-4 space-y-3">

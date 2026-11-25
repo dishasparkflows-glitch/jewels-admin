@@ -1,3 +1,5 @@
+import { formatBytes } from './formatters.js';
+
 /**
  * Universal Client-Side Image Compression Utility
  *
@@ -91,15 +93,7 @@ export const COMPRESSION_PRESETS = {
   },
 };
 
-/**
- * Format bytes into human-readable representation
- */
-export function formatBytes(bytes = 0) {
-  if (!bytes || isNaN(bytes)) return '0 B';
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-}
+export { formatBytes };
 
 /**
  * Determine if a file is a candidate for image compression

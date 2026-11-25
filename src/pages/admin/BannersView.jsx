@@ -1052,7 +1052,7 @@ export default function BannersView() {
                       <HiOutlinePhotograph className="w-10 h-10 mx-auto text-stone-300 mb-2 stroke-1" />
                       <p className="text-sm font-medium text-stone-600">No {currentBannerType.label}s found</p>
                       <p className="text-xs text-stone-400 mt-1">
-                        Click "+ Add {currentBannerType.label}" to create one.
+                        Click &quot;+ Add {currentBannerType.label}&quot; to create one.
                       </p>
                     </td>
                   </tr>

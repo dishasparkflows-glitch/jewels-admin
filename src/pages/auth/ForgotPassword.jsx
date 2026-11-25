@@ -102,7 +102,7 @@ const ForgotPassword = () => {
             <div className="text-center mb-4">
               <h2 className="text-sm font-semibold text-stone-800">Forgot Password?</h2>
               <p className="text-xs text-stone-500 mt-1">
-                Enter your admin email address and we'll send you a password reset link.
+                Enter your admin email address and we&apos;ll send you a password reset link.
               </p>
             </div>
 

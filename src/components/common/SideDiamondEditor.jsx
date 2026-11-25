@@ -2,10 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import { HiOutlineTrash, HiOutlinePlus } from 'react-icons/hi';
 import Dropdown from './Dropdown';
 import api from '../../api/axios';
+import { formatCurrency } from '../../utils/formatters';
 
 const id = (v) => String(v?._id || v || '');
 const physical = ['diamondShapeId', 'pieces', 'caratWeight', 'sizeFrom', 'sizeTo'];
-const money = (v) => Number(v).toLocaleString('en-IN', { style: 'currency', currency: 'INR' });
+const money = (v) => formatCurrency(v, { includeDecimals: true });
 const isEmpty = (v) => v === '' || v === null || v === undefined;
 
 export default function SideDiamondEditor({ rows, onChange, masters }) {

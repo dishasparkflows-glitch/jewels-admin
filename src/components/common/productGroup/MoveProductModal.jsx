@@ -324,7 +324,7 @@ export default function MoveProductModal({
             />
             {groups.length === 0 && !loading && (
               <p className="text-xs text-stone-400 mt-1.5">
-                No other active groups found. You can switch to "New Group" to start a new one.
+                No other active groups found. You can switch to &quot;New Group&quot; to start a new one.
               </p>
             )}
             <p className="text-[11px] text-stone-500 bg-stone-50 p-2.5 rounded-xl border border-stone-100 mt-3">

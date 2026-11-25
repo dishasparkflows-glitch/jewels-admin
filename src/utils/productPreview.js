@@ -1,5 +1,6 @@
 import api from '../api/axios';
 import { VITE_FRONT_URL } from '../config/env';
+import { slugify } from './formatters';
 
 export const getFrontBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location?.hostname) {
@@ -13,13 +14,6 @@ export const getFrontBaseUrl = () => {
   }
   return 'http://localhost:5173';
 };
-
-const slugify = (text) =>
-  String(text || '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/\s+/g, '-');
 
 export const getProductPreviewUrl = (product) => {
   if (!product) return null;

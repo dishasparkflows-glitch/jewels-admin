@@ -246,7 +246,9 @@ export default function BirthstonePortfolioView() {
         if (prevUrl) {
           try {
             await deleteUploadedFile(prevUrl);
-          } catch {}
+          } catch {
+            // Best-effort cleanup of previous file
+          }
         }
         setFormImageUrl(fileUrl);
         toast.success('Gemstone portrait uploaded successfully');
@@ -827,7 +829,9 @@ export default function BirthstonePortfolioView() {
                           if (prev) {
                             try {
                               await deleteUploadedFile(prev);
-                            } catch {}
+                            } catch {
+                              // Best-effort cleanup
+                            }
                           }
                         }}
                         className="block text-[11px] text-rose-600 hover:underline cursor-pointer"

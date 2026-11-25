@@ -289,9 +289,7 @@ export default function MetalRatesView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row (Matches Diamond rates exactly) ─── */}
-      <ModuleHeader
-        breadcrumbs={['Pricing Hub', 'Metal Rates']}
-        title="Metal rates"
+      <ModuleHeader        title="Metal rates"
         subtitle="Formula-based pricing and real-time metal rates for all jewelry variants."
         onAdd={openEditModal}
         addLabel="Update Metal rates"

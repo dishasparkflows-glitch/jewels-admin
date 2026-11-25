@@ -42,7 +42,6 @@ export default function BlogsView() {
 
   // Form & Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingBlog] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
@@ -245,13 +244,8 @@ export default function BlogsView() {
 
     try {
       setSubmitting(true);
-      if (editingBlog) {
-        await blogsAPI.update(editingBlog._id, payload);
-        toast.success('Blog article updated successfully');
-      } else {
-        await blogsAPI.create(payload);
-        toast.success('Blog article published successfully');
-      }
+      await blogsAPI.create(payload);
+      toast.success('Blog article published successfully');
       setIsModalOpen(false);
       fetchBlogs();
     } catch (err) {
@@ -364,9 +358,7 @@ export default function BlogsView() {
   return (
     <div className="space-y-5 animate-fadeIn">
       {/* ─── Module Header ─── */}
-      <ModuleHeader
-        breadcrumbs={['Marketing', 'Blogs']}
-        title="Luxury Journal & Blogs"
+      <ModuleHeader        title="Luxury Journal & Blogs"
         subtitle="Publish editorial articles, diamond buying guides, styling tips, and brand stories"
         onAdd={() => navigate('/blogs/write')}
         addLabel="+ Write Blog Article"
@@ -671,7 +663,7 @@ export default function BlogsView() {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingBlog ? 'Edit Luxury Journal Article' : 'Write New Luxury Journal Article'}
+        title="Write New Luxury Journal Article"
         subtitle="Curate editorial stories, jewelry care recommendations, and diamond guides"
         maxWidth="max-w-5xl"
       >
@@ -967,7 +959,7 @@ export default function BlogsView() {
                   <span>Saving Article...</span>
                 </>
               ) : (
-                <span>{editingBlog ? 'Update Article' : 'Publish Article'}</span>
+                <span>Publish Article</span>
               )}
             </button>
           </div>

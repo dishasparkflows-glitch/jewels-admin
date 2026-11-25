@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useState, useRef, useEffect } from 'react';
 import { HiOutlineChevronDown, HiCheck } from 'react-icons/hi';
 

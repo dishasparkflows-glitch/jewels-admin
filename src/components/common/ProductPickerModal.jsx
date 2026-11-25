@@ -1,4 +1,3 @@
-/* eslint-disable react/prop-types */
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
@@ -28,10 +27,13 @@ export default function ProductPickerModal({
   onClose,
   onApply,
   initialSelected = [],
+  defaultTab = 'gold',
+  statusFilter = 'approved',
+  excludeIds = [],
   title = 'Select Products',
   subtitle = 'Search and select products across pages. Selections stay saved when navigating pages.',
 }) {
-  const [pickerTab, setPickerTab] = useState('gold'); // 'gold' | 'silver' | 'ornate' | 'all'
+  const [pickerTab, setPickerTab] = useState(defaultTab || 'gold'); // 'gold' | 'silver' | 'ornate' | 'all'
   const [pickerSearch, setPickerSearch] = useState('');
   const [pickerPage, setPickerPage] = useState(1);
   const [pickerLimit, setPickerLimit] = useState(25);
@@ -46,6 +48,11 @@ export default function ProductPickerModal({
 
   // Map of productId -> full product object across tabs and pages
   const [tempSelectedMap, setTempSelectedMap] = useState(new Map());
+
+  const excludeIdSet = useMemo(
+    () => new Set((excludeIds || []).map((id) => String(id))),
+    [excludeIds]
+  );
 
   // Initialize selected products map when modal opens
   useEffect(() => {
@@ -63,8 +70,8 @@ export default function ProductPickerModal({
     setTempSelectedMap(newMap);
     setPickerSearch('');
     setPickerPage(1);
-    setPickerTab('gold');
-  }, [isOpen, initialSelected]);
+    setPickerTab(defaultTab || 'gold');
+  }, [isOpen, initialSelected, defaultTab]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -88,7 +95,7 @@ export default function ProductPickerModal({
       const params = new URLSearchParams();
       params.append('page', String(page));
       params.append('limit', String(limit));
-      params.append('status', 'approved');
+      params.append('status', statusFilter || 'approved');
       if (type && type !== 'all') {
         params.append('productType', type);
       }
@@ -131,7 +138,7 @@ export default function ProductPickerModal({
     } finally {
       setPickerLoading(false);
     }
-  }, [pickerPage, pickerTab, pickerSearch, pickerLimit]);
+  }, [pickerPage, pickerTab, pickerSearch, pickerLimit, statusFilter]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -144,6 +151,7 @@ export default function ProductPickerModal({
   // Toggle single product selection
   const handleToggleProduct = (product) => {
     const key = String(product._id || product.id);
+    if (excludeIdSet.has(key)) return;
     setTempSelectedMap((prev) => {
       const next = new Map(prev);
       if (next.has(key)) {
@@ -156,18 +164,23 @@ export default function ProductPickerModal({
   };
 
   // Toggle select all on current page
+  const selectablePageProducts = useMemo(
+    () => pickerProducts.filter((p) => !excludeIdSet.has(String(p._id || p.id))),
+    [pickerProducts, excludeIdSet]
+  );
+
   const isAllPageSelected = useMemo(() => {
-    if (!pickerProducts.length) return false;
-    return pickerProducts.every((p) => tempSelectedMap.has(String(p._id || p.id)));
-  }, [pickerProducts, tempSelectedMap]);
+    if (!selectablePageProducts.length) return false;
+    return selectablePageProducts.every((p) => tempSelectedMap.has(String(p._id || p.id)));
+  }, [selectablePageProducts, tempSelectedMap]);
 
   const handleToggleSelectAllPage = () => {
     setTempSelectedMap((prev) => {
       const next = new Map(prev);
       if (isAllPageSelected) {
-        pickerProducts.forEach((p) => next.delete(String(p._id || p.id)));
+        selectablePageProducts.forEach((p) => next.delete(String(p._id || p.id)));
       } else {
-        pickerProducts.forEach((p) => next.set(String(p._id || p.id), p));
+        selectablePageProducts.forEach((p) => next.set(String(p._id || p.id), p));
       }
       return next;
     });
@@ -221,11 +234,11 @@ export default function ProductPickerModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-xs animate-fadeIn overflow-y-auto cursor-pointer"
+      className="fixed inset-0 z-[100050] flex items-center justify-center p-3 sm:p-5 bg-black/70 backdrop-blur-xs animate-fadeIn overflow-y-auto cursor-pointer"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl border border-stone-200 shadow-2xl w-full max-w-5xl overflow-hidden my-auto max-h-[92vh] flex flex-col cursor-default relative z-[10001] animate-scaleIn"
+        className="bg-white rounded-3xl border border-stone-200 shadow-2xl w-full max-w-5xl overflow-hidden my-auto max-h-[92vh] flex flex-col cursor-default relative z-[100051] animate-scaleIn"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Picker Header */}
@@ -346,6 +359,7 @@ export default function ProductPickerModal({
                   size="sm"
                   portal={true}
                   className="w-20"
+                  menuClassName="z-[100100]"
                   buttonClassName="h-8 px-2.5 text-xs font-semibold rounded-xl bg-white border-stone-200 shadow-2xs min-w-[64px]"
                 />
               </div>
@@ -374,7 +388,9 @@ export default function ProductPickerModal({
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
               {pickerProducts.map((prod) => {
-                const isSelected = tempSelectedMap.has(String(prod._id || prod.id));
+                const prodId = String(prod._id || prod.id);
+                const isExcluded = excludeIdSet.has(prodId);
+                const isSelected = !isExcluded && tempSelectedMap.has(prodId);
                 const badge = getProductBadgeLabel(prod);
                 const thumb =
                   prod.thumbnail ||
@@ -390,24 +406,32 @@ export default function ProductPickerModal({
                     key={prod._id || prod.id}
                     onClick={() => handleToggleProduct(prod)}
                     style={isSelected ? { borderColor: 'var(--theme-primary, #8b6f4e)' } : {}}
-                    className={`relative flex flex-col p-2.5 rounded-2xl bg-white border transition-all cursor-pointer select-none group shadow-2xs ${
-                      isSelected
-                        ? 'ring-2 ring-[var(--theme-primary,#8b6f4e)]/30 bg-[#faf6f0]'
-                        : 'border-stone-200 hover:border-stone-300 hover:shadow-xs'
+                    className={`relative flex flex-col p-2.5 rounded-2xl bg-white border transition-all select-none group shadow-2xs ${
+                      isExcluded
+                        ? 'opacity-55 cursor-not-allowed border-stone-200 bg-stone-50/50'
+                        : isSelected
+                        ? 'cursor-pointer ring-2 ring-[var(--theme-primary,#8b6f4e)]/30 bg-[#faf6f0]'
+                        : 'cursor-pointer border-stone-200 hover:border-stone-300 hover:shadow-xs'
                     }`}
                   >
                     {/* Top card row: Checkbox and Category Badge */}
                     <div className="flex items-center justify-between mb-1">
-                      <div
-                        style={isSelected ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', borderColor: 'var(--theme-primary, #8b6f4e)' } : {}}
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
-                          isSelected
-                            ? 'text-white'
-                            : 'border-stone-300 bg-white'
-                        }`}
-                      >
-                        {isSelected && <HiOutlineCheck className="w-3 h-3 stroke-2" />}
-                      </div>
+                      {isExcluded ? (
+                        <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-stone-200 text-stone-600">
+                          In Group
+                        </span>
+                      ) : (
+                        <div
+                          style={isSelected ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', borderColor: 'var(--theme-primary, #8b6f4e)' } : {}}
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                            isSelected
+                              ? 'text-white'
+                              : 'border-stone-300 bg-white'
+                          }`}
+                        >
+                          {isSelected && <HiOutlineCheck className="w-3 h-3 stroke-2" />}
+                        </div>
+                      )}
                       <span
                         style={{ color: 'var(--theme-primary, #8b6f4e)' }}
                         className="text-[9px] font-bold tracking-wider uppercase"

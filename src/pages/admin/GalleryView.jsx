@@ -94,8 +94,6 @@ export default function GalleryView() {
   const [selectedTheme, setSelectedTheme] = useState('all');
   const [selectedType, setSelectedType] = useState('all');
   const [selectedPlatform, setSelectedPlatform] = useState('all'); // 'all' | 'web' | 'mobile' | 'common'
-  const [search] = useState('');
-  const [sortBy] = useState('newest');
   const [viewMode, setViewMode] = useState('grid'); // 'grid' | 'list'
 
   // ─── Modals State ───────────────────────────────────────────
@@ -104,12 +102,10 @@ export default function GalleryView() {
   const [initialUploadType, setInitialUploadType] = useState('asset');
   const [previewItem, setPreviewItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
-  const [, setIsDeleting] = useState(false);
 
   // ─── Pagination State ──────────────────────────────────────
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize(10);
-  const [, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
 
   const handlePageSizeChange = (newSize) => {
@@ -172,8 +168,8 @@ export default function GalleryView() {
         themeId: selectedTheme,
         type: selectedType,
         platform: selectedPlatform,
-        search,
-        sortBy,
+        search: '',
+        sortBy: 'newest',
         page: targetPage,
         limit: targetLimit,
       });
@@ -201,7 +197,6 @@ export default function GalleryView() {
       });
       setItems(normalizedItems);
       setCounts(data.counts || {});
-      setTotalPages(data.pagination?.totalPages || 1);
       setTotalItems(data.pagination?.totalDocs ?? data.pagination?.totalItems ?? (data.items || []).length);
       if (data.themes && (!themes || themes.length === 0)) {
         setThemes(data.themes);
@@ -216,17 +211,17 @@ export default function GalleryView() {
     } finally {
       setLoading(false);
     }
-  }, [page, pageSize, selectedTheme, selectedType, selectedPlatform, search, sortBy, themes, uploadThemeId]);
+  }, [page, pageSize, selectedTheme, selectedType, selectedPlatform, themes, uploadThemeId]);
 
   // Reset to page 1 when any filter or search changes
   useEffect(() => {
     setPage(1);
-  }, [selectedTheme, selectedType, selectedPlatform, search, sortBy]);
+  }, [selectedTheme, selectedType, selectedPlatform]);
 
   // On mount and filter changes: ONLY call gallery get list API with pagination
   useEffect(() => {
     fetchGallery(page, pageSize);
-  }, [page, pageSize, selectedTheme, selectedType, selectedPlatform, search, sortBy]);
+  }, [page, pageSize, selectedTheme, selectedType, selectedPlatform]);
 
   // ─── Modal Scroll Lock & ESC Key Handling ───────────────────
   useEffect(() => {
@@ -268,15 +263,12 @@ export default function GalleryView() {
     if (!isConfirmed) return;
 
     try {
-      setIsDeleting(true);
       await galleryAPI.deleteItem(item.id);
       toast.success('Media item removed successfully.');
       await fetchGallery();
     } catch (err) {
       console.error('Delete failed:', err);
       toast.error(err.response?.data?.message || 'Could not delete media item.');
-    } finally {
-      setIsDeleting(false);
     }
   };
 

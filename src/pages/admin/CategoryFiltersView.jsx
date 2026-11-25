@@ -362,7 +362,7 @@ export default function CategoryFiltersView() {
                     Category Availability & Settings
                   </h2>
                   <p className="text-xs text-stone-400 mt-0.5">
-                    Configure filter settings for <span className="font-semibold text-stone-700 font-serif">"{selectedFilter?.title || 'Filter'}"</span> across categories.
+                    Configure filter settings for <span className="font-semibold text-stone-700 font-serif">&quot;{selectedFilter?.title || 'Filter'}&quot;</span> across categories.
                   </p>
                 </div>
               </div>

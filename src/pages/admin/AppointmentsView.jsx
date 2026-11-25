@@ -21,6 +21,9 @@ import DatePicker, { formatDateToISO } from '../../components/common/DatePicker'
 import CountryCodeSelect from '../../components/common/CountryCodeSelect';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import StatCards from '../../components/common/StatCards';
+import useSelection from '../../hooks/useSelection';
+import { extractListItems, extractPaginationTotal } from '../../utils/apiHelpers';
+import { formatDate, getInitials } from '../../utils/formatters';
 
 
 const STATUS_TABS = [
@@ -38,7 +41,14 @@ export default function AppointmentsView() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'upcoming'
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const {
+    selectedIds,
+    toggleSelect: handleToggleSelect,
+    toggleSelectAll,
+    isAllSelected: checkAllSelected,
+    clearSelection,
+    removeFromSelection,
+  } = useSelection();
   const [editingApt, setEditingApt] = useState(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -86,14 +96,9 @@ export default function AppointmentsView() {
     try {
       setLoading(true);
       const res = await api.get(`/appointments?page=${page}&limit=${limit}`);
-      const data = res.data?.data?.items || res.data?.data || [];
-      const list = Array.isArray(data) ? data : [];
+      const list = extractListItems(res);
       setAppointments(list);
-      if (res.data?.pagination?.totalDocs !== undefined) {
-        setServerTotal(res.data.pagination.totalDocs);
-      } else {
-        setServerTotal(list.length);
-      }
+      setServerTotal(extractPaginationTotal(res, list.length));
     } catch (err) {
       console.error('Failed to load appointments:', err);
       setAppointments([]);
@@ -190,11 +195,7 @@ export default function AppointmentsView() {
     try {
       await api.delete(`/appointments/${id}`);
       setAppointments((prev) => prev.filter((a) => (a._id || a.id) !== id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      removeFromSelection(id);
       setServerTotal((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
       toast.success('Appointment deleted');
     } catch (err) {
@@ -222,7 +223,7 @@ export default function AppointmentsView() {
     try {
       await api.post('/appointments/bulk-delete', { ids: idsToDelete });
       setAppointments((prev) => prev.filter((a, idx) => !selectedIds.has(a._id || a.id || `apt_${idx}`)));
-      setSelectedIds(new Set());
+      clearSelection();
       setServerTotal((prev) => (prev !== null ? Math.max(0, prev - idsToDelete.length) : 0));
       toast.success(`${count} appointment${count > 1 ? 's' : ''} deleted successfully`);
     } catch (err) {
@@ -230,26 +231,8 @@ export default function AppointmentsView() {
     }
   };
 
-  const handleSelectAll = (e) => {
-    const checked = e.target.checked;
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      paginatedItems.forEach((apt, idx) => {
-        const id = apt._id || apt.id || `apt_${idx}`;
-        if (checked) next.add(id);
-        else next.delete(id);
-      });
-      return next;
-    });
-  };
-
-  const handleToggleSelect = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  const handleSelectAll = () => {
+    toggleSelectAll(paginatedItems, (apt, idx) => apt._id || apt.id || `apt_${idx}`);
   };
 
   const handleOpenEdit = (apt, idx) => {
@@ -411,28 +394,10 @@ export default function AppointmentsView() {
     paginatedItems,
   } = usePagination(displayedList, pageSize, serverTotal);
 
-  const isAllSelected =
-    paginatedItems.length > 0 &&
-    paginatedItems.every((apt, idx) => {
-      const id = apt._id || apt.id || `apt_${idx}`;
-      return selectedIds.has(id);
-    });
-
-  // Initials generator
-  const getInitials = (name = '') => {
-    const parts = name.trim().split(/\s+/);
-    if (!parts.length || !parts[0]) return 'AP';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
+  const isAllSelected = checkAllSelected(paginatedItems, (apt, idx) => apt._id || apt.id || `apt_${idx}`);
 
   // Date formatter matching screenshot: "27 Oct 2026"
-  const formatDateDisplay = (dateStr) => {
-    if (!dateStr) return '21 Oct 2026';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return String(dateStr);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
+  const formatDateDisplay = (dateStr) => formatDate(dateStr, '—');
 
   // Extract apt data helper
   const extractAptData = (apt, idx) => {
@@ -795,7 +760,7 @@ export default function AppointmentsView() {
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-full bg-[#fdf3e7] text-[#8b6f4e] font-bold text-xs flex items-center justify-center border border-[#f5e3ce] shrink-0">
-                            {getInitials(clientName)}
+                            {getInitials(clientName, 'AP')}
                           </div>
                           <div>
                             <p className="font-bold text-stone-900 text-xs leading-none">

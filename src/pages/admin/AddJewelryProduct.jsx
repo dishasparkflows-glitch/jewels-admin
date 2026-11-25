@@ -2526,6 +2526,8 @@ export default function AddJewelryProduct() {
   const [draggedCareIndex, setDraggedCareIndex] = useState(null);
   const [dragOverCareIndex, setDragOverCareIndex] = useState(null);
   const [specifications, setSpecifications] = useState([]);
+  const [draggedSpecIndex, setDraggedSpecIndex] = useState(null);
+  const [dragOverSpecIndex, setDragOverSpecIndex] = useState(null);
 
   useEffect(() => {
     if (!productId || !productRecord || !mastersLoaded || hydratedProductId.current === productId) return;
@@ -2911,7 +2913,9 @@ export default function AddJewelryProduct() {
     e.dataTransfer.effectAllowed = 'move';
     try {
       e.dataTransfer.setData('text/plain', String(index));
-    } catch {}
+    } catch {
+      // Ignore drag dataTransfer errors in unsupported browsers
+    }
   };
 
   const handleCareDragOver = (e, index) => {
@@ -2944,6 +2948,49 @@ export default function AddJewelryProduct() {
   const handleCareDragEnd = () => {
     setDraggedCareIndex(null);
     setDragOverCareIndex(null);
+  };
+
+  // Drag and drop for specifications
+  const handleSpecDragStart = (e, index) => {
+    setDraggedSpecIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(index));
+    } catch {
+      // Ignore drag dataTransfer errors
+    }
+  };
+
+  const handleSpecDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverSpecIndex !== index) {
+      setDragOverSpecIndex(index);
+    }
+  };
+
+  const handleSpecDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedSpecIndex === null || draggedSpecIndex === targetIndex) {
+      setDraggedSpecIndex(null);
+      setDragOverSpecIndex(null);
+      return;
+    }
+
+    setSpecifications((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(draggedSpecIndex, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
+
+    setDraggedSpecIndex(null);
+    setDragOverSpecIndex(null);
+  };
+
+  const handleSpecDragEnd = () => {
+    setDraggedSpecIndex(null);
+    setDragOverSpecIndex(null);
   };
 
   // Format Care Description text helper
@@ -3795,6 +3842,12 @@ export default function AddJewelryProduct() {
     handleMoveSpecification,
     handleUpdateSpecification,
     handleRemoveSpecification,
+    draggedSpecIndex,
+    dragOverSpecIndex,
+    handleSpecDragStart,
+    handleSpecDragOver,
+    handleSpecDrop,
+    handleSpecDragEnd,
 
     // Step 6: SEO
     seo,

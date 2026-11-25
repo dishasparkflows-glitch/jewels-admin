@@ -43,7 +43,6 @@ const BODY_PART_META = {
 
 export default function VtoMastersView() {
   const [masters, setMasters] = useState([]);
-  const [, setLoading] = useState(true);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -70,15 +69,12 @@ export default function VtoMastersView() {
   // Fetch all VTO Masters from backend
   const fetchMasters = async () => {
     try {
-      setLoading(true);
       const res = await api.get('/vto-masters');
       const items = res.data?.data?.items || res.data?.data || [];
       setMasters(Array.isArray(items) ? items : []);
     } catch (err) {
       console.error('Failed to load VTO Masters:', err);
       toast.error('Failed to load VTO Masters');
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -247,9 +243,7 @@ export default function VtoMastersView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Product Config', 'VTO Masters']}
-        title="VTO Master Assets"
+      <ModuleHeader        title="VTO Master Assets"
         subtitle="Configure global virtual try-on environments, light and dark tone models for rings, earrings and necklaces."
       />
 

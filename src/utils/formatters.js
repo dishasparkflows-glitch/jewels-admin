@@ -115,3 +115,42 @@ export function formatNumber(val, fallback = '0') {
   if (Number.isNaN(num)) return fallback;
   return new Intl.NumberFormat('en-IN').format(num);
 }
+
+/**
+ * Convert arbitrary text into a clean URL-safe lowercase slug.
+ * @param {string} text
+ * @returns {string}
+ */
+export function slugify(text = '') {
+  return String(text || '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/**
+ * Extract up to 2 uppercase initials from a name string or user/customer object.
+ * @param {string|Object} input
+ * @param {string} [fallback='U']
+ * @returns {string}
+ */
+export function getInitials(input, fallback = 'U') {
+  if (!input) return fallback;
+  const rawName =
+    typeof input === 'string'
+      ? input
+      : [
+          input.profile?.firstName || input.firstName,
+          input.profile?.lastName || input.lastName,
+        ]
+          .filter(Boolean)
+          .join(' ') ||
+        input.name ||
+        input.fullName ||
+        '';
+  const parts = String(rawName).trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return fallback;
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}

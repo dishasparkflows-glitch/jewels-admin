@@ -386,15 +386,10 @@ export default function BeforeAfterView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'Marketing', 'Custom Before/After']}
-        title="Custom Before/After Gallery"
+      <ModuleHeader        title="Custom Before/After Gallery"
         subtitle="Manage customer before/after jewelry designs showcased on the Custom Design atelier."
         onAdd={handleOpenAdd}
-        addLabel="Add New Pair"
-        exportData={items}
-        exportFileName="before_after_gallery_export"
-      />
+        addLabel="Add New Pair"      />
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />

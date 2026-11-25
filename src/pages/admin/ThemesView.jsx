@@ -26,6 +26,7 @@ import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { VITE_FRONT_URL } from '../../config/env';
+import { slugify } from '../../utils/formatters';
 
 
 
@@ -70,12 +71,6 @@ const emptyTheme = () => ({
 });
 
 const getData = (response) => response?.data?.data;
-const slugify = (value) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '');
 
 const istDateToIso = (value) => (value ? new Date(`${value}:00+05:30`).toISOString() : undefined);
 
@@ -118,7 +113,6 @@ export default function ThemesView() {
   // Modals & Menu
   const [themeToDelete, setThemeToDelete] = useState(null);
   const [deletingId, setDeletingId] = useState(null);
-  const [, setActiveMenuThemeId] = useState(null);
 
   // Pagination & Server State
   const [currentPage, setCurrentPage] = useState(1);
@@ -235,13 +229,6 @@ export default function ThemesView() {
       setTab('details');
     }
   }, [location.pathname, location.state]);
-
-  // Close card menu on outside click
-  useEffect(() => {
-    const handleOutsideClick = () => setActiveMenuThemeId(null);
-    window.addEventListener('click', handleOutsideClick);
-    return () => window.removeEventListener('click', handleOutsideClick);
-  }, []);
 
   // Fetch paginated themes from backend
   const fetchThemes = useCallback(async () => {

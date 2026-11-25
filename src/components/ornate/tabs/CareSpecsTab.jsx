@@ -2,7 +2,6 @@ import { HiOutlineDocumentText, HiOutlinePlus, HiOutlineTrash, HiOutlineLink } f
 import { TbListDetails } from 'react-icons/tb';
 import ToggleSwitch from '../../common/ToggleSwitch';
 
-/* eslint-disable react/prop-types */
 
 export default function CareSpecsTab({
   careSections,
@@ -23,6 +22,12 @@ export default function CareSpecsTab({
   handleMoveSpecification,
   handleUpdateSpecification,
   handleRemoveSpecification,
+  draggedSpecIndex,
+  dragOverSpecIndex,
+  handleSpecDragStart,
+  handleSpecDragOver,
+  handleSpecDrop,
+  handleSpecDragEnd,
 }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start animate-fadeIn">
@@ -323,11 +328,25 @@ export default function CareSpecsTab({
         ) : (
           <div className="space-y-3">
             {specifications.map((spec, sIdx) => (
-              <div key={spec.id} className="flex items-center gap-2.5">
+              <div
+                key={spec.id}
+                draggable
+                onDragStart={(e) => handleSpecDragStart?.(e, sIdx)}
+                onDragOver={(e) => handleSpecDragOver?.(e, sIdx)}
+                onDrop={(e) => handleSpecDrop?.(e, sIdx)}
+                onDragEnd={handleSpecDragEnd}
+                className={`flex items-center gap-2.5 p-2 rounded-2xl border transition-all duration-150 relative ${
+                  draggedSpecIndex === sIdx
+                    ? 'opacity-40 border-dashed border-[#8b6f4e] bg-stone-100 scale-[0.99]'
+                    : dragOverSpecIndex === sIdx
+                    ? 'border-2 border-[#8b6f4e] bg-[#faf5ee] shadow-sm'
+                    : 'border-stone-200/90 bg-[#faf8f5]'
+                }`}
+              >
                 {/* Serial Number (Sr. No.) */}
                 <span
                   title={`Sr. No. ${sIdx + 1}`}
-                  className="w-8 h-10 rounded-xl bg-stone-50 border border-stone-200/90 text-xs font-bold text-stone-600 flex items-center justify-center shrink-0 shadow-2xs select-none"
+                  className="w-8 h-10 rounded-xl bg-white border border-stone-200/90 text-xs font-bold text-stone-600 flex items-center justify-center shrink-0 shadow-2xs select-none"
                 >
                   {sIdx + 1}
                 </span>
@@ -346,32 +365,59 @@ export default function CareSpecsTab({
                   placeholder="Value (e.g. Lobster Clasp, 7.5 Inches)"
                   className="flex-1 min-w-0 h-10 px-3.5 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 text-stone-800 placeholder-stone-400 shadow-2xs"
                 />
-                {/* Actions: Move Up/Down & Remove */}
+
+                {/* Actions: Reorder Pill (Grip Handle & Up/Down Buttons) & Remove Button */}
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <div className="flex flex-col -space-y-0.5 bg-stone-50 border border-stone-200/90 px-1 py-0.5 rounded-lg shadow-2xs">
-                    <button
-                      type="button"
-                      disabled={sIdx === 0}
-                      onClick={() => handleMoveSpecification(sIdx, -1)}
-                      title="Move specification up"
-                      className="w-4 h-3.5 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] rounded disabled:opacity-20 disabled:pointer-events-none cursor-pointer transition-colors"
+                  <div className="flex items-center gap-1 shrink-0 bg-white border border-stone-200/90 px-1.5 py-1 rounded-xl shadow-2xs">
+                    {/* 6-dots Grip Handle */}
+                    <div
+                      title="Drag to reorder specification"
+                      className="text-stone-400 hover:text-[#8b6f4e] cursor-grab active:cursor-grabbing p-1 rounded-lg hover:bg-stone-100 transition-colors"
                     >
-                      <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                      <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                        <circle cx="7" cy="5" r="1.5" />
+                        <circle cx="13" cy="5" r="1.5" />
+                        <circle cx="7" cy="10" r="1.5" />
+                        <circle cx="13" cy="10" r="1.5" />
+                        <circle cx="7" cy="15" r="1.5" />
+                        <circle cx="13" cy="15" r="1.5" />
                       </svg>
-                    </button>
-                    <button
-                      type="button"
-                      disabled={sIdx === specifications.length - 1}
-                      onClick={() => handleMoveSpecification(sIdx, 1)}
-                      title="Move specification down"
-                      className="w-4 h-3.5 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] rounded disabled:opacity-20 disabled:pointer-events-none cursor-pointer transition-colors"
-                    >
-                      <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
-                    </button>
+                    </div>
+
+                    {/* Quick Up/Down Buttons */}
+                    <div className="flex flex-col -space-y-0.5 pl-1 border-l border-stone-200">
+                      <button
+                        type="button"
+                        disabled={sIdx === 0}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveSpecification(sIdx, -1);
+                        }}
+                        title="Move specification up"
+                        className="w-4 h-3.5 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] hover:bg-stone-100 rounded transition-colors disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                      >
+                        <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        disabled={sIdx === specifications.length - 1}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoveSpecification(sIdx, 1);
+                        }}
+                        title="Move specification down"
+                        className="w-4 h-3.5 flex items-center justify-center text-stone-400 hover:text-[#8b6f4e] hover:bg-stone-100 rounded transition-colors disabled:opacity-20 disabled:pointer-events-none cursor-pointer"
+                      >
+                        <svg className="w-2.5 h-2.5 stroke-[3]" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Remove Trash Button */}
                   <button
                     type="button"
                     onClick={() => handleRemoveSpecification(spec.id)}

@@ -24,6 +24,9 @@ import Dropdown from '../../components/common/Dropdown';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { openProductPreview } from '../../utils/productPreview';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
+import useSelection from '../../hooks/useSelection';
+import { extractListItems, extractPaginationTotal } from '../../utils/apiHelpers';
+import { formatDate as formatDisplayDate } from '../../utils/formatters';
 
 const REVIEW_STATUS_OPTIONS = [
   { value: 'approved', label: 'Approved' },
@@ -36,7 +39,14 @@ export default function ReviewsView() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [selectedIds, setSelectedIds] = useState(new Set());
+  const {
+    selectedIds,
+    toggleSelect: handleSelectRow,
+    toggleSelectAll,
+    isAllSelected,
+    clearSelection,
+    removeFromSelection,
+  } = useSelection();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
   const [viewingReview, setViewingReview] = useState(null);
@@ -69,10 +79,10 @@ export default function ReviewsView() {
     try {
       setLoading(true);
       const res = await api.get(`/reviews?page=${page}&limit=${limit}`);
-      const data = res.data?.data?.items || res.data?.data || [];
-      setReviews(Array.isArray(data) ? data : []);
-      if (res.data?.pagination?.totalDocs !== undefined) {
-        setServerTotal(res.data.pagination.totalDocs);
+      setReviews(extractListItems(res));
+      const total = extractPaginationTotal(res, null);
+      if (total !== null) {
+        setServerTotal(total);
       }
     } catch (err) {
       console.warn('Could not load reviews:', err);
@@ -219,18 +229,10 @@ export default function ReviewsView() {
       await api.delete(`/reviews/${id}`);
       toast.success('Review deleted');
       setReviews((prev) => prev.filter((r) => (r._id || r.id) !== id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      removeFromSelection(id);
     } catch {
       setReviews((prev) => prev.filter((r) => (r._id || r.id) !== id));
-      setSelectedIds((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
+      removeFromSelection(id);
       toast.success('Review deleted');
     }
   };
@@ -255,7 +257,7 @@ export default function ReviewsView() {
     try {
       await api.post('/reviews/bulk-delete', { ids: idsToDelete });
       setReviews((prev) => prev.filter((r) => !selectedIds.has(r._id || r.id)));
-      setSelectedIds(new Set());
+      clearSelection();
       toast.success(`${count} review${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
       toast.error('Failed to delete reviews');
@@ -339,31 +341,10 @@ export default function ReviewsView() {
   } = usePagination(displayedReviews, pageSize, serverTotal);
 
   // Checkbox selection
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(new Set(paginatedItems.map((r) => r._id || r.id)));
-    } else {
-      setSelectedIds(new Set());
-    }
-  };
+  const handleSelectAll = () => toggleSelectAll(paginatedItems);
+  const allSelected = isAllSelected(paginatedItems);
 
-  const handleSelectRow = (id) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const allSelected = paginatedItems.length > 0 && paginatedItems.every((r) => selectedIds.has(r._id || r.id));
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '09 Oct 2026';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '09 Oct 2026';
-    return d.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
-  };
+  const formatDate = (dateStr) => formatDisplayDate(dateStr, '—');
 
   const statCardsData = [
     {
@@ -396,13 +377,10 @@ export default function ReviewsView() {
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
       <ModuleHeader
-        breadcrumbs={['Home', 'Reviews']}
         title="Reviews"
         subtitle="Listen to your clientele's feedback and showcase verified jewelry stories."
         onAdd={handleOpenAddModal}
         addLabel="Add Review"
-        exportData={reviews}
-        exportFileName="reviews_export"
       />
 
       {/* ─── 4 Stat Cards Row ─── */}

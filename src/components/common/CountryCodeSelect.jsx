@@ -557,7 +557,7 @@ export default function CountryCodeSelect({
                   filteredCountries.map((country, idx) => renderCountryItem(country, idx))
                 ) : (
                   <div className="py-8 text-center text-xs text-stone-400">
-                    No countries matching "{searchQuery}"
+                    No countries matching &quot;{searchQuery}&quot;
                   </div>
                 )
               ) : (

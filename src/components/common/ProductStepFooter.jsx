@@ -38,7 +38,7 @@ export default function ProductStepFooter({
 
   return (
     <div
-      className={`sticky bottom-2 sm:bottom-4 z-30 bg-white/95 backdrop-blur-md rounded-2xl border border-stone-200/90 p-2.5 sm:p-4 shadow-xl flex flex-wrap items-center justify-between gap-2 sm:gap-3 ${className}`}
+      className={`bg-white rounded-2xl border border-stone-200/90 p-3 sm:p-4 shadow-xs flex flex-wrap items-center justify-between gap-2 sm:gap-3 ${className}`}
     >
       {/* ─── Previous / Back to List ──────────────────── */}
       <button

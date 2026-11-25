@@ -240,15 +240,10 @@ export default function CodSequencesView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'COD Sequence']}
-        title="COD Sequences"
+      <ModuleHeader        title="COD Sequences"
         subtitle="Configure Cash on Delivery advance payment tiers and balance collection rules."
         onAdd={handleOpenAdd}
-        addLabel="Add COD Tier"
-        exportData={items}
-        exportFileName="cod_sequences_export"
-      />
+        addLabel="Add COD Tier"      />
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />

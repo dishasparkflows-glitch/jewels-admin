@@ -490,7 +490,9 @@ export default function OrnateProductsView() {
       if (pId && isSingle) {
         try {
           await api.delete(`/products/${pId}`);
-        } catch {}
+        } catch {
+          // Continue group deletion if member product is already removed
+        }
       }
       const res = await api.delete(`/product-groups/${group._id}`);
       const isHard = res.data?.data?.hardDeleted ?? isEmpty;

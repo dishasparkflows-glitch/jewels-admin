@@ -33,7 +33,6 @@ export default function WhatsAppView() {
   // Templates & Messages
   const [templates, setTemplates] = useState([]);
   const [messages, setMessages] = useState([]);
-  const [, setLoading] = useState(false);
 
   // Filters for Templates
   const [search, setSearch] = useState('');
@@ -43,9 +42,6 @@ export default function WhatsAppView() {
   // Filters for Sent Message History
   const [historySearch, setHistorySearch] = useState('');
   const [historyStatusFilter, setHistoryStatusFilter] = useState('all');
-
-  // Action Menu dropdown state
-  const [, setOpenActionId] = useState(null);
 
   // Modals
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -63,23 +59,11 @@ export default function WhatsAppView() {
   const [testSelectedTemplate, setTestSelectedTemplate] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
 
-  // Close actions dropdown when clicking outside
-  useEffect(() => {
-    const handleOutsideClick = (e) => {
-      if (!e.target.closest('.row-action-menu')) {
-        setOpenActionId(null);
-      }
-    };
-    document.addEventListener('click', handleOutsideClick);
-    return () => document.removeEventListener('click', handleOutsideClick);
-  }, []);
-
   const [pageSize, setPageSize] = useAdminPageSize();
 
   // Fetch Templates & Messages from backend
   const fetchData = async (limit = pageSize) => {
     try {
-      setLoading(true);
       const [resTemplates, resMessages] = await Promise.allSettled([
         api.get(`/whatsapp/templates?limit=${limit}`),
         api.get(`/whatsapp/messages?limit=${limit}`),
@@ -102,8 +86,6 @@ export default function WhatsAppView() {
       }
     } catch (err) {
       console.error('Failed to fetch WhatsApp data:', err);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -313,9 +295,7 @@ export default function WhatsAppView() {
   return (
     <div className="space-y-4 font-sans">
       {/* ─── Breadcrumb & Module Header ─── */}
-      <ModuleHeader
-        breadcrumbs={['Home', 'System', 'WhatsApp Connect']}
-        title="WhatsApp Management"
+      <ModuleHeader        title="WhatsApp Management"
         subtitle="Manage approved message templates and message history."
         onAdd={() => setIsNewModalOpen(true)}
         addLabel="New Template"

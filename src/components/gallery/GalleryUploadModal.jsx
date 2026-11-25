@@ -339,7 +339,9 @@ export default function GalleryUploadModal({
                 if (f.previewUrl?.startsWith('blob:') && f.previewUrl !== compUrl) {
                   try {
                     URL.revokeObjectURL(f.previewUrl);
-                  } catch {}
+                  } catch {
+                    // Ignore blob URL revoke failures
+                  }
                 }
                 const originalSize = f.originalSize || f.size;
                 const compressedSize = compressed.size;

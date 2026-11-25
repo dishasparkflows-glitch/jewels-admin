@@ -85,6 +85,8 @@ export default function OrnateProductEdit() {
 
   const [draggedCareIndex, setDraggedCareIndex] = useState(null);
   const [dragOverCareIndex, setDragOverCareIndex] = useState(null);
+  const [draggedSpecIndex, setDraggedSpecIndex] = useState(null);
+  const [dragOverSpecIndex, setDragOverSpecIndex] = useState(null);
 
   // Dropdown options loaded from backend
   const {
@@ -832,7 +834,9 @@ export default function OrnateProductEdit() {
     e.dataTransfer.effectAllowed = 'move';
     try {
       e.dataTransfer.setData('text/plain', String(index));
-    } catch {}
+    } catch {
+      // Ignore drag dataTransfer errors in unsupported browsers
+    }
   };
 
   const handleCareDragOver = (e, index) => {
@@ -865,6 +869,49 @@ export default function OrnateProductEdit() {
   const handleCareDragEnd = () => {
     setDraggedCareIndex(null);
     setDragOverCareIndex(null);
+  };
+
+  // Drag and Drop for Specifications
+  const handleSpecDragStart = (e, index) => {
+    setDraggedSpecIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    try {
+      e.dataTransfer.setData('text/plain', String(index));
+    } catch {
+      // Ignore drag dataTransfer errors
+    }
+  };
+
+  const handleSpecDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (dragOverSpecIndex !== index) {
+      setDragOverSpecIndex(index);
+    }
+  };
+
+  const handleSpecDrop = (e, targetIndex) => {
+    e.preventDefault();
+    if (draggedSpecIndex === null || draggedSpecIndex === targetIndex) {
+      setDraggedSpecIndex(null);
+      setDragOverSpecIndex(null);
+      return;
+    }
+
+    setSpecifications((prev) => {
+      const updated = [...prev];
+      const [movedItem] = updated.splice(draggedSpecIndex, 1);
+      updated.splice(targetIndex, 0, movedItem);
+      return updated;
+    });
+
+    setDraggedSpecIndex(null);
+    setDragOverSpecIndex(null);
+  };
+
+  const handleSpecDragEnd = () => {
+    setDraggedSpecIndex(null);
+    setDragOverSpecIndex(null);
   };
 
   // Format Care Description text helper
@@ -2273,6 +2320,12 @@ export default function OrnateProductEdit() {
             handleMoveSpecification={handleMoveSpecification}
             handleUpdateSpecification={handleUpdateSpecification}
             handleRemoveSpecification={handleRemoveSpecification}
+            draggedSpecIndex={draggedSpecIndex}
+            dragOverSpecIndex={dragOverSpecIndex}
+            handleSpecDragStart={handleSpecDragStart}
+            handleSpecDragOver={handleSpecDragOver}
+            handleSpecDrop={handleSpecDrop}
+            handleSpecDragEnd={handleSpecDragEnd}
           />
         )}
 

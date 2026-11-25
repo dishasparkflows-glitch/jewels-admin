@@ -847,7 +847,7 @@ export default function SettingsView() {
 
       {filteredBoxes.length === 0 && (
         <div className="py-12 text-center rounded-xl border border-dashed border-stone-200 bg-white">
-          <p className="text-sm font-medium text-stone-500">No settings matched your search "{searchQuery}"</p>
+          <p className="text-sm font-medium text-stone-500">No settings matched your search &quot;{searchQuery}&quot;</p>
           <button
             type="button"
             onClick={() => setSearchQuery('')}

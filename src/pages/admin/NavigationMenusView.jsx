@@ -127,7 +127,11 @@ export default function NavigationMenusView() {
       const res = await uploadWithPresignedUrl(file, 'navigation-icons');
       const uploadedUrl = res.fileUrl || res.url;
       if (prevIcon) {
-        try { await deleteUploadedFile(prevIcon); } catch {}
+        try {
+          await deleteUploadedFile(prevIcon);
+        } catch {
+          // Best-effort cleanup of previous icon
+        }
       }
       setItemModal((prev) => ({
         ...prev,
@@ -151,7 +155,11 @@ export default function NavigationMenusView() {
       const res = await uploadWithPresignedUrl(file, 'promo-banners');
       const uploadedUrl = res.fileUrl || res.url;
       if (prevBanner) {
-        try { await deleteUploadedFile(prevBanner); } catch {}
+        try {
+          await deleteUploadedFile(prevBanner);
+        } catch {
+          // Best-effort cleanup of previous banner
+        }
       }
       setBannerModal((prev) => ({
         ...prev,

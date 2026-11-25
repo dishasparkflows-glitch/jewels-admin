@@ -1,7 +1,6 @@
 import { HiOutlineSparkles } from 'react-icons/hi';
 import SocialProofMetricsSection from '../../common/SocialProofMetricsSection';
 
-/* eslint-disable react/prop-types */
 
 export default function SeoConfigTab({
   seo,

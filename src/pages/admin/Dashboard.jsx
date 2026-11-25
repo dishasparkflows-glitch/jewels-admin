@@ -381,7 +381,6 @@ export default function Dashboard() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <ModuleHeader
-        breadcrumbs={[{ label: 'Home', path: '/dashboard' }, { label: 'Dashboard' }]}
         title="Overview"
         subtitle="Current records and live performance from your store."
       />

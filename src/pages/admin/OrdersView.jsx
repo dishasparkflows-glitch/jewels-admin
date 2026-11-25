@@ -451,9 +451,7 @@ export default function OrdersView() {
   return (
     <div className="space-y-4">
       {/* ─── Header ─── */}
-      <ModuleHeader
-        breadcrumbs={['Sales & Orders', 'Orders']}
-        title="Orders Management"
+      <ModuleHeader        title="Orders Management"
         subtitle="View, track, and fulfill real-time customer storefront purchases"
         extraActions={
           <button

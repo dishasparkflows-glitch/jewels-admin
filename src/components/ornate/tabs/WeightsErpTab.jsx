@@ -1,6 +1,5 @@
 import { TbScale, TbDatabase } from 'react-icons/tb';
 
-/* eslint-disable react/prop-types */
 
 export default function WeightsErpTab({
   weights,
