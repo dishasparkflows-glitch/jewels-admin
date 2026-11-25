@@ -1,8 +1,16 @@
 import { HiOutlineSparkles } from 'react-icons/hi';
+import SocialProofMetricsSection from '../../common/SocialProofMetricsSection';
 
 /* eslint-disable react/prop-types */
 
-export default function SeoConfigTab({ seo, setSeo }) {
+export default function SeoConfigTab({
+  seo,
+  setSeo,
+  soldCount,
+  reviewCount,
+  onSoldCountChange,
+  onReviewCountChange,
+}) {
   return (
     <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-2xs space-y-5 animate-fadeIn">
       <div className="flex items-center gap-2.5 pb-3 border-b border-stone-100">
@@ -75,6 +83,13 @@ export default function SeoConfigTab({ seo, setSeo }) {
             className="w-full p-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
           />
         </div>
+
+        <SocialProofMetricsSection
+          soldCount={soldCount}
+          reviewCount={reviewCount}
+          onSoldCountChange={onSoldCountChange}
+          onReviewCountChange={onReviewCountChange}
+        />
       </div>
     </div>
   );

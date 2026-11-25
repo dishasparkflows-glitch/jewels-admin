@@ -30,6 +30,8 @@ export default function CountryCodeSelect({
   const menuRef = useRef(null);
   const searchInputRef = useRef(null);
   const listRef = useRef(null);
+  const isPointerDownRef = useRef(false);
+  const suppressFocusOpenRef = useRef(false);
   const generatedId = useId();
   const selectId = id || generatedId;
 
@@ -174,6 +176,7 @@ export default function CountryCodeSelect({
   }, [direction, align]);
 
   const handleToggle = () => {
+    isPointerDownRef.current = false;
     if (disabled) return;
     if (!isOpen) {
       updateDropdownPosition();
@@ -183,8 +186,51 @@ export default function CountryCodeSelect({
     }
   };
 
+  const handleButtonMouseDown = () => {
+    if (disabled) return;
+    isPointerDownRef.current = true;
+    setTimeout(() => {
+      isPointerDownRef.current = false;
+    }, 0);
+  };
+
+  const handleButtonFocus = () => {
+    if (disabled) return;
+    if (suppressFocusOpenRef.current) {
+      suppressFocusOpenRef.current = false;
+      return;
+    }
+    if (isPointerDownRef.current) return;
+    if (!isOpen) {
+      updateDropdownPosition();
+      setIsOpen(true);
+    }
+  };
+
+  const closeAndMoveFocus = (shiftKey) => {
+    suppressFocusOpenRef.current = true;
+    setIsOpen(false);
+    const scope = buttonRef.current?.closest('[role="dialog"], [role="alertdialog"], form') || document;
+    const focusables = Array.from(
+      scope.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      )
+    ).filter((el) => {
+      if (menuRef.current && menuRef.current.contains(el)) return false;
+      return el.offsetParent !== null || el === buttonRef.current;
+    });
+    const btnIdx = focusables.indexOf(buttonRef.current);
+    const targetIdx = shiftKey ? btnIdx - 1 : btnIdx + 1;
+    if (btnIdx !== -1 && focusables[targetIdx]) {
+      focusables[targetIdx].focus();
+    } else {
+      buttonRef.current?.blur();
+    }
+  };
+
   const handleSelect = (country) => {
     setSelectedIso(country.iso2);
+    suppressFocusOpenRef.current = true;
     setIsOpen(false);
     setSearchQuery('');
     setHighlightedIndex(-1);
@@ -197,6 +243,12 @@ export default function CountryCodeSelect({
   // Keyboard navigation
   const handleKeyDown = (e) => {
     if (!isOpen) return;
+
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      closeAndMoveFocus(e.shiftKey);
+      return;
+    }
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
@@ -215,6 +267,8 @@ export default function CountryCodeSelect({
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
+      e.stopPropagation();
+      suppressFocusOpenRef.current = true;
       setIsOpen(false);
       buttonRef.current?.focus();
     }
@@ -222,6 +276,11 @@ export default function CountryCodeSelect({
 
   const handleButtonKeyDown = (e) => {
     if (disabled) return;
+    if (e.key === 'Tab' && isOpen) {
+      e.preventDefault();
+      closeAndMoveFocus(e.shiftKey);
+      return;
+    }
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
       if (!isOpen) {
@@ -385,6 +444,8 @@ export default function CountryCodeSelect({
         ref={buttonRef}
         type="button"
         disabled={disabled}
+        onMouseDown={handleButtonMouseDown}
+        onFocus={handleButtonFocus}
         onClick={handleToggle}
         onKeyDown={handleButtonKeyDown}
         aria-haspopup="listbox"

@@ -327,62 +327,6 @@ export default function Step1BasicDetails() {
             className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all leading-relaxed shadow-2xs placeholder:text-stone-400"
           />
         </div>
-
-        {/* Social Proof & Urgency (Demo Metrics) */}
-        <div className="sm:col-span-2 lg:col-span-3 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 space-y-3 shadow-2xs">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="text-base">🔥</span>
-              <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
-                Social Proof & Urgency (Demo Metrics)
-              </h4>
-            </div>
-          </div>
-          <p className="text-xs text-stone-500">
-            Set product-specific sold and review counts displayed under the title on the storefront.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-            <div>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
-                <label className="text-xs font-bold text-stone-700">
-                  Sold Count
-                </label>
-                <span className="text-[10px] text-stone-400 font-medium">· Displayed as &apos;X sold in last 3 hours&apos;</span>
-              </div>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs">🔥</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={basicDetails.soldCount}
-                  onChange={(e) => setBasicDetails((prev) => ({ ...prev, soldCount: e.target.value }))}
-                  placeholder="e.g. 24"
-                  className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
-                />
-              </div>
-            </div>
-
-            <div>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
-                <label className="text-xs font-bold text-stone-700">
-                  Review Count
-                </label>
-                <span className="text-[10px] text-stone-400 font-medium">· Displayed as &apos;★★★★★ X reviews&apos;</span>
-              </div>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-xs">★</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={basicDetails.reviewCount}
-                  onChange={(e) => setBasicDetails((prev) => ({ ...prev, reviewCount: e.target.value }))}
-                  placeholder="e.g. 13"
-                  className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

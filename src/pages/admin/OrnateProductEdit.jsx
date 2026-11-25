@@ -1588,62 +1588,6 @@ export default function OrnateProductEdit() {
                   className="w-full p-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20"
                 />
               </div>
-
-              {/* Social Proof & Urgency (Demo Metrics) */}
-              <div className="p-4 rounded-xl border border-stone-200 bg-[#fbfaf8] space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-base" role="img" aria-label="fire">🔥</span>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                      Social Proof & Urgency (Demo Metrics)
-                    </h4>
-                  </div>
-                </div>
-                <p className="text-xs text-stone-500">
-                  Set product-specific sold and review counts displayed under the title on the storefront.
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
-                  <div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
-                      <label className="text-xs font-bold text-stone-700">
-                        Sold Count
-                      </label>
-                      <span className="text-[10px] text-stone-400 font-medium">· Displayed as &apos;X sold in last 3 hours&apos;</span>
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs">🔥</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={baseInfo.soldCount}
-                        onChange={(e) => setBaseInfo((prev) => ({ ...prev, soldCount: e.target.value }))}
-                        placeholder="e.g. 24"
-                        className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mb-1">
-                      <label className="text-xs font-bold text-stone-700">
-                        Review Count
-                      </label>
-                      <span className="text-[10px] text-stone-400 font-medium">· Displayed as &apos;★★★★★ X reviews&apos;</span>
-                    </div>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-xs">★</span>
-                      <input
-                        type="number"
-                        min="0"
-                        value={baseInfo.reviewCount}
-                        onChange={(e) => setBaseInfo((prev) => ({ ...prev, reviewCount: e.target.value }))}
-                        placeholder="e.g. 13"
-                        className="w-full h-10 pl-8 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 shadow-2xs"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         )}
@@ -2343,7 +2287,14 @@ export default function OrnateProductEdit() {
             TAB 7: SEO CONFIGURATION
         ═══════════════════════════════════════════════════════════════ */}
         {activeStep === 7 && (
-          <SeoConfigTab seo={seo} setSeo={setSeo} />
+          <SeoConfigTab
+            seo={seo}
+            setSeo={setSeo}
+            soldCount={baseInfo.soldCount}
+            reviewCount={baseInfo.reviewCount}
+            onSoldCountChange={(val) => setBaseInfo((prev) => ({ ...prev, soldCount: val }))}
+            onReviewCountChange={(val) => setBaseInfo((prev) => ({ ...prev, reviewCount: val }))}
+          />
         )}
 
       </div>

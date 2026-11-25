@@ -125,7 +125,7 @@ export default function ConfirmModal({
       onClick={!loading ? onCancel : undefined}
     >
       <div
-        className="relative w-full max-w-[390px] bg-white rounded-2xl sm:rounded-3xl border border-stone-100 shadow-2xl p-5 sm:p-7 text-center transition-all transform duration-200 animate-scaleUp overflow-hidden"
+        className="relative w-full max-w-[440px] bg-white rounded-2xl sm:rounded-3xl border border-stone-100 shadow-2xl p-5 sm:p-7 text-center transition-all transform duration-200 animate-scaleUp overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top-right close button */}
@@ -152,17 +152,17 @@ export default function ConfirmModal({
         </h3>
 
         {/* Description: Centered 2-line prompt */}
-        <div className="text-sm text-stone-600 font-sans leading-relaxed mt-2 max-w-[300px] mx-auto">
+        <div className="text-sm text-stone-600 font-sans leading-relaxed mt-2 max-w-[360px] mx-auto">
           {renderMessage()}
         </div>
 
-        {/* Action Buttons: Side-by-side equal width */}
-        <div className="grid grid-cols-2 gap-3.5 w-full mt-6 sm:mt-7 font-sans">
+        {/* Action Buttons */}
+        <div className="flex flex-col-reverse sm:flex-row sm:items-center gap-2.5 sm:gap-3 w-full mt-6 sm:mt-7 font-sans">
           <button
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="h-11 px-4 text-sm font-semibold rounded-xl border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-40 text-center"
+            className="h-11 px-4 sm:flex-1 text-[13px] font-semibold rounded-xl border border-stone-200 bg-white text-stone-700 hover:bg-stone-50 transition-all active:scale-[0.98] cursor-pointer disabled:opacity-40 text-center whitespace-nowrap"
           >
             {cancelText}
           </button>
@@ -171,7 +171,7 @@ export default function ConfirmModal({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`h-11 px-4 text-sm font-semibold rounded-xl transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 ${typeConfig.confirmBtn}`}
+            className={`h-11 px-5 sm:flex-1 sm:min-w-fit text-[13px] font-semibold rounded-xl transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 whitespace-nowrap ${typeConfig.confirmBtn}`}
           >
             {loading ? (
               <>

@@ -118,6 +118,7 @@ export const ThemeProvider = ({ children }) => {
     root.style.setProperty('--theme-primary-dark', currentTheme.dark);
     root.style.setProperty('--theme-primary-light', currentTheme.light);
     root.style.setProperty('--theme-primary-soft', currentTheme.soft);
+    root.style.setProperty('--theme-primary-row-hover', `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.05)`);
     root.style.setProperty('--theme-primary-border', currentTheme.border);
     root.style.setProperty('--theme-primary-rgb', `${rgb.r}, ${rgb.g}, ${rgb.b}`);
     root.style.setProperty(
@@ -215,6 +216,10 @@ export const ThemeProvider = ({ children }) => {
 
         #admin-sidebar .sidebar-item-inactive:hover svg {
           color: ${DEFAULT_THEME.primary} !important;
+        }
+
+        table tbody tr:has(td:not([colspan])):hover {
+          background-color: var(--theme-primary-row-hover, rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.05)) !important;
         }
       `;
     } else {

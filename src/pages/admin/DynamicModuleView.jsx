@@ -17,7 +17,9 @@ import {
   HiOutlinePhotograph,
   HiOutlineSparkles,
   HiOutlineExternalLink,
+  HiOutlineFolder,
 } from 'react-icons/hi';
+import { useTheme } from '../../contexts/ThemeContext';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -71,6 +73,7 @@ const routeMap = {
 const DynamicModuleView = () => {
   const confirm = useConfirm();
   const { openImagePreview } = useImagePreview();
+  const { currentTheme } = useTheme();
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const config = routeMap[pathname] || {
@@ -1828,142 +1831,176 @@ const DynamicModuleView = () => {
           }}
         >
           <div
-            className={`bg-white rounded-2xl sm:rounded-3xl ${isCategoryPage ? 'max-w-6xl p-5 sm:p-7' : 'max-w-lg p-4 sm:p-6'} w-full shadow-2xl border border-stone-200 space-y-4 sm:space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
+            className={`bg-[#fcfbf9] rounded-2xl sm:rounded-3xl ${isCategoryPage ? 'max-w-6xl p-5 sm:p-7' : 'max-w-lg p-4 sm:p-6'} w-full shadow-2xl border border-stone-200 space-y-4 sm:space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between pb-3.5 border-b border-stone-100">
-              <div>
-                <h3 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight">
-                  {editingRecord ? 'Edit' : 'Add'} {singleName}
-                </h3>
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8b6f4e] block mt-0.5">
-                  LUXURY CATALOG MANAGEMENT
-                </span>
+            {isCategoryPage ? (
+              <div className="flex items-center justify-between pb-3.5 border-b border-stone-200/80 bg-white -mx-5 sm:-mx-7 -mt-5 sm:-mt-7 px-5 sm:px-7 pt-5 sm:pt-6 rounded-t-2xl sm:rounded-t-3xl sticky top-0 z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-700 shrink-0">
+                    <HiOutlineFolder className="w-5 h-5 text-stone-700" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
+                      {editingRecord ? 'Edit Category' : 'Add Category'}
+                    </h3>
+                    <p className="text-xs text-stone-500 mt-0.5">
+                      Configure category details, visual assets, and sizing rules
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingRecord(null);
+                  }}
+                  className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-100 rounded-xl transition-colors cursor-pointer"
+                >
+                  <HiOutlineX className="w-5 h-5" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setEditingRecord(null);
-                }}
-                className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-50 rounded-xl transition-colors cursor-pointer"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
+            ) : (
+              <div className="flex items-center justify-between pb-3.5 border-b border-stone-100">
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-stone-900 tracking-tight">
+                    {editingRecord ? 'Edit' : 'Add'} {singleName}
+                  </h3>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#8b6f4e] block mt-0.5">
+                    LUXURY CATALOG MANAGEMENT
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsModalOpen(false);
+                    setEditingRecord(null);
+                  }}
+                  className="p-2 text-stone-400 hover:text-stone-700 hover:bg-stone-50 rounded-xl transition-colors cursor-pointer"
+                >
+                  <HiOutlineX className="w-5 h-5" />
+                </button>
+              </div>
+            )}
 
             {isCategoryPage ? (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                {/* ─── TOP ROW: Category Name, Category Type, Order & Category Status ─── */}
-                <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-start">
-                  {/* Category Name */}
-                  <div className="sm:col-span-5">
-                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
-                      Category Name <span className="text-rose-500 font-bold">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. Rings, Necklaces, Bracelets"
-                      value={formData.name || ''}
-                      onChange={(e) =>
-                        setFormData((prev) => ({ ...prev, name: e.target.value }))
-                      }
-                      className="w-full h-10 px-4 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-xl hover:border-stone-300 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all shadow-2xs placeholder:text-stone-400"
-                    />
+              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+                {/* ─── PART 1: CATEGORY DETAILS ─── */}
+                <div className="rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center border border-stone-300 shadow-2xs shrink-0">
+                      1
+                    </span>
+                    <h4 className="text-sm font-bold text-stone-900 leading-tight">
+                      Category details
+                    </h4>
                   </div>
 
-                  {/* Category Type */}
-                  <div className="sm:col-span-3">
-                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
-                      Category Type
-                    </label>
-                    <Dropdown
-                      value={formData.type || 'category'}
-                      onChange={(val) =>
-                        setFormData((prev) => ({ ...prev, type: val }))
-                      }
-                      options={[
-                        { value: 'category', label: 'Category' },
-                        { value: 'collection', label: 'Collection' },
-                      ]}
-                      placeholder="Select Category Type"
-                      size="field"
-                      buttonClassName="w-full h-10 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
-                    />
-                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-start pt-1">
+                    {/* Category Name */}
+                    <div className="sm:col-span-5">
+                      <label className="text-xs font-semibold text-stone-700 mb-1.5 block">
+                        Category Name <span className="text-rose-500 font-bold">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="e.g. Rings, Necklaces, Bracelets"
+                        value={formData.name || ''}
+                        onChange={(e) =>
+                          setFormData((prev) => ({ ...prev, name: e.target.value }))
+                        }
+                        className="w-full h-10 px-3.5 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-lg hover:border-stone-300 focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs placeholder:text-stone-400"
+                      />
+                    </div>
 
-                  {/* Category Order */}
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
-                      Order
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      placeholder="0"
-                      value={formData.order !== undefined && formData.order !== null ? formData.order : ''}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          order: e.target.value === '' ? '' : Number(e.target.value),
-                        }))
-                      }
-                      className="w-full h-10 px-3 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-xl hover:border-stone-300 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all shadow-2xs placeholder:text-stone-400"
-                    />
-                  </div>
+                    {/* Category Type */}
+                    <div className="sm:col-span-3">
+                      <label className="text-xs font-semibold text-stone-700 mb-1.5 block">
+                        Category Type
+                      </label>
+                      <Dropdown
+                        value={formData.type || 'category'}
+                        onChange={(val) =>
+                          setFormData((prev) => ({ ...prev, type: val }))
+                        }
+                        options={[
+                          { value: 'category', label: 'Category' },
+                          { value: 'collection', label: 'Collection' },
+                        ]}
+                        placeholder="Select Category Type"
+                        size="field"
+                        buttonClassName="w-full h-10 px-3.5 rounded-lg border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
+                      />
+                    </div>
 
-                  {/* Category Status Toggle */}
-                  <div className="sm:col-span-2">
-                    <label className="text-xs font-bold text-stone-800 mb-1.5 block">
-                      Category Status
-                    </label>
-                    <div className="h-10 flex items-center justify-between px-3 bg-white border border-stone-200 rounded-xl shadow-2xs">
-                      <span className="text-xs font-bold text-stone-800">
-                        {formData.status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={formData.status === 'active'}
-                        onClick={() =>
+                    {/* Category Order */}
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-semibold text-stone-700 mb-1.5 block">
+                        Order
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="0"
+                        value={formData.order !== undefined && formData.order !== null ? formData.order : ''}
+                        onChange={(e) =>
                           setFormData((prev) => ({
                             ...prev,
-                            status: prev.status === 'active' ? 'inactive' : 'active',
+                            order: e.target.value === '' ? '' : Number(e.target.value),
                           }))
                         }
-                        style={formData.status === 'active' ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formData.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                            formData.status === 'active' ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
+                        className="w-full h-10 px-3 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-lg hover:border-stone-300 focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs placeholder:text-stone-400"
+                      />
+                    </div>
+
+                    {/* Category Status Toggle */}
+                    <div className="sm:col-span-2">
+                      <label className="text-xs font-semibold text-stone-700 mb-1.5 block">
+                        Category Status
+                      </label>
+                      <div className="h-10 flex items-center justify-between px-3 bg-white border border-stone-200 rounded-lg shadow-2xs">
+                        <span className="text-xs font-semibold text-stone-800">
+                          {formData.status === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={formData.status === 'active'}
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              status: prev.status === 'active' ? 'inactive' : 'active',
+                            }))
+                          }
+                          style={formData.status === 'active' ? { backgroundColor: currentTheme?.primary || 'var(--theme-primary, #855836)' } : undefined}
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formData.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
+                        >
+                          <span
+                            className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                              formData.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                {/* ─── CATEGORY IMAGES SECTION ─── */}
-                <div className="bg-[#FAF9F6]/60 rounded-2xl border border-stone-200/90 p-4 sm:p-5 space-y-4">
+                {/* ─── PART 2: CATEGORY IMAGES & BANNERS ─── */}
+                <div className="rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
                   {/* Section Header */}
-                  <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-700 shrink-0 shadow-2xs">
-                      <HiOutlinePhotograph className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold text-stone-900 leading-tight">
-                        Category Images
-                      </h4>
-                      <p className="text-[11px] text-stone-500 font-normal mt-0.5">
-                        Upload images for this category.
-                      </p>
-                    </div>
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center border border-stone-300 shadow-2xs shrink-0">
+                      2
+                    </span>
+                    <h4 className="text-sm font-bold text-stone-900 leading-tight">
+                      Media & visual assets
+                    </h4>
                   </div>
 
                   {/* 4-Column Grid: Icon, Banner, Size Chart, Promo Banners */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-stretch">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-stretch pt-1">
                     {/* ─── Col 1: Category Icon ─── */}
                     {(() => {
                       const iconVal = formData.icon;
@@ -2283,7 +2320,8 @@ const DynamicModuleView = () => {
                           <button
                             type="button"
                             onClick={() => handleOpenBannerForm()}
-                            className="px-2.5 py-1 rounded-lg bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold flex items-center gap-1 shadow-xs transition-all cursor-pointer shrink-0"
+                            style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                            className="px-2.5 py-1 rounded-lg hover:opacity-90 text-white text-xs font-semibold flex items-center gap-1 shadow-xs transition-all cursor-pointer shrink-0"
                           >
                             <HiOutlinePlus className="w-3.5 h-3.5" />
                             <span>Add Banner</span>
@@ -2414,7 +2452,8 @@ const DynamicModuleView = () => {
                               type="button"
                               onClick={handleSavePromoBannerItem}
                               disabled={isUploadingBannerImage}
-                              className="px-3 py-1 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
+                              style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                              className="px-3 py-1 text-xs font-bold text-white hover:opacity-90 rounded-lg shadow-sm cursor-pointer disabled:opacity-50"
                             >
                               {editingBannerIndex !== null ? 'Save Changes' : 'Add Banner'}
                             </button>
@@ -2519,25 +2558,25 @@ const DynamicModuleView = () => {
                   </div>
                 </div>
 
-                {/* ─── JEWELRY SIZING ENGINE CONFIGURATION CARD ─── */}
-                <div className="bg-[#FAF9F6]/60 rounded-2xl border border-stone-200/90 p-4 sm:p-5 space-y-4">
+                {/* ─── PART 3: JEWELRY SIZING ENGINE CONFIGURATION CARD ─── */}
+                <div className="rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
                   <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-700 shrink-0 shadow-2xs text-base">
-                        📏
-                      </div>
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center border border-stone-300 shadow-2xs shrink-0">
+                        3
+                      </span>
                       <div>
                         <h4 className="text-sm font-bold text-stone-900 leading-tight">
-                          Jewelry Sizing Engine Configuration
+                          Jewelry sizing engine configuration
                         </h4>
                         <p className="text-[11px] text-stone-500 font-normal mt-0.5">
-                          Configure whether size selection dynamically adjusts gold weight and final pricing.
+                          Configure whether size selection dynamically adjusts gold weight and final pricing
                         </p>
                       </div>
                     </div>
 
                     {/* Enable Sizing Scale Toggle */}
-                    <div className="flex items-center gap-3 bg-white px-3.5 py-1.5 rounded-xl border border-stone-200 shadow-2xs">
+                    <div className="flex items-center gap-3 bg-stone-50 px-3.5 py-1.5 rounded-xl border border-stone-200 shadow-2xs">
                       <span className="text-xs font-bold text-stone-800">
                         {formData.sizingConfig?.isScalable ? 'Size Scales Gold Weight' : 'Fixed Gold Weight (No Scaling)'}
                       </span>
@@ -2555,7 +2594,7 @@ const DynamicModuleView = () => {
                             },
                           }));
                         }}
-                        style={formData.sizingConfig?.isScalable ? { backgroundColor: 'var(--theme-primary, #855836)' } : undefined}
+                        style={formData.sizingConfig?.isScalable ? { backgroundColor: currentTheme?.primary || 'var(--theme-primary, #855836)' } : undefined}
                         className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formData.sizingConfig?.isScalable ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
                       >
                         <span
@@ -2589,7 +2628,7 @@ const DynamicModuleView = () => {
                                 },
                               }));
                             }}
-                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[#8b6f4e] cursor-pointer transition-colors"
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] cursor-pointer transition-colors"
                           >
                             💍 Rings (US 7.0 · Step 1.0 · ±2.5%)
                           </button>
@@ -2608,7 +2647,7 @@ const DynamicModuleView = () => {
                                 },
                               }));
                             }}
-                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[#8b6f4e] cursor-pointer transition-colors"
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] cursor-pointer transition-colors"
                           >
                             ⭕ Bangles (2.4 · Step 0.2 · ±4.0%)
                           </button>
@@ -2627,7 +2666,7 @@ const DynamicModuleView = () => {
                                 },
                               }));
                             }}
-                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[#8b6f4e] cursor-pointer transition-colors"
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] cursor-pointer transition-colors"
                           >
                             ✨ Bracelets (7.0" · Step 0.5" · ±3.0%)
                           </button>
@@ -2646,7 +2685,7 @@ const DynamicModuleView = () => {
                                 },
                               }));
                             }}
-                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[#8b6f4e] cursor-pointer transition-colors"
+                            className="px-3 py-1.5 rounded-lg border text-xs font-semibold bg-white hover:bg-stone-50 border-stone-200 text-stone-700 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] cursor-pointer transition-colors"
                           >
                             📿 Necklaces (16.0" · Step 2.0" · ±10.0%)
                           </button>
@@ -2672,7 +2711,7 @@ const DynamicModuleView = () => {
                                 },
                               }))
                             }
-                            className="w-full h-9 px-3 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                            className="w-full h-9 px-3 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs"
                           />
                         </div>
 
@@ -2694,7 +2733,7 @@ const DynamicModuleView = () => {
                                 },
                               }))
                             }
-                            className="w-full h-9 px-3 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                            className="w-full h-9 px-3 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs"
                           />
                         </div>
 
@@ -2716,7 +2755,7 @@ const DynamicModuleView = () => {
                                 },
                               }))
                             }
-                            className="w-full h-9 px-3 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                            className="w-full h-9 px-3 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs"
                           />
                         </div>
 
@@ -2739,7 +2778,7 @@ const DynamicModuleView = () => {
                                   },
                                 }))
                               }
-                              className="w-full h-9 pl-3 pr-7 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[#8b6f4e]"
+                              className="w-full h-9 pl-3 pr-7 text-xs font-semibold text-stone-900 bg-white border border-stone-200 rounded-lg focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs"
                             />
                             <span className="absolute right-2.5 top-2 text-xs font-bold text-stone-400 pointer-events-none">
                               %
@@ -2749,8 +2788,8 @@ const DynamicModuleView = () => {
                       </div>
 
                       {/* Formula preview */}
-                      <div className="bg-amber-50/60 border border-amber-200/60 rounded-xl px-3 py-2 text-[11px] text-amber-900 flex items-center gap-2">
-                        <span>ℹ️</span>
+                      <div className="bg-stone-50 border border-stone-200/80 rounded-xl px-3.5 py-2.5 text-[11px] text-stone-700 flex items-center gap-2">
+                        <span className="text-sm">💡</span>
                         <span>
                           <strong>Formula:</strong> Every <strong>{formData.sizingConfig?.stepSize || 1.0}</strong> step difference from base <strong>{formData.sizingConfig?.baseSize || 7.0}</strong> will adjust metal weight by <strong>±{formData.sizingConfig?.percentPerStep || 2.5}%</strong>.
                         </span>
@@ -2764,29 +2803,30 @@ const DynamicModuleView = () => {
                 </div>
 
                 {/* ─── BOTTOM FOOTER BAR ─── */}
-                <div className="pt-4 border-t border-stone-200/90 flex items-center justify-end gap-3">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setIsModalOpen(false);
-                        setEditingRecord(null);
-                      }}
-                      className="px-5 py-2.5 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200/90 rounded-xl transition-all shadow-2xs cursor-pointer"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="px-6 py-2.5 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
-                    >
-                      {saving
-                        ? editingRecord
-                          ? 'Saving...'
-                          : 'Creating...'
-                        : 'Save Changes'}
-                    </button>
-                  </div>
+                <div className="pt-4 border-t border-stone-200/80 bg-white -mx-5 sm:-mx-7 -mb-5 sm:-mb-7 px-5 sm:px-7 py-4 rounded-b-2xl sm:rounded-b-3xl flex items-center justify-end gap-3 sticky bottom-0 z-10">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsModalOpen(false);
+                      setEditingRecord(null);
+                    }}
+                    className="px-5 py-2.5 text-xs font-semibold text-stone-700 bg-white hover:bg-stone-50 border border-stone-200/90 rounded-xl transition-all shadow-2xs cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                    className="px-6 py-2.5 text-xs font-semibold text-white hover:opacity-95 rounded-xl transition-all shadow-sm cursor-pointer disabled:opacity-50"
+                  >
+                    {saving
+                      ? editingRecord
+                        ? 'Saving...'
+                        : 'Creating...'
+                      : 'Save Changes'}
+                  </button>
+                </div>
               </form>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">

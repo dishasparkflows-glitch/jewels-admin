@@ -250,8 +250,8 @@ export default function NavigationMenusView() {
       const sortedSections = [...secList].sort((a, b) => Number(a.order || 0) - Number(b.order || 0));
       setSections(sortedSections);
 
-      // Keep the list compact on initial load; users can expand records as needed.
-      const expandMap = Object.fromEntries(sortedSections.map((section) => [section._id, false]));
+      // By default open all sections so users immediately see their menu items
+      const expandMap = Object.fromEntries(sortedSections.map((section) => [section._id, true]));
       setExpandedSections(expandMap);
 
       // 2. Fetch items for each section in parallel
@@ -833,9 +833,8 @@ export default function NavigationMenusView() {
             ) : filteredCategories.length === 0 ? (
               <div className="py-8 text-center text-xs text-stone-400">No categories found.</div>
             ) : (
-              filteredCategories.map((cat) => {
+              filteredCategories.map((cat, idx) => {
                 const isSelected = selectedCategory?._id === cat._id;
-                const iconSrc = cat.icon?.url || (cat.images && cat.images[0]?.url);
 
                 return (
                   <button
@@ -852,16 +851,15 @@ export default function NavigationMenusView() {
                     }`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-9 h-9 rounded-xl shrink-0 overflow-hidden flex items-center justify-center">
-                        <AdminImage
-                          src={iconSrc}
-                          alt={cat.name}
-                          className="w-full h-full object-cover rounded-xl"
-                          containerClassName="w-9 h-9"
-                          rounded="rounded-xl"
-                          textClassName="text-[10px] font-semibold text-stone-400 select-none"
-                        />
-                      </div>
+                      <span
+                        className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center text-xs font-bold border transition-colors ${
+                          isSelected
+                            ? 'bg-[#85583f] text-white border-[#85583f]'
+                            : 'bg-stone-100 text-stone-600 border-stone-200/80'
+                        }`}
+                      >
+                        {idx + 1}
+                      </span>
                       <span className="truncate">{cat.name}</span>
                     </div>
 
@@ -883,25 +881,13 @@ export default function NavigationMenusView() {
             <>
               {/* Category Header Card with Status Switch */}
               <div className="rounded-2xl border border-stone-200/90 bg-white p-4 shadow-xs flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-14 h-14 rounded-2xl shrink-0 overflow-hidden flex items-center justify-center shadow-2xs">
-                    <AdminImage
-                      src={selectedCategory.icon?.url || selectedCategory.images?.[0]?.url}
-                      alt={selectedCategory.name}
-                      className="w-full h-full object-cover rounded-2xl"
-                      containerClassName="w-14 h-14"
-                      rounded="rounded-2xl"
-                      textClassName="text-xs font-semibold text-stone-400 select-none"
-                    />
-                  </div>
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-bold text-stone-900 tracking-tight truncate">
-                      {selectedCategory.name}
-                    </h2>
-                    <p className="mt-0.5 text-xs text-stone-500 truncate">
-                      Manage menu structure and promotional banners for this category.
-                    </p>
-                  </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-bold text-stone-900 tracking-tight truncate">
+                    {selectedCategory.name}
+                  </h2>
+                  <p className="mt-0.5 text-xs text-stone-500 truncate">
+                    Manage menu structure and promotional banners for this category.
+                  </p>
                 </div>
 
                 {/* Status Toggle Switch */}
@@ -989,7 +975,7 @@ export default function NavigationMenusView() {
                     </div>
                   ) : (
                     sections.map((section, secIdx) => {
-                      const isExpanded = expandedSections[section._id] === true;
+                      const isExpanded = expandedSections[section._id] !== false;
                       const items = itemsBySection[section._id] || [];
                       const isSecDragging = draggedSectionIdx === secIdx;
                       const isSecDragOver = dragOverSectionIdx === secIdx;

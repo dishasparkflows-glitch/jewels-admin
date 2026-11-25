@@ -183,8 +183,8 @@ export function generateThemeFromHex(customHex, name = 'Custom Tone') {
   const rgb = hexToRgb(customHex);
   const hoverRgb = blendWithBlack(rgb, 0.14);
   const darkRgb = blendWithBlack(rgb, 0.35);
-  const lightRgb = blendWithWhite(rgb, 0.78);
-  const softRgb = blendWithWhite(rgb, 0.90);
+  const lightRgb = blendWithWhite(rgb, 0.86);
+  const softRgb = blendWithWhite(rgb, 0.94);
   const borderRgb = blendWithWhite(rgb, 0.68);
   const accentRgb = blendWithWhite(rgb, 0.15);
 
@@ -314,9 +314,15 @@ export function buildDynamicThemeCss(theme, rgb) {
       `[class~="bg-[#FAF9F6]/${pct}"]${layoutGuard}`,
       `[class~="bg-[#FAF4ED]/${pct}"]${layoutGuard}`,
       `[class~="bg-[#f5e6d3]/${pct}"]${layoutGuard}`,
+    ])
+    .join(',\n        ');
+
+  const softTranslucentHoverSels = ['40', '50', '60', '70', '80', '90']
+    .flatMap((pct) => [
       `[class~="hover:bg-[#faf6f0]/${pct}"]:hover`,
       `[class~="hover:bg-[#faf7f2]/${pct}"]:hover`,
       `[class~="hover:bg-[#FAF9F6]/${pct}"]:hover`,
+      `[class~="hover:bg-[#faf8f5]/${pct}"]:hover`,
     ])
     .join(',\n        ');
 
@@ -351,6 +357,7 @@ export function buildDynamicThemeCss(theme, rgb) {
           --theme-primary-dark: ${theme.dark};
           --theme-primary-light: ${theme.light};
           --theme-primary-soft: ${theme.soft};
+          --theme-primary-row-hover: rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.05);
           --theme-primary-border: ${theme.border};
           --theme-primary-rgb: ${rgb.r}, ${rgb.g}, ${rgb.b};
           --theme-sidebar-border: ${theme.accent || theme.primary};
@@ -451,13 +458,20 @@ export function buildDynamicThemeCss(theme, rgb) {
 
         /* ─── 7. SOFT TINTED BACKGROUNDS & HOVERS ─── */
         ${tokenSel('bg', SOFT_LIGHT_BG_HEXES, '', sidebarAndLayoutGuard)},
-        ${tokenSel('hover:bg', [...SOFT_LIGHT_BG_HEXES, ...SOFT_BG_HEXES], ':hover')} {
+        ${tokenSel('hover:bg', SOFT_LIGHT_BG_HEXES, ':hover')} {
           background-color: var(--theme-primary-light) !important;
         }
 
         ${tokenSel('bg', SOFT_BG_HEXES, '', sidebarAndLayoutGuard)},
         ${softTranslucentBgSels} {
           background-color: var(--theme-primary-soft) !important;
+        }
+
+        /* Ultra-light theme tint for table record & soft surface hovers */
+        ${tokenSel('hover:bg', [...SOFT_BG_HEXES, '#faf8f5'], ':hover')},
+        ${softTranslucentHoverSels},
+        table tbody tr:has(td:not([colspan])):hover {
+          background-color: var(--theme-primary-row-hover, rgba(var(--theme-primary-rgb), 0.05)) !important;
         }
 
         /* ─── 8. SOFT TINTED BORDERS ─── */

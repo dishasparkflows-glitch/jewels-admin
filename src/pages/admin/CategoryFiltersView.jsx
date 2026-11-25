@@ -449,16 +449,7 @@ export default function CategoryFiltersView() {
                                 {cat.customTitle || cat.categoryName}
                               </span>
                             )}
-
-                            {/* Category Slug Monospace Badge */}
-                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-stone-100 text-stone-500 border border-stone-200/70">
-                              Slug: {cat.categorySlug}
-                            </span>
                           </div>
-
-                          <p className="text-xs text-stone-400 mt-0.5">
-                            Filter Key: <span className="font-mono">{selectedFilter?.key}</span> • Filter Type: <span className="font-mono">{selectedFilter?.type}</span>
-                          </p>
                         </div>
                       </div>
 
