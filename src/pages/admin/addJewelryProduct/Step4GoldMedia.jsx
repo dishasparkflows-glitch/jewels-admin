@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import {
   HiOutlinePhotograph,
@@ -32,7 +31,6 @@ export default function Step4GoldMedia() {
     mediaImages,
     mediaVideos,
     vtoConfigs,
-    setIsAddColorModalOpen,
     colorStatuses,
     setColorStatuses,
     activeMediaSubTab,

@@ -56,7 +56,7 @@ export default function PricingInventoryTab({
               type="number"
               value={pricing.costPrice}
               onChange={(e) => handleCostOrMarkupChange('costPrice', e.target.value)}
-              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -71,7 +71,7 @@ export default function PricingInventoryTab({
               type="number"
               value={pricing.markupPercentage}
               onChange={(e) => handleCostOrMarkupChange('markupPercentage', e.target.value)}
-              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -88,7 +88,7 @@ export default function PricingInventoryTab({
               onChange={(e) =>
                 setPricing((prev) => ({ ...prev, calculatedPrice: Number(e.target.value) || 0 }))
               }
-              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-stone-50/70 text-stone-800 focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-white text-stone-800 focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -110,7 +110,7 @@ export default function PricingInventoryTab({
                   mrp: Number(prev.mrpMarkupPercentage) > 0 ? Math.round(sp * (1 + Number(prev.mrpMarkupPercentage) / 100)) : prev.mrp,
                 }));
               }}
-              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-[#fdfcfb] text-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-white text-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e]"
             />
             <p className="text-[10px] text-stone-400 mt-1">Actual selling price</p>
           </div>
@@ -133,7 +133,7 @@ export default function PricingInventoryTab({
                   mrp: markupVal > 0 ? Math.round(prev.salePrice * (1 + markupVal / 100)) : prev.mrp,
                 }));
               }}
-              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -147,7 +147,7 @@ export default function PricingInventoryTab({
               onChange={(e) =>
                 setPricing((prev) => ({ ...prev, mrp: Number(e.target.value) || 0 }))
               }
-              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-bold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
             <p className="text-[10px] text-stone-400">Customer list price (strikethrough)</p>
           </div>

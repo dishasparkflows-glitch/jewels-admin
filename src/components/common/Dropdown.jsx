@@ -5,48 +5,6 @@ const MenuLayer = ({ enabled, children }) => enabled ? createPortal(children, do
 import { HiOutlineChevronDown, HiOutlineCheck } from 'react-icons/hi';
 
 /**
- * Status color mappings for luxury badge/dot representation
- */
-const STATUS_COLORS = {
-  approved: {
-    dot: 'bg-emerald-500',
-    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  },
-  active: {
-    dot: 'bg-emerald-500',
-    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  },
-  confirmed: {
-    dot: 'bg-emerald-500',
-    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  },
-  completed: {
-    dot: 'bg-emerald-500',
-    badge: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  },
-  pending: {
-    dot: 'bg-amber-500',
-    badge: 'bg-amber-50 text-amber-700 border-amber-200',
-  },
-  in_progress: {
-    dot: 'bg-amber-500',
-    badge: 'bg-amber-50 text-amber-700 border-amber-200',
-  },
-  rejected: {
-    dot: 'bg-rose-500',
-    badge: 'bg-rose-50 text-rose-700 border-rose-200',
-  },
-  cancelled: {
-    dot: 'bg-rose-500',
-    badge: 'bg-rose-50 text-rose-700 border-rose-200',
-  },
-  inactive: {
-    dot: 'bg-stone-400',
-    badge: 'bg-stone-100 text-stone-600 border-stone-200',
-  },
-};
-
-/**
  * Common Luxury Dropdown Component
  *
  * Fully keyboard-accessible dropdown with auto-open on Tab focus, smooth
@@ -92,7 +50,6 @@ export default function Dropdown({
   disabled = false,
   size = 'md',
   variant = 'default',
-  showStatusDot = false,
   openUpward = false,
   openDownward = false,
   portal = false,
@@ -591,29 +548,6 @@ export default function Dropdown({
     inline:
       'bg-stone-50/80 border border-stone-200 hover:border-[var(--theme-primary,#9c7a4b)] text-stone-800',
   }[variant] || variantStyles.default;
-
-  // Render status dot if enabled or mapped
-  const renderStatusDot = (val, opt) => {
-    if (opt?.dotColor) {
-      return (
-        <span
-          className={`w-2 h-2 rounded-full shrink-0 ${opt.dotColor}`}
-          aria-hidden="true"
-        />
-      );
-    }
-    const valKey = String(val).toLowerCase();
-    const config = STATUS_COLORS[valKey];
-    if (config?.dot) {
-      return (
-        <span
-          className={`w-2 h-2 rounded-full shrink-0 ${config.dot}`}
-          aria-hidden="true"
-        />
-      );
-    }
-    return null;
-  };
 
   return (
     <div

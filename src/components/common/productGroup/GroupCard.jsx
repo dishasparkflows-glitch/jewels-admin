@@ -1,4 +1,4 @@
-import { HiOutlineEye, HiOutlineCheckCircle, HiOutlineTrash } from 'react-icons/hi';
+import { HiOutlineEye, HiOutlineCheckCircle, HiOutlineTrash, HiOutlineDocumentText } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import { EditActionButton, DeleteActionButton } from '../RowActions';
 import Tooltip from '../Tooltip';
@@ -41,6 +41,8 @@ export default function GroupCard({
   onDelete,
   onToggleStatus,
   onDirectApprove,
+  onDirectDraft,
+  isDrafting = false,
 }) {
   const isDraftOrApproved = activeTab === 'draft' || activeTab === 'approved';
   const isActive = group.status === 'active';
@@ -202,7 +204,29 @@ export default function GroupCard({
                 </Tooltip>
               )}
 
-              {onDirectApprove && (
+              {isAllApproved && onDirectDraft ? (
+                <Tooltip
+                  content="Move all products in this group to Draft"
+                  position="top"
+                >
+                  <button
+                    type="button"
+                    disabled={isDrafting}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDirectDraft(group);
+                    }}
+                    className="w-7 h-7 rounded-lg border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-700 active:scale-95 inline-flex items-center justify-center shrink-0 cursor-pointer transition-all shadow-2xs"
+                    aria-label="Move to Draft"
+                  >
+                    {isDrafting ? (
+                      <span className="w-3.5 h-3.5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <HiOutlineDocumentText className="w-4 h-4 stroke-[2]" />
+                    )}
+                  </button>
+                </Tooltip>
+              ) : onDirectApprove ? (
                 <Tooltip
                   content={isAllApproved ? 'All products are approved' : 'Directly approve all products in this group'}
                   position="top"
@@ -228,7 +252,7 @@ export default function GroupCard({
                     )}
                   </button>
                 </Tooltip>
-              )}
+              ) : null}
 
               {/* Delete button if no products attached */}
               {hasNoProducts && onDelete && (

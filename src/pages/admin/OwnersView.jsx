@@ -28,7 +28,7 @@ import Modal from '../../components/common/Modal';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
-import { getNavigationModuleFallback, getFirstAllowedPath } from '../../utils/moduleAccess';
+import { getFirstAllowedPath } from '../../utils/moduleAccess';
 
 function maskDatabaseUrl(url = '') {
   if (!url) return '—';
@@ -89,18 +89,16 @@ export default function OwnersView() {
     try {
       const res = await ownersAPI.getModules();
       const data = res.data?.data || {};
-      const mods = Array.isArray(data.modules) && data.modules.length > 0
-        ? data.modules
-        : getNavigationModuleFallback();
+      const mods = Array.isArray(data.modules) ? data.modules : [];
       const groups = Array.isArray(data.groups) && data.groups.length > 0
         ? data.groups
         : groupModulesList(mods);
       setSystemModules(mods);
       setModuleGroups(groups);
-    } catch {
-      const fallback = getNavigationModuleFallback();
-      setSystemModules(fallback);
-      setModuleGroups(groupModulesList(fallback));
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load modules from database');
+      setSystemModules([]);
+      setModuleGroups([]);
     }
   }, []);
 

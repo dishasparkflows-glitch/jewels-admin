@@ -35,15 +35,15 @@ export default function SeoConfigTab({
                 Meta Title
               </label>
               <span className="text-[10px] text-stone-400 font-mono">
-                {seo.metaTitle.length}/60
+                {(seo?.metaTitle || '').length}/60
               </span>
             </div>
             <input
               type="text"
-              value={seo.metaTitle}
+              value={seo?.metaTitle || ''}
               onChange={(e) => setSeo((prev) => ({ ...prev, metaTitle: e.target.value }))}
               placeholder="e.g. 92.5 Silver Handcrafted Bracelet | Neirah Fine Jewellery"
-              className="w-full h-10 px-3.5 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -58,10 +58,10 @@ export default function SeoConfigTab({
             </div>
             <input
               type="text"
-              value={seo.keywords}
+              value={seo?.keywords || ''}
               onChange={(e) => setSeo((prev) => ({ ...prev, keywords: e.target.value }))}
               placeholder="silver bracelet, 925 silver, handmade jewellery"
-              className="w-full h-10 px-3.5 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
         </div>
@@ -72,15 +72,15 @@ export default function SeoConfigTab({
               Meta Description
             </label>
             <span className="text-[10px] text-stone-400 font-mono">
-              {seo.metaDescription.length}/160
+              {(seo?.metaDescription || '').length}/160
             </span>
           </div>
           <textarea
             rows={3}
-            value={seo.metaDescription}
+            value={seo?.metaDescription || ''}
             onChange={(e) => setSeo((prev) => ({ ...prev, metaDescription: e.target.value }))}
             placeholder="Brief summary for Google search results..."
-            className="w-full p-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+            className="w-full p-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
           />
         </div>
 

@@ -252,9 +252,9 @@ const SOFT_BG_HEXES = [
   '#faf5ee', '#faf5ed', '#faf5ef', '#faf6f0', '#faf6f1', '#faf7f2',
   '#FAF7F2', '#FAF9F6', '#faf9f7', '#faf3e8', '#faf3ea', '#faf4ed',
   '#FAF4ED', '#F6F1EA', '#FAF6F1', '#fbf4eb', '#fbf5ed', '#fbf6f0',
-  '#fbf7f0', '#fbf7f2', '#fbf8f4', '#fbfaf8', '#fcf3e8', '#fcf5e5',
+  '#fbf7f0', '#fbf7f2', '#fbf8f4', '#fcf3e8', '#fcf5e5',
   '#fcf6ee', '#fcf9f4', '#fcfaf7', '#fdf3e7', '#fdf7e7', '#fdfbf7',
-  '#fdfcfb', '#fef6ee', '#fef9ee', '#fffdfa', '#fffdfb', '#f7f3ed',
+  '#fef6ee', '#fef9ee', '#f7f3ed',
   '#faedd8', '#f7ecd9',
 ];
 
@@ -514,7 +514,10 @@ export function buildDynamicThemeCss(theme, rgb) {
         form [class*="bg-[#faf8f5]"],
         form [class*="bg-[#fcfbf9]"],
         dialog [class*="bg-[#faf8f5]"],
-        dialog [class*="bg-[#fcfbf9]"] {
+        dialog [class*="bg-[#fcfbf9]"],
+        input:not([type="checkbox"]):not([type="radio"]):not([type="color"])[class*="bg-[#f"],
+        textarea[class*="bg-[#f"],
+        select[class*="bg-[#f"] {
           background-color: #ffffff !important;
         }
 

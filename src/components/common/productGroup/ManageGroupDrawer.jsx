@@ -11,6 +11,7 @@ import {
   HiOutlineViewList,
   HiOutlinePencil,
   HiOutlineCheckCircle,
+  HiOutlineDocumentText,
   HiOutlineSwitchHorizontal,
   HiOutlineExternalLink,
 } from 'react-icons/hi';
@@ -74,6 +75,7 @@ export default function ManageGroupDrawer({
   const [searchAdd, setSearchAdd] = useState('');
   const [savingAdd, setSavingAdd] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [drafting, setDrafting] = useState(false);
   const [previewImage, setPreviewImage] = useState(null);
 
   const handleOpenMoveSingle = (product) => {
@@ -116,6 +118,86 @@ export default function ManageGroupDrawer({
       toast.error(err.response?.data?.message || 'Failed to approve group products');
     } finally {
       setApproving(false);
+    }
+  };
+
+  const handleDraftGroup = async () => {
+    const isConfirmed = await confirm({
+      title: 'Move Group Products to Draft',
+      message: `Change status to "Draft" for all in-stock products in "${group?.groupName || 'this group'}"? Draft products will be hidden from storefront browsing.`,
+      confirmText: 'Move to Draft',
+      type: 'warning',
+    });
+    if (!isConfirmed) return;
+
+    try {
+      setDrafting(true);
+      const res = await api.post(`/product-groups/${groupId}/draft`);
+      toast.success(res.data?.message || 'Products moved to draft successfully');
+      fetchGroup();
+      onRefreshParent?.();
+    } catch (err) {
+      console.error('Failed to move group products to draft:', err);
+      toast.error(err.response?.data?.message || 'Failed to move group products to draft');
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  const handleToggleProductStatus = async (product) => {
+    const isApproved = (product.status || '').toLowerCase() === 'approved';
+    const targetStatus = isApproved ? 'draft' : 'approved';
+    try {
+      if (targetStatus === 'draft') {
+        const res = await api.post(`/product-groups/${groupId}/draft`, { productIds: [product._id] });
+        toast.success(res.data?.message || `Moved "${product.basicInfo?.title || 'Product'}" to draft`);
+      } else {
+        const res = await api.post(`/product-groups/${groupId}/approve`, { productIds: [product._id] });
+        toast.success(res.data?.message || `Approved "${product.basicInfo?.title || 'Product'}"`);
+      }
+      fetchGroup();
+      onRefreshParent?.();
+    } catch (err) {
+      console.error('Failed to update product status:', err);
+      toast.error(err.response?.data?.message || 'Failed to update status');
+    }
+  };
+
+  const handleApproveSelected = async () => {
+    if (!selectedProductIds.size) return;
+    try {
+      setApproving(true);
+      const res = await api.post(`/product-groups/${groupId}/approve`, {
+        productIds: Array.from(selectedProductIds),
+      });
+      toast.success(res.data?.message || 'Selected products approved successfully');
+      setSelectedProductIds(new Set());
+      fetchGroup();
+      onRefreshParent?.();
+    } catch (err) {
+      console.error('Failed to approve selected products:', err);
+      toast.error(err.response?.data?.message || 'Failed to approve selected products');
+    } finally {
+      setApproving(false);
+    }
+  };
+
+  const handleDraftSelected = async () => {
+    if (!selectedProductIds.size) return;
+    try {
+      setDrafting(true);
+      const res = await api.post(`/product-groups/${groupId}/draft`, {
+        productIds: Array.from(selectedProductIds),
+      });
+      toast.success(res.data?.message || 'Selected products moved to draft');
+      setSelectedProductIds(new Set());
+      fetchGroup();
+      onRefreshParent?.();
+    } catch (err) {
+      console.error('Failed to draft selected products:', err);
+      toast.error(err.response?.data?.message || 'Failed to move selected products to draft');
+    } finally {
+      setDrafting(false);
     }
   };
 
@@ -184,6 +266,23 @@ export default function ManageGroupDrawer({
 
   // Filter & Sort Products
   const products = group?.products || [];
+
+  const inStockProducts = useMemo(() => {
+    return products.filter((p) => {
+      const isSold = p.ornate?.isSold || p.stockStatus === 'Sold' || p.status === 'sold';
+      return !isSold;
+    });
+  }, [products]);
+
+  const approvedInStockCount = useMemo(() => {
+    return inStockProducts.filter((p) => (p.status || '').toLowerCase() === 'approved').length;
+  }, [inStockProducts]);
+
+  const draftInStockCount = useMemo(() => {
+    return inStockProducts.filter((p) => (p.status || '').toLowerCase() === 'draft' || !p.status).length;
+  }, [inStockProducts]);
+
+  const isAllApproved = inStockProducts.length > 0 && approvedInStockCount === inStockProducts.length;
   const filteredProducts = useMemo(() => {
     let list = [...products];
 
@@ -488,8 +587,6 @@ export default function ManageGroupDrawer({
                 <span>Code: <strong className="text-stone-800 font-semibold">{group?.groupCode || '—'}</strong></span>
                 <span className="text-stone-300">|</span>
                 <span>Products: <strong className="text-stone-800 font-semibold">{products.length || group?.productCount || 0}</strong></span>
-                <span className="text-stone-300">|</span>
-                <span>Eligible: <strong className="text-stone-800 font-semibold">{group?.eligibleCount ?? products.filter((p) => !p.ornate?.isSold && p.stockStatus !== 'Sold').length}</strong></span>
               </div>
 
               <div className="text-xs text-stone-600 font-medium">
@@ -514,16 +611,56 @@ export default function ManageGroupDrawer({
               <span>Move to Another Group{selectedProductIds.size > 0 ? ` (${selectedProductIds.size})` : ''}</span>
             </button>
 
-            <button
-              type="button"
-              onClick={handleApproveGroup}
-              disabled={approving || loading}
-              className="px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              title="Approve all in-stock products in this group"
-            >
-              <HiOutlineCheckCircle className="w-3.5 h-3.5" />
-              <span>{approving ? 'Approving...' : 'Approve Group'}</span>
-            </button>
+            {isAllApproved ? (
+              <button
+                type="button"
+                onClick={handleDraftGroup}
+                disabled={drafting || loading}
+                className="px-3.5 py-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Move all in-stock products in this group to draft"
+              >
+                <HiOutlineDocumentText className="w-3.5 h-3.5" />
+                <span>{drafting ? 'Moving to Draft...' : 'Draft Group'}</span>
+              </button>
+            ) : draftInStockCount > 0 && approvedInStockCount === 0 ? (
+              <button
+                type="button"
+                onClick={handleApproveGroup}
+                disabled={approving || loading}
+                className="px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                title="Approve all in-stock products in this group"
+              >
+                <HiOutlineCheckCircle className="w-3.5 h-3.5" />
+                <span>{approving ? 'Approving...' : 'Approve Group'}</span>
+              </button>
+            ) : (
+              <>
+                {draftInStockCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleApproveGroup}
+                    disabled={approving || loading}
+                    className="px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title={`Approve ${draftInStockCount} draft in-stock product(s)`}
+                  >
+                    <HiOutlineCheckCircle className="w-3.5 h-3.5" />
+                    <span>{approving ? 'Approving...' : `Approve Group (${draftInStockCount})`}</span>
+                  </button>
+                )}
+                {approvedInStockCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleDraftGroup}
+                    disabled={drafting || loading}
+                    className="px-3.5 py-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    title={`Move ${approvedInStockCount} approved product(s) to draft`}
+                  >
+                    <HiOutlineDocumentText className="w-3.5 h-3.5" />
+                    <span>{drafting ? 'Moving to Draft...' : `Draft Group (${approvedInStockCount})`}</span>
+                  </button>
+                )}
+              </>
+            )}
 
             <button
               type="button"
@@ -555,7 +692,7 @@ export default function ManageGroupDrawer({
             <div className="space-y-4">
               {/* Top Selection Info Bar for Member Products */}
               {selectedProductIds.size > 0 && (
-                <div className="bg-[#8b6f4e]/10 border border-[#8b6f4e]/25 rounded-2xl px-4 py-2.5 flex items-center justify-between gap-3 text-xs animate-fadeIn shadow-2xs">
+                <div className="bg-[#8b6f4e]/10 border border-[#8b6f4e]/25 rounded-2xl px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs animate-fadeIn shadow-2xs">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-[#8b6f4e]">
                       {selectedProductIds.size} product(s) selected
@@ -569,13 +706,35 @@ export default function ManageGroupDrawer({
                       <HiOutlineX className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProductIds(new Set())}
-                    className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
-                  >
-                    Clear selection
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleApproveSelected}
+                      disabled={approving || drafting}
+                      className="px-2.5 py-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      title="Approve selected products"
+                    >
+                      <HiOutlineCheckCircle className="w-3.5 h-3.5" />
+                      <span>Approve Selected</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDraftSelected}
+                      disabled={approving || drafting}
+                      className="px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                      title="Move selected products to draft"
+                    >
+                      <HiOutlineDocumentText className="w-3.5 h-3.5" />
+                      <span>Draft Selected</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedProductIds(new Set())}
+                      className="text-[11px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer ml-1"
+                    >
+                      Clear selection
+                    </button>
+                  </div>
                 </div>
               )}
 
@@ -757,7 +916,14 @@ export default function ManageGroupDrawer({
                                   </td>
                                   <td className="p-3">
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 flex-wrap">
-                                      {renderStatusBadge(p)}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleToggleProductStatus(p)}
+                                        className="cursor-pointer group/status inline-flex items-center transition-transform hover:scale-105 active:scale-95 focus:outline-none"
+                                        title={`Status: ${p.status || 'draft'}. Click to switch to ${(p.status || '').toLowerCase() === 'approved' ? 'Draft' : 'Approved'}`}
+                                      >
+                                        {renderStatusBadge(p)}
+                                      </button>
                                       {renderStockStatusBadge(p)}
                                     </div>
                                   </td>
@@ -839,7 +1005,14 @@ export default function ManageGroupDrawer({
                                   className="rounded text-[#8b6f4e] focus:ring-[#8b6f4e] w-4 h-4 cursor-pointer shrink-0"
                                 />
                                 <div className="flex items-center gap-1 flex-wrap">
-                                  {renderStatusBadge(p)}
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggleProductStatus(p)}
+                                    className="cursor-pointer group/status inline-flex items-center transition-transform hover:scale-105 active:scale-95 focus:outline-none"
+                                    title={`Status: ${p.status || 'draft'}. Click to switch to ${(p.status || '').toLowerCase() === 'approved' ? 'Draft' : 'Approved'}`}
+                                  >
+                                    {renderStatusBadge(p)}
+                                  </button>
                                   {renderStockStatusBadge(p)}
                                 </div>
                                 <RepresentativeActionButton

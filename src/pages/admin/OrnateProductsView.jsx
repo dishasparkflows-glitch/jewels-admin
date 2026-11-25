@@ -77,6 +77,7 @@ export default function OrnateProductsView() {
   const [bulkSplitting, setBulkSplitting] = useState(false);
   const [bulkApproving, setBulkApproving] = useState(false);
   const [approvingGroupId, setApprovingGroupId] = useState(null);
+  const [draftingGroupId, setDraftingGroupId] = useState(null);
 
   // Close viewingProduct on ESC & lock body scroll
   useEffect(() => {
@@ -325,6 +326,36 @@ export default function OrnateProductsView() {
       toast.error(err.response?.data?.message || 'Failed to approve group');
     } finally {
       setApprovingGroupId(null);
+    }
+  };
+
+  // Direct 1-Click Move Products in a Single Group to Draft
+  const handleDirectDraftOneGroup = async (group) => {
+    const isConfirmed = await confirm({
+      title: `Move "${group.groupName}" to Draft?`,
+      message: `Move all in-stock products in "${group.groupName}" to draft? They will be hidden from storefront browsing.`,
+      confirmText: 'Move to Draft',
+      type: 'warning',
+    });
+    if (!isConfirmed) return;
+
+    const currentScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+    try {
+      setDraftingGroupId(group._id);
+      const res = await api.post(`/product-groups/${group._id}/draft`);
+      toast.success(res.data?.message || `Moved products in "${group.groupName}" to draft`);
+      await fetchData({ silent: true });
+      await fetchTabCounts();
+      if (currentScrollY > 0) {
+        requestAnimationFrame(() => {
+          window.scrollTo({ top: currentScrollY, behavior: 'instant' });
+        });
+      }
+    } catch (err) {
+      console.error('Failed to move group to draft:', err);
+      toast.error(err.response?.data?.message || 'Failed to move group to draft');
+    } finally {
+      setDraftingGroupId(null);
     }
   };
 
@@ -767,6 +798,8 @@ export default function OrnateProductsView() {
                       onDelete={handleDeleteGroup}
                       onDirectApprove={handleDirectApproveOneGroup}
                       isApproving={approvingGroupId === g._id}
+                      onDirectDraft={handleDirectDraftOneGroup}
+                      isDrafting={draftingGroupId === g._id}
                     />
                   ))}
                 </div>

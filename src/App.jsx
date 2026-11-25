@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
+import { Suspense } from 'react';
 import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { HiOutlineX } from 'react-icons/hi';
 import { AuthProvider } from './contexts/AuthContext';
@@ -8,58 +8,61 @@ import { ConfirmProvider } from './contexts/ConfirmContext';
 import { ImagePreviewProvider } from './contexts/ImagePreviewContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminLayout from './components/layout/AdminLayout';
-// Lazy-loaded Admin Page Views for dynamic code-splitting & fast build
-const Login = lazy(() => import('./pages/auth/Login'));
-const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
-const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
-const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
-const OrdersView = lazy(() => import('./pages/admin/OrdersView'));
-const CodSequencesView = lazy(() => import('./pages/admin/CodSequencesView'));
-const CustomersView = lazy(() => import('./pages/admin/CustomersView'));
-const AppointmentsView = lazy(() => import('./pages/admin/AppointmentsView'));
-const CustomInquiriesView = lazy(() => import('./pages/admin/CustomInquiriesView'));
-const ReviewsView = lazy(() => import('./pages/admin/ReviewsView'));
-const SettingsView = lazy(() => import('./pages/admin/SettingsView'));
-const InstagramPostsView = lazy(() => import('./pages/admin/InstagramPostsView'));
-const BirthstonePortfolioView = lazy(() => import('./pages/admin/BirthstonePortfolioView'));
-const CouponsView = lazy(() => import('./pages/admin/CouponsView'));
-const CelebrateGiftsView = lazy(() => import('./pages/admin/CelebrateGiftsView'));
-const TopAnnouncementView = lazy(() => import('./pages/admin/TopAnnouncementView'));
-const DiamondsView = lazy(() => import('./pages/admin/DiamondsView'));
-const AddDiamonds = lazy(() => import('./pages/admin/AddDiamonds'));
-const BannersView = lazy(() => import('./pages/admin/BannersView'));
-const HomeSectionsView = lazy(() => import('./pages/admin/HomeSectionsView'));
-const DiamondTypesView = lazy(() => import('./pages/admin/DiamondTypesView'));
-const DiamondShapesView = lazy(() => import('./pages/admin/DiamondShapesView'));
-const DiamondColorsView = lazy(() => import('./pages/admin/DiamondColorsView'));
-const DiamondClaritiesView = lazy(() => import('./pages/admin/DiamondClaritiesView'));
-const DiamondSizesView = lazy(() => import('./pages/admin/DiamondSizesView'));
-const GemstoneTypesView = lazy(() => import('./pages/admin/GemstoneTypesView'));
-const GemstoneShapesView = lazy(() => import('./pages/admin/GemstoneShapesView'));
-const MetalPuritiesView = lazy(() => import('./pages/admin/MetalPuritiesView'));
-const MetalColorsView = lazy(() => import('./pages/admin/MetalColorsView'));
-const SizesView = lazy(() => import('./pages/admin/SizesView'));
-const VtoMastersView = lazy(() => import('./pages/admin/VtoMastersView'));
-const AddJewelryProduct = lazy(() => import('./pages/admin/AddJewelryProduct'));
-const OrnateProductsView = lazy(() => import('./pages/admin/OrnateProductsView'));
-const OrnateProductEdit = lazy(() => import('./pages/admin/OrnateProductEdit'));
-const CategoryFiltersView = lazy(() => import('./pages/admin/CategoryFiltersView'));
-const NavigationMenusView = lazy(() => import('./pages/admin/NavigationMenusView'));
-const WhatsAppView = lazy(() => import('./pages/admin/WhatsAppView'));
-const MetalRatesView = lazy(() => import('./pages/admin/MetalRatesView'));
-const DiamondPricingMasterView = lazy(() => import('./pages/admin/DiamondPricingMasterView'));
-const CurrenciesView = lazy(() => import('./pages/admin/CurrenciesView'));
-const BeforeAfterView = lazy(() => import('./pages/admin/BeforeAfterView'));
-const BlogsView = lazy(() => import('./pages/admin/BlogsView'));
-const WriteBlogView = lazy(() => import('./pages/admin/WriteBlogView'));
-const BlogCategoriesView = lazy(() => import('./pages/admin/BlogCategoriesView'));
-const DynamicModuleView = lazy(() => import('./pages/admin/DynamicModuleView'));
-const ProfileView = lazy(() => import('./pages/admin/ProfileView'));
-const AnalyticsView = lazy(() => import('./pages/admin/AnalyticsView'));
-const StaticPagesView = lazy(() => import('./pages/admin/StaticPagesView'));
-const ThemesView = lazy(() => import('./pages/admin/ThemesView'));
-const GalleryView = lazy(() => import('./pages/admin/GalleryView'));
-const OwnersView = lazy(() => import('./pages/admin/OwnersView'));
+import { adminPages } from './utils/routeLoaders';
+
+const {
+  Login,
+  ForgotPassword,
+  ResetPassword,
+  Dashboard,
+  OrdersView,
+  CodSequencesView,
+  CustomersView,
+  AppointmentsView,
+  CustomInquiriesView,
+  ReviewsView,
+  SettingsView,
+  InstagramPostsView,
+  BirthstonePortfolioView,
+  CouponsView,
+  CelebrateGiftsView,
+  TopAnnouncementView,
+  DiamondsView,
+  AddDiamonds,
+  BannersView,
+  HomeSectionsView,
+  DiamondTypesView,
+  DiamondShapesView,
+  DiamondColorsView,
+  DiamondClaritiesView,
+  DiamondSizesView,
+  GemstoneTypesView,
+  GemstoneShapesView,
+  MetalPuritiesView,
+  MetalColorsView,
+  SizesView,
+  VtoMastersView,
+  AddJewelryProduct,
+  OrnateProductsView,
+  OrnateProductEdit,
+  CategoryFiltersView,
+  NavigationMenusView,
+  WhatsAppView,
+  MetalRatesView,
+  DiamondPricingMasterView,
+  CurrenciesView,
+  BeforeAfterView,
+  BlogsView,
+  WriteBlogView,
+  BlogCategoriesView,
+  DynamicModuleView,
+  ProfileView,
+  AnalyticsView,
+  StaticPagesView,
+  ThemesView,
+  GalleryView,
+  OwnersView,
+} = adminPages;
 
 function App() {
   return (

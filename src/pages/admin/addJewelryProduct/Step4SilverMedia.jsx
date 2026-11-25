@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   HiOutlineCheck,
   HiOutlinePhotograph,
@@ -169,12 +168,6 @@ export default function Step4SilverMedia() {
                         <span className="text-xs font-bold text-stone-800">
                           Variant swatch icon
                         </span>
-                        <span
-                          className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                          title="Upload a custom icon or texture for this variant swatch"
-                        >
-                          ?
-                        </span>
                       </div>
 
                       <input
@@ -241,12 +234,6 @@ export default function Step4SilverMedia() {
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-bold text-stone-800">
                             Product images &amp; videos
-                          </span>
-                          <span
-                            className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                            title="Upload product photos and MP4 videos specifically for this color finish"
-                          >
-                            ?
                           </span>
                         </div>
                         {vData.media && vData.media.length > 0 && (
@@ -457,12 +444,6 @@ export default function Step4SilverMedia() {
                         <span className="text-xs font-bold text-stone-800">
                           Variant swatch icon
                         </span>
-                        <span
-                          className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                          title="Upload a custom icon or texture for general / unassigned media"
-                        >
-                          ?
-                        </span>
                       </div>
 
                       <input
@@ -529,12 +510,6 @@ export default function Step4SilverMedia() {
                         <div className="flex items-center gap-1.5">
                           <span className="text-xs font-bold text-stone-800">
                             Product images &amp; videos
-                          </span>
-                          <span
-                            className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                            title="Upload product photos and MP4 videos for general view without assigning a metal color"
-                          >
-                            ?
                           </span>
                         </div>
                         {vData.media && vData.media.length > 0 && (

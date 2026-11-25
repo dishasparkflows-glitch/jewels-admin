@@ -1,10 +1,5 @@
-import SideDiamondEditor from '../../components/common/SideDiamondEditor';
-import CategorySelect from '../../components/common/CategorySelect';
-import ColorStatusToggle from '../../components/common/ColorStatusToggle';
-import MenuItemSelect from '../../components/common/MenuItemSelect';
 import { selectedMenuIds } from '../../utils/menuItems';
-import { useState, useEffect, useMemo, useRef, Fragment } from 'react';
-import { createPortal } from 'react-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import api from '../../api/axios';
@@ -21,48 +16,12 @@ import {
   getGlobalCompressionOptions,
 } from '../../utils/uploadWithPresignedUrl';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
-import Dropdown from '../../components/common/Dropdown';
 import { getMediaUrl } from '../../utils/imageUrl';
-import { openProductPreview } from '../../utils/productPreview';
 import ProductStepFooter from '../../components/common/ProductStepFooter';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import { metalColorsAPI, vtoMastersAPI } from '../../api/services';
-import {
-  HiOutlineArrowRight,
-  HiOutlineArrowLeft,
-  HiOutlineDocumentText,
-  HiOutlineInformationCircle,
-  HiOutlineRefresh,
-  HiOutlineUpload,
-  HiOutlineTrash,
-  HiOutlinePlus,
-  HiOutlineCheck,
-  HiOutlineEye,
-  HiOutlinePhotograph,
-  HiOutlineStar,
-  HiOutlineVideoCamera,
-  HiOutlineCube,
-  HiOutlineX,
-  HiOutlineAdjustments,
-  HiOutlineChevronRight,
-  HiOutlineChevronLeft,
-  HiOutlineCheckCircle,
-  HiOutlineLink,
-  HiOutlineExternalLink,
-  HiOutlineChevronUp,
-  HiOutlineChevronDown,
-  HiOutlineCalculator,
-  HiOutlineGlobeAlt,
-  HiOutlineLockClosed,
-} from 'react-icons/hi';
 import PricingBreakdownModal from '../../components/common/PricingBreakdownModal';
 import { calculateProductPriceAPI } from '../../utils/pricingCalculation';
-import {
-  IoDiamondOutline,
-  IoSparklesOutline,
-  IoColorPaletteOutline,
-} from 'react-icons/io5';
-import { TbListDetails } from 'react-icons/tb';
 
 // Metal Color helpers imported from modular helper file
 import {

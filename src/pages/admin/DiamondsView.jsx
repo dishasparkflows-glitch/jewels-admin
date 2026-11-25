@@ -1278,7 +1278,7 @@ export default function DiamondsView() {
                       value={editPrice}
                       onChange={(e) => setEditPrice(e.target.value)}
                       placeholder="e.g. 14553"
-                      className="w-full px-3.5 py-2 text-xs font-bold bg-[#faf8f5] border border-stone-200 rounded-xl focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all text-stone-900"
+                      className="w-full px-3.5 py-2 text-xs font-bold bg-white border border-stone-200 rounded-xl focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all text-stone-900"
                     />
                   </div>
                 </div>

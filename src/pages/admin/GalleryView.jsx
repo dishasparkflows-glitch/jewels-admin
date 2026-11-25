@@ -361,19 +361,6 @@ export default function GalleryView() {
     asset: counts.asset ?? 0,
   };
 
-  const filterPlacementOptions = useMemo(() => [
-    {
-      value: 'all',
-      label: 'All Placements',
-      icon: HiOutlinePhotograph,
-    },
-    ...placementTypeOptions.map((opt) => ({
-      value: opt.value,
-      label: opt.label,
-      icon: opt.icon,
-    })),
-  ], [placementTypeOptions]);
-
   const effectiveItems = useMemo(() => {
     return items;
   }, [items]);

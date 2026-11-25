@@ -11,7 +11,7 @@ import {
   HiOutlineUpload,
 } from 'react-icons/hi';
 import Dropdown from './Dropdown';
-import PlacementSelect, { PLACEMENT_OPTIONS, FILTER_PLACEMENT_OPTIONS } from './PlacementSelect';
+import PlacementSelect, { PLACEMENT_OPTIONS } from './PlacementSelect';
 import Pagination from './Pagination';
 import GalleryUploadModal from '../gallery/GalleryUploadModal';
 import api from '../../api/axios';
@@ -42,7 +42,6 @@ const loadThemesLookup = async () => {
   }
 };
 
-const DEFAULT_PLACEMENTS = FILTER_PLACEMENT_OPTIONS;
 const DEFAULT_UPLOAD_PLACEMENTS = PLACEMENT_OPTIONS;
 
 export default function GalleryMediaPickerModal({
@@ -178,7 +177,6 @@ export default function GalleryMediaPickerModal({
       isLive: Boolean(t.isLive || t.status === 'active'),
     }));
   }, [passedThemes, internalThemes]);
-  const activePlacements = placementOptions || DEFAULT_PLACEMENTS;
 
   const modalThemeOptions = useMemo(() => {
     return [

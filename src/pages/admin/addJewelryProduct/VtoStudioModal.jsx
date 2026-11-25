@@ -1,4 +1,3 @@
-import React from 'react';
 import { createPortal } from 'react-dom';
 import { HiOutlineUpload, HiOutlineX, HiOutlinePhotograph } from 'react-icons/hi';
 import Dropdown from '../../../components/common/Dropdown';

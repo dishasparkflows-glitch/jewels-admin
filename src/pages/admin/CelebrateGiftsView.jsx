@@ -633,7 +633,7 @@ export default function CelebrateGiftsView() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={`Search ${placementFilter !== 'all' ? placementFilter : 'all'} showcases by name...`}
-                className="w-full pl-9 pr-8 py-2 text-xs rounded-lg bg-[#fbfaf8] hover:bg-white focus:bg-white border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
+                className="w-full pl-9 pr-8 py-2 text-xs rounded-lg bg-white border border-stone-200 text-stone-800 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
               />
               {search && (
                 <button

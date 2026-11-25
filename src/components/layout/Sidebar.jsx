@@ -7,6 +7,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import api from '../../api/axios';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { hexToRgb } from '../../utils/themeUtils';
+import { preloadRoute } from '../../utils/routeLoaders';
 import {
   HiOutlineChevronRight,
   HiOutlineChevronDown,
@@ -198,10 +199,14 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
     });
 
     if (activeParentId) {
-      setOpenSubmenus((prev) => ({
-        ...prev,
-        [activeParentId]: true,
-      }));
+      setOpenSubmenus((prev) =>
+        prev[activeParentId]
+          ? prev
+          : {
+              ...prev,
+              [activeParentId]: true,
+            }
+      );
     }
   }, [location.pathname, visibleSections]);
 
@@ -347,7 +352,9 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                     key={item.id || item.path}
                     to={item.path}
                     onClick={() => handleNavClick(item.path)}
-                    className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[13px] transition-all duration-150 cursor-pointer overflow-hidden ${
+                    onMouseEnter={() => preloadRoute(item.path)}
+                    onFocus={() => preloadRoute(item.path)}
+                    className={`relative flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-[13px] transition-colors duration-150 cursor-pointer overflow-hidden ${
                       isActive
                         ? 'font-bold text-white shadow-sm'
                         : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/70 font-medium'
@@ -418,7 +425,9 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                             key={child.id || child.path}
                             to={child.path}
                             onClick={() => handleNavClick(child.path)}
-                            className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-all duration-150 cursor-pointer overflow-hidden ${
+                            onMouseEnter={() => preloadRoute(child.path)}
+                            onFocus={() => preloadRoute(child.path)}
+                            className={`relative flex items-center gap-2.5 px-3 py-2 rounded-lg text-[12.5px] transition-colors duration-150 cursor-pointer overflow-hidden ${
                               isChildActive
                                 ? 'font-bold text-white shadow-sm'
                                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100/60 font-medium'

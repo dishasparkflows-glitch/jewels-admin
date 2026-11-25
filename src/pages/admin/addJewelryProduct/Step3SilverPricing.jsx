@@ -1,4 +1,3 @@
-import React from 'react';
 import { useAddJewelryProductContext } from './AddJewelryProductContext';
 
 export default function Step3SilverPricing() {
@@ -57,7 +56,7 @@ export default function Step3SilverPricing() {
                 type="number"
                 value={pricing.costPrice}
                 onChange={(e) => handleSilverCostOrMarkupChange('costPrice', e.target.value)}
-                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
               />
             </div>
 
@@ -72,7 +71,7 @@ export default function Step3SilverPricing() {
                 type="number"
                 value={pricing.markupPercentage}
                 onChange={(e) => handleSilverCostOrMarkupChange('markupPercentage', e.target.value)}
-                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
               />
             </div>
 
@@ -90,7 +89,7 @@ export default function Step3SilverPricing() {
                 type="number"
                 value={pricing.calculatedPrice}
                 onChange={(e) => setPricing((prev) => ({ ...prev, calculatedPrice: e.target.value }))}
-                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-bold text-stone-900 bg-stone-50/70 border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-bold text-stone-900 bg-white border border-[#d6cfc2] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
               />
               <div className="flex items-center justify-between text-[10px] text-stone-400 mt-1 flex-wrap gap-1">
                 <span>Auto-computed base price</span>
@@ -113,7 +112,7 @@ export default function Step3SilverPricing() {
                 type="number"
                 value={pricing.salePrice}
                 onChange={(e) => handleSilverSalePriceChange(e.target.value)}
-                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-bold text-[#8b6f4e] bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-bold text-[#8b6f4e] bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
               />
               <p className="text-[10px] text-stone-400 mt-1">Actual selling price</p>
             </div>
@@ -131,7 +130,7 @@ export default function Step3SilverPricing() {
                 type="number"
                 value={pricing.mrpMarkupPercentage}
                 onChange={(e) => handleSilverMrpMarkupChange(e.target.value)}
-                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
               />
             </div>
 
@@ -148,7 +147,7 @@ export default function Step3SilverPricing() {
                 type="number"
                 value={pricing.mrp}
                 onChange={(e) => setPricing((prev) => ({ ...prev, mrp: e.target.value }))}
-                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-[#fdfcfb] border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
+                className="w-full h-10 px-3.5 text-xs sm:text-[13px] font-semibold text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all shadow-2xs"
               />
               <div className="flex items-center justify-between text-[10px] text-stone-400 mt-1 flex-wrap gap-1">
                 <span>Customer list price (strikethrough)</span>

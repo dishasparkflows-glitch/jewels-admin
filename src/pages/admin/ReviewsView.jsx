@@ -484,7 +484,6 @@ export default function ReviewsView() {
                   const reviewTitle = rev.review?.title || '';
                   const reviewComment = rev.review?.comment || '';
                   const dateStr = formatDate(rev.review?.reviewDate || rev.meta?.createdAt);
-                  const initial = reviewerName[0]?.toUpperCase() || 'R';
 
                   return (
                     <tr

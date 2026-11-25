@@ -1,4 +1,4 @@
-import { useEffect, Suspense, useRef, useState, useCallback } from 'react';
+import { useEffect, Suspense } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { HiOutlineShieldCheck, HiOutlineX } from 'react-icons/hi';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -8,15 +8,14 @@ import Header from './Header';
 import ErrorBoundary from '../common/ErrorBoundary';
 import CuteTopProgressBar from '../common/CuteTopProgressBar';
 import GlobalTooltip from '../common/GlobalTooltip';
+import { preloadCoreRoutes } from '../../utils/routeLoaders';
 
 /**
- * Minimal inline Suspense fallback — just an invisible placeholder that
- * keeps the layout height stable while the lazy chunk loads.  The golden
- * CuteTopProgressBar already gives the user visual feedback, so there is
- * no need for a diamond/spinner here.
+ * Zero-height Suspense fallback so lazy route boundaries never inject a blank
+ * spacer jump while CuteTopProgressBar handles visual feedback.
  */
 const MinimalSuspenseFallback = () => (
-  <div className="min-h-[60vh] w-full" aria-hidden="true" />
+  <div className="min-h-0 w-full" aria-hidden="true" />
 );
 
 const AdminLayout = () => {
@@ -29,6 +28,17 @@ const AdminLayout = () => {
     mobileSidebarOpen,
     setMobileSidebarOpen,
   } = useTheme();
+
+  // Warm up core sidebar chunks once initial admin mount settles
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(() => preloadCoreRoutes(), { timeout: 2000 });
+      return () => window.cancelIdleCallback?.(id);
+    }
+    const timer = setTimeout(preloadCoreRoutes, 1200);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Reset body and html overflow on route change and auto-close mobile sidebar
   useEffect(() => {
@@ -108,9 +118,7 @@ const AdminLayout = () => {
         <main className="flex-1 min-w-0 w-full px-3 sm:px-5 py-2.5 sm:py-3.5 max-w-[1600px] mx-auto">
           <ErrorBoundary>
             <Suspense fallback={<MinimalSuspenseFallback />}>
-              <div className="animate-page-enter">
-                <Outlet />
-              </div>
+              <Outlet />
             </Suspense>
           </ErrorBoundary>
         </main>

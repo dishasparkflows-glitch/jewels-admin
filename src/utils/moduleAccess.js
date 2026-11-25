@@ -137,45 +137,7 @@ export function resolveNavSections(sections = navSections, dbModules = null, all
     }
   }
 
-  return filterNavSections(resolved, allowedModules);
-}
-
-/**
- * Returns a flat list of module definitions derived from navigation.js as a fallback/sync list.
- */
-export function getNavigationModuleFallback() {
-  const modules = [];
-  const seen = new Set();
-
-  navSections.forEach((section) => {
-    const defaultGroup = section.title || 'General';
-    (section.items || []).forEach((item) => {
-      if (item.id === 'owners') return;
-      if (item.children && item.children.length > 0) {
-        item.children.forEach((child) => {
-          if (!seen.has(child.id)) {
-            seen.add(child.id);
-            modules.push({
-              id: child.id,
-              title: child.title,
-              group: item.title || defaultGroup,
-              path: child.path,
-            });
-          }
-        });
-      } else if (!seen.has(item.id)) {
-        seen.add(item.id);
-        modules.push({
-          id: item.id,
-          title: item.title,
-          group: defaultGroup === 'ANALYTICS & ADMINISTRATION' ? 'Analytics & Administration' : defaultGroup,
-          path: item.path,
-        });
-      }
-    });
-  });
-
-  return modules;
+    return filterNavSections(resolved, allowedModules);
 }
 
 const ROUTE_MODULE_RULES = [

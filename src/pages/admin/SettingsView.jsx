@@ -8,7 +8,6 @@ import {
   HiOutlineUpload,
   HiOutlineEye,
   HiOutlineEyeOff,
-  HiOutlineCheck,
   HiOutlineX,
   HiOutlineOfficeBuilding,
   HiOutlineCash,
@@ -89,7 +88,6 @@ export default function SettingsView() {
   const [selectedThemeId, setSelectedThemeId] = useState('');
   const [selectedThemeName, setSelectedThemeName] = useState('');
   const [themesList, setThemesList] = useState([]);
-  const [loadingThemes, setLoadingThemes] = useState(false);
   const [savingTheme, setSavingTheme] = useState(false);
   const [resettingButtonColors, setResettingButtonColors] = useState(false);
 
@@ -528,7 +526,6 @@ export default function SettingsView() {
   // Fetch Theme lookup
   const fetchThemesLookup = async () => {
     try {
-      setLoadingThemes(true);
       const res = await api.get('/themes/lookup');
       const list = res.data?.data || [];
       setThemesList(list);
@@ -539,8 +536,6 @@ export default function SettingsView() {
     } catch (err) {
       console.error('Failed to load theme lookup:', err);
       toast.error('Failed to load themes');
-    } finally {
-      setLoadingThemes(false);
     }
   };
 

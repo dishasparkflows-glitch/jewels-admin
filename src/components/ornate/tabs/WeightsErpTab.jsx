@@ -38,7 +38,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setWeights((prev) => ({ ...prev, grossWeight: Number(e.target.value) || 0 }))
               }
-              className="w-full h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -53,7 +53,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setWeights((prev) => ({ ...prev, netWeight: Number(e.target.value) || 0 }))
               }
-              className="w-full h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -68,7 +68,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setWeights((prev) => ({ ...prev, purity: Number(e.target.value) || 0 }))
               }
-              className="w-full h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -83,7 +83,7 @@ export default function WeightsErpTab({
                 setWeights((prev) => ({ ...prev, caratCategory: e.target.value }))
               }
               placeholder="e.g. 925SL or 18KT"
-              className="w-full h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
         </div>
@@ -116,7 +116,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setErpDetails((prev) => ({ ...prev, customGroupName: e.target.value }))
               }
-              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -130,7 +130,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setErpDetails((prev) => ({ ...prev, itemName: e.target.value }))
               }
-              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -144,7 +144,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setErpDetails((prev) => ({ ...prev, groupName: e.target.value }))
               }
-              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -158,7 +158,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setErpDetails((prev) => ({ ...prev, varietyName: e.target.value }))
               }
-              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -172,7 +172,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setErpDetails((prev) => ({ ...prev, metalName: e.target.value }))
               }
-              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -186,7 +186,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setErpDetails((prev) => ({ ...prev, uniqueLabelId: e.target.value }))
               }
-              className="w-full h-9 px-3 text-xs font-mono rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs font-mono rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -200,7 +200,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setErpDetails((prev) => ({ ...prev, barcodeNumber: e.target.value }))
               }
-              className="w-full h-9 px-3 text-xs font-mono font-bold rounded-xl border border-stone-200 bg-[#fdfcfb] text-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs font-mono font-bold rounded-xl border border-stone-200 bg-white text-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -214,7 +214,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setErpDetails((prev) => ({ ...prev, labelNumber: e.target.value }))
               }
-              className="w-full h-9 px-3 text-xs font-mono rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs font-mono rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -228,7 +228,7 @@ export default function WeightsErpTab({
               onChange={(e) =>
                 setErpDetails((prev) => ({ ...prev, companyCode: e.target.value }))
               }
-              className="w-full h-9 px-3 text-xs font-mono rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs font-mono rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
 
@@ -243,7 +243,7 @@ export default function WeightsErpTab({
                 setErpDetails((prev) => ({ ...prev, remark: e.target.value }))
               }
               placeholder="Enter remark or ERP notes..."
-              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e]"
+              className="w-full h-9 px-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
             />
           </div>
         </div>

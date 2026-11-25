@@ -97,6 +97,7 @@ export default function OrnateProductEdit() {
   // ─── 1. Base Information ───────────────────────────────────
   const [baseInfo, setBaseInfo] = useState({
     title: '',
+    sku: '',
     category: '',
     promoBanner: [],
     menuItem: [],
@@ -361,6 +362,7 @@ export default function OrnateProductEdit() {
             : (rawPromo ? [String(rawPromo)] : []);
           setBaseInfo({
             title: product.basicInfo?.title || '',
+            sku: product.basicInfo?.sku || product.ornate?.tagNo || '',
             category: primaryCat,
             promoBanner: promoArr,
             menuItem: selectedMenuIds(product),
@@ -1005,7 +1007,7 @@ export default function OrnateProductEdit() {
   const handleSaveProduct = async (statusOverride = null) => {
     if (!baseInfo.title.trim()) {
       setActiveStep(1);
-      toast.error('Please enter a Product Name (Storefront Title)');
+      toast.error('Please enter a Product Name');
       return;
     }
 
@@ -1141,7 +1143,7 @@ export default function OrnateProductEdit() {
         // Structured blocks sync
         basicInfo: {
           title: baseInfo.title.trim(),
-          sku: erpDetails.labelNumber || erpDetails.uniqueLabelId || '',
+          sku: (baseInfo.sku || '').trim() || erpDetails.labelNumber || erpDetails.uniqueLabelId || '',
           slug: (erpDetails.barcodeNumber
             ? `${baseInfo.title.trim()}-${erpDetails.barcodeNumber}`
             : (erpDetails.labelNumber ? `${baseInfo.title.trim()}-${erpDetails.labelNumber}` : baseInfo.title.trim())
@@ -1412,18 +1414,33 @@ export default function OrnateProductEdit() {
             </div>
 
             <div className="space-y-4">
-              {/* Product Name (Storefront Title) */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                  Product Name (Storefront Title) *
-                </label>
-                <input
-                  type="text"
-                  value={baseInfo.title}
-                  onChange={(e) => setBaseInfo((prev) => ({ ...prev, title: e.target.value }))}
-                  placeholder="e.g. 92.5 BRACELET"
-                  className="w-full px-3.5 py-2 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 transition-all font-semibold"
-                />
+              {/* Row: Product Name * & SKU */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                    Product Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={baseInfo.title}
+                    onChange={(e) => setBaseInfo((prev) => ({ ...prev, title: e.target.value }))}
+                    placeholder="e.g. 92.5 BRACELET"
+                    className="w-full h-[42px] px-3.5 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 transition-all font-semibold"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                    SKU
+                  </label>
+                  <input
+                    type="text"
+                    value={baseInfo.sku}
+                    onChange={(e) => setBaseInfo((prev) => ({ ...prev, sku: e.target.value.toUpperCase() }))}
+                    placeholder="e.g. 925CN/1072"
+                    className="w-full h-[42px] px-3.5 text-xs font-mono uppercase rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 transition-all font-semibold"
+                  />
+                </div>
               </div>
 
               {/* Row: Platform Visibility, Gender Target, Stock Status */}
@@ -1575,17 +1592,17 @@ export default function OrnateProductEdit() {
                 </div>
               </div>
 
-              {/* Product Description / Story */}
+              {/* Description */}
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                  Product Description / Story
+                  Description
                 </label>
                 <textarea
                   rows={4}
                   value={baseInfo.description}
                   onChange={(e) => setBaseInfo((prev) => ({ ...prev, description: e.target.value }))}
                   placeholder="Describe the inspiration, craftsmanship, and elegance of this jewelry piece..."
-                  className="w-full p-3 text-xs rounded-xl border border-stone-200 bg-[#fdfcfb] focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20"
+                  className="w-full p-3 text-xs rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20"
                 />
               </div>
             </div>
@@ -1742,12 +1759,6 @@ export default function OrnateProductEdit() {
                               <span className="text-xs font-bold text-stone-800">
                                 Variant swatch icon
                               </span>
-                              <span
-                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                                title="Upload a custom icon or texture for this variant swatch"
-                              >
-                                ?
-                              </span>
                             </div>
 
                             <input
@@ -1813,12 +1824,6 @@ export default function OrnateProductEdit() {
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-bold text-stone-800">
                                 Product images &amp; videos
-                              </span>
-                              <span
-                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                                title="Upload product photos and MP4 videos specifically for this color finish"
-                              >
-                                ?
                               </span>
                             </div>
 
@@ -2038,12 +2043,6 @@ export default function OrnateProductEdit() {
                               <span className="text-xs font-bold text-stone-800">
                                 Variant swatch icon
                               </span>
-                              <span
-                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                                title="Upload a custom icon or texture for general / unassigned media"
-                              >
-                                ?
-                              </span>
                               <span className="text-[9.5px] text-emerald-600 font-medium ml-auto">
                                 Auto-compressed
                               </span>
@@ -2112,12 +2111,6 @@ export default function OrnateProductEdit() {
                             <div className="flex items-center gap-1.5">
                               <span className="text-xs font-bold text-stone-800">
                                 Product images &amp; videos
-                              </span>
-                              <span
-                                className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full border border-stone-400 text-[9px] font-bold text-stone-400 select-none cursor-help"
-                                title="Upload product photos and MP4 videos for general view without assigning a metal color"
-                              >
-                                ?
                               </span>
                               <span className="text-[9.5px] text-emerald-600 font-medium ml-auto">
                                 Auto-compressed

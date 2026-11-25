@@ -1,4 +1,3 @@
-import React from 'react';
 import CategorySelect from '../../../components/common/CategorySelect';
 import MenuItemSelect from '../../../components/common/MenuItemSelect';
 import Dropdown from '../../../components/common/Dropdown';
@@ -316,7 +315,7 @@ export default function Step1BasicDetails() {
         )}
 
         <div className="sm:col-span-2 lg:col-span-3 space-y-1.5">
-          <label className="text-xs font-bold text-stone-900">Luxury Description</label>
+          <label className="text-xs font-bold text-stone-900">Description</label>
           <textarea
             rows={4}
             value={basicDetails.description}

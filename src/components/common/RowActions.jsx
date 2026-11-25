@@ -5,9 +5,6 @@ import {
   HiOutlineTrash,
   HiOutlineExternalLink,
   HiOutlineEye,
-  HiOutlineCheck,
-  HiOutlineX,
-  HiOutlineClock,
   HiOutlineSwitchHorizontal,
   HiOutlineStar,
   HiStar,
@@ -139,58 +136,6 @@ export function DeleteActionButton({
       {...props}
     >
       <HiOutlineTrash className={iconClassName} />
-    </button>
-  );
-}
-
-export function StatusActionButton({
-  status = 'approved',
-  onClick,
-  title,
-  loading = false,
-  className = '',
-  iconClassName = 'w-3.5 h-3.5 stroke-[2.5]',
-  disabled = false,
-  ...props
-}) {
-  const normStatus = String(status || 'approved').toLowerCase();
-  const isApproved = normStatus === 'approved';
-  const isRejected = normStatus === 'rejected';
-
-  const defaultTitle = isApproved
-    ? 'Status: Approved (Click to change)'
-    : isRejected
-    ? 'Status: Rejected (Click to change)'
-    : 'Status: Pending (Click to change)';
-
-  const activeTitle = title || defaultTitle;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      data-tooltip={activeTitle}
-      data-tooltip-position="top"
-      aria-label={activeTitle}
-      disabled={disabled || loading}
-      className={`w-7 h-7 rounded-lg border inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer active:scale-95 disabled:opacity-50 disabled:pointer-events-none ${
-        isApproved
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:border-emerald-300'
-          : isRejected
-          ? 'border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300'
-          : 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100 hover:border-amber-300'
-      } ${className}`}
-      {...props}
-    >
-      {loading ? (
-        <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-      ) : isApproved ? (
-        <HiOutlineCheck className={iconClassName} />
-      ) : isRejected ? (
-        <HiOutlineX className={iconClassName} />
-      ) : (
-        <HiOutlineClock className="w-3.5 h-3.5 stroke-[2]" />
-      )}
     </button>
   );
 }

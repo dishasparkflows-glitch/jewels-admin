@@ -10,7 +10,7 @@ export default function ColorStatusToggle({ status = 'active', onChange, disable
       onChange={(nextChecked) => onChange?.(nextChecked ? 'active' : 'inactive')}
       disabled={disabled}
       ariaLabel={`${name || 'Color'} status toggle`}
-      showStatusText={true}
+      showStatusText={false}
       size="md"
     />
   );

@@ -41,7 +41,6 @@ export default function StatusBadge({
   status = 'active',
   label,
   size = 'sm',
-  withDot = false,
   className = '',
 }) {
   const normKey = String(status || 'neutral')
@@ -50,7 +49,6 @@ export default function StatusBadge({
     .replace(/\s+/g, '_');
 
   const colorClasses = STATUS_STYLES[normKey] || STATUS_STYLES.neutral;
-  const isPositive = ['active', 'approved', 'in_stock', 'published', 'delivered', 'completed'].includes(normKey);
 
   const displayLabel =
     label ||

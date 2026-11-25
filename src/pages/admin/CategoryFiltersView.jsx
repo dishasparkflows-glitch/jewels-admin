@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import {
-  HiOutlinePlus,
   HiDotsVertical,
   HiOutlineChevronDown,
   HiOutlineCheck,
@@ -21,11 +20,10 @@ export default function CategoryFiltersView() {
   const [filterSearch, setFilterSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [openActionId, setOpenActionId] = useState(null);
-  const [showAddModal, setShowAddModal] = useState(false);
   const [editTitleId, setEditTitleId] = useState(null);
   const [tempTitle, setTempTitle] = useState('');
 
-  // Close menus and modal when clicking outside or pressing Escape
+  // Close menus when clicking outside or pressing Escape
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest('[data-dropdown-container]')) {
@@ -35,7 +33,6 @@ export default function CategoryFiltersView() {
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        setShowAddModal(false);
         setOpenActionId(null);
         setEditTitleId(null);
       }
@@ -517,73 +514,6 @@ export default function CategoryFiltersView() {
           </div>
         </div>
       </div>
-
-      {/* ── 4. Add Filter Modal (Click Outside or Esc to close) ── */}
-      {showAddModal && (
-        <div
-          onClick={() => setShowAddModal(false)}
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-150 cursor-pointer"
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200 space-y-4 cursor-default"
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="font-serif text-lg font-bold text-stone-900">
-                Master Storefront Filters
-              </h3>
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="p-1 rounded-lg hover:bg-stone-100 text-stone-400 hover:text-stone-700 cursor-pointer"
-              >
-                <HiOutlineX className="w-4 h-4" />
-              </button>
-            </div>
-
-            <p className="text-xs text-stone-500">
-              Available filters in the dedicated filters table:
-            </p>
-
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {filters.map((f) => (
-                <div
-                  key={f.filterId}
-                  className="flex items-center justify-between p-3 rounded-xl border border-stone-200 hover:border-[#8c6b45] transition bg-stone-50/50"
-                >
-                  <div>
-                    <span className="font-semibold text-xs text-stone-900">
-                      {f.title}
-                    </span>
-                    <p className="text-[11px] text-stone-400">
-                      {f.type} • Key: {f.key}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-[11px] font-mono px-2 py-0.5 rounded font-bold ${
-                      (f.status === 'active' || (f.status !== 'inactive' && f.enabled !== false))
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : 'bg-stone-100 text-stone-500'
-                    }`}
-                  >
-                    {(f.status === 'active' || (f.status !== 'inactive' && f.enabled !== false)) ? 'Active' : 'Inactive'}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowAddModal(false)}
-                className="px-4 py-2 rounded-xl border border-stone-200 text-xs font-medium text-stone-600 hover:bg-stone-50 cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

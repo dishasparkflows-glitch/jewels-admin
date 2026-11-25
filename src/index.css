@@ -29,6 +29,10 @@
 }
 
 /* Keep the admin shell properly structured without breaking CSS position: sticky */
+html {
+  scrollbar-gutter: stable;
+}
+
 html,
 body,
 #admin-root-layout {
@@ -137,7 +141,10 @@ label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge"]):not([c
   form [class*="bg-[#faf8f5]"],
   form [class*="bg-[#fcfbf9]"],
   dialog [class*="bg-[#faf8f5]"],
-  dialog [class*="bg-[#fcfbf9]"] {
+  dialog [class*="bg-[#fcfbf9]"],
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"])[class*="bg-[#f"],
+  textarea[class*="bg-[#f"],
+  select[class*="bg-[#f"] {
     background-color: #ffffff !important;
   }
 
@@ -305,22 +312,6 @@ label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge"]):not([c
 
 .animate-cute-halo {
   animation: cuteHalo 2.5s ease-in-out infinite;
-}
-
-/* ─── Smooth Page Enter Transition for Route Changes ─── */
-@keyframes pageEnter {
-  0% {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-page-enter {
-  animation: pageEnter 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
 }
 
 /* Universal "No Img" Fallback Image Styling */

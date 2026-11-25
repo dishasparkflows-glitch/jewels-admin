@@ -1,4 +1,3 @@
-import React from 'react';
 import { createPortal } from 'react-dom';
 import { HiOutlineX } from 'react-icons/hi';
 import { getSphereStyle } from './metalColorHelpers';

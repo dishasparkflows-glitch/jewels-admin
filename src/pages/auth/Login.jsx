@@ -65,7 +65,7 @@ const Login = () => {
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 placeholder="admin@neirah.com"
-                className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl bg-[#fdfcfb] border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl bg-white border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all"
                 required
               />
             </div>
@@ -82,7 +82,7 @@ const Login = () => {
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-2.5 text-xs rounded-xl bg-[#fdfcfb] border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all"
+                className="w-full pl-10 pr-10 py-2.5 text-xs rounded-xl bg-white border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all"
                 required
               />
               <button
