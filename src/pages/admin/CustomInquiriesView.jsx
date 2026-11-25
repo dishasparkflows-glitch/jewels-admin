@@ -24,6 +24,7 @@ import TableSrNo from '../../components/common/TableSrNo';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import StatCards from '../../components/common/StatCards';
 import Pagination from '../../components/common/Pagination';
+import MobileGridList from '../../components/common/MobileGridList';
 
 const STATUS_TABS = [
   { value: 'all', label: 'ALL' },
@@ -422,9 +423,89 @@ export default function CustomInquiriesView() {
         </div>
       </div>
 
-      {/* ─── Luxury Inquiries Table ─── */}
+      {/* ─── Luxury Inquiries Table (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading custom design inquiries..."
+          isEmpty={paginatedItems.length === 0}
+          emptyText="No custom design inquiries found."
+          items={paginatedItems}
+          showSelectAll
+          allSelected={allSelected}
+          onSelectAll={handleSelectAll}
+          renderCard={(inq, idx) => {
+            const id = inq._id || inq.id;
+            const isSelected = selectedIds.includes(id);
+            const clientName = inq.customer?.name || '—';
+            const clientEmail = inq.customer?.email || '—';
+            const phoneNum = formatPhone(inq.customer?.phone);
+            const initial = (clientName === '—' ? '' : clientName)
+              .split(' ')
+              .map((s) => s[0])
+              .join('')
+              .toUpperCase()
+              .slice(0, 2);
+            const stone = inq.requirements?.stoneType || '—';
+            const metal = inq.requirements?.metalType || '—';
+            const budgetStr = formatBudget(inq.requirements);
+            const statusVal = (inq.status || 'pending').toLowerCase();
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+            return (
+              <div
+                key={id}
+                onClick={() => setViewingInquiry(inq)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]/50' : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleSelectItem(id)}
+                      style={{ accentColor: "var(--theme-primary, #8b6f4e)" }}
+                      className="w-3.5 h-3.5 rounded border-stone-300 cursor-pointer shrink-0"
+                    />
+                    <div
+                      className="w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 border"
+                      style={{ backgroundColor: "rgba(var(--theme-primary-rgb, 139, 111, 78), 0.1)", color: "var(--theme-primary, #8b6f4e)", borderColor: "rgba(var(--theme-primary-rgb, 139, 111, 78), 0.25)" }}
+                    >
+                      {initial}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-xs truncate">{clientName}</p>
+                      <p className="text-[10px] text-stone-400 truncate">#{srNo} · {clientEmail}</p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-stone-100 text-stone-700 shrink-0">
+                    {statusVal}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Contact</p>
+                    <p className="font-mono font-semibold text-stone-700 mt-0.5 truncate">{phoneNum}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Budget</p>
+                    <p className="font-bold text-stone-900 mt-0.5 truncate">{budgetStr}</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Design</p>
+                    <p className="text-stone-600 mt-0.5 truncate">{stone} · {metal}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

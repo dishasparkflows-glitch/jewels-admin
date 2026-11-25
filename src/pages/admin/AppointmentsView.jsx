@@ -20,6 +20,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import DatePicker, { formatDateToISO } from '../../components/common/DatePicker';
 import CountryCodeSelect from '../../components/common/CountryCodeSelect';
 import StatCards from '../../components/common/StatCards';
+import MobileGridList from '../../components/common/MobileGridList';
 import { formatDate, getInitials } from '../../utils/formatters';
 
 
@@ -676,9 +677,71 @@ export default function AppointmentsView() {
           <p className="text-xs text-stone-400">Try adjusting your status tabs or search criteria</p>
         </div>
       ) : (
-        /* ─── TABLE VIEW ─── */
+        /* ─── TABLE VIEW (Mobile Grid + Desktop Table) ─── */
         <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
+          <MobileGridList
+            items={paginatedItems}
+            showSelectAll
+            allSelected={isAllSelected}
+            onSelectAll={handleSelectAll}
+            renderCard={(apt, idx) => {
+              const {
+                id,
+                clientName,
+                clientEmail,
+                countryCode,
+                rawPhone,
+                aptDate,
+                prefTime,
+              } = extractAptData(apt, idx);
+              const isSelected = selectedIds.has(id);
+              const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+              return (
+                <div
+                  key={id}
+                  onClick={() => handleOpenEdit(apt, idx)}
+                  className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                    isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]/70' : 'border-stone-200/90 hover:border-stone-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={() => handleToggleSelect(id)}
+                        className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                      />
+                      <div className="w-8 h-8 rounded-full bg-[#fdf3e7] text-[#8b6f4e] font-bold text-xs flex items-center justify-center border border-[#f5e3ce] shrink-0">
+                        {getInitials(clientName, 'AP')}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-stone-900 text-xs truncate">{clientName}</p>
+                        <p className="text-[10px] text-stone-400 truncate">#{srNo} · {clientEmail}</p>
+                      </div>
+                    </div>
+                    <div className="shrink-0">{renderStatusPill(apt.status)}</div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Contact</p>
+                      <p className="font-medium text-stone-800 mt-0.5 truncate">+{countryCode} {rawPhone}</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Date & Time</p>
+                      <p className="font-bold text-stone-800 mt-0.5 truncate">{formatDateDisplay(aptDate)}</p>
+                      <p className="text-[10px] text-stone-400 truncate">{prefTime}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            }}
+          />
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

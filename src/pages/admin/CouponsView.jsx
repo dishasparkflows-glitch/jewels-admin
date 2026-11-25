@@ -16,6 +16,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import MobileGridList from '../../components/common/MobileGridList';
 import Dropdown from '../../components/common/Dropdown';
 import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
@@ -412,10 +413,97 @@ export default function CouponsView() {
         }
       />
 
-      {/* ─── Coupons Table Card ─── */}
+      {/* ─── Coupons Table Card (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading promotional coupons..."
+          isEmpty={filteredCoupons.length === 0}
+          emptyText="No promotional coupons found."
+          items={paginatedItems}
+          showSelectAll
+          allSelected={
+            paginatedItems.length > 0 &&
+            paginatedItems.every((c) => selectedIds.includes(c._id))
+          }
+          onSelectAll={handleSelectAll}
+          renderCard={(c, idx) => {
+            const isPercentage = c.discount?.type === 'Percentage';
+            const discountVal = c.discount?.value ?? 0;
+            const formattedDiscount = isPercentage
+              ? `${discountVal}% OFF`
+              : `₹${Number(discountVal).toLocaleString('en-IN')} OFF`;
+            const formattedExpiryDate = c.validity?.endDate
+              ? new Date(c.validity.endDate).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : 'No Expiry';
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+            return (
+              <div
+                key={c._id}
+                onClick={() => handleOpenEdit(c)}
+                className="rounded-xl border border-stone-200/90 hover:border-stone-300 p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(c._id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleSelectItem(c._id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                    />
+                    <span className="p-1.5 rounded bg-[#faf5ee] text-[#8f6d43] border border-[#e8d9c2] shrink-0">
+                      <HiOutlineTicket className="w-3.5 h-3.5" />
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-mono font-bold text-xs text-stone-900 truncate">{c.coupon?.code}</p>
+                      <p className="text-[10px] font-medium text-stone-400">#{srNo}</p>
+                    </div>
+                  </div>
+
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      record={c}
+                      onEdit={() => handleOpenEdit(c)}
+                      onDelete={() => handleDelete(c._id, c.coupon?.code)}
+                    />
+                  </div>
+                </div>
+
+                {c.coupon?.description && (
+                  <p className="text-xs text-stone-600 line-clamp-2">{c.coupon.description}</p>
+                )}
+
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Discount</p>
+                    <p className="font-bold text-[#8f6d43] mt-0.5 truncate">{formattedDiscount}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Min Order</p>
+                    <p className="font-semibold text-stone-800 mt-0.5">
+                      {c.discount?.minimumOrderAmount > 0
+                        ? `₹${Number(c.discount.minimumOrderAmount).toLocaleString('en-IN')}`
+                        : '₹0'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Expires</p>
+                    <p className="font-medium text-stone-600 mt-0.5 truncate">{formattedExpiryDate}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          }}
+        />
+
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

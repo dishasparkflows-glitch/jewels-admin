@@ -18,6 +18,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function CodSequencesView() {
@@ -276,9 +277,68 @@ export default function CodSequencesView() {
         }
       />
 
-      {/* ─── Luxury COD Tiers Table ─── */}
+      {/* ─── Luxury COD Tiers Table (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading COD sequence tiers..."
+          isEmpty={filteredItems.length === 0}
+          emptyText={`No COD tiers found matching "${search}".`}
+          items={paginatedItems}
+          showSelectAll
+          allSelected={allSelected}
+          onSelectAll={handleSelectAll}
+          renderCard={(row, idx) => {
+            const id = row._id || row.id || `tier_${idx}`;
+            const isSelected = selectedIds.has(id);
+            const isPercent = row.chargeType === 'Percentage';
+            const formattedDeposit = isPercent
+              ? `${Number(row.chargeValue).toFixed(2)} %`
+              : `₹ ${Number(row.chargeValue).toLocaleString('en-IN')}`;
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+            return (
+              <div
+                key={id}
+                onClick={() => handleOpenEdit(row)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]/40' : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleSelectRow(id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-xs truncate">
+                        ₹{Number(row.minOrderValue || 0).toLocaleString('en-IN')} – {row.maxOrderValue ? `₹${Number(row.maxOrderValue).toLocaleString('en-IN')}` : 'Above'}
+                      </p>
+                      <p className="text-[10px] text-stone-400">#{srNo} · {row.chargeType || 'Fixed'}</p>
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      onEdit={() => handleOpenEdit(row)}
+                      onDelete={() => handleDelete(id)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                  <span className="text-stone-500">Online Deposit</span>
+                  <span className="font-bold text-[#8b6f4e]">{formattedDeposit}</span>
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

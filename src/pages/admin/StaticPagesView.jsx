@@ -16,6 +16,7 @@ import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import RichTextEditor from '../../components/common/RichTextEditor';
 import { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
+import MobileGridList from '../../components/common/MobileGridList';
 import { VITE_FRONT_URL } from '../../config/env';
 import useSelection from '../../hooks/useSelection';
 import { slugify } from '../../utils/formatters';
@@ -358,9 +359,65 @@ export default function StaticPagesView() {
         </div>
       </div>
 
-      {/* ─── Full-Width Records Table / List ─────────────────── */}
+      {/* ─── Full-Width Records Table / List (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading static pages..."
+          isEmpty={filteredPages.length === 0}
+          emptyText="No static pages found."
+          items={paginatedItems}
+          showSelectAll
+          allSelected={isAllSelected}
+          onSelectAll={handleSelectAll}
+          renderCard={(page, idx) => {
+            const isSelected = selectedIds.has(page._id);
+            const { date } = formatDateParts(page.updatedAt || page.createdAt);
+            const isPub = page.status === 'published' || page.status === 'active';
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+            return (
+              <div
+                key={page._id}
+                onClick={() => handleOpenEdit(page)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]/90' : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleToggleSelect(page._id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e] shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-xs truncate">{page.title}</p>
+                      <p className="font-mono text-[10px] text-stone-400 truncate">#{srNo} · /{page.slug}</p>
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 shrink-0">
+                    <EditActionButton onClick={() => handleOpenEdit(page)} />
+                    <DeleteActionButton onClick={() => handleDelete(page)} />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                  <ToggleSwitch
+                    checked={isPub}
+                    onChange={() => handleToggleStatus(page)}
+                    size="sm"
+                  />
+                  <span className="text-stone-400">{date}</span>
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs sm:text-sm text-stone-700">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

@@ -16,6 +16,7 @@ import Modal from '../../components/common/Modal';
 import DatePicker from '../../components/common/DatePicker';
 import RowActions from '../../components/common/RowActions';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import MobileGridList from '../../components/common/MobileGridList';
 import { VITE_FRONT_URL } from '../../config/env';
 import { formatDate, toInputDate } from '../../utils/formatters';
 
@@ -497,7 +498,46 @@ export default function TopAnnouncementView() {
               </p>
             </div>
           ) : (
-            <table className="w-full text-left border-separate border-spacing-y-2.5">
+            <>
+              <MobileGridList
+                items={announcements}
+                renderCard={(item, index) => (
+                  <div
+                    key={item._id}
+                    onClick={() => handleOpenEdit(item)}
+                    className="rounded-xl border border-stone-200/90 hover:border-stone-300 p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-stone-900 text-xs line-clamp-2">{item.message}</p>
+                        <p className="text-[10px] text-stone-400 truncate mt-0.5">
+                          #{index + 1} · {item.link || 'No link'}
+                        </p>
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                        <RowActions
+                          onEdit={() => handleOpenEdit(item)}
+                          editTitle="Edit Announcement"
+                          onDelete={() => handleDelete(item)}
+                          deleteTitle="Delete Announcement"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                      <ToggleSwitch
+                        checked={item.isActive !== false}
+                        onChange={() => handleToggleActive(item)}
+                        size="sm"
+                      />
+                      <span className="text-stone-400 truncate">{formatSchedule(item)}</span>
+                    </div>
+                  </div>
+                )}
+              />
+
+              <div className="hidden md:block">
+                <table className="w-full text-left border-separate border-spacing-y-2.5">
               <thead>
                 <tr className="text-[11px] font-bold uppercase tracking-wider text-stone-400">
                   <th className="w-8 pb-1 pl-2"></th>
@@ -591,6 +631,8 @@ export default function TopAnnouncementView() {
                 })}
               </tbody>
             </table>
+              </div>
+            </>
           )}
         </div>
       </div>

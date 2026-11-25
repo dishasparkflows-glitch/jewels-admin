@@ -20,6 +20,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
+import MobileGridList from '../../components/common/MobileGridList';
 import Dropdown from '../../components/common/Dropdown';
 import { openProductPreview } from '../../utils/productPreview';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
@@ -396,9 +397,97 @@ export default function ReviewsView() {
         }
       />
 
-      {/* ─── Luxury Reviews Table ─── */}
+      {/* ─── Luxury Reviews Table (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading client reviews..."
+          isEmpty={displayedReviews.length === 0}
+          emptyText={`No reviews found matching "${search}".`}
+          items={paginatedItems}
+          showSelectAll
+          allSelected={allSelected}
+          onSelectAll={handleSelectAll}
+          renderCard={(rev, idx) => {
+            const id = rev._id || rev.id || `rev_${idx}`;
+            const isSelected = selectedIds.has(id);
+            const reviewerName = rev.customer?.name || 'Client';
+            const rating = Number(rev.review?.rating || 5);
+            const reviewTitle = rev.review?.title || '';
+            const reviewComment = rev.review?.comment || '';
+            const dateStr = formatDate(rev.review?.reviewDate || rev.meta?.createdAt);
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+            const status = rev.status || 'pending';
+
+            return (
+              <div
+                key={id}
+                onClick={() => handleEdit(rev)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]/50' : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleSelectRow(id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-xs truncate">{reviewerName}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <span className="text-[10px] font-medium text-stone-400">#{srNo}</span>
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <IoStar
+                              key={s}
+                              className={`w-3 h-3 ${s <= rating ? 'text-amber-400' : 'text-stone-200'}`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      record={rev}
+                      onEdit={() => handleEdit(rev)}
+                      onDelete={() => handleDelete(id, reviewerName)}
+                      editTitle="Edit review"
+                      deleteTitle="Delete review"
+                    />
+                  </div>
+                </div>
+
+                {(reviewTitle || reviewComment) && (
+                  <p className="text-xs text-stone-600 line-clamp-2">
+                    {reviewTitle ? <span className="font-semibold text-stone-800">{reviewTitle}: </span> : null}
+                    {reviewComment}
+                  </p>
+                )}
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                    status === 'approved'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : status === 'rejected'
+                      ? 'bg-rose-50 text-rose-700'
+                      : 'bg-amber-50 text-amber-700'
+                  }`}>
+                    {status}
+                  </span>
+                  <span className="text-stone-400 font-medium">{dateStr}</span>
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

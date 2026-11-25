@@ -24,6 +24,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import RowActions from '../../components/common/RowActions';
+import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import Dropdown from '../../components/common/Dropdown';
@@ -658,8 +659,71 @@ export default function CelebrateGiftsView() {
           </div>
         </div>
 
+        {/* Mobile Grid View */}
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading showcase items..."
+          isEmpty={filteredItems.length === 0}
+          emptyText="No showcase items found."
+          items={paginatedItems}
+          showSelectAll
+          allSelected={
+            paginatedItems.length > 0 &&
+            paginatedItems.every((i) => selectedIds.includes(i._id))
+          }
+          onSelectAll={handleSelectAll}
+          renderCard={(item, idx) => {
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+            const title = item.name || item.categoryId?.name || 'Showcase';
+            const productCount = Array.isArray(item.products) ? item.products.length : item.productIds?.length || 0;
+
+            return (
+              <div
+                key={item._id}
+                onClick={() => openEditModal(item)}
+                className="rounded-xl border border-stone-200/90 hover:border-stone-300 p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(item._id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleSelectItem(item._id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                    />
+                    <div className="w-11 h-8 rounded-md overflow-hidden bg-stone-100 border border-stone-200/80 flex items-center justify-center shrink-0">
+                      {item.image?.url ? (
+                        <img src={getMediaUrl(item.image.url)} alt={title} className="w-full h-full object-cover" />
+                      ) : (
+                        <HiOutlinePhotograph className="w-4 h-4 text-stone-400" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-xs truncate">{title}</p>
+                      <p className="text-[10px] text-stone-400 truncate">#{srNo} · {item.placement || 'Default'}</p>
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      onView={() => openViewModal(item)}
+                      onEdit={() => openEditModal(item)}
+                      onDelete={() => handleDelete(item._id, title)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px] text-stone-500">
+                  <span><strong className="text-stone-800">{productCount}</strong> products</span>
+                  <span>{item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</span>
+                </div>
+              </div>
+            );
+          }}
+        />
+
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

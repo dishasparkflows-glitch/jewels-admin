@@ -26,6 +26,15 @@
   p, span, label, a, td, th {
     font-family: 'Plus Jakarta Sans', Inter, system-ui, -apple-system, sans-serif !important;
   }
+
+  /* Prevent iOS Safari/Chrome auto-zoom when focusing inputs smaller than 16px */
+  @media (max-width: 639px) {
+    input:not([type='checkbox']):not([type='radio']),
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
 }
 
 /* Keep the admin shell properly structured without breaking CSS position: sticky */

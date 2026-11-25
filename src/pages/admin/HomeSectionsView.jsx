@@ -23,6 +23,7 @@ import StatCards from '../../components/common/StatCards';
 import RowActions from '../../components/common/RowActions';
 import ProductPickerModal from '../../components/common/ProductPickerModal';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { slugify } from '../../utils/formatters';
 
@@ -412,7 +413,82 @@ export default function HomeSectionsView() {
             <h3 className="text-xs font-semibold text-stone-800">No home sections found</h3>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <MobileGridList
+              items={paginatedSections || []}
+              showSelectAll
+              allSelected={
+                (paginatedSections || []).length > 0 &&
+                (paginatedSections || []).every((s) => selectedIds.includes(s._id))
+              }
+              onSelectAll={(e) => {
+                if (e.target.checked) {
+                  const pageIds = (paginatedSections || []).map((s) => s._id);
+                  setSelectedIds((prev) => [...new Set([...prev, ...pageIds])]);
+                } else {
+                  const pageIds = (paginatedSections || []).map((s) => s._id);
+                  setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+                }
+              }}
+              renderCard={(sec) => {
+                const globalIdx = sections.findIndex((s) => s._id === sec._id);
+                const isSelected = selectedIds.includes(sec._id);
+                const itemCount = Array.isArray(sec.products) ? sec.products.length : sec.productIds?.length || 0;
+
+                return (
+                  <div
+                    key={sec._id}
+                    onClick={() => handleOpenEdit(sec)}
+                    className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                      isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]/40' : 'border-stone-200/90 hover:border-stone-300'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedIds((prev) => [...prev, sec._id]);
+                            } else {
+                              setSelectedIds((prev) => prev.filter((id) => id !== sec._id));
+                            }
+                          }}
+                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-semibold text-stone-900 text-xs truncate">{sec.title}</p>
+                          <p className="text-[10px] text-stone-400 truncate">Order {sec.order || globalIdx + 1} · /{sec.slug}</p>
+                        </div>
+                      </div>
+                      <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                        <RowActions
+                          onEdit={() => handleOpenEdit(sec)}
+                          onDelete={() => handleDelete(sec._id, sec.title)}
+                        />
+                      </div>
+                    </div>
+
+                    {sec.subtitle && (
+                      <p className="text-xs text-stone-500 line-clamp-1">{sec.subtitle}</p>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                      <span className="text-stone-600"><strong className="text-stone-900">{itemCount}</strong> items</span>
+                      <ToggleSwitch
+                        checked={sec.status === 'active'}
+                        onChange={() => handleToggleStatus(sec)}
+                        size="sm"
+                      />
+                    </div>
+                  </div>
+                );
+              }}
+            />
+
+            <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
@@ -583,6 +659,7 @@ export default function HomeSectionsView() {
               </tbody>
             </table>
           </div>
+          </>
         )}
 
         {/* ─── Luxury Common Pagination ─── */}

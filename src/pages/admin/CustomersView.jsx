@@ -262,9 +262,132 @@ export default function CustomersView() {
         }
       />
 
-      {/* ─── Luxury Customers Table ─── */}
+      {/* ─── Luxury Customers List (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        {/* Mobile Grid View */}
+        <div className="md:hidden">
+          {loading ? (
+            <div className="py-10 text-center text-xs text-stone-400">
+              <div className="animate-spin w-4 h-4 border-2 border-[#8b6f4e] border-t-transparent rounded-full mx-auto mb-1.5" />
+              Loading customers...
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="py-10 text-center text-xs text-stone-400">
+              No customers found matching &quot;{search}&quot;.
+            </div>
+          ) : (
+            <div className="p-3 space-y-2.5 bg-stone-50/40">
+              <div className="flex items-center justify-between px-1 pb-1">
+                <label className="inline-flex items-center gap-2 text-[11px] font-semibold text-stone-600 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={handleSelectAll}
+                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                  />
+                  <span>Select all ({paginatedItems.length})</span>
+                </label>
+                <span className="text-[11px] font-medium text-stone-400">
+                  Grid View
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {paginatedItems.map((client, idx) => {
+                  const id = client._id || client.id || `row_${idx}`;
+                  const isSelected = selectedIds.has(id);
+                  const initials = getInitials(client, 'CU');
+                  const firstName = client.profile?.firstName || '';
+                  const lastName = client.profile?.lastName || '';
+                  const fullName = firstName ? `${firstName} ${lastName}`.trim() : (client.auth?.email || 'Client');
+                  const email = client.auth?.email || '—';
+                  const countryCode = client.profile?.countryCode || '';
+                  const rawPhone = client.profile?.phone || '';
+                  const phone = rawPhone ? `${countryCode ? `${countryCode} ` : ''}${rawPhone}` : '—';
+                  const orders = Number(client.statistics?.ordersCount ?? client.ordersCount) || 0;
+                  const ltv = Number(client.statistics?.lifetimeValue ?? client.lifetimeValue) || 0;
+                  const joinedDate = formatJoinedDate(client.createdAt || client.meta?.createdAt, idx);
+                  const displayId = getCustomerId(client, idx);
+                  const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+                  return (
+                    <div
+                      key={id}
+                      onClick={() => setViewingCustomer({ ...client, fullName, email, phone, orders, ltv, joinedDate, displayId })}
+                      className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-3 ${
+                        isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]/50' : 'border-stone-200/90 hover:border-stone-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onClick={(e) => e.stopPropagation()}
+                            onChange={() => handleSelectRow(id)}
+                            className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                            aria-label={`Select ${fullName}`}
+                          />
+                          <div className="w-8 h-8 rounded-full bg-[#f4ece3] text-[#8b6f4e] font-semibold text-[11px] flex items-center justify-center border border-[#8b6f4e]/20 shrink-0">
+                            {initials}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-semibold text-stone-900 text-xs truncate">
+                              {fullName}
+                            </p>
+                            <p className="text-[10px] font-medium text-stone-400">
+                              #{srNo}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                          <RowActions
+                            record={client}
+                            onView={() => setViewingCustomer({ ...client, fullName, email, phone, orders, ltv, joinedDate, displayId })}
+                            onDelete={() => handleDelete(id, fullName)}
+                            viewTitle="View customer profile"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 text-xs">
+                        <div className="flex items-center gap-1.5 text-stone-600 min-w-0">
+                          <HiOutlineMail className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span className="truncate">{email}</span>
+                        </div>
+                        {phone && phone !== '—' && (
+                          <div className="flex items-center gap-1.5 text-stone-500 text-[11px]">
+                            <HiOutlinePhone className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                            <span>{phone}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-stone-100 text-[11px]">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Orders</p>
+                          <p className="font-bold text-stone-900 mt-0.5">{orders}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Spend</p>
+                          <p className="font-bold text-stone-900 mt-0.5">₹ {ltv.toLocaleString('en-IN')}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Joined</p>
+                          <p className="font-medium text-stone-600 mt-0.5 truncate">{joinedDate}</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

@@ -27,6 +27,7 @@ import Dropdown from '../../components/common/Dropdown';
 import PlacementSelect, { PLACEMENT_OPTIONS } from '../../components/common/PlacementSelect';
 import Pagination from '../../components/common/Pagination';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { DeleteActionButton, EditActionButton } from '../../components/common/RowActions';
@@ -639,9 +640,62 @@ export default function GalleryView() {
           </button>
         </div>
       ) : viewMode === 'list' ? (
-        /* ─── LIST VIEW ─────────────────────────────────────── */
-        <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-2xs">
-          <table className="w-full text-left border-collapse min-w-[760px]">
+        /* ─── LIST VIEW (Mobile Grid + Desktop Table) ────────────────── */
+        <div className="rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden">
+          <MobileGridList
+            items={effectiveItems}
+            renderCard={(item) => (
+              <div
+                key={item.id}
+                onClick={() => setPreviewItem(item)}
+                className="rounded-xl border border-stone-200/90 hover:border-stone-300 p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="h-11 w-14 overflow-hidden rounded-lg border border-stone-200 bg-stone-100 shrink-0">
+                      <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-stone-900 text-xs truncate">{item.typeLabel || item.type}</p>
+                      <p className="text-[10px] text-stone-400 truncate">{item.themeName || 'Global'}</p>
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setEditingItem(item)}
+                      className="p-1.5 rounded-lg text-stone-500 hover:bg-stone-100 cursor-pointer"
+                      title="Edit"
+                    >
+                      <HiOutlinePencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(item)}
+                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                      title="Delete"
+                    >
+                      <HiOutlineTrash className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[10px]">
+                  <span className="rounded-md bg-stone-100 px-2 py-0.5 font-semibold text-stone-700 truncate">
+                    {item.platform === 'common' ? 'Web & App' : item.platform === 'app' ? 'App' : 'Web'}
+                  </span>
+                  <span className={`rounded-md px-2 py-0.5 font-bold ${
+                    item.isThemeLive ? 'bg-emerald-50 text-emerald-800' : 'bg-stone-100 text-stone-600'
+                  }`}>
+                    {item.isThemeLive ? 'Live Theme' : 'Standby'}
+                  </span>
+                </div>
+              </div>
+            )}
+          />
+
+          <div className="hidden md:block overflow-x-auto">
+            <table className="w-full text-left border-collapse min-w-[760px]">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                 <th className="py-3 px-3 whitespace-nowrap">Preview</th>
@@ -749,6 +803,7 @@ export default function GalleryView() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       ) : (
         /* ─── GRID VIEW (6 items per row on desktop for larger card sizing) ─────────────── */

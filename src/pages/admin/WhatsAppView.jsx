@@ -19,6 +19,7 @@ import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Dropdown from '../../components/common/Dropdown';
 import { DeleteActionButton } from '../../components/common/RowActions';
+import MobileGridList from '../../components/common/MobileGridList';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
@@ -473,9 +474,59 @@ export default function WhatsAppView() {
             }
           />
 
-          {/* Templates Table Card */}
+          {/* Templates Table Card (Mobile Grid + Desktop Table) */}
           <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
+            <MobileGridList
+              isEmpty={!paginatedTemplates || paginatedTemplates.length === 0}
+              emptyText="No templates found."
+              items={paginatedTemplates || []}
+              renderCard={(tmpl, idx) => {
+                const { date } = formatDateTime(tmpl.updatedAt || tmpl.createdAt);
+                const isPending = (tmpl.status || '').toUpperCase() === 'PENDING';
+                const isRejected = (tmpl.status || '').toUpperCase() === 'REJECTED';
+                const statusLabel = isPending ? 'Pending' : isRejected ? 'Rejected' : 'Approved';
+                const templateTitle =
+                  tmpl.displayName ||
+                  (tmpl.name
+                    ? tmpl.name
+                        .split('_')
+                        .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                        .join(' ')
+                    : 'Untitled Template');
+
+                return (
+                  <div
+                    key={tmpl._id}
+                    className="rounded-xl border border-stone-200/90 p-3.5 bg-white shadow-2xs space-y-2.5"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-bold text-stone-900 text-xs truncate">{templateTitle}</p>
+                        <p className="text-[10px] text-stone-400 truncate">
+                          #{(tmplPage - 1) * pageSize + idx + 1} · {tmpl.category || 'UTILITY'}
+                        </p>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                        isPending
+                          ? 'bg-amber-50 text-amber-700'
+                          : isRejected
+                          ? 'bg-rose-50 text-rose-700'
+                          : 'bg-emerald-50 text-emerald-700'
+                      }`}>
+                        {statusLabel}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                      <span className="text-stone-400">{date}</span>
+                      <DeleteActionButton onClick={() => handleDeleteTemplate(tmpl._id, templateTitle)} />
+                    </div>
+                  </div>
+                );
+              }}
+            />
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[780px] text-left border-collapse table-auto">
                 <thead>
                   <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
@@ -687,7 +738,38 @@ export default function WhatsAppView() {
           />
 
           <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
+            <MobileGridList
+              isEmpty={!paginatedMessages || paginatedMessages.length === 0}
+              emptyText="No sent messages recorded."
+              items={paginatedMessages || []}
+              renderCard={(msg, idx) => {
+                const { date, time } = formatDateTime(msg.createdAt);
+                return (
+                  <div
+                    key={msg._id}
+                    className="rounded-xl border border-stone-200/90 p-3.5 bg-white shadow-2xs space-y-2"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-mono font-semibold text-xs text-stone-900 truncate">{msg.to}</p>
+                        <p className="text-[10px] font-semibold text-[#8b6f4e] uppercase truncate mt-0.5">
+                          #{(msgPage - 1) * pageSize + idx + 1} · {msg.templateName}
+                        </p>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-stone-100 text-stone-700 shrink-0">
+                        {msg.status || 'sent'}
+                      </span>
+                    </div>
+                    {(msg.renderedPreview || msg.message) && (
+                      <p className="text-xs text-stone-600 line-clamp-2">{msg.renderedPreview || msg.message}</p>
+                    )}
+                    <p className="text-[10px] text-stone-400 pt-1 border-t border-stone-100">{date} · {time}</p>
+                  </div>
+                );
+              }}
+            />
+
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full min-w-[780px] text-left border-collapse table-auto">
                 <thead>
                   <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

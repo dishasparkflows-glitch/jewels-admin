@@ -12,6 +12,7 @@ import api from '../../api/axios';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import RowActions from '../../components/common/RowActions';
 import Pagination from '../../components/common/Pagination';
+import MobileGridList from '../../components/common/MobileGridList';
 import usePagination from '../../hooks/usePagination';
 
 export default function CurrenciesView() {
@@ -390,9 +391,77 @@ export default function CurrenciesView() {
         </div>
       </div>
 
-      {/* ─── Currency Table Container (Exact Match to Screenshot) ─── */}
+      {/* ─── Currency Table Container (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading currencies..."
+          isEmpty={filteredCurrencies.length === 0}
+          emptyText="No matching currencies found."
+          items={paginatedItems}
+          showSelectAll
+          allSelected={isAllSelected}
+          onSelectAll={handleSelectAll}
+          renderCard={(item, idx) => {
+            const serialNumber = (currentPage - 1) * pageSize + idx + 1;
+            const isBase = item.settings?.isBaseCurrency;
+            const useLive = item.settings?.useLiveRate;
+            const inrRate = item.exchangeRate?.inrRate || 1;
+            const rateVsInr = item.exchangeRate?.rate || (inrRate > 0 ? 1 / inrRate : 1);
+            const isSelected = selectedIds.has(item._id);
+
+            return (
+              <div
+                key={item._id}
+                onClick={() => openEditModal(item)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected ? 'border-[#8b6f4e]/60 bg-amber-50/40' : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={isBase}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleToggleSelect(item._id)}
+                      className={`w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 accent-[#8b6f4e] shrink-0 ${
+                        isBase ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'
+                      }`}
+                    />
+                    <span className="w-8 h-8 rounded-lg bg-[#faf5ee] border border-[#e8d9c2] text-[#8b6f4e] font-bold text-xs flex items-center justify-center shrink-0">
+                      {item.symbol || item.code}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-xs truncate">{item.code} · {item.name}</p>
+                      <p className="text-[10px] text-stone-400">#{serialNumber} · {isBase ? 'Base' : useLive ? 'Live' : 'Manual'}</p>
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      onEdit={() => openEditModal(item)}
+                      onDelete={!isBase ? () => handleDelete(item._id, item.code) : undefined}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">1 {item.code}</p>
+                    <p className="font-bold text-stone-900 mt-0.5">₹{Number(inrRate).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">1 INR</p>
+                    <p className="font-mono text-stone-700 mt-0.5">{Number(rateVsInr).toFixed(4)} {item.code}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

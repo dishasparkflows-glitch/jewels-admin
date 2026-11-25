@@ -21,6 +21,7 @@ import SearchFilterBar from './SearchFilterBar';
 import RowActions from './RowActions';
 import Modal from './Modal';
 import ToggleSwitch from './ToggleSwitch';
+import MobileGridList from './MobileGridList';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 
 /**
@@ -597,9 +598,135 @@ export default function ConfigEntityView({
         />
       </div>
 
-      {/* ─── Table Card ─── */}
+      {/* ─── Table Card (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText={`Loading ${title.toLowerCase()}...`}
+          isEmpty={filteredItems.length === 0}
+          emptyText={`No ${title.toLowerCase()} found.`}
+          items={paginatedItems}
+          showSelectAll
+          allSelected={isAllSelected}
+          onSelectAll={handleSelectAll}
+          renderCard={(it, idx) => {
+            const isSelected = selectedIds.has(it._id);
+            const isViewing = viewingItem?._id === it._id;
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+            return (
+              <div
+                key={it._id}
+                onClick={() => handleOpenEdit(it)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected
+                    ? 'border-[#8b6f4e]/60 bg-[#fcfaf7]'
+                    : isViewing
+                    ? 'border-stone-300 bg-stone-50'
+                    : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => toggleSelect(it._id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                    />
+                    {hasIcon && (
+                      <VisualEntityBadge
+                        name={it.name}
+                        imageUrl={it.image?.url || (typeof it.image === 'string' ? it.image : '')}
+                        prefix={placeholderPrefix}
+                        className="w-7 h-7"
+                      />
+                    )}
+                    {leadingColumns.slice(0, 1).map((col, cIdx) => (
+                      <span key={`m-lead-${cIdx}`} className="shrink-0">
+                        {col.render(it)}
+                      </span>
+                    ))}
+                    <div className="min-w-0">
+                      <p className="text-xs font-bold uppercase text-stone-900 truncate">
+                        {it.name}
+                      </p>
+                      <p className="text-[10px] font-medium text-stone-400">
+                        #{srNo}{hasCode && it.code ? ` · ${it.code}` : ''}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      onView={() => handleOpenView(it)}
+                      onEdit={() => handleOpenEdit(it)}
+                      onDelete={() => handleDelete(it._id, it.name)}
+                      viewLabel={`View ${singularTitle}`}
+                      editLabel={`Edit ${singularTitle}`}
+                      deleteLabel={`Delete ${singularTitle}`}
+                    />
+                  </div>
+                </div>
+
+                {(leadingColumns.length > 1 || tableExtraColumns.length > 0) && (
+                  <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                    {leadingColumns.slice(1).map((col, cIdx) => (
+                      <div key={`m-lead2-${cIdx}`} className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold truncate">
+                          {col.header}
+                        </p>
+                        <div className="mt-0.5 text-stone-700 font-medium truncate">
+                          {col.render(it)}
+                        </div>
+                      </div>
+                    ))}
+                    {tableExtraColumns.map((f) => (
+                      <div key={`m-ext-${f.name}`} className="min-w-0">
+                        <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold truncate">
+                          {f.tableHeader || f.label}
+                        </p>
+                        <div className="mt-0.5 text-stone-700 font-medium truncate">
+                          {f.renderCell
+                            ? f.renderCell(it)
+                            : it[f.name] !== undefined
+                            ? String(it[f.name])
+                            : '—'}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {(hasStatusColumn || hasCreatedDateColumn) && (
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                    {hasStatusColumn ? (
+                      <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <ToggleSwitch
+                          checked={it.status === 'active'}
+                          onChange={() => handleToggleStatus(it)}
+                          size="sm"
+                          ariaLabel={`Set ${it.name} ${it.status === 'active' ? 'Inactive' : 'Active'}`}
+                        />
+                        <span className="text-[11px] font-medium text-stone-500 capitalize">
+                          {it.status || 'inactive'}
+                        </span>
+                      </div>
+                    ) : <span />}
+                    {hasCreatedDateColumn && (
+                      <span className="text-[11px] text-stone-400 font-medium">
+                        {formatDate(it.meta?.createdAt || it.createdAt, '—')}
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

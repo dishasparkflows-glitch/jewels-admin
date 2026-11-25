@@ -14,6 +14,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import RowActions from '../../components/common/RowActions';
+import MobileGridList from '../../components/common/MobileGridList';
 import Modal from '../../components/common/Modal';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -464,9 +465,81 @@ export default function BlogsView() {
         </div>
       </div>
 
-      {/* ─── Table View ─── */}
+      {/* ─── Table View (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading luxury journal articles..."
+          isEmpty={paginatedItems.length === 0}
+          emptyText="No blog posts found."
+          items={paginatedItems}
+          showSelectAll
+          allSelected={isAllSelected}
+          onSelectAll={handleSelectAll}
+          renderCard={(blog, idx) => {
+            const isSelected = selectedIds.has(blog._id);
+            const imageUrl = blog.image?.url || (typeof blog.image === 'string' ? blog.image : '');
+            const categoryName = blog.blogCategory?.name || 'Uncategorized';
+            const dateStr = blog.meta?.createdAt
+              ? new Date(blog.meta.createdAt).toLocaleDateString('en-GB', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : '-';
+            const blogTitle = blog.basicInfo?.title || blog.title || '';
+            const blogReadTime = blog.basicInfo?.readTime || blog.readTime || '3 min read';
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+            return (
+              <div
+                key={blog._id}
+                onClick={() => navigate(`/blogs/edit/${blog._id}`)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected ? 'border-[#8b6f4e]/60 bg-amber-50/40' : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleToggleSelect(blog._id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e] shrink-0"
+                    />
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={blogTitle} className="w-10 h-10 rounded-lg object-cover border border-stone-200 shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-stone-100 border border-stone-200 flex items-center justify-center shrink-0">
+                        <HiOutlineDocumentText className="w-4 h-4 text-stone-400" />
+                      </div>
+                    )}
+                    <div className="min-w-0">
+                      <p className="font-semibold text-stone-900 text-xs line-clamp-2">{blogTitle}</p>
+                      <p className="text-[10px] font-medium text-stone-400 mt-0.5">#{srNo} · {categoryName}</p>
+                    </div>
+                  </div>
+
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      record={blog}
+                      onEdit={() => navigate(`/blogs/edit/${blog._id}`)}
+                      onDelete={() => handleDelete(blog._id, blogTitle)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px] text-stone-500">
+                  <span>{blogReadTime}</span>
+                  <span>{dateStr}</span>
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs sm:text-sm text-stone-700">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

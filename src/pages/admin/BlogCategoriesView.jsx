@@ -15,6 +15,7 @@ import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import useDebounce from '../../hooks/useDebounce';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import MobileGridList from '../../components/common/MobileGridList';
 
 export default function BlogCategoriesView() {
   const confirm = useConfirm();
@@ -370,9 +371,73 @@ export default function BlogCategoriesView() {
         </div>
       </div>
 
-      {/* ─── Table View ─── */}
+      {/* ─── Table View (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/90 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading blog categories..."
+          isEmpty={paginatedItems.length === 0}
+          emptyText="No blog categories found."
+          items={paginatedItems}
+          showSelectAll
+          allSelected={isAllSelected}
+          onSelectAll={handleSelectAll}
+          renderCard={(category, idx) => {
+            const isSelected = selectedIds.has(category._id);
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+            return (
+              <div
+                key={category._id}
+                onClick={() => handleOpenEdit(category)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected ? 'border-[#8b6f4e]/60 bg-amber-50/40' : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleToggleSelect(category._id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e] shrink-0"
+                    />
+                    <div className="w-7 h-7 rounded-lg bg-[#faf6f0] border border-[#e8ddce] flex items-center justify-center text-[#8b6f4e] font-bold text-xs shrink-0">
+                      {category.name?.[0]?.toUpperCase() || 'C'}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-stone-900 text-xs truncate">{category.name}</p>
+                      <p className="font-mono text-[10px] text-stone-400 truncate">#{srNo} · /{category.slug}</p>
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      onEdit={() => handleOpenEdit(category)}
+                      onDelete={() => handleDelete(category)}
+                    />
+                  </div>
+                </div>
+
+                {category.description && (
+                  <p className="text-xs text-stone-600 line-clamp-2">{category.description}</p>
+                )}
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                  <ToggleSwitch
+                    checked={category.status === 'active'}
+                    onChange={() => handleToggleStatus(category)}
+                    size="sm"
+                    ariaLabel={`Set ${category.name} ${category.status === 'active' ? 'Inactive' : 'Active'}`}
+                  />
+                  <span className="font-mono text-stone-500">Order: {category.order ?? 0}</span>
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs sm:text-sm text-stone-700">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

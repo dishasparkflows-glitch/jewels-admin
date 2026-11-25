@@ -38,10 +38,10 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#fbfaf8] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-stone-200/80 rounded-3xl p-5 sm:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+    <div className="min-h-[100dvh] bg-[#fbfaf8] flex items-center justify-center p-4 overflow-x-hidden">
+      <div className="w-full max-w-md bg-white border border-stone-200/80 rounded-2xl sm:rounded-3xl p-5 sm:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         {/* Brand Header */}
-        <div className="text-center space-y-2 mb-8">
+        <div className="text-center space-y-2 mb-6 sm:mb-8">
           <div className="w-12 h-12 rounded-2xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center mx-auto mb-3 shadow-xs overflow-hidden">
             {brandLogo ? <img src={brandLogo} alt="Neirah Jewellers" className="max-w-full max-h-full object-contain p-1" /> : <HiOutlineSparkles className="w-6 h-6 text-[#8b6f4e]" />}
           </div>
@@ -62,10 +62,11 @@ const Login = () => {
               <HiOutlineMail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <input
                 type="email"
+                autoComplete="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 placeholder="admin@neirah.com"
-                className="w-full pl-10 pr-4 py-2.5 text-xs rounded-xl bg-white border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all"
+                className="w-full pl-10 pr-4 py-2.5 text-base sm:text-xs rounded-xl bg-white border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all"
                 required
               />
             </div>
@@ -79,23 +80,24 @@ const Login = () => {
               <HiOutlineLockClosed className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
               <input
                 type={showPassword ? 'text' : 'password'}
+                autoComplete="current-password"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 placeholder="••••••••"
-                className="w-full pl-10 pr-10 py-2.5 text-xs rounded-xl bg-white border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all"
+                className="w-full pl-10 pr-10 py-2.5 text-base sm:text-xs rounded-xl bg-white border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all"
                 required
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 p-1"
               >
                 {showPassword ? <HiOutlineEyeOff className="w-4 h-4" /> : <HiOutlineEye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-xs pt-1">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs pt-1">
             <label className="flex items-center gap-2 text-stone-500 text-xs">
               <input type="checkbox" className="rounded border-stone-300 text-[#8b6f4e] focus:ring-0" />
               <span>Remember me</span>

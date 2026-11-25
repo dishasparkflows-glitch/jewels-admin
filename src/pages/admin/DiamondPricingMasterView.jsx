@@ -12,6 +12,7 @@ import Dropdown from '../../components/common/Dropdown';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import Pagination from '../../components/common/Pagination';
 import { DeleteActionButton } from '../../components/common/RowActions';
+import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function DiamondPricingMasterView() {
@@ -493,9 +494,99 @@ export default function DiamondPricingMasterView() {
         </div>
       </div>
 
-      {/* Diamond Pricing Master Table */}
+      {/* Diamond Pricing Master Table (Mobile Grid + Desktop Table) */}
       <div className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading diamond rates from API..."
+          isEmpty={filteredRows.length === 0}
+          emptyText='No diamond rates found. Click "+ Add Row" or "Upload Excel" to configure prices.'
+          items={filteredRows}
+          renderCard={(row, index) => (
+            <div
+              key={row.id}
+              className="rounded-xl border border-stone-200/90 p-3.5 bg-white shadow-2xs space-y-2.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold text-stone-500">
+                  #{String((currentPage - 1) * pageSize + index + 1).padStart(2, '0')}
+                </span>
+                <DeleteActionButton
+                  onClick={() => handleDeleteRow(row.id)}
+                  title="Delete Row"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-stone-400 mb-1">Shape</label>
+                  <Dropdown
+                    size="sm"
+                    value={row.shape || 'FANCY'}
+                    onChange={(val) => handleUpdateRow(row.id, 'shape', val)}
+                    options={shapesList}
+                    buttonClassName="h-9 w-full px-2.5 text-xs font-bold uppercase rounded-xl bg-stone-50/70 border-stone-200 text-stone-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-stone-400 mb-1">Color</label>
+                  <Dropdown
+                    size="sm"
+                    value={row.color || 'D-E'}
+                    onChange={(val) => handleUpdateRow(row.id, 'color', val)}
+                    options={colorsList}
+                    buttonClassName="h-9 w-full px-2.5 text-xs font-bold uppercase rounded-xl bg-stone-50/70 border-stone-200 text-stone-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-stone-400 mb-1">Clarity</label>
+                  <Dropdown
+                    size="sm"
+                    value={row.clarity || 'VS'}
+                    onChange={(val) => handleUpdateRow(row.id, 'clarity', val)}
+                    options={claritiesList}
+                    buttonClassName="h-9 w-full px-2.5 text-xs font-bold uppercase rounded-xl bg-stone-50/70 border-stone-200 text-stone-800"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-semibold uppercase text-stone-400 mb-1">INR / Carat</label>
+                  <input
+                    type="number"
+                    value={row.price ?? ''}
+                    onChange={(e) => handleUpdateRow(row.id, 'price', e.target.value)}
+                    placeholder="Price"
+                    className="w-full h-9 px-2.5 text-xs font-bold rounded-xl border border-stone-200 bg-white text-stone-900 focus:outline-none focus:border-[#8b6f4e]"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-1">
+                <label className="block text-[10px] font-semibold uppercase text-stone-400 mb-1">Size Range (Carat)</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="From"
+                    value={row.sizeFrom ?? ''}
+                    onChange={(e) => handleUpdateRow(row.id, 'sizeFrom', e.target.value)}
+                    className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-stone-50/60 focus:outline-none focus:border-[#8b6f4e]"
+                  />
+                  <span className="text-stone-400 text-xs">–</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="To"
+                    value={row.sizeTo ?? ''}
+                    onChange={(e) => handleUpdateRow(row.id, 'sizeTo', e.target.value)}
+                    className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-stone-50/60 focus:outline-none focus:border-[#8b6f4e]"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs min-w-[820px]">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

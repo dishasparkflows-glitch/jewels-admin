@@ -1007,9 +1007,9 @@ export default function NavigationMenusView() {
                             onClick={() => toggleSectionExpand(section._id)}
                             onDragStart={(e) => handleSectionDragStart(e, secIdx)}
                             onDragEnd={handleSectionDragEnd}
-                            className="flex items-center justify-between cursor-grab active:cursor-grabbing select-none"
+                            className="flex flex-wrap items-center justify-between gap-2.5 cursor-grab active:cursor-grabbing select-none"
                           >
-                            <div className="flex items-center gap-3 min-w-0">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                               <DragHandle onClick={(event) => event.stopPropagation()} />
 
                               {/* Number circle badge like in reference design */}
@@ -1017,17 +1017,17 @@ export default function NavigationMenusView() {
                                 {secIdx + 1}
                               </span>
 
-                              <h3 className="text-sm font-bold text-stone-900 truncate">
+                              <h3 className="text-sm font-bold text-stone-900 truncate min-w-0">
                                 {section.title}
                               </h3>
 
-                              <span className="text-[11px] font-medium text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full shrink-0">
+                              <span className="text-[11px] font-medium text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full shrink-0 whitespace-nowrap">
                                 {items.length} items
                               </span>
                             </div>
 
                             <div
-                              className="flex items-center gap-2 shrink-0"
+                              className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 shrink-0 w-full sm:w-auto pt-2 sm:pt-0 border-t border-stone-100 sm:border-t-0"
                               onClick={(e) => e.stopPropagation()}
                               onMouseDown={(e) => e.stopPropagation()}
                             >
@@ -1038,10 +1038,10 @@ export default function NavigationMenusView() {
                                   setExpandedSections((prev) => ({ ...prev, [section._id]: true }));
                                   openAddMenuItemModal(section._id);
                                 }}
-                                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg border border-dashed border-[#85583f]/50 hover:border-[#85583f] bg-[#85583f]/5 hover:bg-[#85583f]/15 text-[#85583f] text-xs font-semibold shadow-2xs transition-all cursor-pointer mr-1"
+                                className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg border border-dashed border-[#85583f]/50 hover:border-[#85583f] bg-[#85583f]/5 hover:bg-[#85583f]/15 text-[#85583f] text-xs font-semibold shadow-2xs transition-all cursor-pointer mr-auto sm:mr-1 whitespace-nowrap"
                                 title="Add menu link to this section"
                               >
-                                <HiOutlinePlus className="w-3.5 h-3.5" />
+                                <HiOutlinePlus className="w-3.5 h-3.5 shrink-0" />
                                 <span>Add Menu Item</span>
                               </button>
 
@@ -1106,7 +1106,7 @@ export default function NavigationMenusView() {
                                           if (hasDraggedItemRef.current) return;
                                           openEditMenuItemModal(item);
                                         }}
-                                        className={`group flex items-center justify-between py-2.5 px-2 rounded-xl transition-all select-none cursor-pointer ${
+                                        className={`group flex items-center justify-between gap-2 py-2.5 px-1.5 sm:px-2 rounded-xl transition-all select-none cursor-pointer ${
                                           isItemDragging
                                             ? 'opacity-40 bg-stone-50'
                                             : isItemDragOver
@@ -1114,7 +1114,7 @@ export default function NavigationMenusView() {
                                             : 'hover:bg-stone-50/90'
                                         }`}
                                       >
-                                        <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0 flex-1">
                                           <DragHandle onClick={(e) => e.stopPropagation()} />
                                           <div className="w-8 h-8 rounded-lg shrink-0 overflow-hidden flex items-center justify-center shadow-2xs">
                                             <AdminImage
@@ -1133,7 +1133,7 @@ export default function NavigationMenusView() {
 
                                         {/* Status badge & direct on/off toggle & actions */}
                                         <div
-                                          className="flex items-center gap-3.5 shrink-0"
+                                          className="flex items-center gap-2 sm:gap-3.5 shrink-0"
                                           onClick={(e) => e.stopPropagation()}
                                           onMouseDown={(e) => e.stopPropagation()}
                                         >
@@ -1176,8 +1176,8 @@ export default function NavigationMenusView() {
               {/* TAB 2: PROMO BANNERS                                     */}
               {/* ──────────────────────────────────────────────────────── */}
               {activeTab === 'banners' && (
-                <div className="rounded-2xl border border-stone-200/90 bg-white p-5 shadow-xs space-y-4">
-                  <div className="flex items-center justify-between">
+                <div className="rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 shadow-xs space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <h3 className="text-sm font-bold text-stone-900">
                         Category Promotional Banners

@@ -28,6 +28,7 @@ import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import Dropdown from '../../components/common/Dropdown';
+import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import GalleryMediaPickerModal from '../../components/common/GalleryMediaPickerModal';
@@ -1010,9 +1011,95 @@ export default function BannersView() {
           </div>
         </div>
 
-        {/* Banners Table */}
+        {/* Banners Table (Mobile Grid + Desktop Table) */}
         <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
-          <div className="overflow-x-auto">
+          <MobileGridList
+            loading={loading}
+            loadingText="Loading banners..."
+            isEmpty={banners.length === 0}
+            emptyText={`No ${currentBannerType.label}s found.`}
+            items={paginatedItems}
+            showSelectAll
+            allSelected={banners.length > 0 && selectedIds.length === banners.length}
+            onSelectAll={(e) => {
+              if (e.target.checked) setSelectedIds(banners.map((b) => b._id));
+              else setSelectedIds([]);
+            }}
+            renderCard={(banner) => {
+              const bTitle = currentBannerType.key === 'categorybanner'
+                ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || 'Category Banner')
+                : (banner.content?.title || 'Untitled Banner');
+              const bDesc = banner.content?.description || '';
+              const assetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url);
+              const isPublished = banner.status === 'active';
+              const isSelected = selectedIds.includes(banner._id);
+
+              return (
+                <div
+                  key={banner._id}
+                  onClick={() => {
+                    populateFormWithBanner(banner);
+                    setIsFormModalOpen(true);
+                  }}
+                  className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                    isSelected ? 'border-[#8b6f4e]/60 bg-[#fcfaf7]' : 'border-stone-200/90 hover:border-stone-300'
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setSelectedIds((prev) =>
+                            prev.includes(banner._id)
+                              ? prev.filter((id) => id !== banner._id)
+                              : [...prev, banner._id]
+                          );
+                        }}
+                        className="rounded border-stone-300 text-[#8a6d4b] focus:ring-[#8a6d4b] cursor-pointer shrink-0"
+                      />
+                      <div className="w-14 h-10 rounded-lg bg-stone-100 border border-stone-200 overflow-hidden flex items-center justify-center shrink-0">
+                        {assetUrl ? (
+                          <img src={assetUrl} alt={bTitle} className="w-full h-full object-cover" />
+                        ) : (
+                          <HiOutlinePhotograph className="w-4 h-4 text-stone-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-stone-900 text-xs truncate">{bTitle}</p>
+                        {bDesc && <p className="text-[10px] text-stone-400 truncate mt-0.5">{bDesc}</p>}
+                      </div>
+                    </div>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0 ${
+                      isPublished ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-500'
+                    }`}>
+                      {isPublished ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px] text-stone-500">
+                    <span>Order: <strong className="text-stone-800">{banner.display?.order ?? 0}</strong></span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        populateFormWithBanner(banner);
+                        setIsFormModalOpen(true);
+                      }}
+                      className="text-[#8a6d4b] font-semibold hover:underline cursor-pointer"
+                    >
+                      Edit Banner
+                    </button>
+                  </div>
+                </div>
+              );
+            }}
+          />
+
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full min-w-[760px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

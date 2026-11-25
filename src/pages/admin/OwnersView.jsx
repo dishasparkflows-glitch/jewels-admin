@@ -26,6 +26,7 @@ import RowActions from '../../components/common/RowActions';
 import Pagination from '../../components/common/Pagination';
 import Modal from '../../components/common/Modal';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import MobileGridList from '../../components/common/MobileGridList';
 import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { getFirstAllowedPath } from '../../utils/moduleAccess';
@@ -475,9 +476,74 @@ export default function OwnersView() {
         }
       />
 
-      {/* Owners Table */}
+      {/* Owners Table (Mobile Grid + Desktop Table) */}
       <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading website owners..."
+          isEmpty={filteredOwners.length === 0}
+          emptyText={
+            search
+              ? `No owners found matching "${search}".`
+              : 'No client websites configured yet. Click "Add Owner" to add your first client.'
+          }
+          items={paginatedItems}
+          showSelectAll
+          allSelected={allSelected}
+          onSelectAll={handleSelectAllRows}
+          renderCard={(owner, idx) => {
+            const id = owner._id;
+            const isSelected = selectedIds.has(id);
+            const allowed = Array.isArray(owner.allowedModules) ? owner.allowedModules : [];
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+            return (
+              <div
+                key={id}
+                onClick={() => handleOpenEdit(owner)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]/50' : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleSelectRow(id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                    />
+                    <div className="w-8 h-8 rounded-lg bg-[#faf3e8] border border-[#8b6f4e]/20 text-[#8b6f4e] font-bold text-xs flex items-center justify-center shrink-0">
+                      {(owner.name || 'O').slice(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-xs truncate">{owner.name}</p>
+                      <p className="text-[10px] text-stone-400 truncate">#{srNo} · {allowed.length} modules</p>
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      onEdit={() => handleOpenEdit(owner)}
+                      onDelete={() => handleDelete(id, owner.name)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-stone-500 truncate">{owner.websiteUrl || owner.domain || '—'}</span>
+                  <ToggleSwitch
+                    checked={owner.status !== 'inactive'}
+                    onChange={() => handleToggleStatus(owner)}
+                    size="sm"
+                  />
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[780px] text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

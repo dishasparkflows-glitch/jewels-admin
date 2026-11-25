@@ -20,6 +20,7 @@ import CuteLoader from '../../components/common/CuteLoader';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import MobileGridList from '../../components/common/MobileGridList';
 
 export default function SizesView() {
   const confirm = useConfirm();
@@ -436,8 +437,72 @@ export default function SizesView() {
 
       {/* ─── Sizes Table Card ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading jewelry sizes..."
+          isEmpty={filteredSizes.length === 0}
+          emptyText="No jewelry sizes found."
+          items={paginatedItems}
+          showSelectAll
+          allSelected={
+            paginatedItems.length > 0 &&
+            paginatedItems.every((s) => selectedIds.includes(s._id))
+          }
+          onSelectAll={handleSelectAll}
+          renderCard={(s, idx) => {
+            const categoryName = resolveCategoryName(s);
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+            const formattedDate = s.meta?.createdAt
+              ? new Date(s.meta.createdAt).toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                })
+              : '12/06/2026';
+
+            return (
+              <div
+                key={s._id}
+                onClick={() => handleOpenEdit(s)}
+                className="rounded-xl border border-stone-200/90 hover:border-stone-300 p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(s._id)}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleSelectItem(s._id)}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
+                    />
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-xs truncate">{s.name}</p>
+                      <p className="text-[10px] text-stone-400 truncate">#{srNo} · {categoryName}</p>
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      onEdit={() => handleOpenEdit(s)}
+                      onDelete={() => handleDelete(s._id, s.name)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                  <ToggleSwitch
+                    checked={s.status === 'active'}
+                    onChange={() => handleToggleStatus(s)}
+                    size="sm"
+                  />
+                  <span className="text-stone-400">{formattedDate}</span>
+                </div>
+              </div>
+            );
+          }}
+        />
+
         {/* Table */}
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

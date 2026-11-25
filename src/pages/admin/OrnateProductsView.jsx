@@ -19,6 +19,7 @@ import Dropdown from '../../components/common/Dropdown';
 import Pagination from '../../components/common/Pagination';
 import OrnateSyncModal from '../../components/common/OrnateSyncModal';
 import RowActions from '../../components/common/RowActions';
+import MobileGridList from '../../components/common/MobileGridList';
 import {
   GroupCard,
   CreateGroupModal,
@@ -1281,9 +1282,114 @@ export default function OrnateProductsView() {
                 })}
               </div>
             ) : (
-              /* Ungrouped List View */
+              /* Ungrouped List View (Mobile Grid + Desktop Table) */
               <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
-                <div className="overflow-x-auto">
+                <MobileGridList
+                  isEmpty={products.length === 0}
+                  emptyText="No ornate products found."
+                  items={products}
+                  showSelectAll
+                  allSelected={selectedIds.size === products.length && products.length > 0}
+                  onSelectAll={toggleSelectAll}
+                  renderCard={(p, idx) => {
+                    const isSelected = selectedIds.has(p._id);
+                    const imgUrl = getProductImage(p);
+                    const title = p.basicInfo?.title || p.name || 'Ornate Jewellery';
+                    const sku = p.basicInfo?.sku || p.ornate?.tagNo || '—';
+                    const barcode = p.ornate?.barcode || p.barcode || p.basicInfo?.barcode || '—';
+                    const price = p.pricing?.salePrice ?? 0;
+                    const srNo = (page - 1) * pageSize + idx + 1;
+
+                    return (
+                      <div
+                        key={p._id}
+                        onClick={() => setViewingProduct(p)}
+                        className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                          isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]/50' : 'border-stone-200/90 hover:border-stone-300'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => toggleSelectOne(p._id)}
+                              className="w-3.5 h-3.5 rounded text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer shrink-0"
+                            />
+                            <div className="w-10 h-10 rounded-lg bg-stone-50 border border-stone-200 p-1 flex items-center justify-center shrink-0">
+                              {imgUrl ? (
+                                <img src={imgUrl} alt="" className="max-w-full max-h-full object-contain" />
+                              ) : (
+                                <IoDiamondOutline className="w-5 h-5 text-stone-300" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-bold text-stone-900 text-xs truncate">{title}</p>
+                              <p className="text-[10px] font-medium text-stone-400 truncate">#{srNo} · {sku}</p>
+                            </div>
+                          </div>
+
+                          <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                            <RowActions
+                              record={p}
+                              detailsEndpoint="/products"
+                              onOpenWebsite={() => openProductPreview(p)}
+                              onView={() => setViewingProduct(p)}
+                              onEdit={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
+                              onDelete={() => handleDeleteProduct(p._id, title)}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Price</p>
+                            <p className="font-bold text-stone-900 mt-0.5">{money(price)}</p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Barcode</p>
+                            <p className="font-mono text-stone-600 mt-0.5 truncate">{barcode}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleProductVisibility(p, 'web', e)}
+                              disabled={updatingVisibilityId === `${p._id}-web`}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                p.inweb !== false && p.visibility?.web !== false
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                                  : 'bg-white text-stone-400 border-stone-200'
+                              }`}
+                            >
+                              <span>🌐</span>
+                              <span>Web</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleProductVisibility(p, 'app', e)}
+                              disabled={updatingVisibilityId === `${p._id}-app`}
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border transition-all cursor-pointer ${
+                                p.inapp !== false && p.visibility?.app !== false
+                                  ? 'bg-sky-50 text-sky-700 border-sky-200/80'
+                                  : 'bg-white text-stone-400 border-stone-200'
+                              }`}
+                            >
+                              <span>📱</span>
+                              <span>App</span>
+                            </button>
+                          </div>
+                          {renderStatusBadge(p)}
+                        </div>
+                      </div>
+                    );
+                  }}
+                />
+
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-xs text-left min-w-[820px]">
                     <thead>
                       <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">

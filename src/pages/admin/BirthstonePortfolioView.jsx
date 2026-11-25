@@ -19,6 +19,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import MobileGridList from '../../components/common/MobileGridList';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 
 const MONTHS = [
@@ -493,9 +494,75 @@ export default function BirthstonePortfolioView() {
         onSearchChange={setSearch}
       />
 
-      {/* ─── Table Container (Luxury Neirah Style) ─── */}
+      {/* ─── Table Container (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading birthstone collection..."
+          isEmpty={paginatedItems.length === 0}
+          emptyText={`No birthstones found matching "${search}".`}
+          items={paginatedItems}
+          showSelectAll
+          allSelected={
+            paginatedItems.length > 0 &&
+            paginatedItems.every((item) => selectedIds.includes(item._id))
+          }
+          onSelectAll={handleSelectAll}
+          renderCard={(item, idx) => {
+            const isSelected = selectedIds.includes(item._id);
+            const srNo = (currentPage - 1) * pageSize + idx + 1;
+
+            return (
+              <div
+                key={item._id}
+                onClick={() => handleOpenConfigure(item)}
+                className={`rounded-xl border p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5 ${
+                  isSelected ? 'border-[#8b6f4e]/60 bg-[#faf6f0]' : 'border-stone-200/90 hover:border-stone-300'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <input
+                      type="checkbox"
+                      className="rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e] cursor-pointer shrink-0"
+                      checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={() => handleSelectItem(item._id)}
+                    />
+                    <div className="w-9 h-9 rounded-lg border border-stone-200/90 bg-[#faf8f5] flex items-center justify-center p-0.5 shrink-0">
+                      {item.imageUrl ? (
+                        <img src={item.imageUrl} alt={item.month} className="w-full h-full object-contain" />
+                      ) : (
+                        <IoDiamondOutline className="w-4 h-4 text-stone-300" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="font-bold text-stone-900 text-xs truncate">{item.month}</p>
+                      <p className="text-[10px] text-stone-400 truncate">#{srNo} · Order {item.order}</p>
+                    </div>
+                  </div>
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      onEdit={() => handleOpenConfigure(item)}
+                      onDelete={() => handleDelete(item._id, item.month)}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]" onClick={(e) => e.stopPropagation()}>
+                  <span className="font-semibold text-stone-700 truncate">{item.stone || '—'}</span>
+                  <ToggleSwitch
+                    checked={item.status === 'active'}
+                    onChange={() => handleToggleStatus(item)}
+                    size="sm"
+                  />
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
