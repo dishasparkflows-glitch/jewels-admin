@@ -51,7 +51,9 @@ export default function ProfileView() {
     newPassword: '',
     confirmPassword: '',
   });
-  const [showPassword, setShowPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
 
   // Sync profile data when user changes
@@ -179,6 +181,9 @@ export default function ProfileView() {
         newPassword: '',
         confirmPassword: '',
       });
+      setShowCurrentPassword(false);
+      setShowNewPassword(false);
+      setShowConfirmPassword(false);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to change password');
     } finally {
@@ -229,13 +234,8 @@ export default function ProfileView() {
                   {roleDisplay}
                 </span>
               </div>
-              <p className="text-xs sm:text-sm text-stone-500 mt-1 flex items-center gap-2">
-                <span>{user?.auth?.email || 'admin@jewels.com'}</span>
-                <span className="text-stone-300">•</span>
-                <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Active Session
-                </span>
+              <p className="text-xs sm:text-sm text-stone-500 mt-1">
+                {user?.auth?.email || 'admin@jewels.com'}
               </p>
             </div>
           </div>
@@ -645,21 +645,23 @@ export default function ProfileView() {
               </label>
               <div className="relative">
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showCurrentPassword ? 'text' : 'password'}
                   required
                   value={passwords.currentPassword}
                   onChange={(e) =>
                     setPasswords({ ...passwords, currentPassword: e.target.value })
                   }
                   placeholder="Enter current password"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] text-xs sm:text-[13px] font-medium text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 shadow-2xs transition-all"
+                  className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] text-xs sm:text-[13px] font-medium text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 shadow-2xs transition-all"
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-stone-400 hover:text-stone-600"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
+                  title={showCurrentPassword ? 'Hide password' : 'Show password'}
+                  aria-label={showCurrentPassword ? 'Hide current password' : 'Show current password'}
                 >
-                  {showPassword ? (
+                  {showCurrentPassword ? (
                     <HiOutlineEyeOff className="w-4 h-4" />
                   ) : (
                     <HiOutlineEye className="w-4 h-4" />
@@ -673,32 +675,62 @@ export default function ProfileView() {
                 <label className="text-xs font-bold text-stone-900 block mb-1.5">
                   New Password <span className="text-rose-500 font-bold">*</span>
                 </label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={passwords.newPassword}
-                  onChange={(e) =>
-                    setPasswords({ ...passwords, newPassword: e.target.value })
-                  }
-                  placeholder="At least 6 characters"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] text-xs sm:text-[13px] font-medium text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 shadow-2xs transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    required
+                    value={passwords.newPassword}
+                    onChange={(e) =>
+                      setPasswords({ ...passwords, newPassword: e.target.value })
+                    }
+                    placeholder="At least 6 characters"
+                    className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] text-xs sm:text-[13px] font-medium text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 shadow-2xs transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
+                    title={showNewPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                  >
+                    {showNewPassword ? (
+                      <HiOutlineEyeOff className="w-4 h-4" />
+                    ) : (
+                      <HiOutlineEye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label className="text-xs font-bold text-stone-900 block mb-1.5">
                   Confirm New Password <span className="text-rose-500 font-bold">*</span>
                 </label>
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  required
-                  value={passwords.confirmPassword}
-                  onChange={(e) =>
-                    setPasswords({ ...passwords, confirmPassword: e.target.value })
-                  }
-                  placeholder="Re-type new password"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] text-xs sm:text-[13px] font-medium text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 shadow-2xs transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    required
+                    value={passwords.confirmPassword}
+                    onChange={(e) =>
+                      setPasswords({ ...passwords, confirmPassword: e.target.value })
+                    }
+                    placeholder="Re-type new password"
+                    className="w-full px-3.5 py-2.5 pr-10 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] text-xs sm:text-[13px] font-medium text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 shadow-2xs transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 transition-colors cursor-pointer"
+                    title={showConfirmPassword ? 'Hide password' : 'Show password'}
+                    aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  >
+                    {showConfirmPassword ? (
+                      <HiOutlineEyeOff className="w-4 h-4" />
+                    ) : (
+                      <HiOutlineEye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 

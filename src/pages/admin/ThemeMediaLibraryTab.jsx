@@ -275,6 +275,7 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
           ) : (
             <button
               type="button"
+              data-upload-trigger="true"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploading}
               className="inline-flex items-center gap-2 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e41] text-white rounded-xl text-xs font-semibold shadow-xs transition cursor-pointer"

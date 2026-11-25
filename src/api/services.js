@@ -250,3 +250,18 @@ export const metalColorsAPI = {
   getAll: (params) => api.get('/metal-colors', { params }),
 };
 
+// ─── Gemstone Types ───────────────────────────────
+export const gemstoneTypesAPI = {
+  getAll: (params) => api.get('/gemstone-types', { params }),
+  getLookup: (params) => api.get('/gemstone-types/lookup', { params }),
+  getById: (id) => api.get(`/gemstone-types/${id}`),
+};
+
+// ─── Gemstone Shapes ──────────────────────────────
+export const gemstoneShapesAPI = {
+  getAll: (params) => api.get('/gemstone-shapes', { params }),
+  getLookup: (params) => api.get('/gemstone-shapes/lookup', { params }),
+  getById: (id) => api.get(`/gemstone-shapes/${id}`),
+};
+
+

@@ -22,6 +22,7 @@ import RichTextEditor from '../../components/common/RichTextEditor';
 import { useNavigate } from 'react-router-dom';
 import Dropdown from '../../components/common/Dropdown';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 
 export default function BlogsView() {
   const navigate = useNavigate();
@@ -812,6 +813,7 @@ export default function BlogsView() {
                     <div className="absolute inset-0 bg-stone-900/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                       <button
                         type="button"
+                        data-upload-trigger="true"
                         onClick={() => fileInputRef.current?.click()}
                         className="px-2.5 py-1.5 bg-white text-stone-800 rounded-lg text-xs font-semibold hover:bg-stone-100 cursor-pointer shadow-xs"
                       >
@@ -833,8 +835,9 @@ export default function BlogsView() {
                   </div>
                 ) : (
                   <div
+                    {...getUploadTriggerProps(() => fileInputRef.current?.click())}
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-stone-300 rounded-xl p-5 text-center bg-stone-50/60 hover:bg-stone-50 hover:border-[#8b6f4e] transition-colors cursor-pointer space-y-1.5"
+                    className="border-2 border-dashed border-stone-300 rounded-xl p-5 text-center bg-stone-50/60 hover:bg-stone-50 hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 transition-colors cursor-pointer space-y-1.5"
                   >
                     <HiOutlinePhotograph className="w-8 h-8 text-[#8b6f4e] mx-auto" />
                     <p className="text-xs font-semibold text-stone-800">

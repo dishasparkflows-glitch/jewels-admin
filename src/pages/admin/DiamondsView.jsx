@@ -943,6 +943,7 @@ export default function DiamondsView() {
                   />
                   <button
                     type="button"
+                    data-upload-trigger="true"
                     onClick={() => editFileInputRef.current?.click()}
                     disabled={isUploadingImage}
                     className="mt-2 text-xs font-semibold text-[#8b6f4e] hover:text-[#785e42] flex items-center gap-1 cursor-pointer disabled:opacity-50"

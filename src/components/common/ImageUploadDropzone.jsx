@@ -165,7 +165,7 @@ export default function ImageUploadDropzone({
       ) : (
         <div
           tabIndex={disabled ? -1 : 0}
-          data-upload-trigger="true"
+          data-upload-trigger={onFileSelect && !disabled ? 'true' : undefined}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onClick={handleTriggerAction}

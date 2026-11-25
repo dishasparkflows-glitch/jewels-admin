@@ -1,8 +1,30 @@
 /**
  * Global File / Image Picker Auto-Open Utility
- * Automatically triggers the file picker dialog when:
- * 1. The user navigates to an image/file upload input or upload button using the Tab key.
+ * Automatically triggers the file picker dialog when the user navigates
+ * to an image/file upload input, label, dropzone, or upload button using the Tab key.
  */
+
+export function getUploadTriggerProps(onActivate, { disabled = false, fileInputId } = {}) {
+  return {
+    tabIndex: disabled ? -1 : 0,
+    role: 'button',
+    'data-upload-trigger': disabled ? undefined : 'true',
+    ...(fileInputId ? { 'data-file-input-id': fileInputId } : {}),
+    onKeyDown: (e) => {
+      if (disabled) return;
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (typeof onActivate === 'function') {
+          onActivate(e);
+        } else if (fileInputId) {
+          document.getElementById(fileInputId)?.click();
+        } else {
+          e.currentTarget.querySelector('input[type="file"]')?.click();
+        }
+      }
+    },
+  };
+}
 
 export function initFilePickerAutoOpen() {
   if (typeof window === 'undefined' || typeof document === 'undefined') return;
@@ -25,26 +47,41 @@ export function initFilePickerAutoOpen() {
   document.addEventListener('mousedown', handlePointerDown, true);
   document.addEventListener('touchstart', handlePointerDown, true);
 
-  // Track Tab keydown
+  // Track Tab keydown and clear any lingering pointer lock immediately
   document.addEventListener(
     'keydown',
     (e) => {
       if (e.key === 'Tab') {
         lastTabTime = Date.now();
+        isPointerInteracting = false;
+        if (pointerTimeout) {
+          clearTimeout(pointerTimeout);
+          pointerTimeout = null;
+        }
       }
     },
     true
   );
 
+  const openFileInput = (fileInput) => {
+    if (!fileInput || fileInput.disabled) return false;
+    try {
+      if (typeof fileInput.showPicker === 'function') {
+        fileInput.showPicker();
+      } else {
+        fileInput.click();
+      }
+    } catch {
+      fileInput.click();
+    }
+    return true;
+  };
+
   const isUploadTrigger = (el) => {
     if (!el || el === document.body || el === document.documentElement) return false;
 
-    // 1. Explicit data attribute
-    if (
-      el.dataset?.uploadTrigger === 'true' ||
-      el.hasAttribute('data-upload-trigger') ||
-      el.closest('[data-upload-trigger]')
-    ) {
+    // 1. Explicit data attribute on the focused element itself
+    if (el.dataset?.uploadTrigger === 'true' || el.hasAttribute('data-upload-trigger')) {
       return true;
     }
 
@@ -62,21 +99,25 @@ export function initFilePickerAutoOpen() {
       if (el.querySelector('input[type="file"]')) return true;
     }
 
-    // 4. Buttons, links, or dropzones with upload text
-    const text = (
-      el.innerText ||
-      el.textContent ||
-      el.getAttribute('title') ||
-      el.getAttribute('aria-label') ||
-      ''
-    ).trim();
-
-    if (
-      /^(upload|upload\s+image|upload\s+media|upload\s+stone\s+image|choose\s+image|choose\s+media|choose\s+file|browse)$/i.test(
-        text
+    // 4. Focusable buttons / triggers with explicit file/image upload labels
+    if (el.tagName === 'BUTTON' || el.getAttribute('role') === 'button') {
+      const text = (
+        el.innerText ||
+        el.textContent ||
+        el.getAttribute('title') ||
+        el.getAttribute('aria-label') ||
+        ''
       )
-    ) {
-      return true;
+        .trim()
+        .replace(/\s+/g, ' ');
+
+      if (
+        /^(upload(\s+(file|image|media|icon|excel|stone\s+image|custom\s+image|featured\s+image|banner\s+image|theme\s+image|new\s+image|image\s*\/\s*icon|images\s*\/\s*videos))?|choose\s+(icon|image|media|file|local\s+file|custom\s+image)|browse(\s+files)?|replace\s+image|change\s+image)$/i.test(
+          text
+        )
+      ) {
+        return true;
+      }
     }
 
     return false;
@@ -90,44 +131,40 @@ export function initFilePickerAutoOpen() {
 
     // 1. Direct file input
     if (target.tagName === 'INPUT' && target.type === 'file') {
-      try {
-        if (typeof target.showPicker === 'function') {
-          target.showPicker();
-        } else {
-          target.click();
-        }
-      } catch {
-        target.click();
-      }
+      openFileInput(target);
       return;
     }
 
-    // 2. Look for associated input[type="file"] in nearby parent / container
+    // 2. Explicit target file input ID
+    if (target.dataset?.fileInputId) {
+      const byId = document.getElementById(target.dataset.fileInputId);
+      if (openFileInput(byId)) return;
+    }
+
+    // 3. Label linked via htmlFor or nested file input
+    if (target.tagName === 'LABEL') {
+      const byFor = target.htmlFor ? document.getElementById(target.htmlFor) : null;
+      const nested = target.querySelector('input[type="file"]');
+      const labelInput = (byFor && byFor.type === 'file' ? byFor : null) || nested;
+      if (openFileInput(labelInput)) return;
+    }
+
+    // 4. Clickable button/trigger with React onClick handler
+    if (typeof target.click === 'function') {
+      target.click();
+      return;
+    }
+
+    // 5. Fallback: associated input[type="file"] in nearby parent container
     let container = target.parentElement;
     for (let i = 0; i < 4 && container && container !== document.body; i++) {
       const fileInput = container.querySelector('input[type="file"]');
-      if (fileInput && !fileInput.disabled) {
-        try {
-          if (typeof fileInput.showPicker === 'function') {
-            fileInput.showPicker();
-          } else {
-            fileInput.click();
-          }
-        } catch {
-          fileInput.click();
-        }
-        return;
-      }
+      if (openFileInput(fileInput)) return;
       container = container.parentElement;
-    }
-
-    // 3. If target itself is a clickable upload button
-    if (typeof target.click === 'function') {
-      target.click();
     }
   };
 
-  // Focusin event: fires immediately when focus shifts to an element
+  // Focusin event: fires when focus shifts to an element
   document.addEventListener(
     'focusin',
     (e) => {

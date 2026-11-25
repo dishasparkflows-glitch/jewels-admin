@@ -16,6 +16,7 @@ import { getMediaUrl } from '../../utils/imageUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 
 const ORDERED_PARTS = ['hand', 'neck', 'ear'];
 
@@ -312,7 +313,8 @@ export default function VtoMastersView() {
 
                     <label
                       htmlFor={`card-upload-${key}-light`}
-                      className="group relative aspect-[3/4] sm:aspect-[4/5] min-h-[180px] sm:min-h-[220px] rounded-xl overflow-hidden bg-[#fafafa] border border-stone-200/80 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
+                      {...getUploadTriggerProps(null, { disabled: isLightUploading, fileInputId: `card-upload-${key}-light` })}
+                      className="group relative aspect-[3/4] sm:aspect-[4/5] min-h-[180px] sm:min-h-[220px] rounded-xl overflow-hidden bg-[#fafafa] border border-stone-200/80 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/40 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
                       title="Click to replace Light Tone image"
                     >
                       <input
@@ -362,7 +364,8 @@ export default function VtoMastersView() {
 
                     <label
                       htmlFor={`card-upload-${key}-dark`}
-                      className="group relative aspect-[3/4] sm:aspect-[4/5] min-h-[180px] sm:min-h-[220px] rounded-xl overflow-hidden bg-[#fafafa] border border-stone-200/80 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
+                      {...getUploadTriggerProps(null, { disabled: isDarkUploading, fileInputId: `card-upload-${key}-dark` })}
+                      className="group relative aspect-[3/4] sm:aspect-[4/5] min-h-[180px] sm:min-h-[220px] rounded-xl overflow-hidden bg-[#fafafa] border border-stone-200/80 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/40 flex items-center justify-center shadow-2xs cursor-pointer block select-none"
                       title="Click to replace Dark Tone image"
                     >
                       <input
@@ -533,7 +536,10 @@ export default function VtoMastersView() {
                       className="w-full px-3 py-1.5 text-xs border border-stone-200 rounded-lg focus:outline-hidden focus:border-[#8f6d43]"
                     />
                     <div className="flex items-center gap-2">
-                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-medium cursor-pointer transition-colors">
+                      <label
+                        {...getUploadTriggerProps(null, { disabled: uploadingLight })}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-medium cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/40"
+                      >
                         <HiOutlineUpload className="w-3.5 h-3.5" />
                         <span>Upload File</span>
                         <input
@@ -604,7 +610,10 @@ export default function VtoMastersView() {
                       className="w-full px-3 py-1.5 text-xs border border-stone-200 rounded-lg focus:outline-hidden focus:border-[#8f6d43]"
                     />
                     <div className="flex items-center gap-2">
-                      <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-medium cursor-pointer transition-colors">
+                      <label
+                        {...getUploadTriggerProps(null, { disabled: uploadingDark })}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-medium cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/40"
+                      >
                         <HiOutlineUpload className="w-3.5 h-3.5" />
                         <span>Upload File</span>
                         <input

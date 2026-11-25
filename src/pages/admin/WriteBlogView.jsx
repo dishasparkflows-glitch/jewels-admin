@@ -15,6 +15,7 @@ import RichTextEditor from '../../components/common/RichTextEditor';
 import Dropdown from '../../components/common/Dropdown';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import DatePicker from '../../components/common/DatePicker';
+import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 
 // Helper to format file size
 const formatFileSize = (bytes) => {
@@ -636,6 +637,7 @@ export default function WriteBlogView() {
                   <div className="absolute top-2.5 right-2.5">
                     <button
                       type="button"
+                      data-upload-trigger="true"
                       onClick={() => fileInputRef.current?.click()}
                       className="px-2.5 py-1 rounded-lg bg-white/90 hover:bg-white text-stone-800 text-xs font-semibold backdrop-blur-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
                     >
@@ -657,8 +659,9 @@ export default function WriteBlogView() {
               </div>
             ) : (
               <div
+                {...getUploadTriggerProps(() => fileInputRef.current?.click())}
                 onClick={() => fileInputRef.current?.click()}
-                className="rounded-xl border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] p-6 text-center cursor-pointer transition-colors bg-stone-50/50 hover:bg-stone-50 group flex flex-col items-center justify-center gap-2"
+                className="rounded-xl border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 p-6 text-center cursor-pointer transition-colors bg-stone-50/50 hover:bg-stone-50 group flex flex-col items-center justify-center gap-2"
               >
                 <div className="w-10 h-10 rounded-xl bg-white border border-stone-200 flex items-center justify-center text-stone-400 group-hover:text-[#8b6f4e] group-hover:scale-105 transition-all shadow-2xs">
                   <HiOutlinePhotograph className="w-5 h-5" />

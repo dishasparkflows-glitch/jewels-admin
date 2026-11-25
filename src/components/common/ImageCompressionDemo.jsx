@@ -415,6 +415,7 @@ export default function ImageCompressionDemo({
 
           <button
             type="button"
+            data-upload-trigger="true"
             onClick={() => fileInputRef.current?.click()}
             className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all ${
               activePreset === 'custom'

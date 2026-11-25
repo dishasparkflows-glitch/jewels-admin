@@ -38,7 +38,6 @@ export default function GalleryEditModal({
           {
             value: id,
             label: rawTheme.name ? `${rawTheme.name}${rawTheme.status ? ` (${rawTheme.status})` : ''}` : 'Assigned Theme',
-            dotColor: rawTheme.status === 'active' ? 'bg-emerald-500' : 'bg-amber-400',
           },
         ];
       }
@@ -177,7 +176,6 @@ export default function GalleryEditModal({
             <label className="block text-xs font-bold text-stone-800">Assigned Website Theme</label>
             <Dropdown
               size="field"
-              showStatusDot={true}
               value={editThemeId}
               onChange={(val) => setEditThemeId(val || '')}
               options={effectiveThemeOptions}

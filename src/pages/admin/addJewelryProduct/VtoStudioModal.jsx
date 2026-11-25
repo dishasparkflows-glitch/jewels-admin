@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom';
 import { HiOutlineUpload, HiOutlineX, HiOutlinePhotograph } from 'react-icons/hi';
 import Dropdown from '../../../components/common/Dropdown';
 import { getMediaUrl } from '../../../utils/imageUrl';
-import { VTO_ENV_OPTIONS } from './metalColorHelpers';
 import { useAddJewelryProductContext } from './AddJewelryProductContext';
+import { getUploadTriggerProps } from '../../../utils/filePickerAutoOpen';
 
 export default function VtoStudioModal() {
   const {
@@ -16,6 +16,7 @@ export default function VtoStudioModal() {
     vtoForm,
     setVtoForm,
     vtoMasters,
+    vtoEnvOptions,
     handleSaveVtoConfig,
   } = useAddJewelryProductContext();
 
@@ -66,7 +67,8 @@ export default function VtoStudioModal() {
               </label>
               <label
                 htmlFor="vto-overlay-upload"
-                className="block border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] rounded-xl p-4 text-center bg-[#fdfcfb] cursor-pointer transition-colors group"
+                {...getUploadTriggerProps(null, { fileInputId: 'vto-overlay-upload' })}
+                className="block border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 rounded-xl p-4 text-center bg-[#fdfcfb] cursor-pointer transition-colors group"
               >
                 <HiOutlineUpload className="w-5 h-5 mx-auto text-stone-400 group-hover:text-[#8b6f4e] mb-1.5" />
                 <span className="block text-[11px] font-bold uppercase tracking-wider text-stone-700">
@@ -287,10 +289,11 @@ export default function VtoStudioModal() {
                 size="sm"
                 value={vtoForm.vtoCategory}
                 onChange={(val) => setVtoForm((prev) => ({ ...prev, vtoCategory: val }))}
-                options={VTO_ENV_OPTIONS.map((opt) => ({
-                  value: opt.id,
+                options={(vtoEnvOptions || []).map((opt) => ({
+                  value: opt.value,
                   label: opt.label,
                 }))}
+                placeholder="Select Target Environment"
                 buttonClassName="h-10 px-3 text-xs rounded-xl bg-white border-stone-200 font-semibold text-stone-800"
               />
             </div>

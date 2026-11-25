@@ -11,6 +11,7 @@ import {
 import { IoColorPaletteOutline } from 'react-icons/io5';
 import ColorStatusToggle from '../../../components/common/ColorStatusToggle';
 import { useAddJewelryProductContext } from './AddJewelryProductContext';
+import { getUploadTriggerProps } from '../../../utils/filePickerAutoOpen';
 
 export default function Step4SilverMedia() {
   const {
@@ -214,10 +215,11 @@ export default function Step4SilverMedia() {
                         </div>
                       ) : (
                         <div
+                          {...getUploadTriggerProps(null, { disabled: isUploadingSwatch, fileInputId: `silver-swatch-upload-${col.name}` })}
                           onClick={() =>
                             document.getElementById(`silver-swatch-upload-${col.name}`)?.click()
                           }
-                          className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                          className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
                             isUploadingSwatch ? 'opacity-60 pointer-events-none' : ''
                           }`}
                         >
@@ -305,10 +307,11 @@ export default function Step4SilverMedia() {
                             ))}
 
                             <div
+                              {...getUploadTriggerProps(null, { fileInputId: `silver-media-upload-${col.name}` })}
                               onClick={() =>
                                 document.getElementById(`silver-media-upload-${col.name}`)?.click()
                               }
-                              className="border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors rounded-lg flex flex-col items-center justify-center text-center cursor-pointer aspect-square"
+                              className="border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors rounded-lg flex flex-col items-center justify-center text-center cursor-pointer aspect-square"
                             >
                               <HiOutlinePlus className="w-4 h-4 text-[#8b6f4e]" />
                               <span className="text-[10px] font-semibold text-stone-700 mt-0.5">
@@ -319,10 +322,11 @@ export default function Step4SilverMedia() {
                         </div>
                       ) : (
                         <div
+                          {...getUploadTriggerProps(null, { disabled: isUploadingMedia, fileInputId: `silver-media-upload-${col.name}` })}
                           onClick={() =>
                             document.getElementById(`silver-media-upload-${col.name}`)?.click()
                           }
-                          className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                          className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
                             isUploadingMedia ? 'opacity-60 pointer-events-none' : ''
                           }`}
                         >
@@ -499,10 +503,11 @@ export default function Step4SilverMedia() {
                         </div>
                       ) : (
                         <div
+                          {...getUploadTriggerProps(null, { disabled: isUploadingSwatch, fileInputId: `silver-swatch-upload-${colName}` })}
                           onClick={() =>
                             document.getElementById(`silver-swatch-upload-${colName}`)?.click()
                           }
-                          className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                          className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
                             isUploadingSwatch ? 'opacity-60 pointer-events-none' : ''
                           }`}
                         >
@@ -590,10 +595,11 @@ export default function Step4SilverMedia() {
                             ))}
 
                             <div
+                              {...getUploadTriggerProps(null, { fileInputId: `silver-media-upload-${colName}` })}
                               onClick={() =>
                                 document.getElementById(`silver-media-upload-${colName}`)?.click()
                               }
-                              className="border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors rounded-lg flex flex-col items-center justify-center text-center cursor-pointer aspect-square"
+                              className="border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 bg-[#fbf8f4] hover:bg-[#f6eee2] transition-colors rounded-lg flex flex-col items-center justify-center text-center cursor-pointer aspect-square"
                             >
                               <HiOutlinePlus className="w-4 h-4 text-[#8b6f4e]" />
                               <span className="text-[10px] font-semibold text-stone-700 mt-0.5">
@@ -604,10 +610,11 @@ export default function Step4SilverMedia() {
                         </div>
                       ) : (
                         <div
+                          {...getUploadTriggerProps(null, { disabled: isUploadingMedia, fileInputId: `silver-media-upload-${colName}` })}
                           onClick={() =>
                             document.getElementById(`silver-media-upload-${colName}`)?.click()
                           }
-                          className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
+                          className={`border-2 border-dashed border-[#dfcfbd] hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 bg-[#fbf8f4] hover:bg-[#f6eee2] transition-all rounded-xl p-4 flex flex-col items-center justify-center text-center cursor-pointer min-h-[110px] h-full group ${
                             isUploadingMedia ? 'opacity-60 pointer-events-none' : ''
                           }`}
                         >

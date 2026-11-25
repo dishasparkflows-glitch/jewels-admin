@@ -47,11 +47,18 @@ api.interceptors.response.use(
       localStorage.removeItem('token');
       localStorage.removeItem('user');
 
-      // Do NOT trigger hard redirect / reload if calling login/register or if already on login page
-      const isAuthUrl = error.config?.url?.includes('/auth/login') || error.config?.url?.includes('/auth/register');
-      const isLoginPage = window.location.pathname === '/login';
+      // Do NOT trigger hard redirect / reload if calling auth endpoints or if already on an auth page
+      const isAuthUrl =
+        error.config?.url?.includes('/auth/login') ||
+        error.config?.url?.includes('/auth/register') ||
+        error.config?.url?.includes('/auth/forgot-password') ||
+        error.config?.url?.includes('/auth/reset-password');
+      const isAuthPage =
+        window.location.pathname === '/login' ||
+        window.location.pathname === '/forgot-password' ||
+        window.location.pathname === '/reset-password';
 
-      if (!isAuthUrl && !isLoginPage) {
+      if (!isAuthUrl && !isAuthPage) {
         window.location.href = '/login';
       }
     }

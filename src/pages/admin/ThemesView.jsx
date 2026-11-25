@@ -1116,9 +1116,6 @@ export default function ThemesView() {
                             <span className="text-xs font-bold text-stone-900 truncate">
                               {t.name}
                             </span>
-                            <span className="text-[10px] font-mono text-stone-500 bg-stone-100 px-1.5 py-0.5 rounded border border-stone-200/70">
-                              {t.code}
-                            </span>
                             {isLive && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1126,23 +1123,6 @@ export default function ThemesView() {
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-stone-400 truncate mt-0.5">
-                            {t.description || 'Custom website theme with banners & sections'}
-                          </p>
-                        </div>
-
-                        {/* Color swatches */}
-                        <div className="flex items-center gap-1 shrink-0">
-                          <span
-                            className="w-3.5 h-3.5 rounded-full border border-stone-200 shadow-2xs"
-                            style={{ backgroundColor: themePrimary }}
-                            title="Primary Color"
-                          />
-                          <span
-                            className="w-3.5 h-3.5 rounded-full border border-stone-200 shadow-2xs"
-                            style={{ backgroundColor: themeSecondary }}
-                            title="Secondary Color"
-                          />
                         </div>
                       </div>
                     );
@@ -1152,9 +1132,6 @@ export default function ThemesView() {
 
               {/* Footer */}
               <div className="flex items-center justify-between px-6 py-3.5 border-t border-stone-100 bg-stone-50/70">
-                <span className="text-[11px] text-stone-500">
-                  Activates media mappings and applies storefront theme.
-                </span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"

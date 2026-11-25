@@ -831,6 +831,7 @@ export default function AddDiamonds() {
                           {/* Hover Upload Button */}
                           <button
                             type="button"
+                            data-upload-trigger="true"
                             onClick={() => rowFileInputRefs.current[v.id]?.click()}
                             disabled={uploadingRowId === v.id}
                             className="absolute inset-0 bg-black/60 rounded-lg text-white opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity cursor-pointer text-[10px]"

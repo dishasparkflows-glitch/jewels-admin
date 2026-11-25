@@ -8,7 +8,8 @@ export default function Step1BasicDetails() {
   const {
     basicDetails,
     setBasicDetails,
-    birthstoneOptions,
+    gemstoneTypeOptions,
+    gemstoneShapeOptions,
     selectedCollectionIds,
     setSelectedCollectionIds,
     categoryList,
@@ -40,8 +41,8 @@ export default function Step1BasicDetails() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5 items-start">
-        <div className="sm:col-span-2 lg:col-span-4 space-y-1.5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5 items-start">
+        <div className="sm:col-span-2 lg:col-span-3 space-y-1.5">
           <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
             Product Title <span className="text-rose-500 font-bold">*</span>
           </label>
@@ -123,26 +124,7 @@ export default function Step1BasicDetails() {
           />
         </div>
 
-        <div className="space-y-1.5">
-          <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">Birthstone</label>
-          <Dropdown
-            size="field"
-            variant="input"
-            multiple
-            value={basicDetails.birthMonth}
-            onChange={(val) =>
-              setBasicDetails((prev) => ({
-                ...prev,
-                birthMonth: Array.isArray(val) ? val : [val].filter(Boolean),
-              }))
-            }
-            placeholder="Select Birthstone"
-            options={birthstoneOptions}
-            className="w-full"
-          />
-        </div>
-
-        <div className="sm:col-span-2 lg:col-span-4 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
+        <div className="sm:col-span-2 lg:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-5">
           <div className="space-y-1.5">
             <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
               Category <span className="text-rose-500 font-bold">*</span>
@@ -215,11 +197,54 @@ export default function Step1BasicDetails() {
               className="w-full"
             />
           </div>
+
+          {/* Row 4: Gemstone Type & Gemstone Shape */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+              Gemstone Type
+            </label>
+            <Dropdown
+              size="field"
+              variant="input"
+              multiple
+              value={basicDetails.gemstoneTypes}
+              onChange={(val) =>
+                setBasicDetails((prev) => ({
+                  ...prev,
+                  gemstoneTypes: Array.isArray(val) ? val : [val].filter(Boolean),
+                }))
+              }
+              placeholder="Select Gemstone Type"
+              options={gemstoneTypeOptions}
+              className="w-full"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-bold text-stone-900 flex items-center gap-1 h-5">
+              Gemstone Shape
+            </label>
+            <Dropdown
+              size="field"
+              variant="input"
+              multiple
+              value={basicDetails.gemstoneShapes}
+              onChange={(val) =>
+                setBasicDetails((prev) => ({
+                  ...prev,
+                  gemstoneShapes: Array.isArray(val) ? val : [val].filter(Boolean),
+                }))
+              }
+              placeholder="Select Gemstone Shape"
+              options={gemstoneShapeOptions}
+              className="w-full"
+            />
+          </div>
         </div>
 
         {/* Available Sizes for Selected Category */}
         {basicDetails.category && (
-          <div className="sm:col-span-2 lg:col-span-4 space-y-2 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 shadow-2xs">
+          <div className="sm:col-span-2 lg:col-span-3 space-y-2 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 shadow-2xs">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <span className="text-sm">📏</span>
@@ -290,7 +315,7 @@ export default function Step1BasicDetails() {
           </div>
         )}
 
-        <div className="sm:col-span-2 lg:col-span-4 space-y-1.5">
+        <div className="sm:col-span-2 lg:col-span-3 space-y-1.5">
           <label className="text-xs font-bold text-stone-900">Luxury Description</label>
           <textarea
             rows={4}
@@ -304,7 +329,7 @@ export default function Step1BasicDetails() {
         </div>
 
         {/* Social Proof & Urgency (Demo Metrics) */}
-        <div className="sm:col-span-2 lg:col-span-4 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 space-y-3 shadow-2xs">
+        <div className="sm:col-span-2 lg:col-span-3 rounded-2xl border border-stone-200/90 bg-[#fdfcfb] p-4 sm:p-5 space-y-3 shadow-2xs">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-base">🔥</span>

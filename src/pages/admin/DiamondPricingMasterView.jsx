@@ -401,6 +401,7 @@ export default function DiamondPricingMasterView() {
           {/* 2. Upload Excel (Boxed in User Screenshot) */}
           <button
             type="button"
+            data-upload-trigger="true"
             onClick={handleUploadClick}
             disabled={uploadingFile}
             className="px-3.5 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer active:scale-95"

@@ -11,6 +11,8 @@ import { IoDiamondOutline } from 'react-icons/io5';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import DatePicker from '../../components/common/DatePicker';
 import { analyticsAPI, dashboardAPI } from '../../api/services';
+import { useTheme } from '../../contexts/ThemeContext';
+import { getThemeChartPalette } from '../../utils/themeUtils';
 
 const DATE_OPTIONS = [
   { value: 'today', label: 'Today' },
@@ -99,6 +101,11 @@ function getSplinePath(pts) {
 }
 
 export default function Dashboard() {
+  const { currentTheme } = useTheme();
+  const themePrimary = currentTheme?.primary || '#8b6f4e';
+  const themeChartColor = currentTheme?.accent || themePrimary;
+  const chartPalette = useMemo(() => getThemeChartPalette(currentTheme), [currentTheme]);
+
   const [counts, setCounts] = useState({});
   const [loadingCounts, setLoadingCounts] = useState(true);
   const [salesData, setSalesData] = useState(null);
@@ -342,8 +349,17 @@ export default function Dashboard() {
     };
   }, [timeline, activeMetric, usableWidth, usableHeight, chartBottom, paddingLeft]);
 
-  // Donut chart arcs calculation
-  const categorySales = salesData?.categorySales || [];
+  // Donut chart arcs calculation with theme-matched slice palette
+  const rawCategorySales = salesData?.categorySales || [];
+  const categorySales = useMemo(
+    () =>
+      rawCategorySales.map((cat, idx) => ({
+        ...cat,
+        color: chartPalette[idx % chartPalette.length],
+      })),
+    [rawCategorySales, chartPalette]
+  );
+
   const donutArcs = useMemo(() => {
     let currentAngle = 0;
     return categorySales.map((cat) => {
@@ -414,7 +430,7 @@ export default function Dashboard() {
                   onClick={() => setIsDateMenuOpen((prev) => !prev)}
                   className="flex items-center gap-2 px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition-all shadow-2xs cursor-pointer"
                 >
-                  <HiOutlineCalendar className="w-3.5 h-3.5 text-[#84562b]" />
+                  <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8b6f4e]" />
                   <span>{currentPeriodLabel}</span>
                   <HiOutlineChevronDown
                     className={`w-3.5 h-3.5 text-stone-400 transition-transform ${
@@ -435,12 +451,12 @@ export default function Dashboard() {
                         onClick={() => handleSelectPeriod(opt.value)}
                         className={`w-full text-left px-3.5 py-1.5 text-xs font-medium cursor-pointer transition-colors flex items-center justify-between ${
                           datePeriod === opt.value
-                            ? 'text-[#84562b] bg-[#fbf7f2] font-semibold'
+                            ? 'text-[#8b6f4e] bg-[#faf5ee] font-semibold'
                             : 'text-stone-700 hover:bg-stone-50'
                         }`}
                       >
                         <span>{opt.label}</span>
-                        {datePeriod === opt.value && <HiOutlineCheck className="w-3.5 h-3.5 text-[#84562b]" />}
+                        {datePeriod === opt.value && <HiOutlineCheck className="w-3.5 h-3.5 text-[#8b6f4e]" />}
                       </button>
                     ))}
 
@@ -484,7 +500,7 @@ export default function Dashboard() {
                             }
                           }}
                           disabled={!tempCustomRange.start || !tempCustomRange.end}
-                          className="w-full mt-1.5 py-1.5 rounded-lg bg-[#84562b] text-white text-xs font-semibold hover:bg-[#6e4622] transition-colors disabled:opacity-50 cursor-pointer"
+                          className="w-full mt-1.5 py-1.5 rounded-lg bg-[#8b6f4e] text-white text-xs font-semibold hover:bg-[#785e40] transition-colors disabled:opacity-50 cursor-pointer"
                         >
                           Apply Range
                         </button>
@@ -501,7 +517,7 @@ export default function Dashboard() {
                   onClick={() => setActiveMetric('revenue')}
                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 ${
                     activeMetric === 'revenue'
-                      ? 'bg-[#84562b] text-white shadow-sm'
+                      ? 'bg-[#8b6f4e] text-white shadow-sm'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
@@ -512,7 +528,7 @@ export default function Dashboard() {
                   onClick={() => setActiveMetric('orders')}
                   className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 ${
                     activeMetric === 'orders'
-                      ? 'bg-[#84562b] text-white shadow-sm'
+                      ? 'bg-[#8b6f4e] text-white shadow-sm'
                       : 'text-stone-600 hover:text-stone-900'
                   }`}
                 >
@@ -538,11 +554,11 @@ export default function Dashboard() {
                 className="w-full h-auto overflow-visible select-none"
               >
                 <defs>
-                  {/* Luxury Warm Brown Gradient Fill */}
+                  {/* Dynamic Theme Gradient Fill */}
                   <linearGradient id="salesOverviewGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#b8864e" stopOpacity="0.28" />
-                    <stop offset="60%" stopColor="#b8864e" stopOpacity="0.08" />
-                    <stop offset="100%" stopColor="#b8864e" stopOpacity="0.00" />
+                    <stop offset="0%" stopColor={themeChartColor} stopOpacity="0.28" />
+                    <stop offset="60%" stopColor={themeChartColor} stopOpacity="0.08" />
+                    <stop offset="100%" stopColor={themeChartColor} stopOpacity="0.00" />
                   </linearGradient>
                 </defs>
 
@@ -579,7 +595,7 @@ export default function Dashboard() {
                   <path
                     d={splinePath}
                     fill="none"
-                    stroke="#b38249"
+                    stroke={themePrimary}
                     strokeWidth="2.5"
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -598,7 +614,7 @@ export default function Dashboard() {
                           y1={paddingTop}
                           x2={pt.x}
                           y2={chartBottom}
-                          stroke="#b8864e"
+                          stroke={themeChartColor}
                           strokeWidth="1"
                           strokeDasharray="3 3"
                         />
@@ -619,7 +635,7 @@ export default function Dashboard() {
                         cx={pt.x}
                         cy={pt.y}
                         r={isHovered ? '5' : '3.5'}
-                        fill="#b38249"
+                        fill={themePrimary}
                         stroke="#ffffff"
                         strokeWidth={isHovered ? '2.5' : '2'}
                         className="transition-all duration-150"
@@ -652,7 +668,7 @@ export default function Dashboard() {
                 }}
               >
                 <div className="font-semibold text-stone-200">{points[hoveredPointIndex].label}</div>
-                <div className="mt-0.5 text-amber-300">
+                <div className="mt-0.5 font-semibold" style={{ color: currentTheme?.light || '#fde68a' }}>
                   {points[hoveredPointIndex].formattedRevenue}
                 </div>
                 <div className="text-[11px] text-stone-400">
@@ -762,7 +778,7 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-stone-100">
               <div className="flex items-center gap-2.5">
-                <span className="p-1.5 rounded-lg bg-amber-50 text-[#8b6f4e]">
+                <span className="p-1.5 rounded-lg bg-[#faf5ee] text-[#8b6f4e]">
                   <HiOutlineShoppingBag className="w-5 h-5" />
                 </span>
                 <h2 className="text-lg font-bold text-stone-900 tracking-tight">Top Selling Products</h2>
@@ -788,7 +804,7 @@ export default function Dashboard() {
                 {topSellingProducts.map((item, index) => (
                   <div key={item._id || index} className="py-3.5 flex items-center gap-4 first:pt-2 last:pb-1">
                     {/* Rank Circle */}
-                    <span className="w-7 h-7 rounded-full bg-[#fbf6f0] text-[#8b6f4e] font-bold text-xs flex items-center justify-center shrink-0">
+                    <span className="w-7 h-7 rounded-full bg-[#faf5ee] text-[#8b6f4e] font-bold text-xs flex items-center justify-center shrink-0">
                       {item.rank || index + 1}
                     </span>
 
@@ -831,7 +847,7 @@ export default function Dashboard() {
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-stone-100">
               <div className="flex items-center gap-2.5">
-                <span className="p-1.5 rounded-lg bg-amber-50 text-[#8b6f4e]">
+                <span className="p-1.5 rounded-lg bg-[#faf5ee] text-[#8b6f4e]">
                   <HiOutlineClipboardList className="w-5 h-5" />
                 </span>
                 <h2 className="text-lg font-bold text-stone-900 tracking-tight">Recent Orders</h2>

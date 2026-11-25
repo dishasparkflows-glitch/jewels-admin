@@ -364,7 +364,7 @@ export default function MenuItemSelect({
                                       className={`flex cursor-pointer items-start gap-2.5 rounded-lg px-2.5 py-2 text-xs transition-all border select-none ${
                                         isSelected
                                           ? 'bg-[#8b6f4e]/10 border-[#8b6f4e]/40 text-[#8b6f4e] font-semibold shadow-2xs'
-                                          : 'bg-white border-stone-200/70 text-stone-700 hover:border-[#8b6f4e]/30 hover:bg-[#faf8f5]'
+                                          : 'bg-white border-stone-200/70 text-stone-700 hover:border-[#8b6f4e]/30 hover:bg-[#faf5ee]'
                                       }`}
                                     >
                                       <input

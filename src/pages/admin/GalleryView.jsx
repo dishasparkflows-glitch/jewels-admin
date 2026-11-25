@@ -323,11 +323,10 @@ export default function GalleryView() {
   // ─── Common Dropdown Options ────────────────────────────────
   const filterThemeOptions = useMemo(() => {
     return [
-      { value: 'all', label: 'All Website Themes', dotColor: 'bg-stone-400' },
+      { value: 'all', label: 'All Website Themes' },
       ...themes.map((t) => ({
         value: String(t._id),
         label: t.isLive ? `${t.name} (Live)` : t.status ? `${t.name} (${t.status})` : t.name,
-        dotColor: t.isLive ? 'bg-emerald-500' : 'bg-stone-300',
       })),
     ];
   }, [themes]);
@@ -338,13 +337,11 @@ export default function GalleryView() {
         value: '',
         label: 'Global / Unassigned Theme',
         sublabel: 'Available across all storefront themes',
-        dotColor: 'bg-stone-300',
       },
       ...themes.map((t) => ({
         value: String(t._id),
         label: t.isLive ? `${t.name} ★ (Current Live Theme)` : t.status ? `${t.name} (${t.status})` : t.name,
         sublabel: t.isLive ? 'Current Live Storefront Theme' : t.status ? `Status: ${t.status}` : t.code || '',
-        dotColor: t.isLive ? 'bg-emerald-500' : 'bg-stone-300',
       })),
     ];
   }, [themes]);
@@ -556,7 +553,6 @@ export default function GalleryView() {
               <div className="w-48 sm:w-52">
                 <Dropdown
                   size="sm"
-                  showStatusDot={true}
                   value={selectedTheme}
                   onChange={(val) => setSelectedTheme(val || 'all')}
                   options={filterThemeOptions}

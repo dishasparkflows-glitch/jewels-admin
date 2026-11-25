@@ -20,6 +20,7 @@ import RowActions from './RowActions';
 import Modal from './Modal';
 import ToggleSwitch from './ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 
 /**
  * Standardized Visual Badge with initials fallback
@@ -605,7 +606,7 @@ export default function ConfigEntityView({
           {hasIcon && (
             <div>
               <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-                Visual Icon / Reference Image
+                Icon Image
               </label>
               <div className="flex items-center gap-3">
                 {iconUrl ? (
@@ -639,7 +640,11 @@ export default function ConfigEntityView({
                     />
                     <label
                       htmlFor="entity-icon-upload"
-                      className={`inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl cursor-pointer transition ${
+                      {...getUploadTriggerProps(() => fileInputRef.current?.click(), {
+                        disabled: isUploading,
+                        fileInputId: 'entity-icon-upload',
+                      })}
+                      className={`inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/40 ${
                         isUploading ? 'opacity-50 pointer-events-none' : ''
                       }`}
                     >

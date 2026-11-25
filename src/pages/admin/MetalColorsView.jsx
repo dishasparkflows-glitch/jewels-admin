@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   HiOutlineTrash,
   HiOutlineX,
@@ -40,6 +41,8 @@ function MetalSwatch({ startColor = '#F9E498', endColor = '#B38B34', className =
 
 export default function MetalColorsView() {
   const confirm = useConfirm();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [colors, setColors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -141,6 +144,14 @@ export default function MetalColorsView() {
     setEndColor('#B38B34');
     setIsModalOpen(true);
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'add' || location.state?.openAdd) {
+      handleOpenAdd();
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.search, location.state, navigate, location.pathname]);
 
   // Open modal to edit existing color
   const handleOpenEdit = (c) => {

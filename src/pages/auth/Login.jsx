@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -95,9 +95,12 @@ const Login = () => {
               <input type="checkbox" className="rounded border-stone-300 text-[#8b6f4e] focus:ring-0" />
               <span>Remember me</span>
             </label>
-            <span className="text-[#8b6f4e] hover:underline cursor-pointer text-xs font-medium">
+            <Link
+              to="/forgot-password"
+              className="text-[#8b6f4e] hover:underline cursor-pointer text-xs font-medium"
+            >
               Forgot password?
-            </span>
+            </Link>
           </div>
 
           <button

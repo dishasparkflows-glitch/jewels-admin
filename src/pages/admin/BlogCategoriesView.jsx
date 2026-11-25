@@ -457,23 +457,14 @@ export default function BlogCategoriesView() {
                       {category.description || <span className="text-stone-300 italic">No description</span>}
                     </td>
                     <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        type="button"
-                        onClick={() => handleToggleStatus(category)}
-                        title="Click to toggle status"
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold cursor-pointer transition-colors ${
-                          category.status === 'active'
-                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            : 'bg-stone-100 text-stone-500 border border-stone-200'
-                        }`}
-                      >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            category.status === 'active' ? 'bg-emerald-500' : 'bg-stone-400'
-                          }`}
+                      <div className="flex items-center justify-center">
+                        <ToggleSwitch
+                          checked={category.status === 'active'}
+                          onChange={() => handleToggleStatus(category)}
+                          size="sm"
+                          ariaLabel={`Set ${category.name} ${category.status === 'active' ? 'Inactive' : 'Active'}`}
                         />
-                        <span className="capitalize">{category.status}</span>
-                      </button>
+                      </div>
                     </td>
                     <td className="py-3.5 px-4 text-center text-xs font-mono text-stone-600">
                       {category.order ?? 0}

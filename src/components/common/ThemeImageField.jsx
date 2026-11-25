@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Dropdown from './Dropdown';
 import { formatBytes, uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 
 // Both the module forms and theme editor use this same record/slot mapping.
 export default function ThemeImageField({ module, recordId, slots, children, themeId: fixedThemeId, selectedThemeId, onThemeChange, onPendingChange, onSaved }) {
@@ -77,7 +78,10 @@ export default function ThemeImageField({ module, recordId, slots, children, the
           {slots.length > 1 && <p className="text-xs font-semibold text-stone-700">{slot.label}</p>}
           {url && <img src={url} alt={slot.label} onError={(e) => { e.currentTarget.style.display = 'none'; }} className="h-28 w-full rounded-lg object-contain bg-white" />}
           <div className="flex items-center gap-3">
-            <label className={`rounded-lg bg-[#8b6f4e] px-3 py-2 text-xs text-white ${busy || !canEditThemeImages ? 'opacity-50' : 'cursor-pointer'}`}>
+            <label
+              {...getUploadTriggerProps(null, { disabled: busy || !canEditThemeImages })}
+              className={`rounded-lg bg-[#8b6f4e] px-3 py-2 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/40 ${busy || !canEditThemeImages ? 'opacity-50' : 'cursor-pointer'}`}
+            >
               {busy ? 'Uploading…' : url ? 'Change theme image' : 'Upload theme image'}
               <input type="file" accept="image/*" className="hidden" disabled={busy || !canEditThemeImages} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ''; if (file) save(slot.key, file); }} />
             </label>

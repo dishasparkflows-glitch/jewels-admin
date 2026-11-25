@@ -810,6 +810,7 @@ export default function BirthstonePortfolioView() {
                     />
                     <button
                       type="button"
+                      data-upload-trigger="true"
                       disabled={uploadingImage}
                       onClick={() => fileInputRef.current?.click()}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-lg transition-colors cursor-pointer"

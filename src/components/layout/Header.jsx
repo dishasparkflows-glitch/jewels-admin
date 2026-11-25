@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import AdminMenuSearch from './AdminMenuSearch';
 import {
   HiOutlineBell,
   HiOutlineMenu,
@@ -117,6 +118,9 @@ const Header = ({ onMobileToggle }) => {
           <span>{sidebarPosition === 'left' ? 'Sidebar: Left' : 'Sidebar: Right'}</span>
         </button>
       </div>
+
+      {/* Menu Quick Search & Redirect */}
+      <AdminMenuSearch />
 
       {/* Spacer */}
       <div className="flex-1" />

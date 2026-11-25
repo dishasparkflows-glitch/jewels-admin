@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 import {
   HiOutlineChevronRight,
   HiOutlineUpload,
@@ -927,7 +928,6 @@ export default function SettingsView() {
                         busy: uploadingLogo,
                         type: 'desktop',
                         desc: 'Main brand logo displayed on desktop headers.',
-                        format: 'PNG, JPG, WebP or SVG',
                       },
                       {
                         label: 'Mobile logo (optional)',
@@ -936,7 +936,6 @@ export default function SettingsView() {
                         busy: uploadingMobileLogo,
                         type: 'mobile',
                         desc: 'Optimized emblem for smaller mobile screens.',
-                        format: 'PNG, JPG, WebP or SVG',
                       },
                       {
                         label: 'Login / Sign In Banner',
@@ -945,10 +944,9 @@ export default function SettingsView() {
                         busy: uploadingLoginModalImage,
                         type: 'loginModal',
                         desc: 'Visual image shown on login & register modal popups.',
-                        format: 'PNG, JPG, WebP (Portrait recommended)',
                         removable: true,
                       },
-                    ].map(({ label, field, inputRef, busy, type, desc, format, removable }) => (
+                    ].map(({ label, field, inputRef, busy, type, desc, removable }) => (
                       <div key={field} className="rounded-xl border border-stone-200 bg-[#fbfaf8] p-4 flex flex-col justify-between">
                         <div>
                           <div className="flex items-center justify-between">
@@ -975,6 +973,7 @@ export default function SettingsView() {
                         />
                         <button
                           type="button"
+                          data-upload-trigger="true"
                           onClick={() => inputRef.current?.click()}
                           disabled={busy}
                           className="mt-3 min-h-28 w-full flex flex-col items-center justify-center rounded-xl border border-dashed border-[#d8c8b2] bg-white p-3 hover:border-[#8f6d43] hover:bg-[#faf5ee] disabled:opacity-60 transition-all focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 overflow-hidden relative group"
@@ -1008,9 +1007,11 @@ export default function SettingsView() {
                             </div>
                           )}
                         </button>
-                        <p className="mt-2 text-center text-[10px] text-stone-400">
-                          {busy ? 'Saving…' : format}
-                        </p>
+                        {busy && (
+                          <p className="mt-2 text-center text-[10px] text-stone-400 animate-pulse">
+                            Saving…
+                          </p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1297,8 +1298,9 @@ export default function SettingsView() {
                       className="hidden"
                     />
                     <div
+                      {...getUploadTriggerProps(() => fileInputRef.current?.click())}
                       onClick={() => fileInputRef.current?.click()}
-                      className="h-16 rounded-xl border border-dashed border-stone-300 hover:border-[#8f6d43] hover:bg-[#faf5ee] bg-[#fafaf8] flex items-center justify-center p-3 cursor-pointer transition-all"
+                      className="h-16 rounded-xl border border-dashed border-stone-300 hover:border-[#8f6d43] focus:outline-none focus:border-[#8f6d43] focus:ring-2 focus:ring-[#8f6d43]/25 hover:bg-[#faf5ee] bg-[#fafaf8] flex items-center justify-center p-3 cursor-pointer transition-all"
                     >
                       {businessForm.certificateImageUrl ? (
                         <div className="flex items-center gap-3">
@@ -2126,7 +2128,6 @@ export default function SettingsView() {
                         placeholder: 'https://www.instagram.com/neirah.officials',
                         icon: FaInstagram,
                         color: 'text-pink-600 bg-pink-50 border-pink-200',
-                        hint: 'Instagram brand profile or feed page',
                       },
                       {
                         key: 'facebook',
@@ -2134,7 +2135,6 @@ export default function SettingsView() {
                         placeholder: 'https://www.facebook.com/yourbrand',
                         icon: FaFacebookF,
                         color: 'text-blue-600 bg-blue-50 border-blue-200',
-                        hint: 'Official Facebook page or community link',
                       },
                       {
                         key: 'youtube',
@@ -2142,7 +2142,6 @@ export default function SettingsView() {
                         placeholder: 'https://www.youtube.com/@yourbrand',
                         icon: FaYoutube,
                         color: 'text-red-600 bg-red-50 border-red-200',
-                        hint: 'Brand YouTube channel or video gallery',
                       },
                       {
                         key: 'pinterest',
@@ -2150,7 +2149,6 @@ export default function SettingsView() {
                         placeholder: 'https://www.pinterest.com/yourbrand',
                         icon: FaPinterestP,
                         color: 'text-rose-700 bg-rose-50 border-rose-200',
-                        hint: 'Pinterest moodboard or jewellery catalogue',
                       },
                       {
                         key: 'twitter',
@@ -2158,7 +2156,6 @@ export default function SettingsView() {
                         placeholder: 'https://x.com/yourbrand',
                         icon: FaXTwitter,
                         color: 'text-stone-900 bg-stone-100 border-stone-300',
-                        hint: 'Official X/Twitter feed handle',
                       },
                       {
                         key: 'linkedin',
@@ -2166,7 +2163,6 @@ export default function SettingsView() {
                         placeholder: 'https://www.linkedin.com/company/yourbrand',
                         icon: FaLinkedinIn,
                         color: 'text-sky-700 bg-sky-50 border-sky-200',
-                        hint: 'Company LinkedIn page',
                       },
                       {
                         key: 'whatsapp',
@@ -2174,7 +2170,6 @@ export default function SettingsView() {
                         placeholder: 'https://wa.me/919726237723?text=Hi%20Neirah%20Jewels',
                         icon: FaWhatsapp,
                         color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
-                        hint: 'WhatsApp wa.me direct chat or contact link',
                       },
                     ].map((platform) => {
                       const IconComp = platform.icon;
@@ -2214,7 +2209,6 @@ export default function SettingsView() {
                             placeholder={platform.placeholder}
                             className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e]"
                           />
-                          <p className="mt-1 text-[10px] text-stone-400">{platform.hint}</p>
                         </div>
                       );
                     })}

@@ -117,7 +117,7 @@ export default function ProductPickerModal({
           const key = String(item._id || item.id);
           if (next.has(key)) {
             const existing = next.get(key);
-            if (!existing.title || !existing.thumbnail) {
+            if (!existing.title || !existing.thumbnail || !existing.productType || existing.isOrnate === undefined) {
               next.set(key, { ...existing, ...item });
               updated = true;
             }
@@ -183,11 +183,37 @@ export default function ProductPickerModal({
     }
   };
 
+  const getProductTabType = useCallback((prod) => {
+    if (!prod || typeof prod !== 'object') return '';
+    if (
+      prod.isOrnate === true ||
+      (prod.ornate && (prod.ornate.tagNo || prod.ornate.itemCode || prod.ornate.barcode))
+    ) {
+      return 'ornate';
+    }
+    const type = String(prod.productType || prod.type || '').toLowerCase();
+    if (type === 'gold') return 'gold';
+    if (type === 'silver') return 'silver';
+    if (type === 'ornate') return 'ornate';
+    return '';
+  }, []);
+
+  const tabSelectedCounts = useMemo(() => {
+    const counts = { gold: 0, silver: 0, ornate: 0, all: tempSelectedMap.size };
+    tempSelectedMap.forEach((prod) => {
+      const tabType = getProductTabType(prod);
+      if (tabType && counts[tabType] !== undefined) {
+        counts[tabType] += 1;
+      }
+    });
+    return counts;
+  }, [tempSelectedMap, getProductTabType]);
+
   const getProductBadgeLabel = (prod) => {
-    const type = (prod.productType || prod.type || '').toLowerCase();
-    if (type === 'gold') return 'GOLD';
-    if (type === 'silver') return 'SILVER';
-    if (type === 'ornate') return 'ORNATE';
+    const tabType = getProductTabType(prod);
+    if (tabType === 'gold') return 'GOLD';
+    if (tabType === 'silver') return 'SILVER';
+    if (tabType === 'ornate') return 'ORNATE';
     return (prod.category?.name || 'JEWELRY').toUpperCase();
   };
 
@@ -235,6 +261,7 @@ export default function ProductPickerModal({
             {PRODUCT_PICKER_TABS.map((tab) => {
               const Icon = tab.icon;
               const isActive = pickerTab === tab.id;
+              const count = tabSelectedCounts[tab.id] || 0;
               return (
                 <button
                   key={tab.id}
@@ -255,6 +282,17 @@ export default function ProductPickerModal({
                     style={{ color: isActive ? '#ffffff' : 'var(--theme-primary, #8b6f4e)' }}
                   />
                   <span>{tab.label}</span>
+                  <span
+                    className={`ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full text-[10px] font-bold leading-none ${
+                      isActive
+                        ? 'bg-white/25 text-white'
+                        : count > 0
+                        ? 'bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d8c0]'
+                        : 'bg-stone-100 text-stone-400'
+                    }`}
+                  >
+                    {count}
+                  </span>
                 </button>
               );
             })}

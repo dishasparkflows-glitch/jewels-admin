@@ -50,10 +50,3 @@ export const getSphereStyle = (color = '') => {
     shadow: '0 1px 3px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,0.4)',
   };
 };
-
-export const VTO_ENV_OPTIONS = [
-  { id: 'neck', value: 'neck', label: 'Neck View (Necklaces & Pendants)' },
-  { id: 'hand', value: 'hand', label: 'Hand View (Rings)' },
-  { id: 'ear', value: 'ear', label: 'Ear View (Earrings)' },
-  { id: 'wrist', value: 'wrist', label: 'Wrist View (Bracelets & Bangles)' },
-];

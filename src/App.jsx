@@ -10,6 +10,8 @@ import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminLayout from './components/layout/AdminLayout';
 // Lazy-loaded Admin Page Views for dynamic code-splitting & fast build
 const Login = lazy(() => import('./pages/auth/Login'));
+const ForgotPassword = lazy(() => import('./pages/auth/ForgotPassword'));
+const ResetPassword = lazy(() => import('./pages/auth/ResetPassword'));
 const Dashboard = lazy(() => import('./pages/admin/Dashboard'));
 const OrdersView = lazy(() => import('./pages/admin/OrdersView'));
 const CodSequencesView = lazy(() => import('./pages/admin/CodSequencesView'));
@@ -114,8 +116,10 @@ function App() {
 
         <Suspense fallback={<CuteLoader text="Loading luxury portal..." />}>
         <Routes>
-          {/* Public Login Route */}
+          {/* Public Login & Password Recovery Routes */}
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Protected Luxury Portal Layout */}
           <Route

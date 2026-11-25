@@ -186,7 +186,6 @@ export default function GalleryMediaPickerModal({
         value: '',
         label: 'Global / Unassigned Theme',
         sublabel: 'Available across all storefront themes',
-        dotColor: 'bg-stone-300',
       },
       ...activeThemes.map((t) => ({
         value: String(t._id),
@@ -200,7 +199,6 @@ export default function GalleryMediaPickerModal({
           : t.status
           ? `Status: ${t.status}`
           : t.code || '',
-        dotColor: t.isLive || t.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300',
       })),
     ];
   }, [activeThemes]);

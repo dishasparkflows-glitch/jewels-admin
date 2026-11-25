@@ -1516,6 +1516,7 @@ export default function NavigationMenusView() {
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
+                              data-upload-trigger="true"
                               disabled={isUploadingItemIcon}
                               onClick={() => itemFileInputRef.current?.click()}
                               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer disabled:opacity-50"
@@ -1765,6 +1766,7 @@ export default function NavigationMenusView() {
                           />
                           <button
                             type="button"
+                            data-upload-trigger="true"
                             disabled={isUploadingBanner}
                             onClick={() => bannerFileInputRef.current?.click()}
                             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-semibold shadow-2xs transition-colors cursor-pointer disabled:opacity-50"

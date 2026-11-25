@@ -14,6 +14,7 @@ import {
 import { IoSparklesOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import Dropdown from '../common/Dropdown';
+import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 import {
   formatBytes,
   uploadFilesWithPresignedUrls,
@@ -557,7 +558,6 @@ export default function GalleryUploadModal({
                   </div>
                   <Dropdown
                     size="field"
-                    showStatusDot={true}
                     value={uploadThemeId}
                     onChange={(val) => setUploadThemeId(val || '')}
                     options={modalThemeOptions}
@@ -864,6 +864,7 @@ export default function GalleryUploadModal({
 
                 {selectedFiles.length === 0 ? (
                   <div
+                    {...getUploadTriggerProps(() => fileInputRef.current?.click())}
                     onClick={() => fileInputRef.current?.click()}
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -881,7 +882,7 @@ export default function GalleryUploadModal({
                       setIsDragging(false);
                       addFiles(e.dataTransfer.files);
                     }}
-                    className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all min-h-[320px] ${
+                    className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all min-h-[320px] focus:outline-none focus:border-[#8b6c3a] focus:ring-2 focus:ring-[#8b6c3a]/25 ${
                       isDragging
                         ? 'border-[#8b6c3a] bg-[#faf5ee] scale-[0.99]'
                         : 'border-stone-300 bg-stone-50/70 hover:border-[#8b6c3a] hover:bg-stone-50'

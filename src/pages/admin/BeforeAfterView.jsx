@@ -23,6 +23,7 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
+import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
@@ -863,7 +864,10 @@ export default function BeforeAfterView() {
                         alt="Before Preview"
                         className="max-h-full max-w-full object-contain"
                       />
-                      <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-all gap-1.5 font-semibold text-xs">
+                      <label
+                        {...getUploadTriggerProps(() => beforeFileRef.current?.click(), { disabled: uploadingBefore })}
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 focus:opacity-100 flex items-center justify-center text-white cursor-pointer transition-all gap-1.5 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]"
+                      >
                         <HiOutlineUpload className="w-4 h-4" />
                         <span>{uploadingBefore ? 'Replacing Image...' : 'Replace Image'}</span>
                         <input
@@ -889,7 +893,10 @@ export default function BeforeAfterView() {
                       </button>
                     </div>
                   ) : (
-                    <label className="h-44 rounded-xl bg-stone-50/70 border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] flex flex-col items-center justify-center text-stone-400 hover:text-[#8b6f4e] cursor-pointer transition-all shadow-inner group">
+                    <label
+                      {...getUploadTriggerProps(() => beforeFileRef.current?.click(), { disabled: uploadingBefore })}
+                      className="h-44 rounded-xl bg-stone-50/70 border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 focus:outline-none flex flex-col items-center justify-center text-stone-400 hover:text-[#8b6f4e] cursor-pointer transition-all shadow-inner group"
+                    >
                       <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform mb-2 border border-stone-200">
                         <HiOutlinePlus className="w-4 h-4 text-[#8b6f4e]" />
                       </div>
@@ -921,7 +928,10 @@ export default function BeforeAfterView() {
                         alt="After Preview"
                         className="max-h-full max-w-full object-contain"
                       />
-                      <label className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white cursor-pointer transition-all gap-1.5 font-semibold text-xs">
+                      <label
+                        {...getUploadTriggerProps(() => afterFileRef.current?.click(), { disabled: uploadingAfter })}
+                        className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 focus:opacity-100 flex items-center justify-center text-white cursor-pointer transition-all gap-1.5 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]"
+                      >
                         <HiOutlineUpload className="w-4 h-4" />
                         <span>{uploadingAfter ? 'Replacing Image...' : 'Replace Image'}</span>
                         <input
@@ -947,7 +957,10 @@ export default function BeforeAfterView() {
                       </button>
                     </div>
                   ) : (
-                    <label className="h-44 rounded-xl bg-stone-50/70 border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] flex flex-col items-center justify-center text-stone-400 hover:text-[#8b6f4e] cursor-pointer transition-all shadow-inner group">
+                    <label
+                      {...getUploadTriggerProps(() => afterFileRef.current?.click(), { disabled: uploadingAfter })}
+                      className="h-44 rounded-xl bg-stone-50/70 border-2 border-dashed border-stone-200 hover:border-[#8b6f4e] focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 focus:outline-none flex flex-col items-center justify-center text-stone-400 hover:text-[#8b6f4e] cursor-pointer transition-all shadow-inner group"
+                    >
                       <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-xs group-hover:scale-110 transition-transform mb-2 border border-stone-200">
                         <HiOutlinePlus className="w-4 h-4 text-[#8b6f4e]" />
                       </div>

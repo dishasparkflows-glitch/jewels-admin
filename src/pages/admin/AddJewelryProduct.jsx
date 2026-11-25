@@ -26,7 +26,7 @@ import { getMediaUrl } from '../../utils/imageUrl';
 import { openProductPreview } from '../../utils/productPreview';
 import ProductStepFooter from '../../components/common/ProductStepFooter';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
-import { metalColorsAPI } from '../../api/services';
+import { metalColorsAPI, vtoMastersAPI } from '../../api/services';
 import {
   HiOutlineArrowRight,
   HiOutlineArrowLeft,
@@ -69,7 +69,6 @@ import {
   _metalColorsMasterMap,
   registerMetalColors,
   getSphereStyle,
-  VTO_ENV_OPTIONS,
 } from './addJewelryProduct/metalColorHelpers';
 
 // Subcomponents for cleaner modular architecture
@@ -88,7 +87,6 @@ export {
   _metalColorsMasterMap,
   registerMetalColors,
   getSphereStyle,
-  VTO_ENV_OPTIONS,
 };
 
 const formatMediaSize = (bytes = 0) => {
@@ -502,30 +500,40 @@ export default function AddJewelryProduct() {
   }, [productId, navigate, productListPath, isSilverProduct]);
 
   // ─── Step 1: Basic Details ──────────────────────────────
-  const [birthstoneOptions, setBirthstoneOptions] = useState([]);
+  const [gemstoneTypeOptions, setGemstoneTypeOptions] = useState([]);
+  const [gemstoneShapeOptions, setGemstoneShapeOptions] = useState([]);
 
   useEffect(() => {
     let isMounted = true;
-    api
-      .get('/birthstones/lookup')
-      .then((res) => {
-        if (!isMounted) return;
-        const items = Array.isArray(res.data?.data)
-          ? res.data.data
-          : res.data?.data?.items || [];
-        if (Array.isArray(items) && items.length > 0) {
-          setBirthstoneOptions(
-            items.map((item) => ({
-              value: item.month,
-              label: item.month,
-              image: item.imageUrl || item.image?.url || '',
-            }))
-          );
-        }
-      })
-      .catch((err) => {
-        console.warn('Failed to load birthstones lookup:', err);
-      });
+    Promise.all([
+      api.get('/gemstone-types/lookup').catch(() => ({ data: { data: [] } })),
+      api.get('/gemstone-shapes/lookup').catch(() => ({ data: { data: [] } })),
+    ]).then(([typesRes, shapesRes]) => {
+      if (!isMounted) return;
+      const types = Array.isArray(typesRes.data?.data)
+        ? typesRes.data.data
+        : typesRes.data?.data?.items || [];
+      const shapes = Array.isArray(shapesRes.data?.data)
+        ? shapesRes.data.data
+        : shapesRes.data?.data?.items || [];
+
+      setGemstoneTypeOptions(
+        types.map((item) => ({
+          value: item._id,
+          label: item.name,
+          image: item.image?.url || item.swatchImage?.url,
+          color: item.colorCode,
+        }))
+      );
+
+      setGemstoneShapeOptions(
+        shapes.map((item) => ({
+          value: item._id,
+          label: item.name,
+          image: item.image?.url,
+        }))
+      );
+    });
     return () => {
       isMounted = false;
     };
@@ -537,7 +545,8 @@ export default function AddJewelryProduct() {
     category: '',
     promoBanner: [],
     gender: [],
-    birthMonth: [],
+    gemstoneTypes: [],
+    gemstoneShapes: [],
     description: '',
     isOrnate: false,
     soldCount: '',
@@ -585,11 +594,17 @@ export default function AddJewelryProduct() {
           return matched || g;
         }).filter(Boolean);
       })(),
-      birthMonth: (() => {
-        const rawBirth = productRecord.birthMonth ?? basicInfo.birthMonth ?? [];
-        return Array.isArray(rawBirth)
-          ? rawBirth.map(String).filter(Boolean)
-          : (rawBirth ? [String(rawBirth)] : []);
+      gemstoneTypes: (() => {
+        const raw = productRecord.gemstoneTypeIds ?? (productRecord.gemstoneTypeId ? [productRecord.gemstoneTypeId] : (basicInfo.gemstoneTypes ?? []));
+        return Array.isArray(raw)
+          ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
+          : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
+      })(),
+      gemstoneShapes: (() => {
+        const raw = productRecord.gemstoneShapeIds ?? (productRecord.gemstoneShapeId ? [productRecord.gemstoneShapeId] : (basicInfo.gemstoneShapes ?? []));
+        return Array.isArray(raw)
+          ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
+          : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
       })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
@@ -1440,9 +1455,22 @@ export default function AddJewelryProduct() {
     skinTone: 'light',
   });
 
-  // VTO Master Global Environments fetched from backend API (lazily loaded ONLY when in Product Media step)
+  // VTO Master Global Environments fetched from /vto-masters/lookup API
   const [vtoMasters, setVtoMasters] = useState({});
+  const [vtoEnvOptions, setVtoEnvOptions] = useState([]);
   const vtoMastersFetchedRef = useRef(false);
+
+  const formatVtoEnvLabel = (master) => {
+    if (master?.label) return master.label;
+    const part = String(master?.bodyPart || master?.partKey || '').toLowerCase().trim();
+    const labelMap = {
+      neck: 'Neck View (Necklaces & Pendants)',
+      hand: 'Hand View (Rings)',
+      ear: 'Ear View (Earrings)',
+      wrist: 'Wrist View (Bracelets & Bangles)',
+    };
+    return labelMap[part] || (part ? `${part.charAt(0).toUpperCase()}${part.slice(1)} View` : '');
+  };
 
   useEffect(() => {
     // Call /vto-masters/lookup API when user enters Step 3 (Product Media) or opens VTO Studio
@@ -1451,20 +1479,27 @@ export default function AddJewelryProduct() {
     const fetchVtoMasters = async () => {
       try {
         vtoMastersFetchedRef.current = true;
-        const res = await api.get('/vto-masters/lookup');
+        const res = await vtoMastersAPI.getLookup();
         const items = res.data?.data?.items || res.data?.data || [];
         if (Array.isArray(items)) {
           const map = {};
+          const opts = [];
           items.forEach((m) => {
-            const key = m.bodyPart || m.partKey;
+            const key = String(m.bodyPart || m.partKey || '').toLowerCase().trim();
             if (key) {
               map[key] = {
                 light: getMediaUrl(m.lightImage?.url),
                 dark: getMediaUrl(m.darkImage?.url),
               };
+              opts.push({
+                id: m._id || key,
+                value: key,
+                label: formatVtoEnvLabel(m),
+              });
             }
           });
           setVtoMasters(map);
+          setVtoEnvOptions(opts);
         }
       } catch (err) {
         vtoMastersFetchedRef.current = false;
@@ -2110,7 +2145,7 @@ export default function AddJewelryProduct() {
     setVtoEditingColor(colorName);
     const cfg = vtoConfigs[colorName] || {};
     setVtoForm({
-      vtoCategory: cfg.vtoCategory || 'neck',
+      vtoCategory: cfg.vtoCategory || vtoEnvOptions[0]?.value || 'neck',
       top: cfg.top ?? 50.0,
       left: cfg.left ?? 58.5,
       scale: cfg.scale ?? 100.0,
@@ -2691,11 +2726,17 @@ export default function AddJewelryProduct() {
           return matched || g;
         }).filter(Boolean);
       })(),
-      birthMonth: (() => {
-        const rawBirth = productRecord.birthMonth ?? basicInfo.birthMonth ?? [];
-        return Array.isArray(rawBirth)
-          ? rawBirth.map(String).filter(Boolean)
-          : (rawBirth ? [String(rawBirth)] : []);
+      gemstoneTypes: (() => {
+        const raw = productRecord.gemstoneTypeIds ?? (productRecord.gemstoneTypeId ? [productRecord.gemstoneTypeId] : (basicInfo.gemstoneTypes ?? []));
+        return Array.isArray(raw)
+          ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
+          : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
+      })(),
+      gemstoneShapes: (() => {
+        const raw = productRecord.gemstoneShapeIds ?? (productRecord.gemstoneShapeId ? [productRecord.gemstoneShapeId] : (basicInfo.gemstoneShapes ?? []));
+        return Array.isArray(raw)
+          ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
+          : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
       })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
@@ -3387,9 +3428,12 @@ export default function AddJewelryProduct() {
         const promoArr = Array.isArray(basicDetails.promoBanner)
           ? basicDetails.promoBanner.filter(Boolean)
           : (basicDetails.promoBanner ? [basicDetails.promoBanner] : []);
-        const birthMonthArr = Array.isArray(basicDetails.birthMonth)
-          ? basicDetails.birthMonth.filter(Boolean)
-          : (basicDetails.birthMonth ? [basicDetails.birthMonth] : []);
+        const gtArr = Array.isArray(basicDetails.gemstoneTypes)
+          ? basicDetails.gemstoneTypes.map((v) => (typeof v === 'object' && v ? v._id || v.value : v)).filter(Boolean)
+          : (basicDetails.gemstoneTypes ? [basicDetails.gemstoneTypes] : []);
+        const gsArr = Array.isArray(basicDetails.gemstoneShapes)
+          ? basicDetails.gemstoneShapes.map((v) => (typeof v === 'object' && v ? v._id || v.value : v)).filter(Boolean)
+          : (basicDetails.gemstoneShapes ? [basicDetails.gemstoneShapes] : []);
         const payload = {
         ...(!productId ? { _id: draftProductId } : {}),
         productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
@@ -3398,7 +3442,10 @@ export default function AddJewelryProduct() {
           app: Boolean(basicDetails.showInApp),
           web: Boolean(basicDetails.showOnWeb),
         },
-        birthMonth: birthMonthArr,
+        gemstoneTypeIds: gtArr,
+        gemstoneTypeId: gtArr[0] || null,
+        gemstoneShapeIds: gsArr,
+        gemstoneShapeId: gsArr[0] || null,
         demoMetrics: {
           soldCount:
             basicDetails.soldCount !== '' && basicDetails.soldCount !== undefined && basicDetails.soldCount !== null
@@ -3418,7 +3465,8 @@ export default function AddJewelryProduct() {
           description: activeDesc,
           gender: genderArr,
           promoBanner: promoArr,
-          birthMonth: birthMonthArr,
+          gemstoneTypes: gtArr,
+          gemstoneShapes: gsArr,
         }),
         status: statusOverride === 'preserve'
           ? (productRecord?.status || seo.status || (productId ? 'approved' : 'draft'))
@@ -3604,7 +3652,8 @@ export default function AddJewelryProduct() {
     activeStepIndex,
 
     // Step 1: Basic Details
-    birthstoneOptions,
+    gemstoneTypeOptions,
+    gemstoneShapeOptions,
     selectedCollectionIds,
     setSelectedCollectionIds,
     categoryList,
@@ -3767,6 +3816,7 @@ export default function AddJewelryProduct() {
     vtoForm,
     setVtoForm,
     vtoMasters,
+    vtoEnvOptions,
     handleSaveVtoConfig,
 
     // Step 5: Care & Specs

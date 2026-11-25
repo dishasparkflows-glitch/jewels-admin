@@ -23,6 +23,7 @@ import RowActions, { StatusActionButton } from '../../components/common/RowActio
 import Dropdown from '../../components/common/Dropdown';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { openProductPreview } from '../../utils/productPreview';
+import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 
 const REVIEW_STATUS_OPTIONS = [
   { value: 'approved', label: 'Approved' },
@@ -911,8 +912,9 @@ export default function ReviewsView() {
                   </div>
                 ) : (
                   <div
+                    {...getUploadTriggerProps(() => fileInputRef.current?.click())}
                     onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-[#d6cfc2] hover:border-[#8b6f4e] rounded-xl p-3.5 text-center cursor-pointer transition-colors bg-stone-50/40 hover:bg-[#faf7f2] flex flex-col items-center justify-center gap-1 group"
+                    className="border-2 border-dashed border-[#d6cfc2] hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 rounded-xl p-3.5 text-center cursor-pointer transition-colors bg-stone-50/40 hover:bg-[#faf7f2] flex flex-col items-center justify-center gap-1 group"
                   >
                     <div className="w-8 h-8 rounded-full bg-white border border-stone-200 group-hover:border-[#8b6f4e]/40 flex items-center justify-center text-stone-400 group-hover:text-[#8b6f4e] transition-colors shadow-2xs">
                       <HiOutlinePhotograph className="w-4 h-4" />

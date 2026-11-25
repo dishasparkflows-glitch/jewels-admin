@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   HiOutlinePhotograph,
   HiOutlineCheck,
@@ -19,6 +20,7 @@ import AddMetalColorModal from './AddMetalColorModal';
 import VtoStudioModal from './VtoStudioModal';
 import CompressionHubModal from './CompressionHubModal';
 import { useAddJewelryProductContext } from './AddJewelryProductContext';
+import { getUploadTriggerProps } from '../../../utils/filePickerAutoOpen';
 
 export default function Step4GoldMedia() {
   const {
@@ -132,14 +134,13 @@ export default function Step4GoldMedia() {
               </div>
 
               {/* Add Metal Color Button */}
-              <button
-                type="button"
-                onClick={() => setIsAddColorModalOpen(true)}
+              <Link
+                to="/metal-color?action=add"
                 className="w-full py-2.5 px-3 rounded-xl border border-dashed border-stone-300 hover:border-[#8b6f4e] bg-stone-50/50 hover:bg-[#faf7f2]/40 text-stone-700 hover:text-[#8b6f4e] font-semibold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
               >
                 <HiOutlinePlus className="w-4 h-4" />
                 <span>Add Metal Color</span>
-              </button>
+              </Link>
             </>
           )}
         </div>
@@ -159,20 +160,9 @@ export default function Step4GoldMedia() {
                 />
               )}
               <div>
-                <div className="flex items-center gap-2">
-                  <h4 className="text-sm font-bold text-stone-900">
-                    {isSilverProduct ? 'Silver Product' : activeMediaColor}
-                  </h4>
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                      !isSilverProduct && colorStatuses[activeMediaColor] === 'inactive'
-                        ? 'bg-stone-100 text-stone-500 border-stone-200'
-                        : 'bg-[#e8f7ee] text-[#1b7a43] border-[#c4ebd1]/80'
-                    }`}
-                  >
-                    {isSilverProduct ? 'Media' : colorStatuses[activeMediaColor] === 'inactive' ? 'Inactive' : 'Active'}
-                  </span>
-                </div>
+                <h4 className="text-sm font-bold text-stone-900">
+                  {isSilverProduct ? 'Silver Product' : activeMediaColor}
+                </h4>
               </div>
             </div>
 
@@ -258,7 +248,8 @@ export default function Step4GoldMedia() {
                 {/* Upload Media Button Card */}
                 <label
                   htmlFor="metal-color-upload-input"
-                  className="aspect-square w-full rounded-2xl border-2 border-dashed border-stone-300 hover:border-[#8b6f4e] bg-[#fdfcfb] hover:bg-[#faf7f2]/50 flex flex-col items-center justify-center p-3 text-center transition-all cursor-pointer group shadow-2xs"
+                  {...getUploadTriggerProps(null, { fileInputId: 'metal-color-upload-input' })}
+                  className="aspect-square w-full rounded-2xl border-2 border-dashed border-stone-300 hover:border-[#8b6f4e] focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/25 bg-[#fdfcfb] hover:bg-[#faf7f2]/50 flex flex-col items-center justify-center p-3 text-center transition-all cursor-pointer group shadow-2xs"
                 >
                   <input
                     id="metal-color-upload-input"
@@ -273,12 +264,6 @@ export default function Step4GoldMedia() {
                   </div>
                   <span className="text-xs font-bold text-stone-800 group-hover:text-[#8b6f4e]">
                     Upload Media
-                  </span>
-                  <span className="text-[10px] text-emerald-600 font-semibold mt-0.5">
-                    Local preview &amp; compress
-                  </span>
-                  <span className="text-[9px] text-stone-400 mt-0.5">
-                    JPG, PNG, WebP, MP4
                   </span>
                 </label>
 
