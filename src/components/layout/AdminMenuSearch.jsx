@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiOutlineSearch, HiOutlineX, HiOutlineArrowRight } from 'react-icons/hi';
 import { navSections } from '../../config/navigation';
+import { filterNavSections } from '../../utils/moduleAccess';
+import { useAuth } from '../../contexts/AuthContext';
 
 // Extra keyword mappings to make searching as intuitive and friendly as possible
 const EXTRA_ALIASES = {
@@ -47,16 +49,18 @@ const EXTRA_ALIASES = {
   '/static-pages': ['static pages', 'about us', 'terms', 'privacy policy', 'faq', 'pages'],
   '/reports': ['reports', 'analytics', 'sales report', 'charts', 'revenue'],
   '/system/whatsapp': ['whatsapp', 'whatsapp connect', 'chat', 'messaging'],
+  '/owners': ['owner', 'owners', 'client', 'clients', 'website owners', 'database url', 'modules', 'access', 'permissions'],
   '/profile': ['profile', 'user profile', 'account', 'password', 'theme settings'],
   '/settings': ['settings', 'store settings', 'config', 'logo', 'general settings'],
 };
 
 // Flatten navSections into a normalized list
-function buildSearchIndex() {
+function buildSearchIndex(allowedModules = null) {
   const list = [];
   const seenPaths = new Set();
+  const sections = filterNavSections(navSections, allowedModules);
 
-  navSections.forEach((section) => {
+  sections.forEach((section) => {
     const sectionTitle = section.title || 'General';
     (section.items || []).forEach((item) => {
       if (item.children && item.children.length > 0) {
@@ -96,7 +100,8 @@ function buildSearchIndex() {
 
 export default function AdminMenuSearch() {
   const navigate = useNavigate();
-  const searchIndex = useMemo(() => buildSearchIndex(), []);
+  const { allowedModules } = useAuth();
+  const searchIndex = useMemo(() => buildSearchIndex(allowedModules), [allowedModules]);
 
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
@@ -200,7 +205,7 @@ export default function AdminMenuSearch() {
   };
 
   return (
-    <div className="relative flex-1 max-w-xs sm:max-w-sm md:max-w-md" ref={containerRef}>
+    <div className="relative flex-1 min-w-0 sm:max-w-sm md:max-w-md" ref={containerRef}>
       {/* Input Box */}
       <div className="relative flex items-center">
         <span className="absolute left-3 pointer-events-none text-stone-400">
@@ -217,8 +222,8 @@ export default function AdminMenuSearch() {
           }}
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleInputKeyDown}
-          placeholder="Search menu or page... (e.g. Orders, Products)"
-          className="w-full h-9 pl-9 pr-14 text-xs font-medium text-stone-900 bg-stone-50 hover:bg-stone-100/70 focus:bg-white border border-stone-200/90 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all shadow-2xs placeholder:text-stone-400"
+          placeholder="Search menu or page..."
+          className="w-full h-9 pl-9 pr-8 md:pr-14 text-xs font-medium text-stone-900 bg-stone-50 hover:bg-stone-100/70 focus:bg-white border border-stone-200/90 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 transition-all shadow-2xs placeholder:text-stone-400"
           aria-label="Search admin menu"
           aria-autocomplete="list"
         />
@@ -248,7 +253,7 @@ export default function AdminMenuSearch() {
 
       {/* Dropdown Results */}
       {isOpen && query.trim() && (
-        <div className="absolute left-0 right-0 mt-1.5 bg-white border border-stone-200 rounded-2xl shadow-xl overflow-hidden z-50 animate-scaleUp py-1.5">
+        <div className="fixed sm:absolute left-3 right-3 sm:left-0 sm:right-0 top-14 sm:top-auto sm:mt-1.5 bg-white border border-stone-200 rounded-2xl shadow-xl overflow-hidden z-50 animate-scaleUp py-1.5">
           {filteredResults.length > 0 ? (
             <div className="max-h-80 overflow-y-auto">
               <div className="px-3 py-1.5 text-[10px] font-bold text-stone-400 uppercase tracking-wider flex items-center justify-between">

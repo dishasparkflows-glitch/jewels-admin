@@ -598,11 +598,11 @@ export default function StaticPagesView() {
         <div className="space-y-4 pt-1">
           {/* Header Action: View on Storefront (if existing page) */}
           {!isCreatingNew && formData.slug && (
-            <div className="flex items-center justify-between p-2.5 bg-stone-50 rounded-xl border border-stone-200/80">
-              <div className="flex items-center gap-2 text-xs text-stone-600 font-mono">
-                <HiOutlineGlobeAlt className="w-4 h-4 text-[#8b6f4e]" />
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 bg-stone-50 rounded-xl border border-stone-200/80">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-xs text-stone-600 font-mono min-w-0">
+                <HiOutlineGlobeAlt className="w-4 h-4 text-[#8b6f4e] shrink-0" />
                 <span className="font-semibold text-stone-800">Storefront URL:</span>
-                <span>/{formData.slug}</span>
+                <span className="truncate">/{formData.slug}</span>
               </div>
               <a
                 href={storefrontUrl}
@@ -654,7 +654,7 @@ export default function StaticPagesView() {
           </div>
 
           {/* Row 2: Status Toggle */}
-          <div className="flex items-center justify-between p-3 bg-stone-50 rounded-xl border border-stone-200/80">
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 bg-stone-50 rounded-xl border border-stone-200/80">
             <div>
               <label className="block text-xs font-bold text-stone-800">Publishing Status</label>
               <p className="text-[11px] text-stone-500">

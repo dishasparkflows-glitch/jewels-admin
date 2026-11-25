@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { navSections } from '../../config/navigation';
+import { filterNavSections } from '../../utils/moduleAccess';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../../api/axios';
@@ -19,7 +20,11 @@ import {
 const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose: propOnMobileClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, allowedModules } = useAuth();
+  const visibleSections = useMemo(
+    () => filterNavSections(navSections, allowedModules),
+    [allowedModules]
+  );
   const {
     sidebarOpen,
     setSidebarOpen,
@@ -167,6 +172,9 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
         (location.pathname === '/system/whatsapp' ||
           location.pathname === '/whatsapp' ||
           location.pathname === '/whatsapp-management')) ||
+      (childPath === '/owners' &&
+        (location.pathname === '/owners' ||
+          location.pathname === '/clients')) ||
       (childPath === '/profile' &&
         (location.pathname === '/profile' ||
           location.pathname === '/theme' ||
@@ -178,7 +186,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   useEffect(() => {
     // Automatically ensure the submenu containing the active path is opened
     let activeParentId = null;
-    navSections.forEach((section) => {
+    visibleSections.forEach((section) => {
       section.items?.forEach((item) => {
         if (item.children) {
           const isChildActive = item.children.some((c) => checkIsChildActive(c.path));
@@ -195,7 +203,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
         [activeParentId]: true,
       }));
     }
-  }, [location.pathname]);
+  }, [location.pathname, visibleSections]);
 
   const toggleSubmenu = (id) => {
     setOpenSubmenus((prev) => ({
@@ -214,7 +222,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   return (
     <aside
       id="admin-sidebar"
-      className={`fixed top-0 z-50 h-screen bg-white flex flex-col justify-between shadow-2xl lg:shadow-xs w-72 max-w-[85vw] lg:w-64 transition-transform duration-300 ease-in-out ${
+      className={`fixed top-0 z-50 h-screen h-[100dvh] bg-white flex flex-col justify-between shadow-2xl lg:shadow-xs w-72 max-w-[85vw] lg:w-64 transition-transform duration-300 ease-in-out ${
         isRight
           ? `right-0 border-l border-slate-200 ${
               isMobileViewport
@@ -282,14 +290,14 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
         </NavLink>
 
         {/* ─── Controls: Move to Right / Hide Sidebar ─── */}
-        <div className="flex items-center gap-1 shrink-0 ml-1">
+        <div className="flex items-center gap-1.5 lg:gap-1 shrink-0 ml-1">
           <button
             type="button"
             onClick={toggleSidebarPosition}
             title={isRight ? 'Move sidebar to Left side' : 'Move sidebar to Right side'}
-            className="w-6 h-6 rounded-md border border-stone-200 text-stone-400 hover:text-stone-700 hover:bg-stone-50 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-7 h-7 lg:w-6 lg:h-6 rounded-md border border-stone-200 text-stone-400 hover:text-stone-700 hover:bg-stone-50 flex items-center justify-center transition-colors cursor-pointer"
           >
-            <HiOutlineSwitchHorizontal className="w-3 h-3" />
+            <HiOutlineSwitchHorizontal className="w-3.5 h-3.5 lg:w-3 lg:h-3" />
           </button>
 
           <button
@@ -299,7 +307,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
               else setSidebarOpen(false);
             }}
             title="Hide Sidebar"
-            className="w-6 h-6 rounded-md border border-stone-200 text-stone-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
+            className="w-7 h-7 lg:w-6 lg:h-6 rounded-md border border-stone-200 text-stone-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-colors cursor-pointer"
           >
             {isRight ? (
               <HiOutlineChevronRight className="w-3.5 h-3.5 hidden lg:block" />
@@ -316,7 +324,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
         style={{
           scrollbarColor: `${currentTheme?.primary || 'var(--theme-primary, #8b6f4e)'} #f1f5f9`,
         }}>
-        {navSections.map((section) => (
+        {visibleSections.map((section) => (
           <div key={section.id} className="space-y-0.5">
             {section.title && isVisible && (
               <p className="px-3 pt-3 pb-1 text-[10px] font-bold tracking-widest text-stone-400 uppercase">

@@ -463,7 +463,7 @@ export default function DiamondSizesView() {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl border border-stone-200/90 space-y-6 animate-scaleUp"
+            className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-8 shadow-2xl border border-stone-200/90 space-y-5 sm:space-y-6 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}

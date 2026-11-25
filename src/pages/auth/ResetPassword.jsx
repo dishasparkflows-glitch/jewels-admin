@@ -67,7 +67,7 @@ const ResetPassword = () => {
 
   return (
     <div className="min-h-screen bg-[#fbfaf8] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-stone-200/80 rounded-3xl p-8 sm:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+      <div className="w-full max-w-md bg-white border border-stone-200/80 rounded-3xl p-5 sm:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         {/* Brand Header */}
         <div className="text-center space-y-2 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center mx-auto mb-3 shadow-xs overflow-hidden">

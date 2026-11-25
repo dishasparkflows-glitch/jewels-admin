@@ -667,17 +667,17 @@ export default function BirthstonePortfolioView() {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp cursor-default"
+            className="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp cursor-default max-h-[92vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5]/80">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e]">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5]/80 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shrink-0">
                   <IoDiamondOutline className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="font-bold text-stone-900 text-lg">
+                <div className="min-w-0">
+                  <h3 className="font-bold text-stone-900 text-base sm:text-lg truncate">
                     Configure {formMonth} Birthstone
                   </h3>
                   <p className="text-xs text-stone-400">
@@ -688,14 +688,14 @@ export default function BirthstonePortfolioView() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 flex items-center justify-center transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 flex items-center justify-center transition-colors cursor-pointer shrink-0"
               >
                 <HiOutlineX className="w-5 h-5" />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSave} className="p-6 space-y-5">
+            <form onSubmit={handleSave} className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
               {/* Row 1: Select Month & Display Order */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -887,7 +887,7 @@ export default function BirthstonePortfolioView() {
               </button>
             </div>
 
-            <div className="p-8 flex flex-col items-center justify-center text-center space-y-5">
+            <div className="p-5 sm:p-8 flex flex-col items-center justify-center text-center space-y-4 sm:space-y-5">
               {/* Gem Render */}
               <div className="w-36 h-36 rounded-2xl bg-stone-50 border border-stone-200 flex items-center justify-center p-3 relative shadow-inner">
                 {viewingMonth.imageUrl ? (

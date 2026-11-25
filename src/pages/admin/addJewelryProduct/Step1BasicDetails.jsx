@@ -26,7 +26,7 @@ export default function Step1BasicDetails() {
   } = useAddJewelryProductContext();
 
   return (
-    <div className="bg-white rounded-2xl border border-[#eee8df] p-6 shadow-xs space-y-6 animate-fadeIn">
+    <div className="bg-white rounded-2xl border border-[#eee8df] p-4 sm:p-6 shadow-xs space-y-5 sm:space-y-6 animate-fadeIn">
       <div className="flex items-center gap-3.5 pb-4 border-b border-stone-100">
         <div className="w-8 h-8 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
           1

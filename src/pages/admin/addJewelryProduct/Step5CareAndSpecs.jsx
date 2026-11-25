@@ -145,7 +145,7 @@ export default function Step5CareAndSpecs() {
                       handleUpdateCareSection(sec.id, 'header', e.target.value)
                     }
                     placeholder='Section Title (e.g. "Care Instructions", "Packaging")'
-                    className="flex-1 min-w-[200px] h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 text-stone-800 placeholder-stone-400 shadow-2xs"
+                    className="w-full sm:flex-1 sm:min-w-[200px] h-10 px-3.5 text-xs font-semibold rounded-xl border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/20 text-stone-800 placeholder-stone-400 shadow-2xs"
                   />
 
                   {/* Right Controls: Show on Product Page Switch & Delete Button */}

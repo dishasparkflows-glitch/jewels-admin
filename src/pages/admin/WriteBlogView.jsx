@@ -344,7 +344,7 @@ export default function WriteBlogView() {
         </div>
 
         {/* Top Right Action Buttons */}
-        <div className="flex items-center gap-2.5 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
           {/* Save as Draft */}
           <button
             type="button"
@@ -449,7 +449,7 @@ export default function WriteBlogView() {
                 </button>
               </div>
               <div className="flex items-center">
-                <span className="h-10 px-3.5 bg-stone-50 border border-r-0 border-stone-200 rounded-l-xl text-xs text-stone-500 font-mono flex items-center select-none">
+                <span className="h-10 px-3 sm:px-3.5 bg-stone-50 border border-r-0 border-stone-200 rounded-l-xl text-xs text-stone-500 font-mono flex items-center select-none shrink-0">
                   /blog/
                 </span>
                 <input
@@ -465,7 +465,7 @@ export default function WriteBlogView() {
                     slug: (prev.slug || '').replace(/^-+|-+$/g, ''),
                   }))}
                   placeholder="article-title-url"
-                  className={`flex-1 h-10 px-3 font-mono text-xs text-stone-800 border border-stone-200 outline-none transition-colors ${
+                  className={`flex-1 min-w-0 h-10 px-3 font-mono text-xs text-stone-800 border border-stone-200 outline-none transition-colors ${
                     isEditingSlug ? 'bg-white focus:border-[#8b6f4e]' : 'bg-stone-50/50 cursor-default'
                   }`}
                 />

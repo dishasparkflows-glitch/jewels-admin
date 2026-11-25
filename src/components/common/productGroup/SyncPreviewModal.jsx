@@ -231,7 +231,7 @@ export default function SyncPreviewModal({
           {/* Target Scope */}
           <div>
             <label className="block text-xs font-semibold text-stone-700 mb-1">Target Products Scope</label>
-            <div className="flex items-center gap-4 text-xs">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 text-xs">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
@@ -281,7 +281,7 @@ export default function SyncPreviewModal({
       ) : (
         /* Step 2: Proposed Changes Diff Table */
         <div className="space-y-4">
-          <div className="flex items-center justify-between text-xs bg-[#8b6f4e]/10 text-[#8b6f4e] p-3 rounded-xl">
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs bg-[#8b6f4e]/10 text-[#8b6f4e] p-3 rounded-xl">
             <span>
               <strong>{previewData.targetCount}</strong> products will be synchronized from{' '}
               <strong>{previewData.sourceProduct?.tag || previewData.sourceProduct?.title}</strong>.
@@ -329,7 +329,7 @@ export default function SyncPreviewModal({
           </div>
 
           {/* Confirmation Footer */}
-          <div className="flex items-center justify-between pt-3 border-t border-stone-100">
+          <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-stone-100">
             <button
               type="button"
               onClick={() => setPreviewData(null)}

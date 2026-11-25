@@ -39,19 +39,19 @@ export default function StepperNav() {
     <div className="sticky top-14 z-20 bg-[#f8fafc]/95 backdrop-blur-md pt-0.5 pb-2.5 space-y-3">
       {/* ─── Top Bar (Title & Actions Matching Screenshot) ───────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-[#eee8df] shadow-2xs">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <button
             type="button"
             onClick={() => navigate(productListPath)}
-            className="w-9 h-9 rounded-xl border border-[#d6cfc2] bg-white hover:bg-stone-50 flex items-center justify-center text-stone-800 transition-colors shadow-2xs cursor-pointer"
+            className="w-9 h-9 rounded-xl border border-[#d6cfc2] bg-white hover:bg-stone-50 flex items-center justify-center text-stone-800 transition-colors shadow-2xs cursor-pointer shrink-0"
             title={`Back to ${isSilverProduct ? 'Silver' : 'Jewelry'} Products`}
           >
             <HiOutlineArrowLeft className="w-4 h-4 stroke-[2.5]" />
           </button>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
               <h1
-                className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight max-w-[550px] truncate"
+                className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight max-w-full sm:max-w-[550px] truncate"
                 title={basicDetails.title}
               >
                 {productId
@@ -182,8 +182,8 @@ export default function StepperNav() {
       </div>
 
       {/* ─── Stepper Wizard Bar ─────────── */}
-      <div className="bg-white rounded-2xl border border-[#eee8df] p-2 sm:p-2.5 shadow-2xs overflow-x-auto scrollbar-none">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-1.5 sm:gap-2 items-center min-w-[480px] sm:min-w-0">
+      <div className="bg-white rounded-2xl border border-[#eee8df] p-2 sm:p-2.5 shadow-2xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2 items-center">
           {steps.map((s, idx) => {
             const isActive = activeStep === s.num;
 

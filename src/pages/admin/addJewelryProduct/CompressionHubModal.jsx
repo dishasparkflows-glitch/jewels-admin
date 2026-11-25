@@ -119,7 +119,7 @@ export default function CompressionHubModal() {
               key={id}
               type="button"
               onClick={() => setCompressionTab(id)}
-              className={`flex items-center justify-center gap-1.5 sm:gap-2 border-b-2 px-2 sm:px-4 py-2.5 sm:py-3 text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-colors cursor-pointer ${
+              className={`flex items-center justify-center gap-1 sm:gap-2 border-b-2 px-1.5 sm:px-4 py-2.5 sm:py-3 text-[10px] sm:text-xs font-bold uppercase tracking-wide sm:tracking-wider transition-colors cursor-pointer min-w-0 ${
                 compressionTab === id
                   ? 'border-[#a58054] bg-white text-[#8b6f4e]'
                   : 'border-transparent text-stone-400 hover:text-stone-600'

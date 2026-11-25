@@ -255,7 +255,7 @@ export default function ProductPickerModal({
         </div>
 
         {/* Filter Tabs & Search Bar */}
-        <div className="px-6 py-3 border-b border-stone-100 bg-stone-50/50 space-y-3 shrink-0">
+        <div className="px-4 sm:px-6 py-3 border-b border-stone-100 bg-stone-50/50 space-y-3 shrink-0">
           {/* Category Tabs */}
           <div className="flex flex-wrap items-center gap-2">
             {PRODUCT_PICKER_TABS.map((tab) => {
@@ -354,7 +354,7 @@ export default function ProductPickerModal({
         </div>
 
         {/* Product Grid Area */}
-        <div className="flex-1 overflow-y-auto p-6 bg-stone-50/20 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-stone-50/20 scrollbar-thin">
           {pickerLoading ? (
             <div className="py-20 flex flex-col items-center justify-center text-stone-400 gap-2">
               <div
@@ -508,7 +508,7 @@ export default function ProductPickerModal({
         </div>
 
         {/* Bottom Action Bar */}
-        <div className="px-6 py-3.5 border-t border-stone-200 bg-stone-50/70 flex items-center justify-between shrink-0">
+        <div className="px-4 sm:px-6 py-3.5 border-t border-stone-200 bg-stone-50/70 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
           <span className="text-xs font-semibold text-stone-700">
             <strong className="text-stone-900">SELECTED ({tempSelectedMap.size}):</strong>{' '}
             <span className="text-stone-500 font-normal">

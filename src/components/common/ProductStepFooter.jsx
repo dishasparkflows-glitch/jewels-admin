@@ -38,20 +38,20 @@ export default function ProductStepFooter({
 
   return (
     <div
-      className={`sticky bottom-4 z-30 bg-white/95 backdrop-blur-md rounded-2xl border border-stone-200/90 p-3 sm:p-4 shadow-xl flex items-center justify-between gap-3 ${className}`}
+      className={`sticky bottom-2 sm:bottom-4 z-30 bg-white/95 backdrop-blur-md rounded-2xl border border-stone-200/90 p-2.5 sm:p-4 shadow-xl flex flex-wrap items-center justify-between gap-2 sm:gap-3 ${className}`}
     >
       {/* ─── Previous / Back to List ──────────────────── */}
       <button
         type="button"
         onClick={onPrev}
-        className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-stone-700 bg-stone-50 border border-stone-200 rounded-xl hover:bg-stone-100 active:scale-[0.98] transition-all cursor-pointer"
+        className="flex items-center gap-1.5 px-3 sm:px-4 py-2 text-xs font-semibold text-stone-700 bg-stone-50 border border-stone-200 rounded-xl hover:bg-stone-100 active:scale-[0.98] transition-all cursor-pointer shrink-0"
       >
         <HiOutlineArrowLeft className="w-3.5 h-3.5 stroke-[2.5]" />
         <span>{resolvedPrevText}</span>
       </button>
 
       {/* ─── Center Indicator: Step X of Y • Step Title ── */}
-      <div className="hidden sm:flex items-center gap-1.5 text-xs font-medium text-stone-500">
+      <div className="hidden md:flex items-center gap-1.5 text-xs font-medium text-stone-500">
         <span>
           Step {Math.min(currentStepIndex + 1, totalSteps)} of {totalSteps} &bull;
         </span>
@@ -59,13 +59,13 @@ export default function ProductStepFooter({
       </div>
 
       {/* ─── Right Actions: Optional Save & Next/Publish ─ */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2 ml-auto sm:ml-0">
         {onSave && (
           <button
             type="button"
             onClick={onSave}
             disabled={saving}
-            className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-stone-700 bg-stone-50 border border-stone-200 rounded-xl hover:bg-stone-100 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-2 text-xs font-semibold text-stone-700 bg-stone-50 border border-stone-200 rounded-xl hover:bg-stone-100 active:scale-[0.98] transition-all cursor-pointer disabled:opacity-50 shrink-0"
             title="Save draft"
           >
             {saving ? (
@@ -82,8 +82,8 @@ export default function ProductStepFooter({
           onClick={onNext}
           disabled={saving}
           className={`flex items-center gap-1.5 ${
-            isLastStep ? 'px-5 py-2' : 'px-4 py-2'
-          } text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50`}
+            isLastStep ? 'px-4 sm:px-5 py-2' : 'px-3 sm:px-4 py-2'
+          } text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] active:scale-[0.98] rounded-xl transition-all shadow-xs cursor-pointer disabled:opacity-50 shrink-0`}
         >
           {isLastStep ? (
             <>

@@ -218,7 +218,7 @@ export default function CategoryFiltersView() {
   const enabledCategoryCount = categoriesForSelectedFilter.filter((c) => c.enabled).length;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-[1520px] mx-auto space-y-6">
+    <div className="p-2 sm:p-5 lg:p-6 max-w-[1520px] mx-auto space-y-5 sm:space-y-6">
       {/* ── 2. Page Header & Actions ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -228,19 +228,6 @@ export default function CategoryFiltersView() {
           <p className="text-xs sm:text-[13px] text-stone-500 mt-1">
             Manage the order, visibility, and default settings for filters that appear on the storefront category pages.
           </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          {/* + Add Filter Button (Matches Target Screenshot) */}
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
-            className="inline-flex items-center gap-2 h-[42px] px-4.5 sm:px-5 rounded-xl text-white text-xs sm:text-[13.5px] font-bold tracking-wide transition-all shadow-xs hover:shadow hover:brightness-95 active:scale-[0.98] cursor-pointer"
-          >
-            <HiOutlinePlus className="w-4 h-4" />
-            <span>Add Filter</span>
-          </button>
         </div>
       </div>
 

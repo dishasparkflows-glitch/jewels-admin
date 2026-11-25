@@ -662,8 +662,8 @@ export default function GalleryView() {
         </div>
       ) : viewMode === 'list' ? (
         /* ─── LIST VIEW ─────────────────────────────────────── */
-        <div className="overflow-hidden rounded-xl border border-stone-200 bg-white shadow-2xs">
-          <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white shadow-2xs">
+          <table className="w-full text-left border-collapse min-w-[760px]">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                 <th className="py-3 px-3 whitespace-nowrap">Preview</th>
@@ -951,7 +951,7 @@ export default function GalleryView() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4">
+              <div className="flex items-center justify-between gap-2 border-b border-stone-100 px-4 sm:px-6 py-3.5 sm:py-4">
                 <div>
                   <h3 className="text-base font-bold text-stone-900">{previewItem.typeLabel || previewItem.type}</h3>
                   <span className="text-xs text-stone-400">
@@ -961,14 +961,14 @@ export default function GalleryView() {
                 <button
                   type="button"
                   onClick={() => setPreviewItem(null)}
-                  className="rounded-xl p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition cursor-pointer"
+                  className="rounded-xl p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition cursor-pointer shrink-0"
                 >
                   <HiOutlineX className="h-5 w-5" />
                 </button>
               </div>
 
               {/* Modal Body: Image & Metadata */}
-              <div className="flex flex-1 flex-col overflow-y-auto p-6 md:flex-row gap-6">
+              <div className="flex flex-1 flex-col overflow-y-auto p-4 sm:p-6 md:flex-row gap-4 sm:gap-6">
                 <div className="flex flex-1 items-center justify-center rounded-2xl bg-stone-100/70 p-4 border border-stone-200">
                   <img
                     src={previewItem.url}

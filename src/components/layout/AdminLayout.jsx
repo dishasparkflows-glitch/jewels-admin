@@ -1,6 +1,8 @@
 import { useEffect, Suspense } from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { HiOutlineShieldCheck, HiOutlineX } from 'react-icons/hi';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useAuth } from '../../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import ErrorBoundary from '../common/ErrorBoundary';
@@ -10,6 +12,8 @@ import GlobalTooltip from '../common/GlobalTooltip';
 
 const AdminLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { previewOwner, stopOwnerPreview, allowedModules } = useAuth();
   const {
     sidebarOpen,
     sidebarPosition,
@@ -56,7 +60,7 @@ const AdminLayout = () => {
       {/* Mobile backdrop */}
       {mobileSidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-stone-900/40 backdrop-blur-xs lg:hidden transition-opacity duration-300"
+          className="mobile-sidebar-backdrop fixed inset-0 z-40 bg-stone-900/40 backdrop-blur-[2px] lg:hidden transition-opacity duration-300"
           onClick={() => setMobileSidebarOpen(false)}
         />
       )}
@@ -66,9 +70,31 @@ const AdminLayout = () => {
 
       {/* Main Container */}
       <div
-        className={`min-h-screen flex flex-col min-w-0 transition-[margin,width] duration-200 ${desktopLayoutClass}`}
+        className={`admin-main-shell min-h-screen flex flex-col min-w-0 transition-[margin,width] duration-200 ${desktopLayoutClass}`}
       >
         <Header />
+
+        {previewOwner && (
+          <div className="bg-amber-50 border-b border-amber-200/80 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 text-amber-900 font-medium">
+              <HiOutlineShieldCheck className="w-4 h-4 text-[#8b6f4e] shrink-0" />
+              <span>
+                Previewing Client Access: <strong className="font-bold">{previewOwner.name}</strong> ({Array.isArray(allowedModules) ? allowedModules.length : 0} modules enabled)
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                stopOwnerPreview();
+                navigate('/owners');
+              }}
+              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-900 font-semibold hover:bg-amber-100 transition-colors cursor-pointer"
+            >
+              <HiOutlineX className="w-3.5 h-3.5" />
+              <span>Exit Client Preview</span>
+            </button>
+          </div>
+        )}
 
         <main className="flex-1 min-w-0 w-full px-3 sm:px-5 py-2.5 sm:py-3.5 max-w-[1600px] mx-auto">
           <ErrorBoundary>

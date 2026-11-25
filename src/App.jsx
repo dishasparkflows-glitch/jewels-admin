@@ -59,6 +59,7 @@ const AnalyticsView = lazy(() => import('./pages/admin/AnalyticsView'));
 const StaticPagesView = lazy(() => import('./pages/admin/StaticPagesView'));
 const ThemesView = lazy(() => import('./pages/admin/ThemesView'));
 const GalleryView = lazy(() => import('./pages/admin/GalleryView'));
+const OwnersView = lazy(() => import('./pages/admin/OwnersView'));
 import CuteLoader from './components/common/CuteLoader';
 
 function App() {
@@ -272,6 +273,10 @@ function App() {
             <Route path="/system/whatsapp" element={<WhatsAppView />} />
             <Route path="/whatsapp" element={<WhatsAppView />} />
             <Route path="/whatsapp-management" element={<WhatsAppView />} />
+
+            {/* Website Owners & Module Permissions */}
+            <Route path="/owners" element={<OwnersView />} />
+            <Route path="/clients" element={<OwnersView />} />
 
             {/* Real-Time Price Master (Metal Rates & Gold Price - Matches Exact User Screenshot) */}
             <Route path="/pricing-hub/metal-rates" element={<MetalRatesView />} />

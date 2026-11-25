@@ -830,7 +830,7 @@ export default function BeforeAfterView() {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-stone-200/90 space-y-5 animate-scaleUp"
+            className="bg-white rounded-2xl max-w-xl w-full p-4 sm:p-7 shadow-2xl border border-stone-200/90 space-y-4 sm:space-y-5 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -995,7 +995,7 @@ export default function BeforeAfterView() {
               </div>
 
               {/* Position & Status Row */}
-              <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
                   <label className="block text-[10px] font-bold tracking-wider text-stone-400 uppercase mb-1">
                     DISPLAY POSITION / ORDER
@@ -1062,7 +1062,7 @@ export default function BeforeAfterView() {
           onClick={() => setIsViewModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-stone-200 space-y-4 animate-scaleUp"
+            className="bg-white rounded-2xl max-w-xl w-full p-4 sm:p-6 shadow-2xl border border-stone-200 space-y-4 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
@@ -1092,7 +1092,7 @@ export default function BeforeAfterView() {
             </div>
 
             {/* Side by side large comparison */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1 text-center">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-stone-400">
                   Before Transformation

@@ -218,7 +218,7 @@ export default function MoveProductModal({
         {/* Mode Selector Tabs */}
         <div
           className={`grid p-1 bg-stone-100 rounded-xl gap-1 ${
-            count > 1 ? 'grid-cols-3' : 'grid-cols-2'
+            count > 1 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'
           }`}
         >
           <button

@@ -264,4 +264,17 @@ export const gemstoneShapesAPI = {
   getById: (id) => api.get(`/gemstone-shapes/${id}`),
 };
 
+// ─── Website Owners & Module Permissions ──────────
+export const ownersAPI = {
+  getAll: (params) => api.get('/owners', { params }),
+  getById: (id) => api.get(`/owners/${id}`),
+  getLookup: () => api.get('/owners/lookup'),
+  getModules: () => api.get('/owners/modules'),
+  getAccess: (params) => api.get('/owners/access', { params }),
+  create: (data) => api.post('/owners', data),
+  update: (id, data) => api.put(`/owners/${id}`, data),
+  delete: (id) => api.delete(`/owners/${id}`),
+  bulkDelete: (ids) => api.post('/owners/bulk-delete', { ids }),
+};
+
 

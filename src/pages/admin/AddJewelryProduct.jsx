@@ -595,13 +595,13 @@ export default function AddJewelryProduct() {
         }).filter(Boolean);
       })(),
       gemstoneTypes: (() => {
-        const raw = productRecord.gemstoneTypeIds ?? (productRecord.gemstoneTypeId ? [productRecord.gemstoneTypeId] : (basicInfo.gemstoneTypes ?? []));
+        const raw = productRecord.gemstoneTypeIds ?? (basicInfo.gemstoneTypes ?? []);
         return Array.isArray(raw)
           ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
           : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
       })(),
       gemstoneShapes: (() => {
-        const raw = productRecord.gemstoneShapeIds ?? (productRecord.gemstoneShapeId ? [productRecord.gemstoneShapeId] : (basicInfo.gemstoneShapes ?? []));
+        const raw = productRecord.gemstoneShapeIds ?? (basicInfo.gemstoneShapes ?? []);
         return Array.isArray(raw)
           ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
           : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
@@ -2727,13 +2727,13 @@ export default function AddJewelryProduct() {
         }).filter(Boolean);
       })(),
       gemstoneTypes: (() => {
-        const raw = productRecord.gemstoneTypeIds ?? (productRecord.gemstoneTypeId ? [productRecord.gemstoneTypeId] : (basicInfo.gemstoneTypes ?? []));
+        const raw = productRecord.gemstoneTypeIds ?? (basicInfo.gemstoneTypes ?? []);
         return Array.isArray(raw)
           ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
           : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
       })(),
       gemstoneShapes: (() => {
-        const raw = productRecord.gemstoneShapeIds ?? (productRecord.gemstoneShapeId ? [productRecord.gemstoneShapeId] : (basicInfo.gemstoneShapes ?? []));
+        const raw = productRecord.gemstoneShapeIds ?? (basicInfo.gemstoneShapes ?? []);
         return Array.isArray(raw)
           ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
           : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
@@ -3443,9 +3443,7 @@ export default function AddJewelryProduct() {
           web: Boolean(basicDetails.showOnWeb),
         },
         gemstoneTypeIds: gtArr,
-        gemstoneTypeId: gtArr[0] || null,
         gemstoneShapeIds: gsArr,
-        gemstoneShapeId: gsArr[0] || null,
         demoMetrics: {
           soldCount:
             basicDetails.soldCount !== '' && basicDetails.soldCount !== undefined && basicDetails.soldCount !== null

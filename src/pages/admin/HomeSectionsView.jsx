@@ -665,7 +665,7 @@ export default function HomeSectionsView() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSubmitForm} className="flex-1 overflow-y-auto p-8 space-y-6">
+            <form onSubmit={handleSubmitForm} className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-5 sm:space-y-6">
               {/* Row 1: Section Title & Subtitle */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
@@ -941,7 +941,7 @@ export default function HomeSectionsView() {
             className="bg-white rounded-2xl border border-stone-200 shadow-2xl w-full max-w-2xl overflow-hidden max-h-[90vh] flex flex-col cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 bg-stone-50">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-200 bg-stone-50">
               <div>
                 <h3 className="text-base font-bold text-stone-900">
                   {viewingSection.title}
@@ -956,9 +956,9 @@ export default function HomeSectionsView() {
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-4 text-xs">
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
 
-              <div className="grid grid-cols-2 gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-stone-50 p-3 rounded-xl border border-stone-100">
                 <div>
                   <span className="text-stone-400 text-[10px] uppercase font-semibold">Slug Key</span>
                   <p className="font-mono font-bold text-stone-800">#{viewingSection.sectionKey}</p>
@@ -984,7 +984,7 @@ export default function HomeSectionsView() {
               )}
 
               {/* Platform Visibility Status */}
-              <div className="flex items-center gap-4 bg-stone-50 p-3 rounded-xl border border-stone-100">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-4 bg-stone-50 p-3 rounded-xl border border-stone-100">
                 <span className="text-stone-500 text-xs font-semibold">Visibility:</span>
                 <span className={`inline-flex items-center text-xs font-semibold px-2.5 py-0.5 rounded-full ${viewingSection.visibility?.website !== false ? 'bg-emerald-50 text-emerald-700' : 'bg-stone-100 text-stone-400'}`}>
                   Web {viewingSection.visibility?.website !== false ? '✓' : '✗'}

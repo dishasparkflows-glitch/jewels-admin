@@ -163,7 +163,7 @@ export function ShiprocketDispatchModal({
                       setSelectedCourierId(c.courierId);
                       setSelectedCourierName(c.courierName);
                     }}
-                    className={`p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                    className={`p-3.5 sm:p-4 rounded-xl border transition-all cursor-pointer flex flex-wrap items-center justify-between gap-2 ${
                       isSelected
                         ? 'border-[#8b6f4e] bg-[#faf6f0] ring-1 ring-[#8b6f4e]'
                         : 'border-stone-200 hover:border-stone-300 bg-white'
@@ -222,7 +222,7 @@ export function ShiprocketDispatchModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 bg-stone-50 border-t border-stone-200 flex items-center justify-end gap-3">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 bg-stone-50 border-t border-stone-200 flex flex-wrap items-center justify-end gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={onClose}
@@ -343,7 +343,7 @@ export function ShiprocketTrackingModal({
           ) : tracking ? (
             <>
               {/* Current Status Badge Card */}
-              <div className="p-4 rounded-xl bg-[#faf6f0] border border-[#8b6f4e]/30 flex items-center justify-between">
+              <div className="p-3.5 sm:p-4 rounded-xl bg-[#faf6f0] border border-[#8b6f4e]/30 flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <span className="text-[10px] uppercase font-bold text-stone-400 block">Current Status</span>
                   <span className="font-bold text-sm text-stone-900 block mt-0.5">

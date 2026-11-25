@@ -114,14 +114,14 @@ export default function GalleryEditModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4 shrink-0 bg-white">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#8b6c3a]/15 text-[#8b6c3a]">
-              <HiOutlinePencil className="h-5 w-5" />
+        <div className="flex items-center justify-between gap-2 border-b border-stone-100 px-4 sm:px-6 py-3.5 sm:py-4 shrink-0 bg-white">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-2xl bg-[#8b6c3a]/15 text-[#8b6c3a] shrink-0">
+              <HiOutlinePencil className="h-4 w-4 sm:h-5 sm:w-5" />
             </div>
-            <div>
-              <h3 className="text-base font-bold text-stone-900">Edit Media Item</h3>
-              <p className="text-xs text-stone-500">Update placement, theme assignment, and platform.</p>
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base font-bold text-stone-900">Edit Media Item</h3>
+              <p className="text-xs text-stone-500 truncate">Update placement, theme assignment, and platform.</p>
             </div>
           </div>
           <button
@@ -129,14 +129,14 @@ export default function GalleryEditModal({
             onClick={() => {
               if (!isUpdating) onClose();
             }}
-            className="rounded-xl p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition cursor-pointer"
+            className="rounded-xl p-2 text-stone-400 hover:bg-stone-100 hover:text-stone-700 transition cursor-pointer shrink-0"
           >
             <HiOutlineX className="h-5 w-5" />
           </button>
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+        <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4">
           {/* Media Preview Banner */}
           <div className="flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50/80 p-3">
             <a

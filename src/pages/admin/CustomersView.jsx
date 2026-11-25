@@ -466,12 +466,12 @@ export default function CustomersView() {
           onClick={() => setIsAddModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-stone-200/90 space-y-5 animate-scaleUp"
+            className="bg-white rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl border border-stone-200/90 space-y-4 sm:space-y-5 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">
               <div>
-                <h3 className="text-lg font-bold text-stone-900">
+                <h3 className="text-base sm:text-lg font-bold text-stone-900">
                   Add New Customer
                 </h3>
                 <p className="text-xs text-stone-400 mt-0.5">
@@ -488,7 +488,7 @@ export default function CustomersView() {
             </div>
 
             <form onSubmit={handleCreateCustomer} className="space-y-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     First Name <span className="text-rose-500 font-bold">*</span>
@@ -547,7 +547,7 @@ export default function CustomersView() {
                     placeholder="e.g. 9899900118"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    className="flex-1 px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs h-[42px]"
+                    className="flex-1 min-w-0 px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs h-[42px]"
                   />
                 </div>
               </div>
@@ -607,7 +607,7 @@ export default function CustomersView() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 py-2 bg-stone-50/70 p-3.5 rounded-xl border border-stone-200/60 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 py-2 bg-stone-50/70 p-3.5 rounded-xl border border-stone-200/60 text-xs">
               <div>
                 <span className="text-stone-400 text-[11px] block">Email</span>
                 <span className="font-semibold text-stone-800 break-all">{viewingCustomer.email}</span>

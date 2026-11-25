@@ -10,12 +10,17 @@ const api = axios.create({
   },
 });
 
-// Request interceptor - attach token & default pagination limit
+// Request interceptor - attach token, optional owner context & default pagination limit
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    const activeOwnerId = sessionStorage.getItem('previewOwnerId') || import.meta.env.VITE_OWNER_ID;
+    if (activeOwnerId) {
+      config.headers['x-owner-id'] = activeOwnerId;
     }
 
     // Default pagination limit to admin's selected size if page is set without limit

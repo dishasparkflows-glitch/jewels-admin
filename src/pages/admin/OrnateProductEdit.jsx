@@ -1245,19 +1245,19 @@ export default function OrnateProductEdit() {
       {/* ─── Sticky Header & Stepper Wizard Bar ─── */}
       <div className="sticky top-14 z-20 bg-[#f8fafc]/95 backdrop-blur-md pt-0.5 pb-2.5 space-y-3">
       {/* ─── Top Bar (Title & Actions) ──────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white p-4 rounded-2xl border border-stone-200/90 shadow-2xs">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200/90 shadow-2xs">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
           <button
             type="button"
             onClick={() => navigate('/catalog/ornate-products')}
-            className="w-9 h-9 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 flex items-center justify-center text-stone-600 transition-colors shadow-2xs cursor-pointer"
+            className="w-9 h-9 rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 flex items-center justify-center text-stone-600 transition-colors shadow-2xs cursor-pointer shrink-0"
             title="Back to Ornate Products"
           >
             <HiOutlineArrowLeft className="w-4 h-4 stroke-[2.5]" />
           </button>
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight max-w-[550px] truncate" title={baseInfo.title}>
+              <h1 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight leading-tight max-w-full sm:max-w-[550px] truncate" title={baseInfo.title}>
                 {isEditMode ? (baseInfo.title || 'Refine the details of ERP product') : 'Add New Ornate Product'}
               </h1>
               {(erpDetails.barcodeNumber || erpDetails.labelNumber || erpDetails.uniqueLabelId) && (
@@ -1339,8 +1339,8 @@ export default function OrnateProductEdit() {
       </div>
 
       {/* ─── Stepper Wizard Bar (Modern Tab-Wise Design) ───────────── */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 p-2 sm:p-2.5 shadow-2xs overflow-x-auto scrollbar-none">
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 min-w-[700px] lg:min-w-0">
+      <div className="bg-white rounded-2xl border border-stone-200/90 p-2 sm:p-2.5 shadow-2xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
           {steps.map((s) => {
             const isActive = activeStep === s.num;
             const isCompleted = activeStep > s.num;
@@ -1889,7 +1889,7 @@ export default function OrnateProductEdit() {
 
                             {vData.media && vData.media.length > 0 ? (
                               <div className="border border-stone-200 bg-white rounded-xl p-2.5 min-h-[110px] h-full flex flex-col justify-between shadow-2xs space-y-2">
-                                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
                                   {vData.media.map((m, idx) => (
                                     <div
                                       key={m.id || idx}
@@ -2191,7 +2191,7 @@ export default function OrnateProductEdit() {
 
                             {vData.media && vData.media.length > 0 ? (
                               <div className="border border-stone-200 bg-white rounded-xl p-2.5 min-h-[110px] h-full flex flex-col justify-between shadow-2xs space-y-2">
-                                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
+                                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
                                   {vData.media.map((m, idx) => (
                                     <div
                                       key={m.id || idx}

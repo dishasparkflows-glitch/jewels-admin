@@ -695,11 +695,11 @@ export default function InstagramPostsView() {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp cursor-default"
+            className="bg-white rounded-2xl max-w-lg w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp cursor-default max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-6 py-5 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5]/80">
+            <div className="px-4 sm:px-6 py-4 sm:py-5 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5]/80 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-[#faf4ed] border border-[#f2e7db] flex items-center justify-center text-[#8c6d46]">
                   <HiOutlinePhotograph className="w-5 h-5 text-[#8c6d46]" />
@@ -723,7 +723,7 @@ export default function InstagramPostsView() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 overflow-y-auto flex-1">
               {/* Title */}
               <div>
                 <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
@@ -802,11 +802,11 @@ export default function InstagramPostsView() {
           onClick={() => setViewingPost(null)}
         >
           <div
-            className="bg-white rounded-2xl max-w-md w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp cursor-default"
+            className="bg-white rounded-2xl max-w-md w-full border border-stone-200 shadow-2xl overflow-hidden animate-scaleUp cursor-default max-h-[90vh] flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5]">
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 flex items-center justify-between bg-[#faf8f5] shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-[#faf4ed] flex items-center justify-center text-[#8c6d46]">
                   <HiOutlinePhotograph className="w-4 h-4" />
@@ -824,14 +824,14 @@ export default function InstagramPostsView() {
               </button>
             </div>
 
-            <div className="p-5 space-y-4">
+            <div className="p-4 sm:p-5 space-y-4 overflow-y-auto flex-1">
               {/* Post Embed Preview */}
-              <div className="relative w-full rounded-xl overflow-hidden bg-stone-50 border border-stone-200/80 min-h-[360px] flex items-center justify-center">
+              <div className="relative w-full rounded-xl overflow-hidden bg-stone-50 border border-stone-200/80 min-h-[300px] sm:min-h-[360px] flex items-center justify-center">
                 {getEmbedUrl(viewingPost.url) ? (
                   <iframe
                     src={getEmbedUrl(viewingPost.url)}
                     title={getPostTitle(viewingPost, 0)}
-                    className="w-full h-[400px] border-0"
+                    className="w-full h-[320px] sm:h-[400px] border-0"
                   />
                 ) : (
                   <div className="text-center p-6">

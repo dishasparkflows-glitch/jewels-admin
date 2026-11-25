@@ -705,7 +705,7 @@ export default function BlogsView() {
                   URL Slug <span className="text-stone-400 font-normal">(auto-generated from title)</span>
                 </label>
                 <div className="flex items-center">
-                  <span className="px-3 py-2 bg-stone-100 border border-r-0 border-stone-200 rounded-l-xl text-xs text-stone-500 font-mono">
+                  <span className="px-3 py-2 bg-stone-100 border border-r-0 border-stone-200 rounded-l-xl text-xs text-stone-500 font-mono shrink-0">
                     /blog/
                   </span>
                   <input
@@ -713,7 +713,7 @@ export default function BlogsView() {
                     placeholder="anatomy-of-a-perfect-diamond"
                     value={formData.slug}
                     onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
-                    className="flex-1 px-3 py-2 text-xs font-mono border border-stone-200 rounded-r-xl focus:outline-none focus:border-[#8b6f4e]"
+                    className="flex-1 min-w-0 px-3 py-2 text-xs font-mono border border-stone-200 rounded-r-xl focus:outline-none focus:border-[#8b6f4e]"
                   />
                 </div>
               </div>
@@ -1006,7 +1006,7 @@ export default function BlogsView() {
                 {previewBlog.basicInfo?.title || previewBlog.title}
               </h1>
 
-              <div className="flex items-center justify-center gap-4 text-xs text-stone-500 font-medium pt-1">
+              <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-stone-500 font-medium pt-1">
                 <span>By {previewBlog.basicInfo?.author || previewBlog.author || 'Neirah Editorial'}</span>
                 <span>•</span>
                 <span>{previewBlog.basicInfo?.readTime || previewBlog.readTime || '3 min read'}</span>

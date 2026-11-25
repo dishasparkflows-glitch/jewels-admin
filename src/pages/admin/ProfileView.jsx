@@ -455,8 +455,8 @@ export default function ProfileView() {
                   Pick any custom color for your brand or administration portal.
                 </p>
 
-                <div className="mt-4 flex items-center gap-3">
-                  <div className="relative">
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <div className="relative shrink-0">
                     <input
                       type="color"
                       value={customHex}
@@ -466,7 +466,7 @@ export default function ProfileView() {
                     />
                   </div>
 
-                  <div className="flex-1 min-w-[200px] sm:min-w-[260px]">
+                  <div className="flex-1 min-w-0 sm:min-w-[260px]">
                     <label className="text-xs font-bold text-stone-900 block mb-1.5">
                       Hex Color Code
                     </label>

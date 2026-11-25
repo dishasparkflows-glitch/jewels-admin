@@ -512,7 +512,7 @@ export default function GalleryUploadModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between border-b border-stone-100 px-6 py-4 shrink-0 bg-white">
+        <div className="flex items-center justify-between border-b border-stone-100 px-4 sm:px-6 py-3.5 sm:py-4 shrink-0 bg-white">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#8b6c3a]/15 text-[#8b6c3a]">
               <HiOutlineUpload className="h-5 w-5" />
@@ -544,8 +544,8 @@ export default function GalleryUploadModal({
 
         {/* Modal Form with Scrollable Body & Sticky Action Footer */}
         <form onSubmit={handleUploadAndAssign} className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <div className="flex-1 overflow-y-auto px-6 py-5">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
               {/* ─── LEFT COLUMN: TARGET SELECTION & BANNER/FEATURED MAPPING (col-span-5) ─── */}
               <div className="lg:col-span-5 space-y-4">
                 {/* STEP 1: SELECT THEME */}
@@ -1081,7 +1081,7 @@ export default function GalleryUploadModal({
           </div>
 
           {/* ─── STICKY ACTION FOOTER ─── */}
-          <div className="flex items-center justify-between border-t border-stone-200/80 px-6 py-3.5 bg-stone-50/90 shrink-0">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200/80 px-4 sm:px-6 py-3 sm:py-3.5 bg-stone-50/90 shrink-0">
             <div className="text-xs text-stone-500 font-medium">
               {selectedFiles.length > 0 ? (
                 <div className="flex items-center gap-2">
@@ -1149,7 +1149,7 @@ export default function GalleryUploadModal({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-stone-800 px-6 py-4 shrink-0 bg-stone-900">
+            <div className="flex items-center justify-between border-b border-stone-800 px-4 sm:px-6 py-3.5 sm:py-4 shrink-0 bg-stone-900">
               <div className="min-w-0 pr-4">
                 <h3 className="text-base font-bold text-white truncate">
                   {previewModalData.title || 'Image Preview'}
@@ -1168,7 +1168,7 @@ export default function GalleryUploadModal({
             </div>
 
             {/* Image Preview Canvas */}
-            <div className="flex-1 flex items-center justify-center p-6 bg-stone-950/90 overflow-hidden min-h-[300px]">
+            <div className="flex-1 flex items-center justify-center p-4 sm:p-6 bg-stone-950/90 overflow-hidden min-h-[240px] sm:min-h-[300px]">
               <img
                 src={previewModalData.url}
                 alt={previewModalData.title || 'Preview'}
@@ -1177,7 +1177,7 @@ export default function GalleryUploadModal({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-between border-t border-stone-800 px-6 py-3.5 bg-stone-900 shrink-0">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 border-t border-stone-800 px-4 sm:px-6 py-3 sm:py-3.5 bg-stone-900 shrink-0">
               <span className="text-[11px] text-stone-400">Click backdrop or press Esc to close</span>
               <div className="flex items-center gap-2">
                 <a

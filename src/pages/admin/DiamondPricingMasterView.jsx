@@ -376,9 +376,9 @@ export default function DiamondPricingMasterView() {
       />
 
       {/* Top Header & Action Buttons */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-stone-200/60">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4 pb-2 border-b border-stone-200/60">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-stone-900 font-serif">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900 font-serif">
             Diamond Pricing Master
           </h1>
           <p className="text-xs text-stone-500 mt-1">
@@ -387,7 +387,7 @@ export default function DiamondPricingMasterView() {
         </div>
 
         {/* 4 Action Buttons matching Screenshot */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
           {/* 1. Add Row */}
           <button
             type="button"
@@ -440,7 +440,7 @@ export default function DiamondPricingMasterView() {
       </div>
 
       {/* Diamond Type Selector Pill (LAB GROWN DIAMOND vs NATURAL DIAMOND) */}
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {typesList.map((type) => {
           const isSelected = activeType.toLowerCase() === type.toLowerCase();
           return (
@@ -448,7 +448,7 @@ export default function DiamondPricingMasterView() {
               key={type}
               type="button"
               onClick={() => setActiveType(type)}
-              className={`px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
+              className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 isSelected
                   ? 'bg-[#8b6f4e] text-white shadow-2xs'
                   : 'bg-white border border-stone-200 text-stone-700 hover:border-stone-300'
@@ -461,12 +461,12 @@ export default function DiamondPricingMasterView() {
       </div>
 
       {/* Segmented Switch: Center Diamond vs Side Diamond (Boxed in User Screenshot) */}
-      <div className="flex items-center justify-between gap-4 pt-1">
+      <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-4 pt-1">
         <div className="bg-stone-100/90 p-1 rounded-2xl inline-flex items-center gap-1 border border-stone-200/60 shadow-2xs">
           <button
             type="button"
             onClick={() => setActiveTab('center')}
-            className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'center'
                 ? 'bg-white text-stone-900 shadow-xs'
                 : 'text-stone-500 hover:text-stone-900 font-semibold'
@@ -477,7 +477,7 @@ export default function DiamondPricingMasterView() {
           <button
             type="button"
             onClick={() => setActiveTab('side')}
-            className={`px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            className={`px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'side'
                 ? 'bg-white text-stone-900 shadow-xs'
                 : 'text-stone-500 hover:text-stone-900 font-semibold'
@@ -496,7 +496,7 @@ export default function DiamondPricingMasterView() {
       {/* Diamond Pricing Master Table */}
       <div className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
+          <table className="w-full text-left text-xs min-w-[820px]">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                 <th className="py-3 px-4 w-16 text-center font-bold whitespace-nowrap">SR NO</th>

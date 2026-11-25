@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { getMediaUrl } from '../../utils/imageUrl';
+import { getFirstAllowedPath } from '../../utils/moduleAccess';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineSparkles } from 'react-icons/hi';
 
 const Login = () => {
@@ -24,7 +25,11 @@ const Login = () => {
     try {
       const data = await login(form.email.trim(), form.password);
       toast.success(`Welcome back, ${data.user?.profile?.firstName || 'Admin'}!`, { icon: '✨' });
-      navigate('/dashboard');
+      const userModules = data.user?.ownerAccess?.restricted ? data.user.ownerAccess.allowedModules : data.user?.allowedModules;
+      const landingPath = Array.isArray(userModules) && !userModules.includes('dashboard')
+        ? (getFirstAllowedPath(userModules) || '/dashboard')
+        : '/dashboard';
+      navigate(landingPath);
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Authentication failed');
     } finally {
@@ -34,7 +39,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen bg-[#fbfaf8] flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white border border-stone-200/80 rounded-3xl p-8 sm:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
+      <div className="w-full max-w-md bg-white border border-stone-200/80 rounded-3xl p-5 sm:p-10 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
         {/* Brand Header */}
         <div className="text-center space-y-2 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center mx-auto mb-3 shadow-xs overflow-hidden">

@@ -979,20 +979,20 @@ export default function ReviewsView() {
             </div>
 
             <div className="space-y-3.5 text-xs bg-stone-50/70 p-4 sm:p-5 rounded-2xl border border-stone-200/60">
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-2">
                 <span className="text-xs font-bold text-stone-500">Reviewer</span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   {viewingReview.image?.url && (
                     <img
                       src={viewingReview.image.url}
                       alt={viewingReview.reviewerName}
-                      className="w-6 h-6 rounded-full object-cover border border-stone-200"
+                      className="w-6 h-6 rounded-full object-cover border border-stone-200 shrink-0"
                     />
                   )}
-                  <span className="font-bold text-stone-900 text-xs sm:text-[13px]">{viewingReview.reviewerName}</span>
+                  <span className="font-bold text-stone-900 text-xs sm:text-[13px] truncate">{viewingReview.reviewerName}</span>
                 </div>
               </div>
-              <div className="flex justify-between items-center">
+              <div className="flex flex-wrap justify-between items-center gap-2">
                 <span className="text-xs font-bold text-stone-500">Rating</span>
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 4, 5].map((s) => (
@@ -1002,12 +1002,12 @@ export default function ReviewsView() {
                 </div>
               </div>
               {viewingReview.productId && (
-                <div className="flex justify-between items-center pt-2 border-t border-stone-200/50">
+                <div className="flex flex-wrap justify-between items-center gap-2 pt-2 border-t border-stone-200/50">
                   <span className="text-xs font-bold text-stone-500">Product</span>
                   <button
                     type="button"
                     onClick={() => openProductPreview(viewingReview.productId)}
-                    className="font-semibold text-stone-900 hover:text-[#8b6f4e] hover:underline text-xs truncate max-w-[240px] text-right cursor-pointer"
+                    className="font-semibold text-stone-900 hover:text-[#8b6f4e] hover:underline text-xs truncate max-w-[200px] sm:max-w-[240px] text-right cursor-pointer"
                     title="Open product on storefront"
                   >
                     {viewingReview.productId.basicInfo?.title || viewingReview.productId.title || 'Product'}

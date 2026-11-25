@@ -1172,7 +1172,206 @@ const DynamicModuleView = () => {
             </div>
           ) : (
             <>
-              <table className="w-full text-left border-collapse min-w-[760px]">
+              {/* Mobile Card View (< md) */}
+              <div className="md:hidden divide-y divide-stone-100">
+                <div className="px-3.5 py-2.5 bg-[#eef2f6] border-b border-stone-200/80 flex items-center justify-between text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={
+                        paginatedItems.length > 0 &&
+                        paginatedItems.every((row) => selectedIds.includes(row._id || row.id))
+                      }
+                      onChange={handleSelectAll}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                    />
+                    <span>Select All ({paginatedItems.length})</span>
+                  </label>
+                  <span>{isProductCatalogPage ? 'Products' : config.title}</span>
+                </div>
+
+                {paginatedItems.map((row, idx) => {
+                  const rowId = row._id || row.id;
+                  const rowLabel = getRowLabel(row);
+                  const isEmoji =
+                    typeof row.icon === 'string' &&
+                    row.icon.length <= 4 &&
+                    !row.icon.startsWith('http') &&
+                    !row.icon.startsWith('/');
+                  const rawThumb = getRowThumbnail(row);
+                  const thumbUrl = getMediaUrl(rawThumb);
+                  const isWebVisible = row.inweb !== false && row.visibility?.web !== false;
+                  const isAppVisible = row.inapp !== false && row.visibility?.app !== false;
+                  const skuCode =
+                    row.basicInfo?.sku ||
+                    row.ornate?.tagNo ||
+                    (typeof row.sku === 'string' ? row.sku : '');
+                  const displayPrice =
+                    row.pricing?.salePrice ??
+                    row.pricing?.calculatedPrice ??
+                    row.price;
+                  const statusStr =
+                    typeof row.status === 'object' && row.status !== null
+                      ? (row.status.name || 'active')
+                      : String(row.status || (row.isActive !== false ? 'active' : 'inactive'));
+                  const isInactive = statusStr === 'inactive' || row.isActive === false;
+
+                  return (
+                    <div
+                      key={`m-${rowId}`}
+                      onClick={() => handleEditProductRecord(row)}
+                      className={`p-3.5 space-y-2.5 transition-colors cursor-pointer ${
+                        selectedIds.includes(rowId) ? 'bg-amber-50/40' : 'hover:bg-[#faf7f2]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="pt-1 flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(rowId)}
+                            onChange={() => handleSelectItem(rowId)}
+                            className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
+                          />
+                          <span className="text-[11px] font-bold text-stone-400">
+                            #{(currentPage - 1) * pageSize + idx + 1}
+                          </span>
+                        </div>
+
+                        <div
+                          onClick={(e) => {
+                            if (thumbUrl) {
+                              e.stopPropagation();
+                              openImagePreview(thumbUrl, { title: rowLabel });
+                            }
+                          }}
+                          className="w-11 h-11 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0"
+                        >
+                          {thumbUrl ? (
+                            <img src={thumbUrl} alt={rowLabel} className="w-full h-full object-cover" loading="lazy" />
+                          ) : isEmoji ? (
+                            <span className="text-base">{row.icon}</span>
+                          ) : (
+                            <span className="text-[9px] text-stone-400 font-medium">No Img</span>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-bold text-stone-900 text-xs leading-snug line-clamp-2">{rowLabel}</p>
+                            <span
+                              onClick={(e) => isProductCatalogPage && handleToggleProductStatus(row, e)}
+                              className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${
+                                isInactive
+                                  ? 'bg-stone-100 text-stone-600 border-stone-200'
+                                  : statusStr === 'approved'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                  : 'bg-[#faf5ed] text-[#8b6f4e] border-[#e8d8c0]'
+                              }`}
+                            >
+                              {statusStr}
+                            </span>
+                          </div>
+                          {skuCode && skuCode !== rowLabel && (
+                            <p className="font-mono text-[10px] text-stone-400 truncate">{skuCode}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                        {displayPrice !== undefined && displayPrice !== null && (
+                          <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded">
+                            ₹{Number(displayPrice).toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        {(row.specifications?.metalDetails?.purity || row.productType || row.ornate?.metalName) && (
+                          <span className="capitalize px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
+                            {row.specifications?.metalDetails?.purity || (row.productType ? `${row.productType} Jewellery` : row.ornate?.metalName)}
+                          </span>
+                        )}
+                        {(row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt) && (
+                          <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-mono">
+                            {row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt}g
+                          </span>
+                        )}
+                        {isCategoryPage && (
+                          <>
+                            <span className="px-2 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-semibold border border-stone-200 capitalize">
+                              {row.type || 'Category'}
+                            </span>
+                            <span className="px-2 py-0.5 rounded bg-stone-50 text-stone-600 text-[10px] border border-stone-200">
+                              Order: <strong>{row.order ?? 0}</strong>
+                            </span>
+                          </>
+                        )}
+                        {row.stockStatus && (
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                            row.stockStatus === 'In Stock'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                              : 'bg-stone-100 text-stone-600'
+                          }`}>
+                            {row.stockStatus}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+                        {isProductCatalogPage ? (
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenMetricsModal(row)}
+                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-stone-200/90 bg-stone-50/80 text-[10px] font-semibold text-stone-700 cursor-pointer"
+                            >
+                              <span className="text-amber-500 font-bold">★</span>
+                              <span>{row.demoMetrics?.reviewCount ?? 0}</span>
+                              <span className="text-stone-300">|</span>
+                              <span>🔥</span>
+                              <span>{row.demoMetrics?.soldCount ?? 0}</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleProductVisibility(row, 'web', e)}
+                              disabled={updatingVisibilityId === `${rowId}-web`}
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border ${
+                                isWebVisible
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                                  : 'bg-white text-stone-400 border-stone-200'
+                              }`}
+                            >
+                              <span>🌐</span>
+                              <span>Web</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleProductVisibility(row, 'app', e)}
+                              disabled={updatingVisibilityId === `${rowId}-app`}
+                              className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border ${
+                                isAppVisible
+                                  ? 'bg-sky-50 text-sky-700 border-sky-200/80'
+                                  : 'bg-white text-stone-400 border-stone-200'
+                              }`}
+                            >
+                              <span>📱</span>
+                              <span>App</span>
+                            </button>
+                          </div>
+                        ) : <span />}
+
+                        <RowActions
+                          record={row}
+                          detailsEndpoint={config.endpoint}
+                          onView={() => handleEditProductRecord(row)}
+                          onOpenWebsite={isProductCatalogPage ? () => openProductPreview(row) : undefined}
+                          onEdit={() => handleEditProductRecord(row)}
+                          onDelete={() => handleDelete(rowId, rowLabel)}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <table className="hidden md:table w-full text-left border-collapse min-w-[860px]">
                 <thead>
                   <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                     <th className="py-3 pl-4 pr-1 w-8">
@@ -2904,11 +3103,11 @@ const DynamicModuleView = () => {
             })()}
 
             {/* Details Grid - Display All Available Fields */}
-            <div className="space-y-2 bg-stone-50/70 p-4 rounded-xl border border-stone-200/60 text-xs">
+            <div className="space-y-2 bg-stone-50/70 p-3.5 sm:p-4 rounded-xl border border-stone-200/60 text-xs">
               {/* Name / Title */}
-              <div className="flex justify-between items-center pb-2 border-b border-stone-200/50">
+              <div className="flex flex-wrap justify-between items-center gap-2 pb-2 border-b border-stone-200/50">
                 <span className="text-stone-400 font-medium">Name / Title</span>
-                <span className="font-bold text-stone-900 text-right">{getRowLabel(viewingRecord)}</span>
+                <span className="font-bold text-stone-900 text-right break-words">{getRowLabel(viewingRecord)}</span>
               </div>
 
               {/* SKU / Tag */}

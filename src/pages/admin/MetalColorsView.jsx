@@ -415,7 +415,7 @@ export default function MetalColorsView() {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl max-w-md w-full p-8 shadow-2xl border border-stone-200/90 space-y-6 animate-scaleUp"
+            className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-8 shadow-2xl border border-stone-200/90 space-y-5 sm:space-y-6 animate-scaleUp max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -469,7 +469,7 @@ export default function MetalColorsView() {
               </div>
 
               {/* Start & End Color Pickers Grid */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Start Color */}
                 <div>
                   <label className="block text-xs font-bold text-stone-900 mb-1.5">

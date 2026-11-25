@@ -541,7 +541,253 @@ export default function OrdersView() {
               </p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse min-w-[760px]">
+            <>
+              {/* Mobile Order Cards (< md) */}
+              <div className="md:hidden divide-y divide-stone-100">
+                <div className="px-3.5 py-2.5 bg-[#eef2f6] border-b border-stone-200/80 flex items-center justify-between text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={handleSelectAll}
+                      className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                    />
+                    <span>Select All ({paginatedItems.length})</span>
+                  </label>
+                  <span>Orders</span>
+                </div>
+
+                {paginatedItems.map((ord, idx) => {
+                  const orderId = ord._id || ord.id;
+                  const orderNo = ord.orderNumber || 'Order';
+                  const statusStr = String(ord.orderStatus || ord.status || 'pending').toLowerCase();
+                  const isSelected = selectedIds.has(orderId);
+                  const customerName = ord.customer?.firstName
+                    ? `${ord.customer.firstName} ${ord.customer.lastName || ''}`.trim()
+                    : ord.shippingAddress?.fullName || ord.shippingAddress?.firstName || 'Customer';
+
+                  return (
+                    <div
+                      key={`m-${orderId}`}
+                      onClick={() => setViewingOrder(ord)}
+                      className={`p-3.5 space-y-2.5 transition-colors cursor-pointer ${
+                        isSelected ? 'bg-amber-50/40' : 'hover:bg-stone-50/70'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 min-w-0">
+                          <div className="pt-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => handleToggleSelect(orderId)}
+                              className="w-4 h-4 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                            />
+                          </div>
+                          <div className="min-w-0 space-y-0.5">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-bold text-stone-400">
+                                #{(currentPage - 1) * pageSize + idx + 1}
+                              </span>
+                              <span className="font-mono font-bold text-xs text-[#8b6f4e] bg-[#faf5ed] border border-[#8b6f4e]/30 px-2 py-0.5 rounded">
+                                {orderNo}
+                              </span>
+                            </div>
+                            {(ord.meta?.createdAt || ord.createdAt) && (
+                              <p className="text-[10.5px] text-stone-500 flex items-center gap-1">
+                                <HiOutlineClock className="w-3 h-3 text-stone-400 shrink-0" />
+                                <span>{formatOrderDate(ord.meta?.createdAt || ord.createdAt)}</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        <span
+                          className={`shrink-0 inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize tracking-wider ${
+                            statusStr === 'pending'
+                              ? 'bg-amber-50 text-amber-800 border-amber-300'
+                              : statusStr === 'processing'
+                              ? 'bg-blue-50 text-blue-800 border-blue-300'
+                              : statusStr === 'shipped'
+                              ? 'bg-sky-50 text-sky-800 border-sky-300'
+                              : statusStr === 'delivered'
+                              ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                              : statusStr === 'cancelled'
+                              ? 'bg-rose-50 text-rose-800 border-rose-300'
+                              : 'bg-stone-100 text-stone-700 border-stone-200'
+                          }`}
+                        >
+                          {statusStr}
+                        </span>
+                      </div>
+
+                      {Array.isArray(ord.items) && ord.items.length > 0 && (
+                        <div className="space-y-1.5 bg-stone-50/70 rounded-xl p-2 border border-stone-100">
+                          {ord.items.slice(0, 2).map((item, i) => {
+                            const refDoc = item.refId;
+                            const itemThumb = getMediaUrl(
+                              item.image ||
+                              item.thumbnail ||
+                              refDoc?.image?.url ||
+                              (typeof refDoc?.image === 'string' ? refDoc.image : '') ||
+                              refDoc?.ornate?.ornateImages?.[0]?.url ||
+                              refDoc?.colorImages?.[0]?.images?.[0]?.url ||
+                              refDoc?.media ||
+                              refDoc?.basicInfo?.images?.[0]
+                            );
+                            return (
+                              <div key={item._id || i} className="flex items-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-[#faf6f0] border border-stone-200/80 overflow-hidden flex items-center justify-center shrink-0">
+                                  {itemThumb ? (
+                                    <img src={itemThumb} alt={item.title || 'Product'} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <span className="text-[11px]">💍</span>
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="font-semibold text-stone-900 text-xs truncate">
+                                    {item.title || 'Jewellery Item'}
+                                  </p>
+                                  <p className="text-[10px] text-stone-500">
+                                    {item.selectedMetal ? `${item.selectedMetal} • ` : ''}Qty: {item.quantity || 1}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {ord.items.length > 2 && (
+                            <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-bold">
+                              +{ord.items.length - 2} more
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-stone-900 truncate">{customerName}</p>
+                          <p className="text-[10.5px] text-stone-500 truncate">
+                            {ord.customer?.phone || ord.shippingAddress?.phone || ord.shippingAddress?.city || ''}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <div className="font-bold text-sm text-[#8b6f4e]">
+                            ₹{Number(ord.pricing?.total ?? ord.totalAmount ?? 0).toLocaleString('en-IN')}
+                          </div>
+                          <div className="flex items-center justify-end gap-1 mt-0.5">
+                            <span className="capitalize px-1.5 py-0.5 rounded text-[9.5px] font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                              {ord.payment?.method || 'Online'}
+                            </span>
+                            {ord.payment?.status && (
+                              <span className="capitalize px-1.5 py-0.5 rounded text-[9.5px] font-medium bg-stone-50 text-stone-600 border border-stone-200/80">
+                                {String(ord.payment.status).replace(/_/g, ' ')}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-end gap-1.5 pt-2 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+                        {statusStr === 'pending' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const isConfirmed = await confirm({
+                                  title: `Accept Order ${orderNo}`,
+                                  message: `Move order ${orderNo} to Processing status?`,
+                                  confirmText: 'Accept Order',
+                                  cancelText: 'Cancel',
+                                  type: 'success',
+                                });
+                                if (isConfirmed) handleUpdateOrderStatus(orderId, 'processing');
+                              }}
+                              disabled={updatingOrderStatus}
+                              title="Accept Order"
+                              className="p-1.5 rounded-lg text-emerald-700 hover:bg-emerald-50 border border-emerald-200/80 cursor-pointer"
+                            >
+                              <HiOutlineCheck className="w-3.5 h-3.5 stroke-2" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const isConfirmed = await confirm({
+                                  title: `Cancel Order ${orderNo}`,
+                                  message: `Cancel order ${orderNo}?`,
+                                  confirmText: 'Yes, Cancel Order',
+                                  cancelText: 'Keep Order',
+                                  type: 'danger',
+                                });
+                                if (isConfirmed) handleUpdateOrderStatus(orderId, 'cancelled');
+                              }}
+                              disabled={updatingOrderStatus}
+                              title="Cancel Order"
+                              className="p-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-rose-200/80 cursor-pointer"
+                            >
+                              <HiOutlineX className="w-3.5 h-3.5 stroke-2" />
+                            </button>
+                          </>
+                        )}
+                        {statusStr === 'processing' && (
+                          ord.shiprocketInfo?.awbCode ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewingOrder(ord);
+                                setShiprocketTrackingOrderId(orderId);
+                                setShiprocketTrackingOpen(true);
+                              }}
+                              className="px-2 py-1 rounded-lg bg-stone-900 text-white font-mono text-[10px] font-bold inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <HiOutlineTruck className="w-3 h-3" />
+                              <span>{ord.shiprocketInfo.awbCode}</span>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setViewingOrder(ord);
+                                setShiprocketDispatchOpen(true);
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-[#8b6f4e] text-white text-[11px] font-semibold inline-flex items-center gap-1 cursor-pointer"
+                            >
+                              <HiOutlineTruck className="w-3.5 h-3.5" />
+                              <span>Shipment</span>
+                            </button>
+                          )
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setViewingOrder(ord)}
+                          title="View Details"
+                          className="p-1.5 rounded-lg text-stone-600 hover:bg-stone-100 border border-stone-200 cursor-pointer"
+                        >
+                          <HiOutlineEye className="w-3.5 h-3.5 stroke-2" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadInvoice(ord)}
+                          disabled={downloadingInvoice}
+                          title="Download Invoice"
+                          className="p-1.5 rounded-lg text-[#8b6f4e] hover:bg-[#FAF7F2] border border-[#EFE8DD] cursor-pointer"
+                        >
+                          <HiOutlineDocumentDownload className="w-3.5 h-3.5 stroke-2" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteOrder(orderId, orderNo)}
+                          title="Delete Order"
+                          className="w-7 h-7 rounded-lg border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] inline-flex items-center justify-center cursor-pointer"
+                        >
+                          <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#d93025]" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <table className="hidden md:table w-full text-left border-collapse min-w-[820px]">
               <thead>
                 <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                   <th className="py-3 pl-4 pr-1 w-8 text-center">
@@ -895,6 +1141,7 @@ export default function OrdersView() {
                 })}
               </tbody>
             </table>
+            </>
           )}
         </div>
 
@@ -968,7 +1215,7 @@ export default function OrdersView() {
               {/* Shiprocket Logistics Section - only for non-pending orders */}
               {String(viewingOrder.orderStatus || viewingOrder.status || '').toLowerCase() !== 'pending' && (
                 <div className="p-4 rounded-xl bg-gradient-to-br from-stone-50 to-stone-100/80 border border-stone-200/90 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <HiOutlineTruck className="w-5 h-5 text-[#8b6f4e]" />
                       <span className="text-xs font-bold text-stone-900">Shiprocket Logistics</span>
@@ -990,7 +1237,7 @@ export default function OrdersView() {
 
                   {viewingOrder.shiprocketInfo?.awbCode && (
                     <div className="pt-2 border-t border-stone-200/70 space-y-2">
-                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
                         <div className="bg-white p-2 rounded-lg border border-stone-200/80">
                           <span className="text-stone-400 block text-[10px]">Courier</span>
                           <span className="font-bold text-stone-800">{viewingOrder.shiprocketInfo.courierName || 'Shiprocket Partner'}</span>
@@ -1182,7 +1429,7 @@ export default function OrdersView() {
               {/* Pending Order Actions: Accept & Cancel Order */}
               {String(viewingOrder.orderStatus || viewingOrder.status || '').toLowerCase() === 'pending' && (
                 <div className="p-4 rounded-xl bg-gradient-to-r from-amber-50/80 via-white to-amber-50/50 border border-amber-200/90 shadow-2xs space-y-3 animate-fadeIn">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
                       <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
@@ -1196,7 +1443,7 @@ export default function OrdersView() {
                   <p className="text-xs text-stone-600">
                     Accept this order to confirm and move it to Processing to unlock shipment dispatch, or cancel the order.
                   </p>
-                  <div className="flex items-center gap-2.5 pt-1">
+                  <div className="flex flex-wrap items-center gap-2.5 pt-1">
                     <button
                       type="button"
                       onClick={async () => {

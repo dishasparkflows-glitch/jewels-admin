@@ -645,7 +645,7 @@ export default function ManageGroupDrawer({
                 {viewMode === 'list' ? (
                   <div className="border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
                     <div className="overflow-x-auto">
-                      <table className="w-full text-left text-xs divide-y divide-stone-100">
+                      <table className="w-full min-w-[760px] text-left text-xs divide-y divide-stone-100">
                         <thead>
                           <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                             <th className="py-3 px-3 w-8">

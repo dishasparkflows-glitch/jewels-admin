@@ -267,7 +267,7 @@ export default function Step4SilverMedia() {
 
                       {vData.media && vData.media.length > 0 ? (
                         <div className="border border-stone-200 bg-white rounded-xl p-2.5 min-h-[110px] h-full flex flex-col justify-between shadow-2xs space-y-2">
-                          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
                             {vData.media.map((m, idx) => (
                               <div
                                 key={m.id || idx}
@@ -555,7 +555,7 @@ export default function Step4SilverMedia() {
 
                       {vData.media && vData.media.length > 0 ? (
                         <div className="border border-stone-200 bg-white rounded-xl p-2.5 min-h-[110px] h-full flex flex-col justify-between shadow-2xs space-y-2">
-                          <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-2 max-h-[160px] overflow-y-auto">
                             {vData.media.map((m, idx) => (
                               <div
                                 key={m.id || idx}

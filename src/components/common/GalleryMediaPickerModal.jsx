@@ -233,8 +233,8 @@ export default function GalleryMediaPickerModal({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 sm:p-5 border-b border-stone-150 bg-stone-50/80 flex items-center justify-between gap-3 shrink-0">
-          <div className="flex items-center gap-3">
+        <div className="p-4 sm:p-5 border-b border-stone-150 bg-stone-50/80 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 shrink-0">
+          <div className="flex items-center gap-3 min-w-0">
             <div
               className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shadow-sm shrink-0"
               style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
@@ -270,7 +270,7 @@ export default function GalleryMediaPickerModal({
         </div>
 
         {/* Filter Controls Bar */}
-        <div className="p-4 border-b border-stone-150 bg-stone-50/50 flex flex-col sm:flex-row items-center gap-3 shrink-0">
+        <div className="p-3.5 sm:p-4 border-b border-stone-150 bg-stone-50/50 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 sm:gap-3 shrink-0">
           {/* Search */}
           <div className="relative flex-1 w-full sm:w-auto">
             <HiOutlineSearch className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
@@ -346,14 +346,15 @@ export default function GalleryMediaPickerModal({
             type="button"
             onClick={() => fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch)}
             title="Refresh images"
-            className="w-9 h-9 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+            className="w-full sm:w-9 h-9 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
           >
             <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="sm:hidden text-xs font-medium">Refresh</span>
           </button>
         </div>
 
         {/* Picker Images Grid */}
-        <div className="flex-1 overflow-y-auto p-5 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 scrollbar-thin">
           {loading ? (
             <div className="py-20 text-center text-stone-400">
               <div

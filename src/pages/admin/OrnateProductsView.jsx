@@ -549,11 +549,11 @@ export default function OrnateProductsView() {
           })}
         </div>
 
-        <div className="flex items-center gap-2.5 shrink-0 self-end md:self-auto">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0 w-full md:w-auto justify-start sm:justify-end">
           <button
             type="button"
             onClick={() => setIsSyncModalOpen(true)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#8b6f4e] bg-white border border-[#8b6f4e]/40 rounded-xl hover:bg-[#8b6f4e]/5 transition-all shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-[#8b6f4e] bg-white border border-[#8b6f4e]/40 rounded-xl hover:bg-[#8b6f4e]/5 transition-all shadow-2xs cursor-pointer"
           >
             <HiOutlineRefresh className="w-3.5 h-3.5" />
             <span>Sync Products</span>
@@ -561,7 +561,7 @@ export default function OrnateProductsView() {
           <button
             type="button"
             onClick={() => navigate('/catalog/ornate-products/add')}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs cursor-pointer"
+            className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs cursor-pointer"
           >
             <HiOutlinePlus className="w-3.5 h-3.5" />
             <span>Add Ornate Product</span>
@@ -654,8 +654,8 @@ export default function OrnateProductsView() {
           )}
 
           {/* Quick Dropdown Filters */}
-          <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-end">
-            <div className="w-44">
+          <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-between sm:justify-end">
+            <div className="flex-1 sm:flex-initial sm:w-44 min-w-[140px]">
               <Dropdown
                 size="sm"
                 value={sortBy}
@@ -997,10 +997,10 @@ export default function OrnateProductsView() {
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full border-t-2 border-dashed border-[#8b6f4e]/30" />
                     </div>
-                    <div className="relative bg-[#fcfaf7] px-4 py-1.5 rounded-full border border-[#8b6f4e]/30 text-[11px] font-bold text-[#8b6f4e] uppercase tracking-wider flex items-center gap-2 shadow-2xs">
-                      <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                      <span>Part 2: Multiple Products in Group Below</span>
-                      <span className="px-2 py-0.2 rounded-full text-[10px] bg-[#8b6f4e]/10 text-[#8b6f4e] font-semibold">
+                    <div className="relative bg-[#fcfaf7] px-3 sm:px-4 py-1.5 rounded-full border border-[#8b6f4e]/30 text-[10px] sm:text-[11px] font-bold text-[#8b6f4e] uppercase tracking-wider flex items-center gap-1.5 sm:gap-2 shadow-2xs text-center max-w-[92%]">
+                      <HiOutlineSparkles className="w-3.5 h-3.5 text-[#8b6f4e] shrink-0" />
+                      <span className="truncate">Part 2: Multiple Products in Group Below</span>
+                      <span className="px-2 py-0.2 rounded-full text-[10px] bg-[#8b6f4e]/10 text-[#8b6f4e] font-semibold shrink-0">
                         {multiGroups.length}
                       </span>
                     </div>
@@ -1249,7 +1249,7 @@ export default function OrnateProductsView() {
               /* Ungrouped List View */
               <div className="bg-white border border-stone-200 rounded-2xl overflow-hidden shadow-2xs">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full text-xs text-left min-w-[820px]">
                     <thead>
                       <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                         <th className="py-3 px-3 w-10 text-center">
@@ -1423,7 +1423,7 @@ export default function OrnateProductsView() {
             onClick={() => setViewingProduct(null)}
           >
             <div
-              className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl space-y-5 animate-scaleUp max-h-[90vh] overflow-y-auto"
+              className="bg-white rounded-2xl sm:rounded-3xl max-w-2xl w-full p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-5 animate-scaleUp max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
             <div className="flex items-center justify-between pb-3 border-b border-stone-100">

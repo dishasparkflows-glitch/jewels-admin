@@ -157,7 +157,7 @@ export default function PricingBreakdownModal({
           <div className="space-y-4">
             {/* Table */}
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
+              <table className="w-full min-w-[440px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-stone-200/80 text-[11px] font-bold text-stone-400 uppercase tracking-wider">
                     <th className="pb-2.5 text-left font-semibold">ITEM</th>

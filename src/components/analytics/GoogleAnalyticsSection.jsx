@@ -445,8 +445,8 @@ export default function GoogleAnalyticsSection() {
           </div>
 
           {/* Search bar & Sort Controls */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="relative flex-1 md:flex-initial">
               <HiOutlineSearch className="w-4 h-4 absolute left-3 top-2.5 text-stone-400" />
               <input
                 type="text"
@@ -456,7 +456,7 @@ export default function GoogleAnalyticsSection() {
                   setSearchTerm(e.target.value);
                   setPage(1);
                 }}
-                className="pl-9 pr-3 py-1.5 text-xs border border-stone-200 rounded-xl w-48 sm:w-64 focus:outline-hidden focus:border-[#8b6f4e]"
+                className="pl-9 pr-7 py-1.5 text-xs border border-stone-200 rounded-xl w-full md:w-56 lg:w-64 focus:outline-hidden focus:border-[#8b6f4e]"
               />
               {searchTerm && (
                 <button
@@ -482,7 +482,7 @@ export default function GoogleAnalyticsSection() {
 
         {/* Table Content */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-stone-700">
+          <table className="w-full min-w-[760px] text-left text-xs text-stone-700">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                 <th className="py-3 px-3 text-center w-12 whitespace-nowrap">SR NO</th>

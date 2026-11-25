@@ -30,8 +30,11 @@
 
 /* Keep the admin shell properly structured without breaking CSS position: sticky */
 html,
-body {
+body,
+#admin-root-layout {
   position: relative;
+  overflow-x: clip;
+  max-width: 100%;
 }
 
 #root {
@@ -50,7 +53,7 @@ main {
   z-index: 99999 !important;
 }
 
-main:has(.fixed.inset-0:not(#admin-sidebar)),
+main:has(.fixed.inset-0:not(#admin-sidebar):not(.mobile-sidebar-backdrop)),
 main:has([role="dialog"]),
 main:has([role="alertdialog"]),
 main:has([aria-modal="true"]) {
@@ -58,14 +61,14 @@ main:has([aria-modal="true"]) {
   z-index: 9999 !important;
 }
 
-body:has(.fixed.inset-0:not(#admin-sidebar)) header,
+body:has(.fixed.inset-0:not(#admin-sidebar):not(.mobile-sidebar-backdrop)) header,
 body:has([role="dialog"]) header,
 body:has([role="alertdialog"]) header,
 body:has([aria-modal="true"]) header {
   z-index: 10 !important;
 }
 
-body:has(.fixed.inset-0:not(#admin-sidebar)) aside#admin-sidebar,
+body:has(.fixed.inset-0:not(#admin-sidebar):not(.mobile-sidebar-backdrop)) aside#admin-sidebar,
 body:has([role="dialog"]) aside#admin-sidebar,
 body:has([role="alertdialog"]) aside#admin-sidebar,
 body:has([aria-modal="true"]) aside#admin-sidebar {
@@ -77,9 +80,15 @@ body:has([aria-modal="true"]) aside#admin-sidebar {
 div:has(> table),
 main div:has(> table) {
   max-width: 100%;
+  min-width: 0;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
+}
+
+main > div {
+  min-width: 0;
+  max-width: 100%;
 }
 
 main table {
@@ -180,12 +189,12 @@ label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge"]):not([c
 
 @layer components {
   .luxury-card {
-    @apply bg-white rounded-2xl border border-[#eee8df] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]
+    @apply bg-white rounded-2xl border border-[#eee8df] p-3.5 sm:p-5 md:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]
            transition-all duration-200;
   }
 
   .luxury-panel {
-    @apply bg-white rounded-2xl border border-[#eee8df] p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]
+    @apply bg-white rounded-2xl border border-[#eee8df] p-3.5 sm:p-5 md:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.02)]
            transition-all duration-200;
   }
 

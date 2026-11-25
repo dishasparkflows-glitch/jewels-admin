@@ -445,25 +445,25 @@ export default function AddDiamonds() {
   return (
     <div className="space-y-6 pb-20 max-w-[1400px] mx-auto font-sans">
       {/* ─── Top Header ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pt-1">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight flex flex-wrap items-center gap-2">
             <span>Add Diamonds</span>
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#fbf5ed] text-[#8b6f4e] border border-[#e8d7be]">
               Rapid Matrix Generator
             </span>
           </h1>
-          <p className="text-[13px] text-stone-500 mt-0.5">
+          <p className="text-xs sm:text-[13px] text-stone-500 mt-0.5">
             Configure 4Cs and carats to auto-lookup master rates and spawn stock inventory.
           </p>
         </div>
 
         {/* Action Buttons: Cancel & Publish Variants */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5 sm:gap-3 w-full sm:w-auto">
           <button
             type="button"
             onClick={() => navigate('/diamonds')}
-            className="px-6 py-2 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-[13px] font-semibold rounded-xl transition-all shadow-2xs hover:shadow-xs active:scale-98 cursor-pointer"
+            className="flex-1 sm:flex-initial px-4 sm:px-6 py-2 bg-white hover:bg-stone-50 border border-stone-200 text-stone-700 text-[13px] font-semibold rounded-xl transition-all shadow-2xs hover:shadow-xs active:scale-98 cursor-pointer text-center"
           >
             Cancel
           </button>
@@ -472,14 +472,14 @@ export default function AddDiamonds() {
             type="button"
             disabled={variants.length === 0 || publishing}
             onClick={handlePublishVariants}
-            className={`px-6 py-2 text-[13px] font-semibold rounded-xl transition-all shadow-xs ${
+            className={`flex-1 sm:flex-initial px-4 sm:px-6 py-2 text-[13px] font-semibold rounded-xl transition-all shadow-xs text-center ${
               variants.length > 0 && !publishing
                 ? 'bg-[#8b6f4e] hover:bg-[#785e42] text-white active:scale-98 cursor-pointer'
                 : 'bg-stone-100 text-stone-400 border border-stone-200 cursor-not-allowed'
             }`}
           >
             {publishing ? (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <div className="w-3.5 h-3.5 border-2 border-stone-400 border-t-transparent rounded-full animate-spin" />
                 <span>Publishing...</span>
               </div>
@@ -491,8 +491,8 @@ export default function AddDiamonds() {
       </div>
 
       {/* ─── Card 1: 1. Diamond Information ─── */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs p-6 space-y-5">
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs p-4 sm:p-6 space-y-4 sm:space-y-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-[#faf5ee] border border-[#ebdcc9] flex items-center justify-center text-[#8b6f4e] shadow-2xs">
               <IoDiamondOutline className="w-4 h-4" />
@@ -636,7 +636,7 @@ export default function AddDiamonds() {
       </div>
 
       {/* ─── Card 2: 2. Carat Weight Configuration ─── */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs p-6 space-y-4">
+      <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs p-4 sm:p-6 space-y-4">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs">
             <TbListDetails className="w-4 h-4" />
@@ -716,9 +716,9 @@ export default function AddDiamonds() {
       {/* ─── 3. Generated Variants Stock Table ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
         {/* Table Header & Bulk Pricing Toolbar */}
-        <div className="p-6 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-stone-100">
+        <div className="p-4 sm:p-6 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 sm:gap-4 border-b border-stone-100">
           <div>
-            <h3 className="text-base font-bold text-stone-900 tracking-tight flex items-center gap-2">
+            <h3 className="text-base font-bold text-stone-900 tracking-tight flex flex-wrap items-center gap-2">
               <span>Generated Stock Variants</span>
               <span className="px-2.5 py-0.5 text-xs bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d7be] rounded-full font-semibold">
                 {variants.length} {variants.length === 1 ? 'Variant' : 'Variants'}
@@ -729,16 +729,16 @@ export default function AddDiamonds() {
                 </span>
               )}
             </h3>
-            <p className="text-[13px] text-stone-500 mt-0.5">
+            <p className="text-xs sm:text-[13px] text-stone-500 mt-0.5">
               Two-way reactive editing: changing Rate/ct recalculates Total Price, and vice-versa.
             </p>
           </div>
 
           {/* Bulk Pricing Input */}
           {variants.length > 0 && (
-            <div className="flex items-center gap-2 bg-stone-50 p-1.5 rounded-xl border border-stone-200/80">
+            <div className="flex flex-wrap items-center gap-2 bg-stone-50 p-1.5 rounded-xl border border-stone-200/80 w-full md:w-auto">
               <span className="text-[11px] font-bold text-stone-500 pl-2">SET RATE / CT:</span>
-              <div className="relative w-28">
+              <div className="relative flex-1 sm:w-28 min-w-[100px]">
                 <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-stone-400">₹</span>
                 <input
                   type="number"
@@ -751,7 +751,7 @@ export default function AddDiamonds() {
               <button
                 type="button"
                 onClick={handleApplyBulkRate}
-                className="px-3 py-1 bg-[#8b6f4e] hover:bg-[#785e42] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                className="px-3 py-1 bg-[#8b6f4e] hover:bg-[#785e42] text-white text-xs font-semibold rounded-lg transition-colors cursor-pointer shrink-0"
               >
                 Apply All
               </button>

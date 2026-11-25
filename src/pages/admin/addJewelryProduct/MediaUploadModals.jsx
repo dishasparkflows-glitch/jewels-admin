@@ -418,7 +418,7 @@ export default function MediaUploadModals() {
 
                 return (
                   <div className="border-t border-stone-100 bg-white p-4 sm:p-5 space-y-3">
-                    <div className="grid grid-cols-3 gap-2.5 rounded-2xl bg-stone-50 p-3 border border-stone-100 text-center">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 rounded-2xl bg-stone-50 p-3 border border-stone-100 text-center">
                       <div>
                         <span className="block text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
                           Original Size

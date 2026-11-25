@@ -701,18 +701,8 @@ export default function ThemesView() {
           </span>
         </div>
 
-        {/* Header Actions: Choose Live Theme & Add Theme */}
+        {/* Header Actions: Add Theme */}
         <div className="flex items-center gap-2">
-          {/* Button in the red box */}
-          <button
-            type="button"
-            onClick={() => setIsThemeChooserOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 border border-stone-200/90 bg-white hover:bg-[#FAF7F2] hover:border-[#8b6f4e] text-stone-700 hover:text-[#8b6f4e] rounded-lg text-xs font-semibold tracking-wide transition-all shadow-2xs hover:shadow-xs active:scale-[0.98] cursor-pointer"
-          >
-            <HiOutlineColorSwatch className="w-3.5 h-3.5 text-[#8b6f4e]" />
-            <span>Choose Live Theme</span>
-          </button>
-
           <button
             type="button"
             onClick={() => openEditor(null)}
@@ -814,7 +804,7 @@ export default function ThemesView() {
 
       {/* ─── 3. FILTER & TOOLBAR (Compact Layout like Media & Theme Gallery) ─── */}
       <div className="rounded-lg border border-stone-200/90 bg-white p-2 sm:p-2.5 shadow-2xs flex flex-wrap items-center justify-between gap-2.5">
-        <div className="relative flex-1 min-w-[240px] max-w-md">
+        <div className="relative w-full sm:flex-1 sm:min-w-[240px] sm:max-w-md">
           <HiOutlineSearch className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-stone-400 pointer-events-none" />
           <input
             type="text"

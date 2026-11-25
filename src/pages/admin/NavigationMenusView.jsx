@@ -1557,7 +1557,7 @@ export default function NavigationMenusView() {
                         <span className="text-[10px] font-semibold text-stone-400 uppercase tracking-wider block mb-1.5">
                           Or Pick a Preset Icon:
                         </span>
-                        <div className="grid grid-cols-4 gap-1.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                           {PRESET_ICONS.map((preset) => {
                             const dataUrl = `data:image/svg+xml;utf8,${encodeURIComponent(preset.svg)}`;
                             const isSelected = itemModal.data?.iconUrl === dataUrl;

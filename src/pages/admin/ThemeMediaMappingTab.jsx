@@ -449,7 +449,7 @@ export default function ThemeMediaMappingTab({
               {/* Banners Table */}
               <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
+                  <table className="w-full min-w-[680px] text-left border-collapse">
                     <thead>
                       <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                         <th className="py-3 px-3.5 whitespace-nowrap">PREVIEW</th>
@@ -1015,7 +1015,7 @@ export default function ThemeMediaMappingTab({
 
               {/* Table matching CelebrateGiftsView.jsx */}
               <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
+                <table className="w-full min-w-[680px] text-left border-collapse">
                   <thead>
                     <tr className="border-b border-stone-200 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                       <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
@@ -1233,9 +1233,9 @@ function ActivationConfirmModal({ theme, summary, activating, onClose, onConfirm
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-fadeIn">
-      <div className="relative w-full max-w-lg rounded-2xl bg-white shadow-2xl border border-stone-200 overflow-hidden">
+      <div className="relative w-full max-w-lg max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-2xl border border-stone-200 overflow-hidden">
         {/* Header */}
-        <div className="p-5 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between">
+        <div className="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/70 flex items-center justify-between gap-2 shrink-0">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center">
               <HiOutlineCheckCircle className="h-5 w-5" />
@@ -1259,7 +1259,7 @@ function ActivationConfirmModal({ theme, summary, activating, onClose, onConfirm
         </div>
 
         {/* Content */}
-        <div className="p-5 space-y-4 text-xs text-stone-700">
+        <div className="p-4 sm:p-5 space-y-4 text-xs text-stone-700 overflow-y-auto">
           <p>
             You are about to activate theme <span className="font-bold text-stone-900">"{theme?.name}"</span> as the live storefront theme.
           </p>
@@ -1302,7 +1302,7 @@ function ActivationConfirmModal({ theme, summary, activating, onClose, onConfirm
         </div>
 
         {/* Footer */}
-        <div className="border-t border-stone-200 p-4 bg-stone-50/70 flex items-center justify-end gap-2.5">
+        <div className="border-t border-stone-200 p-4 bg-stone-50/70 flex flex-wrap items-center justify-end gap-2.5 shrink-0">
           <button
             type="button"
             onClick={onClose}

@@ -147,12 +147,12 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
     <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !syncing && onClose?.()} />
     <section role="dialog" aria-modal="true" aria-labelledby="ornate-sync-title" className="relative w-full max-w-[1250px] max-h-[92dvh] flex flex-col rounded-[22px] bg-white shadow-2xl overflow-hidden">
-      <header className="flex items-center gap-4 border-b border-stone-100 px-6 py-5 shrink-0">
-        <div className="p-3 rounded-xl bg-[#f4ece0] text-[#8b6f4e]"><IoCubeOutline size={26} /></div>
-        <div className="flex-1"><h2 id="ornate-sync-title" className="text-[20px] font-bold">Sync Products from Ornate ERP</h2><p className="mt-1 text-[13px] text-stone-500">Select products to import in bulk, or open any product to view its ERP details.</p></div>
+      <header className="flex items-start sm:items-center gap-3 sm:gap-4 border-b border-stone-100 px-4 sm:px-6 py-4 sm:py-5 shrink-0">
+        <div className="p-2.5 sm:p-3 rounded-xl bg-[#f4ece0] text-[#8b6f4e] shrink-0"><IoCubeOutline size={24} /></div>
+        <div className="flex-1 min-w-0"><h2 id="ornate-sync-title" className="text-lg sm:text-[20px] font-bold">Sync Products from Ornate ERP</h2><p className="mt-1 text-xs sm:text-[13px] text-stone-500">Select products to import in bulk, or open any product to view its ERP details.</p></div>
         <button type="button" className={button} aria-label="Close sync dialog" disabled={syncing} onClick={onClose}><IoClose size={20} /></button>
       </header>
-      <div className="px-6 py-4 border-b border-stone-100 space-y-3 shrink-0">
+      <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 space-y-3 shrink-0">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div className="relative w-full">
             <IoSearchOutline className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400 pointer-events-none" size={18} />
@@ -219,7 +219,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
               );
             })}
           </div>
-          <div className="ml-auto flex items-center gap-2"><Dropdown className="w-[145px]" size="sm" value={selectionFilter} onChange={setSelectionFilter} options={[{ value: 'all', label: 'All selections' }, { value: 'selected', label: 'Selected' }, { value: 'unselected', label: 'Unselected' }]} />
+          <div className="ml-auto flex flex-wrap items-center gap-2 w-full sm:w-auto"><Dropdown className="w-full sm:w-[145px]" size="sm" value={selectionFilter} onChange={setSelectionFilter} options={[{ value: 'all', label: 'All selections' }, { value: 'selected', label: 'Selected' }, { value: 'unselected', label: 'Unselected' }]} />
             {[['grid', IoGridOutline], ['list', IoListOutline]].map(([mode, Icon]) => <button key={mode} type="button" aria-label={`${mode} view`} aria-pressed={view === mode} onClick={() => setView(mode)} className={`rounded-lg p-3 ${view === mode ? 'bg-[#8b6f4e] text-white' : 'bg-stone-100 text-stone-600'}`}><Icon size={18} /></button>)}
           </div>
         </div>
@@ -242,7 +242,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
           </div>
         )}
         {loading ? <div className="p-20 text-center text-stone-500"><IoRefreshOutline size={30} className="animate-spin mx-auto mb-3" />Loading products from Ornate ERP...</div> : error ? <div className="p-8 text-red-700" role="alert">{error}<button type="button" className={`${button} ml-4`} onClick={() => setRetry((n) => n + 1)}>Retry</button></div> : <div className={`grid ${detail ? 'lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]' : ''}`}>
-          <div className="p-6 min-w-0">
+          <div className="p-4 sm:p-6 min-w-0">
             <Pagination
               currentPage={currentPage}
               totalPages={pageCount}
@@ -339,18 +339,18 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
               </div>
             )}
           </div>
-          {detail && <aside className="border-t lg:border-t-0 lg:border-l border-stone-200 p-6 bg-stone-50/50 min-w-0">
+          {detail && <aside className="border-t lg:border-t-0 lg:border-l border-stone-200 p-4 sm:p-6 bg-stone-50/50 min-w-0">
             <div className="flex items-center justify-between mb-4"><h3 className="text-[14px] font-bold">Product details</h3><button type="button" aria-label="Close product details" onClick={() => setDetailId(null)} className="p-2"><IoClose size={20} /></button></div>
             {photos.length > 0 && <div className="mb-4"><ProductPhoto url={photos[imageIndex]} name={detail.itemName} className="w-full max-h-[240px] object-contain rounded-xl" />{photos.length > 1 && <div className="flex justify-between items-center mt-2"><button type="button" aria-label="Previous image" onClick={() => setImageIndex((imageIndex + photos.length - 1) % photos.length)}><IoChevronBack /></button><span>{imageIndex + 1} / {photos.length}</span><button type="button" aria-label="Next image" onClick={() => setImageIndex((imageIndex + 1) % photos.length)}><IoChevronForward /></button></div>}</div>}
             <h4 className="text-[16px] font-bold leading-relaxed mb-4">{detail.itemName || 'Unnamed ERP product'}</h4>
             <dl className="rounded-xl border border-stone-200 bg-white overflow-hidden text-[12px]">{[
               ['Category', detail.groupName], ['Metal', detail.metalName], ['Carat / purity code', detail.carat], ['ERP unique label ID', detail.uniqueLabelID], ['Label number', detail.labelNo], ['Barcode', detail.barcodeNo], ['Gross weight', weight(detail.grossWt)], ['Net weight', weight(detail.netWt)], ['Price', money(detail.price)], ['Stock', detail.inStock == null ? null : Number(detail.inStock) === 1 ? 'In stock' : 'Out of stock'],
-            ].map(([label, value]) => <div key={label} className="grid grid-cols-2 gap-3 p-3 border-b last:border-0 border-stone-100"><dt className="text-stone-500">{label}</dt><dd className="font-medium break-words">{valueOrDash(value)}</dd></div>)}</dl>
+            ].map(([label, value]) => <div key={label} className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-3 p-3 border-b last:border-0 border-stone-100"><dt className="text-stone-500">{label}</dt><dd className="font-medium break-words">{valueOrDash(value)}</dd></div>)}</dl>
             <button type="button" disabled={syncing || !detail.id} onClick={() => toggle(detail.id)} className="w-full mt-4 bg-[#8b6f4e] text-white rounded-xl px-4 py-3 text-[13px] font-semibold disabled:opacity-40">{selected.has(detail.id) ? 'Remove from selection' : 'Add to selection'}</button>
           </aside>}
         </div>}
       </div>
-      <footer className="px-6 py-4 border-t border-stone-200 shrink-0 bg-white">
+      <footer className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-stone-200 shrink-0 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3 text-[13px]">
           <span>
             <strong>{selected.size} of {products.length}</strong> products selected

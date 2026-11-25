@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTheme } from '../../contexts/ThemeContext';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 import {
   HiOutlineChevronRight,
@@ -76,6 +77,7 @@ const DEFAULT_HEADER_FOOTER_COLORS = {
 
 export default function SettingsView() {
   const navigate = useNavigate();
+  const { currentTheme } = useTheme();
   const [settings, setSettings] = useState(null);
   const [, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -777,7 +779,7 @@ export default function SettingsView() {
             placeholder="Search settings..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-9 pl-9 pr-3 text-xs bg-white border border-stone-200 rounded-lg text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] transition-all"
+            className="w-full h-9 pl-9 pr-3 text-xs bg-white border border-stone-200 rounded-lg text-stone-800 placeholder-stone-400 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)] transition-all"
           />
           {searchQuery && (
             <button
@@ -799,21 +801,21 @@ export default function SettingsView() {
             <div
               key={box.id}
               onClick={() => handleOpenModal(box.id)}
-              className="group relative flex flex-col justify-between rounded-xl border border-[#8b6f4e]/35 bg-white p-4 shadow-2xs hover:border-[#8b6f4e] hover:shadow-md transition-all duration-200 cursor-pointer"
+              className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white p-4 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] hover:shadow-md transition-all duration-200 cursor-pointer"
             >
               <div>
                 {/* Top Row: Icon + Right Chevron */}
                 <div className="flex items-start justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#faf6f0] border border-[#ebdcc8]/80 text-[#8f6d43] group-hover:bg-[#8f6d43] group-hover:text-white transition-colors duration-200">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-stone-50 border border-stone-200/80 text-[var(--theme-primary,#8b6f4e)] group-hover:bg-[var(--theme-primary,#8b6f4e)] group-hover:border-[var(--theme-primary,#8b6f4e)] group-hover:text-white transition-all duration-200">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <span className="text-stone-300 group-hover:text-[#8f6d43] group-hover:translate-x-0.5 transition-all duration-200">
+                  <span className="text-stone-300 group-hover:text-[var(--theme-primary,#8b6f4e)] group-hover:translate-x-0.5 transition-all duration-200">
                     <HiOutlineChevronRight className="h-4 w-4" />
                   </span>
                 </div>
 
                 {/* Title & Description */}
-                <h3 className="mt-3 text-sm font-bold text-stone-900 group-hover:text-[#8f6d43] transition-colors">
+                <h3 className="mt-3 text-sm font-bold text-stone-900 group-hover:text-[var(--theme-primary,#8b6f4e)] transition-colors">
                   {box.title}
                 </h3>
                 <p className="mt-1 text-xs text-stone-500 leading-relaxed">
@@ -835,11 +837,11 @@ export default function SettingsView() {
                     </span>
                   </div>
                 ) : (
-                  <span className="inline-flex items-center rounded-md bg-[#faf6f0] border border-[#ebdcc8]/60 px-2 py-0.5 text-[11px] font-medium text-stone-700">
+                  <span className="inline-flex items-center rounded-md bg-stone-50 border border-stone-200/80 px-2 py-0.5 text-[11px] font-medium text-stone-700">
                     {box.badgeText}
                   </span>
                 )}
-                <span className="text-[10px] font-bold uppercase tracking-wider text-[#8f6d43] opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--theme-primary,#8b6f4e)] opacity-0 group-hover:opacity-100 transition-opacity">
                   Configure →
                 </span>
               </div>
@@ -854,7 +856,7 @@ export default function SettingsView() {
           <button
             type="button"
             onClick={() => setSearchQuery('')}
-            className="mt-2 text-xs font-semibold text-[#8f6d43] hover:underline"
+            className="mt-2 text-xs font-semibold text-[var(--theme-primary,#8b6f4e)] hover:underline"
           >
             Clear search
           </button>
@@ -976,7 +978,7 @@ export default function SettingsView() {
                           data-upload-trigger="true"
                           onClick={() => inputRef.current?.click()}
                           disabled={busy}
-                          className="mt-3 min-h-28 w-full flex flex-col items-center justify-center rounded-xl border border-dashed border-[#d8c8b2] bg-white p-3 hover:border-[#8f6d43] hover:bg-[#faf5ee] disabled:opacity-60 transition-all focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/30 overflow-hidden relative group"
+                          className="mt-3 min-h-28 w-full flex flex-col items-center justify-center rounded-xl border border-dashed border-stone-300 bg-white p-3 hover:border-[var(--theme-primary,#8b6f4e)] hover:bg-stone-50/50 disabled:opacity-60 transition-all focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.3)] overflow-hidden relative group"
                         >
                           {settings?.[field]?.url ? (
                             <div className="relative w-full h-full flex items-center justify-center">
@@ -991,7 +993,7 @@ export default function SettingsView() {
                             </div>
                           ) : field === 'loginModalImage' ? (
                             <div className="flex flex-col items-center text-center">
-                              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#faf6f0] text-[#8f6d43] mb-1.5">
+                              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(var(--theme-primary-rgb,139,111,78),0.1)] text-[var(--theme-primary,#8b6f4e)] mb-1.5">
                                 <HiOutlinePhotograph className="h-5 w-5" />
                               </span>
                               <span className="text-xs font-semibold text-stone-700">Choose custom image</span>
@@ -999,7 +1001,7 @@ export default function SettingsView() {
                             </div>
                           ) : (
                             <div className="flex flex-col items-center text-center">
-                              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#faf6f0] text-[#8f6d43] mb-1.5">
+                              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[rgba(var(--theme-primary-rgb,139,111,78),0.1)] text-[var(--theme-primary,#8b6f4e)] mb-1.5">
                                 <HiOutlinePhotograph className="h-5 w-5" />
                               </span>
                               <span className="text-xs font-semibold text-stone-700">Choose image</span>
@@ -1034,7 +1036,7 @@ export default function SettingsView() {
                         onChange={(event) =>
                           setImageCompression((prev) => ({ ...prev, enabled: event.target.checked }))
                         }
-                        className="h-4 w-4 accent-[#8f6d43] cursor-pointer shrink-0 ml-2"
+                        className="h-4 w-4 accent-[var(--theme-primary,#8b6f4e)] cursor-pointer shrink-0 ml-2"
                       />
                     </label>
 
@@ -1042,7 +1044,7 @@ export default function SettingsView() {
                     <label className="flex flex-col justify-center rounded-lg border border-stone-200 bg-[#fbfaf8] px-3 py-2">
                       <div className="flex items-center justify-between text-xs font-bold text-stone-800 leading-tight">
                         <span>Image quality</span>
-                        <span className="text-[#8f6d43] font-semibold">{imageCompression.quality}%</span>
+                        <span className="text-[var(--theme-primary,#8b6f4e)] font-semibold">{imageCompression.quality}%</span>
                       </div>
                       <div className="mt-1 flex items-center gap-2">
                         <span className="text-[9px] text-stone-400 shrink-0">60%</span>
@@ -1056,7 +1058,7 @@ export default function SettingsView() {
                             setImageCompression((prev) => ({ ...prev, quality: Number(event.target.value) }))
                           }
                           disabled={!imageCompression.enabled}
-                          className="h-1 w-full accent-[#8f6d43] disabled:opacity-40 cursor-pointer"
+                          className="h-1 w-full accent-[var(--theme-primary,#8b6f4e)] disabled:opacity-40 cursor-pointer"
                         />
                         <span className="text-[9px] text-stone-400 shrink-0">95%</span>
                       </div>
@@ -1109,13 +1111,13 @@ export default function SettingsView() {
                             )
                           }
                           placeholder="e.g. 100% Certified Jewellery"
-                          className="h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20"
+                          className="h-9 w-full rounded-lg border border-stone-200 bg-white px-3 text-xs text-stone-800 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                         />
                       </div>
                       <div>
                         <label className="mb-1 block text-xs font-bold text-stone-800">Icon / Stamp</label>
                         <div className="flex items-center gap-1.5">
-                          <label className="flex h-9 flex-1 items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-[#d8c8b2] bg-white px-2 text-xs cursor-pointer hover:border-[#8f6d43]">
+                          <label className="flex h-9 flex-1 items-center justify-center gap-2 overflow-hidden rounded-lg border border-dashed border-stone-300 bg-white px-2 text-xs cursor-pointer hover:border-[var(--theme-primary,#8b6f4e)]">
                             {badge.image?.url ? (
                               <img
                                 src={getMediaUrl(badge.image.url)}
@@ -1181,7 +1183,7 @@ export default function SettingsView() {
                     onClick={() =>
                       setTrustBadges((prev) => [...prev, { title: '', image: { url: '', key: '' } }])
                     }
-                    className="w-full h-10 rounded-xl border border-dashed border-[#8f6d43]/50 bg-[#faf6f0]/50 text-xs font-semibold text-[#8f6d43] hover:bg-[#faf6f0] transition-colors"
+                    className="w-full h-10 rounded-xl border border-dashed border-[var(--theme-primary,#8b6f4e)]/50 bg-[rgba(var(--theme-primary-rgb,139,111,78),0.05)] text-xs font-semibold text-[var(--theme-primary,#8b6f4e)] hover:bg-[rgba(var(--theme-primary-rgb,139,111,78),0.1)] transition-colors"
                   >
                     + Add New Trust Badge
                   </button>
@@ -1200,7 +1202,7 @@ export default function SettingsView() {
                         type="text"
                         value={businessForm.companyName}
                         onChange={(e) => setBusinessForm({ ...businessForm, companyName: e.target.value })}
-                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                       />
                     </div>
                     <div>
@@ -1211,7 +1213,7 @@ export default function SettingsView() {
                         type="email"
                         value={businessForm.emailAddress}
                         onChange={(e) => setBusinessForm({ ...businessForm, emailAddress: e.target.value })}
-                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                       />
                     </div>
                     <div>
@@ -1226,7 +1228,7 @@ export default function SettingsView() {
                           type="text"
                           value={businessForm.mobileNumber}
                           onChange={(e) => setBusinessForm({ ...businessForm, mobileNumber: e.target.value })}
-                          className="w-full h-9 pl-8 pr-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                          className="w-full h-9 pl-8 pr-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                         />
                       </div>
                     </div>
@@ -1239,7 +1241,7 @@ export default function SettingsView() {
                         value={businessForm.storeAddress}
                         onChange={(e) => setBusinessForm({ ...businessForm, storeAddress: e.target.value })}
                         placeholder="Enter full store address..."
-                        className="w-full p-2.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43] resize-y min-h-[72px]"
+                        className="w-full p-2.5 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)] resize-y min-h-[72px]"
                       />
                     </div>
                     <div>
@@ -1248,7 +1250,7 @@ export default function SettingsView() {
                         type="text"
                         value={businessForm.gstCode}
                         onChange={(e) => setBusinessForm({ ...businessForm, gstCode: e.target.value })}
-                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                       />
                     </div>
                     <div>
@@ -1257,7 +1259,7 @@ export default function SettingsView() {
                         type="text"
                         value={businessForm.panCode}
                         onChange={(e) => setBusinessForm({ ...businessForm, panCode: e.target.value })}
-                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                       />
                     </div>
                     <div>
@@ -1267,7 +1269,7 @@ export default function SettingsView() {
                         placeholder="https://play.google.com/store/apps/details?id=..."
                         value={businessForm.playStoreUrl}
                         onChange={(e) => setBusinessForm({ ...businessForm, playStoreUrl: e.target.value })}
-                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                       />
                     </div>
                     <div>
@@ -1277,7 +1279,7 @@ export default function SettingsView() {
                         placeholder="https://apps.apple.com/app/..."
                         value={businessForm.appStoreUrl}
                         onChange={(e) => setBusinessForm({ ...businessForm, appStoreUrl: e.target.value })}
-                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                       />
                     </div>
 
@@ -1300,7 +1302,7 @@ export default function SettingsView() {
                     <div
                       {...getUploadTriggerProps(() => fileInputRef.current?.click())}
                       onClick={() => fileInputRef.current?.click()}
-                      className="h-16 rounded-xl border border-dashed border-stone-300 hover:border-[#8f6d43] focus:outline-none focus:border-[#8f6d43] focus:ring-2 focus:ring-[#8f6d43]/25 hover:bg-[#faf5ee] bg-[#fafaf8] flex items-center justify-center p-3 cursor-pointer transition-all"
+                      className="h-16 rounded-xl border border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.25)] hover:bg-stone-50 bg-[#fafaf8] flex items-center justify-center p-3 cursor-pointer transition-all"
                     >
                       {businessForm.certificateImageUrl ? (
                         <div className="flex items-center gap-3">
@@ -1316,7 +1318,7 @@ export default function SettingsView() {
                         </div>
                       ) : (
                         <div className="flex items-center gap-2 text-stone-500">
-                          <HiOutlineUpload className="h-4 w-4 text-[#8f6d43]" />
+                          <HiOutlineUpload className="h-4 w-4 text-[var(--theme-primary,#8b6f4e)]" />
                           <span className="text-xs font-medium">
                             {uploadingImage ? 'Uploading…' : 'Upload authenticity stamp (PNG, JPG, WebP)'}
                           </span>
@@ -1337,7 +1339,7 @@ export default function SettingsView() {
                       placeholder="e.g. HDFC Bank"
                       value={monetaryForm.bankName}
                       onChange={(e) => setMonetaryForm({ ...monetaryForm, bankName: e.target.value })}
-                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                     />
                   </div>
 
@@ -1353,7 +1355,7 @@ export default function SettingsView() {
                         onChange={(e) =>
                           setMonetaryForm({ ...monetaryForm, bankAccountNumber: e.target.value })
                         }
-                        className="w-full h-9 pl-3 pr-9 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                        className="w-full h-9 pl-3 pr-9 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                       />
                       <button
                         type="button"
@@ -1377,7 +1379,7 @@ export default function SettingsView() {
                     <select
                       value={monetaryForm.paymentProvider || 'razorpay'}
                       onChange={(e) => setMonetaryForm({ ...monetaryForm, paymentProvider: e.target.value })}
-                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 font-medium focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 font-medium focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                     >
                       <option value="razorpay">Razorpay (Cards, UPI, NetBanking)</option>
                       <option value="ccavenue">CCAvenue (Cards, NetBanking, Wallets)</option>
@@ -1394,7 +1396,7 @@ export default function SettingsView() {
                       placeholder="e.g. HDFC0001234"
                       value={monetaryForm.ifscCode}
                       onChange={(e) => setMonetaryForm({ ...monetaryForm, ifscCode: e.target.value })}
-                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/20 focus:border-[#8f6d43]"
+                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 uppercase focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                     />
                   </div>
                 </div>
@@ -1888,7 +1890,7 @@ export default function SettingsView() {
                   <div className="rounded-2xl border border-stone-200/80 bg-white p-4 sm:p-5">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#8f6d43]/10 text-[#8f6d43]">
+                        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[rgba(var(--theme-primary-rgb,139,111,78),0.1)] text-[var(--theme-primary,#8b6f4e)]">
                           <HiOutlineColorSwatch className="h-5 w-5" />
                         </div>
                         <div>
@@ -1931,7 +1933,6 @@ export default function SettingsView() {
                       <span className="text-[10px] font-bold uppercase tracking-wider text-[#8b6f4e]">
                         Storefront Live Preview
                       </span>
-                      <span className="text-[10px] text-stone-400">Updates live as you configure</span>
                     </div>
 
                     <div className="space-y-1.5 bg-white p-3 rounded-lg border border-stone-200/70">
@@ -1946,6 +1947,9 @@ export default function SettingsView() {
                       )}
 
                       {/* Hourly Sold Badge */}
+
+
+                      
                       {socialProofForm.showSoldCounter && (
                         <div className="flex items-center gap-1.5 text-xs text-stone-700">
                           <span className="text-sm leading-none">🔥</span>
@@ -2232,7 +2236,8 @@ export default function SettingsView() {
                   type="button"
                   onClick={handleSaveImageCompression}
                   disabled={savingCompression}
-                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
+                  style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {savingCompression ? 'Saving…' : 'Save Changes'}
                 </button>
@@ -2243,7 +2248,8 @@ export default function SettingsView() {
                   type="button"
                   onClick={handleSaveTrustBadges}
                   disabled={savingTrustBadges}
-                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
+                  style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {savingTrustBadges ? 'Saving…' : 'Save Changes'}
                 </button>
@@ -2254,7 +2260,8 @@ export default function SettingsView() {
                   type="button"
                   onClick={handleSaveBusiness}
                   disabled={savingBusiness}
-                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
+                  style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {savingBusiness ? 'Saving…' : 'Save Changes'}
                 </button>
@@ -2265,7 +2272,8 @@ export default function SettingsView() {
                   type="button"
                   onClick={handleSaveMonetary}
                   disabled={savingMonetary}
-                  className="rounded-lg bg-[#8f6d43] px-5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#7a5c36] disabled:opacity-50 transition-colors"
+                  style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {savingMonetary ? 'Saving…' : 'Save Changes'}
                 </button>
@@ -2276,8 +2284,8 @@ export default function SettingsView() {
                   type="button"
                   onClick={handleSaveTheme}
                   disabled={savingTheme}
-                  style={{ backgroundColor: buttonColor || '#8b6f4e', color: buttonTextColor || '#ffffff' }}
-                  className="rounded-lg px-5 py-2 text-xs font-semibold shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
+                  style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {savingTheme ? 'Saving…' : 'Save Storefront Colors'}
                 </button>
@@ -2288,7 +2296,7 @@ export default function SettingsView() {
                   type="button"
                   onClick={handleSaveSocialProof}
                   disabled={savingSocialProof}
-                  style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                  style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
                   className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {savingSocialProof ? 'Saving…' : 'Save Social Proof Settings'}
@@ -2300,7 +2308,7 @@ export default function SettingsView() {
                   type="button"
                   onClick={handleSaveSocialMedia}
                   disabled={savingSocialMedia}
-                  style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                  style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
                   className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {savingSocialMedia ? 'Saving…' : 'Save Social Media Links'}

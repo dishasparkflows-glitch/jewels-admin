@@ -22,7 +22,7 @@ export default function AddMetalColorModal() {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-3xl border border-stone-200 shadow-2xl max-w-md w-full p-6 space-y-5 cursor-default"
+        className="bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl max-w-md w-full p-4 sm:p-6 space-y-4 sm:space-y-5 cursor-default max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between pb-3 border-b border-stone-100">
           <h3 className="text-sm font-bold text-stone-900">

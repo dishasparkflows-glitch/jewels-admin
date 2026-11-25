@@ -515,7 +515,7 @@ export default function MetalRatesView() {
               </div>
 
               {/* Platinum & Silver Row */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Platinum Rate (₹/g) <span className="text-rose-500 font-bold">*</span>
@@ -562,7 +562,7 @@ export default function MetalRatesView() {
                 <span className="text-[10px] font-bold tracking-wider text-stone-500 uppercase block">
                   Calculated Formula Preview
                 </span>
-                <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs">
                   <div className="bg-white p-2 rounded-lg border border-stone-200/60 shadow-2xs">
                     <span className="text-[10px] text-stone-400 font-bold block">18KT</span>
                     <span className="font-bold text-stone-900 text-xs">₹{formatINR(temp18KT)}</span>

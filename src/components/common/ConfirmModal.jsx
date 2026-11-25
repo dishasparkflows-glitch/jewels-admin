@@ -125,7 +125,7 @@ export default function ConfirmModal({
       onClick={!loading ? onCancel : undefined}
     >
       <div
-        className="relative w-full max-w-[390px] bg-white rounded-2xl sm:rounded-3xl border border-stone-100 shadow-2xl p-6 sm:p-7 text-center transition-all transform duration-200 animate-scaleUp overflow-hidden"
+        className="relative w-full max-w-[390px] bg-white rounded-2xl sm:rounded-3xl border border-stone-100 shadow-2xl p-5 sm:p-7 text-center transition-all transform duration-200 animate-scaleUp overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Top-right close button */}

@@ -1,7 +1,6 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect, useMemo } from 'react';
 import {
-  HiOutlineInformationCircle,
   HiOutlinePhotograph,
   HiOutlineUpload,
   HiOutlineX,
@@ -16,6 +15,7 @@ import { getMediaUrl } from '../../utils/imageUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import { EditActionButton } from '../../components/common/RowActions';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 
 const ORDERED_PARTS = ['hand', 'neck', 'ear'];
@@ -274,13 +274,13 @@ export default function VtoMastersView() {
             >
               {/* Top Details */}
               <div>
-                {/* Header Row: Icon + Title/Env + Active Badge */}
-                <div
-                  onClick={() => openEditModal(key, master)}
-                  className="flex items-center justify-between gap-2 cursor-pointer hover:opacity-85 transition-opacity"
-                  title="Click to edit VTO master"
-                >
-                  <div className="flex items-center gap-2.5">
+                {/* Header Row: Icon + Title/Env + Edit Action + Active Badge */}
+                <div className="flex items-center justify-between gap-2">
+                  <div
+                    onClick={() => openEditModal(key, master)}
+                    className="flex items-center gap-2.5 min-w-0 cursor-pointer hover:opacity-85 transition-opacity"
+                    title="Click to edit VTO master"
+                  >
                     <div className="w-8 h-8 rounded-xl bg-[#faf5ee] border border-[#ebdccb] flex items-center justify-center text-[#8f6d43] flex-shrink-0 shadow-2xs">
                       <IoSparklesOutline className="w-4 h-4 text-[#8f6d43]" />
                     </div>
@@ -288,19 +288,26 @@ export default function VtoMastersView() {
                       <h3 className="font-bold text-stone-900 text-sm sm:text-[15px] tracking-tight leading-tight">
                         {meta.name}
                       </h3>
-                      <span className="text-[10px] font-bold tracking-wider text-stone-400 uppercase">
-                        {meta.env}
-                      </span>
                     </div>
                   </div>
 
-                  {/* ACTIVE Badge */}
-                  {isActive && (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-emerald-600 bg-emerald-50/90 border border-emerald-200/80 shadow-2xs">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      ACTIVE
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <EditActionButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditModal(key, master);
+                      }}
+                      title={`Edit ${meta.name}`}
+                    />
+
+                    {/* ACTIVE Badge */}
+                    {isActive && (
+                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-emerald-600 bg-emerald-50/90 border border-emerald-200/80 shadow-2xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        ACTIVE
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 {/* Dual Image Containers: LIGHT SKIN TONE vs DARK SKIN TONE */}
@@ -408,42 +415,9 @@ export default function VtoMastersView() {
                   </div>
                 </div>
               </div>
-
-              {/* Bottom Card Footer: High-res required + UPDATE MASTER */}
-              <div className="flex items-center justify-between gap-2 mt-3.5 pt-2.5 border-t border-stone-100">
-                <div className="flex items-center gap-1 text-[11px] text-stone-400">
-                  <HiOutlineInformationCircle className="w-3.5 h-3.5 text-stone-400 flex-shrink-0" />
-                  <span>High-res req</span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => openEditModal(key, master)}
-                  className="bg-[#d1d5db] hover:bg-stone-400 active:bg-stone-500 text-white font-bold text-[10px] tracking-wider px-3 py-1.5 rounded-md transition-colors shadow-2xs uppercase cursor-pointer"
-                >
-                  UPDATE MASTER
-                </button>
-              </div>
             </div>
           );
         })}
-      </div>
-
-      {/* ─── Bottom Architecture Tip ─── */}
-      <div className="mt-2.5 bg-[#fffdfa] border border-[#f5ece1] rounded-xl p-2.5 sm:p-3 flex items-start gap-2.5 shadow-2xs">
-        <div className="w-6 h-6 rounded-full bg-[#f6eee3] text-[#8f6d43] flex items-center justify-center flex-shrink-0 mt-0.5 shadow-2xs">
-          <HiOutlineInformationCircle className="w-3.5 h-3.5 text-[#8f6d43]" />
-        </div>
-        <div className="flex-1">
-          <h4 className="text-xs font-bold text-stone-900 mb-0.5">
-            Architecture Tip
-          </h4>
-          <p className="text-[11px] text-stone-500 leading-relaxed">
-            These master assets are global. When a customer uses the VTO, the system will overlay the product-specific transparent PNG onto these images. The{' '}
-            <strong className="font-semibold text-stone-800">Dark Skin Tone</strong> asset should be an exact pose-match of the{' '}
-            <strong className="font-semibold text-stone-800">Light</strong> one to ensure seamless skin-tone slider transitions.
-          </p>
-        </div>
       </div>
 
       {/* ─── Edit / Update Master Modal ─── */}
@@ -457,7 +431,7 @@ export default function VtoMastersView() {
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 bg-[#faf8f5]">
+            <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 bg-[#faf8f5]">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-lg bg-[#faf5ee] border border-[#ebdccb] flex items-center justify-center text-[#8f6d43]">
                   <IoSparklesOutline className="w-4 h-4 text-[#8f6d43]" />
@@ -481,7 +455,7 @@ export default function VtoMastersView() {
             </div>
 
             {/* Modal Body */}
-            <form onSubmit={handleSave} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleSave} className="p-4 sm:p-6 space-y-4 sm:space-y-5 max-h-[78vh] overflow-y-auto">
               {/* Status Select */}
               <div className="flex items-center justify-between p-3.5 bg-stone-50 rounded-xl border border-stone-200/80">
                 <div>
@@ -514,7 +488,7 @@ export default function VtoMastersView() {
                   )}
                 </div>
 
-                <div className="flex gap-4 items-start">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
                   <div className="w-24 h-28 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
                     {lightUrl ? (
                       <img
@@ -527,15 +501,8 @@ export default function VtoMastersView() {
                     )}
                   </div>
 
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="text"
-                      value={lightUrl}
-                      onChange={(e) => setLightUrl(e.target.value)}
-                      placeholder="/vto/hand_light.jpg or https://..."
-                      className="w-full px-3 py-1.5 text-xs border border-stone-200 rounded-lg focus:outline-hidden focus:border-[#8f6d43]"
-                    />
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <label
                         {...getUploadTriggerProps(null, { disabled: uploadingLight })}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-medium cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/40"
@@ -588,7 +555,7 @@ export default function VtoMastersView() {
                   )}
                 </div>
 
-                <div className="flex gap-4 items-start">
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 sm:items-center">
                   <div className="w-24 h-28 rounded-xl bg-stone-100 border border-stone-200 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
                     {darkUrl ? (
                       <img
@@ -601,15 +568,8 @@ export default function VtoMastersView() {
                     )}
                   </div>
 
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="text"
-                      value={darkUrl}
-                      onChange={(e) => setDarkUrl(e.target.value)}
-                      placeholder="/vto/hand_dark.jpg or https://..."
-                      className="w-full px-3 py-1.5 text-xs border border-stone-200 rounded-lg focus:outline-hidden focus:border-[#8f6d43]"
-                    />
-                    <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
                       <label
                         {...getUploadTriggerProps(null, { disabled: uploadingDark })}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-stone-100 hover:bg-stone-200 text-stone-700 rounded-lg text-xs font-medium cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-[#8f6d43]/40"

@@ -338,7 +338,7 @@ export default function WhatsAppView() {
       <StatCards cards={statCardsData} />
 
       {/* ─── Navigation Tabs Bar ─── */}
-      <div className="flex items-center gap-6 border-b border-stone-200 px-1 pt-1">
+      <div className="flex items-center gap-4 sm:gap-6 border-b border-stone-200 px-1 pt-1 overflow-x-auto whitespace-nowrap">
         <button
           type="button"
           onClick={() => {
@@ -440,7 +440,7 @@ export default function WhatsAppView() {
             }}
             placeholder="Search templates by name, body, or category..."
             extraActions={
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                 <Dropdown
                   value={selectedCategory}
                   onChange={(val) => {
@@ -454,7 +454,7 @@ export default function WhatsAppView() {
                     { value: 'AUTHENTICATION', label: 'Authentication' },
                   ]}
                   size="md"
-                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[140px]"
+                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[130px] flex-1 sm:flex-initial"
                 />
 
                 <Dropdown
@@ -471,7 +471,7 @@ export default function WhatsAppView() {
                   ]}
                   showStatusDot
                   size="md"
-                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[130px]"
+                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[125px] flex-1 sm:flex-initial"
                 />
 
                 {(selectedCategory !== 'All Categories' || selectedStatus !== 'All Status') && (
@@ -494,7 +494,7 @@ export default function WhatsAppView() {
           {/* Templates Table Card */}
           <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse table-auto">
+              <table className="w-full min-w-[780px] text-left border-collapse table-auto">
                 <thead>
                   <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                     <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
@@ -672,7 +672,7 @@ export default function WhatsAppView() {
             }}
             placeholder="Search message history by phone or recipient..."
             extraActions={
-              <div className="flex items-center gap-2.5">
+              <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
                 <Dropdown
                   value={historyStatusFilter}
                   onChange={(val) => {
@@ -687,7 +687,7 @@ export default function WhatsAppView() {
                   ]}
                   showStatusDot
                   size="md"
-                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[130px]"
+                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[125px] flex-1 sm:flex-initial"
                 />
 
                 {historyStatusFilter !== 'all' && (
@@ -708,7 +708,7 @@ export default function WhatsAppView() {
 
           <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse table-auto">
+              <table className="w-full min-w-[780px] text-left border-collapse table-auto">
                 <thead>
                   <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                     <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
@@ -819,10 +819,10 @@ export default function WhatsAppView() {
           onClick={() => setIsNewModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-2xl w-full border border-stone-200 shadow-2xl overflow-hidden cursor-default"
+            className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-stone-200 shadow-2xl cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 bg-[#faf8f5]">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 bg-[#faf8f5]">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#f0e6d8] text-[#8b6f4e] flex items-center justify-center">
                   <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
@@ -840,7 +840,7 @@ export default function WhatsAppView() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateTemplate} className="p-6 space-y-4">
+            <form onSubmit={handleCreateTemplate} className="p-4 sm:p-6 space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-stone-900 mb-1.5">
@@ -922,10 +922,10 @@ export default function WhatsAppView() {
           onClick={() => setIsTestModalOpen(false)}
         >
           <div
-            className="bg-white rounded-2xl max-w-md w-full border border-stone-200 shadow-2xl overflow-hidden cursor-default"
+            className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto border border-stone-200 shadow-2xl cursor-default"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 bg-[#faf8f5]">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 bg-[#faf8f5]">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-lg bg-[#e8f5e9] text-[#16a34a] flex items-center justify-center">
                   <HiOutlinePaperAirplane className="w-4 h-4 rotate-45 transform" />
@@ -943,7 +943,7 @@ export default function WhatsAppView() {
               </button>
             </div>
 
-            <form onSubmit={handleSendTestMessage} className="p-6 space-y-4">
+            <form onSubmit={handleSendTestMessage} className="p-4 sm:p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Recipient Phone Number <span className="text-rose-500 font-bold">*</span>

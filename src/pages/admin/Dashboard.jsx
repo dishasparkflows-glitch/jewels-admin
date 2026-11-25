@@ -379,7 +379,7 @@ export default function Dashboard() {
   }, [categorySales]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <ModuleHeader
         breadcrumbs={[{ label: 'Home', path: '/dashboard' }, { label: 'Dashboard' }]}
         title="Overview"
@@ -387,15 +387,15 @@ export default function Dashboard() {
       />
 
       {/* Top Count Metrics */}
-      <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-4">
         {metrics.map((metric) => (
           <Link
             key={metric.label}
             to={metric.path}
-            className="rounded-2xl border border-stone-200 bg-white p-5 transition-shadow hover:shadow-sm"
+            className="last:col-span-2 sm:last:col-span-1 rounded-2xl border border-stone-200 bg-white p-3.5 sm:p-5 transition-shadow hover:shadow-sm"
           >
-            <p className="text-sm font-medium text-stone-500">{metric.label}</p>
-            <p className="mt-3 text-2xl font-semibold text-stone-900">
+            <p className="text-xs sm:text-sm font-medium text-stone-500">{metric.label}</p>
+            <p className="mt-1.5 sm:mt-3 text-xl sm:text-2xl font-semibold text-stone-900">
               {loadingCounts
                 ? 'Loading…'
                 : counts[metric.label] == null
@@ -413,34 +413,34 @@ export default function Dashboard() {
       )}
 
       {/* Analytics Visual Widgets: Sales Overview & Sales by Category */}
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 sm:gap-6 items-stretch">
         {/* Card 1: Sales Overview */}
-        <div className="xl:col-span-8 bg-white border border-stone-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="xl:col-span-8 bg-white border border-stone-200 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between min-w-0">
           {/* Card Header & Controls */}
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
             <div>
-              <h2 className="text-lg font-bold text-stone-900 tracking-tight">Sales Overview</h2>
+              <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">Sales Overview</h2>
             </div>
 
-            <div className="flex items-center gap-2.5">
+            <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
               {/* Date Filter Dropdown */}
               <div className="relative" ref={dateMenuRef}>
                 <button
                   type="button"
                   onClick={() => setIsDateMenuOpen((prev) => !prev)}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition-all shadow-2xs cursor-pointer"
+                  className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 bg-stone-50 border border-stone-200 rounded-xl text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-100 transition-all shadow-2xs cursor-pointer"
                 >
-                  <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8b6f4e]" />
-                  <span>{currentPeriodLabel}</span>
+                  <HiOutlineCalendar className="w-3.5 h-3.5 text-[#8b6f4e] shrink-0" />
+                  <span className="truncate max-w-[130px] sm:max-w-none">{currentPeriodLabel}</span>
                   <HiOutlineChevronDown
-                    className={`w-3.5 h-3.5 text-stone-400 transition-transform ${
+                    className={`w-3.5 h-3.5 text-stone-400 transition-transform shrink-0 ${
                       isDateMenuOpen ? 'rotate-180' : ''
                     }`}
                   />
                 </button>
 
                 {isDateMenuOpen && (
-                  <div className="absolute right-0 mt-1.5 w-52 bg-white rounded-xl shadow-xl border border-stone-200 py-1.5 z-30 animate-fadeIn">
+                  <div className="absolute left-0 sm:left-auto sm:right-0 mt-1.5 w-52 max-w-[calc(100vw-2.5rem)] bg-white rounded-xl shadow-xl border border-stone-200 py-1.5 z-30 animate-fadeIn">
                     <div className="px-3 py-1 text-[10px] font-semibold text-stone-400 uppercase tracking-wider">
                       Filter Period
                     </div>
@@ -511,11 +511,11 @@ export default function Dashboard() {
               </div>
 
               {/* Segmented Control Pill */}
-              <div className="inline-flex items-center rounded-xl border border-stone-200 bg-stone-50 p-1 shadow-inner">
+              <div className="inline-flex items-center rounded-xl border border-stone-200 bg-stone-50 p-1 shadow-inner shrink-0">
                 <button
                   type="button"
                   onClick={() => setActiveMetric('revenue')}
-                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 ${
+                  className={`px-3 sm:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 cursor-pointer ${
                     activeMetric === 'revenue'
                       ? 'bg-[#8b6f4e] text-white shadow-sm'
                       : 'text-stone-600 hover:text-stone-900'
@@ -526,7 +526,7 @@ export default function Dashboard() {
                 <button
                   type="button"
                   onClick={() => setActiveMetric('orders')}
-                  className={`px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 ${
+                  className={`px-3 sm:px-4 py-1.5 text-xs font-semibold rounded-lg transition-all duration-150 cursor-pointer ${
                     activeMetric === 'orders'
                       ? 'bg-[#8b6f4e] text-white shadow-sm'
                       : 'text-stone-600 hover:text-stone-900'
@@ -579,7 +579,7 @@ export default function Dashboard() {
                         x={paddingLeft - 10}
                         y={y + 3.5}
                         textAnchor="end"
-                        className="text-[11px] font-medium fill-stone-500 select-none"
+                        className="text-[13px] sm:text-[11px] font-medium fill-stone-500 select-none"
                       >
                         {tick.label}
                       </text>
@@ -625,7 +625,9 @@ export default function Dashboard() {
                         x={pt.x}
                         y={chartBottom + 20}
                         textAnchor="middle"
-                        className="text-[11px] font-medium fill-stone-500 select-none"
+                        className={`text-[13px] sm:text-[11px] font-medium fill-stone-500 select-none ${
+                          i % 2 === 1 ? 'hidden sm:block' : ''
+                        }`}
                       >
                         {pt.label}
                       </text>
@@ -680,18 +682,18 @@ export default function Dashboard() {
         </div>
 
         {/* Card 2: Sales by Category */}
-        <div className="xl:col-span-4 bg-white border border-stone-200 rounded-2xl p-6 shadow-sm flex flex-col justify-between">
+        <div className="xl:col-span-4 bg-white border border-stone-200 rounded-2xl p-4 sm:p-6 shadow-sm flex flex-col justify-between min-w-0">
           <div>
-            <h2 className="text-lg font-bold text-stone-900 tracking-tight mb-5">Sales by Category</h2>
+            <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight mb-4 sm:mb-5">Sales by Category</h2>
 
             {loadingSales ? (
               <div className="h-60 w-full flex items-center justify-center text-stone-400 text-sm animate-pulse">
                 Loading categories...
               </div>
             ) : (
-              <div className="flex flex-col sm:flex-row xl:flex-row items-center justify-between gap-6">
+              <div className="flex flex-col sm:flex-row xl:flex-row items-center justify-between gap-5 sm:gap-6">
                 {/* SVG Donut Chart with Center Text */}
-                <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
+                <div className="relative w-40 h-40 sm:w-44 sm:h-44 shrink-0 flex items-center justify-center">
                   <svg viewBox="0 0 200 200" className="w-full h-full transform -rotate-90 overflow-visible">
                     {donutArcs.length === 0 ? (
                       <circle cx="100" cy="100" r="67" fill="none" stroke="#f0ebe4" strokeWidth="22" />
@@ -772,20 +774,20 @@ export default function Dashboard() {
       </div>
 
       {/* ─── Bottom Section: Top Selling Products & Recent Orders ─── */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
         {/* Card 1: Top Selling Products */}
-        <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+        <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-6 shadow-xs flex flex-col justify-between min-w-0">
           <div>
-            <div className="flex items-center justify-between pb-4 border-b border-stone-100">
-              <div className="flex items-center gap-2.5">
-                <span className="p-1.5 rounded-lg bg-[#faf5ee] text-[#8b6f4e]">
+            <div className="flex items-center justify-between gap-2 pb-3.5 sm:pb-4 border-b border-stone-100">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="p-1.5 rounded-lg bg-[#faf5ee] text-[#8b6f4e] shrink-0">
                   <HiOutlineShoppingBag className="w-5 h-5" />
                 </span>
-                <h2 className="text-lg font-bold text-stone-900 tracking-tight">Top Selling Products</h2>
+                <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight truncate">Top Selling Products</h2>
               </div>
               <Link
                 to="/catalog/jewelry-products"
-                className="text-xs font-semibold text-[#8b6f4e] hover:text-[#73583c] flex items-center gap-1 transition-colors"
+                className="text-xs font-semibold text-[#8b6f4e] hover:text-[#73583c] flex items-center gap-1 transition-colors shrink-0"
               >
                 View All <span aria-hidden="true">&rarr;</span>
               </Link>
@@ -843,18 +845,18 @@ export default function Dashboard() {
         </div>
 
         {/* Card 2: Recent Orders */}
-        <div className="bg-white border border-stone-200 rounded-2xl p-6 shadow-xs flex flex-col justify-between">
+        <div className="bg-white border border-stone-200 rounded-2xl p-4 sm:p-6 shadow-xs flex flex-col justify-between min-w-0">
           <div>
-            <div className="flex items-center justify-between pb-4 border-b border-stone-100">
-              <div className="flex items-center gap-2.5">
-                <span className="p-1.5 rounded-lg bg-[#faf5ee] text-[#8b6f4e]">
+            <div className="flex items-center justify-between gap-2 pb-3.5 sm:pb-4 border-b border-stone-100">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <span className="p-1.5 rounded-lg bg-[#faf5ee] text-[#8b6f4e] shrink-0">
                   <HiOutlineClipboardList className="w-5 h-5" />
                 </span>
-                <h2 className="text-lg font-bold text-stone-900 tracking-tight">Recent Orders</h2>
+                <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight truncate">Recent Orders</h2>
               </div>
               <Link
                 to="/orders"
-                className="text-xs font-semibold text-[#8b6f4e] hover:text-[#73583c] flex items-center gap-1 transition-colors"
+                className="text-xs font-semibold text-[#8b6f4e] hover:text-[#73583c] flex items-center gap-1 transition-colors shrink-0"
               >
                 View All <span aria-hidden="true">&rarr;</span>
               </Link>
@@ -870,7 +872,7 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="overflow-x-auto mt-2">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs table-compact min-w-[420px] sm:min-w-full">
                   <thead>
                     <tr className="border-b border-stone-100 text-stone-500 font-medium">
                       <th className="py-2.5 font-semibold">Order ID</th>

@@ -942,7 +942,7 @@ export default function BannersView() {
           </div>
 
           {/* Right Filter Dropdowns */}
-          <div className="flex items-center gap-2.5 w-full md:w-auto justify-end overflow-x-auto">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full md:w-auto justify-start md:justify-end">
             {/* Devices Filter */}
             <Dropdown
               value={deviceFilter}

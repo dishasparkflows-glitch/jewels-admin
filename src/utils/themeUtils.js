@@ -384,12 +384,21 @@ export function buildDynamicThemeCss(theme, rgb) {
         /* ─── 4. Hover Texts & Group-Hover Texts ─── */
         ${tokenSel('hover:text', HOVER_HEXES, ':hover')},
         .group:hover [class*="group-hover:text-[#8b6f4e]"],
+        .group:hover [class*="group-hover:text-[#8f6d43]"],
         .group:hover [class*="group-hover:text-[#8b6c3a]"],
         .group:hover [class*="group-hover:text-[#9A724A]"],
         .group:hover [class*="group-hover:text-[#8a6d4b]"],
         .group:hover [class*="group-hover:text-[#8c6d46]"],
-        .group:hover [class*="group-hover:text-[#85583f]"] {
-          color: var(--theme-primary-hover) !important;
+        .group:hover [class*="group-hover:text-[#85583f]"],
+        .group:hover [class*="group-hover:text-\\[var\\(--theme-primary"] {
+          color: var(--theme-primary-hover, var(--theme-primary)) !important;
+        }
+
+        .group:hover [class*="group-hover:bg-[#8f6d43]"],
+        .group:hover [class*="group-hover:bg-[#8b6f4e]"],
+        .group:hover [class*="group-hover:bg-\\[var\\(--theme-primary"] {
+          background-color: var(--theme-primary) !important;
+          border-color: var(--theme-primary) !important;
         }
 
         /* ─── 5. Primary Borders & Hover Borders ─── */
@@ -399,6 +408,7 @@ export function buildDynamicThemeCss(theme, rgb) {
 
         ${tokenSel('hover:border', [...PRIMARY_HEXES, ...HOVER_HEXES], ':hover')},
         .group:hover [class*="group-hover:border-[#8b6f4e]"],
+        .group:hover [class*="group-hover:border-[#8f6d43]"],
         .group:hover [class*="group-hover:border-[#8b6c3a]"] {
           border-color: var(--theme-primary) !important;
         }
@@ -579,7 +589,7 @@ export function buildDynamicThemeCss(theme, rgb) {
         #root,
         #admin-root-layout,
         .admin-page-bg,
-        #admin-root-layout > div {
+        #admin-root-layout > div:not(.mobile-sidebar-backdrop):not(.fixed) {
           background-color: #f8fafc !important;
         }
 

@@ -459,7 +459,7 @@ export default function TopAnnouncementView() {
       {/* ─── Main Section: Announcement Messages Table ─── */}
       <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
         {/* Section Header */}
-        <div className="p-6 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-stone-100">
+        <div className="p-4 sm:p-6 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-b border-stone-100">
           <div>
             <h2 className="text-lg font-bold text-stone-900 tracking-tight">
               Announcement Messages
@@ -706,7 +706,7 @@ export default function TopAnnouncementView() {
 
           {/* Schedule Configuration */}
           <div className="p-3.5 bg-stone-50 border border-stone-200/80 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs font-bold text-stone-900">
                 Schedule & Duration
               </span>

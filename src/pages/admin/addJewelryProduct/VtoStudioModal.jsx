@@ -57,7 +57,7 @@ export default function VtoStudioModal() {
         </div>
 
         {/* Modal Body */}
-        <div className="p-5 overflow-y-auto grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        <div className="p-4 sm:p-5 overflow-y-auto grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-6 items-start">
           {/* Left Column: Asset & Precision Sliders */}
           <div className="md:col-span-6 space-y-5">
             {/* 1. Try-On Overlay Asset */}
@@ -363,7 +363,7 @@ export default function VtoStudioModal() {
         </div>
 
         {/* Modal Footer */}
-        <div className="p-4 border-t border-stone-100 bg-stone-50/50 flex items-center justify-end gap-3">
+        <div className="p-3.5 sm:p-4 border-t border-stone-100 bg-stone-50/50 flex flex-wrap items-center justify-end gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={() => setIsVtoStudioOpen(false)}

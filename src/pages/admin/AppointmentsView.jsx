@@ -641,7 +641,7 @@ export default function AppointmentsView() {
         {/* Search + Date Range + More Filters */}
         <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
           {/* Search Input */}
-          <div className="relative flex-1 sm:flex-none min-w-[200px]">
+          <div className="relative w-full sm:w-auto sm:flex-none">
             <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
             <input
               type="text"

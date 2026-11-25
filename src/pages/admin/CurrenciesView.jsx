@@ -656,8 +656,8 @@ export default function CurrenciesView() {
               </div>
 
               {/* Name & Country Code */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-stone-900 mb-1.5">
                     Currency Name <span className="text-rose-500 font-bold">*</span>
                   </label>

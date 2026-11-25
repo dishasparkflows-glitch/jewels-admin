@@ -70,7 +70,7 @@ const Header = ({ onMobileToggle }) => {
   };
 
   return (
-    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4 shrink-0">
+    <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-2.5 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-4 shrink-0">
       {/* Left: Mobile hamburger & Sidebar toggles */}
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
         {/* Sidebar Toggle (On / Off) */}
@@ -122,8 +122,8 @@ const Header = ({ onMobileToggle }) => {
       {/* Menu Quick Search & Redirect */}
       <AdminMenuSearch />
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      {/* Spacer (visible on tablet+ only) */}
+      <div className="hidden sm:block sm:flex-1" />
 
       {/* Right: notifications, Super Admin profile */}
       <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">

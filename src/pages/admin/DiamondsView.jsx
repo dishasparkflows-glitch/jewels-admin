@@ -468,17 +468,17 @@ export default function DiamondsView() {
   }, [isEditModalOpen]);
 
   return (
-    <div className="space-y-6 pb-16 font-sans">
+    <div className="space-y-4 sm:space-y-6 pb-16 font-sans">
       {/* ─── Header ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-1">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 pt-1">
         <div>
-          <h1 className="text-2xl font-bold text-stone-900 tracking-tight flex items-center gap-2.5">
+          <h1 className="text-xl sm:text-2xl font-bold text-stone-900 tracking-tight flex flex-wrap items-center gap-2">
             <span>Diamonds Stock</span>
             <span className="px-2.5 py-0.5 text-xs bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d7be] rounded-full font-semibold">
               {pagination.totalDocs || diamonds.length} Total
             </span>
           </h1>
-          <p className="text-[13px] text-stone-500 mt-0.5">
+          <p className="text-xs sm:text-[13px] text-stone-500 mt-0.5">
             Manage loose diamonds inventory, certification, carat rates, and variant pricing.
           </p>
         </div>
@@ -487,7 +487,7 @@ export default function DiamondsView() {
         <button
           type="button"
           onClick={() => navigate('/diamonds/add')}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#8b6f4e] hover:bg-[#785e42] text-white text-[13px] font-semibold rounded-xl transition-all shadow-xs hover:shadow-md active:scale-98 cursor-pointer"
+          className="flex items-center justify-center gap-2 w-full sm:w-auto px-5 py-2.5 bg-[#8b6f4e] hover:bg-[#785e42] text-white text-[13px] font-semibold rounded-xl transition-all shadow-xs hover:shadow-md active:scale-98 cursor-pointer shrink-0"
         >
           <HiOutlinePlus className="w-4 h-4" />
           <span>Add Diamonds</span>
@@ -495,9 +495,9 @@ export default function DiamondsView() {
       </div>
 
       {/* ─── Search and Filters Bar ─── */}
-      <div className="bg-white p-4 rounded-2xl border border-stone-200/90 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+      <div className="bg-white p-3 sm:p-4 rounded-2xl border border-stone-200/90 shadow-2xs flex flex-col md:flex-row md:items-center md:justify-between gap-3">
         {/* Search */}
-        <form onSubmit={handleSearchSubmit} className="relative flex-1 max-w-md">
+        <form onSubmit={handleSearchSubmit} className="relative flex-1 w-full md:max-w-md">
           <HiOutlineSearch className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
           <input
             type="text"
@@ -509,9 +509,9 @@ export default function DiamondsView() {
         </form>
 
         {/* Filter dropdowns */}
-        <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-2.5 w-full md:w-auto">
           {/* Shape filter */}
-          <div className="w-36" onMouseDown={fetchLookups} onTouchStart={fetchLookups}>
+          <div className="w-full sm:w-36" onMouseDown={fetchLookups} onTouchStart={fetchLookups}>
             <Dropdown
               value={shapeFilter}
               onChange={(val) => setShapeFilter(val)}
@@ -520,12 +520,12 @@ export default function DiamondsView() {
                 ...shapes.map((s) => ({ value: s._id, label: s.name })),
               ]}
               size="sm"
-              buttonClassName="bg-stone-50 border-stone-200 rounded-xl"
+              buttonClassName="w-full bg-stone-50 border-stone-200 rounded-xl"
             />
           </div>
 
           {/* Type filter */}
-          <div className="w-36" onMouseDown={fetchLookups} onTouchStart={fetchLookups}>
+          <div className="w-full sm:w-36" onMouseDown={fetchLookups} onTouchStart={fetchLookups}>
             <Dropdown
               value={typeFilter}
               onChange={(val) => setTypeFilter(val)}
@@ -534,7 +534,7 @@ export default function DiamondsView() {
                 ...types.map((t) => ({ value: t._id, label: t.name })),
               ]}
               size="sm"
-              buttonClassName="bg-stone-50 border-stone-200 rounded-xl"
+              buttonClassName="w-full bg-stone-50 border-stone-200 rounded-xl"
             />
           </div>
 
@@ -543,7 +543,7 @@ export default function DiamondsView() {
             type="button"
             onClick={handleBulkDelete}
             disabled={selectedIds.size === 0}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap ${
+            className={`col-span-2 sm:col-span-1 flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap ${
               selectedIds.size > 0
                 ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50 cursor-pointer'
                 : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
@@ -555,8 +555,8 @@ export default function DiamondsView() {
         </div>
       </div>
 
-      {/* ─── Diamonds List Table ─── */}
-      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+      {/* ─── Diamonds List Table & Mobile Cards ─── */}
+      <div className="bg-white rounded-xl sm:rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         <div className="overflow-x-auto">
           {loading ? (
             <div className="py-20 text-center">
@@ -571,7 +571,185 @@ export default function DiamondsView() {
               <p className="text-stone-800 font-semibold mb-1">No diamonds found</p>
             </div>
           ) : (
-            <table className="w-full text-left border-collapse min-w-[760px]">
+            <>
+              {/* Mobile Card List (< md) */}
+              <div className="md:hidden divide-y divide-stone-100">
+                <div className="px-3.5 py-2.5 bg-[#eef2f6] border-b border-stone-200/80 flex items-center justify-between text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                  <label className="inline-flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={handleSelectAll}
+                      className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                    />
+                    <span>Select All ({diamonds.length})</span>
+                  </label>
+                  <span>Diamonds</span>
+                </div>
+
+                {diamonds.map((item, idx) => {
+                  const isSelected = selectedIds.has(item._id);
+                  const imageUrl = item.image?.url || (typeof item.image === 'string' ? item.image : '');
+                  const thumbUrl = getMediaUrl(imageUrl);
+                  const isWebVisible = item.visibility?.web !== false;
+                  const isAppVisible = item.visibility?.app !== false;
+                  const shapeName = item.shapeId?.name || item.shape || '';
+                  const colorName = item.colorId?.name || item.color || '';
+                  const clarityName = item.clarityId?.name || item.clarity || '';
+                  const typeName = item.typeId?.name || item.type || '';
+                  const isInactive = item.status === 'inactive' || item.status === 'draft';
+
+                  return (
+                    <div
+                      key={`m-${item._id}`}
+                      onClick={() => handleOpenEdit(item)}
+                      className={`p-3.5 space-y-2.5 transition-colors cursor-pointer ${
+                        isSelected ? 'bg-amber-50/40' : 'hover:bg-[#faf7f2]'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className="pt-1 flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelect(item._id)}
+                            className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer accent-[#8b6f4e]"
+                          />
+                          <span className="text-[11px] font-bold text-stone-400">
+                            #{(page - 1) * pageSize + idx + 1}
+                          </span>
+                        </div>
+
+                        <div
+                          onClick={(e) => {
+                            if (thumbUrl) {
+                              e.stopPropagation();
+                              openImagePreview(thumbUrl, { title: item.title });
+                            }
+                          }}
+                          className="w-11 h-11 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0"
+                        >
+                          {thumbUrl ? (
+                            <img src={thumbUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+                          ) : (
+                            <span className="text-[9px] text-stone-400 font-medium">No Img</span>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="font-bold text-stone-900 text-xs leading-snug line-clamp-2">
+                              {item.title}
+                            </p>
+                            <span
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleToggleStatus(item, e);
+                              }}
+                              className={`shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border capitalize ${
+                                isInactive
+                                  ? 'bg-stone-100 text-stone-600 border-stone-200'
+                                  : 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                              }`}
+                            >
+                              {isInactive ? 'Draft' : 'Approved'}
+                            </span>
+                          </div>
+                          {item.sku && (
+                            <p className="font-mono text-[10px] text-stone-400 truncate">{item.sku}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {item.price !== undefined && item.price !== null && (
+                          <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded text-[11px]">
+                            ₹{Number(item.price).toLocaleString('en-IN')}
+                          </span>
+                        )}
+                        {item.carat !== undefined && item.carat !== null && (
+                          <span className="px-2 py-0.5 text-[11px] font-bold bg-[#fbf5ed] text-[#8b6f4e] border border-[#e8d7be] rounded-lg">
+                            {item.carat} ct
+                          </span>
+                        )}
+                        {shapeName && (
+                          <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium uppercase">
+                            {shapeName}
+                          </span>
+                        )}
+                        {(colorName || clarityName) && (
+                          <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px]">
+                            {colorName || 'D-E'} • {clarityName || 'SI'}
+                          </span>
+                        )}
+                        {typeName && (
+                          <span className="capitalize px-1.5 py-0.5 rounded bg-stone-100 text-stone-600 text-[10px]">
+                            {typeName}
+                          </span>
+                        )}
+                        {item.rate > 0 && (
+                          <span className="px-1.5 py-0.5 rounded bg-stone-50 border border-stone-200/60 text-stone-600 text-[10px] font-mono">
+                            @ ₹{Number(item.rate).toLocaleString('en-IN')}/ct
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenMetricsModal(item)}
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-stone-200/90 bg-stone-50/80 text-[10px] font-semibold text-stone-700 cursor-pointer"
+                          >
+                            <span className="text-amber-500 font-bold">★</span>
+                            <span>{item.demoMetrics?.reviewCount ?? 0}</span>
+                            <span className="text-stone-300">|</span>
+                            <span>🔥</span>
+                            <span>{item.demoMetrics?.soldCount ?? 0}</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleVisibility(item, 'web', e)}
+                            disabled={updatingVisibilityId === `${item._id}-web`}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border ${
+                              isWebVisible
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
+                                : 'bg-white text-stone-400 border-stone-200'
+                            }`}
+                          >
+                            <span>🌐</span>
+                            <span>Web</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleVisibility(item, 'app', e)}
+                            disabled={updatingVisibilityId === `${item._id}-app`}
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded text-[10px] font-bold border ${
+                              isAppVisible
+                                ? 'bg-sky-50 text-sky-700 border-sky-200/80'
+                                : 'bg-white text-stone-400 border-stone-200'
+                            }`}
+                          >
+                            <span>📱</span>
+                            <span>App</span>
+                          </button>
+                        </div>
+
+                        <RowActions
+                          onOpenWebsite={() => openDiamondPreview(item)}
+                          onEdit={() => handleOpenEdit(item)}
+                          onDelete={() => handleDelete(item)}
+                          editTitle="Edit Diamond"
+                          deleteTitle="Delete Diamond"
+                          websiteTitle="View on store"
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <table className="hidden md:table w-full text-left border-collapse min-w-[880px]">
               <thead>
                 <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                   <th className="py-3 pl-4 pr-1 w-8">
@@ -819,6 +997,7 @@ export default function DiamondsView() {
                 })}
               </tbody>
             </table>
+            </>
           )}
         </div>
 
@@ -850,36 +1029,36 @@ export default function DiamondsView() {
               onClick={(e) => e.stopPropagation()}
             >
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-100 bg-[#faf8f5]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-[#ebdcc9] text-[#8b6f4e] flex items-center justify-center shadow-2xs">
+            <div className="flex items-start sm:items-center justify-between gap-2 px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 bg-[#faf8f5]">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-[#ebdcc9] text-[#8b6f4e] flex items-center justify-center shadow-2xs shrink-0">
                   <IoDiamondOutline className="w-5 h-5 text-[#8b6f4e]" />
                 </div>
-                <div>
-                  <h3 className="text-base font-bold text-stone-900 tracking-tight flex items-center gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-sm sm:text-base font-bold text-stone-900 tracking-tight flex flex-wrap items-center gap-1.5 sm:gap-2">
                     <span>Edit Diamond</span>
                     {editSku && (
-                      <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 font-semibold border border-stone-200">
+                      <span className="font-mono text-[11px] sm:text-xs px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 font-semibold border border-stone-200 truncate max-w-[160px] sm:max-w-none">
                         {editSku}
                       </span>
                     )}
                   </h3>
-                  <p className="text-xs text-stone-500 mt-0.5">
+                  <p className="text-[11px] sm:text-xs text-stone-500 mt-0.5">
                     Update SKU, carat, pricing, and variant attributes
                   </p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 {editingDiamond && (
                   <button
                     type="button"
                     onClick={() => openDiamondPreview(editingDiamond)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#8b6f4e] bg-white border border-[#ebdcc9] rounded-xl hover:bg-[#faf5ed] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-[#8b6f4e] bg-white border border-[#ebdcc9] rounded-xl hover:bg-[#faf5ed] active:scale-95 transition-all shadow-2xs cursor-pointer"
                     title="View on store"
                   >
                     <HiOutlineExternalLink className="w-3.5 h-3.5" />
-                    <span>View on Store</span>
+                    <span className="hidden sm:inline">View on Store</span>
                   </button>
                 )}
                 <button
@@ -894,7 +1073,7 @@ export default function DiamondsView() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-6 space-y-5">
+            <form onSubmit={handleSaveEdit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
               {/* Image & Main Info Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 items-start">
                 {/* Diamond Image Preview / Upload */}
