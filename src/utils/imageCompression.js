@@ -3,17 +3,8 @@ import { formatBytes } from './formatters.js';
 /**
  * Universal Client-Side Image Compression Utility
  *
- * Automatically compresses, optimizes, and converts raster images at upload time
- * before transferring bytes to Cloudflare R2 / S3 storage.
- *
- * Key features:
- * - Visually lossless WebP / JPEG encoding
- * - Automatic aspect-ratio preserving dimension downscaling (max 2400px default)
- * - Safe EXIF orientation preservation via createImageBitmap / Image decode
- * - Preserves transparency for PNG/WebP (alpha channel support)
- * - Skips vector SVGs and animated GIFs
- * - Never inflates file size: if compressed output is larger than original, retains original
- * - Fail-safe: gracefully falls back to original file if any canvas error occurs
+ * Single canvas decode/resize/encode engine shared across upload optimization
+ * and Settings compression preview demos.
  */
 
 export const DEFAULT_COMPRESSION_CONFIG = {
@@ -26,7 +17,6 @@ export const DEFAULT_COMPRESSION_CONFIG = {
 };
 
 export const COMPRESSION_PRESETS = {
-  // Jewelry, Ornate & Silver catalog products: high clarity for diamond cuts, metal reflections & gems
   products: {
     maxWidth: 2400,
     maxHeight: 2400,
@@ -34,7 +24,6 @@ export const COMPRESSION_PRESETS = {
     format: 'image/webp',
     minSizeToCompressBytes: 60 * 1024,
   },
-  // Full-width hero banners & promotional carousels
   banners: {
     maxWidth: 2560,
     maxHeight: 2560,
@@ -66,7 +55,7 @@ export const COMPRESSION_PRESETS = {
   vto: {
     maxWidth: 2000,
     maxHeight: 2000,
-    quality: 0.90,
+    quality: 0.9,
     format: 'image/webp',
     minSizeToCompressBytes: 60 * 1024,
   },
@@ -94,38 +83,181 @@ export const COMPRESSION_PRESETS = {
 };
 
 export { formatBytes };
+export const formatFileSize = formatBytes;
 
 /**
- * Determine if a file is a candidate for image compression
+ * Determine if a file is a candidate for raster image compression.
  */
 export function isCompressibleImage(file) {
   if (!file) return false;
   const type = (file.type || '').toLowerCase();
   const name = (file.name || '').toLowerCase();
 
-  // Exclude SVGs (vector format) and GIFs (preserve multi-frame animation)
   if (type === 'image/svg+xml' || name.endsWith('.svg')) return false;
   if (type === 'image/gif' || name.endsWith('.gif')) return false;
 
-  // Check compressible raster image types
   const isImageMime =
     type === 'image/jpeg' ||
     type === 'image/jpg' ||
     type === 'image/png' ||
     type === 'image/webp' ||
+    type === 'image/bmp' ||
     type === 'image/avif';
 
-  const isImageExt = /\.(jpe?g|png|webp|avif)$/i.test(name);
-
-  return isImageMime || isImageExt;
+  const hasImageExtension = /\.(jpe?g|png|webp|bmp|avif)$/i.test(name);
+  return isImageMime || hasImageExtension;
 }
 
 /**
- * Compress a single image File or Blob at upload time
- *
- * @param {File|Blob} file - The file to compress
- * @param {Object} [customOptions] - Custom configuration overrides
- * @returns {Promise<File>} Compressed File or original file if compression not advantageous
+ * Measure an image File/Blob's natural dimensions in the browser.
+ */
+export function getImageDimensions(file) {
+  return new Promise((resolve) => {
+    if (!file || !file.type?.startsWith('image/')) {
+      return resolve({ width: 0, height: 0 });
+    }
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const dims = { width: img.naturalWidth || img.width, height: img.naturalHeight || img.height };
+      URL.revokeObjectURL(url);
+      resolve(dims);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: 0, height: 0 });
+    };
+    img.src = url;
+  });
+}
+
+async function decodeImageSource(file) {
+  if (typeof window !== 'undefined' && 'createImageBitmap' in window) {
+    try {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      return {
+        source: bitmap,
+        width: bitmap.width,
+        height: bitmap.height,
+        close: () => bitmap.close?.(),
+      };
+    } catch {
+      // Fallback to HTMLImageElement below
+    }
+  }
+
+  const img = await new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = (err) => {
+      URL.revokeObjectURL(objectUrl);
+      reject(err);
+    };
+    image.src = objectUrl;
+  });
+
+  return {
+    source: img,
+    width: img.naturalWidth || img.width,
+    height: img.naturalHeight || img.height,
+    close: () => {},
+  };
+}
+
+async function renderToCompressedBlob(file, options = {}) {
+  const {
+    maxWidth = 2400,
+    maxHeight = 2400,
+    quality = 0.85,
+    format = 'image/webp',
+    fallbackToJpeg = true,
+  } = options;
+
+  const decoded = await decodeImageSource(file);
+  const { source, width: originalWidth, height: originalHeight, close } = decoded;
+
+  if (!originalWidth || !originalHeight) {
+    close();
+    return null;
+  }
+
+  let targetWidth = originalWidth;
+  let targetHeight = originalHeight;
+  if (maxWidth && maxHeight && (targetWidth > maxWidth || targetHeight > maxHeight)) {
+    const ratio = Math.min(maxWidth / targetWidth, maxHeight / targetHeight);
+    targetWidth = Math.max(1, Math.round(targetWidth * ratio));
+    targetHeight = Math.max(1, Math.round(targetHeight * ratio));
+  }
+
+  const canvas = document.createElement('canvas');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext('2d', { alpha: true });
+  if (!ctx) {
+    close();
+    return null;
+  }
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  if (format === 'image/jpeg') {
+    ctx.fillStyle = '#FFFFFF';
+    ctx.fillRect(0, 0, targetWidth, targetHeight);
+  }
+
+  ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
+  close();
+
+  const encodedQuality = format === 'image/png' ? undefined : Math.min(Math.max(quality, 0.05), 1);
+  let blob = await new Promise((resolve) => {
+    canvas.toBlob((b) => resolve(b), format, encodedQuality);
+  });
+
+  if (!blob && fallbackToJpeg && format !== 'image/jpeg') {
+    blob = await new Promise((resolve) => {
+      canvas.toBlob((b) => resolve(b), 'image/jpeg', encodedQuality);
+    });
+  }
+
+  if (!blob) return null;
+
+  return {
+    blob,
+    targetWidth,
+    targetHeight,
+    originalWidth,
+    originalHeight,
+    wasResized: targetWidth !== originalWidth || targetHeight !== originalHeight,
+  };
+}
+
+function buildCompressedFile(originalFile, blob) {
+  const originalName = originalFile.name || 'image';
+  const stem = originalName.replace(/\.[^/.]+$/, '');
+  const extension =
+    blob.type === 'image/webp' ? 'webp' : blob.type === 'image/png' ? 'png' : 'jpg';
+  const compressedFile = new File([blob], `${stem}.${extension}`, {
+    type: blob.type,
+    lastModified: Date.now(),
+  });
+
+  compressedFile.originalSize = originalFile.size;
+  compressedFile.compressedSize = compressedFile.size;
+  compressedFile.wasCompressed = true;
+  compressedFile.savingsPercent = originalFile.size
+    ? Math.max(0, Math.round((1 - compressedFile.size / originalFile.size) * 100))
+    : 0;
+  compressedFile.originalName = originalName;
+  return compressedFile;
+}
+
+/**
+ * Compress a single image File or Blob at upload time.
  */
 export async function compressImageFile(file, customOptions = {}) {
   if (!file) return file;
@@ -134,129 +266,28 @@ export async function compressImageFile(file, customOptions = {}) {
 
   const options = { ...DEFAULT_COMPRESSION_CONFIG, ...customOptions };
 
-  // Skip tiny files where re-encoding yields negligible gains or risk of slight quality shift
   if (file.size && file.size < options.minSizeToCompressBytes) {
     return file;
   }
 
   try {
-    let width = 0;
-    let height = 0;
-    let source = null;
-    let closeSource = () => {};
-
-    // 1. Decode image - prefer hardware-accelerated createImageBitmap
-    if (typeof window !== 'undefined' && 'createImageBitmap' in window) {
-      try {
-        const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-        width = bitmap.width;
-        height = bitmap.height;
-        source = bitmap;
-        closeSource = () => bitmap.close?.();
-      } catch {
-        source = null;
-      }
-    }
-
-    // Fallback: standard HTMLImageElement
-    if (!source) {
-      const img = await new Promise((resolve, reject) => {
-        const image = new Image();
-        const objectUrl = URL.createObjectURL(file);
-        image.onload = () => {
-          URL.revokeObjectURL(objectUrl);
-          resolve(image);
-        };
-        image.onerror = (err) => {
-          URL.revokeObjectURL(objectUrl);
-          reject(err);
-        };
-        image.src = objectUrl;
-      });
-      width = img.naturalWidth || img.width;
-      height = img.naturalHeight || img.height;
-      source = img;
-    }
-
-    if (!width || !height) {
-      closeSource();
-      return file;
-    }
-
-    // 2. Compute proportional target dimensions
-    let targetWidth = width;
-    let targetHeight = height;
-    const maxW = options.maxWidth || 2400;
-    const maxH = options.maxHeight || 2400;
-
-    if (targetWidth > maxW || targetHeight > maxH) {
-      const ratio = Math.min(maxW / targetWidth, maxH / targetHeight);
-      targetWidth = Math.max(1, Math.round(targetWidth * ratio));
-      targetHeight = Math.max(1, Math.round(targetHeight * ratio));
-    }
-
-    // 3. Render onto canvas with high quality smoothing
-    const canvas = document.createElement('canvas');
-    canvas.width = targetWidth;
-    canvas.height = targetHeight;
-    const ctx = canvas.getContext('2d', { alpha: true });
-    if (!ctx) {
-      closeSource();
-      return file;
-    }
-
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(source, 0, 0, targetWidth, targetHeight);
-    closeSource();
-
-    // 4. Encode canvas to target format Blob
-    const targetFormat = options.format || 'image/webp';
-    let compressedBlob = await new Promise((resolve) => {
-      canvas.toBlob((blob) => resolve(blob), targetFormat, options.quality || 0.85);
+    const rendered = await renderToCompressedBlob(file, {
+      maxWidth: options.maxWidth,
+      maxHeight: options.maxHeight,
+      quality: options.quality,
+      format: options.format,
     });
+    if (!rendered) return file;
 
-    // Fallback to image/jpeg if browser canvas fails on image/webp
-    if (!compressedBlob && targetFormat !== 'image/jpeg') {
-      compressedBlob = await new Promise((resolve) => {
-        canvas.toBlob((blob) => resolve(blob), 'image/jpeg', options.quality || 0.85);
-      });
-    }
-
-    if (!compressedBlob) {
+    if (
+      options.alwaysKeepOriginalIfSmaller &&
+      rendered.blob.size >= file.size &&
+      !rendered.wasResized
+    ) {
       return file;
     }
 
-    // 5. Retain original if compressed file is larger and no dimension downscaling occurred
-    const wasResized = targetWidth !== width || targetHeight !== height;
-    if (options.alwaysKeepOriginalIfSmaller && compressedBlob.size >= file.size && !wasResized) {
-      return file;
-    }
-
-    // 6. Wrap in a standard File object with matching extension and metadata
-    const originalName = file.name || 'image';
-    const stem = originalName.replace(/\.[^.]+$/, '');
-    const extension =
-      compressedBlob.type === 'image/webp'
-        ? 'webp'
-        : compressedBlob.type === 'image/png'
-        ? 'png'
-        : 'jpg';
-
-    const newFilename = `${stem}.${extension}`;
-    const compressedFile = new File([compressedBlob], newFilename, {
-      type: compressedBlob.type,
-      lastModified: Date.now(),
-    });
-
-    // Attach compression stats for consumers
-    compressedFile.originalSize = file.size;
-    compressedFile.compressedSize = compressedFile.size;
-    compressedFile.wasCompressed = true;
-    compressedFile.savingsPercent = Math.max(0, Math.round((1 - compressedFile.size / file.size) * 100));
-    compressedFile.originalName = originalName;
-
-    return compressedFile;
+    return buildCompressedFile(file, rendered.blob);
   } catch (err) {
     console.warn(`[imageCompression] Compression skipped for "${file?.name}":`, err);
     return file;
@@ -264,11 +295,73 @@ export async function compressImageFile(file, customOptions = {}) {
 }
 
 /**
- * Compress an array of files concurrently
- *
- * @param {Array<File>|FileList} files - Array of files to compress
- * @param {Object} [options] - Compression options
- * @returns {Promise<Array<File>>}
+ * Compress an image and return detailed dimension/size telemetry & object preview URL
+ * (used by Settings -> Media Compression interactive demo).
+ */
+export async function compressImage(file, options = {}) {
+  const {
+    quality = 0.82,
+    maxWidth = 1920,
+    maxHeight = 1920,
+    mimeType = 'image/webp',
+  } = options;
+
+  if (!file || !file.type?.startsWith('image/') || file.type === 'image/svg+xml') {
+    const previewUrl = file ? URL.createObjectURL(file) : '';
+    return {
+      file,
+      blob: file,
+      previewUrl,
+      width: 0,
+      height: 0,
+      originalWidth: 0,
+      originalHeight: 0,
+      size: file?.size || 0,
+      originalSize: file?.size || 0,
+      savingsBytes: 0,
+      savingsPercent: 0,
+      mimeType: file?.type || 'unknown',
+    };
+  }
+
+  const rendered = await renderToCompressedBlob(file, {
+    maxWidth,
+    maxHeight,
+    quality,
+    format: mimeType,
+    fallbackToJpeg: false,
+  });
+
+  if (!rendered) {
+    throw new Error('Canvas compression produced empty data');
+  }
+
+  const compressedFile = buildCompressedFile(file, rendered.blob);
+  const previewUrl = URL.createObjectURL(rendered.blob);
+  const originalSize = file.size;
+  const compressedSize = rendered.blob.size;
+  const savingsBytes = originalSize - compressedSize;
+  const savingsPercent =
+    originalSize > 0 ? Math.max(0, Math.round((savingsBytes / originalSize) * 100)) : 0;
+
+  return {
+    file: compressedFile,
+    blob: rendered.blob,
+    previewUrl,
+    width: rendered.targetWidth,
+    height: rendered.targetHeight,
+    originalWidth: rendered.originalWidth,
+    originalHeight: rendered.originalHeight,
+    size: compressedSize,
+    originalSize,
+    savingsBytes,
+    savingsPercent,
+    mimeType: rendered.blob.type,
+  };
+}
+
+/**
+ * Compress an array of files concurrently.
  */
 export async function compressImageFiles(files, options = {}) {
   const list = Array.from(files || []);

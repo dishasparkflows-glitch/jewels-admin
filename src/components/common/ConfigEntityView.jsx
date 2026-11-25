@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
   HiOutlineCube,
   HiOutlineSparkles,
@@ -11,7 +12,8 @@ import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { formatDate } from '../../utils/formatters';
 import Pagination from './Pagination';
-import usePagination from '../../hooks/usePagination';
+import Dropdown from './Dropdown';
+import useAdminList from '../../hooks/useAdminList';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from './ModuleHeader';
 import StatCards from './StatCards';
@@ -19,7 +21,6 @@ import SearchFilterBar from './SearchFilterBar';
 import RowActions from './RowActions';
 import Modal from './Modal';
 import ToggleSwitch from './ToggleSwitch';
-import { useAdminPageSize } from '../../utils/adminPagination';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 
 /**
@@ -59,27 +60,42 @@ function VisualEntityBadge({ name = '', imageUrl, prefix = 'ITEM', className = '
 /**
  * ConfigEntityView
  * Reusable, high-performance CRUD view for administrative configuration entities
- * (e.g. Diamond Types, Shapes, Colors, Clarities, Gemstone Types, Shapes, etc.)
+ * (Diamond Types/Shapes/Colors/Clarities/Sizes, Gemstone Types/Shapes, Metal Colors/Purities, etc.)
  */
 export default function ConfigEntityView({
   title = 'Configuration Items',
   singularTitle = 'Item',
+  subtitle,
   addLabel,
+  itemLabel,
   endpoint = '',
   uploadFolder = 'config',
   hasIcon = true,
   hasCode = false,
   codeLabel = 'Code',
+  hasNameField = true,
+  nameLabel,
+  nameColumnLabel = 'NAME',
+  namePlaceholder,
+  hasStatusColumn = true,
+  hasCreatedDateColumn = true,
+  showStatusFilter = true,
+  showStatusToggleInModal = true,
+  openAddFromRoute = false,
   placeholderPrefix = 'IT',
   statColors = { total: 'bronze', active: 'green', other: 'gold' },
+  buildStatCards,
+  leadingColumns = [],
   extraFields = [],
+  renderModalPreview,
+  searchMatcher,
+  validateAndBuildPayload,
 }) {
   const confirm = useConfirm();
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [statusFilter, setStatusFilter] = useState('all');
-  const [selectedIds, setSelectedIds] = useState([]);
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -95,93 +111,128 @@ export default function ConfigEntityView({
 
   const fileInputRef = useRef(null);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useAdminPageSize();
-  const [serverTotal, setServerTotal] = useState(null);
+  const fetcher = useCallback(
+    ({ page, limit, signal }) => api.get(`${endpoint}?page=${page}&limit=${limit}`, { signal }),
+    [endpoint]
+  );
 
-  // Fetch items from endpoint
-  const fetchItems = async (page = currentPage, limit = pageSize) => {
-    try {
-      setLoading(true);
-      const res = await api.get(`${endpoint}?page=${page}&limit=${limit}`);
-      const list =
-        res.data?.data?.items ||
-        (Array.isArray(res.data?.data) ? res.data.data : []);
-      setItems(list);
-      if (res.data?.pagination?.totalDocs !== undefined) {
-        setServerTotal(res.data.pagination.totalDocs);
+  const filterListItems = useCallback(
+    (list, query) => {
+      let result = list;
+
+      if (showStatusFilter && statusFilter !== 'all') {
+        result = result.filter((it) => it.status === statusFilter);
       }
-    } catch (err) {
-      console.error(`Failed to load ${title}:`, err);
-      toast.error(`Failed to load ${title.toLowerCase()}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    fetchItems(currentPage, pageSize);
-  }, [endpoint, currentPage, pageSize]);
+      if (query.trim()) {
+        const q = query.toLowerCase();
+        result = result.filter(
+          (it) =>
+            (it.name && it.name.toLowerCase().includes(q)) ||
+            (it.code && String(it.code).toLowerCase().includes(q)) ||
+            (searchMatcher ? searchMatcher(it, q) : false)
+        );
+      }
 
-  // Search and status filtering
-  const filteredItems = useMemo(() => {
-    let result = items;
+      return result;
+    },
+    [showStatusFilter, statusFilter, searchMatcher]
+  );
 
-    if (statusFilter !== 'all') {
-      result = result.filter((it) => it.status === statusFilter);
-    }
-
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (it) =>
-          (it.name && it.name.toLowerCase().includes(q)) ||
-          (it.code && String(it.code).toLowerCase().includes(q))
-      );
-    }
-
-    return result;
-  }, [items, search, statusFilter]);
-
-  const { totalItems, paginatedItems } = usePagination(filteredItems, pageSize, serverTotal);
+  const {
+    items,
+    setItems,
+    displayedItems: filteredItems,
+    loading,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    totalItems,
+    paginatedItems,
+    selectedIds,
+    toggleSelect,
+    toggleSelectAll,
+    isAllSelected: checkAllSelected,
+    clearSelection,
+    removeFromSelection,
+    invalidateAndRefetch,
+  } = useAdminList({
+    fetcher,
+    cacheKey: endpoint ? `config:${endpoint}` : '',
+    errorMessage: `Failed to load ${title.toLowerCase()}`,
+    filterItems: filterListItems,
+    getId: (it) => it._id,
+  });
 
   // Quick stat cards
   const activeCount = useMemo(() => items.filter((it) => it.status === 'active').length, [items]);
   const inactiveCount = useMemo(() => items.filter((it) => it.status === 'inactive').length, [items]);
 
-  const statCardsData = [
-    {
-      label: `Total ${title}`,
-      value: items.length,
-      icon: HiOutlineCube,
-      color: statColors.total || 'bronze',
+  const statCardsData = useMemo(() => {
+    if (buildStatCards) return buildStatCards(items);
+    return [
+      {
+        label: `Total ${title}`,
+        value: items.length,
+        icon: HiOutlineCube,
+        color: statColors.total || 'bronze',
+      },
+      {
+        label: `Active ${title}`,
+        value: activeCount,
+        icon: HiOutlineSparkles,
+        color: statColors.active || 'green',
+      },
+      {
+        label: `Inactive ${title}`,
+        value: inactiveCount,
+        icon: HiOutlineTag,
+        color: statColors.other || 'gold',
+      },
+    ];
+  }, [buildStatCards, items, title, statColors, activeCount, inactiveCount]);
+
+  const buildDefaultExtras = useCallback(
+    (sourceItem = null) => {
+      const extras = {};
+      extraFields.forEach((field) => {
+        if (sourceItem && sourceItem[field.name] !== undefined && sourceItem[field.name] !== null) {
+          extras[field.name] = sourceItem[field.name];
+        } else if (typeof field.defaultValue === 'function') {
+          extras[field.name] = field.defaultValue(items);
+        } else {
+          extras[field.name] = field.defaultValue ?? '';
+        }
+      });
+      return extras;
     },
-    {
-      label: `Active ${title}`,
-      value: activeCount,
-      icon: HiOutlineSparkles,
-      color: statColors.active || 'green',
-    },
-    {
-      label: `Inactive ${title}`,
-      value: inactiveCount,
-      icon: HiOutlineTag,
-      color: statColors.other || 'gold',
-    },
-  ];
+    [extraFields, items]
+  );
 
   // Open modal to Add
-  const handleOpenAdd = () => {
+  const handleOpenAdd = useCallback(() => {
     setEditingItem(null);
     setViewingItem(null);
     setName('');
     setCode('');
     setIconUrl('');
     setStatus('active');
-    setExtraValues({});
+    setExtraValues(buildDefaultExtras(null));
     setIsUploading(false);
     setIsModalOpen(true);
-  };
+  }, [buildDefaultExtras]);
+
+  useEffect(() => {
+    if (!openAddFromRoute) return;
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'add' || location.state?.openAdd) {
+      handleOpenAdd();
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [openAddFromRoute, location.search, location.state, location.pathname, navigate, handleOpenAdd]);
 
   // Open modal to Edit
   const handleOpenEdit = (it) => {
@@ -191,13 +242,7 @@ export default function ConfigEntityView({
     setCode(it.code || '');
     setIconUrl(it.image?.url || (typeof it.image === 'string' ? it.image : '') || '');
     setStatus(it.status || 'active');
-
-    const extras = {};
-    extraFields.forEach((field) => {
-      extras[field.name] = it[field.name] ?? field.defaultValue ?? '';
-    });
-    setExtraValues(extras);
-
+    setExtraValues(buildDefaultExtras(it));
     setIsUploading(false);
     setIsModalOpen(true);
   };
@@ -210,6 +255,7 @@ export default function ConfigEntityView({
     setCode(it.code || '');
     setIconUrl(it.image?.url || (typeof it.image === 'string' ? it.image : '') || '');
     setStatus(it.status || 'active');
+    setExtraValues(buildDefaultExtras(it));
     setIsModalOpen(true);
   };
 
@@ -262,7 +308,7 @@ export default function ConfigEntityView({
       await api.delete(`${endpoint}/${id}`);
       toast.success(`${singularTitle} deleted successfully`);
       setItems((prev) => prev.filter((it) => it._id !== id));
-      setSelectedIds((prev) => prev.filter((selectedId) => selectedId !== id));
+      removeFromSelection(id);
     } catch (err) {
       console.error(`Failed to delete ${singularTitle.toLowerCase()}:`, err);
       toast.error(err.response?.data?.message || `Failed to delete ${singularTitle.toLowerCase()}`);
@@ -271,12 +317,13 @@ export default function ConfigEntityView({
 
   // Bulk Delete
   const handleBulkDelete = async () => {
-    if (!selectedIds.length) return;
+    const idsToDelete = Array.from(selectedIds);
+    if (!idsToDelete.length) return;
 
     const isConfirmed = await confirm({
       title: `Delete Selected ${title}`,
-      message: `Are you sure you want to delete ${selectedIds.length} selected ${title.toLowerCase()}? This action cannot be undone.`,
-      confirmText: `Delete ${selectedIds.length} Items`,
+      message: `Are you sure you want to delete ${idsToDelete.length} selected ${title.toLowerCase()}? This action cannot be undone.`,
+      confirmText: `Delete ${idsToDelete.length} Items`,
       confirmVariant: 'danger',
       type: 'danger',
     });
@@ -286,55 +333,49 @@ export default function ConfigEntityView({
     try {
       const cleanEndpoint = endpoint.split('?')[0];
       try {
-        await api.post(`${cleanEndpoint}/bulk-delete`, { ids: selectedIds });
+        await api.post(`${cleanEndpoint}/bulk-delete`, { ids: idsToDelete });
       } catch (bulkErr) {
         if (bulkErr?.response?.status === 404) {
-          await Promise.all(selectedIds.map((id) => api.delete(`${cleanEndpoint}/${id}`)));
+          await Promise.all(idsToDelete.map((id) => api.delete(`${cleanEndpoint}/${id}`)));
         } else {
           throw bulkErr;
         }
       }
-      toast.success(`${selectedIds.length} ${title.toLowerCase()} deleted successfully`);
-      setItems((prev) => prev.filter((it) => !selectedIds.includes(it._id)));
-      setSelectedIds([]);
+      toast.success(`${idsToDelete.length} ${title.toLowerCase()} deleted successfully`);
+      setItems((prev) => prev.filter((it) => !selectedIds.has(it._id)));
+      clearSelection();
     } catch (err) {
       console.error(`Failed to bulk delete ${title.toLowerCase()}:`, err);
-      toast.error(err.response?.data?.message || `Failed to delete selected items`);
+      toast.error(err.response?.data?.message || 'Failed to delete selected items');
     }
   };
 
-  // Select all checkboxes
-  const isAllSelected =
-    paginatedItems.length > 0 && paginatedItems.every((it) => selectedIds.includes(it._id));
-
-  const handleSelectAll = () => {
-    if (isAllSelected) {
-      const pageIds = paginatedItems.map((it) => it._id);
-      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
-    } else {
-      const pageIds = paginatedItems.map((it) => it._id);
-      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
-    }
-  };
-
-  const handleSelectItem = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
+  const isAllSelected = checkAllSelected(paginatedItems);
+  const handleSelectAll = () => toggleSelectAll(paginatedItems);
 
   // Submit form (Add or Edit)
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error(`Please enter a ${singularTitle.toLowerCase()} name`);
-      return;
-    }
 
-    try {
-      setSubmitting(true);
-      const payload = {
-        name: name.trim(),
+    let payload;
+    if (validateAndBuildPayload) {
+      payload = validateAndBuildPayload({
+        name,
+        code,
+        status,
+        iconUrl,
+        extraValues,
+        editingItem,
+      });
+      if (!payload) return;
+    } else {
+      if (hasNameField && !name.trim()) {
+        toast.error(`Please enter a ${singularTitle.toLowerCase()} name`);
+        return;
+      }
+
+      payload = {
+        ...(hasNameField ? { name: name.trim() } : {}),
         status,
         ...extraValues,
       };
@@ -346,6 +387,10 @@ export default function ConfigEntityView({
       if (hasIcon) {
         payload.image = iconUrl ? { url: iconUrl } : null;
       }
+    }
+
+    try {
+      setSubmitting(true);
 
       if (editingItem) {
         await api.put(`${endpoint}/${editingItem._id}`, payload);
@@ -356,7 +401,7 @@ export default function ConfigEntityView({
       }
 
       setIsModalOpen(false);
-      fetchItems(currentPage, pageSize);
+      await invalidateAndRefetch(currentPage, pageSize);
     } catch (err) {
       console.error(`Failed to save ${singularTitle.toLowerCase()}:`, err);
       toast.error(err.response?.data?.message || `Failed to save ${singularTitle.toLowerCase()}`);
@@ -365,13 +410,155 @@ export default function ConfigEntityView({
     }
   };
 
+  const tableExtraColumns = useMemo(
+    () => extraFields.filter((f) => !f.hideInTable),
+    [extraFields]
+  );
+
+  const totalColSpan =
+    4 +
+    leadingColumns.length +
+    (hasIcon ? 1 : 0) +
+    (hasCode ? 1 : 0) +
+    tableExtraColumns.length +
+    (hasStatusColumn ? 1 : 0) +
+    (hasCreatedDateColumn ? 1 : 0);
+
+  const handleExtraFieldUpdate = (field, rawVal) => {
+    const val = field.type === 'color' ? String(rawVal || '').toUpperCase() : rawVal;
+    const nextValues = { ...extraValues, [field.name]: val };
+    setExtraValues(nextValues);
+    if (field.onChangeExtra) {
+      field.onChangeExtra({
+        value: val,
+        extraValues: nextValues,
+        setExtraValues,
+        name,
+        setName,
+        editingItem,
+      });
+    }
+  };
+
+  const renderFieldInput = (field) => {
+    const disabled = Boolean(viewingItem);
+    const val = extraValues[field.name] ?? '';
+
+    if (field.type === 'select') {
+      return (
+        <div key={field.name}>
+          <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+            {field.label} {field.required && <span className="text-red-500">*</span>}
+          </label>
+          <Dropdown
+            value={val}
+            onChange={(selected) => handleExtraFieldUpdate(field, selected)}
+            options={field.options || []}
+            disabled={disabled}
+            placeholder={field.placeholder || `Select ${field.label}`}
+            buttonClassName="w-full h-11 px-3.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl shadow-2xs"
+            menuClassName="z-[60]"
+          />
+        </div>
+      );
+    }
+
+    if (field.type === 'color') {
+      const hex = val || '#F9E498';
+      return (
+        <div key={field.name}>
+          <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+            {field.label} {field.required && <span className="text-red-500">*</span>}
+          </label>
+          <div className="flex items-center gap-2 border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl px-2.5 py-1.5 bg-white transition-all">
+            <input
+              type="color"
+              disabled={disabled}
+              value={hex}
+              onChange={(e) => handleExtraFieldUpdate(field, e.target.value)}
+              className="w-7 h-7 rounded-md cursor-pointer border-0 p-0 bg-transparent disabled:opacity-75"
+            />
+            <input
+              type="text"
+              disabled={disabled}
+              value={hex}
+              onChange={(e) => handleExtraFieldUpdate(field, e.target.value)}
+              className="w-full text-xs font-mono font-semibold text-stone-900 uppercase focus:outline-none disabled:opacity-75"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    const dynamicPlaceholder =
+      typeof field.placeholder === 'function' ? field.placeholder(extraValues) : (field.placeholder || '');
+    const dynamicLabel =
+      typeof field.dynamicLabel === 'function' ? field.dynamicLabel(extraValues) : field.label;
+    const dynamicMax =
+      typeof field.max === 'function' ? field.max(extraValues) : field.max;
+
+    return (
+      <div key={field.name}>
+        <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+          {dynamicLabel} {field.required && <span className="text-red-500">*</span>}
+        </label>
+        <input
+          type={field.type || 'text'}
+          min={field.min}
+          max={dynamicMax}
+          step={field.step}
+          required={Boolean(field.required)}
+          disabled={disabled}
+          value={val}
+          onChange={(e) => handleExtraFieldUpdate(field, e.target.value)}
+          placeholder={dynamicPlaceholder}
+          className="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all disabled:opacity-75 disabled:bg-stone-100"
+        />
+      </div>
+    );
+  };
+
+  const renderFieldGroupList = (fieldsList) => {
+    const rendered = [];
+    let i = 0;
+    while (i < fieldsList.length) {
+      const f = fieldsList[i];
+      if (f.gridGroup) {
+        const groupName = f.gridGroup;
+        const groupFields = [];
+        while (i < fieldsList.length && fieldsList[i].gridGroup === groupName) {
+          groupFields.push(fieldsList[i]);
+          i++;
+        }
+        rendered.push(
+          <div key={`group-${groupName}`} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {groupFields.map(renderFieldInput)}
+          </div>
+        );
+      } else {
+        rendered.push(renderFieldInput(f));
+        i++;
+      }
+    }
+    return rendered;
+  };
+
+  const beforeNameFields = useMemo(
+    () => extraFields.filter((f) => f.position === 'beforeName'),
+    [extraFields]
+  );
+  const afterNameFields = useMemo(
+    () => extraFields.filter((f) => f.position !== 'beforeName'),
+    [extraFields]
+  );
+
   return (
     <div className="space-y-6">
       {/* ─── Header & Stat Cards ─── */}
       <div className="space-y-5">
         <ModuleHeader
           title={title}
-          subtitle={`Manage, organize, and configure catalog ${title.toLowerCase()}`}
+          subtitle={subtitle || `Manage, organize, and configure catalog ${title.toLowerCase()}`}
           onAdd={handleOpenAdd}
           addLabel={addLabel || `Add ${singularTitle}`}
         />
@@ -380,27 +567,32 @@ export default function ConfigEntityView({
 
         <SearchFilterBar
           search={search}
-          onSearchChange={(val) => {
-            setSearch(val);
-            setCurrentPage(1);
-          }}
+          onSearchChange={setSearch}
           searchPlaceholder={`Search ${title.toLowerCase()} by name${hasCode ? ' or code' : ''}...`}
-          statusFilter={statusFilter}
-          onStatusFilterChange={(val) => {
-            setStatusFilter(val);
-            setCurrentPage(1);
-          }}
-          statusOptions={[
-            { value: 'all', label: 'All Status' },
-            { value: 'active', label: 'Active' },
-            { value: 'inactive', label: 'Inactive' },
-          ]}
+          statusFilter={showStatusFilter ? statusFilter : undefined}
+          onStatusFilterChange={
+            showStatusFilter
+              ? (val) => {
+                  setStatusFilter(val);
+                  setCurrentPage(1);
+                }
+              : undefined
+          }
+          statusOptions={
+            showStatusFilter
+              ? [
+                  { value: 'all', label: 'All Status' },
+                  { value: 'active', label: 'Active' },
+                  { value: 'inactive', label: 'Inactive' },
+                ]
+              : undefined
+          }
           pageSize={pageSize}
           onPageSizeChange={(newSize) => {
             setPageSize(newSize);
             setCurrentPage(1);
           }}
-          selectedCount={selectedIds.length}
+          selectedCount={selectedIds.size}
           onBulkDelete={handleBulkDelete}
         />
       </div>
@@ -421,33 +613,40 @@ export default function ConfigEntityView({
                 </th>
                 <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
                 {hasIcon && <th className="py-3 px-3 whitespace-nowrap">VISUAL</th>}
-                <th className="py-3 px-3 whitespace-nowrap">NAME</th>
-                {hasCode && <th className="py-3 px-3 whitespace-nowrap">{codeLabel.toUpperCase()}</th>}
-                {extraFields.map((f) => (
-                  <th key={f.name} className="py-3 px-3 whitespace-nowrap">{f.label.toUpperCase()}</th>
+                {leadingColumns.map((col, idx) => (
+                  <th key={`lead-${idx}`} className="py-3 px-3 whitespace-nowrap">
+                    {col.header}
+                  </th>
                 ))}
-                <th className="py-3 px-3 text-center whitespace-nowrap">STATUS</th>
-                <th className="py-3 px-3 whitespace-nowrap">CREATED DATE</th>
+                <th className="py-3 px-3 whitespace-nowrap">{nameColumnLabel}</th>
+                {hasCode && <th className="py-3 px-3 whitespace-nowrap">{codeLabel.toUpperCase()}</th>}
+                {tableExtraColumns.map((f) => (
+                  <th key={f.name} className={`py-3 px-3 whitespace-nowrap ${f.align === 'center' ? 'text-center' : ''}`}>
+                    {(f.tableHeader || f.label).toUpperCase()}
+                  </th>
+                ))}
+                {hasStatusColumn && <th className="py-3 px-3 text-center whitespace-nowrap">STATUS</th>}
+                {hasCreatedDateColumn && <th className="py-3 px-3 whitespace-nowrap">CREATED DATE</th>}
                 <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan={7 + (hasCode ? 1 : 0) + (hasIcon ? 1 : 0) + extraFields.length} className="py-12 text-center text-stone-400">
+                  <td colSpan={totalColSpan} className="py-12 text-center text-stone-400">
                     <div className="w-6 h-6 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mx-auto mb-2" />
                     Loading {title.toLowerCase()}...
                   </td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan={7 + (hasCode ? 1 : 0) + (hasIcon ? 1 : 0) + extraFields.length} className="py-12 text-center text-stone-400">
+                  <td colSpan={totalColSpan} className="py-12 text-center text-stone-400">
                     No {title.toLowerCase()} found.
                   </td>
                 </tr>
               ) : (
                 paginatedItems.map((it, idx) => {
-                  const isSelected = selectedIds.includes(it._id);
+                  const isSelected = selectedIds.has(it._id);
                   const isViewing = viewingItem?._id === it._id;
 
                   return (
@@ -462,7 +661,7 @@ export default function ConfigEntityView({
                         <input
                           type="checkbox"
                           checked={isSelected}
-                          onChange={() => handleSelectItem(it._id)}
+                          onChange={() => toggleSelect(it._id)}
                           className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
                         />
                       </td>
@@ -482,6 +681,12 @@ export default function ConfigEntityView({
                         </td>
                       )}
 
+                      {leadingColumns.map((col, cIdx) => (
+                        <td key={`lead-cell-${cIdx}`} className="py-2.5 px-3 whitespace-nowrap">
+                          {col.render(it)}
+                        </td>
+                      ))}
+
                       <td className="py-2.5 px-3 whitespace-nowrap text-xs font-bold uppercase text-stone-900">
                         {it.name}
                       </td>
@@ -492,27 +697,39 @@ export default function ConfigEntityView({
                         </td>
                       )}
 
-                      {extraFields.map((f) => (
-                        <td key={f.name} className="py-2.5 px-3 whitespace-nowrap text-xs text-stone-600">
-                          {it[f.name] !== undefined ? String(it[f.name]) : '—'}
+                      {tableExtraColumns.map((f) => (
+                        <td
+                          key={f.name}
+                          className={`py-2.5 px-3 whitespace-nowrap text-xs text-stone-600 ${
+                            f.align === 'center' ? 'text-center' : ''
+                          }`}
+                        >
+                          {f.renderCell
+                            ? f.renderCell(it)
+                            : it[f.name] !== undefined
+                            ? String(it[f.name])
+                            : '—'}
                         </td>
                       ))}
 
-                      {/* Status Toggle */}
-                      <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center">
-                          <ToggleSwitch
-                            checked={it.status === 'active'}
-                            onChange={() => handleToggleStatus(it)}
-                            size="sm"
-                            ariaLabel={`Set ${it.name} ${it.status === 'active' ? 'Inactive' : 'Active'}`}
-                          />
-                        </div>
-                      </td>
+                      {hasStatusColumn && (
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center">
+                            <ToggleSwitch
+                              checked={it.status === 'active'}
+                              onChange={() => handleToggleStatus(it)}
+                              size="sm"
+                              ariaLabel={`Set ${it.name} ${it.status === 'active' ? 'Inactive' : 'Active'}`}
+                            />
+                          </div>
+                        </td>
+                      )}
 
-                      <td className="py-2.5 px-3 whitespace-nowrap text-stone-500 font-medium text-xs">
-                        {formatDate(it.meta?.createdAt || it.createdAt, '—')}
-                      </td>
+                      {hasCreatedDateColumn && (
+                        <td className="py-2.5 px-3 whitespace-nowrap text-stone-500 font-medium text-xs">
+                          {formatDate(it.meta?.createdAt || it.createdAt, '—')}
+                        </td>
+                      )}
 
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
@@ -541,6 +758,7 @@ export default function ConfigEntityView({
             setPageSize(newSize);
             setCurrentPage(1);
           }}
+          itemLabel={itemLabel || title.toLowerCase()}
           className="border-t border-stone-200/80"
         />
       </div>
@@ -552,20 +770,28 @@ export default function ConfigEntityView({
         title={viewingItem ? `View ${singularTitle}` : editingItem ? `Edit ${singularTitle}` : `Add New ${singularTitle}`}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-              {singularTitle} Name <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              required
-              disabled={Boolean(viewingItem)}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={`e.g. ${singularTitle} standard`}
-              className="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all disabled:opacity-75 disabled:bg-stone-100"
-            />
-          </div>
+          {renderFieldGroupList(beforeNameFields)}
+
+          {hasNameField && (
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
+                {nameLabel || `${singularTitle} Name`} <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                disabled={Boolean(viewingItem)}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={
+                  typeof namePlaceholder === 'function'
+                    ? namePlaceholder(extraValues)
+                    : namePlaceholder || `e.g. ${singularTitle} standard`
+                }
+                className="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all disabled:opacity-75 disabled:bg-stone-100"
+              />
+            </div>
+          )}
 
           {hasCode && (
             <div>
@@ -583,21 +809,9 @@ export default function ConfigEntityView({
             </div>
           )}
 
-          {extraFields.map((field) => (
-            <div key={field.name}>
-              <label className="block text-xs font-semibold text-stone-700 uppercase tracking-wider mb-1.5">
-                {field.label}
-              </label>
-              <input
-                type={field.type || 'text'}
-                disabled={Boolean(viewingItem)}
-                value={extraValues[field.name] ?? ''}
-                onChange={(e) => setExtraValues({ ...extraValues, [field.name]: e.target.value })}
-                placeholder={field.placeholder || ''}
-                className="w-full px-3.5 py-2.5 text-sm bg-stone-50 border border-stone-200 rounded-xl focus:bg-white focus:outline-hidden focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all disabled:opacity-75 disabled:bg-stone-100"
-              />
-            </div>
-          ))}
+          {renderModalPreview && renderModalPreview({ extraValues })}
+
+          {renderFieldGroupList(afterNameFields)}
 
           {hasIcon && (
             <div>
@@ -652,19 +866,20 @@ export default function ConfigEntityView({
             </div>
           )}
 
-          {/* Status Switch */}
-          <div className="flex items-center justify-between p-3 bg-stone-50 border border-stone-200/80 rounded-xl">
-            <span className="text-xs font-semibold text-stone-800 uppercase tracking-wider">
-              Status
-            </span>
-            <ToggleSwitch
-              checked={status === 'active'}
-              onChange={() => setStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
-              disabled={Boolean(viewingItem)}
-              size="md"
-              ariaLabel="Toggle Status"
-            />
-          </div>
+          {showStatusToggleInModal && (
+            <div className="flex items-center justify-between p-3 bg-stone-50 border border-stone-200/80 rounded-xl">
+              <span className="text-xs font-semibold text-stone-800 uppercase tracking-wider">
+                Status
+              </span>
+              <ToggleSwitch
+                checked={status === 'active'}
+                onChange={() => setStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
+                disabled={Boolean(viewingItem)}
+                size="md"
+                ariaLabel="Toggle Status"
+              />
+            </div>
+          )}
 
           {!viewingItem && (
             <div className="flex justify-end gap-2.5 pt-3 border-t border-stone-100">

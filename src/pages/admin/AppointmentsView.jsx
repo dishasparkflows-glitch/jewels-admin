@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   HiOutlineCalendar,
   HiOutlineClock,
@@ -15,14 +15,11 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
-import usePagination from '../../hooks/usePagination';
+import useAdminList from '../../hooks/useAdminList';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import DatePicker, { formatDateToISO } from '../../components/common/DatePicker';
 import CountryCodeSelect from '../../components/common/CountryCodeSelect';
-import { useAdminPageSize } from '../../utils/adminPagination';
 import StatCards from '../../components/common/StatCards';
-import useSelection from '../../hooks/useSelection';
-import { extractListItems, extractPaginationTotal } from '../../utils/apiHelpers';
 import { formatDate, getInitials } from '../../utils/formatters';
 
 
@@ -36,19 +33,8 @@ const STATUS_TABS = [
 
 export default function AppointmentsView() {
   const confirm = useConfirm();
-  const [appointments, setAppointments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all'); // 'all', 'today', 'upcoming'
-  const {
-    selectedIds,
-    toggleSelect: handleToggleSelect,
-    toggleSelectAll,
-    isAllSelected: checkAllSelected,
-    clearSelection,
-    removeFromSelection,
-  } = useSelection();
   const [editingApt, setEditingApt] = useState(null);
   const [editFormData, setEditFormData] = useState({
     name: '',
@@ -77,9 +63,67 @@ export default function AppointmentsView() {
     notes: '',
   });
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useAdminPageSize();
-  const [serverTotal, setServerTotal] = useState(null);
+  const {
+    items: appointments,
+    setItems: setAppointments,
+    displayedItems: displayedList,
+    loading,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    serverTotal,
+    setServerTotal,
+    totalItems,
+    paginatedItems,
+    selectedIds,
+    toggleSelect: handleToggleSelect,
+    toggleSelectAll,
+    isAllSelected: checkAllSelected,
+    clearSelection,
+    removeFromSelection,
+  } = useAdminList({
+    cacheKey: 'appointments',
+    errorMessage: 'Failed to load appointments',
+    fetcher: ({ page, limit, signal }) =>
+      api.get(`/appointments?page=${page}&limit=${limit}`, { signal }),
+    filterItems: (list, q) =>
+      list.filter((a) => {
+        if (statusFilter !== 'all' && a.status !== statusFilter) {
+          return false;
+        }
+        if (dateFilter === 'today') {
+          const aptDate = a.appointment?.date || a.appointmentDate || a.date;
+          if (aptDate) {
+            const d = new Date(aptDate);
+            const now = new Date();
+            if (
+              d.getDate() !== now.getDate() ||
+              d.getMonth() !== now.getMonth() ||
+              d.getFullYear() !== now.getFullYear()
+            ) {
+              return false;
+            }
+          }
+        }
+        if (q.trim()) {
+          const lower = q.toLowerCase();
+          const name = (a.customer?.name || a.fullName || a.name || '').toLowerCase();
+          const email = (a.customer?.email || a.email || '').toLowerCase();
+          const phone = (a.customer?.phone?.number || a.phoneNumber || a.phone || '').toLowerCase();
+          const idStr = String(a.customId || a.appointmentId || a._id || '').toLowerCase();
+          return (
+            name.includes(lower) ||
+            email.includes(lower) ||
+            phone.includes(lower) ||
+            idStr.includes(lower)
+          );
+        }
+        return true;
+      }),
+  });
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -91,26 +135,6 @@ export default function AppointmentsView() {
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
   }, []);
-
-  const fetchAppointments = useCallback(async (page = currentPage, limit = pageSize) => {
-    try {
-      setLoading(true);
-      const res = await api.get(`/appointments?page=${page}&limit=${limit}`);
-      const list = extractListItems(res);
-      setAppointments(list);
-      setServerTotal(extractPaginationTotal(res, list.length));
-    } catch (err) {
-      console.error('Failed to load appointments:', err);
-      setAppointments([]);
-      setServerTotal(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentPage, pageSize]);
-
-  useEffect(() => {
-    fetchAppointments(currentPage, pageSize);
-  }, [fetchAppointments, currentPage, pageSize]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     const previousAppointments = appointments;
@@ -348,51 +372,6 @@ export default function AppointmentsView() {
   const confirmedCount = appointments.filter((a) => a.status === 'confirmed').length;
   const completedCount = appointments.filter((a) => a.status === 'completed').length;
   const cancelledCount = appointments.filter((a) => a.status === 'cancelled').length;
-
-  // Filtered List
-  const displayedList = useMemo(() => {
-    return appointments.filter((a) => {
-      // Tab status filter
-      if (statusFilter !== 'all' && a.status !== statusFilter) {
-        return false;
-      }
-      // Date filter
-      if (dateFilter === 'today') {
-        const aptDate = a.appointment?.date || a.appointmentDate || a.date;
-        if (aptDate) {
-          const d = new Date(aptDate);
-          const now = new Date();
-          if (
-            d.getDate() !== now.getDate() ||
-            d.getMonth() !== now.getMonth() ||
-            d.getFullYear() !== now.getFullYear()
-          ) {
-            return false;
-          }
-        }
-      }
-      // Search filter
-      if (search.trim()) {
-        const q = search.toLowerCase();
-        const name = (a.customer?.name || a.fullName || a.name || '').toLowerCase();
-        const email = (a.customer?.email || a.email || '').toLowerCase();
-        const phone = (a.customer?.phone?.number || a.phoneNumber || a.phone || '').toLowerCase();
-        const idStr = String(a.customId || a.appointmentId || a._id || '').toLowerCase();
-        return (
-          name.includes(q) ||
-          email.includes(q) ||
-          phone.includes(q) ||
-          idStr.includes(q)
-        );
-      }
-      return true;
-    });
-  }, [appointments, statusFilter, dateFilter, search]);
-
-  const {
-    totalItems,
-    paginatedItems,
-  } = usePagination(displayedList, pageSize, serverTotal);
 
   const isAllSelected = checkAllSelected(paginatedItems, (apt, idx) => apt._id || apt.id || `apt_${idx}`);
 

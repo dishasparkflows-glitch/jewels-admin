@@ -5,7 +5,7 @@ import {
   HiOutlineUpload,
   HiOutlineX,
 } from 'react-icons/hi';
-import { compressImage, formatFileSize } from '../../utils/imageCompressor';
+import { compressImage, formatFileSize } from '../../utils/imageCompression';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
 const STORAGE_KEY = 'neirah_compression_test_image';

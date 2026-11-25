@@ -1,30 +1,7 @@
-import { createPortal } from "react-dom";
-import { useState, useEffect, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  HiOutlineTrash,
-  HiOutlineX,
-  HiOutlineColorSwatch,
-  HiOutlineSparkles,
-} from 'react-icons/hi';
+import { HiOutlineColorSwatch, HiOutlineSparkles } from 'react-icons/hi';
 import toast from 'react-hot-toast';
-import api from '../../api/axios';
-import Pagination from '../../components/common/Pagination';
-import usePagination from '../../hooks/usePagination';
-import { useConfirm } from '../../contexts/ConfirmContext';
-import ModuleHeader from '../../components/common/ModuleHeader';
-import StatCards from '../../components/common/StatCards';
-import SearchFilterBar from '../../components/common/SearchFilterBar';
-import RowActions from '../../components/common/RowActions';
-import CuteLoader from '../../components/common/CuteLoader';
-import TableSrNo from '../../components/common/TableSrNo';
-import { useAdminPageSize } from '../../utils/adminPagination';
-
-/**
- * Metal Swatch Badge matching User Screenshot 1
- * Renders a circular gradient or solid color swatch
- */
-function MetalSwatch({ startColor = '#F9E498', endColor = '#B38B34', className = 'w-6 h-6' }) {
+import ConfigEntityView from '../../components/common/ConfigEntityView';
+function MetalSwatch({ startColor = '#F9E498', endColor = '#B38B34', className = 'w-7 h-7' }) {
   const isGradient = startColor && endColor && startColor.toLowerCase() !== endColor.toLowerCase();
   const backgroundStyle = isGradient
     ? { background: `linear-gradient(135deg, ${startColor} 0%, ${endColor} 100%)` }
@@ -39,95 +16,51 @@ function MetalSwatch({ startColor = '#F9E498', endColor = '#B38B34', className =
   );
 }
 
-export default function MetalColorsView() {
-  const confirm = useConfirm();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const [colors, setColors] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [selectedIds, setSelectedIds] = useState([]);
+const METAL_COLOR_LEADING_COLUMNS = [
+  {
+    header: 'SWATCH',
+    render: (c) => <MetalSwatch startColor={c.colorCode} endColor={c.colorCodeEnd} />,
+  },
+];
 
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingColor, setEditingColor] = useState(null);
-  const [viewingColor, setViewingColor] = useState(null);
-  const [colorName, setColorName] = useState('');
-  const [startColor, setStartColor] = useState('#F9E498');
-  const [endColor, setEndColor] = useState('#B38B34');
-  const [submitting, setSubmitting] = useState(false);
+const METAL_COLOR_EXTRA_FIELDS = [
+  {
+    name: 'colorCode',
+    label: 'Start Color',
+    tableHeader: 'HEX CODE',
+    type: 'color',
+    required: true,
+    gridGroup: 'hexPair',
+    defaultValue: '#F9E498',
+    renderCell: (c) => (
+      <span className="font-mono text-[11px] text-stone-500">
+        {`${c.colorCode || '#FFFFFF'}${
+          c.colorCodeEnd && c.colorCodeEnd !== c.colorCode ? ` / ${c.colorCodeEnd}` : ''
+        }`}
+      </span>
+    ),
+  },
+  {
+    name: 'colorCodeEnd',
+    label: 'End Color',
+    type: 'color',
+    required: true,
+    gridGroup: 'hexPair',
+    defaultValue: '#B38B34',
+    hideInTable: true,
+  },
+];
 
-  // Fetch all Metal Colors from API
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useAdminPageSize();
-  const [serverTotal, setServerTotal] = useState(null);
+const buildMetalColorStats = (colors) => {
+  const activeCount = colors.filter((c) => c.status === 'active').length;
+  const dualToneCount = colors.filter(
+    (c) => c.colorCodeEnd && c.colorCodeEnd.toLowerCase() !== c.colorCode?.toLowerCase()
+  ).length;
 
-  const fetchColors = async (page = currentPage, limit = pageSize) => {
-    try {
-      setLoading(true);
-      const res = await api.get(`/metal-colors?page=${page}&limit=${limit}`);
-      const items =
-        res.data?.data?.items ||
-        (Array.isArray(res.data?.data) ? res.data.data : []);
-      setColors(items);
-      if (res.data?.pagination?.totalDocs !== undefined) {
-        setServerTotal(res.data.pagination.totalDocs);
-      }
-    } catch (err) {
-      console.error('Failed to load metal colors:', err);
-      toast.error('Failed to load metal colors');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchColors(currentPage, pageSize);
-  }, [currentPage, pageSize]);
-
-  // Search filtering
-  const filteredColors = useMemo(() => {
-    if (!search.trim()) return colors;
-    const q = search.toLowerCase();
-    return colors.filter(
-      (c) =>
-        (c.name && c.name.toLowerCase().includes(q)) ||
-        (c.colorCode && c.colorCode.toLowerCase().includes(q)) ||
-        (c.colorCodeEnd && c.colorCodeEnd.toLowerCase().includes(q))
-    );
-  }, [colors, search]);
-
-  const {
-    totalItems,
-    paginatedItems,
-  } = usePagination(filteredColors, pageSize, serverTotal);
-
-  // Quick stat cards
-  const activeCount = useMemo(() => colors.filter(c => c.status === 'active').length, [colors]);
-  const dualToneCount = useMemo(
-    () => colors.filter(c => c.colorCodeEnd && c.colorCodeEnd.toLowerCase() !== c.colorCode?.toLowerCase()).length,
-    [colors]
-  );
-
-  const statCardsData = [
-    {
-      label: 'Metal Colors',
-      value: colors.length,
-      icon: HiOutlineColorSwatch,
-      color: 'bronze',
-    },
-    {
-      label: 'Active Finishes',
-      value: activeCount,
-      icon: HiOutlineSparkles,
-      color: 'green',
-    },
-    {
-      label: 'Dual / Gradient Tones',
-      value: dualToneCount,
-      icon: HiOutlineColorSwatch,
-      color: 'peach',
-    },
+  return [
+    { label: 'Metal Colors', value: colors.length, icon: HiOutlineColorSwatch, color: 'bronze' },
+    { label: 'Active Finishes', value: activeCount, icon: HiOutlineSparkles, color: 'green' },
+    { label: 'Dual / Gradient Tones', value: dualToneCount, icon: HiOutlineColorSwatch, color: 'peach' },
     {
       label: 'Single Solid Alloys',
       value: Math.max(0, colors.length - dualToneCount),
@@ -135,462 +68,67 @@ export default function MetalColorsView() {
       color: 'gold',
     },
   ];
+};
 
-  // Open modal to add new color
-  const handleOpenAdd = () => {
-    setEditingColor(null);
-    setColorName('');
-    setStartColor('#F9E498');
-    setEndColor('#B38B34');
-    setIsModalOpen(true);
-  };
-
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('action') === 'add' || location.state?.openAdd) {
-      handleOpenAdd();
-      navigate(location.pathname, { replace: true, state: {} });
-    }
-  }, [location.search, location.state, navigate, location.pathname]);
-
-  // Open modal to edit existing color
-  const handleOpenEdit = (c) => {
-    setEditingColor(c);
-    setColorName(c.name || '');
-    setStartColor(c.colorCode || '#F9E498');
-    setEndColor(c.colorCodeEnd || c.colorCode || '#B38B34');
-    setIsModalOpen(true);
-  };
-
-  // Delete Metal Color
-  const handleDelete = async (id, name) => {
-    const isConfirmed = await confirm({
-      title: 'Delete Metal Color',
-      message: `Are you sure you want to delete metal color "${name}"? This action cannot be undone.`,
-      confirmText: 'Delete Color',
-      cancelText: 'Cancel',
-      type: 'danger',
-    });
-    if (!isConfirmed) return;
-    try {
-      await api.delete(`/metal-colors/${id}`);
-      toast.success(`Metal color "${name}" deleted`);
-      setColors((prev) => prev.filter((item) => item._id !== id));
-      setSelectedIds((prev) => prev.filter((i) => i !== id));
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Delete failed');
-    }
-  };
-
-  // Selection handlers
-  const handleSelectAll = (e) => {
-    if (e.target.checked) {
-      setSelectedIds(paginatedItems.map((c) => c._id));
-    } else {
-      setSelectedIds([]);
-    }
-  };
-
-  const handleSelectItem = (id) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
-  // Bulk delete
-  const handleBulkDelete = async () => {
-    const count = selectedIds.length;
-    if (count === 0) {
-      toast.error('Please select metal colors to delete');
-      return;
-    }
-
-    const isConfirmed = await confirm({
-      title: 'Delete Selected Metal Colors',
-      message: `Are you sure you want to delete ${count} selected color${count > 1 ? 's' : ''}? This action cannot be undone.`,
-      confirmText: `Delete (${count})`,
-      cancelText: 'Cancel',
-      type: 'danger',
-    });
-    if (!isConfirmed) return;
-
-    try {
-      await api.post('/metal-colors/bulk-delete', { ids: selectedIds });
-      setColors((prev) => prev.filter((c) => !selectedIds.includes(c._id)));
-      setSelectedIds([]);
-      toast.success(`${count} color${count > 1 ? 's' : ''} deleted successfully`);
-    } catch {
-      toast.error('Failed to delete metal colors');
-    }
-  };
-
-  // Submit Modal
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!colorName.trim()) {
-      toast.error('Please enter a color name');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const payload = {
-        name: colorName.trim(),
-        colorCode: startColor.trim(),
-        colorCodeEnd: endColor.trim(),
-        status: 'active',
-      };
-
-      if (editingColor?._id) {
-        await api.put(`/metal-colors/${editingColor._id}`, payload);
-        toast.success(`Color "${payload.name}" updated successfully`);
-      } else {
-        await api.post('/metal-colors', payload);
-        toast.success(`Color "${payload.name}" created successfully`);
-      }
-
-      setIsModalOpen(false);
-      fetchColors();
-    } catch (err) {
-      console.error('Error saving metal color:', err);
-      toast.error(err.response?.data?.message || 'Failed to save metal color');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
+export default function MetalColorsView() {
   return (
-    <div className="space-y-2">
-      {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader        title="Metal Color"
-        subtitle="Manage precious metal alloys, rose/yellow/white gold tones and gradient finishes."
-        onAdd={handleOpenAdd}
-        addLabel="Add Color"      />
-
-      {/* ─── 4 Stat Cards Row ─── */}
-      <StatCards cards={statCardsData} />
-
-      {/* ─── Search & Filter Bar (NO active/deactive filter) ─── */}
-      <SearchFilterBar
-        search={search}
-        onSearchChange={setSearch}
-        placeholder="Search metal colors..."
-        extraActions={
-          <button
-            type="button"
-            onClick={handleBulkDelete}
-            className={`flex items-center gap-2 h-[42px] px-3.5 sm:px-4 rounded-xl text-xs sm:text-[13px] font-semibold transition-all border shadow-2xs cursor-pointer ${
-              selectedIds.length > 0
-                ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50'
-                : 'bg-white text-stone-400 border-stone-200/90 hover:text-stone-600 hover:bg-stone-50'
-            }`}
-            title={
-              selectedIds.length > 0
-                ? `Delete ${selectedIds.length} selected color${selectedIds.length > 1 ? 's' : ''}`
-                : 'Select metal colors to delete'
-            }
+    <ConfigEntityView
+      title="Metal Color"
+      singularTitle="Color"
+      subtitle="Manage precious metal alloys, rose/yellow/white gold tones and gradient finishes."
+      addLabel="Add Color"
+      itemLabel="metal colors"
+      endpoint="/metal-colors"
+      hasIcon={false}
+      hasCode={false}
+      hasStatusColumn={false}
+      hasCreatedDateColumn={false}
+      showStatusFilter={false}
+      showStatusToggleInModal={false}
+      openAddFromRoute={true}
+      nameLabel="Color Name"
+      nameColumnLabel="COLOR NAME"
+      namePlaceholder="e.g. Yellow Gold"
+      buildStatCards={buildMetalColorStats}
+      leadingColumns={METAL_COLOR_LEADING_COLUMNS}
+      extraFields={METAL_COLOR_EXTRA_FIELDS}
+      searchMatcher={(c, q) =>
+        Boolean(
+          (c.colorCode && c.colorCode.toLowerCase().includes(q)) ||
+            (c.colorCodeEnd && c.colorCodeEnd.toLowerCase().includes(q))
+        )
+      }
+      renderModalPreview={({ extraValues }) => (
+        <div>
+          <label className="block text-xs font-bold text-stone-900 mb-1.5">
+            Color Gradient Swatches
+          </label>
+          <div
+            style={{
+              background: `linear-gradient(to right, ${extraValues.colorCode || '#F9E498'}, ${
+                extraValues.colorCodeEnd || '#B38B34'
+              })`,
+            }}
+            className="w-full h-12 rounded-xl shadow-xs border border-stone-200/70 flex items-center justify-center transition-all"
           >
-            <HiOutlineTrash className="w-3.5 h-3.5 stroke-2 text-[#d93025]" />
-            <span>{selectedIds.length > 0 ? `Delete (${selectedIds.length})` : 'Delete'}</span>
-          </button>
-        }
-      />
-
-      {/* ─── Metal Color Table Card ─── */}
-      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
-        {/* Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                <th className="py-3 pl-4 pr-1 w-8">
-                  <input
-                    type="checkbox"
-                    checked={
-                      paginatedItems.length > 0 &&
-                      paginatedItems.every((c) => selectedIds.includes(c._id))
-                    }
-                    onChange={handleSelectAll}
-                    className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
-                  />
-                </th>
-                <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
-                <th className="py-3 px-3 whitespace-nowrap">SWATCH</th>
-                <th className="py-3 px-3 whitespace-nowrap">COLOR NAME</th>
-                <th className="py-3 px-3 whitespace-nowrap">HEX CODE</th>
-                <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
-              {loading ? (
-                <CuteLoader variant="table" colSpan={6} text="Loading metal colors..." />
-              ) : filteredColors.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="py-8 text-center text-stone-400">
-                    No metal colors found.
-                  </td>
-                </tr>
-              ) : (
-                paginatedItems.map((c, idx) => {
-                  const hexCodeDisplay = `${c.colorCode || '#FFFFFF'}${c.colorCodeEnd && c.colorCodeEnd !== c.colorCode ? ` / ${c.colorCodeEnd}` : ''}`;
-
-                  return (
-                    <tr
-                      key={c._id}
-                      onClick={() => handleOpenEdit(c)}
-                      className="hover:bg-[#faf7f2] transition-colors cursor-pointer group"
-                    >
-                      <td className="py-2.5 pl-4 pr-1" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(c._id)}
-                          onChange={() => handleSelectItem(c._id)}
-                          className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer"
-                        />
-                      </td>
-
-                      {/* Sr No */}
-                      <TableSrNo currentPage={currentPage} pageSize={pageSize} index={idx} />
-
-                      {/* Swatch */}
-                      <td className="py-2.5 px-3 whitespace-nowrap">
-                        <MetalSwatch
-                          startColor={c.colorCode}
-                          endColor={c.colorCodeEnd}
-                          className="w-7 h-7"
-                        />
-                      </td>
-
-                      {/* Color Name */}
-                      <td className="py-2.5 px-3 whitespace-nowrap font-bold text-stone-900 text-xs tracking-wide">
-                        {c.name}
-                      </td>
-
-                      {/* Hex Code */}
-                      <td className="py-2.5 px-3 whitespace-nowrap font-mono text-[11px] text-stone-500">
-                        {hexCodeDisplay}
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right">
-                        <RowActions
-                          record={c}
-                          onView={() => handleOpenEdit(c)}
-                          onEdit={() => handleOpenEdit(c)}
-                          onDelete={() => handleDelete(c._id, c.name)}
-                          viewTitle="Edit Color"
-                        />
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+            <span className="text-[10px] font-bold uppercase tracking-widest text-stone-800/80 drop-shadow-2xs select-none">
+              METALLIC SHINE PREVIEW
+            </span>
+          </div>
         </div>
-
-        {/* Luxury Common Pagination */}
-        <Pagination
-          currentPage={currentPage}
-          totalItems={serverTotal ?? totalItems}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
-            setCurrentPage(1);
-          }}
-          itemLabel="metal colors"
-        />
-      </div>
-
-      {/* ─── Add / Edit Modal (Matches Screenshot 2 Exactly) ─── */}
-      {isModalOpen && (
-        createPortal(<div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            className="bg-white rounded-2xl sm:rounded-3xl max-w-md w-full p-5 sm:p-8 shadow-2xl border border-stone-200/90 space-y-5 sm:space-y-6 animate-scaleUp max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="font-bold text-stone-900 text-lg tracking-tight">
-                  {editingColor ? 'Edit Color' : 'Add Color'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 transition-colors cursor-pointer"
-              >
-                <HiOutlineX className="w-4 h-4 stroke-[2]" />
-              </button>
-            </div>
-
-            {/* Modal Form (Matches Screenshot 2) */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Color Name */}
-              <div>
-                <label className="block text-xs font-bold text-stone-900 mb-1.5">
-                  Color Name <span className="text-rose-500 font-bold">*</span>
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={colorName}
-                  onChange={(e) => setColorName(e.target.value)}
-                  placeholder="e.g. Yellow Gold"
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
-                />
-              </div>
-
-              {/* Color Gradient Swatches Preview */}
-              <div>
-                <label className="block text-xs font-bold text-stone-900 mb-1.5">
-                  Color Gradient Swatches
-                </label>
-                <div
-                  style={{
-                    background: `linear-gradient(to right, ${startColor || '#F9E498'}, ${endColor || '#B38B34'})`,
-                  }}
-                  className="w-full h-12 rounded-xl shadow-xs border border-stone-200/70 flex items-center justify-center transition-all"
-                >
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-stone-800/80 drop-shadow-2xs select-none">
-                    METALLIC SHINE PREVIEW
-                  </span>
-                </div>
-              </div>
-
-              {/* Start & End Color Pickers Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Start Color */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
-                    Start Color <span className="text-rose-500 font-bold">*</span>
-                  </label>
-                  <div className="flex items-center gap-2 border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl px-2.5 py-1.5 bg-white transition-all">
-                    <input
-                      type="color"
-                      value={startColor}
-                      onChange={(e) => setStartColor(e.target.value.toUpperCase())}
-                      className="w-7 h-7 rounded-md cursor-pointer border-0 p-0 bg-transparent"
-                    />
-                    <input
-                      type="text"
-                      value={startColor}
-                      onChange={(e) => setStartColor(e.target.value.toUpperCase())}
-                      className="w-full text-xs font-mono font-semibold text-stone-900 uppercase focus:outline-none"
-                    />
-                  </div>
-                </div>
-
-                {/* End Color */}
-                <div>
-                  <label className="block text-xs font-bold text-stone-900 mb-1.5">
-                    End Color <span className="text-rose-500 font-bold">*</span>
-                  </label>
-                  <div className="flex items-center gap-2 border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl px-2.5 py-1.5 bg-white transition-all">
-                    <input
-                      type="color"
-                      value={endColor}
-                      onChange={(e) => setEndColor(e.target.value.toUpperCase())}
-                      className="w-7 h-7 rounded-md cursor-pointer border-0 p-0 bg-transparent"
-                    />
-                    <input
-                      type="text"
-                      value={endColor}
-                      onChange={(e) => setEndColor(e.target.value.toUpperCase())}
-                      className="w-full text-xs font-mono font-semibold text-stone-900 uppercase focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Modal Footer Actions (Matches Screenshot 2) */}
-              <div className="pt-2 flex items-center justify-between gap-4">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="w-1/2 h-11 bg-[#f7f7f9] hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-1/2 h-11 bg-[#8f6d43] hover:bg-[#7b5b33] text-white text-xs font-semibold rounded-xl transition-colors shadow-sm cursor-pointer disabled:opacity-50"
-                >
-                  {submitting ? 'Saving...' : 'Save Color'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>, document.body)
       )}
-
-      {/* ─── View Color Details Modal ─── */}
-      {viewingColor && (
-        createPortal(<div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
-          onClick={() => setViewingColor(null)}
-        >
-          <div
-            className="bg-white rounded-3xl max-w-sm w-full p-6 shadow-2xl border border-stone-200/90 space-y-5 animate-scaleUp"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-              <h3 className="font-bold text-stone-900 text-base">Metal Color Details</h3>
-              <button
-                onClick={() => setViewingColor(null)}
-                className="p-1 text-stone-400 hover:text-stone-700 cursor-pointer"
-              >
-                <HiOutlineX className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex flex-col items-center text-center space-y-3 py-2">
-              <MetalSwatch
-                startColor={viewingColor.colorCode}
-                endColor={viewingColor.colorCodeEnd}
-                className="w-16 h-16"
-              />
-              <div>
-                <h4 className="font-bold text-stone-900 text-base">{viewingColor.name}</h4>
-                <p className="text-xs font-mono text-stone-500 mt-1">
-                  {viewingColor.colorCode || '#FFFFFF'} / {viewingColor.colorCodeEnd || viewingColor.colorCode || '#FFFFFF'}
-                </p>
-                <p className="text-xs text-stone-400 mt-1">
-                  Status:{' '}
-                  <span className="font-semibold text-[#8f6d43] uppercase">
-                    {viewingColor.status}
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            <div className="pt-2 flex items-center gap-2">
-              <button
-                onClick={() => {
-                  const current = viewingColor;
-                  setViewingColor(null);
-                  handleOpenEdit(current);
-                }}
-                className="flex-1 h-10 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-xs font-semibold rounded-xl transition-colors cursor-pointer text-center"
-              >
-                Edit Color
-              </button>
-              <button
-                onClick={() => setViewingColor(null)}
-                className="px-4 h-10 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>, document.body)
-      )}
-    </div>
+      validateAndBuildPayload={({ name, extraValues }) => {
+        if (!name.trim()) {
+          toast.error('Please enter a color name');
+          return null;
+        }
+        return {
+          name: name.trim(),
+          colorCode: (extraValues.colorCode || '#F9E498').trim(),
+          colorCodeEnd: (extraValues.colorCodeEnd || '#B38B34').trim(),
+          status: 'active',
+        };
+      }}
+    />
   );
 }

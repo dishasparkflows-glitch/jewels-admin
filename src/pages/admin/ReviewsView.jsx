@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   HiOutlineUser,
   HiOutlinePhotograph,
@@ -13,7 +13,7 @@ import { IoStar } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
-import usePagination from '../../hooks/usePagination';
+import useAdminList from '../../hooks/useAdminList';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
@@ -21,11 +21,8 @@ import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
-import { useAdminPageSize } from '../../utils/adminPagination';
 import { openProductPreview } from '../../utils/productPreview';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
-import useSelection from '../../hooks/useSelection';
-import { extractListItems, extractPaginationTotal } from '../../utils/apiHelpers';
 import { formatDate as formatDisplayDate } from '../../utils/formatters';
 
 const REVIEW_STATUS_OPTIONS = [
@@ -36,17 +33,6 @@ const REVIEW_STATUS_OPTIONS = [
 
 export default function ReviewsView() {
   const confirm = useConfirm();
-  const [reviews, setReviews] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const {
-    selectedIds,
-    toggleSelect: handleSelectRow,
-    toggleSelectAll,
-    isAllSelected,
-    clearSelection,
-    removeFromSelection,
-  } = useSelection();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
   const [viewingReview, setViewingReview] = useState(null);
@@ -55,9 +41,53 @@ export default function ReviewsView() {
   const [filterActive, setFilterActive] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useAdminPageSize();
-  const [serverTotal, setServerTotal] = useState(null);
+  const {
+    items: reviews,
+    setItems: setReviews,
+    displayedItems: displayedReviews,
+    loading,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    serverTotal,
+    totalItems,
+    paginatedItems,
+    selectedIds,
+    toggleSelect: handleSelectRow,
+    toggleSelectAll,
+    isAllSelected,
+    clearSelection,
+    removeFromSelection,
+    invalidateAndRefetch: fetchReviews,
+  } = useAdminList({
+    cacheKey: 'reviews',
+    errorMessage: 'Could not load reviews',
+    fetcher: ({ page, limit, signal }) =>
+      api.get(`/reviews?page=${page}&limit=${limit}`, { signal }),
+    filterItems: (list, q) => {
+      if (!q.trim()) return list;
+      const lower = q.toLowerCase();
+      return list.filter((r) => {
+        const name = (r.customer?.name || '').toLowerCase();
+        const email = (r.customer?.email || '').toLowerCase();
+        const title = (r.review?.title || '').toLowerCase();
+        const comment = (r.review?.comment || '').toLowerCase();
+        const idStr = String(r.customId || r._id || '').toLowerCase();
+        const statusStr = (r.status || '').toLowerCase();
+        return (
+          name.includes(lower) ||
+          email.includes(lower) ||
+          title.includes(lower) ||
+          comment.includes(lower) ||
+          idStr.includes(lower) ||
+          statusStr.includes(lower)
+        );
+      });
+    },
+  });
 
   // Form State
   const [formData, setFormData] = useState({
@@ -74,28 +104,6 @@ export default function ReviewsView() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const fileInputRef = useRef(null);
-
-  const fetchReviews = async (page = currentPage, limit = pageSize) => {
-    try {
-      setLoading(true);
-      const res = await api.get(`/reviews?page=${page}&limit=${limit}`);
-      setReviews(extractListItems(res));
-      const total = extractPaginationTotal(res, null);
-      if (total !== null) {
-        setServerTotal(total);
-      }
-    } catch (err) {
-      console.warn('Could not load reviews:', err);
-      setReviews([]);
-      toast.error('Could not load reviews');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchReviews(currentPage, pageSize);
-  }, [currentPage, pageSize]);
 
   const handleOpenAddModal = () => {
     setEditingReview(null);
@@ -314,32 +322,6 @@ export default function ReviewsView() {
   const fiveStarsCount = reviews.filter((r) => Number(r.review?.rating) === 5).length || totalCount;
 
   // Filtered Reviews (NO active/deactive filter!)
-  const displayedReviews = useMemo(() => {
-    if (!search.trim()) return reviews;
-    const q = search.toLowerCase();
-    return reviews.filter((r) => {
-      const name = (r.customer?.name || '').toLowerCase();
-      const email = (r.customer?.email || '').toLowerCase();
-      const title = (r.review?.title || '').toLowerCase();
-      const comment = (r.review?.comment || '').toLowerCase();
-      const idStr = String(r.customId || r._id || '').toLowerCase();
-      const statusStr = (r.status || '').toLowerCase();
-      return (
-        name.includes(q) ||
-        email.includes(q) ||
-        title.includes(q) ||
-        comment.includes(q) ||
-        idStr.includes(q) ||
-        statusStr.includes(q)
-      );
-    });
-  }, [reviews, search]);
-
-  const {
-    totalItems,
-    paginatedItems,
-  } = usePagination(displayedReviews, pageSize, serverTotal);
-
   // Checkbox selection
   const handleSelectAll = () => toggleSelectAll(paginatedItems);
   const allSelected = isAllSelected(paginatedItems);

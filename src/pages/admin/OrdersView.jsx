@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../../api/axios';
+import { getCachedData, setCachedData, isAbortError } from '../../utils/requestCache';
 import toast from 'react-hot-toast';
 import {
   HiOutlineShoppingBag,
@@ -159,10 +160,31 @@ export default function OrdersView() {
     totalItems,
   } = usePagination(orders, pageSize, serverTotal);
 
-  // Fetch orders from API with server-side pagination
+  const abortControllerRef = useRef(null);
+  const hasLoadedOrdersRef = useRef(false);
+
+  // Fetch orders from API with server-side pagination + AbortController & SWR cache
   const fetchOrders = useCallback(async () => {
-    try {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const trimmedSearch = debouncedSearch?.trim() || '';
+    const cacheKey = `orders:p=${currentPage}:l=${pageSize}:st=${orderStatusTab}:q=${trimmedSearch}`;
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+      setOrders(cached.list);
+      setServerTotal(cached.total);
+      if (cached.counts) setStatusCounts(cached.counts);
+      hasLoadedOrdersRef.current = true;
+      setLoading(false);
+    } else if (!hasLoadedOrdersRef.current) {
       setLoading(true);
+    }
+
+    try {
       const params = {
         page: currentPage,
         limit: pageSize,
@@ -170,25 +192,30 @@ export default function OrdersView() {
       if (orderStatusTab && orderStatusTab !== 'all') {
         params.status = orderStatusTab;
       }
-      if (debouncedSearch && debouncedSearch.trim()) {
-        params.search = debouncedSearch.trim();
+      if (trimmedSearch) {
+        params.search = trimmedSearch;
       }
-      const res = await api.get('/orders', { params });
-      const list = res.data?.data?.items || res.data?.data || res.data?.orders || [];
-      setOrders(Array.isArray(list) ? list : []);
+      const res = await api.get('/orders', { params, signal: controller.signal });
+      if (controller.signal.aborted) return;
+
+      const rawList = res.data?.data?.items || res.data?.data || res.data?.orders || [];
+      const list = Array.isArray(rawList) ? rawList : [];
+      setOrders(list);
 
       const pagination = res.data?.data?.pagination || res.data?.pagination;
-      if (pagination?.totalDocs !== undefined) {
-        setServerTotal(pagination.totalDocs);
-      } else if (pagination?.total !== undefined) {
-        setServerTotal(pagination.total);
-      } else {
-        setServerTotal(Array.isArray(list) ? list.length : 0);
-      }
+      const resolvedTotal =
+        pagination?.totalDocs !== undefined
+          ? pagination.totalDocs
+          : pagination?.total !== undefined
+          ? pagination.total
+          : list.length;
+      setServerTotal(resolvedTotal);
 
+      let resolvedCounts = null;
       if (res.data?.data?.counts) {
-        setStatusCounts(res.data.data.counts);
-      } else if (orderStatusTab === 'all' && Array.isArray(list)) {
+        resolvedCounts = res.data.data.counts;
+        setStatusCounts(resolvedCounts);
+      } else if (orderStatusTab === 'all') {
         const counts = { all: list.length, total: list.length, pending: 0, processing: 0, shipped: 0, delivered: 0, cancelled: 0, returned: 0 };
         list.forEach((ord) => {
           const st = String(ord.orderStatus || ord.status || '').toLowerCase();
@@ -199,18 +226,30 @@ export default function OrdersView() {
           else if (st === 'cancelled') counts.cancelled += 1;
           else if (st === 'returned') counts.returned += 1;
         });
+        resolvedCounts = counts;
         setStatusCounts(counts);
       }
+
+      hasLoadedOrdersRef.current = true;
+      setCachedData(cacheKey, { list, total: resolvedTotal, counts: resolvedCounts });
     } catch (err) {
+      if (isAbortError(err)) return;
       console.error('Failed to load orders:', err);
-      toast.error('Failed to load orders from database');
+      if (!hasLoadedOrdersRef.current) {
+        toast.error('Failed to load orders from database');
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
   }, [currentPage, pageSize, orderStatusTab, debouncedSearch]);
 
   useEffect(() => {
     fetchOrders();
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [fetchOrders]);
 
   // 6 status-wise stat cards matching the status tabs

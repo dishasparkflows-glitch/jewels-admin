@@ -29,10 +29,6 @@
 }
 
 /* Keep the admin shell properly structured without breaking CSS position: sticky */
-html {
-  scrollbar-gutter: stable;
-}
-
 html,
 body,
 #admin-root-layout {

@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useState, useEffect, useMemo } from 'react';
+import { useState } from 'react';
 import {
   HiOutlineUserGroup,
   HiOutlineUser,
@@ -13,31 +13,17 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
-import usePagination from '../../hooks/usePagination';
+import useAdminList from '../../hooks/useAdminList';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions from '../../components/common/RowActions';
 import CountryCodeSelect from '../../components/common/CountryCodeSelect';
-import { useAdminPageSize } from '../../utils/adminPagination';
-import useSelection from '../../hooks/useSelection';
-import { extractListItems, extractPaginationTotal } from '../../utils/apiHelpers';
 import { formatDate, getInitials } from '../../utils/formatters';
 
 export default function CustomersView() {
   const confirm = useConfirm();
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const {
-    selectedIds,
-    toggleSelect: handleSelectRow,
-    toggleSelectAll,
-    isAllSelected,
-    clearSelection,
-    removeFromSelection,
-  } = useSelection();
   const [viewingCustomer, setViewingCustomer] = useState(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -53,33 +39,54 @@ export default function CustomersView() {
     password: '',
   });
 
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useAdminPageSize();
-  const [serverTotal, setServerTotal] = useState(null);
-
-  const fetchUsers = async (page = currentPage, limit = pageSize) => {
-    try {
-      setLoading(true);
-      const res = await api.get(`/users?page=${page}&limit=${limit}`);
-      const allUsers = extractListItems(res, 'users');
-      const userList = allUsers.filter((u) => u.role === 'user' || !u.role);
-      setUsers(userList);
-      const total = extractPaginationTotal(res, null);
-      if (total !== null) {
-        setServerTotal(total);
-      }
-    } catch (err) {
-      console.warn('Could not load customers:', err);
-      setUsers([]);
-      toast.error('Could not load customers');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchUsers(currentPage, pageSize);
-  }, [currentPage, pageSize]);
+  const {
+    items: users,
+    setItems: setUsers,
+    displayedItems: filteredUsers,
+    loading,
+    search,
+    setSearch,
+    currentPage,
+    setCurrentPage,
+    pageSize,
+    setPageSize,
+    serverTotal,
+    totalItems,
+    paginatedItems,
+    selectedIds,
+    toggleSelect: handleSelectRow,
+    toggleSelectAll,
+    isAllSelected,
+    clearSelection,
+    removeFromSelection,
+    invalidateAndRefetch: fetchUsers,
+  } = useAdminList({
+    cacheKey: 'customers',
+    extraKeys: ['users'],
+    errorMessage: 'Could not load customers',
+    fetcher: ({ page, limit, signal }) =>
+      api.get(`/users?page=${page}&limit=${limit}`, { signal }),
+    transformItems: (allUsers) =>
+      allUsers.filter((u) => u.role === 'user' || !u.role),
+    filterItems: (list, q) => {
+      if (!q.trim()) return list;
+      const lower = q.toLowerCase();
+      return list.filter((u) => {
+        const firstName = u.profile?.firstName || '';
+        const lastName = u.profile?.lastName || '';
+        const fullName = `${firstName} ${lastName}`.toLowerCase();
+        const email = (u.auth?.email || '').toLowerCase();
+        const phone = (u.profile?.phone || '').toLowerCase();
+        const idStr = String(u.customId || u._id || '').toLowerCase();
+        return (
+          fullName.includes(lower) ||
+          email.includes(lower) ||
+          phone.includes(lower) ||
+          idStr.includes(lower)
+        );
+      });
+    },
+  });
 
   const handleDelete = async (id, name) => {
     const isConfirmed = await confirm({
@@ -171,26 +178,6 @@ export default function CustomersView() {
     (sum, u) => sum + (Number(u.statistics?.lifetimeValue ?? u.lifetimeValue) || 0),
     0
   );
-
-  // Filtered users for table (NO active/deactive filter per user instruction!)
-  const filteredUsers = useMemo(() => {
-    if (!search.trim()) return users;
-    const q = search.toLowerCase();
-    return users.filter((u) => {
-      const firstName = u.profile?.firstName || '';
-      const lastName = u.profile?.lastName || '';
-      const fullName = `${firstName} ${lastName}`.toLowerCase();
-      const email = (u.auth?.email || '').toLowerCase();
-      const phone = (u.profile?.phone || '').toLowerCase();
-      const idStr = String(u.customId || u._id || '').toLowerCase();
-      return fullName.includes(q) || email.includes(q) || phone.includes(q) || idStr.includes(q);
-    });
-  }, [users, search]);
-
-  const {
-    totalItems,
-    paginatedItems,
-  } = usePagination(filteredUsers, pageSize, serverTotal);
 
   // Checkbox Selection
   const handleSelectAll = () => toggleSelectAll(paginatedItems);

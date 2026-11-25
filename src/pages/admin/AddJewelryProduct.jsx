@@ -16,6 +16,7 @@ import {
   getGlobalCompressionOptions,
 } from '../../utils/uploadWithPresignedUrl';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
+import useProductCareAndSpecs from '../../hooks/useProductCareAndSpecs';
 import { getMediaUrl } from '../../utils/imageUrl';
 import ProductStepFooter from '../../components/common/ProductStepFooter';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
@@ -2522,12 +2523,34 @@ export default function AddJewelryProduct() {
   };
 
   // ─── Step 5: Care & Specifications State & Handlers ─────────
-  const [careSections, setCareSections] = useState([]);
-  const [draggedCareIndex, setDraggedCareIndex] = useState(null);
-  const [dragOverCareIndex, setDragOverCareIndex] = useState(null);
-  const [specifications, setSpecifications] = useState([]);
-  const [draggedSpecIndex, setDraggedSpecIndex] = useState(null);
-  const [dragOverSpecIndex, setDragOverSpecIndex] = useState(null);
+  const {
+    careSections,
+    setCareSections,
+    handleAddCareSection,
+    handleUpdateCareSection,
+    handleRemoveCareSection,
+    handleMoveCareSection,
+    draggedCareIndex,
+    dragOverCareIndex,
+    handleCareDragStart,
+    handleCareDragOver,
+    handleCareDrop,
+    handleCareDragEnd,
+    handleFormatText,
+    handleKeyDownDescription,
+    specifications,
+    setSpecifications,
+    handleAddSpecification,
+    handleUpdateSpecification,
+    handleRemoveSpecification,
+    handleMoveSpecification,
+    draggedSpecIndex,
+    dragOverSpecIndex,
+    handleSpecDragStart,
+    handleSpecDragOver,
+    handleSpecDrop,
+    handleSpecDragEnd,
+  } = useProductCareAndSpecs();
 
   useEffect(() => {
     if (!productId || !productRecord || !mastersLoaded || hydratedProductId.current === productId) return;
@@ -2868,266 +2891,6 @@ export default function AddJewelryProduct() {
     hydratedProductId.current = productId;
     setProductLoading(false);
   }, [productId, productRecord, mastersLoaded, colorsList, puritiesList, diamondMasters, regularCategories, collectionCategories]);
-
-  // Add Care Section
-  const handleAddCareSection = () => {
-    setCareSections((prev) => [
-      ...prev,
-      {
-        id: `sec-${Date.now()}`,
-        header: 'Care Instructions',
-        description: '',
-        showOnProductPage: true,
-      },
-    ]);
-  };
-
-  // Update Care Section
-  const handleUpdateCareSection = (secId, field, val) => {
-    setCareSections((prev) =>
-      prev.map((sec) => (sec.id === secId ? { ...sec, [field]: val } : sec))
-    );
-  };
-
-  // Remove Care Section
-  const handleRemoveCareSection = (secId) => {
-    setCareSections((prev) => prev.filter((sec) => sec.id !== secId));
-  };
-
-  // Move Care Section Up or Down
-  const handleMoveCareSection = (index, direction) => {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= careSections.length) return;
-
-    setCareSections((prev) => {
-      const updated = [...prev];
-      const [movedItem] = updated.splice(index, 1);
-      updated.splice(targetIndex, 0, movedItem);
-      return updated;
-    });
-  };
-
-  // Drag and Drop for Care Sections
-  const handleCareDragStart = (e, index) => {
-    setDraggedCareIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    try {
-      e.dataTransfer.setData('text/plain', String(index));
-    } catch {
-      // Ignore drag dataTransfer errors in unsupported browsers
-    }
-  };
-
-  const handleCareDragOver = (e, index) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverCareIndex !== index) {
-      setDragOverCareIndex(index);
-    }
-  };
-
-  const handleCareDrop = (e, targetIndex) => {
-    e.preventDefault();
-    if (draggedCareIndex === null || draggedCareIndex === targetIndex) {
-      setDraggedCareIndex(null);
-      setDragOverCareIndex(null);
-      return;
-    }
-
-    setCareSections((prev) => {
-      const updated = [...prev];
-      const [movedItem] = updated.splice(draggedCareIndex, 1);
-      updated.splice(targetIndex, 0, movedItem);
-      return updated;
-    });
-
-    setDraggedCareIndex(null);
-    setDragOverCareIndex(null);
-  };
-
-  const handleCareDragEnd = () => {
-    setDraggedCareIndex(null);
-    setDragOverCareIndex(null);
-  };
-
-  // Drag and drop for specifications
-  const handleSpecDragStart = (e, index) => {
-    setDraggedSpecIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    try {
-      e.dataTransfer.setData('text/plain', String(index));
-    } catch {
-      // Ignore drag dataTransfer errors
-    }
-  };
-
-  const handleSpecDragOver = (e, index) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (dragOverSpecIndex !== index) {
-      setDragOverSpecIndex(index);
-    }
-  };
-
-  const handleSpecDrop = (e, targetIndex) => {
-    e.preventDefault();
-    if (draggedSpecIndex === null || draggedSpecIndex === targetIndex) {
-      setDraggedSpecIndex(null);
-      setDragOverSpecIndex(null);
-      return;
-    }
-
-    setSpecifications((prev) => {
-      const updated = [...prev];
-      const [movedItem] = updated.splice(draggedSpecIndex, 1);
-      updated.splice(targetIndex, 0, movedItem);
-      return updated;
-    });
-
-    setDraggedSpecIndex(null);
-    setDragOverSpecIndex(null);
-  };
-
-  const handleSpecDragEnd = () => {
-    setDraggedSpecIndex(null);
-    setDragOverSpecIndex(null);
-  };
-
-  // Format Care Description text helper
-  const handleFormatText = (sectionId, type) => {
-    const textarea = document.getElementById(`care-desc-${sectionId}`);
-    const section = careSections.find((s) => s.id === sectionId);
-    if (!section) return;
-
-    const text = section.description || '';
-    const start = textarea?.selectionStart ?? text.length;
-    const end = textarea?.selectionEnd ?? text.length;
-    const selected = text.substring(start, end);
-
-    let replacement = '';
-    let newCursorPos = start;
-
-    switch (type) {
-      case 'bold':
-        replacement = selected ? `**${selected}**` : '**bold text**';
-        newCursorPos = selected ? end + 4 : start + 2;
-        break;
-      case 'italic':
-        replacement = selected ? `*${selected}*` : '*italic text*';
-        newCursorPos = selected ? end + 2 : start + 1;
-        break;
-      case 'underline':
-        replacement = selected ? `<u>${selected}</u>` : '<u>underlined text</u>';
-        newCursorPos = selected ? end + 7 : start + 3;
-        break;
-      case 'h3':
-        replacement = `\n### ${selected || 'Heading'}\n`;
-        newCursorPos = start + replacement.length;
-        break;
-      case 'h4':
-        replacement = `\n#### ${selected || 'Subheading'}\n`;
-        newCursorPos = start + replacement.length;
-        break;
-      case 'bullet': {
-        const prefix = start === 0 || text[start - 1] === '\n' ? '• ' : '\n• ';
-        replacement = prefix + (selected || '');
-        newCursorPos = start + prefix.length + (selected ? selected.length : 0);
-        break;
-      }
-      case 'number': {
-        const prefix = start === 0 || text[start - 1] === '\n' ? '1. ' : '\n1. ';
-        replacement = prefix + (selected || '');
-        newCursorPos = start + prefix.length + (selected ? selected.length : 0);
-        break;
-      }
-      case 'link': {
-        const url = prompt('Enter link URL (e.g. https://...):', 'https://');
-        if (!url) return;
-        replacement = selected ? `[${selected}](${url})` : `[Link](${url})`;
-        newCursorPos = start + replacement.length;
-        break;
-      }
-      default:
-        break;
-    }
-
-    const newText = text.substring(0, start) + replacement + text.substring(end);
-    handleUpdateCareSection(sectionId, 'description', newText);
-
-    setTimeout(() => {
-      if (textarea) {
-        textarea.focus();
-        textarea.setSelectionRange(newCursorPos, newCursorPos);
-      }
-    }, 0);
-  };
-
-  // Auto-bullet on Enter in Care Description textarea
-  const handleKeyDownDescription = (e, sectionId) => {
-    if (e.key === 'Enter') {
-      const textarea = e.target;
-      const val = textarea.value;
-      const pos = textarea.selectionStart;
-      const lastLineStart = val.lastIndexOf('\n', pos - 1) + 1;
-      const currentLine = val.substring(lastLineStart, pos);
-
-      if (currentLine.startsWith('• ')) {
-        e.preventDefault();
-        if (currentLine.trim() === '•') {
-          // Clear empty bullet
-          const nextVal = val.substring(0, lastLineStart) + val.substring(pos);
-          handleUpdateCareSection(sectionId, 'description', nextVal);
-          setTimeout(() => {
-            textarea.setSelectionRange(lastLineStart, lastLineStart);
-          }, 0);
-        } else {
-          // Continue bullet on next line
-          const nextVal = val.substring(0, pos) + '\n• ' + val.substring(pos);
-          handleUpdateCareSection(sectionId, 'description', nextVal);
-          setTimeout(() => {
-            textarea.setSelectionRange(pos + 3, pos + 3);
-          }, 0);
-        }
-      }
-    }
-  };
-
-  // Add Specification
-  const handleAddSpecification = () => {
-    setSpecifications((prev) => [
-      ...prev,
-      {
-        id: `spec-${Date.now()}`,
-        key: '',
-        value: '',
-      },
-    ]);
-  };
-
-  // Update Specification
-  const handleUpdateSpecification = (specId, field, val) => {
-    setSpecifications((prev) =>
-      prev.map((spec) => (spec.id === specId ? { ...spec, [field]: val } : spec))
-    );
-  };
-
-  // Remove Specification
-  const handleRemoveSpecification = (specId) => {
-    setSpecifications((prev) => prev.filter((spec) => spec.id !== specId));
-  };
-
-  // Move Specification Up or Down
-  const handleMoveSpecification = (index, direction) => {
-    const targetIndex = index + direction;
-    if (targetIndex < 0 || targetIndex >= specifications.length) return;
-
-    setSpecifications((prev) => {
-      const updated = [...prev];
-      const [movedItem] = updated.splice(index, 1);
-      updated.splice(targetIndex, 0, movedItem);
-      return updated;
-    });
-  };
 
   // Final Publish / Save Handler
   const handlePublish = async (statusOverride = 'preserve', { stayOnPage = false } = {}) => {
