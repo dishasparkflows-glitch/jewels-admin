@@ -939,7 +939,6 @@ export default function DiamondsView() {
                           >
                             <span className="text-[10px]">🌐</span>
                             <span>Web</span>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isWebVisible ? 'bg-emerald-500' : 'bg-stone-300'}`} />
                           </button>
 
                           {/* App Toggle */}
@@ -956,7 +955,6 @@ export default function DiamondsView() {
                           >
                             <span className="text-[10px]">📱</span>
                             <span>App</span>
-                            <span className={`w-1.5 h-1.5 rounded-full ${isAppVisible ? 'bg-sky-500' : 'bg-stone-300'}`} />
                           </button>
                         </div>
                       </td>

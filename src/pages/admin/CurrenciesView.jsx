@@ -521,12 +521,10 @@ export default function CurrenciesView() {
                           </span>
                         ) : useLive ? (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-[#ecfdf5] text-[#059669] border border-[#a7f3d0]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#10b981]" />
                             Live Sync
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-stone-600 border border-stone-200">
-                            <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
                             Manual
                           </span>
                         )}

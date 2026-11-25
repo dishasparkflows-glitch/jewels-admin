@@ -493,7 +493,6 @@ export default function StaticPagesView() {
                               : 'bg-stone-100 text-stone-500 border border-stone-200 hover:bg-stone-200'
                           }`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${isPub ? 'bg-emerald-500' : 'bg-stone-400'}`} />
                           <span>{isPub ? 'Active' : 'Draft'}</span>
                         </button>
                       </td>

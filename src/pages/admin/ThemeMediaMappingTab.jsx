@@ -536,9 +536,6 @@ export default function ThemeMediaMappingTab({
                                             alt={`Tile ${tile.order || i + 1}`}
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                           />
-                                          {tile.isMapped && (
-                                            <span className="absolute top-0.5 left-0.5 w-1.5 h-1.5 rounded-full bg-emerald-500 ring-1 ring-white" />
-                                          )}
                                         </div>
                                       ))}
                                       {/* Hover overlay hint */}
@@ -619,12 +616,10 @@ export default function ThemeMediaMappingTab({
                                 <td className="py-3 px-3.5 whitespace-nowrap">
                                   {isPublished ? (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf7ee] text-[#137333]">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-[#137333]" />
                                       <span>Active</span>
                                     </span>
                                   ) : (
                                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-500">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
                                       <span>Draft</span>
                                     </span>
                                   )}

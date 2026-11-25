@@ -307,6 +307,22 @@ label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge"]):not([c
   animation: cuteHalo 2.5s ease-in-out infinite;
 }
 
+/* ─── Smooth Page Enter Transition for Route Changes ─── */
+@keyframes pageEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: pageEnter 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
 /* Universal "No Img" Fallback Image Styling */
 img.no-img-fallback {
   object-fit: contain !important;

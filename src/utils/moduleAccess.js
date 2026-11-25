@@ -1,13 +1,14 @@
+import { HiOutlineViewGrid } from 'react-icons/hi';
 import { navSections } from '../config/navigation';
 
 /**
- * Checks whether a single module ID is allowed under the active allowedModules list.
+ * Checks whether a single module slug is allowed under the active allowedModules list.
  * When allowedModules is null/undefined, full access is granted.
  */
-export function isModuleAllowed(moduleId, allowedModules) {
+export function isModuleAllowed(slug, allowedModules) {
   if (!Array.isArray(allowedModules)) return true;
-  if (!moduleId) return false;
-  return allowedModules.includes(moduleId);
+  if (!slug) return false;
+  return allowedModules.includes(slug);
 }
 
 /**
@@ -35,6 +36,108 @@ export function filterNavSections(sections = navSections, allowedModules = null)
       return { ...section, items: filteredItems };
     })
     .filter(Boolean);
+}
+
+/**
+ * Merges navigation config with module rows loaded from the database `modules` collection
+ * (filtering by `status: 'active'`, applying DB `name`/`path`, and appending any extra active DB modules),
+ * then applies owner-level `allowedModules` filtering.
+ */
+export function resolveNavSections(sections = navSections, dbModules = null, allowedModules = null) {
+  let resolved = sections;
+
+  if (Array.isArray(dbModules) && dbModules.length > 0) {
+    const getModKey = (mod) => mod?.slug || mod?.moduleId || mod?.id;
+    const dbMap = new Map(
+      dbModules
+        .map((mod) => [getModKey(mod), mod])
+        .filter(([id]) => Boolean(id))
+    );
+    const seenIds = new Set();
+
+    const mapLeaf = (item) => {
+      seenIds.add(item.id);
+      const dbMod = dbMap.get(item.id);
+
+      if (item.id === 'owners') {
+        if (dbMod && dbMod.status !== 'active') return null;
+        return dbMod
+          ? { ...item, title: dbMod.name || item.title, path: dbMod.path || item.path }
+          : item;
+      }
+
+      if (!dbMod || dbMod.status !== 'active') return null;
+
+      return {
+        ...item,
+        title: dbMod.name || item.title,
+        path: dbMod.path || item.path,
+      };
+    };
+
+    resolved = sections
+      .map((section) => {
+        const mappedItems = (section.items || [])
+          .map((item) => {
+            if (item.children && item.children.length > 0) {
+              const visibleChildren = item.children.map(mapLeaf).filter(Boolean);
+              if (visibleChildren.length === 0) return null;
+              return { ...item, children: visibleChildren };
+            }
+            return mapLeaf(item);
+          })
+          .filter(Boolean);
+
+        if (mappedItems.length === 0) return null;
+        return { ...section, items: mappedItems };
+      })
+      .filter(Boolean);
+
+    const extraActive = dbModules.filter((mod) => {
+      const key = getModKey(mod);
+      return mod?.status === 'active' && key && !seenIds.has(key) && mod.path;
+    });
+    if (extraActive.length > 0) {
+      resolved = resolved.map((sec) => ({
+        ...sec,
+        items: sec.items.map((it) => (it.children ? { ...it, children: [...it.children] } : { ...it })),
+      }));
+
+      extraActive.forEach((mod) => {
+        const modId = getModKey(mod);
+        const leaf = {
+          id: modId,
+          title: mod.name || mod.title || modId,
+          path: mod.path,
+          icon: HiOutlineViewGrid,
+        };
+        const groupLower = String(mod.group || '').toLowerCase();
+        let placed = false;
+
+        for (const sec of resolved) {
+          for (const it of sec.items) {
+            if (it.children && String(it.title || '').toLowerCase() === groupLower) {
+              it.children.push(leaf);
+              placed = true;
+              break;
+            }
+          }
+          if (placed) break;
+        }
+
+        if (!placed) {
+          const targetSec =
+            resolved.find((s) => String(s.title || '').toLowerCase() === groupLower) ||
+            resolved[resolved.length - 1];
+          if (targetSec) {
+            targetSec.items.push(leaf);
+          }
+        }
+      });
+    }
+  }
+
+  return filterNavSections(resolved, allowedModules);
 }
 
 /**
@@ -76,127 +179,133 @@ export function getNavigationModuleFallback() {
 }
 
 const ROUTE_MODULE_RULES = [
-  { prefix: '/dashboard', moduleId: 'dashboard' },
-  { prefix: '/catalog/jewelry-products', moduleId: 'jewelry-products' },
-  { prefix: '/catalog/add-jewelry-product', moduleId: 'jewelry-products' },
-  { prefix: '/add-jewelry-product', moduleId: 'jewelry-products' },
-  { prefix: '/catalog/silver-products', moduleId: 'silver-products' },
-  { prefix: '/catalog/ornate-products', moduleId: 'ornate-products' },
-  { prefix: '/ornate-products', moduleId: 'ornate-products' },
-  { prefix: '/collections', moduleId: 'ornate-products' },
-  { prefix: '/diamonds', moduleId: 'diamonds' },
-  { prefix: '/catalog/categories', moduleId: 'categories' },
-  { prefix: '/categories', moduleId: 'categories' },
-  { prefix: '/catalog/category-filters', moduleId: 'category-filters' },
-  { prefix: '/category-filters', moduleId: 'category-filters' },
-  { prefix: '/catalog/navigation-menus', moduleId: 'navigation-menus' },
-  { prefix: '/navigation-menus', moduleId: 'navigation-menus' },
-  { prefix: '/pricing-hub/metal-rates', moduleId: 'metal-rates' },
-  { prefix: '/metal-rates', moduleId: 'metal-rates' },
-  { prefix: '/goldprice', moduleId: 'metal-rates' },
-  { prefix: '/pricing-hub/diamond-rates', moduleId: 'diamond-rates' },
-  { prefix: '/pricing-hub/diamond-price', moduleId: 'diamond-rates' },
-  { prefix: '/diamondprice', moduleId: 'diamond-rates' },
-  { prefix: '/diamond-price', moduleId: 'diamond-rates' },
-  { prefix: '/diamond-rates', moduleId: 'diamond-rates' },
-  { prefix: '/currencies', moduleId: 'currencies' },
-  { prefix: '/pricing-hub/currencies', moduleId: 'currencies' },
-  { prefix: '/metal-purity', moduleId: 'metal-purity' },
-  { prefix: '/product-config/metal-purity', moduleId: 'metal-purity' },
-  { prefix: '/metal-color', moduleId: 'metal-color' },
-  { prefix: '/product-config/metal-color', moduleId: 'metal-color' },
-  { prefix: '/sizes', moduleId: 'sizes' },
-  { prefix: '/product-config/sizes', moduleId: 'sizes' },
-  { prefix: '/vto-masters', moduleId: 'vto-masters' },
-  { prefix: '/product-config/vto-masters', moduleId: 'vto-masters' },
-  { prefix: '/diamond-types', moduleId: 'diamond-types' },
-  { prefix: '/diamond-config/types', moduleId: 'diamond-types' },
-  { prefix: '/diamond-shapes', moduleId: 'diamond-shapes' },
-  { prefix: '/diamond-config/shapes', moduleId: 'diamond-shapes' },
-  { prefix: '/diamond-color', moduleId: 'diamond-color' },
-  { prefix: '/diamond-config/color', moduleId: 'diamond-color' },
-  { prefix: '/diamond-clarity', moduleId: 'diamond-clarity' },
-  { prefix: '/diamond-config/clarity', moduleId: 'diamond-clarity' },
-  { prefix: '/diamond-size', moduleId: 'diamond-size' },
-  { prefix: '/diamond-config/size', moduleId: 'diamond-size' },
-  { prefix: '/gemstone-types', moduleId: 'gemstone-types' },
-  { prefix: '/gemstone-config/types', moduleId: 'gemstone-types' },
-  { prefix: '/gemstone-shapes', moduleId: 'gemstone-shapes' },
-  { prefix: '/gemstone-config/shapes', moduleId: 'gemstone-shapes' },
-  { prefix: '/orders', moduleId: 'all-orders' },
-  { prefix: '/returns', moduleId: 'returns' },
-  { prefix: '/custom-inquiries', moduleId: 'custom-inquiries' },
-  { prefix: '/cod-sequences', moduleId: 'cod-sequence' },
-  { prefix: '/cod-sequence', moduleId: 'cod-sequence' },
-  { prefix: '/customers', moduleId: 'customers' },
-  { prefix: '/appointments', moduleId: 'appointments' },
-  { prefix: '/reviews', moduleId: 'reviews' },
-  { prefix: '/home-sections', moduleId: 'home-sections' },
-  { prefix: '/marketing/home-sections', moduleId: 'home-sections' },
-  { prefix: '/banners', moduleId: 'banners' },
-  { prefix: '/marketing/banners', moduleId: 'banners' },
-  { prefix: '/top-announcement', moduleId: 'banners' },
-  { prefix: '/top-announcements', moduleId: 'banners' },
-  { prefix: '/celebrate-gifts', moduleId: 'celebrate-gifts' },
-  { prefix: '/marketing/gifts', moduleId: 'celebrate-gifts' },
-  { prefix: '/marketing/celebrate-gifts', moduleId: 'celebrate-gifts' },
-  { prefix: '/coupons', moduleId: 'offers' },
-  { prefix: '/marketing/coupons', moduleId: 'offers' },
-  { prefix: '/birthstones', moduleId: 'birthstones' },
-  { prefix: '/marketing/birthstones', moduleId: 'birthstones' },
-  { prefix: '/marketing/before-after', moduleId: 'before-after' },
-  { prefix: '/before-after', moduleId: 'before-after' },
-  { prefix: '/gallery', moduleId: 'gallery' },
-  { prefix: '/media-gallery', moduleId: 'gallery' },
-  { prefix: '/marketing/gallery', moduleId: 'gallery' },
-  { prefix: '/themes', moduleId: 'themes' },
-  { prefix: '/website/themes', moduleId: 'themes' },
-  { prefix: '/instagram-posts', moduleId: 'instagram' },
-  { prefix: '/marketing/instagram', moduleId: 'instagram' },
-  { prefix: '/blogs', moduleId: 'blogs' },
-  { prefix: '/marketing/blogs', moduleId: 'blogs' },
-  { prefix: '/blog-categories', moduleId: 'blog-categories' },
-  { prefix: '/marketing/blog-categories', moduleId: 'blog-categories' },
-  { prefix: '/static-pages', moduleId: 'static-pages' },
-  { prefix: '/website/static-pages', moduleId: 'static-pages' },
-  { prefix: '/reports', moduleId: 'reports' },
-  { prefix: '/analytics', moduleId: 'reports' },
-  { prefix: '/system/whatsapp', moduleId: 'whatsapp' },
-  { prefix: '/whatsapp', moduleId: 'whatsapp' },
-  { prefix: '/profile', moduleId: 'profile' },
-  { prefix: '/theme', moduleId: 'profile' },
-  { prefix: '/user-profile', moduleId: 'profile' },
-  { prefix: '/settings', moduleId: 'settings' },
-  { prefix: '/owners', moduleId: 'owners' },
-  { prefix: '/clients', moduleId: 'owners' },
+  { prefix: '/dashboard', slug: 'dashboard' },
+  { prefix: '/catalog/jewelry-products', slug: 'jewelry-products' },
+  { prefix: '/catalog/add-jewelry-product', slug: 'jewelry-products' },
+  { prefix: '/add-jewelry-product', slug: 'jewelry-products' },
+  { prefix: '/catalog/silver-products', slug: 'silver-products' },
+  { prefix: '/catalog/ornate-products', slug: 'ornate-products' },
+  { prefix: '/ornate-products', slug: 'ornate-products' },
+  { prefix: '/collections', slug: 'ornate-products' },
+  { prefix: '/diamonds', slug: 'diamonds' },
+  { prefix: '/catalog/categories', slug: 'categories' },
+  { prefix: '/categories', slug: 'categories' },
+  { prefix: '/catalog/category-filters', slug: 'category-filters' },
+  { prefix: '/category-filters', slug: 'category-filters' },
+  { prefix: '/catalog/navigation-menus', slug: 'navigation-menus' },
+  { prefix: '/navigation-menus', slug: 'navigation-menus' },
+  { prefix: '/pricing-hub/metal-rates', slug: 'metal-rates' },
+  { prefix: '/metal-rates', slug: 'metal-rates' },
+  { prefix: '/goldprice', slug: 'metal-rates' },
+  { prefix: '/pricing-hub/diamond-rates', slug: 'diamond-rates' },
+  { prefix: '/pricing-hub/diamond-price', slug: 'diamond-rates' },
+  { prefix: '/diamondprice', slug: 'diamond-rates' },
+  { prefix: '/diamond-price', slug: 'diamond-rates' },
+  { prefix: '/diamond-rates', slug: 'diamond-rates' },
+  { prefix: '/currencies', slug: 'currencies' },
+  { prefix: '/pricing-hub/currencies', slug: 'currencies' },
+  { prefix: '/metal-purity', slug: 'metal-purity' },
+  { prefix: '/product-config/metal-purity', slug: 'metal-purity' },
+  { prefix: '/metal-color', slug: 'metal-color' },
+  { prefix: '/product-config/metal-color', slug: 'metal-color' },
+  { prefix: '/sizes', slug: 'sizes' },
+  { prefix: '/product-config/sizes', slug: 'sizes' },
+  { prefix: '/vto-masters', slug: 'vto-masters' },
+  { prefix: '/product-config/vto-masters', slug: 'vto-masters' },
+  { prefix: '/diamond-types', slug: 'diamond-types' },
+  { prefix: '/diamond-config/types', slug: 'diamond-types' },
+  { prefix: '/diamond-shapes', slug: 'diamond-shapes' },
+  { prefix: '/diamond-config/shapes', slug: 'diamond-shapes' },
+  { prefix: '/diamond-color', slug: 'diamond-color' },
+  { prefix: '/diamond-config/color', slug: 'diamond-color' },
+  { prefix: '/diamond-clarity', slug: 'diamond-clarity' },
+  { prefix: '/diamond-config/clarity', slug: 'diamond-clarity' },
+  { prefix: '/diamond-size', slug: 'diamond-size' },
+  { prefix: '/diamond-config/size', slug: 'diamond-size' },
+  { prefix: '/gemstone-types', slug: 'gemstone-types' },
+  { prefix: '/gemstone-config/types', slug: 'gemstone-types' },
+  { prefix: '/gemstone-shapes', slug: 'gemstone-shapes' },
+  { prefix: '/gemstone-config/shapes', slug: 'gemstone-shapes' },
+  { prefix: '/orders', slug: 'all-orders' },
+  { prefix: '/returns', slug: 'returns' },
+  { prefix: '/custom-inquiries', slug: 'custom-inquiries' },
+  { prefix: '/cod-sequences', slug: 'cod-sequence' },
+  { prefix: '/cod-sequence', slug: 'cod-sequence' },
+  { prefix: '/customers', slug: 'customers' },
+  { prefix: '/appointments', slug: 'appointments' },
+  { prefix: '/reviews', slug: 'reviews' },
+  { prefix: '/home-sections', slug: 'home-sections' },
+  { prefix: '/marketing/home-sections', slug: 'home-sections' },
+  { prefix: '/banners', slug: 'banners' },
+  { prefix: '/marketing/banners', slug: 'banners' },
+  { prefix: '/top-announcement', slug: 'banners' },
+  { prefix: '/top-announcements', slug: 'banners' },
+  { prefix: '/celebrate-gifts', slug: 'celebrate-gifts' },
+  { prefix: '/marketing/gifts', slug: 'celebrate-gifts' },
+  { prefix: '/marketing/celebrate-gifts', slug: 'celebrate-gifts' },
+  { prefix: '/coupons', slug: 'offers' },
+  { prefix: '/marketing/coupons', slug: 'offers' },
+  { prefix: '/birthstones', slug: 'birthstones' },
+  { prefix: '/marketing/birthstones', slug: 'birthstones' },
+  { prefix: '/marketing/before-after', slug: 'before-after' },
+  { prefix: '/before-after', slug: 'before-after' },
+  { prefix: '/gallery', slug: 'gallery' },
+  { prefix: '/media-gallery', slug: 'gallery' },
+  { prefix: '/marketing/gallery', slug: 'gallery' },
+  { prefix: '/themes', slug: 'themes' },
+  { prefix: '/website/themes', slug: 'themes' },
+  { prefix: '/instagram-posts', slug: 'instagram' },
+  { prefix: '/marketing/instagram', slug: 'instagram' },
+  { prefix: '/blogs', slug: 'blogs' },
+  { prefix: '/marketing/blogs', slug: 'blogs' },
+  { prefix: '/blog-categories', slug: 'blog-categories' },
+  { prefix: '/marketing/blog-categories', slug: 'blog-categories' },
+  { prefix: '/static-pages', slug: 'static-pages' },
+  { prefix: '/website/static-pages', slug: 'static-pages' },
+  { prefix: '/reports', slug: 'reports' },
+  { prefix: '/analytics', slug: 'reports' },
+  { prefix: '/system/whatsapp', slug: 'whatsapp' },
+  { prefix: '/whatsapp', slug: 'whatsapp' },
+  { prefix: '/profile', slug: 'profile' },
+  { prefix: '/theme', slug: 'profile' },
+  { prefix: '/user-profile', slug: 'profile' },
+  { prefix: '/settings', slug: 'settings' },
+  { prefix: '/owners', slug: 'owners' },
+  { prefix: '/clients', slug: 'owners' },
 ];
 
 /**
- * Resolves the module ID for an admin route pathname.
+ * Resolves the module slug for an admin route pathname.
  */
-export function getModuleIdForPath(pathname = '') {
+export function getSlugForPath(pathname = '') {
   const path = String(pathname || '').toLowerCase();
   const match = ROUTE_MODULE_RULES.find(
     (rule) => path === rule.prefix || path.startsWith(`${rule.prefix}/`)
   );
-  return match?.moduleId || null;
+  return match?.slug || null;
 }
 
 /**
- * Checks if a given admin pathname is accessible under allowedModules.
+ * Checks if a given admin pathname is accessible under allowedModules and database modules.
  */
-export function isPathAllowed(pathname, allowedModules) {
+export function isPathAllowed(pathname, allowedModules, dbModules = null) {
+  const slug = getSlugForPath(pathname);
+  if (!slug) return true;
+
+  if (Array.isArray(dbModules) && dbModules.length > 0 && slug !== 'owners') {
+    const dbMod = dbModules.find((m) => (m?.slug || m?.moduleId || m?.id) === slug);
+    if (!dbMod || dbMod.status !== 'active') return false;
+  }
+
   if (!Array.isArray(allowedModules)) return true;
-  const moduleId = getModuleIdForPath(pathname);
-  if (!moduleId) return true;
-  return allowedModules.includes(moduleId);
+  return allowedModules.includes(slug);
 }
 
 /**
  * Finds the first allowed menu path for redirect fallback.
  */
-export function getFirstAllowedPath(allowedModules) {
-  const filtered = filterNavSections(navSections, allowedModules);
+export function getFirstAllowedPath(allowedModules, dbModules = null) {
+  const filtered = resolveNavSections(navSections, dbModules, allowedModules);
   for (const section of filtered) {
     for (const item of section.items || []) {
       if (item.children?.length > 0) {

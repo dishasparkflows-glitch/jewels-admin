@@ -1,4 +1,4 @@
-import { useEffect, Suspense } from 'react';
+import { useEffect, Suspense, useRef, useState, useCallback } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { HiOutlineShieldCheck, HiOutlineX } from 'react-icons/hi';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -6,9 +6,18 @@ import { useAuth } from '../../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import Header from './Header';
 import ErrorBoundary from '../common/ErrorBoundary';
-import CuteLoader from '../common/CuteLoader';
 import CuteTopProgressBar from '../common/CuteTopProgressBar';
 import GlobalTooltip from '../common/GlobalTooltip';
+
+/**
+ * Minimal inline Suspense fallback — just an invisible placeholder that
+ * keeps the layout height stable while the lazy chunk loads.  The golden
+ * CuteTopProgressBar already gives the user visual feedback, so there is
+ * no need for a diamond/spinner here.
+ */
+const MinimalSuspenseFallback = () => (
+  <div className="min-h-[60vh] w-full" aria-hidden="true" />
+);
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -98,8 +107,10 @@ const AdminLayout = () => {
 
         <main className="flex-1 min-w-0 w-full px-3 sm:px-5 py-2.5 sm:py-3.5 max-w-[1600px] mx-auto">
           <ErrorBoundary>
-            <Suspense fallback={<CuteLoader text="Loading view..." />}>
-              <Outlet />
+            <Suspense fallback={<MinimalSuspenseFallback />}>
+              <div className="animate-page-enter">
+                <Outlet />
+              </div>
             </Suspense>
           </ErrorBoundary>
         </main>

@@ -1331,7 +1331,6 @@ export default function OrnateProductsView() {
                                 >
                                   <span className="text-[10px]">🌐</span>
                                   <span>Web</span>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${p.inweb !== false && p.visibility?.web !== false ? 'bg-emerald-500' : 'bg-stone-300'}`} />
                                 </button>
                                 <button
                                   type="button"
@@ -1346,7 +1345,6 @@ export default function OrnateProductsView() {
                                 >
                                   <span className="text-[10px]">📱</span>
                                   <span>App</span>
-                                  <span className={`w-1.5 h-1.5 rounded-full ${p.inapp !== false && p.visibility?.app !== false ? 'bg-sky-500' : 'bg-stone-300'}`} />
                                 </button>
                               </div>
                             </td>

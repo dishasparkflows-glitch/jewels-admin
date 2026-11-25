@@ -70,13 +70,6 @@ export default function StatusBadge({
     <span
       className={`inline-flex items-center gap-1.5 rounded-full border font-semibold shadow-2xs select-none ${sizeClasses} ${colorClasses} ${className}`}
     >
-      {withDot && (
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            isPositive ? 'bg-emerald-500 animate-pulse' : 'bg-current opacity-70'
-          }`}
-        />
-      )}
       <span>{displayLabel}</span>
     </span>
   );

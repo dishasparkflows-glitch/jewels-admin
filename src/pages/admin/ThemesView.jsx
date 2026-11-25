@@ -696,7 +696,6 @@ export default function ThemesView() {
             Theme Management
           </h1>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             Live: {activeThemeObj?.name || 'Storefront Default'}
           </span>
         </div>
@@ -922,7 +921,6 @@ export default function ThemesView() {
                     {isActiveTheme && (
                       <div className="absolute right-2 top-2 z-10">
                         <span className="inline-flex items-center gap-1 rounded-full bg-emerald-600/95 backdrop-blur-md px-2 py-0.5 text-[10px] font-bold text-white shadow-xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                           Live Theme
                         </span>
                       </div>
@@ -1108,7 +1106,6 @@ export default function ThemesView() {
                             </span>
                             {isLive && (
                               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 border border-emerald-200 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                 Live Now
                               </span>
                             )}

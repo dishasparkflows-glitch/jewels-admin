@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { navSections } from '../../config/navigation';
-import { filterNavSections } from '../../utils/moduleAccess';
+import { resolveNavSections } from '../../utils/moduleAccess';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../../api/axios';
@@ -20,10 +20,10 @@ import {
 const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose: propOnMobileClose }) => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout, allowedModules } = useAuth();
+  const { user, logout, allowedModules, dbModules } = useAuth();
   const visibleSections = useMemo(
-    () => filterNavSections(navSections, allowedModules),
-    [allowedModules]
+    () => resolveNavSections(navSections, dbModules, allowedModules),
+    [dbModules, allowedModules]
   );
   const {
     sidebarOpen,

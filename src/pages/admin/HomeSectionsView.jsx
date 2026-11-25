@@ -554,10 +554,6 @@ export default function HomeSectionsView() {
                           >
                             <span className="text-[10px]">🌐</span>
                             <span>Web</span>
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${sec.visibility?.website !== false ? 'bg-emerald-500' : 'bg-stone-300'
-                                }`}
-                            />
                           </button>
 
                           {/* App Status Toggle */}
@@ -573,10 +569,6 @@ export default function HomeSectionsView() {
                           >
                             <span className="text-[10px]">📱</span>
                             <span>App</span>
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${sec.visibility?.mobileApp !== false ? 'bg-sky-500' : 'bg-stone-300'
-                                }`}
-                            />
                           </button>
                         </div>
                       </td>
@@ -731,16 +723,9 @@ export default function HomeSectionsView() {
                       STATUS
                     </label>
                     <div className="w-full h-[42px] px-3.5 rounded-xl text-xs bg-white border border-[#d6cfc2] shadow-2xs flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            formData.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
-                          }`}
-                        />
-                        <span className="text-xs font-semibold text-stone-800">
-                          {formData.status === 'active' ? 'Active (Live)' : 'Inactive (Draft)'}
-                        </span>
-                      </div>
+                      <span className="text-xs font-semibold text-stone-800">
+                        {formData.status === 'active' ? 'Active (Live)' : 'Inactive (Draft)'}
+                      </span>
                       <ToggleSwitch
                         checked={formData.status === 'active'}
                         onChange={(checked) =>

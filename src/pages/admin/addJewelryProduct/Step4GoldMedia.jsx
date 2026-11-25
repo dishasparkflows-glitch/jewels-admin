@@ -232,7 +232,6 @@ export default function Step4GoldMedia() {
                     className="inline-flex items-center gap-2 rounded-xl border border-[#d9c4a8] bg-[#faf5ee] hover:bg-[#f2e6d5] px-3.5 py-1.5 text-xs font-bold text-[#785e40] shadow-2xs hover:shadow-xs transition-all cursor-pointer whitespace-nowrap"
                     title="Open Media Compression & Optimizer"
                   >
-                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                     <HiOutlinePhotograph className="w-4 h-4 text-[#8b6f4e]" />
                     <span>Media Compression</span>
                   </button>
@@ -335,11 +334,6 @@ export default function Step4GoldMedia() {
                               : `${img.size || formatMediaSize(img.fileSize)} — Size is in MB (Eligible for compression)`
                           }
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              isSizeInKb(img.fileSize || img.size) ? 'bg-emerald-500' : 'bg-amber-500'
-                            }`}
-                          />
                           {img.size || formatMediaSize(img.fileSize)}
                         </span>
                       )}

@@ -554,16 +554,9 @@ export default function BlogCategoriesView() {
             <div>
               <label className="block text-xs font-semibold text-stone-700 mb-1">Status</label>
               <div className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      formData.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
-                    }`}
-                  />
-                  <span className="text-xs font-semibold text-stone-800">
-                    {formData.status === 'active' ? 'Active (Visible)' : 'Inactive (Hidden)'}
-                  </span>
-                </div>
+                <span className="text-xs font-semibold text-stone-800">
+                  {formData.status === 'active' ? 'Active (Visible)' : 'Inactive (Hidden)'}
+                </span>
                 <ToggleSwitch
                   checked={formData.status === 'active'}
                   onChange={(checked) =>

@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
-import { authAPI, ownersAPI } from '../api/services';
+import { authAPI, ownersAPI, modulesAPI } from '../api/services';
 
 const AuthContext = createContext(null);
 
@@ -24,11 +24,27 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [previewOwner, setPreviewOwner] = useState(() => readPreviewOwner());
   const [envOwnerAccess, setEnvOwnerAccess] = useState(null);
+  const [dbModules, setDbModules] = useState([]);
+  const [modulesLoaded, setModulesLoaded] = useState(false);
+
+  const refreshModules = useCallback(async () => {
+    try {
+      const modRes = await modulesAPI.getLookup({ status: 'all' });
+      const rows = modRes.data?.data;
+      setDbModules(Array.isArray(rows) ? rows : []);
+    } catch {
+      // Keep existing state if modules endpoint fails transiently
+    } finally {
+      setModulesLoaded(true);
+    }
+  }, []);
 
   const fetchUser = useCallback(async () => {
     try {
       const { data } = await authAPI.getMe();
       setUser(data.data);
+
+      await refreshModules();
 
       // If Vite is configured for a specific owner deployment, fetch its allowed modules
       const envOwnerId = import.meta.env.VITE_OWNER_ID;
@@ -47,7 +63,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshModules]);
 
   useEffect(() => {
     if (token) {
@@ -83,6 +99,8 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setPreviewOwner(null);
+    setDbModules([]);
+    setModulesLoaded(false);
   };
 
   const updateUser = (updatedUser) => {
@@ -142,6 +160,9 @@ export const AuthProvider = ({ children }) => {
         logout,
         updateUser,
         refreshUser: fetchUser,
+        dbModules,
+        modulesLoaded,
+        refreshModules,
         allowedModules,
         previewOwner,
         startOwnerPreview,

@@ -682,7 +682,6 @@ export default function Dropdown({
           ) : selectedOption?.icon && !prefixIcon ? (
             <span className="shrink-0 text-stone-500">{renderDropdownIcon(selectedOption.icon, sizeStyles.icon || 'w-4 h-4')}</span>
           ) : null}
-          {showStatusDot && value && renderStatusDot(value, selectedOption)}
           <span
             className={`truncate ${
               !hasSelection ? 'text-stone-400 font-normal' : 'text-stone-900 font-medium'
@@ -839,7 +838,6 @@ export default function Dropdown({
                     ) : opt.icon ? (
                       <span className="shrink-0 text-stone-400 group-hover:text-stone-600">{renderDropdownIcon(opt.icon, sizeStyles.icon || 'w-4 h-4')}</span>
                     ) : null}
-                    {showStatusDot && renderStatusDot(opt.value, opt)}
                     <span className="truncate">{opt.label}</span>
                     {opt.sublabel && (
                       <span className="text-[11px] text-stone-400 font-normal truncate">

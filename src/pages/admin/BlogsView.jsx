@@ -615,11 +615,6 @@ export default function BlogsView() {
                               : 'bg-stone-100 text-stone-600 border border-stone-200'
                           }`}
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              blog.status === 'active' || blog.status === 'published' ? 'bg-emerald-500' : 'bg-stone-400'
-                            }`}
-                          />
                           <span>
                             {blog.status === 'active' || blog.status === 'published' ? 'Published' : 'Draft'}
                           </span>
@@ -907,16 +902,9 @@ export default function BlogsView() {
                     Publication Status
                   </label>
                   <div className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          formData.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
-                        }`}
-                      />
-                      <span className="text-xs font-semibold text-stone-800">
-                        {formData.status === 'active' ? 'Published' : 'Draft'}
-                      </span>
-                    </div>
+                    <span className="text-xs font-semibold text-stone-800">
+                      {formData.status === 'active' ? 'Published' : 'Draft'}
+                    </span>
                     <ToggleSwitch
                       checked={formData.status === 'active'}
                       onChange={(checked) =>

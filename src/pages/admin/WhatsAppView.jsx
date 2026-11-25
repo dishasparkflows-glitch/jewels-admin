@@ -454,7 +454,8 @@ export default function WhatsAppView() {
                     { value: 'AUTHENTICATION', label: 'Authentication' },
                   ]}
                   size="md"
-                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[130px] flex-1 sm:flex-initial"
+                  className="!w-auto flex-1 sm:flex-none"
+                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[130px]"
                 />
 
                 <Dropdown
@@ -471,7 +472,8 @@ export default function WhatsAppView() {
                   ]}
                   showStatusDot
                   size="md"
-                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[125px] flex-1 sm:flex-initial"
+                  className="!w-auto flex-1 sm:flex-none"
+                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[125px]"
                 />
 
                 {(selectedCategory !== 'All Categories' || selectedStatus !== 'All Status') && (
@@ -585,19 +587,16 @@ export default function WhatsAppView() {
                           <td className="py-3.5 px-4 align-middle whitespace-nowrap">
                             {isApproved && (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200/70 shadow-2xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
                                 Approved
                               </span>
                             )}
                             {isPending && (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/70 shadow-2xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                                 Pending
                               </span>
                             )}
                             {isRejected && (
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/70 shadow-2xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0" />
                                 Rejected
                               </span>
                             )}
@@ -687,7 +686,8 @@ export default function WhatsAppView() {
                   ]}
                   showStatusDot
                   size="md"
-                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[125px] flex-1 sm:flex-initial"
+                  className="!w-auto flex-1 sm:flex-none"
+                  buttonClassName="h-[42px] px-3.5 text-xs sm:text-[13px] font-medium bg-white border border-stone-200 hover:border-stone-300 rounded-xl shadow-2xs text-stone-700 min-w-[125px]"
                 />
 
                 {historyStatusFilter !== 'all' && (

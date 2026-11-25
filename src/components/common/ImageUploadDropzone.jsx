@@ -115,7 +115,6 @@ export default function ImageUploadDropzone({
           <div className="flex-1 min-w-0 space-y-2.5">
             <div>
               <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
                 <span className="text-xs font-bold text-stone-800 truncate">
                   {label || 'Image'} Uploaded
                 </span>

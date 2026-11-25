@@ -1340,18 +1340,9 @@ export default function NavigationMenusView() {
                         style={{ backgroundColor: '#ffffff' }}
                         className="w-full h-[42px] px-3.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50/80 flex items-center justify-between transition-all cursor-pointer shadow-2xs select-none"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className={`w-2 h-2 rounded-full shrink-0 ${
-                              (sectionModal.data?.status || 'active') === 'active'
-                                ? 'bg-emerald-500'
-                                : 'bg-stone-400'
-                            }`}
-                          />
-                          <span className="font-semibold text-xs sm:text-[13px] text-stone-700 truncate">
-                            {(sectionModal.data?.status || 'active') === 'active' ? 'Visible' : 'Hidden'}
-                          </span>
-                        </div>
+                        <span className="font-semibold text-xs sm:text-[13px] text-stone-700 truncate">
+                          {(sectionModal.data?.status || 'active') === 'active' ? 'Visible' : 'Hidden'}
+                        </span>
                         <ToggleSwitch
                           checked={(sectionModal.data?.status || 'active') === 'active'}
                           size="sm"
@@ -1612,18 +1603,9 @@ export default function NavigationMenusView() {
                         style={{ backgroundColor: '#ffffff' }}
                         className="w-full h-[42px] px-3.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50/80 flex items-center justify-between transition-all cursor-pointer shadow-2xs select-none"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span
-                            className={`w-2 h-2 rounded-full shrink-0 ${
-                              (itemModal.data?.status || 'active') === 'active'
-                                ? 'bg-emerald-500'
-                                : 'bg-stone-400'
-                            }`}
-                          />
-                          <span className="font-semibold text-xs sm:text-[13px] text-stone-700 truncate">
-                            {(itemModal.data?.status || 'active') === 'active' ? 'Visible' : 'Hidden'}
-                          </span>
-                        </div>
+                        <span className="font-semibold text-xs sm:text-[13px] text-stone-700 truncate">
+                          {(itemModal.data?.status || 'active') === 'active' ? 'Visible' : 'Hidden'}
+                        </span>
                         <ToggleSwitch
                           checked={(itemModal.data?.status || 'active') === 'active'}
                           size="sm"

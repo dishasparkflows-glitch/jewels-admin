@@ -1286,11 +1286,6 @@ const DynamicModuleView = () => {
                             ₹{Number(displayPrice).toLocaleString('en-IN')}
                           </span>
                         )}
-                        {(row.specifications?.metalDetails?.purity || row.productType || row.ornate?.metalName) && (
-                          <span className="capitalize px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
-                            {row.specifications?.metalDetails?.purity || (row.productType ? `${row.productType} Jewellery` : row.ornate?.metalName)}
-                          </span>
-                        )}
                         {(row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt) && (
                           <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-mono">
                             {row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt}g
@@ -1552,11 +1547,6 @@ const DynamicModuleView = () => {
                                   ₹{Number(displayPrice).toLocaleString('en-IN')}
                                 </span>
                               )}
-                              {(row.specifications?.metalDetails?.purity || row.productType || row.ornate?.metalName) && (
-                                <span className="capitalize px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/60 text-[10px] font-medium">
-                                  {row.specifications?.metalDetails?.purity || (row.productType ? `${row.productType} Jewellery` : row.ornate?.metalName)}
-                                </span>
-                              )}
                               {(row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt) && (
                                 <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-mono">
                                   {row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt}g
@@ -1712,7 +1702,6 @@ const DynamicModuleView = () => {
                               >
                                 <span className="text-[10px]">🌐</span>
                                 <span>Web</span>
-                                <span className={`w-1.5 h-1.5 rounded-full ${isWebVisible ? 'bg-emerald-500' : 'bg-stone-300'}`} />
                               </button>
 
                               {/* App Status Toggle */}
@@ -1729,7 +1718,6 @@ const DynamicModuleView = () => {
                               >
                                 <span className="text-[10px]">📱</span>
                                 <span>App</span>
-                                <span className={`w-1.5 h-1.5 rounded-full ${isAppVisible ? 'bg-sky-500' : 'bg-stone-300'}`} />
                               </button>
                             </div>
                           </td>
@@ -1831,11 +1819,15 @@ const DynamicModuleView = () => {
           }}
         >
           <div
-            className={`bg-[#fcfbf9] rounded-2xl sm:rounded-3xl ${isCategoryPage ? 'max-w-6xl p-5 sm:p-7' : 'max-w-lg p-4 sm:p-6'} w-full shadow-2xl border border-stone-200 space-y-4 sm:space-y-5 animate-in fade-in zoom-in duration-200 max-h-[92vh] overflow-y-auto`}
+            className={`bg-[#fcfbf9] rounded-2xl sm:rounded-3xl ${
+              isCategoryPage
+                ? 'max-w-6xl flex flex-col overflow-hidden'
+                : 'max-w-lg p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto'
+            } w-full shadow-2xl border border-stone-200 animate-in fade-in zoom-in duration-200 max-h-[92vh]`}
             onClick={(e) => e.stopPropagation()}
           >
             {isCategoryPage ? (
-              <div className="flex items-center justify-between pb-3.5 border-b border-stone-200/80 bg-white -mx-5 sm:-mx-7 -mt-5 sm:-mt-7 px-5 sm:px-7 pt-5 sm:pt-6 rounded-t-2xl sm:rounded-t-3xl sticky top-0 z-10">
+              <div className="flex items-center justify-between px-5 sm:px-7 py-4 sm:py-5 border-b border-stone-200/80 bg-white shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center text-stone-700 shrink-0">
                     <HiOutlineFolder className="w-5 h-5 text-stone-700" />
@@ -1884,7 +1876,8 @@ const DynamicModuleView = () => {
             )}
 
             {isCategoryPage ? (
-              <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-7 space-y-4 sm:space-y-5">
                 {/* ─── PART 1: CATEGORY DETAILS ─── */}
                 <div className="rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
                   <div className="flex items-center gap-2.5">
@@ -1896,9 +1889,9 @@ const DynamicModuleView = () => {
                     </h4>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 sm:gap-4 items-start pt-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5 items-start pt-1">
                     {/* Category Name */}
-                    <div className="sm:col-span-5">
+                    <div>
                       <label className="text-xs font-semibold text-stone-700 mb-1.5 block">
                         Category Name <span className="text-rose-500 font-bold">*</span>
                       </label>
@@ -1910,12 +1903,12 @@ const DynamicModuleView = () => {
                         onChange={(e) =>
                           setFormData((prev) => ({ ...prev, name: e.target.value }))
                         }
-                        className="w-full h-10 px-3.5 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-lg hover:border-stone-300 focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs placeholder:text-stone-400"
+                        className="w-full h-11 px-4 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-xl hover:border-stone-300 focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs placeholder:text-stone-400"
                       />
                     </div>
 
                     {/* Category Type */}
-                    <div className="sm:col-span-3">
+                    <div>
                       <label className="text-xs font-semibold text-stone-700 mb-1.5 block">
                         Category Type
                       </label>
@@ -1930,14 +1923,14 @@ const DynamicModuleView = () => {
                         ]}
                         placeholder="Select Category Type"
                         size="field"
-                        buttonClassName="w-full h-10 px-3.5 rounded-lg border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
+                        buttonClassName="w-full h-11 px-4 rounded-xl border border-stone-200 hover:border-stone-300 bg-white text-stone-900 text-xs sm:text-sm font-medium shadow-2xs flex items-center justify-between"
                       />
                     </div>
 
-                    {/* Category Order */}
-                    <div className="sm:col-span-2">
+                    {/* Display Order */}
+                    <div>
                       <label className="text-xs font-semibold text-stone-700 mb-1.5 block">
-                        Order
+                        Display Order
                       </label>
                       <input
                         type="number"
@@ -1950,18 +1943,20 @@ const DynamicModuleView = () => {
                             order: e.target.value === '' ? '' : Number(e.target.value),
                           }))
                         }
-                        className="w-full h-10 px-3 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-lg hover:border-stone-300 focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs placeholder:text-stone-400"
+                        className="w-full h-11 px-4 text-xs sm:text-sm font-medium text-stone-900 bg-white border border-stone-200 rounded-xl hover:border-stone-300 focus:outline-none focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.15)] transition-all shadow-2xs placeholder:text-stone-400"
                       />
                     </div>
 
                     {/* Category Status Toggle */}
-                    <div className="sm:col-span-2">
+                    <div>
                       <label className="text-xs font-semibold text-stone-700 mb-1.5 block">
                         Category Status
                       </label>
-                      <div className="h-10 flex items-center justify-between px-3 bg-white border border-stone-200 rounded-lg shadow-2xs">
-                        <span className="text-xs font-semibold text-stone-800">
-                          {formData.status === 'active' ? 'Active' : 'Inactive'}
+                      <div className="h-11 flex items-center justify-between px-4 bg-white border border-stone-200 rounded-xl hover:border-stone-300 transition-colors shadow-2xs">
+                        <span className="text-xs sm:text-sm font-semibold text-stone-800">
+                          {formData.status === 'active'
+                            ? 'Active (Visible on Storefront)'
+                            : 'Inactive (Hidden)'}
                         </span>
                         <button
                           type="button"
@@ -1973,12 +1968,25 @@ const DynamicModuleView = () => {
                               status: prev.status === 'active' ? 'inactive' : 'active',
                             }))
                           }
-                          style={formData.status === 'active' ? { backgroundColor: currentTheme?.primary || 'var(--theme-primary, #855836)' } : undefined}
-                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${formData.status === 'active' ? 'bg-[var(--theme-primary,#855836)]' : 'bg-stone-300'}`}
+                          style={
+                            formData.status === 'active'
+                              ? {
+                                  backgroundColor:
+                                    currentTheme?.primary || 'var(--theme-primary, #855836)',
+                                }
+                              : undefined
+                          }
+                          className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            formData.status === 'active'
+                              ? 'bg-[var(--theme-primary,#855836)]'
+                              : 'bg-stone-300'
+                          }`}
                         >
                           <span
                             className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                              formData.status === 'active' ? 'translate-x-4' : 'translate-x-0'
+                              formData.status === 'active'
+                                ? 'translate-x-4'
+                                : 'translate-x-0'
                             }`}
                           />
                         </button>
@@ -1999,8 +2007,8 @@ const DynamicModuleView = () => {
                     </h4>
                   </div>
 
-                  {/* 4-Column Grid: Icon, Banner, Size Chart, Promo Banners */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-4 items-stretch pt-1">
+                  {/* 3-Column Grid: Icon, Banner, Size Chart */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-stretch pt-1">
                     {/* ─── Col 1: Category Icon ─── */}
                     {(() => {
                       const iconVal = formData.icon;
@@ -2008,7 +2016,7 @@ const DynamicModuleView = () => {
                       const hasIcon = Boolean(iconUrl && typeof iconUrl === 'string' && iconUrl.trim().length > 0);
 
                       return (
-                        <div className="lg:col-span-2 xl:col-span-2 flex flex-col h-full">
+                        <div className="flex flex-col h-full">
                           <div className="mb-2">
                             <label className="text-xs font-bold text-stone-900 block leading-tight">
                               Category Icon <span className="text-rose-500 font-bold">*</span>
@@ -2102,7 +2110,7 @@ const DynamicModuleView = () => {
                       const hasBanner = Boolean(bannerUrl && typeof bannerUrl === 'string' && bannerUrl.trim().length > 0);
 
                       return (
-                        <div className="lg:col-span-3 xl:col-span-3 flex flex-col h-full">
+                        <div className="flex flex-col h-full">
                           <div className="mb-2">
                             <label className="text-xs font-bold text-stone-900 block leading-tight">
                               Category Banner <span className="text-rose-500 font-bold">*</span>
@@ -2196,13 +2204,13 @@ const DynamicModuleView = () => {
                       const hasSizeChart = Boolean(sizeChartUrl && typeof sizeChartUrl === 'string' && sizeChartUrl.trim().length > 0);
 
                       return (
-                        <div className="lg:col-span-3 xl:col-span-3 flex flex-col h-full">
+                        <div className="flex flex-col h-full">
                           <div className="mb-2">
                             <label className="text-xs font-bold text-stone-900 block leading-tight">
                               Size Chart <span className="text-stone-400 font-normal text-[11px]">(Optional)</span>
                             </label>
                             <span className="text-[11px] text-stone-400 font-normal block mt-0.5 truncate">
-                              PDF document or Image (e.g. PDF size guide, PNG, JPG)
+                              PDF document or Image
                             </span>
                           </div>
 
@@ -2220,9 +2228,6 @@ const DynamicModuleView = () => {
                                       <span className="px-1.5 py-0.5 rounded bg-rose-600 text-white font-mono text-[10px]">PDF</span>
                                       <span>Size Guide Document</span>
                                     </div>
-                                    <span className="text-[10px] text-stone-500 truncate max-w-[180px]">
-                                      {sizeChartUrl.split('/').pop() || 'size-guide.pdf'}
-                                    </span>
                                   </div>
                                 ) : (
                                   <div
@@ -2306,30 +2311,40 @@ const DynamicModuleView = () => {
                         </div>
                       );
                     })()}
+                  </div>
+                </div>
 
-                    {/* ─── Col 4: Promo Banners ─── */}
-                    <div className="sm:col-span-2 lg:col-span-4 xl:col-span-4 flex flex-col h-full">
-                      <div className="mb-2 flex items-center justify-between">
-                        <div>
-                          <label className="text-xs font-bold text-stone-900 block leading-tight">
-                            Promo Banners <span className="text-stone-400 font-normal text-[11px]">(Optional)</span>
-                          </label>
-                        </div>
-
-                        {!bannerFormOpen && (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenBannerForm()}
-                            style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
-                            className="px-2.5 py-1 rounded-lg hover:opacity-90 text-white text-xs font-semibold flex items-center gap-1 shadow-xs transition-all cursor-pointer shrink-0"
-                          >
-                            <HiOutlinePlus className="w-3.5 h-3.5" />
-                            <span>Add Banner</span>
-                          </button>
-                        )}
+                {/* ─── PART 3: PROMO BANNERS ─── */}
+                <div className="rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center border border-stone-300 shadow-2xs shrink-0">
+                        3
+                      </span>
+                      <div>
+                        <h4 className="text-sm font-bold text-stone-900 leading-tight">
+                          Promo banners <span className="text-stone-400 font-normal text-xs">(Optional)</span>
+                        </h4>
+                        <p className="text-[11px] text-stone-500 font-normal mt-0.5">
+                          Add promotional banners to feature inside this category
+                        </p>
                       </div>
+                    </div>
 
-                      {/* Banner Add/Edit Sub-Form */}
+                    {!bannerFormOpen && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenBannerForm()}
+                        style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                        className="px-3 py-1.5 rounded-lg hover:opacity-90 text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs transition-all cursor-pointer shrink-0"
+                      >
+                        <HiOutlinePlus className="w-3.5 h-3.5" />
+                        <span>Add Banner</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Banner Add/Edit Sub-Form */}
                       {bannerFormOpen && (
                         <div className="rounded-xl border border-stone-200 bg-white p-3.5 shadow-sm space-y-3 mb-2 animate-in fade-in duration-150">
                           <div className="flex items-center justify-between pb-2 border-b border-stone-100">
@@ -2461,17 +2476,16 @@ const DynamicModuleView = () => {
                         </div>
                       )}
 
-                      {/* Banner Cards List Matching Screenshot */}
+                      {/* Banner Cards List */}
                       {!(formData.promoBanners && formData.promoBanners.length > 0) ? (
                         !bannerFormOpen && (
-                          <div className="flex-1 min-h-[148px] border border-dashed border-stone-200 rounded-xl bg-white p-4 flex flex-col items-center justify-center text-center shadow-2xs">
+                          <div className="min-h-[120px] border border-dashed border-stone-200 rounded-xl bg-white p-4 flex flex-col items-center justify-center text-center shadow-2xs">
                             <HiOutlinePhotograph className="w-8 h-8 text-stone-300 mb-1" />
                             <span className="text-xs font-semibold text-stone-600">No promo banners yet</span>
-                            <span className="text-[11px] text-stone-400 mt-0.5">Click &ldquo;+ Add Banner&rdquo; to add promo banners</span>
                           </div>
                         )
                       ) : (
-                        <div className="space-y-2.5 overflow-y-auto max-h-[220px] pr-1">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[260px] overflow-y-auto pr-1">
                           {formData.promoBanners.map((banner, index) => {
                             const bannerImg =
                               banner.imageUrl ||
@@ -2554,16 +2568,14 @@ const DynamicModuleView = () => {
                           })}
                         </div>
                       )}
-                    </div>
-                  </div>
                 </div>
 
-                {/* ─── PART 3: JEWELRY SIZING ENGINE CONFIGURATION CARD ─── */}
+                {/* ─── PART 4: JEWELRY SIZING ENGINE CONFIGURATION CARD ─── */}
                 <div className="rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2.5">
                       <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center border border-stone-300 shadow-2xs shrink-0">
-                        3
+                        4
                       </span>
                       <div>
                         <h4 className="text-sm font-bold text-stone-900 leading-tight">
@@ -2801,9 +2813,10 @@ const DynamicModuleView = () => {
                     </div>
                   )}
                 </div>
+                </div>
 
                 {/* ─── BOTTOM FOOTER BAR ─── */}
-                <div className="pt-4 border-t border-stone-200/80 bg-white -mx-5 sm:-mx-7 -mb-5 sm:-mb-7 px-5 sm:px-7 py-4 rounded-b-2xl sm:rounded-b-3xl flex items-center justify-end gap-3 sticky bottom-0 z-10">
+                <div className="px-5 sm:px-7 py-4 border-t border-stone-200/80 bg-white flex items-center justify-end gap-3 shrink-0">
                   <button
                     type="button"
                     onClick={() => {

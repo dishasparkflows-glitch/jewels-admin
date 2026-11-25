@@ -526,7 +526,6 @@ export default function SizesView() {
                             <span
                               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border shadow-2xs tracking-wide uppercase ${badge.bg} ${badge.text} ${badge.border}`}
                             >
-                              <span className={`w-1.5 h-1.5 rounded-full ${badge.dot} shrink-0`} />
                               <span>{categoryName}</span>
                             </span>
                           );
@@ -710,7 +709,6 @@ export default function SizesView() {
                     <span
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border shadow-2xs ${badge.bg} ${badge.text} ${badge.border}`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${badge.dot} shrink-0`} />
                       <span>{catName}</span>
                     </span>
                   );

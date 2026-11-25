@@ -591,7 +591,7 @@ export default function CustomInquiriesView() {
                           </button>
 
                           {/* Confirm Green Check Button */}
-                          {statusFilter !== 'all' && statusFilter !== 'cancelled' && statusFilter !== 'confirmed' && (
+                          {statusFilter === 'pending' && (
                             <button
                               type="button"
                               onClick={() => setConfirmModalInquiry(inq)}
@@ -603,7 +603,7 @@ export default function CustomInquiriesView() {
                           )}
 
                           {/* Cancel Red X Button */}
-                          {statusFilter !== 'all' && statusFilter !== 'cancelled' && (
+                          {(statusFilter === 'pending' || statusFilter === 'confirmed') && (
                             <button
                               type="button"
                               onClick={() => setCancelModalInquiry(inq)}

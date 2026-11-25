@@ -721,16 +721,9 @@ export default function WriteBlogView() {
                 Publication Status
               </label>
               <div className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white shadow-2xs flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`w-2 h-2 rounded-full ${
-                      formData.status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
-                    }`}
-                  />
-                  <span className="text-xs font-semibold text-stone-800">
-                    {formData.status === 'active' ? 'Published' : 'Draft'}
-                  </span>
-                </div>
+                <span className="text-xs font-semibold text-stone-800">
+                  {formData.status === 'active' ? 'Published' : 'Draft'}
+                </span>
                 <ToggleSwitch
                   checked={formData.status === 'active'}
                   onChange={(checked) =>

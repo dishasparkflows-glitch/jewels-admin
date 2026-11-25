@@ -528,11 +528,6 @@ export default function BeforeAfterView() {
                       }`}
                       title="Click to toggle status"
                     >
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          item.status === 'active' ? 'bg-emerald-500' : 'bg-stone-400'
-                        }`}
-                      />
                       <span>{item.status?.toUpperCase() || 'ACTIVE'}</span>
                     </button>
                   </div>
@@ -781,7 +776,6 @@ export default function BeforeAfterView() {
                               : 'bg-stone-100 text-stone-500 border-stone-200'
                           }`}
                         >
-                          <span className={`w-1.5 h-1.5 rounded-full ${item.status === 'active' ? 'bg-emerald-500' : 'bg-stone-400'}`} />
                           <span>{item.status?.toUpperCase() || 'ACTIVE'}</span>
                         </button>
                       </td>
@@ -1013,16 +1007,9 @@ export default function BeforeAfterView() {
                     STATUS
                   </label>
                   <div className="h-9 px-3 rounded-lg border border-stone-200 bg-white flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-2 h-2 rounded-full ${
-                          status === 'active' ? 'bg-emerald-500' : 'bg-stone-300'
-                        }`}
-                      />
-                      <span className="text-xs font-semibold text-stone-800">
-                        {status === 'active' ? 'Active' : 'Inactive'}
-                      </span>
-                    </div>
+                    <span className="text-xs font-semibold text-stone-800">
+                      {status === 'active' ? 'Active' : 'Inactive'}
+                    </span>
                     <ToggleSwitch
                       checked={status === 'active'}
                       onChange={(checked) => setStatus(checked ? 'active' : 'inactive')}

@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { HiOutlineSearch, HiOutlineX, HiOutlineArrowRight } from 'react-icons/hi';
 import { navSections } from '../../config/navigation';
-import { filterNavSections } from '../../utils/moduleAccess';
+import { resolveNavSections } from '../../utils/moduleAccess';
 import { useAuth } from '../../contexts/AuthContext';
 
 // Extra keyword mappings to make searching as intuitive and friendly as possible
@@ -55,10 +55,10 @@ const EXTRA_ALIASES = {
 };
 
 // Flatten navSections into a normalized list
-function buildSearchIndex(allowedModules = null) {
+function buildSearchIndex(dbModules = null, allowedModules = null) {
   const list = [];
   const seenPaths = new Set();
-  const sections = filterNavSections(navSections, allowedModules);
+  const sections = resolveNavSections(navSections, dbModules, allowedModules);
 
   sections.forEach((section) => {
     const sectionTitle = section.title || 'General';
@@ -100,8 +100,8 @@ function buildSearchIndex(allowedModules = null) {
 
 export default function AdminMenuSearch() {
   const navigate = useNavigate();
-  const { allowedModules } = useAuth();
-  const searchIndex = useMemo(() => buildSearchIndex(allowedModules), [allowedModules]);
+  const { allowedModules, dbModules } = useAuth();
+  const searchIndex = useMemo(() => buildSearchIndex(dbModules, allowedModules), [dbModules, allowedModules]);
 
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);

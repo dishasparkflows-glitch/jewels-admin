@@ -277,4 +277,12 @@ export const ownersAPI = {
   bulkDelete: (ids) => api.post('/owners/bulk-delete', { ids }),
 };
 
+// ─── Database Modules ─────────────────────────────
+export const modulesAPI = {
+  getAll: (params) => api.get('/modules', { params }),
+  getLookup: (params) => api.get('/modules/lookup', { params }),
+  sync: () => api.post('/modules/sync'),
+  updateStatus: (id, status) => api.patch(`/modules/${id}/status`, { status }),
+};
+
 

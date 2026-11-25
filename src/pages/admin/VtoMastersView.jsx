@@ -303,7 +303,6 @@ export default function VtoMastersView() {
                     {/* ACTIVE Badge */}
                     {isActive && (
                       <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold tracking-wide text-emerald-600 bg-emerald-50/90 border border-emerald-200/80 shadow-2xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                         ACTIVE
                       </span>
                     )}

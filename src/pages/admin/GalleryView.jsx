@@ -387,7 +387,6 @@ export default function GalleryView() {
             Media & Theme Gallery
           </h1>
           <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
             Live: {activeThemeObj?.name || 'diwali 2026'}
           </span>
         </div>
@@ -734,7 +733,6 @@ export default function GalleryView() {
                           : 'bg-stone-100 text-stone-700'
                       }`}
                     >
-                      {item.isThemeLive && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>}
                       {item.themeName || 'Global'}
                     </span>
                   </td>
@@ -1002,7 +1000,7 @@ export default function GalleryView() {
                     <div>
                       <span className="font-semibold text-stone-700 block">Status</span>
                       <span className="inline-flex items-center gap-1 text-emerald-700 font-bold">
-                        <span className="h-2 w-2 rounded-full bg-emerald-500"></span> Active
+                        Active
                       </span>
                     </div>
                     {(previewItem.linkedBanner?.title || previewItem.linkedRecord?.module === 'banner') && (

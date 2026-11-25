@@ -519,21 +519,18 @@ export default function AppointmentsView() {
       case 'confirmed':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-600 border border-emerald-200/70 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
             Confirmed
           </span>
         );
       case 'completed':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-600 border border-blue-200/70 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
             Completed
           </span>
         );
       case 'cancelled':
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 text-rose-600 border border-rose-200/70 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
             Cancelled
           </span>
         );
@@ -541,7 +538,6 @@ export default function AppointmentsView() {
       default:
         return (
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-200/70 whitespace-nowrap">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
             Pending
           </span>
         );
@@ -833,22 +829,27 @@ export default function AppointmentsView() {
                       {/* Actions */}
                       <td className="py-3.5 pr-5 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
-                          <button
-                            type="button"
-                            onClick={() => handleAcceptAppointment(apt)}
-                            title={apt.status === 'confirmed' ? 'Mark Completed' : 'Accept & Confirm'}
-                            className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                          >
-                            <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleRejectAppointment(apt)}
-                            title="Cancel Appointment"
-                            className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                          >
-                            <HiOutlineXCircle className="w-4 h-4 stroke-2" />
-                          </button>
+                          {statusFilter === 'pending' && apt.status === 'pending' && (
+                            <button
+                              type="button"
+                              onClick={() => handleAcceptAppointment(apt)}
+                              title="Accept & Confirm"
+                              className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                            >
+                              <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
+                            </button>
+                          )}
+                          {(statusFilter === 'pending' || statusFilter === 'confirmed') &&
+                            (apt.status === 'pending' || apt.status === 'confirmed') && (
+                              <button
+                                type="button"
+                                onClick={() => handleRejectAppointment(apt)}
+                                title="Cancel Appointment"
+                                className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                              >
+                                <HiOutlineXCircle className="w-4 h-4 stroke-2" />
+                              </button>
+                            )}
                           <button
                             type="button"
                             onClick={() => handleDelete(apt)}
@@ -924,45 +925,43 @@ export default function AppointmentsView() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-stone-800 mb-1.5">
-                    Email Address <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="client@gmail.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-stone-800 mb-1.5">Phone Number</label>
-                  <div className="flex items-center gap-1.5">
-                    <div className="shrink-0">
-                      <CountryCodeSelect
-                        value={formData.countryCode || '+91'}
-                        onChange={(dialCode) => setFormData({ ...formData, countryCode: dialCode })}
-                        size="sm"
-                        buttonClassName="flex items-center justify-between gap-1 px-2 text-xs font-semibold text-stone-800 bg-white border border-stone-200 hover:border-[#bdae99] rounded-xl h-[38px] min-w-[76px] shadow-2xs focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all cursor-pointer"
-                      />
-                    </div>
-                    <input
-                      type="tel"
-                      placeholder="98200 99880"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      className="min-w-0 flex-1 px-2.5 py-2 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs h-[38px]"
+              <div>
+                <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                  Email Address <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="client@gmail.com"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-800 mb-1.5">Phone Number</label>
+                <div className="flex items-center gap-2">
+                  <div className="shrink-0">
+                    <CountryCodeSelect
+                      value={formData.countryCode || '+91'}
+                      onChange={(dialCode) => setFormData({ ...formData, countryCode: dialCode })}
+                      size="sm"
+                      buttonClassName="flex items-center justify-between gap-1 px-2.5 text-xs font-semibold text-stone-800 bg-white border border-stone-200 hover:border-[#bdae99] rounded-xl h-[38px] min-w-[82px] shadow-2xs focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all cursor-pointer"
                     />
                   </div>
+                  <input
+                    type="tel"
+                    placeholder="98200 99880"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="min-w-0 flex-1 px-3.5 py-2 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs h-[38px]"
+                  />
                 </div>
               </div>
 
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="min-w-0">
                   <label className="block text-xs font-bold text-stone-800 mb-1.5">Date</label>
                   <DatePicker
                     value={formData.date}
@@ -970,7 +969,7 @@ export default function AppointmentsView() {
                     placeholder="Select date"
                   />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <label className="block text-xs font-bold text-stone-800 mb-1.5">Time</label>
                   <input
                     type="text"
@@ -1067,40 +1066,40 @@ export default function AppointmentsView() {
                     />
                   </div>
 
-                  {/* Email & Phone */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1.5">
-                        Email Address <span className="text-rose-500">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="client@gmail.com"
-                        value={editFormData.email}
-                        onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
-                        className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-stone-800 mb-1.5">Phone Number</label>
-                      <div className="flex items-center gap-1.5">
-                        <div className="shrink-0">
-                          <CountryCodeSelect
-                            value={editFormData.countryCode || '+91'}
-                            onChange={(dialCode) => setEditFormData({ ...editFormData, countryCode: dialCode })}
-                            size="sm"
-                            buttonClassName="flex items-center justify-between gap-1 px-2 text-xs font-semibold text-stone-800 bg-white border border-stone-200 hover:border-[#bdae99] rounded-xl h-[38px] min-w-[76px] shadow-2xs focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all cursor-pointer"
-                          />
-                        </div>
-                        <input
-                          type="tel"
-                          placeholder="98200 99880"
-                          value={editFormData.phone}
-                          onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
-                          className="min-w-0 flex-1 px-2.5 py-2 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs h-[38px]"
+                  {/* Email Address */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1.5">
+                      Email Address <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="client@gmail.com"
+                      value={editFormData.email}
+                      onChange={(e) => setEditFormData({ ...editFormData, email: e.target.value })}
+                      className="w-full px-3.5 py-2.5 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs"
+                    />
+                  </div>
+
+                  {/* Phone Number */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-800 mb-1.5">Phone Number</label>
+                    <div className="flex items-center gap-2">
+                      <div className="shrink-0">
+                        <CountryCodeSelect
+                          value={editFormData.countryCode || '+91'}
+                          onChange={(dialCode) => setEditFormData({ ...editFormData, countryCode: dialCode })}
+                          size="sm"
+                          buttonClassName="flex items-center justify-between gap-1 px-2.5 text-xs font-semibold text-stone-800 bg-white border border-stone-200 hover:border-[#bdae99] rounded-xl h-[38px] min-w-[82px] shadow-2xs focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all cursor-pointer"
                         />
                       </div>
+                      <input
+                        type="tel"
+                        placeholder="98200 99880"
+                        value={editFormData.phone}
+                        onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                        className="min-w-0 flex-1 px-3.5 py-2 text-xs font-medium text-stone-900 bg-white border border-stone-200 rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all shadow-2xs h-[38px]"
+                      />
                     </div>
                   </div>
 

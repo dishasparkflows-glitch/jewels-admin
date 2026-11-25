@@ -179,6 +179,7 @@ export default function BannersView() {
   // Data states
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [togglingStatusId, setTogglingStatusId] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
@@ -686,6 +687,28 @@ export default function BannersView() {
     }
   };
 
+  // Toggle banner active/inactive status from table row
+  const handleToggleBannerStatus = async (banner, nextChecked) => {
+    if (!banner?._id || togglingStatusId === banner._id) return;
+    const prevStatus = banner.status === 'active' ? 'active' : 'inactive';
+    const nextStatus = nextChecked ? 'active' : 'inactive';
+    setBanners((prev) =>
+      prev.map((b) => (b._id === banner._id ? { ...b, status: nextStatus } : b))
+    );
+    setTogglingStatusId(banner._id);
+    try {
+      await api.put(`/banners/${banner._id}`, { status: nextStatus });
+      toast.success(`Banner marked as ${nextStatus === 'active' ? 'Active' : 'Draft'}`);
+    } catch (err) {
+      setBanners((prev) =>
+        prev.map((b) => (b._id === banner._id ? { ...b, status: prevStatus } : b))
+      );
+      toast.error(err.response?.data?.message || 'Failed to update banner status');
+    } finally {
+      setTogglingStatusId(null);
+    }
+  };
+
   // Duplicate a banner
   const handleDuplicate = async (banner, e) => {
     e?.stopPropagation();
@@ -928,9 +951,9 @@ export default function BannersView() {
         </div>
 
         {/* Filter Bar matching screenshot */}
-        <div className="bg-white rounded-2xl border border-stone-200/80 p-3.5 sm:p-4 shadow-2xs flex flex-col md:flex-row items-center justify-between gap-3">
+        <div className="bg-white rounded-2xl border border-stone-200/80 p-3.5 sm:p-4 shadow-2xs flex flex-col lg:flex-row lg:items-center justify-between gap-3">
           {/* Search Input */}
-          <div className="relative w-full md:w-80">
+          <div className="relative w-full lg:w-80">
             <HiOutlineSearch className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
             <input
               type="text"
@@ -942,7 +965,7 @@ export default function BannersView() {
           </div>
 
           {/* Right Filter Dropdowns */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full md:w-auto justify-start md:justify-end">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 w-full lg:w-auto justify-start lg:justify-end">
             {/* Devices Filter */}
             <Dropdown
               value={deviceFilter}
@@ -952,7 +975,8 @@ export default function BannersView() {
                 { value: 'web', label: 'Desktop' },
                 { value: 'mobile', label: 'Mobile' },
               ]}
-              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 whitespace-nowrap"
+              className="!w-auto flex-1 sm:flex-none"
+              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 whitespace-nowrap min-w-[125px]"
               menuClassName="z-20"
             />
 
@@ -965,7 +989,8 @@ export default function BannersView() {
                 { value: 'published', label: 'Active' },
                 { value: 'draft', label: 'Draft' },
               ]}
-              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 whitespace-nowrap"
+              className="!w-auto flex-1 sm:flex-none"
+              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 whitespace-nowrap min-w-[120px]"
               menuClassName="z-20"
             />
 
@@ -978,7 +1003,8 @@ export default function BannersView() {
                 { value: 'oldest', label: 'Oldest First' },
                 { value: 'order', label: 'Display Order' },
               ]}
-              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 whitespace-nowrap"
+              className="!w-auto flex-1 sm:flex-none"
+              buttonClassName="h-9 px-3.5 rounded-xl border border-stone-200 text-xs font-medium text-stone-700 bg-white hover:bg-stone-50 whitespace-nowrap min-w-[130px]"
               menuClassName="z-20"
             />
           </div>
@@ -987,7 +1013,7 @@ export default function BannersView() {
         {/* Banners Table */}
         <div className="bg-white rounded-2xl border border-stone-200/90 shadow-2xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full min-w-[760px] text-left border-collapse">
               <thead>
                 <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
                   <th className="py-3 px-4 w-10">
@@ -1116,18 +1142,15 @@ export default function BannersView() {
                         </td>
 
                         {/* STATUS */}
-                        <td className="py-3.5 px-4 whitespace-nowrap">
-                          {isPublished ? (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-[#eaf7ee] text-[#137333]">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#137333]" />
-                              <span>Active</span>
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-500">
-                              <span className="w-1.5 h-1.5 rounded-full bg-stone-400" />
-                              <span>Draft</span>
-                            </span>
-                          )}
+                        <td className="py-3.5 px-4 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <ToggleSwitch
+                            checked={isPublished}
+                            onChange={(nextChecked) => handleToggleBannerStatus(banner, nextChecked)}
+                            disabled={togglingStatusId === banner._id}
+                            size="sm"
+                            stopPropagation={true}
+                            ariaLabel={`Set banner ${bTitle || ''} ${isPublished ? 'Draft' : 'Active'}`}
+                          />
                         </td>
 
                         {/* DEVICES */}
@@ -1428,7 +1451,83 @@ export default function BannersView() {
                   )}
                 </div>
 
-                {/* 2. Banner Images & Theme Placement Media Card */}
+                {/* 2. Display Settings Card (Status, Display Order, Show On) */}
+                <div className="bg-[#f8fafc] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
+                  <div className="flex items-center gap-2 text-stone-800">
+                    <HiOutlineAdjustments className="w-4 h-4 text-[#8a6d4b]" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider">
+                      Display Settings
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                    {/* Status */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Status <span className="text-red-500">*</span>
+                      </label>
+                      <div
+                        onClick={() => setFormStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
+                        className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white flex items-center justify-between shadow-2xs cursor-pointer select-none hover:border-stone-300 transition-colors"
+                      >
+                        <span className="text-xs font-semibold text-stone-800">
+                          {formStatus === 'active' ? 'Active' : 'Inactive'}
+                        </span>
+                        <ToggleSwitch
+                          checked={formStatus === 'active'}
+                          onChange={(nextVal) => setFormStatus(nextVal ? 'active' : 'inactive')}
+                          size="sm"
+                          stopPropagation={true}
+                          ariaLabel="Banner Status"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Display Order */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Display Order <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={order}
+                        onChange={(e) => setOrder(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
+                      />
+                    </div>
+
+                    {/* Show On (Desktop / Mobile Checkboxes) */}
+                    <div className="space-y-1.5">
+                      <label className="block text-xs font-semibold text-stone-700">
+                        Show On
+                      </label>
+                      <div className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white flex items-center gap-4">
+                        <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-700 select-none">
+                          <input
+                            type="checkbox"
+                            checked={showOnDesktop}
+                            onChange={(e) => setShowOnDesktop(e.target.checked)}
+                            className="rounded border-stone-300 text-[var(--theme-primary,#8b6f4e)] focus:ring-[var(--theme-primary,#8b6f4e)] w-4 h-4 cursor-pointer"
+                          />
+                          <span>Desktop</span>
+                        </label>
+
+                        <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-700 select-none">
+                          <input
+                            type="checkbox"
+                            checked={showOnMobile}
+                            onChange={(e) => setShowOnMobile(e.target.checked)}
+                            className="rounded border-stone-300 text-[var(--theme-primary,#8b6f4e)] focus:ring-[var(--theme-primary,#8b6f4e)] w-4 h-4 cursor-pointer"
+                          />
+                          <span>Mobile</span>
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Banner Images & Theme Placement Media Card */}
                 <div className="bg-[#f8fafc] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
                   {/* Top: Section Header */}
                   <div className="pb-3 border-b border-stone-200/70">
@@ -1556,89 +1655,6 @@ export default function BannersView() {
                       </div>
                     </div>
                   )}
-                </div>
-
-                {/* 3. Display Settings Card (Status, Display Order, Show On) */}
-                <div className="bg-[#f8fafc] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
-                  <div className="flex items-center gap-2 text-stone-800">
-                    <HiOutlineAdjustments className="w-4 h-4 text-[#8a6d4b]" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider">
-                      Display Settings
-                    </h3>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                    {/* Status */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-stone-700">
-                        Status <span className="text-red-500">*</span>
-                      </label>
-                      <div
-                        onClick={() => setFormStatus((prev) => (prev === 'active' ? 'inactive' : 'active'))}
-                        className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white flex items-center justify-between shadow-2xs cursor-pointer select-none hover:border-stone-300 transition-colors"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              formStatus === 'active' ? 'bg-emerald-500' : 'bg-stone-400'
-                            }`}
-                          />
-                          <span className="text-xs font-semibold text-stone-800">
-                            {formStatus === 'active' ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                        <ToggleSwitch
-                          checked={formStatus === 'active'}
-                          onChange={(nextVal) => setFormStatus(nextVal ? 'active' : 'inactive')}
-                          size="sm"
-                          stopPropagation={true}
-                          ariaLabel="Banner Status"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Display Order */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-stone-700">
-                        Display Order <span className="text-red-500">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={order}
-                        onChange={(e) => setOrder(Math.max(1, parseInt(e.target.value) || 1))}
-                        className="w-full h-10 px-3.5 rounded-xl border border-stone-200 text-xs sm:text-[13px] text-stone-800 bg-white focus:outline-none focus:ring-1 focus:ring-[#8a6d4b] focus:border-[#8a6d4b] transition-all"
-                      />
-                    </div>
-
-                    {/* Show On (Desktop / Mobile Checkboxes) */}
-                    <div className="space-y-1.5">
-                      <label className="block text-xs font-semibold text-stone-700">
-                        Show On
-                      </label>
-                      <div className="h-10 px-3.5 rounded-xl border border-stone-200 bg-white flex items-center gap-4">
-                        <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-700 select-none">
-                          <input
-                            type="checkbox"
-                            checked={showOnDesktop}
-                            onChange={(e) => setShowOnDesktop(e.target.checked)}
-                            className="rounded border-stone-300 text-[var(--theme-primary,#8b6f4e)] focus:ring-[var(--theme-primary,#8b6f4e)] w-4 h-4 cursor-pointer"
-                          />
-                          <span>Desktop</span>
-                        </label>
-
-                        <label className="inline-flex items-center gap-2 cursor-pointer text-xs font-medium text-stone-700 select-none">
-                          <input
-                            type="checkbox"
-                            checked={showOnMobile}
-                            onChange={(e) => setShowOnMobile(e.target.checked)}
-                            className="rounded border-stone-300 text-[var(--theme-primary,#8b6f4e)] focus:ring-[var(--theme-primary,#8b6f4e)] w-4 h-4 cursor-pointer"
-                          />
-                          <span>Mobile</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
                 </div>
 
                 </div>

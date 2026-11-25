@@ -19,7 +19,7 @@ import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
-import RowActions, { StatusActionButton } from '../../components/common/RowActions';
+import RowActions from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { openProductPreview } from '../../utils/productPreview';
@@ -43,7 +43,6 @@ export default function ReviewsView() {
   const [submitting, setSubmitting] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
   const [filterActive, setFilterActive] = useState(false);
-  const [openStatusId, setOpenStatusId] = useState(null);
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
 
   const [currentPage, setCurrentPage] = useState(1);
@@ -87,16 +86,6 @@ export default function ReviewsView() {
   useEffect(() => {
     fetchReviews(currentPage, pageSize);
   }, [currentPage, pageSize]);
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (!e.target.closest('[data-status-menu]')) {
-        setOpenStatusId(null);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   const handleOpenAddModal = () => {
     setEditingReview(null);
@@ -278,7 +267,6 @@ export default function ReviewsView() {
     const id = review._id || review.id;
     if (!id) return;
     if ((review.status || 'approved').toLowerCase() === newStatus.toLowerCase()) {
-      setOpenStatusId(null);
       return;
     }
 
@@ -288,7 +276,6 @@ export default function ReviewsView() {
     setReviews((prev) =>
       prev.map((r) => ((r._id || r.id) === id ? { ...r, status: newStatus } : r))
     );
-    setOpenStatusId(null);
     setUpdatingStatusId(id);
 
     try {
@@ -466,10 +453,10 @@ export default function ReviewsView() {
                 </th>
                 <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
                 <th className="py-3 px-3 whitespace-nowrap">REVIEWER</th>
-                <th className="py-3 px-3 whitespace-nowrap">PRODUCT</th>
                 <th className="py-3 px-3 whitespace-nowrap">RATING</th>
-                <th className="py-3 px-3 whitespace-nowrap">FEEDBACK & TESTIMONIAL</th>
                 <th className="py-3 px-3 whitespace-nowrap">DATE</th>
+                <th className="py-3 px-3 whitespace-nowrap">PRODUCT</th>
+                <th className="py-3 px-3 whitespace-nowrap">FEEDBACK & TESTIMONIAL</th>
                 <th className="py-3 px-3 whitespace-nowrap">STATUS</th>
                 <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
@@ -524,61 +511,9 @@ export default function ReviewsView() {
 
                       {/* Reviewer */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-[#f4ece3] text-[#8b6f4e] font-semibold text-[11px] flex items-center justify-center border border-[#8b6f4e]/20 shadow-2xs shrink-0 overflow-hidden">
-                            {rev.image?.url ? (
-                              <img src={rev.image.url} alt={reviewerName} className="w-full h-full object-cover" />
-                            ) : (
-                              initial
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-bold text-stone-900 text-xs sm:text-[13px]">
-                              {reviewerName}
-                            </p>
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Product */}
-                      <td className="py-2.5 px-3">
-                        {rev.productId ? (
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openProductPreview(rev.productId);
-                            }}
-                            className="flex items-center gap-2 max-w-[220px] group/prod cursor-pointer"
-                            title="Open product on storefront"
-                          >
-                            <div className="w-8 h-8 rounded-md bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center group-hover/prod:border-[#8b6f4e] transition-colors">
-                              {rev.productId.firstPhoto || rev.productId.thumbnail ? (
-                                <img
-                                  src={rev.productId.firstPhoto || rev.productId.thumbnail}
-                                  alt={rev.productId.basicInfo?.title || rev.productId.title || 'Product'}
-                                  className="w-full h-full object-cover group-hover/prod:scale-105 transition-transform"
-                                />
-                              ) : (
-                                <span className="text-[9px] text-stone-400 font-bold uppercase">PROD</span>
-                              )}
-                            </div>
-                            <div className="min-w-0">
-                              <p
-                                className="font-semibold text-stone-900 text-xs truncate group-hover/prod:text-[#8b6f4e] group-hover/prod:underline transition-colors"
-                                title={rev.productId.basicInfo?.title || rev.productId.title}
-                              >
-                                {rev.productId.basicInfo?.title || rev.productId.title || 'Product'}
-                              </p>
-                              <span className="text-[10px] text-stone-600 block truncate">
-                                SKU: {rev.productId.basicInfo?.sku || rev.productId.sku || '—'}
-                              </span>
-                            </div>
-                          </div>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-stone-600 border border-stone-200">
-                            General / Storewide
-                          </span>
-                        )}
+                        <p className="font-bold text-stone-900 text-xs sm:text-[13px]">
+                          {reviewerName}
+                        </p>
                       </td>
 
                       {/* Rating */}
@@ -593,26 +528,75 @@ export default function ReviewsView() {
                         </div>
                       </td>
 
-                      {/* Feedback & Testimonial */}
-                      <td className="py-2.5 px-3">
-                        <div className="max-w-xl lg:max-w-2xl space-y-1">
-                          {reviewTitle && (
-                            <p className="font-semibold text-stone-900 text-xs sm:text-[13px] leading-snug">
-                              {reviewTitle}
-                            </p>
-                          )}
-                          <p
-                            className="text-stone-600 text-xs font-normal leading-relaxed line-clamp-2"
-                            title={reviewComment}
-                          >
-                            {reviewComment}
-                          </p>
-                        </div>
-                      </td>
-
                       {/* Date */}
                       <td className="py-2.5 px-3 whitespace-nowrap text-stone-500 font-medium text-xs">
                         {dateStr}
+                      </td>
+
+                      {/* Product */}
+                      <td className="py-2.5 px-3">
+                        {rev.productId ? (
+                          (() => {
+                            const prodImg =
+                              rev.productId.media?.images?.[0]?.url ||
+                              rev.productId.ornate?.ornateImages?.[0]?.url ||
+                              rev.productId.thumbnail ||
+                              rev.productId.firstPhoto;
+
+                            return (
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openProductPreview(rev.productId);
+                                }}
+                                className="flex items-center gap-2 max-w-[220px] group/prod cursor-pointer"
+                                title="Open product on storefront"
+                              >
+                                {prodImg && (
+                                  <div className="w-8 h-8 rounded-md bg-stone-100 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center group-hover/prod:border-[#8b6f4e] transition-colors">
+                                    <img
+                                      src={prodImg}
+                                      alt={rev.productId.basicInfo?.title || rev.productId.title || 'Product'}
+                                      className="w-full h-full object-cover group-hover/prod:scale-105 transition-transform"
+                                      onError={(e) => {
+                                        if (e.currentTarget?.parentElement) {
+                                          e.currentTarget.parentElement.style.display = 'none';
+                                        }
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <p
+                                    className="font-semibold text-stone-900 text-xs truncate group-hover/prod:text-[#8b6f4e] group-hover/prod:underline transition-colors"
+                                    title={rev.productId.basicInfo?.title || rev.productId.title}
+                                  >
+                                    {rev.productId.basicInfo?.title || rev.productId.title || 'Product'}
+                                  </p>
+                                  <span className="text-[10px] text-stone-600 block truncate">
+                                    SKU: {rev.productId.basicInfo?.sku || rev.productId.sku || '—'}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })()
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-stone-100 text-stone-600 border border-stone-200">
+                            General / Storewide
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Feedback & Testimonial */}
+                      <td className="py-2.5 px-3">
+                        <div className="max-w-xl lg:max-w-2xl">
+                          <p
+                            className="font-semibold text-stone-900 text-xs sm:text-[13px] leading-snug"
+                            title={reviewComment || reviewTitle}
+                          >
+                            {reviewTitle || reviewComment || '—'}
+                          </p>
+                        </div>
                       </td>
 
                       {/* Status */}
@@ -630,15 +614,6 @@ export default function ReviewsView() {
                           }`}
                           title="Click to toggle status (Approved / Rejected)"
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              (rev.status || 'approved').toLowerCase() === 'approved'
-                                ? 'bg-emerald-500'
-                                : (rev.status || '').toLowerCase() === 'rejected'
-                                ? 'bg-rose-500'
-                                : 'bg-amber-500'
-                            }`}
-                          />
                           {rev.status || 'APPROVED'}
                         </span>
                       </td>
@@ -647,76 +622,46 @@ export default function ReviewsView() {
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={rev}
-                          beforeActions={
-                            <div className="relative inline-flex" data-status-menu>
-                              <StatusActionButton
-                                status={rev.status || 'approved'}
-                                loading={updatingStatusId === id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setOpenStatusId(openStatusId === id ? null : id);
-                                }}
-                                title={`Status: ${(rev.status || 'approved').toUpperCase()} (Click to approve or reject)`}
-                              />
-
-                              {openStatusId === id && (
-                                <div
-                                  onClick={(e) => e.stopPropagation()}
-                                  className={`absolute right-0 w-36 bg-white border border-stone-200/90 rounded-xl shadow-xl py-1 z-50 animate-fadeIn text-left ${
-                                    idx >= paginatedItems.length - 2 && paginatedItems.length >= 2
-                                      ? 'bottom-8'
-                                      : 'top-8'
-                                  }`}
-                                >
-                                  <div className="px-3 py-1 text-[10px] font-bold text-stone-400 uppercase tracking-wider border-b border-stone-100">
-                                    Review Status
-                                  </div>
-
+                          beforeActions={(() => {
+                            const normStatus = (rev.status || 'approved').toLowerCase();
+                            const isUpdating = updatingStatusId === id;
+                            return (
+                              <>
+                                {normStatus !== 'approved' && (
                                   <button
                                     type="button"
-                                    disabled={updatingStatusId === id}
+                                    disabled={isUpdating}
                                     onClick={(e) => handleUpdateStatus(rev, 'approved', e)}
-                                    className={`w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                                      (rev.status || 'approved').toLowerCase() === 'approved'
-                                        ? 'bg-emerald-50/80 text-emerald-800 font-bold cursor-default'
-                                        : 'text-stone-700 hover:bg-emerald-50 hover:text-emerald-700'
-                                    }`}
+                                    title="Approve Review"
+                                    aria-label="Approve Review"
+                                    className="w-7 h-7 rounded-lg border border-emerald-200/80 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50"
                                   >
-                                    <div className="flex items-center gap-2">
-                                      <HiOutlineCheck className="w-3.5 h-3.5 text-emerald-600 stroke-[2.5]" />
-                                      <span>Approve</span>
-                                    </div>
-                                    {(rev.status || 'approved').toLowerCase() === 'approved' && (
-                                      <span className="text-[9px] uppercase font-bold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-full">
-                                        Active
-                                      </span>
+                                    {isUpdating ? (
+                                      <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <HiOutlineCheck className="w-3.5 h-3.5 stroke-[2.5]" />
                                     )}
                                   </button>
-
+                                )}
+                                {normStatus !== 'rejected' && (
                                   <button
                                     type="button"
-                                    disabled={updatingStatusId === id}
+                                    disabled={isUpdating}
                                     onClick={(e) => handleUpdateStatus(rev, 'rejected', e)}
-                                    className={`w-full px-3 py-1.5 text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                                      (rev.status || '').toLowerCase() === 'rejected'
-                                        ? 'bg-rose-50/80 text-rose-800 font-bold cursor-default'
-                                        : 'text-stone-700 hover:bg-rose-50 hover:text-rose-700'
-                                    }`}
+                                    title="Reject Review"
+                                    aria-label="Reject Review"
+                                    className="w-7 h-7 rounded-lg border border-rose-200/80 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 active:scale-95 inline-flex items-center justify-center transition-all shadow-2xs cursor-pointer disabled:opacity-50"
                                   >
-                                    <div className="flex items-center gap-2">
-                                      <HiOutlineX className="w-3.5 h-3.5 text-rose-600 stroke-[2.5]" />
-                                      <span>Reject</span>
-                                    </div>
-                                    {(rev.status || '').toLowerCase() === 'rejected' && (
-                                      <span className="text-[9px] uppercase font-bold text-rose-700 bg-rose-100/90 px-1.5 py-0.5 rounded-full">
-                                        Active
-                                      </span>
+                                    {isUpdating ? (
+                                      <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                      <HiOutlineX className="w-3.5 h-3.5 stroke-[2.5]" />
                                     )}
                                   </button>
-                                </div>
-                              )}
-                            </div>
-                          }
+                                )}
+                              </>
+                            );
+                          })()}
                           onView={() => handleEdit(rev)}
                           onEdit={() => handleEdit(rev)}
                           onDelete={() => handleDelete(id, reviewTitle || reviewerName)}
@@ -830,7 +775,6 @@ export default function ReviewsView() {
                   </label>
                   <Dropdown
                     size="field"
-                    showStatusDot={true}
                     value={formData.status}
                     onChange={(val) => setFormData({ ...formData, status: val })}
                     options={REVIEW_STATUS_OPTIONS}
@@ -887,16 +831,10 @@ export default function ReviewsView() {
                       />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-stone-800 truncate">
-                        {imageFile?.name || 'Attached Photo'}
-                      </p>
-                      <p className="text-[11px] text-stone-500">
-                        {imageFile ? `${(imageFile.size / 1024).toFixed(1)} KB` : 'Attached to review'}
-                      </p>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-[11px] font-semibold text-[#8b6f4e] hover:underline mt-0.5 cursor-pointer"
+                        className="text-xs font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
                       >
                         Change Photo
                       </button>

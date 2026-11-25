@@ -381,7 +381,6 @@ export default function CategoryFiltersView() {
                 >
                   {(selectedFilter?.status === 'active' || (selectedFilter?.status !== 'inactive' && selectedFilter?.enabled !== false)) ? 'Active' : 'Inactive'}
                 </span>
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse ml-1" />
                 <span className="text-xs font-semibold text-stone-800">
                   {enabledCategoryCount} of {categoriesForSelectedFilter.length} Categories Enabled
                 </span>

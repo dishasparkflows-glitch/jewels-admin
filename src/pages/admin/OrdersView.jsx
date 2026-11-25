@@ -1431,7 +1431,6 @@ export default function OrdersView() {
                 <div className="p-4 rounded-xl bg-gradient-to-r from-amber-50/80 via-white to-amber-50/50 border border-amber-200/90 shadow-2xs space-y-3 animate-fadeIn">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
                       <span className="text-xs font-bold text-stone-900 uppercase tracking-wider">
                         Order Action Required
                       </span>

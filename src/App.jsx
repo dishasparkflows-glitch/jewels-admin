@@ -60,7 +60,6 @@ const StaticPagesView = lazy(() => import('./pages/admin/StaticPagesView'));
 const ThemesView = lazy(() => import('./pages/admin/ThemesView'));
 const GalleryView = lazy(() => import('./pages/admin/GalleryView'));
 const OwnersView = lazy(() => import('./pages/admin/OwnersView'));
-import CuteLoader from './components/common/CuteLoader';
 
 function App() {
   return (
@@ -115,7 +114,7 @@ function App() {
               )}
             </Toaster>
 
-        <Suspense fallback={<CuteLoader text="Loading luxury portal..." />}>
+        <Suspense fallback={<div className="min-h-screen bg-[#f8fafc]" />}>
         <Routes>
           {/* Public Login & Password Recovery Routes */}
           <Route path="/login" element={<Login />} />

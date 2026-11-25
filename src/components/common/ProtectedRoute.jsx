@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { isPathAllowed, getFirstAllowedPath } from '../../utils/moduleAccess';
 
 const ProtectedRoute = ({ children, roles }) => {
-  const { isAuthenticated, user, loading, allowedModules, previewOwner, stopOwnerPreview } = useAuth();
+  const { isAuthenticated, user, loading, allowedModules, dbModules, previewOwner, stopOwnerPreview } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -27,8 +27,8 @@ const ProtectedRoute = ({ children, roles }) => {
     return <Navigate to="/dashboard" replace />;
   }
 
-  if (Array.isArray(allowedModules) && !isPathAllowed(location.pathname, allowedModules)) {
-    const fallbackPath = getFirstAllowedPath(allowedModules);
+  if (!isPathAllowed(location.pathname, allowedModules, dbModules)) {
+    const fallbackPath = getFirstAllowedPath(allowedModules, dbModules);
     if (fallbackPath && location.pathname === '/') {
       return <Navigate to={fallbackPath} replace />;
     }
