@@ -17,10 +17,12 @@ import {
   HiOutlineCheck,
   HiOutlineArrowSmUp,
   HiOutlineArrowSmDown,
+  HiOutlineCalendar,
 } from 'react-icons/hi';
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import Pagination from '../common/Pagination';
+import DatePicker, { formatDateDisplay } from '../common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { analyticsAPI } from '../../api/services';
 
@@ -52,6 +54,9 @@ export default function GoogleAnalyticsSection() {
   const [isCustomDate, setIsCustomDate] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
+  const [isCustomDrawerOpen, setIsCustomDrawerOpen] = useState(false);
+  const [draftStartDate, setDraftStartDate] = useState('');
+  const [draftEndDate, setDraftEndDate] = useState('');
 
   const [activeTab, setActiveTab] = useState('cart'); // 'cart' | 'wishlist' | 'views'
   const [loading, setLoading] = useState(false);
@@ -77,6 +82,10 @@ export default function GoogleAnalyticsSection() {
   };
 
   const fetchData = useCallback(async () => {
+    if (isCustomDate && (!customStartDate || !customEndDate)) {
+      return;
+    }
+
     setLoading(true);
     try {
       const startDate = isCustomDate && customStartDate ? customStartDate : selectedRange;
@@ -149,19 +158,51 @@ export default function GoogleAnalyticsSection() {
     fetchData();
   }, [fetchData]);
 
-  // Lock scroll and listen for Escape key when lead modal is open
+  // Lock scroll and listen for Escape key when modal or custom date sidebar is open
   useEffect(() => {
-    if (!customerModalItem) return;
+    if (!customerModalItem && !isCustomDrawerOpen) return;
     document.body.style.overflow = 'hidden';
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setCustomerModalItem(null);
+      if (e.key !== 'Escape') return;
+      if (document.querySelector('[data-datepicker-popup="true"]')) return;
+      if (customerModalItem) setCustomerModalItem(null);
+      else if (isCustomDrawerOpen) setIsCustomDrawerOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       document.body.style.overflow = '';
     };
-  }, [customerModalItem]);
+  }, [customerModalItem, isCustomDrawerOpen]);
+
+  const handleOpenCustomDrawer = () => {
+    setDraftStartDate(customStartDate);
+    setDraftEndDate(customEndDate);
+    setIsCustomDrawerOpen(true);
+  };
+
+  const handleApplyCustomRange = () => {
+    if (!draftStartDate || !draftEndDate) {
+      toast.error('Please select both start date and end date');
+      return;
+    }
+    const isSame =
+      isCustomDate &&
+      selectedRange === 'custom' &&
+      customStartDate === draftStartDate &&
+      customEndDate === draftEndDate;
+
+    setCustomStartDate(draftStartDate);
+    setCustomEndDate(draftEndDate);
+    setSelectedRange('custom');
+    setIsCustomDate(true);
+    setIsCustomDrawerOpen(false);
+    setPage(1);
+
+    if (isSame) {
+      fetchData();
+    }
+  };
 
   // Extract metrics & summaries
   const summary = data?.summary || {};
@@ -230,18 +271,28 @@ export default function GoogleAnalyticsSection() {
           {/* Date Range Selector */}
           <div className="flex flex-wrap items-center gap-1.5">
             {PRESET_DATE_RANGES.map((r) => {
-              const active = selectedRange === r.value;
+              const active =
+                r.value === 'custom'
+                  ? selectedRange === 'custom' || isCustomDrawerOpen
+                  : selectedRange === r.value && !isCustomDrawerOpen;
               return (
                 <button
                   key={r.value}
                   type="button"
                   onClick={() => {
+                    if (r.value === 'custom') {
+                      handleOpenCustomDrawer();
+                      return;
+                    }
+                    setIsCustomDrawerOpen(false);
                     setSelectedRange(r.value);
-                    setIsCustomDate(r.value === 'custom');
+                    setIsCustomDate(false);
+                    setPage(1);
                   }}
+                  style={active ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all cursor-pointer ${
                     active
-                      ? 'bg-[#8b6f4e] text-white shadow-xs'
+                      ? 'text-white shadow-xs'
                       : 'bg-stone-50 text-stone-600 hover:bg-stone-100 hover:text-stone-900 border border-stone-200'
                   }`}
                 >
@@ -249,6 +300,20 @@ export default function GoogleAnalyticsSection() {
                 </button>
               );
             })}
+
+            {isCustomDate && customStartDate && customEndDate && (
+              <button
+                type="button"
+                onClick={handleOpenCustomDrawer}
+                title="Edit custom date range"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-stone-50 hover:bg-stone-100 text-[11px] font-medium text-stone-700 cursor-pointer transition-colors"
+              >
+                <HiOutlineCalendar className="w-3.5 h-3.5 text-stone-500" />
+                <span>
+                  {formatDateDisplay(customStartDate)} – {formatDateDisplay(customEndDate)}
+                </span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -261,33 +326,6 @@ export default function GoogleAnalyticsSection() {
             </button>
           </div>
         </div>
-
-        {/* Custom Date Inputs if selected */}
-        {isCustomDate && (
-          <div className="pt-3 border-t border-stone-100 flex flex-wrap items-center gap-3">
-            <span className="text-xs font-medium text-stone-600">Select Date Range:</span>
-            <input
-              type="date"
-              value={customStartDate}
-              onChange={(e) => setCustomStartDate(e.target.value)}
-              className="px-2.5 py-1 text-xs border border-stone-300 rounded-lg focus:border-[#8b6f4e] focus:outline-hidden"
-            />
-            <span className="text-stone-400 text-xs">to</span>
-            <input
-              type="date"
-              value={customEndDate}
-              onChange={(e) => setCustomEndDate(e.target.value)}
-              className="px-2.5 py-1 text-xs border border-stone-300 rounded-lg focus:border-[#8b6f4e] focus:outline-hidden"
-            />
-            <button
-              type="button"
-              onClick={fetchData}
-              className="px-3 py-1 bg-[#8b6f4e] hover:bg-[#735a3d] text-white text-xs font-medium rounded-lg cursor-pointer"
-            >
-              Apply Filter
-            </button>
-          </div>
-        )}
       </div>
 
       {/* ─── 6 Metric KPI Cards (Top Row) ─── */}
@@ -701,6 +739,130 @@ export default function GoogleAnalyticsSection() {
                 </button>
               </div>
             </div>
+          </div>,
+          document.body
+        )}
+
+      {/* ─── Right-Side Custom Date Range Sidebar ─── */}
+      {isCustomDrawerOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9990] flex justify-end">
+            <div
+              className="fixed inset-0 bg-stone-900/35 backdrop-blur-[1px] transition-opacity"
+              onClick={() => setIsCustomDrawerOpen(false)}
+            />
+
+            <aside
+              aria-label="Custom Date Range Sidebar"
+              className="relative z-[9991] w-full max-w-[380px] h-full bg-white border-l border-stone-200 shadow-2xl flex flex-col"
+            >
+              {/* Sidebar Header */}
+              <div className="px-5 py-4 border-b border-stone-200 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span
+                    className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.12)',
+                      color: 'var(--theme-primary, #8b6f4e)',
+                    }}
+                  >
+                    <HiOutlineCalendar className="w-5 h-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <h3 className="text-sm font-bold text-stone-900 truncate">
+                      Custom Date Range
+                    </h3>
+                    <p className="text-[11px] text-stone-500 truncate">
+                      Select start & end dates for GA4 reports
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setIsCustomDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+                  aria-label="Close sidebar"
+                >
+                  <HiOutlineX className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Sidebar Body */}
+              <div className="flex-1 overflow-y-auto p-5 space-y-5">
+                <DatePicker
+                  label="Start Date"
+                  value={draftStartDate}
+                  onChange={(dateStr) => {
+                    const cleanDate =
+                      typeof dateStr === 'string' ? dateStr : dateStr?.target?.value || '';
+                    setDraftStartDate(cleanDate);
+                  }}
+                  placeholder="Select start date"
+                  maxDate={draftEndDate ? new Date(draftEndDate) : new Date()}
+                />
+
+                <DatePicker
+                  label="End Date"
+                  value={draftEndDate}
+                  onChange={(dateStr) => {
+                    const cleanDate =
+                      typeof dateStr === 'string' ? dateStr : dateStr?.target?.value || '';
+                    setDraftEndDate(cleanDate);
+                  }}
+                  placeholder="Select end date"
+                  minDate={draftStartDate ? new Date(draftStartDate) : undefined}
+                  maxDate={new Date()}
+                />
+
+                {(draftStartDate || draftEndDate) && (
+                  <div className="rounded-xl border border-stone-200 bg-stone-50 p-3.5 space-y-1.5">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                      Selected Range
+                    </p>
+                    <p className="text-xs font-semibold text-stone-800">
+                      {draftStartDate ? formatDateDisplay(draftStartDate) : '—'}
+                      <span className="mx-2 text-stone-400">to</span>
+                      {draftEndDate ? formatDateDisplay(draftEndDate) : '—'}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Sidebar Footer */}
+              <div className="px-5 py-4 border-t border-stone-200 bg-stone-50/70 flex items-center justify-between gap-2.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setDraftStartDate('');
+                    setDraftEndDate('');
+                  }}
+                  disabled={!draftStartDate && !draftEndDate}
+                  className="text-xs font-semibold text-stone-500 hover:text-stone-800 disabled:opacity-40 transition-colors cursor-pointer"
+                >
+                  Clear
+                </button>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsCustomDrawerOpen(false)}
+                    className="px-4 py-2 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-xs font-semibold text-stone-700 transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyCustomRange}
+                    disabled={!draftStartDate || !draftEndDate}
+                    style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
+                  >
+                    Apply Filter
+                  </button>
+                </div>
+              </div>
+            </aside>
           </div>,
           document.body
         )}

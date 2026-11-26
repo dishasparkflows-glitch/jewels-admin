@@ -1091,22 +1091,40 @@ export default function Step2VariantConfig() {
                       displayedPurityGroups.map((group) => {
                         return (
                           <Fragment key={group.purity}>
-                            {/* KT / Purity Group Header Break */}
-                            <tr className="bg-stone-50/60 border-y border-stone-200">
-                              <td colSpan={8} className="py-2 px-3">
-                                <span className="font-bold text-xs text-stone-700 uppercase tracking-wide">
-                                  {group.purity}
-                                </span>
-                              </td>
-                            </tr>
-
                             {group.items.map(({ v, index: variantIndex }) => {
+                              const resolveMasterName = (list, rawId) => {
+                                const targetId = rawId && typeof rawId === 'object' ? (rawId._id || rawId.id) : rawId;
+                                if (!targetId) return '';
+                                return (list || []).find((item) => String(item?._id || item?.id) === String(targetId))?.name || '';
+                              };
+
+                              const fallbackSide = sideRows?.[0] || null;
+                              const resolvedDiamondType =
+                                v.diamondType ||
+                                v.diamondDetails?.type ||
+                                resolveMasterName(diamondMasters?.types, v.diamondTypeId) ||
+                                resolveMasterName(diamondMasters?.types, fallbackSide?.diamondTypeId);
+                              const resolvedDiamondColor =
+                                v.diamondColor ||
+                                v.diamondDetails?.color ||
+                                resolveMasterName(diamondMasters?.colors, v.diamondColorId) ||
+                                resolveMasterName(diamondMasters?.colors, fallbackSide?.diamondColorId);
+                              const resolvedDiamondClarity =
+                                v.diamondClarity ||
+                                v.diamondDetails?.clarity ||
+                                resolveMasterName(diamondMasters?.clarities, v.diamondClarityId) ||
+                                resolveMasterName(diamondMasters?.clarities, fallbackSide?.diamondClarityId);
+                              const shortPurity = v.purity
+                                ? String(v.purity).replace(/\s*Gold$/i, '').trim()
+                                : '';
+                              const caratVal = v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight;
+
                               const detailsList = [
-                                v.diamondType || v.diamondDetails?.type || (diamondMasters?.types || []).find((item) => String(item?._id) === String(v.diamondTypeId?._id || v.diamondTypeId))?.name,
-                                v.diamondColor || v.diamondDetails?.color || (diamondMasters?.colors || []).find((item) => String(item?._id) === String(v.diamondColorId?._id || v.diamondColorId))?.name,
-                                v.diamondClarity || v.diamondDetails?.clarity || (diamondMasters?.clarities || []).find((item) => String(item?._id) === String(v.diamondClarityId?._id || v.diamondClarityId))?.name,
-                                v.purity,
-                                (v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight) ? `${v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight}ct` : '',
+                                resolvedDiamondType,
+                                resolvedDiamondColor,
+                                resolvedDiamondClarity,
+                                shortPurity,
+                                caratVal ? `${caratVal}ct` : '',
                               ].filter(Boolean);
 
                               const breakdownText = `Metal: ₹${(v.metalCost || 0).toLocaleString('en-IN')} (${v.weight || v.metalWeight}g @ ₹${v.metalRate || 0}/g)\nDiamonds: ₹${(v.diamondCost || 0).toLocaleString('en-IN')}\nLabour: ₹${(v.labourCharge || 0).toLocaleString('en-IN')}\nGST (${gstPercentage}%): ₹${(v.computedGst || 0).toLocaleString('en-IN')}${v.otherAmount ? `\nOther Amount: ₹${v.otherAmount}` : ''}`;
@@ -1120,13 +1138,13 @@ export default function Step2VariantConfig() {
                                       {detailsList.map((tag, idx) => (
                                         <span
                                           key={idx}
-                                          className="inline-flex px-2 py-0.5 text-[9.5px] font-medium text-stone-700 bg-stone-50 border border-stone-200 rounded-md"
+                                          className="inline-flex px-2 py-0.5 text-[10px] font-semibold text-stone-800 bg-[#faf5ee] border border-[#ecd9c2] rounded-md"
                                         >
                                           {tag}
                                         </span>
                                       ))}
                                       {v.color && (
-                                        <span className="inline-flex px-1.5 py-0.5 text-[9.5px] font-medium text-stone-500 bg-stone-50 border border-stone-200 rounded-md">
+                                        <span className="inline-flex px-1.5 py-0.5 text-[10px] font-medium text-stone-600 bg-stone-50 border border-stone-200 rounded-md">
                                           {v.color}
                                         </span>
                                       )}
@@ -1135,13 +1153,18 @@ export default function Step2VariantConfig() {
 
                                   {/* SKU */}
                                   <td className="py-2.5 px-2.5">
-                                    <input
-                                      type="text"
-                                      readOnly={automaticPricing}
-                                      value={v.sku}
-                                      onChange={(e) => handleVariantChange(v.id, 'sku', e.target.value)}
-                                      className="w-full px-2 py-1 text-[11px] font-mono text-stone-800 rounded-md border border-stone-200/90 bg-stone-50/50 focus:bg-white focus:outline-none focus:border-[#8b6f4e]"
-                                    />
+                                    {automaticPricing ? (
+                                      <span className="text-[11px] font-mono font-semibold text-stone-800 whitespace-nowrap">
+                                        {v.sku || '—'}
+                                      </span>
+                                    ) : (
+                                      <input
+                                        type="text"
+                                        value={v.sku}
+                                        onChange={(e) => handleVariantChange(v.id, 'sku', e.target.value)}
+                                        className="w-full px-2 py-1 text-[11px] font-mono text-stone-800 rounded-md border border-stone-200/90 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                                      />
+                                    )}
                                   </td>
 
                                   {/* Final Weight */}

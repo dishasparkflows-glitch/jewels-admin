@@ -31,9 +31,12 @@ export const AuthProvider = ({ children }) => {
     try {
       const modRes = await modulesAPI.getLookup({ status: 'all' });
       const rows = modRes.data?.data;
-      setDbModules(Array.isArray(rows) ? rows : []);
+      const list = Array.isArray(rows) ? rows : [];
+      setDbModules(list);
+      return list;
     } catch {
       // Keep existing state if modules endpoint fails transiently
+      return null;
     } finally {
       setModulesLoaded(true);
     }
@@ -77,9 +80,14 @@ export const AuthProvider = ({ children }) => {
     const { data } = await authAPI.login({ email, password });
     localStorage.setItem('token', data.data.token);
     localStorage.setItem('user', JSON.stringify(data.data.user));
+    setModulesLoaded(false);
     setToken(data.data.token);
     setUser(data.data.user);
-    return data.data;
+    const loadedModules = await refreshModules();
+    return {
+      ...data.data,
+      dbModules: Array.isArray(loadedModules) ? loadedModules : [],
+    };
   };
 
   const register = async (formData) => {

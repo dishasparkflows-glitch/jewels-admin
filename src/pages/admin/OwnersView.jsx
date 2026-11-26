@@ -9,11 +9,11 @@ import {
   HiOutlineDatabase,
   HiOutlineEye,
   HiOutlineEyeOff,
-  HiOutlineClipboardCopy,
   HiOutlineSearch,
   HiOutlineShieldCheck,
   HiOutlineGlobeAlt,
   HiOutlineCheck,
+  HiOutlineRefresh,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { ownersAPI } from '../../api/services';
@@ -31,10 +31,15 @@ import usePagination from '../../hooks/usePagination';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { getFirstAllowedPath } from '../../utils/moduleAccess';
 
-function maskDatabaseUrl(url = '') {
-  if (!url) return '—';
-  // Hide credentials if present (e.g. mongodb+srv://user:pass@cluster/db -> mongodb+srv://***:***@cluster/db)
-  return String(url).replace(/(mongodb(?:\+srv)?:\/\/)([^:@\s]+):([^@\s]+)@/i, '$1$2:••••••@');
+function extractDatabaseName(url = '') {
+  const raw = String(url || '').trim();
+  if (!raw) return '—';
+  const withoutQuery = raw.split('?')[0].replace(/\/+$/, '');
+  const match = withoutQuery.match(/^mongodb(?:\+srv)?:\/\/[^/]+\/([^/]+)$/i);
+  if (match?.[1]) return match[1];
+  const hostMatch = withoutQuery.match(/^mongodb(?:\+srv)?:\/\/(?:[^@]+@)?([^/]+)$/i);
+  if (hostMatch?.[1]) return hostMatch[1];
+  return '—';
 }
 
 function groupModulesList(modulesList = []) {
@@ -63,7 +68,6 @@ export default function OwnersView() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState(new Set());
-  const [revealedDbIds, setRevealedDbIds] = useState(new Set());
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
@@ -389,7 +393,60 @@ export default function OwnersView() {
     }
   };
 
-  // Preview client portal access for this owner
+  // Seed Categories & Master Data modal state
+  const [seedingOwnerId, setSeedingOwnerId] = useState(null);
+  const [seedModalOwner, setSeedModalOwner] = useState(null);
+  const [seedPreviewLoading, setSeedPreviewLoading] = useState(false);
+  const [seedPreview, setSeedPreview] = useState(null);
+  const [selectedSeedCollections, setSelectedSeedCollections] = useState(new Set());
+  const [activeSeedCollection, setActiveSeedCollection] = useState('');
+
+  const handleOpenSeedModal = async (owner) => {
+    setSeedModalOwner(owner);
+    setSeedPreview(null);
+    setSelectedSeedCollections(new Set());
+    setActiveSeedCollection('');
+    setSeedPreviewLoading(true);
+    try {
+      const res = await ownersAPI.getSeedPreview(owner._id);
+      const data = res.data?.data || res.data || {};
+      const tables = Array.isArray(data.tables) ? data.tables : [];
+      setSeedPreview(data);
+      setSelectedSeedCollections(
+        new Set(tables.filter((t) => t.centralCount > 0).map((t) => t.collection))
+      );
+      if (tables.length > 0) {
+        setActiveSeedCollection(tables[0].collection);
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to load central DB master data');
+    } finally {
+      setSeedPreviewLoading(false);
+    }
+  };
+
+  const handleConfirmSeedData = async () => {
+    if (!seedModalOwner) return;
+    const collections = Array.from(selectedSeedCollections);
+    if (collections.length === 0) {
+      toast.error('Please select at least one master table to seed');
+      return;
+    }
+
+    try {
+      setSeedingOwnerId(seedModalOwner._id);
+      const res = await ownersAPI.seedData(seedModalOwner._id, collections);
+      const data = res.data?.data || {};
+      const countMsg = data.totalDocuments ? ` (${data.totalDocuments} records synced)` : '';
+      toast.success(`Categories & master data seeded for "${seedModalOwner.name}"${countMsg}`);
+      setSeedModalOwner(null);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to seed categories & master data');
+    } finally {
+      setSeedingOwnerId(null);
+    }
+  };
+
   const handlePreviewAccess = (owner) => {
     if (owner.status !== 'active') {
       toast.error('Activate this owner before previewing client access');
@@ -404,24 +461,6 @@ export default function OwnersView() {
     startOwnerPreview(owner);
     toast.success(`Previewing "${owner.name}" (${allowed.length} modules)`);
     navigate(targetPath);
-  };
-
-  const handleCopyDbUrl = async (url) => {
-    try {
-      await navigator.clipboard.writeText(url || '');
-      toast.success('Database URL copied');
-    } catch {
-      toast.error('Could not copy URL');
-    }
-  };
-
-  const toggleRevealDb = (id) => {
-    setRevealedDbIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   const allSelected =
@@ -482,7 +521,7 @@ export default function OwnersView() {
           setSearch(val);
           setCurrentPage(1);
         }}
-        placeholder="Search by client name, website URL, or database URL..."
+        placeholder="Search by client name, website URL, or database name..."
         extraActions={
           <button
             type="button"
@@ -581,7 +620,7 @@ export default function OwnersView() {
                 </th>
                 <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
                 <th className="py-3 px-3 whitespace-nowrap">CLIENT / OWNER</th>
-                <th className="py-3 px-3 whitespace-nowrap">DATABASE URL</th>
+                <th className="py-3 px-3 whitespace-nowrap">DATABASE</th>
                 <th className="py-3 px-3 whitespace-nowrap">ALLOWED MODULES</th>
                 <th className="py-3 px-3 whitespace-nowrap text-center">STATUS</th>
                 <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
@@ -607,10 +646,8 @@ export default function OwnersView() {
                 paginatedItems.map((owner, idx) => {
                   const id = owner._id;
                   const isSelected = selectedIds.has(id);
-                  const isDbRevealed = revealedDbIds.has(id);
+                  const dbName = extractDatabaseName(owner.databaseUrl);
                   const allowed = Array.isArray(owner.allowedModules) ? owner.allowedModules : [];
-                  const previewMods = allowed.slice(0, 3);
-                  const remainingCount = Math.max(0, allowed.length - 3);
 
                   return (
                     <tr
@@ -653,56 +690,31 @@ export default function OwnersView() {
                         </div>
                       </td>
 
-                      {/* Database URL */}
+                      {/* Database Name */}
                       <td className="py-3 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200/80 rounded-lg px-2.5 py-1 max-w-[280px]">
+                        <div className="inline-flex items-center gap-1.5 bg-stone-50 border border-stone-200/80 rounded-lg px-2.5 py-1 max-w-[220px]">
                           <HiOutlineDatabase className="w-3.5 h-3.5 text-[#8b6f4e] shrink-0" />
-                          <span className="font-mono text-[11px] text-stone-700 truncate">
-                            {isDbRevealed ? owner.databaseUrl : maskDatabaseUrl(owner.databaseUrl)}
+                          <span className="font-mono text-[11px] font-semibold text-stone-700 truncate">
+                            {dbName}
                           </span>
                           <button
                             type="button"
-                            onClick={() => toggleRevealDb(id)}
-                            title={isDbRevealed ? 'Hide credentials' : 'Show full URL'}
-                            className="p-0.5 text-stone-400 hover:text-stone-700 cursor-pointer shrink-0"
+                            onClick={() => handleOpenSeedModal(owner)}
+                            disabled={seedingOwnerId === id}
+                            title="Seed Categories & Master Data"
+                            aria-label="Seed Categories & Master Data"
+                            className="p-0.5 text-stone-400 hover:text-[#8b6f4e] disabled:opacity-50 cursor-pointer shrink-0"
                           >
-                            {isDbRevealed ? (
-                              <HiOutlineEyeOff className="w-3.5 h-3.5" />
-                            ) : (
-                              <HiOutlineEye className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyDbUrl(owner.databaseUrl)}
-                            title="Copy Database URL"
-                            className="p-0.5 text-stone-400 hover:text-[#8b6f4e] cursor-pointer shrink-0"
-                          >
-                            <HiOutlineClipboardCopy className="w-3.5 h-3.5" />
+                            <HiOutlineRefresh className={`w-3.5 h-3.5 ${seedingOwnerId === id ? 'animate-spin text-[#8b6f4e]' : ''}`} />
                           </button>
                         </div>
                       </td>
 
                       {/* Allowed Modules */}
-                      <td className="py-3 px-3">
-                        <div className="flex flex-wrap items-center gap-1 max-w-[320px]">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf3e8] text-[#8b6f4e] border border-[#8b6f4e]/20 whitespace-nowrap">
-                            {allowed.length} / {systemModules.length || allowed.length} Modules
-                          </span>
-                          {previewMods.map((modId) => (
-                            <span
-                              key={modId}
-                              className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium bg-stone-100 text-stone-700 whitespace-nowrap"
-                            >
-                              {moduleTitleMap[modId] || modId}
-                            </span>
-                          ))}
-                          {remainingCount > 0 && (
-                            <span className="text-[10px] font-semibold text-stone-400 whitespace-nowrap">
-                              +{remainingCount} more
-                            </span>
-                          )}
-                        </div>
+                      <td className="py-3 px-3 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#faf3e8] text-[#8b6f4e] border border-[#8b6f4e]/20 whitespace-nowrap">
+                          {allowed.length} / {systemModules.length || allowed.length} Modules
+                        </span>
                       </td>
 
                       {/* Status */}
@@ -1173,19 +1185,12 @@ export default function OwnersView() {
                 </div>
               )}
               <div className="sm:col-span-2">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Database URL</p>
-                <div className="mt-1 flex items-center justify-between gap-2 bg-white border border-stone-200 rounded-lg px-3 py-2">
-                  <code className="font-mono text-[11px] text-stone-800 break-all">
-                    {viewingOwner.databaseUrl}
+                <p className="text-[10px] font-bold uppercase tracking-wider text-stone-400">Database</p>
+                <div className="mt-1 inline-flex items-center gap-2 bg-white border border-stone-200 rounded-lg px-3 py-1.5">
+                  <HiOutlineDatabase className="w-3.5 h-3.5 text-[#8b6f4e] shrink-0" />
+                  <code className="font-mono text-xs font-semibold text-stone-800">
+                    {extractDatabaseName(viewingOwner.databaseUrl)}
                   </code>
-                  <button
-                    type="button"
-                    onClick={() => handleCopyDbUrl(viewingOwner.databaseUrl)}
-                    className="p-1 text-stone-400 hover:text-[#8b6f4e] cursor-pointer shrink-0"
-                    title="Copy Database URL"
-                  >
-                    <HiOutlineClipboardCopy className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             </div>
@@ -1209,6 +1214,199 @@ export default function OwnersView() {
                 <p className="text-stone-400 italic">No modules selected for this owner.</p>
               )}
             </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* ─── Seed Categories & Master Data Modal ─── */}
+      <Modal
+        isOpen={Boolean(seedModalOwner)}
+        onClose={() => !seedingOwnerId && setSeedModalOwner(null)}
+        title={`Seed Categories & Master Data${seedModalOwner ? ` — ${seedModalOwner.name}` : ''}`}
+        subtitle="Preview records from our central database and select master tables to seed into this owner's database."
+        maxWidth="max-w-5xl"
+        footer={
+          <div className="flex flex-wrap items-center justify-between w-full gap-3">
+            <span className="text-xs text-stone-500 whitespace-nowrap">
+              <strong className="text-stone-800">{selectedSeedCollections.size}</strong> of{' '}
+              {seedPreview?.tables?.length || 0} tables selected
+              {seedPreview ? (
+                <>
+                  {' · '}Central Total:{' '}
+                  <strong className="text-stone-800">{seedPreview.totalCentralRecords}</strong> records
+                </>
+              ) : null}
+            </span>
+            <div className="flex items-center gap-2.5 ml-auto">
+              <button
+                type="button"
+                onClick={() => setSeedModalOwner(null)}
+                disabled={Boolean(seedingOwnerId)}
+                className="px-4 py-2 rounded-lg border border-stone-200 text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer disabled:opacity-50 whitespace-nowrap"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmSeedData}
+                disabled={seedPreviewLoading || Boolean(seedingOwnerId) || selectedSeedCollections.size === 0}
+                className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-[var(--theme-primary,#8b6f4e)] hover:opacity-90 text-white text-xs font-semibold cursor-pointer disabled:opacity-50 whitespace-nowrap shadow-xs transition-opacity"
+              >
+                <HiOutlineRefresh className={`w-3.5 h-3.5 shrink-0 ${seedingOwnerId ? 'animate-spin' : ''}`} />
+                <span>{seedingOwnerId ? 'Seeding...' : 'Seed Selected Data'}</span>
+              </button>
+            </div>
+          </div>
+        }
+      >
+        {seedPreviewLoading ? (
+          <div className="py-16 text-center text-xs text-stone-500">
+            Loading central database master tables...
+          </div>
+        ) : !seedPreview?.tables?.length ? (
+          <div className="py-16 text-center text-xs text-stone-400">
+            No master table data available to preview.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-[290px_1fr] gap-4 min-h-[400px]">
+            {/* Left Sidebar: Master Tables & Total Counts */}
+            <div className="border border-stone-200 rounded-xl bg-stone-50/70 flex flex-col overflow-hidden">
+              <div className="px-3.5 py-2.5 border-b border-stone-200 bg-white flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-stone-600">
+                  Master Tables ({seedPreview.tables.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const all = seedPreview.tables.filter((t) => t.centralCount > 0).map((t) => t.collection);
+                    setSelectedSeedCollections((prev) =>
+                      prev.size === all.length ? new Set() : new Set(all)
+                    );
+                  }}
+                  className="text-[11px] font-semibold text-[var(--theme-primary,#8b6f4e)] hover:underline cursor-pointer"
+                >
+                  {selectedSeedCollections.size ===
+                  seedPreview.tables.filter((t) => t.centralCount > 0).length
+                    ? 'Deselect All'
+                    : 'Select All'}
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto max-h-[380px] divide-y divide-stone-100">
+                {seedPreview.tables.map((tbl) => {
+                  const isActive = activeSeedCollection === tbl.collection;
+                  const isChecked = selectedSeedCollections.has(tbl.collection);
+                  return (
+                    <div
+                      key={tbl.collection}
+                      onClick={() => setActiveSeedCollection(tbl.collection)}
+                      className={`flex items-center justify-between gap-2 px-3.5 py-2.5 cursor-pointer transition-colors border-l-2 ${
+                        isActive
+                          ? 'bg-[#faf3e8]/80 border-[var(--theme-primary,#8b6f4e)]'
+                          : 'border-transparent hover:bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          disabled={tbl.centralCount === 0}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={() =>
+                            setSelectedSeedCollections((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(tbl.collection)) next.delete(tbl.collection);
+                              else next.add(tbl.collection);
+                              return next;
+                            })
+                          }
+                          className="h-3.5 w-3.5 rounded border-stone-300 accent-[var(--theme-primary,#8b6f4e)] cursor-pointer shrink-0"
+                        />
+                        <span
+                          className={`text-xs truncate ${
+                            isActive
+                              ? 'font-bold text-[var(--theme-primary,#8b6f4e)]'
+                              : 'font-medium text-stone-700'
+                          }`}
+                        >
+                          {tbl.label}
+                        </span>
+                      </div>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-white border border-stone-200 text-stone-600 shrink-0">
+                        {tbl.centralCount}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Pane: Selected Master Table Records */}
+            {(() => {
+              const activeTbl =
+                seedPreview.tables.find((t) => t.collection === activeSeedCollection) ||
+                seedPreview.tables[0];
+              if (!activeTbl) return null;
+              return (
+                <div className="border border-stone-200 rounded-xl bg-white flex flex-col overflow-hidden min-w-0">
+                  <div className="px-4 py-3 border-b border-stone-200 bg-stone-50/70 flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <h4 className="text-sm font-bold text-stone-900">{activeTbl.label}</h4>
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-[#faf3e8] text-[#8b6f4e] border border-[#8b6f4e]/20">
+                        Central DB: {activeTbl.centralCount}
+                      </span>
+                      {activeTbl.targetCount !== null && (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-stone-100 text-stone-700 border border-stone-200">
+                          Owner DB: {activeTbl.targetCount}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-stone-400">
+                      Image fields excluded automatically
+                    </span>
+                  </div>
+                  <div className="flex-1 overflow-y-auto max-h-[380px]">
+                    {activeTbl.items.length === 0 ? (
+                      <div className="py-16 text-center text-xs text-stone-400">
+                        No records in central database for {activeTbl.label}.
+                      </div>
+                    ) : (
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead className="bg-stone-50 border-b border-stone-200 text-[10px] font-bold uppercase text-stone-500 sticky top-0">
+                          <tr>
+                            <th className="py-2.5 px-3 w-12 text-center">#</th>
+                            <th className="py-2.5 px-3">Name / Value</th>
+                            <th className="py-2.5 px-3">Code / Slug</th>
+                            <th className="py-2.5 px-3 text-right w-24">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100">
+                          {activeTbl.items.map((row, idx) => (
+                            <tr key={row._id || idx} className="hover:bg-stone-50/70">
+                              <td className="py-2 px-3 text-center text-stone-400">{idx + 1}</td>
+                              <td className="py-2 px-3 font-medium text-stone-800">{row.primary}</td>
+                              <td className="py-2 px-3 font-mono text-[11px] text-stone-500">
+                                {row.secondary || '—'}
+                              </td>
+                              <td className="py-2 px-3 text-right">
+                                <span
+                                  className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                    row.status === 'active'
+                                      ? 'bg-emerald-50 text-emerald-700'
+                                      : 'bg-stone-100 text-stone-600'
+                                  }`}
+                                >
+                                  {row.status}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         )}
       </Modal>

@@ -191,10 +191,18 @@ export default function StepperNav() {
                 <button
                   type="button"
                   onClick={() => setActiveStep(s.num)}
-                  className={`flex items-center gap-2.5 text-left w-full p-2 rounded-xl transition-all cursor-pointer group ${
+                  style={
                     isActive
-                      ? 'bg-[#f8ede2] border border-[#ebdcc9]'
-                      : 'hover:bg-stone-50 border border-transparent'
+                      ? {
+                          backgroundColor: 'var(--theme-primary-light, #faf6f0)',
+                          borderColor: 'var(--theme-primary-border, #ede2d2)',
+                        }
+                      : undefined
+                  }
+                  className={`flex items-center gap-2.5 text-left w-full p-2 rounded-xl transition-all cursor-pointer group border ${
+                    isActive
+                      ? ''
+                      : 'hover:bg-stone-50 border-transparent'
                   }`}
                 >
                   {/* Step Indicator Circle with exact number */}

@@ -628,17 +628,19 @@ export default function BannersView() {
         themeId: themeId || undefined,
       };
 
-      if (imageUrl) {
-        payload.image = { url: imageUrl, key: imageKey || undefined };
-      } else if (editingBanner?.image?.url) {
-        payload.image = null;
-      }
+      if (effectiveType !== 'collectionbanner') {
+        if (imageUrl) {
+          payload.image = { url: imageUrl, key: imageKey || undefined };
+        } else if (editingBanner?.image?.url) {
+          payload.image = null;
+        }
 
-      if (!isCategoryBanner) {
-        if (mobileImageUrl) {
-          payload.mobileImage = { url: mobileImageUrl, key: mobileImageKey || undefined };
-        } else if (editingBanner?.mobileImage?.url) {
-          payload.mobileImage = null;
+        if (!isCategoryBanner) {
+          if (mobileImageUrl) {
+            payload.mobileImage = { url: mobileImageUrl, key: mobileImageKey || undefined };
+          } else if (editingBanner?.mobileImage?.url) {
+            payload.mobileImage = null;
+          }
         }
       }
 
@@ -1030,7 +1032,10 @@ export default function BannersView() {
                 ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || 'Category Banner')
                 : (banner.content?.title || 'Untitled Banner');
               const bDesc = banner.content?.description || '';
-              const assetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url);
+              const assetUrl =
+                currentBannerType.key === 'collectionbanner'
+                  ? (banner.collectionImages?.[0]?.url || banner.image?.url || banner.media?.url)
+                  : (banner.media?.url || banner.image?.url || banner.collectionImages?.[0]?.url);
               const isPublished = banner.status === 'active';
               const isSelected = selectedIds.includes(banner._id);
 
@@ -1149,7 +1154,10 @@ export default function BannersView() {
                       ? (banner.display?.categoryId?.name || categories.find((c) => String(c._id) === String(banner.display?.categoryId?._id || banner.display?.categoryId))?.name || banner.content?.title || 'Category Banner')
                       : (banner.content?.title || 'Untitled Banner');
                     const bDesc = banner.content?.description || '';
-                    const assetUrl = banner.media?.url || banner.image?.url || (banner.collectionImages?.[0]?.url);
+                    const assetUrl =
+                currentBannerType.key === 'collectionbanner'
+                  ? (banner.collectionImages?.[0]?.url || banner.image?.url || banner.media?.url)
+                  : (banner.media?.url || banner.image?.url || banner.collectionImages?.[0]?.url);
                     const isPublished = banner.status === 'active';
                     const isSelected = selectedIds.includes(banner._id);
 
@@ -1629,32 +1637,34 @@ export default function BannersView() {
                     </p>
                   </div>
 
-                  {/* Desktop and Mobile Banner Upload Boxes matching screenshot */}
-                  <div className={`grid gap-4 ${currentBannerType.key === 'categorybanner' ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
-                    <div>
-                      <ImageUploadDropzone
-                        label="Desktop Banner"
-                        required
-                        value={imageUrl}
-                        alt="Desktop Banner"
-                        onChooseGallery={() => openMediaPicker('desktop')}
-                      />
-                    </div>
+                  {/* Desktop and Mobile Banner Upload Boxes (not used for collectionbanner, which uses the 4 grid tiles below) */}
+                  {currentBannerType.key !== 'collectionbanner' && (
+                    <div className={`grid gap-4 ${currentBannerType.key === 'categorybanner' ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+                      <div>
+                        <ImageUploadDropzone
+                          label="Desktop Banner"
+                          required
+                          value={imageUrl}
+                          alt="Desktop Banner"
+                          onChooseGallery={() => openMediaPicker('desktop')}
+                        />
+                      </div>
 
-                    {currentBannerType.key !== 'categorybanner' && (
-                      <ImageUploadDropzone
-                        label="Mobile Banner"
-                        required
-                        value={mobileImageUrl}
-                        alt="Mobile Banner"
-                        onChooseGallery={() => openMediaPicker('mobile')}
-                      />
-                    )}
-                  </div>
+                      {currentBannerType.key !== 'categorybanner' && (
+                        <ImageUploadDropzone
+                          label="Mobile Banner"
+                          required
+                          value={mobileImageUrl}
+                          alt="Mobile Banner"
+                          onChooseGallery={() => openMediaPicker('mobile')}
+                        />
+                      )}
+                    </div>
+                  )}
 
                   {/* Collection Banners Grid Slots (4 items) */}
                   {currentBannerType.key === 'collectionbanner' && (
-                    <div className="pt-3 border-t border-stone-200/60 space-y-3">
+                    <div className="space-y-3">
                       <div className="flex items-center justify-between">
                         <label className="block text-xs font-semibold text-stone-700">
                           Collection Grid Tiles (4 Slots)

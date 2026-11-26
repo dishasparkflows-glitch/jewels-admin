@@ -37,6 +37,7 @@ export const notificationsAPI = {
   markAsRead: (id) => api.patch(`/notifications/${id}/read`),
   markAllAsRead: () => api.patch('/notifications/read-all'),
   delete: (id) => api.delete(`/notifications/${id}`),
+  bulkDelete: (ids) => api.post('/notifications/bulk-delete', { ids }),
 };
 
 // ─── Upload ───────────────────────────────────────
@@ -273,6 +274,8 @@ export const ownersAPI = {
   getAccess: (params) => api.get('/owners/access', { params }),
   create: (data) => api.post('/owners', data),
   update: (id, data) => api.put(`/owners/${id}`, data),
+  getSeedPreview: (id) => api.get(`/owners/${id}/seed-preview`),
+  seedData: (id, collections) => api.post(`/owners/${id}/seed-data`, { collections }),
   delete: (id) => api.delete(`/owners/${id}`),
   bulkDelete: (ids) => api.post('/owners/bulk-delete', { ids }),
 };

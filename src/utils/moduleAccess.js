@@ -221,6 +221,7 @@ const ROUTE_MODULE_RULES = [
   { prefix: '/analytics', slug: 'reports' },
   { prefix: '/system/whatsapp', slug: 'whatsapp' },
   { prefix: '/whatsapp', slug: 'whatsapp' },
+  { prefix: '/notifications', slug: 'notifications' },
   { prefix: '/profile', slug: 'profile' },
   { prefix: '/theme', slug: 'profile' },
   { prefix: '/user-profile', slug: 'profile' },

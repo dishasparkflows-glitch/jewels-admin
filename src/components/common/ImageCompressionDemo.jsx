@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   HiOutlineRefresh,
   HiOutlineEye,
@@ -9,7 +9,6 @@ import { compressImage, formatFileSize } from '../../utils/imageCompression';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
 
 const STORAGE_KEY = 'neirah_compression_test_image';
-const DEFAULT_DEMO_PATH = '/demo-jewelry/diamond-ring.jpg';
 
 // Helper to convert base64 dataUrl back to a File
 function dataUrlToFile(dataUrl, filename, mimeType) {
@@ -29,33 +28,11 @@ function dataUrlToFile(dataUrl, filename, mimeType) {
   }
 }
 
-// Fallback generator in case network/file fetch fails
-function createFallbackCanvasFile() {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1200;
-  canvas.height = 800;
-  const ctx = canvas.getContext('2d');
-  if (ctx) {
-    ctx.fillStyle = '#1c1917';
-    ctx.fillRect(0, 0, 1200, 800);
-    ctx.fillStyle = '#8f6d43';
-    ctx.font = 'bold 36px serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('Neirah Luxury Jewelry Sample', 600, 400);
-  }
-  return new Promise((resolve) => {
-    canvas.toBlob((blob) => {
-      resolve(new File([blob], 'demo_fallback.jpg', { type: 'image/jpeg' }));
-    }, 'image/jpeg', 0.9);
-  });
-}
-
 export default function ImageCompressionDemo({
   quality = 82,
   format = 'image/webp',
   enabled = true,
 }) {
-  const [activePreset, setActivePreset] = useState('ring');
   const [customFileMeta, setCustomFileMeta] = useState(null);
   const [sourceFile, setSourceFile] = useState(null);
   const [originalStats, setOriginalStats] = useState(null);
@@ -89,79 +66,45 @@ export default function ImageCompressionDemo({
     };
   }, []);
 
-  // Fetch local preset file and convert to File
-  const loadPresetFile = useCallback(async () => {
-    try {
-      const res = await fetch(DEFAULT_DEMO_PATH);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const filename = DEFAULT_DEMO_PATH.split('/').pop() || 'diamond-ring.jpg';
-      return new File([blob], filename, { type: blob.type || 'image/jpeg' });
-    } catch (err) {
-      console.warn('Failed to load demo image from public path, generating fallback:', err);
-      return await createFallbackCanvasFile();
-    }
-  }, []);
-
-  // Load image on mount: check localStorage first, else load default preset
+  // Restore user-uploaded test image from localStorage if present
   useEffect(() => {
-    let isCancelled = false;
-    setIsProcessing(true);
-
     try {
       const cached = localStorage.getItem(STORAGE_KEY);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed?.dataUrl) {
           const restoredFile = dataUrlToFile(parsed.dataUrl, parsed.name, parsed.type);
-          if (restoredFile && !isCancelled) {
+          if (restoredFile) {
             setSourceFile(restoredFile);
-            setActivePreset('custom');
             setCustomFileMeta({ name: parsed.name, size: parsed.size });
-            setIsProcessing(false);
-            return;
           }
         }
       }
     } catch (err) {
       console.warn('Error reading test image from localStorage:', err);
     }
+  }, []);
 
-    // Default to diamond ring
-    loadPresetFile()
-      .then((file) => {
-        if (!isCancelled) {
-          setSourceFile(file);
-          setActivePreset('ring');
-          setCustomFileMeta(null);
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to load preset:', err);
-      })
-      .finally(() => {
-        if (!isCancelled) setIsProcessing(false);
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [loadPresetFile]);
-
-  // Switch demo preset
-  const handleResetToDefault = async () => {
-    setIsProcessing(true);
+  // Clear uploaded test photo
+  const handleClearTestPhoto = () => {
     try {
       localStorage.removeItem(STORAGE_KEY);
-      setCustomFileMeta(null);
-      setActivePreset('ring');
-      const file = await loadPresetFile();
-      setSourceFile(file);
-    } catch (err) {
-      console.error('Failed to reset to demo image:', err);
-    } finally {
-      setIsProcessing(false);
+    } catch {
+      /* ignore */
     }
+    if (originalUrlRef.current) {
+      URL.revokeObjectURL(originalUrlRef.current);
+      originalUrlRef.current = null;
+    }
+    if (compressedUrlRef.current) {
+      URL.revokeObjectURL(compressedUrlRef.current);
+      compressedUrlRef.current = null;
+    }
+    setSourceFile(null);
+    setCustomFileMeta(null);
+    setOriginalStats(null);
+    setCompressedStats(null);
+    setIsProcessing(false);
   };
 
   // Handle custom file selection / upload
@@ -203,7 +146,6 @@ export default function ImageCompressionDemo({
     };
     reader.readAsDataURL(file);
 
-    setActivePreset('custom');
     setCustomFileMeta({ name: file.name, size: file.size });
     setSourceFile(file);
   };
@@ -375,29 +317,20 @@ export default function ImageCompressionDemo({
               </span>
             )}
           </div>
-          <p className="mt-0.5 text-[11px] text-stone-500">
-            Compare clarity, sparkle, and facets between original and compressed output at{' '}
-            <span className="font-semibold text-[#8f6d43]">{quality}%</span> quality.
-          </p>
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          {activePreset === 'custom' ? (
+          {sourceFile && (
             <button
               type="button"
-              onClick={handleResetToDefault}
+              onClick={handleClearTestPhoto}
               className="flex items-center gap-1 rounded-lg border border-stone-200 bg-white px-2.5 py-1 text-xs font-medium text-stone-600 hover:text-stone-900 hover:bg-stone-50 transition-colors"
-              title="Reset to Diamond Ring sample"
+              title="Clear test photo"
             >
               <HiOutlineX className="h-3.5 w-3.5" />
-              <span>Reset to Sample</span>
+              <span>Clear</span>
             </button>
-          ) : (
-            <div className="flex items-center gap-1.5 rounded-lg border border-[#8f6d43]/30 bg-[#faf6f0] px-2.5 py-1 text-xs font-semibold text-[#8f6d43]">
-              <span>💍</span>
-              <span>Diamond Ring</span>
-            </div>
           )}
 
           {/* Upload Custom Image Button */}
@@ -417,8 +350,8 @@ export default function ImageCompressionDemo({
             type="button"
             data-upload-trigger="true"
             onClick={() => fileInputRef.current?.click()}
-            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all ${
-              activePreset === 'custom'
+            className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all cursor-pointer ${
+              sourceFile
                 ? 'border-[#8f6d43] bg-[#8f6d43] text-white shadow-xs'
                 : 'border-stone-200 bg-white text-stone-700 hover:bg-stone-50'
             }`}
@@ -430,31 +363,34 @@ export default function ImageCompressionDemo({
         </div>
       </div>
 
-      {/* Custom Uploaded Active Indicator */}
-      {activePreset === 'custom' && customFileMeta && (
-        <div className="mt-2 flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50/70 px-3 py-1.5 text-xs text-amber-900">
-          <div className="flex items-center gap-1.5 truncate">
-            <span className="text-amber-700 font-bold">📸 Custom Test Photo:</span>
-            <span className="font-medium truncate max-w-[240px] sm:max-w-md">{customFileMeta.name}</span>
-            <span className="text-amber-700 text-[11px]">({formatFileSize(customFileMeta.size)})</span>
-            <span className="text-[10px] text-amber-600 italic hidden sm:inline">
-              • Cleaned automatically when leaving page
-            </span>
-          </div>
-          <button
-            type="button"
-            onClick={handleResetToDefault}
-            className="flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 transition-colors ml-2 shrink-0"
-            title="Reset to sample jewelry photos"
-          >
-            <HiOutlineX className="h-3.5 w-3.5" />
-            <span>Reset</span>
-          </button>
+      {!sourceFile ? (
+        <div
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setIsDragging(false);
+            const file = e.dataTransfer.files?.[0];
+            if (file) handleCustomFileUpload(file);
+          }}
+          onClick={() => fileInputRef.current?.click()}
+          className={`mt-3 flex flex-col items-center justify-center rounded-xl border border-dashed bg-white px-4 py-8 text-center transition-colors cursor-pointer ${
+            isDragging ? 'border-[#8f6d43] bg-[#faf6f0]' : 'border-stone-300 hover:border-[#8f6d43]/70'
+          }`}
+        >
+          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#8f6d43]/10 text-[#8f6d43] mb-2">
+            <HiOutlineUpload className="h-5 w-5" />
+          </span>
+          <p className="text-xs font-semibold text-stone-800">Upload a test photo to preview compression</p>
+          <p className="mt-0.5 text-[11px] text-stone-400">Drag &amp; drop or click to choose JPG, PNG, or WebP (max 12MB)</p>
         </div>
-      )}
-
+      ) : (
+        <>
       {/* Metrics & Savings Strip */}
-      <div className="my-2.5 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5">
+      <div className="my-2.5 grid grid-cols-2 gap-2 sm:gap-2.5">
         <div className="rounded-lg border border-stone-200/90 bg-white p-2">
           <span className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400">
             Original Size
@@ -476,33 +412,6 @@ export default function ImageCompressionDemo({
               {compressedStats ? formatFileSize(compressedStats.size) : '…'}
             </span>
             <span className="text-[10px] text-stone-400">compressed</span>
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-emerald-200/80 bg-emerald-50/70 p-2">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-emerald-700">
-            Storage & Bandwidth Saved
-          </span>
-          <div className="mt-0.5 flex items-baseline gap-1">
-            <span className="text-sm font-extrabold text-emerald-700">
-              {compressedStats?.savingsPercent ? `-${compressedStats.savingsPercent}%` : '0%'}
-            </span>
-            {compressedStats?.savingsBytes > 0 && (
-              <span className="text-[10px] text-emerald-600 font-medium">
-                ({formatFileSize(compressedStats.savingsBytes)})
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-stone-200/90 bg-white p-2">
-          <span className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400">
-            Resolution
-          </span>
-          <div className="mt-0.5 flex items-baseline gap-1">
-            <span className="text-sm font-bold text-stone-800">
-              {originalStats?.width ? `${originalStats.width} × ${originalStats.height}px` : '…'}
-            </span>
           </div>
         </div>
       </div>
@@ -538,7 +447,7 @@ export default function ImageCompressionDemo({
               <div className="flex items-center gap-1.5 truncate">
                 <span className="font-bold text-stone-800">Original Photo</span>
                 <span className="rounded-md bg-stone-100 px-1.5 py-0.5 text-[10px] font-semibold text-stone-600 truncate max-w-[140px]">
-                  {activePreset === 'custom' ? 'Custom Upload' : 'Raw Jewelry'}
+                  Uploaded Photo
                 </span>
               </div>
               <div className="flex items-center gap-2 shrink-0">
@@ -649,6 +558,8 @@ export default function ImageCompressionDemo({
           </div>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }

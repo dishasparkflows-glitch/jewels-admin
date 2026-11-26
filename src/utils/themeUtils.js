@@ -12,9 +12,9 @@ export const DEFAULT_THEME = {
   primary: '#8b6f4e',
   hover: '#755c3e',
   dark: '#644d32',
-  light: '#f4ece0',
-  soft: '#faf5ee',
-  border: '#e8d9c2',
+  light: '#faf6f0',
+  soft: '#fcfaf7',
+  border: '#ede2d2',
   accent: '#9c7849',
 };
 
@@ -29,9 +29,9 @@ export const THEME_PRESETS = [
     primary: '#0f766e',
     hover: '#0d655f',
     dark: '#042f2e',
-    light: '#ccfbf1',
-    soft: '#f0fdfa',
-    border: '#99f6e4',
+    light: '#f1fbf9',
+    soft: '#f6fcfb',
+    border: '#cceee7',
     accent: '#14b8a6',
   },
   {
@@ -43,9 +43,9 @@ export const THEME_PRESETS = [
     primary: '#a16207',
     hover: '#854d0e',
     dark: '#422006',
-    light: '#fef9c3',
-    soft: '#fefce8',
-    border: '#fef08a',
+    light: '#fefcf0',
+    soft: '#fffef7',
+    border: '#f6eab8',
     accent: '#ca8a04',
   },
   {
@@ -57,9 +57,9 @@ export const THEME_PRESETS = [
     primary: '#475569',
     hover: '#334155',
     dark: '#0f172a',
-    light: '#e2e8f0',
-    soft: '#f1f5f9',
-    border: '#cbd5e1',
+    light: '#f4f6f9',
+    soft: '#f8fafc',
+    border: '#dce2ea',
     accent: '#64748b',
   },
   {
@@ -71,9 +71,9 @@ export const THEME_PRESETS = [
     primary: '#7f1d3a',
     hover: '#64162d',
     dark: '#3f0d1f',
-    light: '#f2dde4',
-    soft: '#faf2f5',
-    border: '#d7a8b7',
+    light: '#faf3f5',
+    soft: '#fcf8f9',
+    border: '#ebd2da',
     accent: '#a13a59',
   },
   {
@@ -85,9 +85,9 @@ export const THEME_PRESETS = [
     primary: '#145a43',
     hover: '#104a37',
     dark: '#082f25',
-    light: '#dcebe4',
-    soft: '#f2f7f3',
-    border: '#a8c9b6',
+    light: '#f2f8f5',
+    soft: '#f7fbf9',
+    border: '#d1e3da',
     accent: '#39775f',
   },
   {
@@ -99,9 +99,9 @@ export const THEME_PRESETS = [
     primary: '#1e3a5f',
     hover: '#172f4d',
     dark: '#0b1b31',
-    light: '#dfe7f1',
-    soft: '#f4f6f9',
-    border: '#a8b8ce',
+    light: '#f3f6fa',
+    soft: '#f8fafc',
+    border: '#d3dde9',
     accent: '#3a5b84',
   },
   {
@@ -113,9 +113,9 @@ export const THEME_PRESETS = [
     primary: '#56306d',
     hover: '#452558',
     dark: '#2b173b',
-    light: '#e9dff0',
-    soft: '#f7f3f9',
-    border: '#c6aed5',
+    light: '#f7f3fa',
+    soft: '#faf8fc',
+    border: '#e2d5ea',
     accent: '#785095',
   },
 ];
@@ -183,9 +183,9 @@ export function generateThemeFromHex(customHex, name = 'Custom Tone') {
   const rgb = hexToRgb(customHex);
   const hoverRgb = blendWithBlack(rgb, 0.14);
   const darkRgb = blendWithBlack(rgb, 0.35);
-  const lightRgb = blendWithWhite(rgb, 0.86);
-  const softRgb = blendWithWhite(rgb, 0.94);
-  const borderRgb = blendWithWhite(rgb, 0.68);
+  const lightRgb = blendWithWhite(rgb, 0.94);
+  const softRgb = blendWithWhite(rgb, 0.96);
+  const borderRgb = blendWithWhite(rgb, 0.82);
   const accentRgb = blendWithWhite(rgb, 0.15);
 
   return {

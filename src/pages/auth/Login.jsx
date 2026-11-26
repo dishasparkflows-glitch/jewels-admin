@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { getMediaUrl } from '../../utils/imageUrl';
-import { getFirstAllowedPath } from '../../utils/moduleAccess';
+import { getFirstAllowedPath, isPathAllowed } from '../../utils/moduleAccess';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineSparkles } from 'react-icons/hi';
 
 const Login = () => {
@@ -26,9 +26,11 @@ const Login = () => {
       const data = await login(form.email.trim(), form.password);
       toast.success(`Welcome back, ${data.user?.profile?.firstName || 'Admin'}!`, { icon: '✨' });
       const userModules = data.user?.ownerAccess?.restricted ? data.user.ownerAccess.allowedModules : data.user?.allowedModules;
-      const landingPath = Array.isArray(userModules) && !userModules.includes('dashboard')
-        ? (getFirstAllowedPath(userModules) || '/dashboard')
-        : '/dashboard';
+      const loadedDbModules = Array.isArray(data.dbModules) ? data.dbModules : null;
+      const canAccessDashboard = isPathAllowed('/dashboard', userModules, loadedDbModules);
+      const landingPath = canAccessDashboard
+        ? '/dashboard'
+        : (getFirstAllowedPath(userModules, loadedDbModules) || '/dashboard');
       navigate(landingPath);
     } catch (err) {
       toast.error(err.response?.data?.message || err.message || 'Authentication failed');

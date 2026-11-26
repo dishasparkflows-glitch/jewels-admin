@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { navSections } from '../../config/navigation';
-import { resolveNavSections } from '../../utils/moduleAccess';
+import { resolveNavSections, isPathAllowed, getFirstAllowedPath } from '../../utils/moduleAccess';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import api from '../../api/axios';
@@ -26,6 +26,10 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
     () => resolveNavSections(navSections, dbModules, allowedModules),
     [dbModules, allowedModules]
   );
+  const homePath = useMemo(() => {
+    if (isPathAllowed('/dashboard', allowedModules, dbModules)) return '/dashboard';
+    return getFirstAllowedPath(allowedModules, dbModules) || '/dashboard';
+  }, [allowedModules, dbModules]);
   const {
     sidebarOpen,
     setSidebarOpen,
@@ -252,10 +256,10 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
       {/* ─── Top Brand Header (Aligned h-14 with Top Header) ────────────── */}
       <div className="h-14 flex items-center justify-between px-4 border-b border-slate-200/80 shrink-0 bg-white">
         <NavLink
-          to="/dashboard"
-          onClick={() => handleNavClick('/dashboard')}
+          to={homePath}
+          onClick={() => handleNavClick(homePath)}
           className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
-          title="Go to Dashboard"
+          title="Neirah Luxury Portal"
         >
           {brandLogo.desktop ? (
             <picture className="w-8 h-8 flex items-center justify-center flex-shrink-0">
@@ -370,8 +374,13 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                   >
                     <Icon
                       className={`w-4 h-4 shrink-0 transition-colors ${
-                        isActive ? 'text-white' : 'text-stone-500'
+                        isActive ? 'text-white' : ''
                       }`}
+                      style={{
+                        color: isActive
+                          ? '#ffffff'
+                          : currentTheme?.primary || 'var(--theme-primary, #0f172a)',
+                      }}
                     />
                     <span className="truncate">{item.title}</span>
                   </NavLink>
@@ -395,12 +404,10 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <Icon
-                        className="w-4 h-4 shrink-0 transition-colors text-stone-500 group-hover:text-stone-700"
-                        style={
-                          isAnyChildActive
-                            ? { color: currentTheme?.primary || 'var(--theme-primary, #0f172a)' }
-                            : undefined
-                        }
+                        className="w-4 h-4 shrink-0 transition-colors"
+                        style={{
+                          color: currentTheme?.primary || 'var(--theme-primary, #0f172a)',
+                        }}
                       />
                       <span className="truncate text-left">{item.title}</span>
                     </div>
@@ -443,8 +450,13 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
                           >
                             <ChildIcon
                               className={`w-3.5 h-3.5 shrink-0 transition-colors ${
-                                isChildActive ? 'text-white' : 'text-stone-400'
+                                isChildActive ? 'text-white' : ''
                               }`}
+                              style={{
+                                color: isChildActive
+                                  ? '#ffffff'
+                                  : currentTheme?.primary || 'var(--theme-primary, #0f172a)',
+                              }}
                             />
                             <span className="truncate flex-1 text-left">{child.title}</span>
                           </NavLink>

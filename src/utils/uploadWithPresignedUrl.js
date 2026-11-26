@@ -27,11 +27,16 @@ let uploadCompressionSettingsFetchedAt = 0;
 let uploadCompressionSettingsRequest = null;
 const UPLOAD_COMPRESSION_SETTINGS_TTL = 60_000;
 
-const normalizeUploadCompressionSettings = (settings = {}) => ({
-  enabled: settings.enabled !== false,
-  quality: Math.min(100, Math.max(50, Number(settings.quality) || DEFAULT_UPLOAD_COMPRESSION_SETTINGS.quality)),
-  format: 'image/webp',
-});
+const normalizeUploadCompressionSettings = (settings = {}) => {
+  const parsedQuality = Number(settings?.quality);
+  return {
+    enabled: settings?.enabled !== false,
+    quality: Number.isFinite(parsedQuality)
+      ? Math.min(100, Math.max(0, parsedQuality))
+      : DEFAULT_UPLOAD_COMPRESSION_SETTINGS.quality,
+    format: 'image/webp',
+  };
+};
 
 export function setUploadCompressionSettings(settings) {
   uploadCompressionSettingsCache = normalizeUploadCompressionSettings(settings);

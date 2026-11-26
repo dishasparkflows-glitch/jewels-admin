@@ -411,10 +411,6 @@ export default function ProfileView() {
                       </div>
                     </div>
 
-                    <p className="text-[11px] text-stone-500 mt-2.5 line-clamp-1">
-                      {preset.description}
-                    </p>
-
                     {/* Miniature swatch preview */}
                     <div className="flex items-center gap-1 mt-2.5 pt-2 border-t border-stone-100">
                       <div

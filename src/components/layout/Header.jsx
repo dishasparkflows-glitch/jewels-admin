@@ -1,8 +1,12 @@
 import api from '../../api/axios';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
+import { notificationsAPI } from '../../api/services';
+import { isPathAllowed } from '../../utils/moduleAccess';
+import { formatRelativeTime } from '../../utils/formatters';
 import AdminMenuSearch from './AdminMenuSearch';
 import {
   HiOutlineBell,
@@ -16,10 +20,13 @@ import {
   HiOutlineSwitchHorizontal,
   HiOutlineSun,
   HiOutlineMoon,
+  HiOutlineUserAdd,
+  HiOutlineTrash,
+  HiOutlineArrowRight,
 } from 'react-icons/hi';
 
 const Header = ({ onMobileToggle }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, allowedModules, dbModules } = useAuth();
   const {
     currentTheme,
     presets,
@@ -41,26 +48,135 @@ const Header = ({ onMobileToggle }) => {
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const [unreadCount, setUnreadCount] = useState(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifDropdownRef = useRef(null);
+  const [notifications, setNotifications] = useState([]);
+  const [notifLoading, setNotifLoading] = useState(false);
+  const [markingAllRead, setMarkingAllRead] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notifOpenRef = useRef(false);
+
+  useEffect(() => {
+    notifOpenRef.current = notifOpen;
+  }, [notifOpen]);
+
+  const canOpenNotificationsPage = isPathAllowed('/notifications', allowedModules, dbModules);
+
+  const fetchUnreadCount = useCallback(async (signal) => {
+    try {
+      const response = await api.get('/notifications/unread-count', signal ? { signal } : undefined);
+      setUnreadCount(Number(response.data?.data?.count ?? 0));
+    } catch {
+      // ignore transient poll failures
+    }
+  }, []);
+
+  const fetchRecentNotifications = useCallback(async () => {
+    try {
+      setNotifLoading(true);
+      const res = await notificationsAPI.getAll({ page: 1, limit: 8 });
+      const rows = Array.isArray(res.data?.data) ? res.data.data : [];
+      setNotifications(rows);
+      if (typeof res.data?.unreadCount === 'number') {
+        setUnreadCount(res.data.unreadCount);
+      }
+    } catch {
+      // keep existing items on transient failure
+    } finally {
+      setNotifLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    api.get('/notifications/unread-count', { signal: controller.signal })
-      .then((response) => setUnreadCount(response.data?.data?.count ?? null))
-      .catch(() => {});
-    return () => controller.abort();
-  }, []);
+    fetchUnreadCount(controller.signal);
+    const interval = setInterval(() => fetchUnreadCount(), 30000);
+    const handleSync = () => {
+      fetchUnreadCount();
+      if (notifOpenRef.current) fetchRecentNotifications();
+    };
+    window.addEventListener('notifications:updated', handleSync);
+    return () => {
+      controller.abort();
+      clearInterval(interval);
+      window.removeEventListener('notifications:updated', handleSync);
+    };
+  }, [fetchUnreadCount, fetchRecentNotifications]);
 
-  // Close dropdown on click outside
+  // Close dropdowns on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
         setDropdownOpen(false);
       }
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const handleToggleNotifications = () => {
+    const nextOpen = !notifOpen;
+    setNotifOpen(nextOpen);
+    setDropdownOpen(false);
+    if (nextOpen) {
+      fetchRecentNotifications();
+    }
+  };
+
+  const handleNotificationClick = async (notif) => {
+    if (!notif) return;
+    if (!notif.isRead) {
+      try {
+        await notificationsAPI.markAsRead(notif._id);
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === notif._id ? { ...n, isRead: true } : n))
+        );
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      } catch {
+        /* ignore */
+      }
+    }
+    if (notif.metadata?.link) {
+      setNotifOpen(false);
+      navigate(notif.metadata.link);
+    }
+  };
+
+  const handleMarkAllNotificationsRead = async (e) => {
+    e?.stopPropagation?.();
+    if (markingAllRead) return;
+    if (unreadCount === 0 && !notifications.some((n) => !n.isRead)) return;
+
+    try {
+      setMarkingAllRead(true);
+      await notificationsAPI.markAllAsRead();
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
+      toast.success('All notifications marked as read');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to mark notifications as read');
+    } finally {
+      setMarkingAllRead(false);
+    }
+  };
+
+  const handleDeleteNotification = async (notifId, wasUnread, e) => {
+    e.stopPropagation();
+    try {
+      await notificationsAPI.delete(notifId);
+      setNotifications((prev) => prev.filter((n) => n._id !== notifId));
+      if (wasUnread) {
+        setUnreadCount((prev) => Math.max(0, prev - 1));
+      }
+      window.dispatchEvent(new CustomEvent('notifications:updated'));
+    } catch {
+      /* ignore */
+    }
+  };
 
   const handleNavigateProfile = (activeTab = 'theme') => {
     setDropdownOpen(false);
@@ -147,15 +263,130 @@ const Header = ({ onMobileToggle }) => {
         </button>
 
         {/* Notifications */}
-        <button
-          className="relative p-2 text-stone-500 hover:text-stone-800 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-[#eee8df] cursor-pointer"
-          aria-label="Notifications"
-        >
-          <HiOutlineBell className="w-4 h-4 sm:w-5 sm:h-5" />
-          {unreadCount > 0 && <span className="absolute top-1 right-1 min-w-[15px] h-3.5 px-0.5 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
-            {unreadCount}
-          </span>}
-        </button>
+        <div className="relative" ref={notifDropdownRef}>
+          <button
+            type="button"
+            onClick={handleToggleNotifications}
+            className={`relative p-2 text-stone-500 hover:text-stone-800 hover:bg-white rounded-xl transition-colors border cursor-pointer ${
+              notifOpen ? 'bg-white border-[#eee8df] text-stone-900' : 'border-transparent hover:border-[#eee8df]'
+            }`}
+            aria-label="Notifications"
+            aria-expanded={notifOpen}
+            aria-haspopup="true"
+          >
+            <HiOutlineBell className="w-4 h-4 sm:w-5 sm:h-5" />
+            {unreadCount > 0 && (
+              <span className="absolute top-1 right-1 min-w-[15px] h-3.5 px-1 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center leading-none">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+
+          {notifOpen && (
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 max-w-[calc(100vw-1.5rem)] bg-white rounded-2xl shadow-xl border border-stone-200/90 overflow-hidden z-50 animate-scaleUp">
+              <div className="px-4 py-3 border-b border-stone-100 bg-[#faf8f5] flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-stone-900">Notifications</span>
+                  {unreadCount > 0 && (
+                    <span className="px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 text-[10px] font-bold">
+                      {unreadCount} new
+                    </span>
+                  )}
+                </div>
+                {(unreadCount > 0 || notifications.some((n) => !n.isRead)) && (
+                  <button
+                    type="button"
+                    disabled={markingAllRead}
+                    onClick={handleMarkAllNotificationsRead}
+                    className="text-[11px] font-semibold hover:underline cursor-pointer disabled:opacity-50"
+                    style={{ color: 'var(--theme-primary, #8b6f4e)' }}
+                  >
+                    {markingAllRead ? 'Marking...' : 'Mark all read'}
+                  </button>
+                )}
+              </div>
+
+              <div className="max-h-80 overflow-y-auto divide-y divide-stone-100">
+                {notifLoading && notifications.length === 0 ? (
+                  <div className="py-8 text-center text-xs text-stone-400">
+                    Loading notifications...
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="py-10 px-4 text-center space-y-1.5">
+                    <HiOutlineBell className="w-6 h-6 mx-auto text-stone-300" />
+                    <p className="text-xs font-semibold text-stone-700">No notifications yet</p>
+                    <p className="text-[11px] text-stone-400">
+                      New customer signups and system alerts will appear here.
+                    </p>
+                  </div>
+                ) : (
+                  notifications.map((notif) => (
+                    <div
+                      key={notif._id}
+                      onClick={() => handleNotificationClick(notif)}
+                      className={`px-4 py-3 flex items-start gap-2.5 transition-colors cursor-pointer group ${
+                        !notif.isRead ? 'bg-[#faf6f0]/75 hover:bg-[#faf4ea]' : 'hover:bg-stone-50'
+                      }`}
+                    >
+                      <div className="w-7 h-7 rounded-lg bg-stone-100 text-stone-600 flex items-center justify-center shrink-0 mt-0.5">
+                        {notif.metadata?.event === 'user_registered' ? (
+                          <HiOutlineUserAdd className="w-3.5 h-3.5 text-blue-600" />
+                        ) : (
+                          <HiOutlineBell className="w-3.5 h-3.5" style={{ color: 'var(--theme-primary, #8b6f4e)' }} />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <p className={`text-xs leading-snug ${!notif.isRead ? 'font-bold text-stone-900' : 'font-semibold text-stone-700'}`}>
+                            {notif.title}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={(e) => handleDeleteNotification(notif._id, !notif.isRead, e)}
+                            title="Delete notification"
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded text-stone-400 hover:text-rose-600 transition-opacity cursor-pointer shrink-0"
+                          >
+                            <HiOutlineTrash className="w-3 h-3" />
+                          </button>
+                        </div>
+                        <p className="text-[11px] text-stone-500 mt-0.5 line-clamp-2 leading-relaxed">
+                          {notif.message}
+                        </p>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="text-[10px] text-stone-400">
+                            {formatRelativeTime(notif.sendAt)}
+                          </span>
+                          {!notif.isRead && (
+                            <span className="text-[10px] font-semibold" style={{ color: 'var(--theme-primary, #8b6f4e)' }}>
+                              Unread
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {canOpenNotificationsPage && (
+                <div className="px-4 py-2.5 border-t border-stone-100 bg-[#faf8f5]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotifOpen(false);
+                      navigate('/notifications');
+                    }}
+                    className="w-full py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors hover:bg-white border border-stone-200/80 cursor-pointer"
+                    style={{ color: 'var(--theme-primary, #8b6f4e)' }}
+                  >
+                    <span>View All Notifications</span>
+                    <HiOutlineArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Super Admin User info with Dropdown */}
         <div className="relative" ref={dropdownRef}>

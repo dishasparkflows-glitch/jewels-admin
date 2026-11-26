@@ -154,3 +154,24 @@ export function getInitials(input, fallback = 'U') {
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
 }
+
+/**
+ * Format timestamp as concise relative time ("Just now", "5m ago", "2h ago", "3d ago", or formatted date).
+ * @param {string|Date} dateStr
+ * @returns {string}
+ */
+export function formatRelativeTime(dateStr) {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '';
+
+  const diffSeconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSeconds < 60) return 'Just now';
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  const diffHours = Math.floor(diffMinutes / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return formatDate(date);
+}

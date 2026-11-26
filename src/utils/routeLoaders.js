@@ -65,6 +65,7 @@ export const adminPages = {
   ThemesView: lazyWithPreload(() => import('../pages/admin/ThemesView')),
   GalleryView: lazyWithPreload(() => import('../pages/admin/GalleryView')),
   OwnersView: lazyWithPreload(() => import('../pages/admin/OwnersView')),
+  NotificationsView: lazyWithPreload(() => import('../pages/admin/NotificationsView')),
 };
 
 const PATH_TO_PAGE = {
@@ -115,6 +116,7 @@ const PATH_TO_PAGE = {
   '/blog-categories': adminPages.BlogCategoriesView,
   '/static-pages': adminPages.StaticPagesView,
   '/system/whatsapp': adminPages.WhatsAppView,
+  '/notifications': adminPages.NotificationsView,
   '/owners': adminPages.OwnersView,
   '/profile': adminPages.ProfileView,
   '/settings': adminPages.SettingsView,

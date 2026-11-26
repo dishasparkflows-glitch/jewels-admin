@@ -2,13 +2,22 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense } from 'react';
 import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { HiOutlineX } from 'react-icons/hi';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import { ImagePreviewProvider } from './contexts/ImagePreviewContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminLayout from './components/layout/AdminLayout';
 import { adminPages } from './utils/routeLoaders';
+import { getFirstAllowedPath, isPathAllowed } from './utils/moduleAccess';
+
+function RootRedirect() {
+  const { allowedModules, dbModules } = useAuth();
+  const target = isPathAllowed('/dashboard', allowedModules, dbModules)
+    ? '/dashboard'
+    : (getFirstAllowedPath(allowedModules, dbModules) || '/dashboard');
+  return <Navigate to={target} replace />;
+}
 
 const {
   Login,
@@ -62,6 +71,7 @@ const {
   ThemesView,
   GalleryView,
   OwnersView,
+  NotificationsView,
 } = adminPages;
 
 function App() {
@@ -132,6 +142,7 @@ function App() {
               </ProtectedRoute>
             }
           >
+            <Route path="/" element={<RootRedirect />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/analytics" element={<AnalyticsView />} />
             <Route path="/reports" element={<AnalyticsView />} />
@@ -276,6 +287,9 @@ function App() {
             <Route path="/whatsapp" element={<WhatsAppView />} />
             <Route path="/whatsapp-management" element={<WhatsAppView />} />
 
+            {/* Notifications Center */}
+            <Route path="/notifications" element={<NotificationsView />} />
+
             {/* Website Owners & Module Permissions */}
             <Route path="/owners" element={<OwnersView />} />
             <Route path="/clients" element={<OwnersView />} />
@@ -304,9 +318,6 @@ function App() {
             {/* Senior Dynamic View for all Config & Catalog modules */}
             <Route path="*" element={<DynamicModuleView />} />
           </Route>
-
-          {/* Root Redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
         </Routes>
         </Suspense>
             </ImagePreviewProvider>

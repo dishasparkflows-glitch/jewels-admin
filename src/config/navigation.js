@@ -24,6 +24,7 @@ import {
   HiOutlineFolder,
   HiOutlineFilter,
   HiOutlineOfficeBuilding,
+  HiOutlineBell,
 } from 'react-icons/hi';
 
 import {
@@ -225,6 +226,7 @@ export const navSections = [
     items: [
       { id: 'reports', title: 'Reports', path: '/reports', icon: HiOutlineTrendingUp, apiEndpoint: '/analytics/overview' },
       { id: 'whatsapp', title: 'WhatsApp Connect', path: '/system/whatsapp', icon: IoChatbubbleOutline },
+      { id: 'notifications', title: 'Notifications', path: '/notifications', icon: HiOutlineBell, apiEndpoint: '/notifications' },
       { id: 'owners', title: 'Website Owners', path: '/owners', icon: HiOutlineOfficeBuilding, apiEndpoint: '/owners' },
       { id: 'profile', title: 'User Profile & Theme', path: '/profile', icon: TbUserCog },
       { id: 'settings', title: 'Settings', path: '/settings', icon: HiOutlineCog },

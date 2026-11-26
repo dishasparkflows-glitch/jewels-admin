@@ -4,11 +4,11 @@ import { useAuth } from '../../contexts/AuthContext';
 import { isPathAllowed, getFirstAllowedPath } from '../../utils/moduleAccess';
 
 const ProtectedRoute = ({ children, roles }) => {
-  const { isAuthenticated, user, loading, allowedModules, dbModules, previewOwner, stopOwnerPreview } = useAuth();
+  const { isAuthenticated, user, loading, allowedModules, dbModules, modulesLoaded, previewOwner, stopOwnerPreview } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  if (loading) {
+  if (loading || (isAuthenticated && !modulesLoaded)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-surface-50">
         <div className="flex flex-col items-center gap-3">
@@ -23,13 +23,14 @@ const ProtectedRoute = ({ children, roles }) => {
     return <Navigate to="/login" replace />;
   }
 
+  const fallbackPath = getFirstAllowedPath(allowedModules, dbModules);
+
   if (roles && !roles.includes(user?.role)) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={fallbackPath || '/dashboard'} replace />;
   }
 
   if (!isPathAllowed(location.pathname, allowedModules, dbModules)) {
-    const fallbackPath = getFirstAllowedPath(allowedModules, dbModules);
-    if (fallbackPath && location.pathname === '/') {
+    if (fallbackPath && (location.pathname === '/' || location.pathname === '/dashboard')) {
       return <Navigate to={fallbackPath} replace />;
     }
 

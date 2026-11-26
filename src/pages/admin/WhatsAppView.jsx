@@ -10,6 +10,7 @@ import {
   HiOutlineX,
   HiOutlineChatAlt2,
   HiOutlineCheck,
+  HiOutlineTrash,
 } from 'react-icons/hi';
 import { IoCheckmarkDoneOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -17,7 +18,9 @@ import api from '../../api/axios';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import Dropdown from '../../components/common/Dropdown';
+import CountryCodeSelect from '../../components/common/CountryCodeSelect';
 import { DeleteActionButton } from '../../components/common/RowActions';
 import MobileGridList from '../../components/common/MobileGridList';
 import ModuleHeader from '../../components/common/ModuleHeader';
@@ -27,6 +30,7 @@ import { useAdminPageSize } from '../../utils/adminPagination';
 
 export default function WhatsAppView() {
   const confirm = useConfirm();
+  const { currentTheme } = useTheme();
 
   // Tab State: 'templates' | 'history'
   const [activeTab, setActiveTab] = useState('templates');
@@ -43,6 +47,8 @@ export default function WhatsAppView() {
   // Filters for Sent Message History
   const [historySearch, setHistorySearch] = useState('');
   const [historyStatusFilter, setHistoryStatusFilter] = useState('all');
+  const [selectedMsgIds, setSelectedMsgIds] = useState(new Set());
+  const [bulkDeletingMsgs, setBulkDeletingMsgs] = useState(false);
 
   // Modals
   const [isNewModalOpen, setIsNewModalOpen] = useState(false);
@@ -56,7 +62,8 @@ export default function WhatsAppView() {
   const [submittingTemplate, setSubmittingTemplate] = useState(false);
 
   // Test Message Form
-  const [testPhone, setTestPhone] = useState('+91 ');
+  const [testCountryCode, setTestCountryCode] = useState('+91');
+  const [testPhone, setTestPhone] = useState('');
   const [testSelectedTemplate, setTestSelectedTemplate] = useState('');
   const [sendingTest, setSendingTest] = useState(false);
 
@@ -163,6 +170,56 @@ export default function WhatsAppView() {
     paginatedItems: paginatedMessages = [],
   } = usePagination(filteredMessages, pageSize);
 
+  const allPageMsgsSelected =
+    paginatedMessages.length > 0 && paginatedMessages.every((m) => selectedMsgIds.has(m._id));
+
+  const toggleSelectAllMsgs = () => {
+    setSelectedMsgIds((prev) => {
+      const next = new Set(prev);
+      if (allPageMsgsSelected) {
+        paginatedMessages.forEach((m) => next.delete(m._id));
+      } else {
+        paginatedMessages.forEach((m) => next.add(m._id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectMsg = (id) => {
+    setSelectedMsgIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleBulkDeleteMessages = async () => {
+    const count = selectedMsgIds.size;
+    if (count === 0) return;
+
+    const ok = await confirm({
+      title: 'Delete Selected Messages',
+      message: `Are you sure you want to delete ${count} selected message${count === 1 ? '' : 's'} from history?`,
+      confirmText: 'Delete',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    try {
+      setBulkDeletingMsgs(true);
+      const ids = Array.from(selectedMsgIds);
+      await api.post('/whatsapp/messages/bulk-delete', { ids });
+      setMessages((prev) => prev.filter((m) => !selectedMsgIds.has(m._id)));
+      setSelectedMsgIds(new Set());
+      toast.success(`${count} message${count === 1 ? '' : 's'} deleted successfully`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete selected messages');
+    } finally {
+      setBulkDeletingMsgs(false);
+    }
+  };
+
   // Stats Counters
   const approvedCount = useMemo(() => {
     const fromList = templates.filter((t) => (t.status || '').toUpperCase() === 'APPROVED').length;
@@ -243,21 +300,25 @@ export default function WhatsAppView() {
   // Handle Send Test Message
   const handleSendTestMessage = async (e) => {
     e.preventDefault();
-    if (!testPhone.trim() || testPhone.trim() === '+91') {
+    const cleanNumber = testPhone.trim().replace(/\D/g, '');
+    if (!cleanNumber || cleanNumber.length < 6) {
       toast.error('Please enter a valid recipient phone number');
       return;
     }
+
+    const fullPhone = `${testCountryCode}${cleanNumber}`;
 
     try {
       setSendingTest(true);
       const chosenTemplate = templates.find((t) => t.name === testSelectedTemplate);
       if (!chosenTemplate) throw new Error('Select a template first.');
       await api.post('/whatsapp/messages/test', {
-        to: testPhone.trim(), templateName: chosenTemplate.name, message: chosenTemplate.body,
+        to: fullPhone, templateName: chosenTemplate.name, message: chosenTemplate.body,
       });
       await fetchData();
 
-      toast.success(`Test WhatsApp message dispatched to ${testPhone}!`);
+      toast.success(`Test WhatsApp message dispatched to ${fullPhone}!`);
+      setTestPhone('');
       setIsTestModalOpen(false);
     } catch (err) {
       toast.error(err.message || 'Failed to send test message');
@@ -497,7 +558,8 @@ export default function WhatsAppView() {
                 return (
                   <div
                     key={tmpl._id}
-                    className="rounded-xl border border-stone-200/90 p-3.5 bg-white shadow-2xs space-y-2.5"
+                    onClick={() => setPreviewTemplate(tmpl)}
+                    className="rounded-xl border border-stone-200/90 p-3.5 bg-white shadow-2xs space-y-2.5 cursor-pointer hover:border-stone-300 transition-colors"
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0">
@@ -517,9 +579,12 @@ export default function WhatsAppView() {
                       </span>
                     </div>
 
-                    <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                    <div
+                      className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <span className="text-stone-400">{date}</span>
-                      <DeleteActionButton onClick={() => handleDeleteTemplate(tmpl._id, templateTitle)} />
+                      <DeleteActionButton onClick={() => handleDeleteTemplate(tmpl)} />
                     </div>
                   </div>
                 );
@@ -571,27 +636,23 @@ export default function WhatsAppView() {
                       return (
                         <tr
                           key={tmpl._id}
-                          className="hover:bg-stone-50/70 transition-colors group"
+                          onClick={() => setPreviewTemplate(tmpl)}
+                          className="hover:bg-stone-50/70 transition-colors group cursor-pointer"
                         >
                           {/* Sr No */}
                           <td className="py-3.5 px-3 text-center align-middle text-xs font-semibold text-stone-500 whitespace-nowrap">
                             {(currentPage - 1) * pageSize + idx + 1}
                           </td>
 
-                          {/* Template Name & Preview */}
+                          {/* Template Name */}
                           <td className="py-3.5 px-4 align-middle">
-                            <div className="flex flex-col gap-1 max-w-xl">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className="font-semibold text-stone-900 text-xs sm:text-[13px] leading-tight">
-                                  {templateTitle}
-                                </span>
-                                <span className="inline-flex items-center font-mono text-[10px] font-medium text-stone-500 bg-stone-100/90 border border-stone-200/80 px-1.5 py-0.5 rounded">
-                                  {tmpl.name}
-                                </span>
-                              </div>
-                              <p className="text-xs text-stone-500 line-clamp-2 leading-relaxed font-normal mt-0.5">
-                                {tmpl.body}
-                              </p>
+                            <div className="flex items-center gap-2 flex-wrap max-w-xl">
+                              <span className="font-semibold text-stone-900 text-xs sm:text-[13px] leading-tight">
+                                {templateTitle}
+                              </span>
+                              <span className="inline-flex items-center font-mono text-[10px] font-medium text-stone-500 bg-stone-100/90 border border-stone-200/80 px-1.5 py-0.5 rounded">
+                                {tmpl.name}
+                              </span>
                             </div>
                           </td>
 
@@ -646,7 +707,10 @@ export default function WhatsAppView() {
                           </td>
 
                           {/* Actions */}
-                          <td className="py-3.5 px-4 align-middle whitespace-nowrap text-right pr-5">
+                          <td
+                            className="py-3.5 px-4 align-middle whitespace-nowrap text-right pr-5"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="inline-flex items-center gap-2 justify-end">
                               <button
                                 type="button"
@@ -703,6 +767,26 @@ export default function WhatsAppView() {
             placeholder="Search message history by phone or recipient..."
             extraActions={
               <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={handleBulkDeleteMessages}
+                  disabled={selectedMsgIds.size === 0 || bulkDeletingMsgs}
+                  className={`inline-flex items-center justify-center gap-1.5 h-[42px] px-3.5 rounded-xl border text-xs sm:text-[13px] font-semibold transition-all whitespace-nowrap ${
+                    selectedMsgIds.size > 0
+                      ? 'bg-red-50 border-red-200 text-red-600 hover:bg-red-100 hover:border-red-300 cursor-pointer shadow-2xs'
+                      : 'bg-white border-stone-200 text-stone-400 opacity-70 cursor-not-allowed'
+                  }`}
+                >
+                  <HiOutlineTrash className="w-4 h-4 shrink-0" />
+                  <span>
+                    {bulkDeletingMsgs
+                      ? 'Deleting...'
+                      : selectedMsgIds.size > 0
+                      ? `Delete (${selectedMsgIds.size})`
+                      : 'Delete'}
+                  </span>
+                </button>
+
                 <Dropdown
                   value={historyStatusFilter}
                   onChange={(val) => {
@@ -750,11 +834,20 @@ export default function WhatsAppView() {
                     className="rounded-xl border border-stone-200/90 p-3.5 bg-white shadow-2xs space-y-2"
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="font-mono font-semibold text-xs text-stone-900 truncate">{msg.to}</p>
-                        <p className="text-[10px] font-semibold text-[#8b6f4e] uppercase truncate mt-0.5">
-                          #{(msgPage - 1) * pageSize + idx + 1} · {msg.templateName}
-                        </p>
+                      <div className="flex items-start gap-2.5 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={selectedMsgIds.has(msg._id)}
+                          onChange={() => toggleSelectMsg(msg._id)}
+                          aria-label={`Select message to ${msg.to}`}
+                          className="mt-0.5 h-4 w-4 rounded border-stone-300 accent-[var(--theme-primary,#8b6f4e)] cursor-pointer shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <p className="font-mono font-semibold text-xs text-stone-900 truncate">{msg.to}</p>
+                          <p className="text-[10px] font-semibold text-[#8b6f4e] uppercase truncate mt-0.5">
+                            #{(msgPage - 1) * pageSize + idx + 1} · {msg.templateName}
+                          </p>
+                        </div>
                       </div>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-stone-100 text-stone-700 shrink-0">
                         {msg.status || 'sent'}
@@ -773,6 +866,15 @@ export default function WhatsAppView() {
               <table className="w-full min-w-[780px] text-left border-collapse table-auto">
                 <thead>
                   <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                    <th className="py-3 pl-4 pr-2 w-10 text-center">
+                      <input
+                        type="checkbox"
+                        checked={allPageMsgsSelected}
+                        onChange={toggleSelectAllMsgs}
+                        aria-label="Select all messages on page"
+                        className="h-4 w-4 rounded border-stone-300 accent-[var(--theme-primary,#8b6f4e)] cursor-pointer align-middle"
+                      />
+                    </th>
                     <th className="py-3 px-3 text-center w-14 whitespace-nowrap">SR NO</th>
                     <th className="py-3 px-4 w-[20%]">Recipient</th>
                     <th className="py-3 px-4 w-[43%]">Template / Message</th>
@@ -783,7 +885,7 @@ export default function WhatsAppView() {
                 <tbody className="divide-y divide-stone-100 text-xs">
                   {(!paginatedMessages || paginatedMessages.length === 0) ? (
                     <tr>
-                      <td colSpan="5" className="py-12 text-center text-stone-400">
+                      <td colSpan="6" className="py-12 text-center text-stone-400">
                         <HiOutlineChatAlt2 className="w-9 h-9 mx-auto mb-2 stroke-1" />
                         <p className="text-xs font-semibold text-stone-600">No sent messages recorded</p>
                       </td>
@@ -795,9 +897,24 @@ export default function WhatsAppView() {
                       const isRead = msg.status === 'read';
                       const isFailed = msg.status === 'failed';
                       const isSent = !isDelivered && !isRead && !isFailed;
+                      const isSelected = selectedMsgIds.has(msg._id);
 
                       return (
-                        <tr key={msg._id} className="hover:bg-stone-50/70 transition-colors">
+                        <tr
+                          key={msg._id}
+                          className={`hover:bg-stone-50/70 transition-colors ${isSelected ? 'bg-stone-50/80' : ''}`}
+                        >
+                          {/* Checkbox */}
+                          <td className="py-3.5 pl-4 pr-2 text-center align-middle">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={() => toggleSelectMsg(msg._id)}
+                              aria-label={`Select message to ${msg.to}`}
+                              className="h-4 w-4 rounded border-stone-300 accent-[var(--theme-primary,#8b6f4e)] cursor-pointer align-middle"
+                            />
+                          </td>
+
                           {/* Sr No */}
                           <td className="py-3.5 px-3 text-center align-middle text-xs font-semibold text-stone-500 whitespace-nowrap">
                             {(msgPage - 1) * pageSize + idx + 1}
@@ -934,6 +1051,7 @@ export default function WhatsAppView() {
                       { value: 'AUTHENTICATION', label: 'Authentication' },
                     ]}
                     size="sm"
+                    portal
                     buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium bg-white border border-[#d6cfc2] hover:border-[#bdae99]"
                   />
                 </div>
@@ -989,7 +1107,13 @@ export default function WhatsAppView() {
           >
             <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 sm:py-4 border-b border-stone-100 bg-[#faf8f5]">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#e8f5e9] text-[#16a34a] flex items-center justify-center">
+                <div
+                  style={{
+                    backgroundColor: currentTheme?.soft || 'var(--theme-primary-soft, #faf5ee)',
+                    color: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
+                  }}
+                  className="w-8 h-8 rounded-lg flex items-center justify-center"
+                >
                   <HiOutlinePaperAirplane className="w-4 h-4 rotate-45 transform" />
                 </div>
                 <h3 className="text-base font-bold text-stone-900">
@@ -1010,16 +1134,25 @@ export default function WhatsAppView() {
                 <label className="block text-xs font-bold text-stone-900 mb-1.5">
                   Recipient Phone Number <span className="text-rose-500 font-bold">*</span>
                 </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="+91 98765 43210"
-                  value={testPhone}
-                  onChange={(e) => setTestPhone(e.target.value)}
-                  className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl font-mono focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
-                />
+                <div className="flex items-center gap-2">
+                  <div className="shrink-0">
+                    <CountryCodeSelect
+                      value={testCountryCode}
+                      onChange={(dialCode) => setTestCountryCode(dialCode)}
+                      buttonClassName="flex items-center justify-between gap-2 px-3 text-xs sm:text-[13px] font-semibold text-stone-800 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl h-[42px] min-w-[96px] shadow-2xs focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all cursor-pointer"
+                    />
+                  </div>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="98765 43210"
+                    value={testPhone}
+                    onChange={(e) => setTestPhone(e.target.value)}
+                    className="flex-1 min-w-0 h-[42px] px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl font-mono focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs"
+                  />
+                </div>
                 <span className="text-[10px] text-stone-400 mt-1 block">
-                  Must include country code (e.g. +91 for India).
+                  Select country code and enter mobile number.
                 </span>
               </div>
 
@@ -1032,12 +1165,12 @@ export default function WhatsAppView() {
                   onChange={(val) => setTestSelectedTemplate(val)}
                   options={templates.map((t) => ({
                     value: t.name,
-                    label: `${t.name} (${t.category})`,
-                    sublabel: t.category,
+                    label: t.name,
                     badge: t.category,
                   }))}
                   placeholder="Select a template"
                   size="sm"
+                  portal
                   buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium bg-white border border-[#d6cfc2] hover:border-[#bdae99]"
                 />
               </div>
@@ -1053,7 +1186,10 @@ export default function WhatsAppView() {
                 <button
                   type="submit"
                   disabled={sendingTest}
-                  className="px-5 py-2 rounded-xl text-xs font-medium bg-[#16a34a] hover:bg-[#15803d] text-white shadow-xs transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                  style={{
+                    backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',
+                  }}
+                  className="px-5 py-2 rounded-xl text-xs font-semibold hover:opacity-90 text-white shadow-xs transition-all disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
                 >
                   {sendingTest ? 'Sending...' : 'Dispatch Message'}
                 </button>
@@ -1094,32 +1230,44 @@ export default function WhatsAppView() {
             </div>
 
             {/* WhatsApp Chat Body with Background Pattern */}
-            <div className="p-4 min-h-[300px] flex flex-col justify-end bg-[#e5ddd5]/60 relative">
+            <div className="p-4 min-h-[260px] flex flex-col justify-end bg-[#e5ddd5]/60 relative space-y-2.5">
+              {/* Metadata Pills */}
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px]">
+                <span className="px-2 py-0.5 rounded-full bg-white/90 text-stone-700 font-semibold border border-stone-200/80">
+                  {previewTemplate.category || 'UTILITY'}
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-white/90 text-emerald-700 font-semibold border border-emerald-200/80">
+                  {previewTemplate.status || 'APPROVED'}
+                </span>
+                {previewTemplate.language && (
+                  <span className="px-2 py-0.5 rounded-full bg-white/90 text-stone-600 font-mono border border-stone-200/80">
+                    {previewTemplate.language}
+                  </span>
+                )}
+              </div>
+
               {/* Message Bubble */}
-              <div className="bg-white rounded-2xl rounded-tl-none p-3.5 shadow-sm max-w-[90%] border border-stone-100/80">
-                <p className="text-[11px] font-semibold text-[#8b6f4e] uppercase tracking-wider mb-1">
+              <div className="bg-white rounded-2xl rounded-tl-none p-3.5 shadow-sm max-w-[95%] border border-stone-100/80">
+                <p className="text-xs font-bold text-stone-900 mb-0.5">
+                  {previewTemplate.displayName ||
+                    (previewTemplate.name
+                      ? previewTemplate.name
+                          .split('_')
+                          .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+                          .join(' ')
+                      : 'Untitled Template')}
+                </p>
+                <p className="text-[10px] font-mono text-[#8b6f4e] mb-2">
                   {previewTemplate.name}
                 </p>
                 <p className="text-xs text-stone-800 whitespace-pre-wrap leading-relaxed">
-                  {previewTemplate.body || ''}
+                  {previewTemplate.body || 'No message body'}
                 </p>
                 <div className="flex items-center justify-end gap-1 mt-1.5 text-[9px] text-stone-400">
-                  <span>Preview</span>
+                  <span>{formatDateTime(previewTemplate.updatedAt || previewTemplate.createdAt).date}</span>
                   <IoCheckmarkDoneOutline className="w-3 h-3 text-[#34b7f1]" />
                 </div>
               </div>
-            </div>
-
-            {/* Bottom Bar */}
-            <div className="bg-white p-3 border-t border-stone-200/80 flex items-center justify-between text-xs">
-              <span className="text-[11px] text-stone-400 font-medium">Category: {previewTemplate.category}</span>
-              <button
-                type="button"
-                onClick={() => setPreviewTemplate(null)}
-                className="px-3 py-1 bg-stone-900 text-white rounded-lg text-xs font-medium hover:bg-stone-800"
-              >
-                Close Preview
-              </button>
             </div>
           </div>
         </div>, document.body)
