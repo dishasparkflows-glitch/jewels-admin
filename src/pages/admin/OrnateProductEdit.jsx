@@ -1051,8 +1051,8 @@ export default function OrnateProductEdit() {
 
   return (
     <div className="space-y-4 pb-12 font-sans text-stone-800">
-      {/* ─── Sticky Header & Stepper Wizard Bar ─── */}
-      <div className="sticky top-14 z-20 bg-[#f8fafc]/95 backdrop-blur-md pt-0.5 pb-2.5 space-y-3">
+      {/* ─── Header & Stepper Wizard Bar (Sticky on desktop only) ─── */}
+      <div className="md:sticky md:top-14 z-20 bg-[#f8fafc]/95 backdrop-blur-md pt-0.5 pb-2.5 space-y-2.5 sm:space-y-3">
       {/* ─── Top Bar (Title & Actions) ──────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-stone-200/90 shadow-2xs">
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -1148,8 +1148,11 @@ export default function OrnateProductEdit() {
       </div>
 
       {/* ─── Stepper Wizard Bar (Modern Tab-Wise Design) ───────────── */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 p-2 sm:p-2.5 shadow-2xs">
-        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
+      <div className="bg-white rounded-2xl border border-stone-200/90 p-1.5 sm:p-2.5 shadow-2xs">
+        <div
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 sm:gap-2"
+        >
           {steps.map((s) => {
             const isActive = activeStep === s.num;
             const isCompleted = activeStep > s.num;
@@ -1159,10 +1162,10 @@ export default function OrnateProductEdit() {
                 key={s.num}
                 type="button"
                 onClick={() => setActiveStep(s.num)}
-                className={`flex items-center gap-2 text-left p-1.5 rounded-xl transition-all cursor-pointer group ${
+                className={`shrink-0 sm:shrink min-w-[140px] sm:min-w-0 flex items-center gap-2 text-left p-1.5 rounded-xl transition-all cursor-pointer group ${
                   isActive
                     ? 'bg-[#faf6f0] border border-[#e8ded1] shadow-2xs'
-                    : 'hover:bg-stone-50 border border-transparent'
+                    : 'hover:bg-stone-50 border border-stone-100 sm:border-transparent'
                 }`}
               >
                 {/* Step Circle Badge */}

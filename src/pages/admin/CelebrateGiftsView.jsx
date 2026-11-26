@@ -61,7 +61,8 @@ export default function CelebrateGiftsView() {
   const [slug, setSlug] = useState('');
   const [placement, setPlacement] = useState('Celebrate');
   const [platform, setPlatform] = useState('web');
-  const [order, setOrder] = useState(0);
+  const [order, setOrder] = useState(1);
+  const [orderManuallyEdited, setOrderManuallyEdited] = useState(false);
   const [categoryId, setCategoryId] = useState('');
   const [menuItemIds, setMenuItemIds] = useState([]);
   const [imageUrl, setImageUrl] = useState('');
@@ -262,14 +263,28 @@ export default function CelebrateGiftsView() {
     },
   ];
 
+  const getNextDisplayOrder = (targetType = 'Celebrate', list = featuredItems) => {
+    const normalized = String(targetType || 'Celebrate').toLowerCase();
+    const sameTypeItems = list.filter(
+      (item) => (item.display?.type || 'Celebrate').toLowerCase() === normalized
+    );
+    const maxOrder = sameTypeItems.reduce(
+      (max, item) => Math.max(max, Number(item.display?.order) || 0),
+      0
+    );
+    return Math.max(maxOrder, sameTypeItems.length) + 1;
+  };
+
   // Open Add Modal
   const openAddModal = () => {
+    const defaultPlacement = placementFilter === 'Gifts' ? 'Gifts' : 'Celebrate';
     setEditingItem(null);
     setTitle('');
     setSlug('');
-    setPlacement(placementFilter === 'Gifts' ? 'Gifts' : 'Celebrate');
+    setPlacement(defaultPlacement);
     setPlatform('web');
-    setOrder(0);
+    setOrder(getNextDisplayOrder(defaultPlacement));
+    setOrderManuallyEdited(false);
     setCategoryId('');
     setMenuItemIds([]);
     setImageUrl('');
@@ -302,6 +317,7 @@ export default function CelebrateGiftsView() {
     setPlacement(item.display?.type || 'Celebrate');
     setPlatform(item.display?.platform || 'web');
     setOrder(typeof item.display?.order === 'number' ? item.display.order : 0);
+    setOrderManuallyEdited(true);
     const catId = item.categoryId?._id || item.categoryId || '';
     const mIds = Array.isArray(item.menuItemIds)
       ? item.menuItemIds.map((m) => (typeof m === 'object' && m?._id ? m._id : m))
@@ -393,7 +409,10 @@ export default function CelebrateGiftsView() {
         display: {
           type: effectivePlacement,
           platform: platform || 'web',
-          order: Number(order) || 0,
+          order:
+            order === '' || order === null || order === undefined
+              ? getNextDisplayOrder(effectivePlacement)
+              : Math.max(0, Number(order) || 0),
         },
         categoryId: categoryId || null,
         menuItemIds: Array.isArray(menuItemIds) ? menuItemIds : [],
@@ -736,6 +755,7 @@ export default function CelebrateGiftsView() {
                 <th className="py-3 px-3 whitespace-nowrap">COVER</th>
                 <th className="py-3 px-3 whitespace-nowrap">SHOWCASE NAME</th>
                 <th className="py-3 px-3 whitespace-nowrap">PLACEMENT</th>
+                <th className="py-3 px-3 text-center whitespace-nowrap">ORDER</th>
                 <th className="py-3 px-3 whitespace-nowrap">PRODUCTS</th>
                 <th className="py-3 px-3 whitespace-nowrap">CREATED DATE</th>
                 <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
@@ -744,13 +764,13 @@ export default function CelebrateGiftsView() {
             <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                  <td colSpan="9" className="py-8 text-center text-stone-400">
                     Loading showcase items...
                   </td>
                 </tr>
               ) : filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-stone-400">
+                  <td colSpan="9" className="py-8 text-center text-stone-400">
                     No showcase items found.
                   </td>
                 </tr>
@@ -832,6 +852,13 @@ export default function CelebrateGiftsView() {
                           {item.display?.platform || item.platform || 'web'}
                         </span>
                       </div>
+                    </td>
+
+                    {/* Display Order */}
+                    <td className="py-2.5 px-3 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-md text-[11px] font-bold bg-stone-100 text-stone-700 border border-stone-200/80">
+                        {item.display?.order ?? 0}
+                      </span>
                     </td>
 
                     {/* Curated Products Count */}
@@ -972,7 +999,12 @@ export default function CelebrateGiftsView() {
                       <button
                         key={opt}
                         type="button"
-                        onClick={() => setPlacement(opt)}
+                        onClick={() => {
+                          setPlacement(opt);
+                          if (!editingItem && !orderManuallyEdited) {
+                            setOrder(getNextDisplayOrder(opt));
+                          }
+                        }}
                         className={`py-2 px-2 rounded-xl border text-xs font-semibold tracking-wide transition-all cursor-pointer text-center ${
                           placement === opt
                             ? 'bg-[#8f6d43] border-[#8f6d43] text-white shadow-xs'
@@ -1014,15 +1046,24 @@ export default function CelebrateGiftsView() {
 
                 {/* DISPLAY ORDER */}
                 <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
-                    DISPLAY ORDER
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
+                      DISPLAY ORDER
+                    </label>
+                    {!editingItem && (
+                      <span className="text-[10px] font-medium text-[#8f6d43]">Auto</span>
+                    )}
+                  </div>
                   <input
                     type="number"
                     min="0"
                     value={order}
-                    onChange={(e) => setOrder(parseInt(e.target.value, 10) || 0)}
-                    placeholder="0"
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setOrderManuallyEdited(true);
+                      setOrder(raw === '' ? '' : Math.max(0, parseInt(raw, 10) || 0));
+                    }}
+                    placeholder={String(getNextDisplayOrder(placement))}
                     className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
                   />
                 </div>

@@ -241,24 +241,26 @@ export default function ProfileView() {
           </div>
 
           {/* Current Theme Pill Info */}
-          <div className="flex items-center gap-3 self-start sm:self-auto bg-stone-50/90 border border-stone-200/90 px-3.5 py-2 rounded-xl">
-            <div
-              className="w-4 h-4 rounded-full border border-white shadow-2xs transition-colors duration-300"
-              style={{ backgroundColor: currentTheme.primary }}
-            />
-            <div className="text-left">
-              <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider block">
-                Active Theme
-              </span>
-              <span className="text-xs font-bold text-stone-800">
-                {currentTheme.name} {currentTheme.isDefault && '(Default)'}
-              </span>
+          <div className="flex items-center justify-between gap-3 w-full sm:w-auto bg-stone-50/90 border border-stone-200/90 px-3.5 py-2.5 sm:py-2 rounded-xl">
+            <div className="flex items-center gap-3 min-w-0">
+              <div
+                className="w-4 h-4 rounded-full border border-white shadow-2xs transition-colors duration-300 shrink-0"
+                style={{ backgroundColor: currentTheme.primary }}
+              />
+              <div className="text-left min-w-0">
+                <span className="text-[10px] text-stone-400 font-semibold uppercase tracking-wider block">
+                  Active Theme
+                </span>
+                <span className="text-xs font-bold text-stone-800 truncate block">
+                  {currentTheme.name} {currentTheme.isDefault && '(Default)'}
+                </span>
+              </div>
             </div>
             {!isDefault && (
               <button
                 type="button"
                 onClick={handleResetDefault}
-                className="ml-2 p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors text-xs font-semibold cursor-pointer"
+                className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-200/60 transition-colors text-xs font-semibold cursor-pointer shrink-0"
                 title="Reset to Default Bronze"
               >
                 <HiOutlineRefresh className="w-3.5 h-3.5" />
@@ -268,11 +270,11 @@ export default function ProfileView() {
         </div>
 
         {/* ─── Navigation Tabs ──────────────────────────────── */}
-        <div className="flex items-center gap-2 mt-6 pt-5 border-t border-stone-100 overflow-x-auto">
+        <div className="flex flex-wrap items-center gap-2 mt-5 sm:mt-6 pt-4 sm:pt-5 border-t border-stone-100">
           <button
             type="button"
             onClick={() => setActiveTab('theme')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'theme'
                 ? 'shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -286,10 +288,10 @@ export default function ProfileView() {
                 : {}
             }
           >
-            <HiOutlineColorSwatch className="w-4 h-4" />
+            <HiOutlineColorSwatch className="w-4 h-4 shrink-0" />
             <span>Theme & Colors</span>
             <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold uppercase ${
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold uppercase ${
                 activeTab === 'theme'
                   ? 'bg-white/20 text-white'
                   : 'bg-stone-200/70 text-stone-600'
@@ -302,7 +304,7 @@ export default function ProfileView() {
           <button
             type="button"
             onClick={() => setActiveTab('profile')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'profile'
                 ? 'shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -316,14 +318,14 @@ export default function ProfileView() {
                 : {}
             }
           >
-            <HiOutlineUser className="w-4 h-4" />
+            <HiOutlineUser className="w-4 h-4 shrink-0" />
             <span>Personal Information</span>
           </button>
 
           <button
             type="button"
             onClick={() => setActiveTab('security')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
+            className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'security'
                 ? 'shadow-xs'
                 : 'text-stone-600 hover:text-stone-900 hover:bg-stone-50'
@@ -337,7 +339,7 @@ export default function ProfileView() {
                 : {}
             }
           >
-            <HiOutlineLockClosed className="w-4 h-4" />
+            <HiOutlineLockClosed className="w-4 h-4 shrink-0" />
             <span>Security & Password</span>
           </button>
         </div>
@@ -642,6 +644,7 @@ export default function ProfileView() {
               <div className="relative">
                 <input
                   type={showCurrentPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
                   required
                   value={passwords.currentPassword}
                   onChange={(e) =>
@@ -674,6 +677,7 @@ export default function ProfileView() {
                 <div className="relative">
                   <input
                     type={showNewPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     required
                     value={passwords.newPassword}
                     onChange={(e) =>
@@ -705,6 +709,7 @@ export default function ProfileView() {
                 <div className="relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
                     required
                     value={passwords.confirmPassword}
                     onChange={(e) =>

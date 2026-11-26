@@ -18,6 +18,7 @@ import {
 import { IoDiamondOutline } from 'react-icons/io5';
 import Dropdown from '../Dropdown';
 import Pagination from '../Pagination';
+import MobileGridList from '../MobileGridList';
 import { EditActionButton, DeleteActionButton, MoveActionButton, RepresentativeActionButton } from '../RowActions';
 import SyncPreviewModal from './SyncPreviewModal';
 import MoveProductModal from './MoveProductModal';
@@ -493,8 +494,8 @@ export default function ManageGroupDrawer({
         className="relative w-full max-w-6xl bg-white rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[92vh] sm:max-h-[90vh] border border-stone-200/90 overflow-hidden z-10 transition-all transform duration-200 animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* ─── 1. Top Bar: Group Details & Close Button (Matches Screenshot Exactly) ─── */}
-        <div className="px-5 sm:px-6 pt-5 pb-3.5 border-b border-stone-100 flex items-start justify-between shrink-0 bg-white">
+        {/* ─── 1. Top Bar: Group Details & Close Button ─── */}
+        <div className="px-4 sm:px-6 pt-4 sm:pt-5 pb-3 sm:pb-3.5 border-b border-stone-100 flex items-start justify-between shrink-0 bg-white">
           <div>
             <h2 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight">
               Group Details
@@ -513,14 +514,15 @@ export default function ManageGroupDrawer({
           </button>
         </div>
 
-        {/* ─── 2. Hero Info & Actions Banner (Matches Screenshot Exactly) ─── */}
-        <div className="px-5 sm:px-6 py-4 border-b border-stone-200/80 bg-[#fdfbf7] flex flex-col lg:flex-row lg:items-center justify-between gap-4 shrink-0">
+        <div className="flex-1 overflow-y-auto md:overflow-hidden flex flex-col">
+        {/* ─── 2. Hero Info & Actions Banner ─── */}
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-stone-200/80 bg-[#fdfbf7] flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4 shrink-0">
           {/* Left: Thumbnail & Details */}
-          <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
             {/* Thumbnail with edit badge */}
             <div className="relative group shrink-0">
               <div
-                className={`w-16 h-16 rounded-2xl bg-white border border-stone-200 overflow-hidden flex items-center justify-center p-1.5 shadow-2xs ${
+                className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white border border-stone-200 overflow-hidden flex items-center justify-center p-1.5 shadow-2xs ${
                   getProductImage(repProduct) ? 'cursor-pointer hover:border-[#8b6f4e] hover:scale-105 transition-all' : ''
                 }`}
                 onClick={() => {
@@ -561,9 +563,9 @@ export default function ManageGroupDrawer({
             </div>
 
             {/* Info lines */}
-            <div className="min-w-0 space-y-1">
+            <div className="min-w-0 flex-1 space-y-1">
               <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="text-base sm:text-lg font-bold text-stone-900 tracking-tight truncate">
+                <h3 className="text-sm sm:text-lg font-bold text-stone-900 tracking-tight truncate max-w-full">
                   {group?.groupName || 'Common Product Group'}
                 </h3>
                 <span
@@ -590,19 +592,19 @@ export default function ManageGroupDrawer({
           </div>
 
           {/* Right: Actions Buttons matching Screenshot */}
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end shrink-0">
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 lg:justify-end shrink-0">
             <button
               type="button"
               onClick={handleOpenMoveBulk}
-              className={`px-3.5 py-2 text-xs font-semibold rounded-xl border transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer ${
+              className={`px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-semibold rounded-xl border transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer ${
                 selectedProductIds.size > 0
                   ? 'bg-[#8b6f4e]/10 border-[#8b6f4e] text-[#8b6f4e] hover:bg-[#8b6f4e]/20'
                   : 'bg-white border-stone-200 text-stone-700 hover:bg-stone-50'
               }`}
               title={selectedProductIds.size > 0 ? `Move ${selectedProductIds.size} selected products` : 'Select products to move or click to choose'}
             >
-              <HiOutlineSwitchHorizontal className="w-3.5 h-3.5 text-stone-500" />
-              <span>Move to Another Group{selectedProductIds.size > 0 ? ` (${selectedProductIds.size})` : ''}</span>
+              <HiOutlineSwitchHorizontal className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+              <span className="truncate">Move to Another Group{selectedProductIds.size > 0 ? ` (${selectedProductIds.size})` : ''}</span>
             </button>
 
             {isAllApproved ? (
@@ -610,22 +612,22 @@ export default function ManageGroupDrawer({
                 type="button"
                 onClick={handleDraftGroup}
                 disabled={drafting || loading}
-                className="px-3.5 py-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 title="Move all in-stock products in this group to draft"
               >
-                <HiOutlineDocumentText className="w-3.5 h-3.5" />
-                <span>{drafting ? 'Moving to Draft...' : 'Draft Group'}</span>
+                <HiOutlineDocumentText className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{drafting ? 'Moving to Draft...' : 'Draft Group'}</span>
               </button>
             ) : draftInStockCount > 0 && approvedInStockCount === 0 ? (
               <button
                 type="button"
                 onClick={handleApproveGroup}
                 disabled={approving || loading}
-                className="px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 title="Approve all in-stock products in this group"
               >
-                <HiOutlineCheckCircle className="w-3.5 h-3.5" />
-                <span>{approving ? 'Approving...' : 'Approve Group'}</span>
+                <HiOutlineCheckCircle className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">{approving ? 'Approving...' : 'Approve Group'}</span>
               </button>
             ) : (
               <>
@@ -634,11 +636,11 @@ export default function ManageGroupDrawer({
                     type="button"
                     onClick={handleApproveGroup}
                     disabled={approving || loading}
-                    className="px-3.5 py-2 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     title={`Approve ${draftInStockCount} draft in-stock product(s)`}
                   >
-                    <HiOutlineCheckCircle className="w-3.5 h-3.5" />
-                    <span>{approving ? 'Approving...' : `Approve Group (${draftInStockCount})`}</span>
+                    <HiOutlineCheckCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{approving ? 'Approving...' : `Approve Group (${draftInStockCount})`}</span>
                   </button>
                 )}
                 {approvedInStockCount > 0 && (
@@ -646,11 +648,11 @@ export default function ManageGroupDrawer({
                     type="button"
                     onClick={handleDraftGroup}
                     disabled={drafting || loading}
-                    className="px-3.5 py-2 text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-semibold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     title={`Move ${approvedInStockCount} approved product(s) to draft`}
                   >
-                    <HiOutlineDocumentText className="w-3.5 h-3.5" />
-                    <span>{drafting ? 'Moving to Draft...' : `Draft Group (${approvedInStockCount})`}</span>
+                    <HiOutlineDocumentText className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{drafting ? 'Moving to Draft...' : `Draft Group (${approvedInStockCount})`}</span>
                   </button>
                 )}
               </>
@@ -659,28 +661,28 @@ export default function ManageGroupDrawer({
             <button
               type="button"
               onClick={openAddProducts}
-              className="px-4 py-2 text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer"
+              className="px-3 sm:px-4 py-2 text-[11px] sm:text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e40] rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 cursor-pointer"
               title="Add products to this group"
             >
-              <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
-              <span>Add Products</span>
+              <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5] shrink-0" />
+              <span className="truncate">Add Products</span>
             </button>
 
             <button
               type="button"
               onClick={() => setSyncModalOpen(true)}
               disabled={loading || products.length < 2}
-              className="px-3.5 py-2 text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center gap-1.5 disabled:opacity-40 cursor-pointer"
+              className="px-2.5 sm:px-3.5 py-2 text-[11px] sm:text-xs font-semibold text-stone-700 bg-white border border-stone-200 hover:bg-stone-50 rounded-xl transition-all shadow-2xs flex items-center justify-center gap-1.5 disabled:opacity-40 cursor-pointer"
               title="Synchronize selected product information across group members"
             >
-              <HiOutlineRefresh className="w-3.5 h-3.5 text-stone-500" />
-              <span>Sync Product Info</span>
+              <HiOutlineRefresh className="w-3.5 h-3.5 text-stone-500 shrink-0" />
+              <span className="truncate">Sync Product Info</span>
             </button>
           </div>
         </div>
 
         {/* ─── 3. Body Content ─── */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4">
+        <div className="md:flex-1 md:overflow-y-auto p-3.5 sm:p-6 space-y-3.5 sm:space-y-4">
           {/* TAB 1: PRODUCTS */}
           {activeTab === 'products' && (
             <div className="space-y-4">
@@ -733,7 +735,7 @@ export default function ManageGroupDrawer({
               )}
 
                 {/* Search & Sort Controls */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                   <div className="relative flex-1">
                     <HiOutlineSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-stone-400" />
                     <input
@@ -743,7 +745,7 @@ export default function ManageGroupDrawer({
                         setSearch(e.target.value);
                         setPage(1);
                       }}
-                      placeholder="Search member products by title, SKU, tag, barcode..."
+                      placeholder="Search by title, SKU, tag, barcode..."
                       className="w-full pl-8 pr-7 py-2 text-xs border border-stone-200 rounded-xl bg-stone-50/50 focus:outline-none focus:border-[#8b6f4e]"
                     />
                     {search && (
@@ -757,7 +759,7 @@ export default function ManageGroupDrawer({
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center justify-between sm:justify-end gap-2">
                     <Dropdown
                       value={sortBy}
                       onChange={setSortBy}
@@ -766,7 +768,7 @@ export default function ManageGroupDrawer({
                         { value: 'price_asc', label: 'Price: Low to High' },
                         { value: 'name_asc', label: 'Name: A-Z' },
                       ]}
-                      className="w-44"
+                      className="flex-1 sm:flex-initial sm:w-44"
                     />
 
                     <div className="flex items-center border border-stone-200 rounded-xl p-1 bg-stone-50">
@@ -794,10 +796,152 @@ export default function ManageGroupDrawer({
                   </div>
                 </div>
 
-                {/* Product Items: Table View */}
+                {/* Product Items: List View (Mobile Cards + Desktop Table) */}
                 {viewMode === 'list' ? (
                   <div className="border border-stone-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
-                    <div className="overflow-x-auto">
+                    <MobileGridList
+                      loading={loading}
+                      loadingText="Loading group products..."
+                      isEmpty={displayedProducts.length === 0}
+                      emptyText="No products found in this group."
+                      items={displayedProducts}
+                      showSelectAll
+                      allSelected={
+                        selectedProductIds.size === filteredProducts.length &&
+                        filteredProducts.length > 0
+                      }
+                      onSelectAll={toggleSelectAll}
+                      renderCard={(p, index) => {
+                        const isSelected = selectedProductIds.has(p._id);
+                        const isPrimary = String(group.primaryProductId) === String(p._id);
+                        const isRep = String(repProduct?._id) === String(p._id);
+                        const isTopAvailable = Boolean(
+                          highestPriceNotSold && String(highestPriceNotSold._id) === String(p._id)
+                        );
+                        const img = getProductImage(p);
+                        const srNo = (page - 1) * pageSize + index + 1;
+
+                        return (
+                          <div
+                            key={p._id}
+                            className={`rounded-xl border p-3 bg-white shadow-2xs space-y-2.5 ${
+                              isSelected ? 'border-[#8b6f4e] bg-[#faf6f0]/50' : 'border-stone-200/90'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => toggleSelect(p._id)}
+                                  className="rounded text-[#8b6f4e] focus:ring-[#8b6f4e] w-3.5 h-3.5 cursor-pointer shrink-0"
+                                />
+                                <div
+                                  className={`w-10 h-10 rounded-lg bg-stone-50 border border-stone-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5 ${
+                                    img ? 'cursor-pointer' : ''
+                                  }`}
+                                  onClick={() =>
+                                    img &&
+                                    setPreviewImage({
+                                      url: img,
+                                      title: p.basicInfo?.title || 'Ornate Product',
+                                      tag: p.ornate?.tagNo,
+                                      sku: p.basicInfo?.sku,
+                                    })
+                                  }
+                                >
+                                  {img ? (
+                                    <img src={img} alt="" className="w-full h-full object-contain pointer-events-none" />
+                                  ) : (
+                                    <IoDiamondOutline className="w-4 h-4 text-stone-300" />
+                                  )}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[10px] font-semibold text-stone-400">#{srNo}</span>
+                                    <p className="font-bold text-stone-900 text-xs truncate">
+                                      {p.basicInfo?.title || 'Ornate Product'}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-wrap mt-1">
+                                    {isPrimary && (
+                                      <span className="px-1.5 py-0.2 bg-amber-50 border border-amber-200 text-amber-700 text-[9px] font-bold rounded">
+                                        Primary
+                                      </span>
+                                    )}
+                                    {isRep && !isPrimary && (
+                                      <span className="px-1.5 py-0.2 bg-emerald-50 border border-emerald-200 text-emerald-700 text-[9px] font-bold rounded">
+                                        Rep (Auto)
+                                      </span>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleToggleProductStatus(p)}
+                                      className="cursor-pointer inline-flex items-center"
+                                    >
+                                      {renderStatusBadge(p)}
+                                    </button>
+                                    {renderStockStatusBadge(p)}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Tag / Barcode</p>
+                                <p className="font-mono text-stone-700 mt-0.5 truncate">
+                                  Tag: <span className="font-semibold text-stone-900">{p.ornate?.tagNo || '—'}</span>
+                                </p>
+                                <p className="font-mono text-stone-700 truncate">
+                                  Barcode: <span className="font-semibold text-stone-900">{p.ornate?.barcode || p.barcode || '—'}</span>
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">Price &amp; Weight</p>
+                                <p className="font-bold text-stone-900 mt-0.5">
+                                  {money(p.pricing?.salePrice || p.pricing?.mrp)}
+                                </p>
+                                <p className="text-stone-500">
+                                  {p.specifications?.metalWeight ?? p.ornate?.netWt ?? '—'} g
+                                </p>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-stone-100">
+                              {isTopAvailable && (
+                                <button
+                                  type="button"
+                                  onClick={() => openProductPreview(p)}
+                                  className="w-7 h-7 rounded-lg border border-[#e8ded1] bg-[#faf8f5] text-[#8b6f4e] inline-flex items-center justify-center cursor-pointer"
+                                  title="Open product on website"
+                                >
+                                  <HiOutlineExternalLink className="w-3.5 h-3.5 stroke-[2]" />
+                                </button>
+                              )}
+                              <MoveActionButton
+                                onClick={() => handleOpenMoveSingle(p)}
+                                title="Move to another group or create new group"
+                              />
+                              <RepresentativeActionButton
+                                isPrimary={isPrimary}
+                                onClick={() => handleSetRepresentative(p._id)}
+                              />
+                              <EditActionButton
+                                onClick={() => navigate(`/catalog/ornate-products/edit/${p._id}`)}
+                                title="Edit Product"
+                              />
+                              <DeleteActionButton
+                                onClick={() => handleRemoveProduct(p._id, p.basicInfo?.title)}
+                                title="Remove from Group"
+                              />
+                            </div>
+                          </div>
+                        );
+                      }}
+                    />
+
+                    <div className="hidden md:block overflow-x-auto">
                       <table className="w-full min-w-[760px] text-left text-xs divide-y divide-stone-100">
                         <thead>
                           <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
@@ -1173,6 +1317,7 @@ export default function ManageGroupDrawer({
               </form>
             )}
           </div>
+        </div>
         </section>
 
       {/* Sync Preview Modal */}

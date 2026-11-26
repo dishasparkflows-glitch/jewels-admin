@@ -35,7 +35,7 @@ export default function StepperNav() {
   } = useAddJewelryProductContext();
 
   return (
-    <div className="sticky top-14 z-20 bg-[#f8fafc]/95 backdrop-blur-md pt-0.5 pb-2.5 space-y-3">
+    <div className="md:sticky md:top-14 z-20 bg-[#f8fafc]/95 backdrop-blur-md pt-0.5 pb-2.5 space-y-2.5 sm:space-y-3">
       {/* ─── Top Bar (Title & Actions Matching Screenshot) ───────── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white p-3.5 sm:p-4 rounded-2xl border border-[#eee8df] shadow-2xs">
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -181,13 +181,16 @@ export default function StepperNav() {
       </div>
 
       {/* ─── Stepper Wizard Bar ─────────── */}
-      <div className="bg-white rounded-2xl border border-[#eee8df] p-2 sm:p-2.5 shadow-2xs">
-        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 sm:gap-2 items-center">
+      <div className="bg-white rounded-2xl border border-[#eee8df] p-1.5 sm:p-2.5 shadow-2xs">
+        <div
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+          className="flex items-center gap-1.5 overflow-x-auto [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-3 lg:grid-cols-5 sm:gap-2 sm:items-center"
+        >
           {steps.map((s, idx) => {
             const isActive = activeStep === s.num;
 
             return (
-              <div key={s.num} className="flex items-center">
+              <div key={s.num} className="flex items-center shrink-0 sm:shrink min-w-[145px] sm:min-w-0">
                 <button
                   type="button"
                   onClick={() => setActiveStep(s.num)}
@@ -202,7 +205,7 @@ export default function StepperNav() {
                   className={`flex items-center gap-2.5 text-left w-full p-2 rounded-xl transition-all cursor-pointer group border ${
                     isActive
                       ? ''
-                      : 'hover:bg-stone-50 border-transparent'
+                      : 'hover:bg-stone-50 border-stone-100 sm:border-transparent'
                   }`}
                 >
                   {/* Step Indicator Circle with exact number */}

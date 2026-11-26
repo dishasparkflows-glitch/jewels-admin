@@ -37,7 +37,7 @@ function notifyHeaderUpdate() {
 
 export default function NotificationsView() {
   const navigate = useNavigate();
-  const { confirm } = useConfirm();
+  const confirm = useConfirm();
 
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -130,7 +130,7 @@ export default function NotificationsView() {
     e?.stopPropagation?.();
     const ok = await confirm({
       title: 'Delete Notification',
-      message: `Remove "${notif.title}"?`,
+      message: `Permanently delete "${notif.title}"? This action cannot be undone.`,
       confirmText: 'Delete',
       type: 'danger',
     });
@@ -138,7 +138,7 @@ export default function NotificationsView() {
 
     try {
       await notificationsAPI.delete(notif._id);
-      toast.success('Notification deleted');
+      toast.success('Notification permanently deleted');
       notifyHeaderUpdate();
       fetchNotifications();
     } catch (err) {
@@ -150,7 +150,7 @@ export default function NotificationsView() {
     if (!selectedIds.length) return;
     const ok = await confirm({
       title: 'Delete Selected Notifications',
-      message: `Delete ${selectedIds.length} selected notification(s)?`,
+      message: `Permanently delete ${selectedIds.length} selected notification(s)? This action cannot be undone.`,
       confirmText: 'Delete Selected',
       type: 'danger',
     });
@@ -158,7 +158,7 @@ export default function NotificationsView() {
 
     try {
       await notificationsAPI.bulkDelete(selectedIds);
-      toast.success(`${selectedIds.length} notification(s) deleted`);
+      toast.success(`${selectedIds.length} notification(s) permanently deleted`);
       setSelectedIds([]);
       notifyHeaderUpdate();
       fetchNotifications();

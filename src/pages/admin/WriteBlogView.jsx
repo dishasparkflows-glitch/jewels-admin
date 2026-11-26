@@ -318,7 +318,7 @@ export default function WriteBlogView() {
             type="button"
             disabled={submitting}
             onClick={() => handleSubmit('inactive')}
-            className="h-10 px-4 sm:px-4.5 rounded-xl bg-white border border-stone-200/90 hover:border-stone-300 hover:bg-stone-50 active:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs sm:text-[13px] font-medium transition-all shadow-2xs flex items-center gap-2 cursor-pointer disabled:opacity-50 active:scale-[0.98]"
+            className="flex-1 sm:flex-initial justify-center h-10 px-4 sm:px-5 rounded-xl bg-white border border-stone-200/90 hover:border-stone-300 hover:bg-stone-50 active:bg-stone-100 text-stone-700 hover:text-stone-900 text-xs sm:text-[13px] font-medium transition-all shadow-2xs flex items-center gap-2 whitespace-nowrap cursor-pointer disabled:opacity-50 active:scale-[0.98]"
           >
             <svg
               className="w-4 h-4 text-stone-500 shrink-0"
@@ -339,7 +339,7 @@ export default function WriteBlogView() {
             type="button"
             disabled={submitting}
             onClick={() => handleSubmit('active')}
-            className="h-10 px-4.5 sm:px-5 rounded-xl bg-[#96744f] hover:bg-[#856543] active:bg-[#785b3a] active:scale-[0.98] text-white text-xs sm:text-[13px] font-medium transition-all shadow-xs hover:shadow-md flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
+            className="flex-1 sm:flex-initial justify-center h-10 px-4 sm:px-5 rounded-xl bg-[#96744f] hover:bg-[#856543] active:bg-[#785b3a] active:scale-[0.98] text-white text-xs sm:text-[13px] font-medium transition-all shadow-xs hover:shadow-md flex items-center gap-2 whitespace-nowrap cursor-pointer disabled:opacity-50"
           >
             <svg
               className="w-4 h-4 text-white shrink-0"
@@ -402,7 +402,7 @@ export default function WriteBlogView() {
 
             {/* Row 2: URL Slug (auto-generated from title) */}
             <div>
-              <div className="flex items-center justify-between mb-1.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-1.5">
                 <label className="block text-xs font-semibold text-stone-700">
                   URL Slug <span className="text-stone-400 font-normal">(auto-generated from title)</span>
                 </label>

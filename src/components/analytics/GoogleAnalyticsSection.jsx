@@ -22,6 +22,7 @@ import {
 import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import Pagination from '../common/Pagination';
+import MobileGridList from '../common/MobileGridList';
 import DatePicker, { formatDateDisplay } from '../common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { analyticsAPI } from '../../api/services';
@@ -519,8 +520,123 @@ export default function GoogleAnalyticsSection() {
           </div>
         </div>
 
-        {/* Table Content */}
-        <div className="overflow-x-auto">
+        {/* Mobile Card Grid (< md) */}
+        <MobileGridList
+          loading={loading}
+          loadingText="Loading analytics report..."
+          isEmpty={paginatedItems.length === 0}
+          emptyText="No activity found for this date range or filter."
+          items={paginatedItems}
+          renderCard={(item, idx) => {
+            const prod = item.product;
+            const leads = item.users || [];
+            const hasLeads = leads.length > 0;
+            const srNo = (currentPageSafe - 1) * pageSize + idx + 1;
+            const countVal = item.count || item.views || 0;
+            const countLabel =
+              activeTab === 'cart'
+                ? 'Cart Adds'
+                : activeTab === 'wishlist'
+                ? 'Wishlist Adds'
+                : 'Views';
+            const countBadgeClass =
+              activeTab === 'cart'
+                ? 'bg-amber-100 text-amber-800'
+                : activeTab === 'wishlist'
+                ? 'bg-rose-100 text-rose-800'
+                : 'bg-indigo-100 text-indigo-800';
+
+            return (
+              <div
+                key={item.itemId || idx}
+                className="rounded-xl border border-stone-200/90 bg-white p-3.5 shadow-2xs space-y-3"
+              >
+                {/* Header: SR NO + Product + Metric Badge */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <span className="text-[11px] font-semibold text-stone-400 shrink-0 w-4 text-center">
+                      #{srNo}
+                    </span>
+                    <div className="w-11 h-11 rounded-xl bg-stone-100 border border-stone-200 flex items-center justify-center overflow-hidden shrink-0">
+                      {prod?.image ? (
+                        <img
+                          src={prod.image}
+                          alt={prod.title || item.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <IoDiamondOutline className="w-5 h-5 text-[#8b6f4e]" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-stone-900 line-clamp-2 leading-snug">
+                        {prod?.title || item.name}
+                      </p>
+                      <p className="text-[10px] text-stone-400 truncate mt-0.5">
+                        ID: {item.itemId}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="shrink-0 text-right">
+                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-[11px] ${countBadgeClass}`}>
+                      {countVal}
+                      <span className="font-medium text-[10px] opacity-80">{countLabel}</span>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Metadata Grid: SKU, Category, Price */}
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t border-stone-100 text-[11px]">
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">
+                      SKU
+                    </p>
+                    <p className="font-mono text-stone-700 truncate mt-0.5">
+                      {prod?.sku || '—'}
+                    </p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">
+                      Category
+                    </p>
+                    <p className="text-stone-700 font-medium truncate mt-0.5">
+                      {prod?.category || 'Fine Jewellery'}
+                    </p>
+                  </div>
+                  <div className="min-w-0 text-right">
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400 font-semibold">
+                      Price
+                    </p>
+                    <p className="font-semibold text-stone-900 truncate mt-0.5">
+                      {prod?.price ? `₹${Number(prod.price).toLocaleString('en-IN')}` : '—'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Footer: Customer Leads */}
+                <div className="flex items-center justify-between pt-2 border-t border-stone-100">
+                  <span className="text-[11px] font-medium text-stone-500">Customer Leads</span>
+                  {hasLeads ? (
+                    <button
+                      type="button"
+                      onClick={() => setCustomerModalItem(item)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#8b6f4e]/10 text-[#8b6f4e] hover:bg-[#8b6f4e] hover:text-white transition-all text-xs font-semibold cursor-pointer shadow-2xs"
+                    >
+                      <HiOutlineUsers className="w-3.5 h-3.5" />
+                      <span>{leads.length} Leads</span>
+                    </button>
+                  ) : (
+                    <span className="text-stone-400 text-[11px]">Guest Shoppers</span>
+                  )}
+                </div>
+              </div>
+            );
+          }}
+        />
+
+        {/* Desktop Table Content (md+) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full min-w-[760px] text-left text-xs text-stone-700">
             <thead>
               <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
@@ -687,17 +803,17 @@ export default function GoogleAnalyticsSection() {
                     key={lead.id || idx}
                     className="p-3 bg-stone-50 rounded-xl border border-stone-200 flex items-center justify-between gap-3 hover:border-[#8b6f4e]/40 transition-colors"
                   >
-                    <div className="space-y-0.5">
-                      <p className="text-xs font-bold text-stone-900">{lead.name || 'Shopper Lead'}</p>
+                    <div className="space-y-0.5 min-w-0 flex-1">
+                      <p className="text-xs font-bold text-stone-900 truncate">{lead.name || 'Shopper Lead'}</p>
                       {lead.email && (
-                        <p className="text-[11px] text-stone-500 flex items-center gap-1">
-                          <HiOutlineMail className="w-3.5 h-3.5 text-stone-400" />
-                          <span>{lead.email}</span>
+                        <p className="text-[11px] text-stone-500 flex items-center gap-1 min-w-0">
+                          <HiOutlineMail className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                          <span className="truncate">{lead.email}</span>
                         </p>
                       )}
                       {lead.phone && (
                         <p className="text-[11px] text-[#8b6f4e] font-semibold flex items-center gap-1">
-                          <HiOutlinePhone className="w-3.5 h-3.5" />
+                          <HiOutlinePhone className="w-3.5 h-3.5 shrink-0" />
                           <span>{lead.phone}</span>
                         </p>
                       )}
@@ -707,7 +823,7 @@ export default function GoogleAnalyticsSection() {
                       <button
                         type="button"
                         onClick={() => handleCopyPhone(lead.phone)}
-                        className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
+                        className={`shrink-0 flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all cursor-pointer ${
                           copiedPhone === lead.phone
                             ? 'bg-emerald-600 text-white'
                             : 'bg-white border border-stone-200 text-stone-700 hover:border-[#8b6f4e] hover:text-[#8b6f4e]'
