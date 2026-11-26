@@ -14,6 +14,8 @@ import {
   HiOutlineCheck,
   HiOutlineSparkles,
   HiOutlineSwitchHorizontal,
+  HiOutlineSun,
+  HiOutlineMoon,
 } from 'react-icons/hi';
 
 const Header = ({ onMobileToggle }) => {
@@ -23,6 +25,8 @@ const Header = ({ onMobileToggle }) => {
     presets,
     selectTheme,
     isDefault,
+    isDarkMode,
+    toggleColorMode,
     sidebarOpen,
     toggleSidebar,
     sidebarPosition,
@@ -125,8 +129,23 @@ const Header = ({ onMobileToggle }) => {
       {/* Spacer (visible on tablet+ only) */}
       <div className="hidden sm:block sm:flex-1" />
 
-      {/* Right: notifications, Super Admin profile */}
+      {/* Right: Dark/Light theme toggle, notifications, Super Admin profile */}
       <div className="flex items-center gap-1.5 sm:gap-4 shrink-0">
+        {/* Dark / Light Theme Toggle */}
+        <button
+          type="button"
+          onClick={toggleColorMode}
+          className="relative p-2 text-stone-500 hover:text-stone-800 dark:text-stone-300 dark:hover:text-white hover:bg-white dark:hover:bg-stone-800 rounded-xl transition-colors border border-transparent hover:border-[#eee8df] dark:hover:border-stone-700 cursor-pointer"
+          title={isDarkMode ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+          aria-label={isDarkMode ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
+        >
+          {isDarkMode ? (
+            <HiOutlineSun className="w-4 h-4 sm:w-5 sm:h-5 text-amber-400" />
+          ) : (
+            <HiOutlineMoon className="w-4 h-4 sm:w-5 sm:h-5" />
+          )}
+        </button>
+
         {/* Notifications */}
         <button
           className="relative p-2 text-stone-500 hover:text-stone-800 hover:bg-white rounded-xl transition-colors border border-transparent hover:border-[#eee8df] cursor-pointer"

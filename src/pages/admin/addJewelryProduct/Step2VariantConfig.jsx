@@ -1,4 +1,4 @@
-import { Fragment } from 'react';
+import { Fragment, useRef } from 'react';
 import {
   HiOutlinePlus,
   HiOutlineX,
@@ -15,6 +15,8 @@ import { getSphereStyle } from './metalColorHelpers';
 import { useAddJewelryProductContext } from './AddJewelryProductContext';
 
 export default function Step2VariantConfig() {
+  const colorStoneCaratInputRef = useRef(null);
+  const centerCaratInputRef = useRef(null);
   const {
     sortedDisplayPurities,
     selectedPurities,
@@ -332,6 +334,7 @@ export default function Step2VariantConfig() {
                 </label>
                 <div className="flex items-center gap-1.5">
                   <input
+                    ref={colorStoneCaratInputRef}
                     type="number"
                     step="0.01"
                     placeholder="e.g. 1.5"
@@ -341,13 +344,17 @@ export default function Step2VariantConfig() {
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         handleAddColorStoneCarat();
+                        colorStoneCaratInputRef.current?.focus();
                       }
                     }}
                     className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
                   />
                   <button
                     type="button"
-                    onClick={handleAddColorStoneCarat}
+                    onClick={() => {
+                      handleAddColorStoneCarat();
+                      colorStoneCaratInputRef.current?.focus();
+                    }}
                     className="w-8 h-8 flex-shrink-0 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer"
                     title="Add Carat Weight"
                   >
@@ -609,6 +616,7 @@ export default function Step2VariantConfig() {
                 </label>
                 <div className="flex items-center gap-1.5">
                   <input
+                    ref={centerCaratInputRef}
                     type="number"
                     step="0.01"
                     placeholder="e.g. 1.5"
@@ -618,13 +626,17 @@ export default function Step2VariantConfig() {
                       if (e.key === 'Enter') {
                         e.preventDefault();
                         handleAddCarat();
+                        centerCaratInputRef.current?.focus();
                       }
                     }}
                     className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
                   />
                   <button
                     type="button"
-                    onClick={handleAddCarat}
+                    onClick={() => {
+                      handleAddCarat();
+                      centerCaratInputRef.current?.focus();
+                    }}
                     className="w-8 h-8 flex-shrink-0 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer"
                     title="Add Carat Weight"
                   >

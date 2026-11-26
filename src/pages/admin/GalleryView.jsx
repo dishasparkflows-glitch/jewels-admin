@@ -671,7 +671,7 @@ export default function GalleryView() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => handleDelete(item)}
+                      onClick={() => handleDeleteItem(item)}
                       className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
                       title="Delete"
                     >

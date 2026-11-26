@@ -487,7 +487,7 @@ const DynamicModuleView = () => {
         if (q && q.trim()) params.search = q.trim();
         const res = await api.get(config.endpoint, { params });
         const data = res.data?.data?.items || res.data?.data || [];
-        setItems(Array.isArray(data) ? data : [data].filter(Boolean));
+        setItems(Array.isArray(data) ? data : []);
         if (res.data?.data?.pagination?.total !== undefined) {
           setServerTotal(res.data.data.pagination.total);
         } else if (res.data?.pagination?.totalDocs !== undefined) {

@@ -856,15 +856,18 @@ export default function AddJewelryProduct() {
     apiCenterRates,
   ]);
 
-  // Auto-derive Base Carat benchmark from center diamonds if not manually customized
+  // Auto-derive Base Carat benchmark from active stone carats (center diamonds or color stones) if not manually customized
   useEffect(() => {
-    if (!baseCaratManuallyEdited && centerDiamondCarats.length > 0) {
-      const minCarat = centerDiamondCarats[0];
-      if (minCarat > 0) {
-        setBaseCarat(String(minCarat));
+    if (!baseCaratManuallyEdited) {
+      const activeCarats = (stoneConfigType === 'colorStone' ? colorStoneCarats : centerDiamondCarats)
+        .map(Number)
+        .filter((c) => Number.isFinite(c) && c > 0)
+        .sort((a, b) => a - b);
+      if (activeCarats.length > 0) {
+        setBaseCarat(String(activeCarats[0]));
       }
     }
-  }, [centerDiamondCarats, baseCaratManuallyEdited]);
+  }, [stoneConfigType, centerDiamondCarats, colorStoneCarats, baseCaratManuallyEdited]);
 
   const handleAddCarat = () => {
     const val = parseFloat(caratInput.trim());
@@ -2311,10 +2314,22 @@ export default function AddJewelryProduct() {
     const match = items.find((item) => String(item.name).toLowerCase() === String(value).toLowerCase() || String(item._id || item.id) === String(value));
     return match?._id || match?.id || '';
   };
+  const resolveActiveBaseCarat = () => {
+    const activeCarats = (stoneConfigType === 'colorStone' ? colorStoneCarats : centerDiamondCarats)
+      .map(Number)
+      .filter((c) => Number.isFinite(c) && c > 0)
+      .sort((a, b) => a - b);
+    const minActive = activeCarats[0] || 1;
+    const parsedBase = Number(baseCarat);
+    if (parsedBase > 0 && (parsedBase !== 1 || activeCarats.includes(1))) {
+      return parsedBase;
+    }
+    return minActive;
+  };
   const pricingInput = () => ({
     basicInfo: { sku: basicDetails.sku },
     pricing: {
-      baseCarat: Number(baseCarat || (stoneConfigType === 'colorStone' ? colorStoneCarats[0] : centerDiamondCarats[0]) || 1),
+      baseCarat: resolveActiveBaseCarat(),
       gstPercentage: Number(gstPercentage),
       baseLabourCharge: Number(specs.baseLabourCharge),
       certificateCharge: Number(specs.certificateCharge),
@@ -2479,8 +2494,16 @@ export default function AddJewelryProduct() {
       const payload = {
         metalWeight: parseFloat(v.weight || v.metalWeight || specs.metalWeight || 0),
         metalPurityId: v.metalPurityId || v.metalPurity?._id || v.metalPurity,
+        stoneConfigType,
+        sideStoneConfigType,
+        colorStoneRows: stoneConfigType === 'colorStone' ? [{
+          diamondTypeId: masterId(diamondMasters.types, colorStoneType),
+          diamondShapeId: masterId(diamondMasters.shapes, colorStoneShape),
+          caratWeight: parseFloat(v.colorStoneWeight || v.caratWeight || colorStoneCarats[0] || 0),
+          pricePerCarat: 3000,
+        }] : [],
         // Rule 2: Never treat accent diamond weight as center diamond
-        centerDiamonds: (centerDiamondCombinations.length && (v.centerDiamondWeight || v.caratWeight)) ? [
+        centerDiamonds: (stoneConfigType !== 'colorStone' && centerDiamondCombinations.length && (v.centerDiamondWeight || v.caratWeight)) ? [
           {
             diamondTypeId: v.diamondTypeId?._id || v.diamondTypeId,
             diamondShapeId: v.diamondShapeId?._id || v.diamondShapeId || centerDiamondCombinations[0]?.shapeId || centerShapeId,
@@ -2489,8 +2512,17 @@ export default function AddJewelryProduct() {
             caratWeight: parseFloat(v.centerDiamondWeight || v.caratWeight || centerDiamondCombinations[0]?.carat || centerDiamondCarats[0] || 0),
           }
         ] : [],
+        sideColorStoneRows: (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both')
+          ? sideColorStoneRows.map((row) => ({
+              diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
+              diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
+              caratWeight: Number(row.caratWeight),
+              pieces: Number(row.pieces || 1),
+              pricePerCarat: 3000,
+            }))
+          : [],
         // Rule 1: Never sum all side diamond rows; pass only matching row
-        sideDiamonds: matchingSide ? [{
+        sideDiamonds: (sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both') && matchingSide ? [{
           diamondTypeId: matchingSide.diamondTypeId?._id || matchingSide.diamondTypeId,
           diamondShapeId: matchingSide.diamondShapeId?._id || matchingSide.diamondShapeId,
           diamondClarityId: matchingSide.diamondClarityId?._id || matchingSide.diamondClarityId,
@@ -2506,7 +2538,7 @@ export default function AddJewelryProduct() {
         shippingCharge: 0,
         certificateCharge: parseFloat(specs.certificateCharge || 0),
         isCalculated: true,
-        baseCarat: parseFloat(baseCarat || centerDiamondCarats[0] || 1),
+        baseCarat: resolveActiveBaseCarat(),
         __debugVariant: v,
       };
 
@@ -2747,20 +2779,6 @@ export default function AddJewelryProduct() {
       row.rate,
     ])));
     setAutomaticPricing(productRecord.productType !== 'silver' && !productRecord.isOrnate);
-    const savedBaseCarat = productRecord.pricing?.baseCarat;
-    const minCenterCt = loadedCenterCarats[0];
-    if (savedBaseCarat !== undefined && savedBaseCarat !== null && Number(savedBaseCarat) > 0) {
-      if (Number(savedBaseCarat) === 1 && minCenterCt && minCenterCt > 1 && !loadedCenterCarats.includes(1)) {
-        setBaseCarat(String(minCenterCt));
-        setBaseCaratManuallyEdited(false);
-      } else {
-        setBaseCarat(String(savedBaseCarat));
-        setBaseCaratManuallyEdited(true);
-      }
-    } else {
-      setBaseCarat(String(minCenterCt || 1));
-      setBaseCaratManuallyEdited(false);
-    }
     setGstPercentage(String(productRecord.pricing?.gstPercentage ?? 3));
     setSideRows((productRecord.sideDiamondRows || []).map((row) => ({ ...row, rateSource: row.rateSource || (row.priceINR ? 'manual' : 'master') })));
     const loadedStoneConfigType = productRecord.stoneConfigType ||
@@ -2774,12 +2792,28 @@ export default function AddJewelryProduct() {
     setSideStoneConfigType(loadedSideStoneConfigType);
 
     const csRows = Array.isArray(productRecord.colorStoneRows) ? productRecord.colorStoneRows : [];
+    const csCarats = unique(csRows.map((r) => Number(r.caratWeight)).filter(Number.isFinite)).sort((a, b) => a - b);
     if (csRows.length > 0) {
       const firstCs = csRows[0];
       setColorStoneType(resolveName(firstCs.diamondTypeId || firstCs.diamondType, diamondMasters.types));
       setColorStoneShape(resolveName(firstCs.diamondShapeId || firstCs.diamondShape, diamondMasters.shapes));
-      const csCarats = unique(csRows.map((r) => Number(r.caratWeight)).filter(Number.isFinite)).sort((a, b) => a - b);
       setColorStoneCarats(csCarats);
+    }
+
+    const savedBaseCarat = productRecord.pricing?.baseCarat;
+    const activeLoadedCarats = loadedStoneConfigType === 'colorStone' ? csCarats : loadedCenterCarats;
+    const minLoadedCarat = activeLoadedCarats[0];
+    if (savedBaseCarat !== undefined && savedBaseCarat !== null && Number(savedBaseCarat) > 0) {
+      if (Number(savedBaseCarat) === 1 && minLoadedCarat && minLoadedCarat > 1 && !activeLoadedCarats.includes(1)) {
+        setBaseCarat(String(minLoadedCarat));
+        setBaseCaratManuallyEdited(false);
+      } else {
+        setBaseCarat(String(savedBaseCarat));
+        setBaseCaratManuallyEdited(true);
+      }
+    } else {
+      setBaseCarat(String(minLoadedCarat || 1));
+      setBaseCaratManuallyEdited(false);
     }
 
     const scsRows = Array.isArray(productRecord.sideColorStoneRows) ? productRecord.sideColorStoneRows : [];
@@ -3145,7 +3179,7 @@ export default function AddJewelryProduct() {
           markupPercentage: markupNum,
         }),
         ...(!isSilverProduct ? {
-          baseCarat: Number(baseCarat || centerDiamondCarats[0] || 1),
+          baseCarat: resolveActiveBaseCarat(),
           gstPercentage: Number(gstPercentage || 3),
           ...(numberValue(specs.baseLabourCharge) !== undefined ? { baseLabourCharge: numberValue(specs.baseLabourCharge) } : {}),
           ...(numberValue(specs.certificateCharge) !== undefined ? { certificateCharge: numberValue(specs.certificateCharge) } : {}),

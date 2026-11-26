@@ -285,10 +285,10 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
           )}
 
           <div className="flex flex-col min-w-0 text-left">
-            <span className="font-serif text-[13px] font-bold tracking-[0.16em] text-[#1F1D1A] group-hover:text-[#8a6d4b] uppercase truncate leading-tight transition-colors">
+            <span className="font-serif text-[13px] font-bold tracking-[0.16em] text-[#1F1D1A] dark:text-stone-100 group-hover:text-[#8a6d4b] uppercase truncate leading-tight transition-colors">
               NEIRAH
             </span>
-            <span className="text-[7.5px] tracking-[0.24em] text-[#A67C52] uppercase font-semibold mt-0.5">
+            <span className="text-[7.5px] tracking-[0.24em] text-[#A67C52] dark:text-[#d4b087] uppercase font-semibold mt-0.5">
               LUXURY PORTAL
             </span>
           </div>

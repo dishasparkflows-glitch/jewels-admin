@@ -441,7 +441,7 @@ export default function CurrenciesView() {
                   <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                     <RowActions
                       onEdit={() => openEditModal(item)}
-                      onDelete={!isBase ? () => handleDelete(item._id, item.code) : undefined}
+                      onDelete={!isBase ? () => handleDeleteCurrency(item) : undefined}
                     />
                   </div>
                 </div>

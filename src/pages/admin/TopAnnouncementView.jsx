@@ -527,7 +527,7 @@ export default function TopAnnouncementView() {
                     <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]" onClick={(e) => e.stopPropagation()}>
                       <ToggleSwitch
                         checked={item.isActive !== false}
-                        onChange={() => handleToggleActive(item)}
+                        onChange={() => handleToggleStatus(item)}
                         size="sm"
                       />
                       <span className="text-stone-400 truncate">{formatSchedule(item)}</span>

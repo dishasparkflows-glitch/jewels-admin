@@ -69,7 +69,7 @@ const AdminLayout = () => {
       : 'w-full';
 
   return (
-    <div id="admin-root-layout" className="min-h-screen bg-[#f8fafc] text-stone-900 relative admin-page-bg" style={{ backgroundColor: "#f8fafc" }}>
+    <div id="admin-root-layout" className="min-h-screen bg-[#f8fafc] dark:bg-[#0f1115] text-stone-900 dark:text-stone-100 relative admin-page-bg transition-colors duration-200">
       {/* Unified Luxury Tooltip Provider for entire Admin Panel */}
       <GlobalTooltip />
 

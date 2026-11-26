@@ -501,23 +501,23 @@ export function buildDynamicThemeCss(theme, rgb) {
           background-color: var(--theme-primary) !important;
         }
 
-        /* ─── FORMS & MODALS PROTECTION (Neutral Light Containers Stay Crisp White) ─── */
-        .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#faf8f5]"],
-        .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#FAF8F5]"],
-        .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#fcfbf9]"],
-        .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#f8f2eb]"],
-        .fixed.inset-0:not(#admin-sidebar) .modal-header,
-        [role="dialog"] [class*="bg-[#faf8f5]"],
-        [role="dialog"] [class*="bg-[#FAF8F5]"],
-        [role="dialog"] [class*="bg-[#fcfbf9]"],
-        [role="dialog"] [class*="bg-[#f8f2eb]"],
-        form [class*="bg-[#faf8f5]"],
-        form [class*="bg-[#fcfbf9]"],
-        dialog [class*="bg-[#faf8f5]"],
-        dialog [class*="bg-[#fcfbf9]"],
-        input:not([type="checkbox"]):not([type="radio"]):not([type="color"])[class*="bg-[#f"],
-        textarea[class*="bg-[#f"],
-        select[class*="bg-[#f"] {
+        /* ─── FORMS & MODALS PROTECTION (Neutral Light Containers Stay Crisp White in Light Mode) ─── */
+        html:not(.dark) .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#faf8f5]"],
+        html:not(.dark) .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#FAF8F5]"],
+        html:not(.dark) .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#fcfbf9]"],
+        html:not(.dark) .fixed.inset-0:not(#admin-sidebar) [class*="bg-[#f8f2eb]"],
+        html:not(.dark) .fixed.inset-0:not(#admin-sidebar) .modal-header,
+        html:not(.dark) [role="dialog"] [class*="bg-[#faf8f5]"],
+        html:not(.dark) [role="dialog"] [class*="bg-[#FAF8F5]"],
+        html:not(.dark) [role="dialog"] [class*="bg-[#fcfbf9]"],
+        html:not(.dark) [role="dialog"] [class*="bg-[#f8f2eb]"],
+        html:not(.dark) form [class*="bg-[#faf8f5]"],
+        html:not(.dark) form [class*="bg-[#fcfbf9]"],
+        html:not(.dark) dialog [class*="bg-[#faf8f5]"],
+        html:not(.dark) dialog [class*="bg-[#fcfbf9]"],
+        html:not(.dark) input:not([type="checkbox"]):not([type="radio"]):not([type="color"])[class*="bg-[#f"],
+        html:not(.dark) textarea[class*="bg-[#f"],
+        html:not(.dark) select[class*="bg-[#f"] {
           background-color: #ffffff !important;
         }
 
@@ -601,13 +601,29 @@ export function buildDynamicThemeCss(theme, rgb) {
           color: #ffffff !important;
         }
 
-        html,
-        body,
-        #root,
-        #admin-root-layout,
-        .admin-page-bg,
-        #admin-root-layout > div:not(.mobile-sidebar-backdrop):not(.fixed) {
+        html:not(.dark),
+        html:not(.dark) body,
+        html:not(.dark) #root,
+        html:not(.dark) #admin-root-layout,
+        html:not(.dark) .admin-page-bg,
+        html:not(.dark) #admin-root-layout > div:not(.mobile-sidebar-backdrop):not(.fixed) {
           background-color: #f8fafc !important;
+        }
+
+        html.dark,
+        html.dark body,
+        html.dark #root,
+        html.dark #admin-root-layout,
+        html.dark .admin-page-bg,
+        html.dark #admin-root-layout > div:not(.mobile-sidebar-backdrop):not(.fixed) {
+          background-color: #0f1115 !important;
+        }
+
+        html.dark {
+          --theme-primary-soft: rgba(var(--theme-primary-rgb), 0.16) !important;
+          --theme-primary-light: rgba(var(--theme-primary-rgb), 0.10) !important;
+          --theme-primary-border: rgba(var(--theme-primary-rgb), 0.35) !important;
+          --theme-primary-row-hover: rgba(var(--theme-primary-rgb), 0.10) !important;
         }
 
         .sidebar-scrollbar::-webkit-scrollbar-thumb {

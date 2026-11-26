@@ -503,7 +503,7 @@ export default function WhatsAppView() {
                       <div className="min-w-0">
                         <p className="font-bold text-stone-900 text-xs truncate">{templateTitle}</p>
                         <p className="text-[10px] text-stone-400 truncate">
-                          #{(tmplPage - 1) * pageSize + idx + 1} · {tmpl.category || 'UTILITY'}
+                          #{(currentPage - 1) * pageSize + idx + 1} · {tmpl.category || 'UTILITY'}
                         </p>
                       </div>
                       <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase shrink-0 ${

@@ -440,12 +440,6 @@ export default function CustomInquiriesView() {
             const clientName = inq.customer?.name || '—';
             const clientEmail = inq.customer?.email || '—';
             const phoneNum = formatPhone(inq.customer?.phone);
-            const initial = (clientName === '—' ? '' : clientName)
-              .split(' ')
-              .map((s) => s[0])
-              .join('')
-              .toUpperCase()
-              .slice(0, 2);
             const stone = inq.requirements?.stoneType || '—';
             const metal = inq.requirements?.metalType || '—';
             const budgetStr = formatBudget(inq.requirements);
@@ -470,12 +464,6 @@ export default function CustomInquiriesView() {
                       style={{ accentColor: "var(--theme-primary, #8b6f4e)" }}
                       className="w-3.5 h-3.5 rounded border-stone-300 cursor-pointer shrink-0"
                     />
-                    <div
-                      className="w-8 h-8 rounded-full font-bold text-xs flex items-center justify-center shrink-0 border"
-                      style={{ backgroundColor: "rgba(var(--theme-primary-rgb, 139, 111, 78), 0.1)", color: "var(--theme-primary, #8b6f4e)", borderColor: "rgba(var(--theme-primary-rgb, 139, 111, 78), 0.25)" }}
-                    >
-                      {initial}
-                    </div>
                     <div className="min-w-0">
                       <p className="font-bold text-stone-900 text-xs truncate">{clientName}</p>
                       <p className="text-[10px] text-stone-400 truncate">#{srNo} · {clientEmail}</p>
@@ -549,12 +537,6 @@ export default function CustomInquiriesView() {
                   const clientName = inq.customer?.name || '—';
                   const clientEmail = inq.customer?.email || '—';
                   const phoneNum = formatPhone(inq.customer?.phone);
-                  const initial = (clientName === '—' ? '' : clientName)
-                    .split(' ')
-                    .map((s) => s[0])
-                    .join('')
-                    .toUpperCase()
-                    .slice(0, 2);
 
                   const stone = inq.requirements?.stoneType || '—';
                   const metal = inq.requirements?.metalType || '—';
@@ -588,18 +570,13 @@ export default function CustomInquiriesView() {
 
                       {/* Client Info */}
                       <td className="py-3 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full font-bold text-xs flex items-center justify-center shrink-0 border" style={{ backgroundColor: "rgba(var(--theme-primary-rgb, 139, 111, 78), 0.1)", color: "var(--theme-primary, #8b6f4e)", borderColor: "rgba(var(--theme-primary-rgb, 139, 111, 78), 0.25)" }}>
-                            {initial}
-                          </div>
-                          <div className="leading-tight">
-                            <p className="font-bold text-stone-900 text-xs">
-                              {clientName}
-                            </p>
-                            <p className="text-[11px] text-stone-400 font-normal mt-0.5 max-w-[190px] truncate">
-                              {clientEmail}
-                            </p>
-                          </div>
+                        <div className="leading-tight">
+                          <p className="font-bold text-stone-900 text-xs">
+                            {clientName}
+                          </p>
+                          <p className="text-[11px] text-stone-400 font-normal mt-0.5 max-w-[190px] truncate">
+                            {clientEmail}
+                          </p>
                         </div>
                       </td>
 

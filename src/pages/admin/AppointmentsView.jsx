@@ -714,9 +714,6 @@ export default function AppointmentsView() {
                         onChange={() => handleToggleSelect(id)}
                         className="w-3.5 h-3.5 rounded border-stone-300 text-[#8b6f4e] focus:ring-[#8b6f4e]/30 cursor-pointer shrink-0"
                       />
-                      <div className="w-8 h-8 rounded-full bg-[#fdf3e7] text-[#8b6f4e] font-bold text-xs flex items-center justify-center border border-[#f5e3ce] shrink-0">
-                        {getInitials(clientName, 'AP')}
-                      </div>
                       <div className="min-w-0">
                         <p className="font-bold text-stone-900 text-xs truncate">{clientName}</p>
                         <p className="text-[10px] text-stone-400 truncate">#{srNo} · {clientEmail}</p>
@@ -800,18 +797,13 @@ export default function AppointmentsView() {
 
                       {/* Client */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-[#fdf3e7] text-[#8b6f4e] font-bold text-xs flex items-center justify-center border border-[#f5e3ce] shrink-0">
-                            {getInitials(clientName, 'AP')}
-                          </div>
-                          <div>
-                            <p className="font-bold text-stone-900 text-xs leading-none">
-                              {clientName}
-                            </p>
-                            <p className="text-[11px] text-stone-400 mt-1 leading-none">
-                              {clientEmail}
-                            </p>
-                          </div>
+                        <div>
+                          <p className="font-bold text-stone-900 text-xs leading-none">
+                            {clientName}
+                          </p>
+                          <p className="text-[11px] text-stone-400 mt-1 leading-none">
+                            {clientEmail}
+                          </p>
                         </div>
                       </td>
 

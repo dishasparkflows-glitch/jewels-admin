@@ -18,10 +18,44 @@ export const useTheme = () => {
 };
 
 const STORAGE_KEY = 'neirah_admin_portal_theme';
+const COLOR_MODE_KEY = 'neirah_admin_color_mode';
 const SIDEBAR_POS_KEY = 'neirah_admin_sidebar_position';
 const SIDEBAR_OPEN_KEY = 'neirah_admin_sidebar_open';
 
 export const ThemeProvider = ({ children }) => {
+  const [colorMode, setColorModeState] = useState(() => {
+    try {
+      const saved = localStorage.getItem(COLOR_MODE_KEY);
+      if (saved === 'dark' || saved === 'light') return saved;
+    } catch {
+      // Ignore storage access errors
+    }
+    return 'light';
+  });
+
+  const setColorMode = (modeOrFn) => {
+    setColorModeState((prev) => {
+      const next = typeof modeOrFn === 'function' ? modeOrFn(prev) : modeOrFn;
+      const resolved = next === 'dark' ? 'dark' : 'light';
+      try {
+        localStorage.setItem(COLOR_MODE_KEY, resolved);
+      } catch {
+        // Ignore storage write errors
+      }
+      return resolved;
+    });
+  };
+
+  const toggleColorMode = () => {
+    setColorMode((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  };
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const isDark = colorMode === 'dark';
+    root.classList.toggle('dark', isDark);
+    root.style.colorScheme = isDark ? 'dark' : 'light';
+  }, [colorMode]);
   const [currentTheme, setCurrentTheme] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -285,6 +319,10 @@ export const ThemeProvider = ({ children }) => {
         selectCustomColor,
         resetToDefault,
         isDefault: currentTheme.isDefault,
+        colorMode,
+        isDarkMode: colorMode === 'dark',
+        setColorMode,
+        toggleColorMode,
         sidebarPosition,
         setSidebarPosition,
         toggleSidebarPosition,

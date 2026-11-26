@@ -10,7 +10,6 @@ import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
-import SearchFilterBar from '../../components/common/SearchFilterBar';
 import Pagination from '../../components/common/Pagination';
 import RowActions from '../../components/common/RowActions';
 import MobileGridList from '../../components/common/MobileGridList';
@@ -19,7 +18,6 @@ import usePagination from '../../hooks/usePagination';
 export default function MetalRatesView() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [search, setSearch] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
 
   // Base Rates State matching GoldPrice Model
@@ -173,20 +171,6 @@ export default function MetalRatesView() {
     ];
   }, [base24KRate, platinumRate, silverRate]);
 
-  // Filtered metal records for search
-  const filteredRecords = useMemo(() => {
-    if (!search.trim()) return metalRecords;
-    const q = search.toLowerCase();
-    return metalRecords.filter(
-      (m) =>
-        m.name.toLowerCase().includes(q) ||
-        m.category.toLowerCase().includes(q) ||
-        (m.formula && m.formula.toLowerCase().includes(q)) ||
-        m.purity.toLowerCase().includes(q) ||
-        String(m.ratePerGram).includes(q)
-    );
-  }, [metalRecords, search]);
-
   const {
     currentPage,
     setCurrentPage,
@@ -194,7 +178,7 @@ export default function MetalRatesView() {
     setPageSize,
     totalItems,
     paginatedItems,
-  } = usePagination(filteredRecords, 10);
+  } = usePagination(metalRecords, 10);
 
   // Selection handlers
   const handleSelectAll = (e) => {
@@ -299,13 +283,6 @@ export default function MetalRatesView() {
       {/* ─── 4 Stat Cards Row (Exact Match to Diamond rates) ─── */}
       <StatCards cards={statCardsData} />
 
-      {/* ─── Search & Filter Bar (Compact Neirah Style) ─── */}
-      <SearchFilterBar
-        search={search}
-        onSearchChange={setSearch}
-        placeholder="Search metal rates, karats or formulas..."
-      />
-
       {/* ─── Table Container (Mobile Grid + Desktop Table) ─── */}
       <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
         <MobileGridList
@@ -380,8 +357,8 @@ export default function MetalRatesView() {
                 <th className="py-3 px-2 text-center w-12 whitespace-nowrap">SR NO</th>
                 <th className="py-3 px-3 whitespace-nowrap">ITEM / RECORD</th>
                 <th className="py-3 px-3 whitespace-nowrap">PURITY</th>
-                <th className="py-3 px-3 whitespace-nowrap">CALCULATION / FORMULA</th>
                 <th className="py-3 px-3 text-right whitespace-nowrap">RATE (₹/g)</th>
+                <th className="py-3 px-5 whitespace-nowrap">CALCULATION / FORMULA</th>
                 <th className="py-3 px-3 text-center whitespace-nowrap">STATUS</th>
                 <th className="py-3 pr-4 pl-2 text-right whitespace-nowrap">ACTIONS</th>
               </tr>
@@ -454,8 +431,14 @@ export default function MetalRatesView() {
                         </span>
                       </td>
 
+                      {/* Rate (₹/g) */}
+                      <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono text-xs font-bold text-stone-900">
+                        ₹{formatINR(item.ratePerGram)}
+                        <span className="text-[10px] text-stone-400 font-normal ml-0.5 font-sans">/g</span>
+                      </td>
+
                       {/* Calculation / Formula */}
-                      <td className="py-2.5 px-3 font-mono text-xs text-stone-600 whitespace-nowrap">
+                      <td className="py-2.5 px-5 font-mono text-xs text-stone-600 whitespace-nowrap">
                         {item.formula ? (
                           <span className="bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d9c2] px-2 py-0.5 rounded-md text-[11px] font-semibold">
                             {item.formula}
@@ -463,12 +446,6 @@ export default function MetalRatesView() {
                         ) : (
                           <span className="text-stone-300 font-sans text-xs pl-2">—</span>
                         )}
-                      </td>
-
-                      {/* Rate (₹/g) */}
-                      <td className="py-2.5 px-3 text-right whitespace-nowrap font-mono text-xs font-bold text-stone-900">
-                        ₹{formatINR(item.ratePerGram)}
-                        <span className="text-[10px] text-stone-400 font-normal ml-0.5 font-sans">/g</span>
                       </td>
 
                       {/* Status */}
