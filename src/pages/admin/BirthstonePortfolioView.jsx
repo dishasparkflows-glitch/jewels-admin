@@ -11,6 +11,7 @@ import { IoDiamondOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { uploadWithPresignedUrl, deleteUploadedFile } from '../../utils/uploadWithPresignedUrl';
+import { downloadCsv, downloadJson } from '../../utils/fileDownload';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -379,32 +380,12 @@ export default function BirthstonePortfolioView() {
       ImageUrl: m.imageUrl || 'N/A',
     }));
 
+    const dateSlug = new Date().toISOString().split('T')[0];
     if (format === 'json') {
-      const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
-        type: 'application/json',
-      });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `birthstones_${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadJson(dataToExport, `birthstones_${dateSlug}.json`);
       toast.success('Exported birthstones as JSON');
     } else {
-      const headers = Object.keys(dataToExport[0] || {}).join(',');
-      const rows = dataToExport.map((row) =>
-        Object.values(row)
-          .map((v) => `"${String(v).replace(/"/g, '""')}"`)
-          .join(',')
-      );
-      const csvContent = [headers, ...rows].join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `birthstones_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadCsv(dataToExport, null, `birthstones_${dateSlug}.csv`);
       toast.success('Exported birthstones as CSV');
     }
   };

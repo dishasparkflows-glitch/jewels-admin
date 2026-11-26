@@ -175,3 +175,77 @@ export function formatRelativeTime(dateStr) {
   if (diffDays < 7) return `${diffDays}d ago`;
   return formatDate(date);
 }
+
+/**
+ * Split a timestamp into formatted `{ date, time }` parts (e.g. `{ date: "24 Oct 2026", time: "10:45 AM" }`).
+ *
+ * @param {string|Date} dateStr
+ * @param {Object} [options]
+ * @param {string} [options.defaultDate='—']
+ * @param {string} [options.defaultTime='—']
+ * @param {'numeric'|'2-digit'} [options.dayFormat='numeric']
+ * @returns {{ date: string, time: string }}
+ */
+export function formatDateParts(dateStr, options = {}) {
+  const { defaultDate = '—', defaultTime = '—', dayFormat = 'numeric' } = options;
+  if (!dateStr) return { date: defaultDate, time: defaultTime };
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return { date: defaultDate, time: defaultTime };
+
+  return {
+    date: d.toLocaleDateString('en-GB', {
+      day: dayFormat,
+      month: 'short',
+      year: 'numeric',
+    }),
+    time: d.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    }),
+  };
+}
+
+/**
+ * Format date as DD/MM/YYYY.
+ *
+ * @param {string|Date} dateStr
+ * @param {string} [fallback='']
+ * @returns {string}
+ */
+export function formatSlashDate(dateStr, fallback = '') {
+  if (!dateStr) return fallback;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return fallback;
+  const day = String(d.getDate()).padStart(2, '0');
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  return `${day}/${month}/${d.getFullYear()}`;
+}
+
+/**
+ * Format short day + month (e.g. "11 Oct").
+ *
+ * @param {string|Date} dateStr
+ * @param {string} [fallback='']
+ * @returns {string}
+ */
+export function formatShortDate(dateStr, fallback = '') {
+  if (!dateStr) return fallback;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return fallback;
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
+
+/**
+ * Format 24-hour time string (e.g. "11:30").
+ *
+ * @param {string|Date} dateStr
+ * @param {string} [fallback='']
+ * @returns {string}
+ */
+export function formatTime24(dateStr, fallback = '') {
+  if (!dateStr) return fallback;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return fallback;
+  return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+}

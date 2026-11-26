@@ -14,6 +14,7 @@ import RowActions from '../../components/common/RowActions';
 import Pagination from '../../components/common/Pagination';
 import MobileGridList from '../../components/common/MobileGridList';
 import usePagination from '../../hooks/usePagination';
+import { formatShortDate, formatTime24 } from '../../utils/formatters';
 
 export default function CurrenciesView() {
   const confirm = useConfirm();
@@ -291,17 +292,8 @@ export default function CurrenciesView() {
   };
 
   // Format Date helpers matching Screenshot
-  const formatTime = (dateStr) => {
-    if (!dateStr) return '11:30';
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
-  };
-
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '11 Oct';
-    const d = new Date(dateStr);
-    return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  };
+  const formatTime = (dateStr) => formatTime24(dateStr, '11:30');
+  const formatDate = (dateStr) => formatShortDate(dateStr, '11 Oct');
 
   return (
     <div className="space-y-4">

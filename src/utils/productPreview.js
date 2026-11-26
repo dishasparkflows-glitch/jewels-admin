@@ -63,7 +63,13 @@ export const getDiamondPreviewUrl = (diamond) => {
   if (!diamond) return null;
   const target =
     typeof diamond === 'object'
-      ? diamond?.sku || diamond?.slug || diamond?.stockNumber || diamond?._id || diamond?.id
+      ? diamond?.basicInfo?.slug ||
+        diamond?.slug ||
+        diamond?.basicInfo?.sku ||
+        diamond?.sku ||
+        diamond?.stockNumber ||
+        diamond?._id ||
+        diamond?.id
       : diamond;
 
   if (!target) return null;

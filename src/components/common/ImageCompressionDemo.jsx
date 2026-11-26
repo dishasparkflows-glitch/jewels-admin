@@ -33,7 +33,6 @@ export default function ImageCompressionDemo({
   format = 'image/webp',
   enabled = true,
 }) {
-  const [customFileMeta, setCustomFileMeta] = useState(null);
   const [sourceFile, setSourceFile] = useState(null);
   const [originalStats, setOriginalStats] = useState(null);
   const [compressedStats, setCompressedStats] = useState(null);
@@ -76,7 +75,6 @@ export default function ImageCompressionDemo({
           const restoredFile = dataUrlToFile(parsed.dataUrl, parsed.name, parsed.type);
           if (restoredFile) {
             setSourceFile(restoredFile);
-            setCustomFileMeta({ name: parsed.name, size: parsed.size });
           }
         }
       }
@@ -101,7 +99,6 @@ export default function ImageCompressionDemo({
       compressedUrlRef.current = null;
     }
     setSourceFile(null);
-    setCustomFileMeta(null);
     setOriginalStats(null);
     setCompressedStats(null);
     setIsProcessing(false);
@@ -146,7 +143,6 @@ export default function ImageCompressionDemo({
     };
     reader.readAsDataURL(file);
 
-    setCustomFileMeta({ name: file.name, size: file.size });
     setSourceFile(file);
   };
 
@@ -254,26 +250,32 @@ export default function ImageCompressionDemo({
   const compressedUrl = compressedStats?.url;
 
   // Handlers to open full-resolution inspection modal
+  const buildPreviewGallery = () => [
+    ...(originalUrl
+      ? [
+          {
+            url: originalUrl,
+            title: `Original Photo (${originalStats ? formatFileSize(originalStats.size) : 'Uncompressed'})`,
+          },
+        ]
+      : []),
+    ...(compressedUrl
+      ? [
+          {
+            url: compressedUrl,
+            title: `Optimized Output (WebP @ ${quality}% - ${compressedStats ? formatFileSize(compressedStats.size) : ''})`,
+          },
+        ]
+      : []),
+  ];
+
   const handlePreviewOriginal = (e) => {
     e?.stopPropagation?.();
     if (!originalUrl) return;
-    const gallery = [
-      {
-        url: originalUrl,
-        title: `Original Photo (${originalStats ? formatFileSize(originalStats.size) : 'Uncompressed'})`,
-      },
-      ...(compressedUrl
-        ? [
-            {
-              url: compressedUrl,
-              title: `Optimized Output (WebP @ ${quality}% - ${compressedStats ? formatFileSize(compressedStats.size) : ''})`,
-            },
-          ]
-        : []),
-    ];
+    const gallery = buildPreviewGallery();
     openImagePreview(originalUrl, {
       gallery,
-      title: `Original Photo (${originalStats ? formatFileSize(originalStats.size) : 'Uncompressed'})`,
+      title: gallery[0]?.title,
       initialIndex: 0,
     });
   };
@@ -281,20 +283,12 @@ export default function ImageCompressionDemo({
   const handlePreviewOptimized = (e) => {
     e?.stopPropagation?.();
     if (!compressedUrl) return;
-    const gallery = [
-      {
-        url: originalUrl,
-        title: `Original Photo (${originalStats ? formatFileSize(originalStats.size) : 'Uncompressed'})`,
-      },
-      {
-        url: compressedUrl,
-        title: `Optimized Output (WebP @ ${quality}% - ${compressedStats ? formatFileSize(compressedStats.size) : ''})`,
-      },
-    ];
+    const gallery = buildPreviewGallery();
+    const optimizedIndex = originalUrl ? 1 : 0;
     openImagePreview(compressedUrl, {
       gallery,
-      title: `Optimized Output (WebP @ ${quality}% - ${compressedStats ? formatFileSize(compressedStats.size) : ''})`,
-      initialIndex: 1,
+      title: gallery[optimizedIndex]?.title,
+      initialIndex: optimizedIndex,
     });
   };
 

@@ -58,6 +58,7 @@ export default function Dropdown({
   className = '',
   buttonClassName = '',
   menuClassName = '',
+  autoMenuWidth = false,
   renderOption,
   prefixIcon,
   name,
@@ -182,22 +183,32 @@ export default function Dropdown({
     }
 
     const targetWidth = Math.max(Math.round(rect.width), 70);
+    const maxMenuWidth = Math.min(380, window.innerWidth - 16);
+    const effectiveWidthForClamp = autoMenuWidth ? Math.max(targetWidth, Math.min(320, maxMenuWidth)) : targetWidth;
     let left = Math.round(rect.left);
-    if (left + targetWidth > window.innerWidth - 8) {
-      left = Math.max(8, window.innerWidth - targetWidth - 8);
+    if (left + effectiveWidthForClamp > window.innerWidth - 8) {
+      left = Math.max(8, window.innerWidth - effectiveWidthForClamp - 8);
     }
 
     setMenuPosition({
       position: 'fixed',
       left,
-      width: targetWidth,
+      ...(autoMenuWidth
+        ? {
+            minWidth: targetWidth,
+            width: 'max-content',
+            maxWidth: maxMenuWidth,
+          }
+        : {
+            width: targetWidth,
+          }),
       top: shouldDropUp ? 'auto' : Math.round(rect.bottom + 6),
       bottom: shouldDropUp ? Math.round(window.innerHeight - rect.top + 6) : 'auto',
       margin: 0,
       maxHeight: Math.max(40, Math.min(260, shouldDropUp ? rect.top - 14 : window.innerHeight - rect.bottom - 14)),
       zIndex: resolvedZIndex,
     });
-  }, [normalizedOptions.length, isForcedUp, isForcedDown, menuClassName]);
+  }, [normalizedOptions.length, isForcedUp, isForcedDown, menuClassName, autoMenuWidth]);
 
   // Handle smart auto-flip when NOT portaled
   useEffect(() => {
@@ -749,7 +760,7 @@ export default function Dropdown({
                     />
                   )}
 
-                  <div className="flex items-center gap-2.5 truncate">
+                  <div className={`flex items-center gap-2.5 ${autoMenuWidth ? 'min-w-0' : 'truncate'}`}>
                     {multiple && (
                       <span
                         className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0 ${
@@ -772,9 +783,9 @@ export default function Dropdown({
                     ) : opt.icon ? (
                       <span className="shrink-0 text-stone-400 group-hover:text-stone-600">{renderDropdownIcon(opt.icon, sizeStyles.icon || 'w-4 h-4')}</span>
                     ) : null}
-                    <span className="truncate">{opt.label}</span>
+                    <span className={autoMenuWidth ? 'whitespace-normal break-words leading-snug' : 'truncate'}>{opt.label}</span>
                     {opt.sublabel && (
-                      <span className="text-[11px] text-stone-400 font-normal truncate">
+                      <span className={`text-[11px] text-stone-400 font-normal ${autoMenuWidth ? 'whitespace-normal break-words' : 'truncate'}`}>
                         {opt.sublabel}
                       </span>
                     )}

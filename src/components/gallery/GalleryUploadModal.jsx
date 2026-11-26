@@ -82,37 +82,30 @@ export default function GalleryUploadModal({
     herobanner: {
       title: 'Hero Banner',
       singular: 'Hero Banner',
-      subtitle: 'Select homepage hero slider banner(s) to map your uploaded media assets.',
     },
     collectionbanner: {
       title: 'Collection Banner',
       singular: 'Collection Banner',
-      subtitle: 'Select 4-tile curated collection showcase banner(s) to map your media.',
     },
     categorybanner: {
       title: 'Category Banner',
       singular: 'Category Banner',
-      subtitle: 'Select category page header banner(s) to map your media.',
     },
     offerbanner: {
       title: 'Offer Banner',
       singular: 'Offer Banner',
-      subtitle: 'Select promotional deals & discount banner(s) to map your media.',
     },
     mobileappbanner: {
       title: 'Mobile App Banner',
       singular: 'Mobile App Banner',
-      subtitle: 'Select mobile app download promo banner(s) to map your media.',
     },
     bookappointbanner: {
       title: 'Appointment Banner',
       singular: 'Appointment Banner',
-      subtitle: 'Select in-store appointment booking banner(s) to map your media.',
     },
     customizebanner: {
       title: 'Custom Banner',
       singular: 'Custom Banner',
-      subtitle: 'Select custom campaign banner(s) to map your media.',
     },
   };
 
@@ -127,10 +120,6 @@ export default function GalleryUploadModal({
   const targetSingularLabel = uploadType === 'celebrate'
     ? 'Celebrate & Gift'
     : (BANNER_META[uploadType]?.singular || 'Banner');
-
-  const targetModuleSubtitle = uploadType === 'celebrate'
-    ? 'Select Celebrate & Gifts showcase item(s) from featureds table to map your media.'
-    : (BANNER_META[uploadType]?.subtitle || 'Select banner(s) to map your uploaded media assets.');
 
   const fileInputRef = useRef(null);
 
@@ -599,9 +588,6 @@ export default function GalleryUploadModal({
                           </span>
                           Link to {targetModuleTitle}
                         </label>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
-                          {targetModuleSubtitle}
-                        </p>
                       </div>
                       {availableRecords.length > 0 && (
                         <div className="flex items-center gap-2">
@@ -1041,6 +1027,7 @@ export default function GalleryUploadModal({
                                 <Dropdown
                                   size="sm"
                                   portal={true}
+                                  autoMenuWidth={true}
                                   menuClassName="z-[11000]"
                                   buttonClassName="w-full h-8 text-[11px] px-2 bg-stone-50 border-stone-200 font-medium text-stone-800 focus:bg-white focus:border-[#8b6c3a] rounded-xl"
                                   value={
@@ -1086,20 +1073,9 @@ export default function GalleryUploadModal({
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-200/80 px-4 sm:px-6 py-3 sm:py-3.5 bg-stone-50/90 shrink-0">
             <div className="text-xs text-stone-500 font-medium">
               {selectedFiles.length > 0 ? (
-                <div className="flex items-center gap-2">
-                  <span className="font-bold text-stone-800">
-                    {selectedFiles.length} file{selectedFiles.length === 1 ? '' : 's'} selected
-                  </span>
-                  <span className="text-stone-300">•</span>
-                  <span className="text-emerald-700 font-bold font-mono">
-                    {formatBytes(totalCompressedBytes)} WebP
-                  </span>
-                  {totalSavingsBytes > 0 && (
-                    <span className="hidden sm:inline text-emerald-600 text-[11px]">
-                      (Saved {formatBytes(totalSavingsBytes)})
-                    </span>
-                  )}
-                </div>
+                <span className="font-bold text-stone-800">
+                  {selectedFiles.length} file{selectedFiles.length === 1 ? '' : 's'} selected
+                </span>
               ) : (
                 <span>No files selected yet. Drag & drop images above.</span>
               )}

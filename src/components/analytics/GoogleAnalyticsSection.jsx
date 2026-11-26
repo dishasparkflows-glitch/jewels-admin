@@ -25,6 +25,7 @@ import Pagination from '../common/Pagination';
 import DatePicker, { formatDateDisplay } from '../common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { analyticsAPI } from '../../api/services';
+import { copyToClipboard } from '../../utils/clipboard';
 
 const PRESET_DATE_RANGES = [
   { label: 'Today', value: 'today' },
@@ -73,12 +74,12 @@ export default function GoogleAnalyticsSection() {
   const [copiedPhone, setCopiedPhone] = useState(null);
 
   // Copy phone handler with visual feedback & toast
-  const handleCopyPhone = (phone) => {
-    if (!phone) return;
-    navigator.clipboard.writeText(phone);
-    setCopiedPhone(phone);
-    toast.success(`Copied phone: ${phone}`);
-    setTimeout(() => setCopiedPhone(null), 2500);
+  const handleCopyPhone = async (phone) => {
+    const ok = await copyToClipboard(phone, { successMessage: `Copied phone: ${phone}` });
+    if (ok) {
+      setCopiedPhone(phone);
+      setTimeout(() => setCopiedPhone(null), 2500);
+    }
   };
 
   const fetchData = useCallback(async () => {

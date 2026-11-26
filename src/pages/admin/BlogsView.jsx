@@ -14,6 +14,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import RowActions from '../../components/common/RowActions';
+import { getFrontBaseUrl } from '../../utils/productPreview';
 import MobileGridList from '../../components/common/MobileGridList';
 import Modal from '../../components/common/Modal';
 import Pagination from '../../components/common/Pagination';
@@ -524,6 +525,13 @@ export default function BlogsView() {
                   <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                     <RowActions
                       record={blog}
+                      onOpenWebsite={() => {
+                        const targetSlug = blog?.basicInfo?.slug || blog?.slug || blog?._id;
+                        if (targetSlug) {
+                          window.open(`${getFrontBaseUrl()}/blog/${encodeURIComponent(targetSlug)}`, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
+                      websiteTitle="View on Storefront"
                       onEdit={() => navigate(`/blogs/edit/${blog._id}`)}
                       onDelete={() => handleDelete(blog._id, blogTitle)}
                     />
@@ -700,6 +708,13 @@ export default function BlogsView() {
                       <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={blog}
+                          onOpenWebsite={() => {
+                            const targetSlug = blog?.basicInfo?.slug || blog?.slug || blog?._id;
+                            if (targetSlug) {
+                              window.open(`${getFrontBaseUrl()}/blog/${encodeURIComponent(targetSlug)}`, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
+                          websiteTitle="View on Storefront"
                           onPreview={() => setPreviewBlog(blog)}
                           previewTitle="Preview Article"
                           onEdit={() => navigate(`/blogs/edit/${blog._id}`)}

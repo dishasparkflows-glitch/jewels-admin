@@ -27,6 +27,7 @@ import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { formatDateParts } from '../../utils/formatters';
 
 export default function WhatsAppView() {
   const confirm = useConfirm();
@@ -227,23 +228,12 @@ export default function WhatsAppView() {
   }, [templates]);
 
   // Format Date and Time like screenshot: "08 Oct 2026 \n 10:24 AM"
-  const formatDateTime = (dateVal) => {
-    if (!dateVal) return { date: '08 Oct 2026', time: '10:24 AM' };
-    const d = new Date(dateVal);
-    if (isNaN(d.getTime())) return { date: '08 Oct 2026', time: '10:24 AM' };
-
-    const dateStr = d.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
+  const formatDateTime = (dateVal) =>
+    formatDateParts(dateVal, {
+      defaultDate: '08 Oct 2026',
+      defaultTime: '10:24 AM',
+      dayFormat: '2-digit',
     });
-    const timeStr = d.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-    return { date: dateStr, time: timeStr };
-  };
 
   // Handle Create Template
   const handleCreateTemplate = async (e) => {

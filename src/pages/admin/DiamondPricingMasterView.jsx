@@ -14,6 +14,7 @@ import Pagination from '../../components/common/Pagination';
 import { DeleteActionButton } from '../../components/common/RowActions';
 import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { downloadCsv } from '../../utils/fileDownload';
 
 export default function DiamondPricingMasterView() {
   const [searchParams] = useSearchParams();
@@ -256,17 +257,8 @@ export default function DiamondPricingMasterView() {
       r.priceINR ?? 20000,
     ]);
 
-    const csvContent = [headers.join(','), ...rowsCsv.map((e) => e.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
     const fileName = `Diamond_Pricing_Master_${activeTab === 'center' ? 'Center_Diamond' : 'Side_Diamond'}_${activeType.replace(/\s+/g, '_')}.csv`;
-    link.setAttribute('href', url);
-    link.setAttribute('download', fileName);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadCsv(headers, rowsCsv, fileName);
 
     toast.success(`Exported ${filteredRows.length} rows to Excel/CSV successfully!`);
   };

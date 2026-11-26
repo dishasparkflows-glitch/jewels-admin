@@ -26,6 +26,7 @@ import ToggleSwitch from '../../components/common/ToggleSwitch';
 import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { slugify } from '../../utils/formatters';
+import { getFrontBaseUrl } from '../../utils/productPreview';
 
 const getProductBadgeLabel = (prod) => {
   if (prod.isOrnate || prod.productType === 'ornate') return 'ORNATE';
@@ -465,6 +466,10 @@ export default function HomeSectionsView() {
                       </div>
                       <div onClick={(e) => e.stopPropagation()} className="shrink-0">
                         <RowActions
+                          onOpenWebsite={() =>
+                            window.open(`${getFrontBaseUrl()}/`, '_blank', 'noopener,noreferrer')
+                          }
+                          websiteTitle="View on Storefront"
                           onEdit={() => handleOpenEdit(sec)}
                           onDelete={() => handleDelete(sec._id, sec.title)}
                         />
@@ -645,6 +650,10 @@ export default function HomeSectionsView() {
                       <td className="py-2.5 pr-4 pl-2 whitespace-nowrap text-right w-28" onClick={(e) => e.stopPropagation()}>
                         <RowActions
                           record={sec}
+                          onOpenWebsite={() =>
+                            window.open(`${getFrontBaseUrl()}/`, '_blank', 'noopener,noreferrer')
+                          }
+                          websiteTitle="View on Storefront"
                           onView={() => handleOpenView(sec)}
                           onEdit={() => handleOpenEdit(sec)}
                           onDelete={() => handleDelete(sec)}

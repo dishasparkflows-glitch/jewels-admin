@@ -30,6 +30,7 @@ import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import useDebounce from '../../hooks/useDebounce';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { downloadBlob } from '../../utils/fileDownload';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
@@ -132,16 +133,8 @@ export default function OrdersView() {
         responseType: 'blob',
       });
 
-      const blob = new Blob([res.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
       const safeOrderNum = (order.orderNumber || 'ORD').replace(/[^a-zA-Z0-9_-]/g, '_');
-      link.setAttribute('download', `NEIRAH_INVOICE_${safeOrderNum}.pdf`);
-      document.body.appendChild(link);
-      link.click();
-      link.parentNode.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      downloadBlob(res.data, `NEIRAH_INVOICE_${safeOrderNum}.pdf`, 'application/pdf');
       toast.success('Invoice downloaded successfully! 📄');
     } catch (err) {
       console.error('Failed to download invoice:', err);

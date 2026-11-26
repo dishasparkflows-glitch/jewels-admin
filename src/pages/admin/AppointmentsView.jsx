@@ -828,7 +828,7 @@ export default function AppointmentsView() {
                       {/* Actions */}
                       <td className="py-3.5 pr-5 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
-                          {statusFilter === 'pending' && apt.status === 'pending' && (
+                          {apt.status === 'pending' && (
                             <button
                               type="button"
                               onClick={() => handleAcceptAppointment(apt)}
@@ -838,17 +838,16 @@ export default function AppointmentsView() {
                               <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
                             </button>
                           )}
-                          {(statusFilter === 'pending' || statusFilter === 'confirmed') &&
-                            (apt.status === 'pending' || apt.status === 'confirmed') && (
-                              <button
-                                type="button"
-                                onClick={() => handleRejectAppointment(apt)}
-                                title="Cancel Appointment"
-                                className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
-                              >
-                                <HiOutlineXCircle className="w-4 h-4 stroke-2" />
-                              </button>
-                            )}
+                          {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                            <button
+                              type="button"
+                              onClick={() => handleRejectAppointment(apt)}
+                              title="Cancel Appointment"
+                              className="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-500 border border-rose-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                            >
+                              <HiOutlineXCircle className="w-4 h-4 stroke-2" />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleDelete(apt)}

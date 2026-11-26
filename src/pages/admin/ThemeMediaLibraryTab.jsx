@@ -19,6 +19,7 @@ import Pagination from '../../components/common/Pagination';
 import PlacementSelect, { PLACEMENT_LABELS } from '../../components/common/PlacementSelect';
 import useDebounce from '../../hooks/useDebounce';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { copyToClipboard } from '../../utils/clipboard';
 
 
 
@@ -165,12 +166,12 @@ export default function ThemeMediaLibraryTab({ theme, themeId }) {
   };
 
   // Copy media URL to clipboard
-  const handleCopyUrl = (url) => {
-    if (!url) return;
-    navigator.clipboard.writeText(url);
-    setCopiedUrl(true);
-    toast.success('Image URL copied to clipboard');
-    setTimeout(() => setCopiedUrl(false), 2000);
+  const handleCopyUrl = async (url) => {
+    const ok = await copyToClipboard(url, { successMessage: 'Image URL copied to clipboard' });
+    if (ok) {
+      setCopiedUrl(true);
+      setTimeout(() => setCopiedUrl(false), 2000);
+    }
   };
 
   return (

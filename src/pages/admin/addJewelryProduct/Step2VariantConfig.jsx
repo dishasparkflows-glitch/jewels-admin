@@ -120,9 +120,6 @@ export default function Step2VariantConfig() {
           </div>
           <div>
             <h3 className="text-xs font-bold text-stone-900">Metal Options</h3>
-            <p className="text-[10px] text-stone-400">
-              Select metal purity and colors available for this product.
-            </p>
           </div>
         </div>
 
@@ -193,7 +190,6 @@ export default function Step2VariantConfig() {
           </div>
           <div>
             <h3 className="text-xs font-bold text-stone-900">Metal Specifications</h3>
-            <p className="text-[10px] text-stone-400">Set the base metal weight and applicable charges for these variants.</p>
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
@@ -242,9 +238,6 @@ export default function Step2VariantConfig() {
           </div>
           <div>
             <h3 className="text-xs font-bold text-stone-900">Stone Configuration</h3>
-            <p className="text-[10px] text-stone-400">
-              Configure multi-stone center diamonds or gemstones and optional side accent stones.
-            </p>
           </div>
         </div>
 

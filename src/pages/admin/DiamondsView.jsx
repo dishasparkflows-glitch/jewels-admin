@@ -58,7 +58,7 @@ export default function DiamondsView() {
   const [editCarat, setEditCarat] = useState('');
   const [editRate, setEditRate] = useState('');
   const [editPrice, setEditPrice] = useState('');
-  const [editStatus, setEditStatus] = useState('active');
+  const [editStatus, setEditStatus] = useState('approved');
   const [editImageUrl, setEditImageUrl] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -302,13 +302,13 @@ export default function DiamondsView() {
   const handleToggleStatus = async (item, e) => {
     if (e) e.stopPropagation();
     try {
-      const currentStatus = item.status || 'active';
-      const nextStatus = (currentStatus === 'inactive' || currentStatus === 'draft') ? 'active' : 'inactive';
+      const currentStatus = item.status || 'approved';
+      const nextStatus = (currentStatus === 'inactive' || currentStatus === 'draft') ? 'approved' : 'draft';
       setDiamonds((prev) =>
         prev.map((d) => (d._id === item._id ? { ...d, status: nextStatus } : d))
       );
       await diamondsAPI.update(item._id, { status: nextStatus });
-      toast.success(`Status updated to ${nextStatus === 'active' ? 'Approved' : 'Draft'}`);
+      toast.success(`Status updated to ${nextStatus === 'approved' ? 'Approved' : 'Draft'}`);
     } catch {
       toast.error('Failed to update status');
       fetchData();
@@ -324,8 +324,8 @@ export default function DiamondsView() {
     const currClarities = data?.clarities || clarities;
 
     setEditingDiamond(item);
-    setEditSku(item.sku || '');
-    setEditTitle(item.title || '');
+    setEditSku(item.basicInfo?.sku || '');
+    setEditTitle(item.basicInfo?.title || '');
     setEditTypeId(item.typeId?._id || item.typeId || (currTypes[0]?._id || ''));
     setEditShapeId(item.shapeId?._id || item.shapeId || (currShapes[0]?._id || ''));
     setEditColorId(item.colorId?._id || item.colorId || (currColors[0]?._id || ''));
@@ -333,7 +333,7 @@ export default function DiamondsView() {
     setEditCarat(item.carat !== undefined ? String(item.carat) : '');
     setEditRate(item.rate !== undefined ? String(item.rate) : '');
     setEditPrice(item.price !== undefined ? String(item.price) : '');
-    setEditStatus(item.status || 'active');
+    setEditStatus(item.status || 'approved');
     setEditImageUrl(item.image?.url || '');
     setIsEditModalOpen(true);
   };
@@ -400,9 +400,18 @@ export default function DiamondsView() {
 
     try {
       setIsSavingEdit(true);
+      const cleanTitle = editTitle.trim();
+      const cleanSku = editSku.trim();
       const payload = {
-        sku: editSku.trim(),
-        title: editTitle.trim(),
+        basicInfo: {
+          ...(editingDiamond.basicInfo || {}),
+          sku: cleanSku,
+          title: cleanTitle,
+          slug:
+            editingDiamond.basicInfo?.slug ||
+            cleanTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') ||
+            cleanSku.toLowerCase(),
+        },
         typeId: editTypeId || undefined,
         shapeId: editShapeId || undefined,
         colorId: editColorId || undefined,
@@ -630,7 +639,7 @@ export default function DiamondsView() {
                           className="w-11 h-11 rounded-lg bg-[#faf6f0] border border-stone-200/90 overflow-hidden flex items-center justify-center shrink-0"
                         >
                           {thumbUrl ? (
-                            <img src={thumbUrl} alt={item.title} className="w-full h-full object-cover" loading="lazy" />
+                            <img src={thumbUrl} alt={item.basicInfo?.title || 'Diamond'} className="w-full h-full object-cover" loading="lazy" />
                           ) : (
                             <span className="text-[9px] text-stone-400 font-medium">No Img</span>
                           )}
@@ -639,7 +648,7 @@ export default function DiamondsView() {
                         <div className="min-w-0 flex-1 space-y-0.5">
                           <div className="flex items-start justify-between gap-2">
                             <p className="font-bold text-stone-900 text-xs leading-snug line-clamp-2">
-                              {item.title}
+                              {item.basicInfo?.title}
                             </p>
                             <span
                               onClick={(e) => {
@@ -655,8 +664,8 @@ export default function DiamondsView() {
                               {isInactive ? 'Draft' : 'Approved'}
                             </span>
                           </div>
-                          {item.sku && (
-                            <p className="font-mono text-[10px] text-stone-400 truncate">{item.sku}</p>
+                          {item.basicInfo?.sku && (
+                            <p className="font-mono text-[10px] text-stone-400 truncate">{item.basicInfo.sku}</p>
                           )}
                         </div>
                       </div>
@@ -844,13 +853,13 @@ export default function DiamondsView() {
                           <div className="min-w-0 max-w-xs space-y-0.5">
                             <span
                               className="font-bold text-stone-900 text-xs block leading-tight truncate hover:text-[#8b6f4e] transition-colors"
-                              title={item.title}
+                              title={item.basicInfo?.title}
                             >
-                              {item.title}
+                              {item.basicInfo?.title}
                             </span>
-                            {item.sku && (
+                            {item.basicInfo?.sku && (
                               <span className="font-mono text-[10px] text-stone-400 block truncate">
-                                {item.sku}
+                                {item.basicInfo.sku}
                               </span>
                             )}
                           </div>
@@ -1289,16 +1298,16 @@ export default function DiamondsView() {
                 <div>
                   <span className="block text-xs font-bold text-stone-800">Diamond Status</span>
                   <span className="text-[11px] text-stone-500">
-                    {editStatus === 'active'
-                      ? 'Active — visible in storefront ring configurator and inventory'
-                      : 'Inactive — hidden from customer selections'}
+                    {editStatus === 'approved'
+                      ? 'Approved — visible in storefront ring configurator and inventory'
+                      : 'Draft — hidden from customer selections'}
                   </span>
                 </div>
 
                 <div className="flex items-center gap-2.5">
                   <ToggleSwitch
-                    checked={editStatus === 'active'}
-                    onChange={() => setEditStatus(editStatus === 'active' ? 'inactive' : 'active')}
+                    checked={editStatus === 'approved'}
+                    onChange={() => setEditStatus(editStatus === 'approved' ? 'draft' : 'approved')}
                     size="md"
                     showStatusText={true}
                     ariaLabel="Toggle Diamond Status"

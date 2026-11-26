@@ -18,6 +18,7 @@ import { IoCubeOutline, IoDiamondOutline, IoLayersOutline } from 'react-icons/io
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { getMediaUrl } from '../../utils/imageUrl';
+import { formatSlashDate } from '../../utils/formatters';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -134,14 +135,7 @@ export default function CelebrateGiftsView() {
   const [savingReorder, setSavingReorder] = useState(false);
 
   // Format date helper: DD/MM/YYYY
-  const formatDate = (dateStr) => {
-    if (!dateStr) return '24/03/2026';
-    const d = new Date(dateStr);
-    const day = String(d.getDate()).padStart(2, '0');
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const year = d.getFullYear();
-    return `${day}/${month}/${year}`;
-  };
+  const formatDate = (dateStr) => formatSlashDate(dateStr, '24/03/2026');
 
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();

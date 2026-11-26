@@ -1,5 +1,3 @@
-/* eslint-disable react/prop-types */
-
 /**
  * Shared responsive mobile grid wrapper for admin list views.
  * Renders a loading spinner, empty state, optional "Select all" bar,

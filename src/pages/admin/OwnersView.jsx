@@ -7,13 +7,14 @@ import {
   HiOutlineViewGrid,
   HiOutlineTrash,
   HiOutlineDatabase,
-  HiOutlineEye,
-  HiOutlineEyeOff,
   HiOutlineSearch,
   HiOutlineShieldCheck,
   HiOutlineGlobeAlt,
   HiOutlineCheck,
   HiOutlineRefresh,
+  HiOutlineExclamation,
+  HiOutlineLink,
+  HiOutlinePlus,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { ownersAPI } from '../../api/services';
@@ -40,6 +41,76 @@ function extractDatabaseName(url = '') {
   const hostMatch = withoutQuery.match(/^mongodb(?:\+srv)?:\/\/(?:[^@]+@)?([^/]+)$/i);
   if (hostMatch?.[1]) return hostMatch[1];
   return '—';
+}
+
+function maskDatabaseUrl(url = '') {
+  const raw = String(url || '').trim();
+  if (!raw) return '••••••••';
+  return raw.replace(/^(mongodb(?:\+srv)?:\/\/)([^:@]+):([^@]+)@/i, '$1****:****@');
+}
+
+function getMissingModuleDependencies(selectedIds = [], moduleMap = new Map()) {
+  const selectedSet = new Set(selectedIds);
+  const missingBySource = [];
+  const missingTargetsMap = new Map();
+
+  for (const modId of selectedIds) {
+    const mod = moduleMap.get(modId);
+    if (!mod || !Array.isArray(mod.dependsOn) || mod.dependsOn.length === 0) continue;
+
+    const missingDeps = mod.dependsOn.filter((dep) => dep?.id && !selectedSet.has(dep.id));
+    if (missingDeps.length === 0) continue;
+
+    const groupBuckets = new Map();
+    for (const dep of missingDeps) {
+      const targetMod = moduleMap.get(dep.id);
+      const depTitle = dep.title || targetMod?.title || dep.id;
+      const depGroup = dep.group || targetMod?.group || 'Other';
+
+      if (!groupBuckets.has(depGroup)) {
+        groupBuckets.set(depGroup, []);
+      }
+      groupBuckets.get(depGroup).push({
+        id: dep.id,
+        title: depTitle,
+        group: depGroup,
+        model: dep.model || '',
+        reason: dep.reason || '',
+      });
+
+      if (!missingTargetsMap.has(dep.id)) {
+        missingTargetsMap.set(dep.id, {
+          id: dep.id,
+          title: depTitle,
+          group: depGroup,
+          requiredBy: [],
+        });
+      }
+      missingTargetsMap.get(dep.id).requiredBy.push({
+        id: mod.id,
+        title: mod.title,
+        model: dep.model || '',
+        reason: dep.reason || '',
+      });
+    }
+
+    missingBySource.push({
+      sourceId: mod.id,
+      sourceTitle: mod.title,
+      sourceGroup: mod.group,
+      missingDeps,
+      missingGroups: Array.from(groupBuckets.entries()).map(([groupName, deps]) => ({
+        groupName,
+        deps,
+      })),
+    });
+  }
+
+  return {
+    missingBySource,
+    missingTargetsMap,
+    allMissingIds: Array.from(missingTargetsMap.keys()),
+  };
 }
 
 function groupModulesList(modulesList = []) {
@@ -86,9 +157,9 @@ export default function OwnersView() {
   const [formStatus, setFormStatus] = useState('active');
   const [formAllowedModules, setFormAllowedModules] = useState([]);
   const [isModulePickerOpen, setIsModulePickerOpen] = useState(false);
+  const [isDependencyDetailsOpen, setIsDependencyDetailsOpen] = useState(false);
   const [draftAllowedModules, setDraftAllowedModules] = useState([]);
   const [moduleSearch, setModuleSearch] = useState('');
-  const [showDbInput, setShowDbInput] = useState(false);
 
   const fetchModules = useCallback(async () => {
     try {
@@ -140,6 +211,20 @@ export default function OwnersView() {
     });
     return map;
   }, [systemModules]);
+
+  const moduleMap = useMemo(() => {
+    return new Map(systemModules.map((m) => [m.id, m]));
+  }, [systemModules]);
+
+  const draftDependencyReport = useMemo(
+    () => getMissingModuleDependencies(draftAllowedModules, moduleMap),
+    [draftAllowedModules, moduleMap]
+  );
+
+  const formDependencyReport = useMemo(
+    () => getMissingModuleDependencies(formAllowedModules, moduleMap),
+    [formAllowedModules, moduleMap]
+  );
 
   const filteredOwners = useMemo(() => {
     let result = owners;
@@ -207,7 +292,6 @@ export default function OwnersView() {
     setFormStatus('active');
     setFormAllowedModules(systemModules.map((m) => m.id));
     setModuleSearch('');
-    setShowDbInput(false);
     setIsModalOpen(true);
   };
 
@@ -222,7 +306,6 @@ export default function OwnersView() {
     setFormStatus(owner.status || 'active');
     setFormAllowedModules(Array.isArray(owner.allowedModules) ? [...owner.allowedModules] : []);
     setModuleSearch('');
-    setShowDbInput(false);
     setIsModalOpen(true);
   };
 
@@ -260,9 +343,27 @@ export default function OwnersView() {
     setDraftAllowedModules([]);
   };
 
+  const handleEnableDraftDependencies = (depIds = []) => {
+    if (!Array.isArray(depIds) || depIds.length === 0) return;
+    setDraftAllowedModules((prev) => Array.from(new Set([...prev, ...depIds])));
+  };
+
+  const handleEnableFormDependencies = (depIds = []) => {
+    if (!Array.isArray(depIds) || depIds.length === 0) return;
+    setFormAllowedModules((prev) => Array.from(new Set([...prev, ...depIds])));
+    toast.success(`Added ${depIds.length} connected dependency module${depIds.length > 1 ? 's' : ''}`);
+  };
+
   const handleApplyModuleSelection = () => {
+    const missingCount = draftDependencyReport.allMissingIds.length;
     setFormAllowedModules([...draftAllowedModules]);
     setIsModulePickerOpen(false);
+    if (missingCount > 0) {
+      toast(
+        `${missingCount} linked dependency module${missingCount > 1 ? 's' : ''} not selected — some dropdowns may appear empty.`,
+        { icon: '⚠️' }
+      );
+    }
   };
 
   // Save Owner
@@ -272,7 +373,7 @@ export default function OwnersView() {
       toast.error('Please enter owner / client name');
       return;
     }
-    if (!formDatabaseUrl.trim()) {
+    if (!editingOwner?._id && !formDatabaseUrl.trim()) {
       toast.error('Please enter database URL');
       return;
     }
@@ -282,7 +383,7 @@ export default function OwnersView() {
       const payload = {
         name: formName.trim(),
         websiteUrl: formWebsiteUrl.trim(),
-        databaseUrl: formDatabaseUrl.trim(),
+        ...(editingOwner?._id ? {} : { databaseUrl: formDatabaseUrl.trim() }),
         status: formStatus,
         allowedModules: formAllowedModules,
       };
@@ -646,7 +747,7 @@ export default function OwnersView() {
                 paginatedItems.map((owner, idx) => {
                   const id = owner._id;
                   const isSelected = selectedIds.has(id);
-                  const dbName = extractDatabaseName(owner.databaseUrl);
+                  const dbName = owner.databaseName || extractDatabaseName(owner.databaseUrl);
                   const allowed = Array.isArray(owner.allowedModules) ? owner.allowedModules : [];
 
                   return (
@@ -823,6 +924,7 @@ export default function OwnersView() {
               </label>
               <input
                 type="text"
+                autoComplete="off"
                 value={formWebsiteUrl}
                 onChange={(e) => setFormWebsiteUrl(e.target.value)}
                 placeholder="e.g. https://clientwebsite.com"
@@ -834,28 +936,23 @@ export default function OwnersView() {
               <label className="block text-xs font-bold text-stone-700 mb-1.5">
                 Database URL <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <input
-                  type={showDbInput ? 'text' : 'password'}
-                  value={formDatabaseUrl}
-                  onChange={(e) => setFormDatabaseUrl(e.target.value)}
-                  placeholder="mongodb+srv://username:password@cluster.mongodb.net/client_db"
-                  required
-                  className="w-full h-10 pl-3.5 pr-10 rounded-xl border border-stone-200 bg-white font-mono text-xs text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowDbInput((prev) => !prev)}
-                  title={showDbInput ? 'Hide Database URL' : 'Show Database URL'}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-700 cursor-pointer"
-                >
-                  {showDbInput ? (
-                    <HiOutlineEyeOff className="w-4 h-4" />
-                  ) : (
-                    <HiOutlineEye className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
+              <textarea
+                rows={3}
+                autoComplete="off"
+                value={editingOwner ? maskDatabaseUrl(formDatabaseUrl) : formDatabaseUrl}
+                onChange={(e) => {
+                  if (!editingOwner) setFormDatabaseUrl(e.target.value);
+                }}
+                readOnly={Boolean(editingOwner)}
+                disabled={Boolean(editingOwner)}
+                placeholder="mongodb+srv://username:password@cluster.mongodb.net/client_db"
+                required={!editingOwner}
+                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono text-xs resize-y leading-relaxed ${
+                  editingOwner
+                    ? 'border-stone-200 bg-stone-100 text-stone-500 cursor-not-allowed'
+                    : 'border-stone-200 bg-white text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20'
+                }`}
+              />
             </div>
 
             <div className="sm:col-span-2 flex items-center justify-between pt-1">
@@ -908,47 +1005,111 @@ export default function OwnersView() {
               </button>
             </div>
 
-            {/* Selected Group Summary Pills */}
-            <div className="flex flex-wrap gap-1.5 pt-1 border-t border-stone-200/70">
-              {moduleGroups.map((grp) => {
-                const selectedInGroup = grp.modules.filter((m) =>
-                  formAllowedModules.includes(m.id)
-                ).length;
-                const hasAny = selectedInGroup > 0;
-                return (
-                  <button
-                    key={grp.group}
-                    type="button"
-                    onClick={handleOpenModulePicker}
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[11px] font-semibold transition-colors cursor-pointer ${
-                      hasAny
-                        ? 'bg-white border-stone-200 text-stone-800 hover:border-stone-300'
-                        : 'bg-stone-100/70 border-stone-200/60 text-stone-400 hover:text-stone-600'
-                    }`}
-                  >
-                    <span>{grp.group}</span>
-                    <span
-                      className="text-[10px] font-bold px-1.5 py-0.2 rounded-full"
-                      style={
-                        hasAny
-                          ? {
-                              backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.12)',
-                              color: 'var(--theme-primary, #8b6f4e)',
-                            }
-                          : undefined
-                      }
-                    >
-                      {selectedInGroup}/{grp.modules.length}
-                    </span>
-                  </button>
-                );
-              })}
-              {systemModules.length === 0 && (
-                <span className="text-[11px] text-stone-400 italic">No system modules loaded.</span>
+            {formDependencyReport.allMissingIds.length > 0 && (
+              <div className="rounded-xl border border-amber-200 bg-amber-50/90 px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div className="flex items-center gap-2 min-w-0">
+                  <HiOutlineExclamation className="w-4 h-4 text-amber-600 shrink-0" />
+                  <p className="text-xs font-semibold text-amber-900">
+                    {formDependencyReport.allMissingIds.length} connected table dependency
+                    {formDependencyReport.allMissingIds.length > 1 ? ' modules are' : ' module is'} missing
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDependencyDetailsOpen(true)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-[11px] font-bold hover:bg-amber-700 transition-colors cursor-pointer shrink-0 whitespace-nowrap"
+                >
+                  <HiOutlineEye className="w-3.5 h-3.5" />
+                  <span>View Details</span>
+                </button>
+              </div>
+            )}
+          </div>
+        </form>
+      </Modal>
+
+      {/* ─── Connected Dependency Details Popup ─── */}
+      <Modal
+        isOpen={isDependencyDetailsOpen}
+        onClose={() => setIsDependencyDetailsOpen(false)}
+        title={`Missing Connected Dependencies (${formDependencyReport.allMissingIds.length})`}
+        subtitle="Enable these linked modules so related dropdowns and table references work properly."
+        maxWidth="max-w-2xl"
+        footer={
+          <div className="flex items-center justify-between w-full gap-3">
+            <span className="text-xs text-stone-500">
+              {formDependencyReport.allMissingIds.length} module
+              {formDependencyReport.allMissingIds.length === 1 ? '' : 's'} needed across{' '}
+              {formDependencyReport.missingBySource.length} section
+              {formDependencyReport.missingBySource.length === 1 ? '' : 's'}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsDependencyDetailsOpen(false)}
+                className="px-4 py-2 rounded-lg border border-stone-200 text-xs font-semibold text-stone-700 hover:bg-stone-50 cursor-pointer"
+              >
+                Close
+              </button>
+              {formDependencyReport.allMissingIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleEnableFormDependencies(formDependencyReport.allMissingIds);
+                    setIsDependencyDetailsOpen(false);
+                  }}
+                  className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  <HiOutlinePlus className="w-3.5 h-3.5" />
+                  <span>Enable Missing ({formDependencyReport.allMissingIds.length})</span>
+                </button>
               )}
             </div>
           </div>
-        </form>
+        }
+      >
+        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+          {formDependencyReport.missingBySource.map((item) => (
+            <div
+              key={item.sourceId}
+              className="rounded-xl border border-amber-200/80 bg-amber-50/40 p-3.5 space-y-2.5"
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-bold text-stone-800">
+                  Required by <span className="text-amber-800">{item.sourceTitle}</span>
+                </span>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100/80 text-amber-900 border border-amber-200">
+                    {item.missingDeps.length} missing
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleEnableFormDependencies(item.missingDeps.map((d) => d.id))}
+                    className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-amber-300 text-amber-800 hover:bg-amber-50 text-[11px] font-semibold cursor-pointer"
+                  >
+                    <HiOutlinePlus className="w-3 h-3" />
+                    <span>Enable</span>
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                {item.missingGroups.map((grp) => (
+                  <div key={grp.groupName} className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <span className="font-semibold text-stone-500 mr-0.5">{grp.groupName}:</span>
+                    {grp.deps.map((dep) => (
+                      <span
+                        key={dep.id}
+                        className="px-2 py-0.5 rounded-md bg-white text-amber-900 border border-amber-200/80 font-medium"
+                      >
+                        {dep.title}
+                      </span>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </Modal>
 
       {/* ─── Module Access Permissions Popup ─── */}
@@ -1031,6 +1192,73 @@ export default function OwnersView() {
             </div>
           </div>
 
+          {/* Connected Model / Table Dependency Alert */}
+          {draftDependencyReport.allMissingIds.length > 0 && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/90 p-3.5 space-y-2.5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-start gap-2.5 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 mt-0.5">
+                    <HiOutlineLink className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h5 className="text-xs font-bold text-amber-950">
+                      Connected Module Permissions Needed ({draftDependencyReport.allMissingIds.length})
+                    </h5>
+                    <p className="text-[11px] text-amber-800/90">
+                      Selected modules reference dropdowns and tables from the unselected modules below. Grant permissions so dropdowns work properly.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleEnableDraftDependencies(draftDependencyReport.allMissingIds)}
+                  className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-600 text-white text-[11px] font-bold hover:bg-amber-700 shadow-xs transition-colors cursor-pointer shrink-0"
+                >
+                  <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>Enable All Missing ({draftDependencyReport.allMissingIds.length})</span>
+                </button>
+              </div>
+
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                {draftDependencyReport.missingBySource.map((item) => (
+                  <div
+                    key={item.sourceId}
+                    className="rounded-xl bg-white/90 border border-amber-200/80 px-3 py-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+                  >
+                    <div className="text-[11px] text-stone-700 leading-relaxed min-w-0">
+                      {item.missingGroups.map((grp, idx) => (
+                        <span key={grp.groupName}>
+                          {idx > 0 && ' & '}
+                          <span className="font-bold text-amber-900">{grp.groupName}</span>{' '}
+                          <span className="text-stone-600">
+                            ({grp.deps.map((d) => d.title).join(', ')})
+                          </span>
+                        </span>
+                      ))}{' '}
+                      {item.missingDeps.length > 1 ? 'are' : 'is'} used in{' '}
+                      <span className="font-bold text-stone-900">{item.sourceTitle}</span> — give permission so dropdowns work.
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-1 shrink-0">
+                      {item.missingDeps.map((dep) => (
+                        <button
+                          key={`${item.sourceId}-${dep.id}`}
+                          type="button"
+                          onClick={() => handleEnableDraftDependencies([dep.id])}
+                          title={dep.reason || `Enable ${dep.title}`}
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 hover:bg-amber-200 text-amber-900 text-[10px] font-bold transition-colors cursor-pointer"
+                        >
+                          <HiOutlinePlus className="w-3 h-3" />
+                          <span>{dep.title}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Spacious Grouped Modules Grid */}
           {filteredModuleGroups.length === 0 ? (
             <div className="py-12 text-center rounded-2xl border border-dashed border-stone-200 bg-stone-50/40">
@@ -1074,21 +1302,40 @@ export default function OwnersView() {
                     <div className="p-2.5 grid grid-cols-1 gap-1.5">
                       {grp.modules.map((mod) => {
                         const checked = draftAllowedModules.includes(mod.id);
+                        const sourceMissing = checked
+                          ? draftDependencyReport.missingBySource.find((s) => s.sourceId === mod.id)
+                          : null;
+                        const requiredBySelected = !checked
+                          ? draftDependencyReport.missingTargetsMap.get(mod.id)
+                          : null;
+                        const tooltipParts = [];
+                        if (mod.dependsOn?.length) {
+                          tooltipParts.push(`Uses: ${mod.dependsOn.map((d) => d.title).join(', ')}`);
+                        }
+                        if (mod.usedBy?.length) {
+                          tooltipParts.push(`Used in: ${mod.usedBy.map((u) => u.title).join(', ')}`);
+                        }
+
                         return (
                           <button
                             key={mod.id}
                             type="button"
                             onClick={() => toggleModule(mod.id)}
+                            title={tooltipParts.join(' | ') || undefined}
                             className={`w-full px-2.5 py-2 rounded-lg border text-left flex items-center justify-between gap-2 transition-all cursor-pointer ${
                               checked
                                 ? 'text-stone-900'
-                                : 'bg-white border-stone-100 text-stone-600 hover:bg-stone-50'
+                                : requiredBySelected
+                                  ? 'bg-amber-50/50 border-amber-300 text-stone-800 hover:bg-amber-50'
+                                  : 'bg-white border-stone-100 text-stone-600 hover:bg-stone-50'
                             }`}
                             style={
                               checked
                                 ? {
                                     backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.08)',
-                                    borderColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)',
+                                    borderColor: sourceMissing
+                                      ? '#f59e0b'
+                                      : 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.35)',
                                   }
                                 : undefined
                             }
@@ -1098,7 +1345,9 @@ export default function OwnersView() {
                                 className={`w-4 h-4 rounded flex items-center justify-center border transition-colors shrink-0 ${
                                   checked
                                     ? 'text-white'
-                                    : 'bg-white border-stone-300'
+                                    : requiredBySelected
+                                      ? 'bg-white border-amber-400'
+                                      : 'bg-white border-stone-300'
                                 }`}
                                 style={
                                   checked
@@ -1111,7 +1360,31 @@ export default function OwnersView() {
                               >
                                 {checked && <HiOutlineCheck className="w-3 h-3 stroke-[3]" />}
                               </span>
-                              <span className="text-xs font-semibold truncate">{mod.title}</span>
+                              <div className="min-w-0">
+                                <span className="text-xs font-semibold truncate block">
+                                  {mod.title}
+                                </span>
+                                {sourceMissing && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700">
+                                    <HiOutlineExclamation className="w-3 h-3 shrink-0" />
+                                    Needs {sourceMissing.missingDeps.length} linked module
+                                    {sourceMissing.missingDeps.length > 1 ? 's' : ''}
+                                  </span>
+                                )}
+                                {requiredBySelected && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-amber-700">
+                                    <HiOutlineLink className="w-3 h-3 shrink-0" />
+                                    Used in{' '}
+                                    {requiredBySelected.requiredBy
+                                      .slice(0, 2)
+                                      .map((r) => r.title)
+                                      .join(', ')}
+                                    {requiredBySelected.requiredBy.length > 2
+                                      ? ` +${requiredBySelected.requiredBy.length - 2}`
+                                      : ''}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             <span className="text-[10px] font-mono text-stone-400 shrink-0 hidden sm:inline truncate max-w-[120px]">
                               {mod.path}
@@ -1189,7 +1462,7 @@ export default function OwnersView() {
                 <div className="mt-1 inline-flex items-center gap-2 bg-white border border-stone-200 rounded-lg px-3 py-1.5">
                   <HiOutlineDatabase className="w-3.5 h-3.5 text-[#8b6f4e] shrink-0" />
                   <code className="font-mono text-xs font-semibold text-stone-800">
-                    {extractDatabaseName(viewingOwner.databaseUrl)}
+                    {viewingOwner.databaseName || extractDatabaseName(viewingOwner.databaseUrl)}
                   </code>
                 </div>
               </div>

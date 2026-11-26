@@ -19,30 +19,8 @@ import { EditActionButton, DeleteActionButton } from '../../components/common/Ro
 import MobileGridList from '../../components/common/MobileGridList';
 import { VITE_FRONT_URL } from '../../config/env';
 import useSelection from '../../hooks/useSelection';
-import { slugify } from '../../utils/formatters';
+import { slugify, formatDateParts } from '../../utils/formatters';
 import { extractListItems } from '../../utils/apiHelpers';
-
-// Helper to format date display (e.g. "24 Oct 2026", "10:45 AM")
-const formatDateParts = (dateString) => {
-  if (!dateString) return { date: '—', time: '—' };
-  try {
-    const d = new Date(dateString);
-    if (isNaN(d.getTime())) return { date: '—', time: '—' };
-    const date = d.toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-    const time = d.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-    });
-    return { date, time };
-  } catch {
-    return { date: '—', time: '—' };
-  }
-};
 
 const EMPTY_PAGE = {
   title: '',

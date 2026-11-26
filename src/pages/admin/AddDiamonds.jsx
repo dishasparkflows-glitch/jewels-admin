@@ -245,7 +245,7 @@ export default function AddDiamonds() {
       rate: defaultRate,
       price: price,
       image: globalImage ? { url: globalImage } : null,
-      status: 'active',
+      status: 'approved',
       isSaved: false,
       isMatrixPriced: matrixRate > 0,
     };
@@ -416,20 +416,32 @@ export default function AddDiamonds() {
     try {
       setPublishing(true);
 
-      const payload = variants.map((v) => ({
-        ...(v._id ? { _id: v._id } : {}),
-        sku: v.sku.trim(),
-        title: v.title.trim(),
-        carat: Number(v.carat),
-        rate: Number(v.rate) || 0,
-        price: Number(v.price) || 0,
-        typeId: typeObj?._id,
-        shapeId: shapeObj?._id,
-        colorId: colorObj?._id,
-        clarityId: clarityObj?._id,
-        image: v.image?.url ? { url: v.image.url } : globalImage ? { url: globalImage } : undefined,
-        status: v.status || 'active',
-      }));
+      const payload = variants.map((v) => {
+        const cleanTitle = v.title.trim();
+        const cleanSku = v.sku.trim();
+        const generatedSlug = cleanTitle
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-+|-+$/g, '');
+        return {
+          ...(v._id ? { _id: v._id } : {}),
+          basicInfo: {
+            title: cleanTitle,
+            sku: cleanSku,
+            slug: generatedSlug || cleanSku.toLowerCase(),
+            description: '',
+          },
+          carat: Number(v.carat),
+          rate: Number(v.rate) || 0,
+          price: Number(v.price) || 0,
+          typeId: typeObj?._id,
+          shapeId: shapeObj?._id,
+          colorId: colorObj?._id,
+          clarityId: clarityObj?._id,
+          image: v.image?.url ? { url: v.image.url } : globalImage ? { url: globalImage } : undefined,
+          status: v.status || 'approved',
+        };
+      });
 
       await diamondsAPI.bulkCreate(payload);
       toast.success(`Successfully published ${variants.length} diamond variants!`);
@@ -915,12 +927,12 @@ export default function AddDiamonds() {
                       {/* Status Toggle */}
                       <td className="text-center align-middle px-2">
                         <ToggleSwitch
-                          checked={v.status === 'active'}
+                          checked={v.status === 'approved'}
                           onChange={() =>
-                            handleUpdateVariant(v.id, 'status', v.status === 'active' ? 'inactive' : 'active')
+                            handleUpdateVariant(v.id, 'status', v.status === 'approved' ? 'draft' : 'approved')
                           }
                           size="sm"
-                          ariaLabel={`Set variant ${v.status === 'active' ? 'inactive' : 'active'}`}
+                          ariaLabel={`Set variant ${v.status === 'approved' ? 'draft' : 'approved'}`}
                         />
                       </td>
 

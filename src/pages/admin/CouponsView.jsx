@@ -20,6 +20,7 @@ import MobileGridList from '../../components/common/MobileGridList';
 import Dropdown from '../../components/common/Dropdown';
 import DatePicker from '../../components/common/DatePicker';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import { toInputDate } from '../../utils/formatters';
 import useCategoryLookup from '../../hooks/useCategoryLookup';
 
 export default function CouponsView() {
@@ -126,18 +127,6 @@ export default function CouponsView() {
     totalItems,
     paginatedItems,
   } = usePagination(filteredCoupons, pageSize, serverTotal);
-
-  // Format Date to YYYY-MM-DD for <input type="date">
-  const toInputDate = (dateVal) => {
-    if (!dateVal) return '';
-    try {
-      const d = new Date(dateVal);
-      if (isNaN(d.getTime())) return '';
-      return d.toISOString().split('T')[0];
-    } catch {
-      return '';
-    }
-  };
 
   // Open modal to add coupon
   const handleOpenAdd = () => {
