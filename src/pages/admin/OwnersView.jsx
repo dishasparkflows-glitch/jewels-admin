@@ -284,11 +284,27 @@ export default function OwnersView() {
       };
 
       if (editingOwner?._id) {
-        await ownersAPI.update(editingOwner._id, payload);
-        toast.success(`Owner "${payload.name}" updated successfully`);
+        const res = await ownersAPI.update(editingOwner._id, payload);
+        const sync = res?.data?.data?.moduleSync;
+        if (sync?.synced) {
+          toast.success(
+            `Owner "${payload.name}" updated & synced ${sync.activeCount} active / ${sync.inactiveCount ?? 0} inactive modules to "${sync.database}"`
+          );
+        } else if (sync?.reason) {
+          toast.success(`Owner "${payload.name}" updated (${sync.reason})`);
+        } else {
+          toast.success(`Owner "${payload.name}" updated successfully`);
+        }
       } else {
-        await ownersAPI.create(payload);
-        toast.success(`Owner "${payload.name}" added successfully`);
+        const res = await ownersAPI.create(payload);
+        const sync = res?.data?.data?.moduleSync;
+        if (sync?.synced) {
+          toast.success(
+            `Owner "${payload.name}" added & synced ${sync.activeCount} active / ${sync.inactiveCount ?? 0} inactive modules to "${sync.database}"`
+          );
+        } else {
+          toast.success(`Owner "${payload.name}" added successfully`);
+        }
       }
 
       setIsModalOpen(false);
@@ -304,11 +320,18 @@ export default function OwnersView() {
   const handleToggleStatus = async (owner) => {
     const nextStatus = owner.status === 'active' ? 'inactive' : 'active';
     try {
-      await ownersAPI.update(owner._id, { status: nextStatus });
+      const res = await ownersAPI.update(owner._id, { status: nextStatus });
+      const sync = res?.data?.data?.moduleSync;
       setOwners((prev) =>
         prev.map((o) => (o._id === owner._id ? { ...o, status: nextStatus } : o))
       );
-      toast.success(`${owner.name} marked as ${nextStatus}`);
+      if (sync?.synced) {
+        toast.success(
+          `${owner.name} marked as ${nextStatus} (synced ${sync.activeCount} active / ${sync.inactiveCount ?? 0} inactive modules)`
+        );
+      } else {
+        toast.success(`${owner.name} marked as ${nextStatus}`);
+      }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update status');
     }

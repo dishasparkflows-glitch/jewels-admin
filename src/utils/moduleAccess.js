@@ -59,13 +59,6 @@ export function resolveNavSections(sections = navSections, dbModules = null, all
       seenIds.add(item.id);
       const dbMod = dbMap.get(item.id);
 
-      if (item.id === 'owners') {
-        if (dbMod && dbMod.status !== 'active') return null;
-        return dbMod
-          ? { ...item, title: dbMod.name || item.title, path: dbMod.path || item.path }
-          : item;
-      }
-
       if (!dbMod || dbMod.status !== 'active') return null;
 
       return {
@@ -254,7 +247,7 @@ export function isPathAllowed(pathname, allowedModules, dbModules = null) {
   const slug = getSlugForPath(pathname);
   if (!slug) return true;
 
-  if (Array.isArray(dbModules) && dbModules.length > 0 && slug !== 'owners') {
+  if (Array.isArray(dbModules) && dbModules.length > 0) {
     const dbMod = dbModules.find((m) => (m?.slug || m?.moduleId || m?.id) === slug);
     if (!dbMod || dbMod.status !== 'active') return false;
   }

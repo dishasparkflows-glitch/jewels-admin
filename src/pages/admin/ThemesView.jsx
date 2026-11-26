@@ -667,23 +667,23 @@ export default function ThemesView() {
   return (
     <div className="space-y-2.5 sm:space-y-3">
       {/* ─── 1. COMPACT MODULE HEADER (Matching Media & Theme Gallery) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-stone-900 leading-tight">
+      <div className="flex items-start sm:items-center justify-between gap-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-stone-900 leading-tight truncate">
             Theme Management
           </h1>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+          <span className="inline-flex items-center gap-1.5 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 whitespace-nowrap">
             Live: {activeThemeObj?.name || 'Storefront Default'}
           </span>
         </div>
 
         {/* Header Actions: Add Theme */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => openEditor(null)}
             style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 hover:brightness-95 active:scale-[0.98] text-white rounded-lg text-xs font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 hover:brightness-95 active:scale-[0.98] text-white rounded-lg text-xs font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer whitespace-nowrap"
           >
             <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Add Theme</span>

@@ -13,6 +13,7 @@ import DatePicker from '../../components/common/DatePicker';
 import { analyticsAPI, dashboardAPI } from '../../api/services';
 import { useTheme } from '../../contexts/ThemeContext';
 import { getThemeChartPalette } from '../../utils/themeUtils';
+import { openProductPreview } from '../../utils/productPreview';
 
 const DATE_OPTIONS = [
   { value: 'today', label: 'Today' },
@@ -802,8 +803,25 @@ export default function Dashboard() {
               </div>
             ) : (
               <div className="divide-y divide-stone-100 mt-2">
-                {topSellingProducts.map((item, index) => (
-                  <div key={item._id || index} className="py-3.5 flex items-center gap-4 first:pt-2 last:pb-1">
+                {topSellingProducts.map((item, index) => {
+                  const thumbUrl = item.imageUrl || item.images?.[0];
+                  const productTitle = item.basicInfo?.title || item.title || 'Untitled Jewelry';
+                  const productSku = item.basicInfo?.sku || item.sku || 'N/A';
+                  return (
+                  <div
+                    key={item._id || index}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openProductPreview(item)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openProductPreview(item);
+                      }
+                    }}
+                    title="Open product on storefront"
+                    className="py-3.5 px-2 -mx-2 rounded-xl flex items-center gap-4 first:pt-2 last:pb-1 cursor-pointer hover:bg-stone-50/90 transition-colors group"
+                  >
                     {/* Rank Circle */}
                     <span className="w-7 h-7 rounded-full bg-[#faf5ee] text-[#8b6f4e] font-bold text-xs flex items-center justify-center shrink-0">
                       {item.rank || index + 1}
@@ -811,8 +829,8 @@ export default function Dashboard() {
 
                     {/* Thumbnail */}
                     <div className="w-12 h-12 rounded-xl bg-stone-900/90 border border-stone-200/50 overflow-hidden shrink-0 flex items-center justify-center">
-                      {item.imageUrl ? (
-                        <img src={item.imageUrl} alt={item.title} className="w-full h-full object-cover" />
+                      {thumbUrl ? (
+                        <img src={thumbUrl} alt={productTitle} className="w-full h-full object-cover" />
                       ) : (
                         <IoDiamondOutline className="w-5 h-5 text-amber-200/60" />
                       )}
@@ -820,11 +838,11 @@ export default function Dashboard() {
 
                     {/* Details */}
                     <div className="min-w-0 flex-1">
-                      <h4 className="text-sm font-semibold text-stone-900 truncate" title={item.title}>
-                        {item.title}
+                      <h4 className="text-sm font-semibold text-stone-900 group-hover:text-[#8b6f4e] transition-colors truncate" title={productTitle}>
+                        {productTitle}
                       </h4>
                       <p className="text-xs text-stone-400 mt-0.5">
-                        SKU: {item.sku || 'N/A'}
+                        SKU: {productSku}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs font-bold text-stone-900">
@@ -837,7 +855,8 @@ export default function Dashboard() {
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

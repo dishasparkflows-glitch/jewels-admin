@@ -114,12 +114,14 @@ export default function Pagination({
 
   const itemText = itemLabel || (totalItems === 1 ? 'item' : 'items');
 
+  const hasPageSize = Boolean(showPageSize && onPageSizeChange);
+
   return (
     <div
-      className={`px-3 sm:px-4 py-2.5 sm:py-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 border-t border-stone-200/80 bg-white select-none ${className}`}
+      className={`px-3.5 sm:px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-2.5 sm:gap-3 border-t border-stone-200/80 bg-white select-none ${className}`}
     >
       {/* Left: Info text e.g. "Showing 1–7 of 30 reviews" */}
-      <div className="text-xs text-stone-500 font-normal text-center sm:text-left flex flex-wrap items-center gap-2">
+      <div className="w-full sm:w-auto text-xs text-stone-500 font-normal text-center sm:text-left flex flex-wrap items-center justify-center sm:justify-start gap-2 pb-2 sm:pb-0 border-b sm:border-b-0 border-stone-100">
         {leftContent ? (
           leftContent
         ) : (
@@ -133,8 +135,12 @@ export default function Pagination({
       </div>
 
       {/* Right: Rows per page + Prev / Numbers / Next */}
-      <div className="flex flex-wrap items-center justify-center sm:justify-end gap-2.5 sm:gap-4 w-full sm:w-auto">
-        {showPageSize && onPageSizeChange && (
+      <div
+        className={`flex flex-wrap items-center gap-2 sm:gap-4 w-full sm:w-auto ${
+          hasPageSize ? 'justify-between sm:justify-end' : 'justify-center sm:justify-end'
+        }`}
+      >
+        {hasPageSize && (
           <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-stone-600 font-medium shrink-0">
             <span>Rows:</span>
             <Dropdown
@@ -190,9 +196,10 @@ export default function Pagination({
                   key={`page-${pageNum}`}
                   type="button"
                   onClick={() => handlePageClick(pageNum)}
+                  style={isActive ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
                   className={`w-7 h-7 sm:w-8 sm:h-8 rounded-md text-xs sm:text-[13px] font-semibold transition-all duration-150 flex items-center justify-center cursor-pointer ${
                     isActive
-                      ? 'bg-[#8b6f4e] text-white shadow-xs'
+                      ? 'text-white shadow-xs'
                       : 'bg-white text-stone-700 hover:bg-stone-50 border border-stone-200 hover:border-stone-300 shadow-2xs'
                   }`}
                 >

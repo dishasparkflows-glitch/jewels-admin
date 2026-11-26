@@ -201,6 +201,14 @@ html.dark label:not([class*="toggle"]):not([class*="switch"]):not([class*="badge
   .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
     background: var(--theme-primary-dark, #785e40);
   }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @layer components {

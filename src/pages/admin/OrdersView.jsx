@@ -519,8 +519,8 @@ export default function OrdersView() {
       />
 
       {/* ─── Status Filter Tabs & Bulk Actions ─── */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 pt-0.5 luxury-scrollbar flex-1 min-w-0">
+      <div className="flex items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5 flex-1 min-w-0">
           {ORDER_TABS.map((tab) => {
             const isActive = orderStatusTab === tab.key;
             return (
@@ -531,9 +531,14 @@ export default function OrdersView() {
                   setOrderStatusTab(tab.key);
                   setCurrentPage(1);
                 }}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap shadow-2xs ${
+                style={
                   isActive
-                    ? 'bg-[#8c6536] text-white shadow-xs ring-1 ring-[#8c6536]'
+                    ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', borderColor: 'var(--theme-primary, #8b6f4e)' }
+                    : undefined
+                }
+                className={`px-2.5 sm:px-3 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap shadow-2xs shrink-0 ${
+                  isActive
+                    ? 'text-white shadow-xs border'
                     : 'bg-white text-stone-600 hover:text-stone-900 border border-stone-200/80 hover:bg-stone-50'
                 }`}
               >
@@ -548,14 +553,15 @@ export default function OrdersView() {
           type="button"
           onClick={handleBulkDelete}
           disabled={selectedIds.size === 0}
-          className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap ${
+          className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap shrink-0 ${
             selectedIds.size > 0
               ? 'bg-[#fef2f2] text-[#ef4444] border-[#fee2e2] hover:bg-[#fee2e2] hover:border-[#fca5a5] active:scale-95 ring-1 ring-red-200/50 cursor-pointer'
               : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
           }`}
         >
           <HiOutlineTrash className="w-3.5 h-3.5 shrink-0 text-[#ef4444]" />
-          <span>Delete{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}</span>
+          <span className="hidden sm:inline">Delete</span>
+          {selectedIds.size > 0 && <span>({selectedIds.size})</span>}
         </button>
       </div>
 

@@ -361,23 +361,23 @@ export default function GalleryView() {
   return (
     <div className="space-y-2.5 sm:space-y-3">
       {/* ─── 1. COMPACT MODULE HEADER (Like Jewellery Products) ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-        <div className="flex items-center gap-2.5">
-          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-stone-900 leading-tight">
+      <div className="flex items-start sm:items-center justify-between gap-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2.5 min-w-0">
+          <h1 className="text-lg sm:text-xl font-bold tracking-tight text-stone-900 leading-tight truncate">
             Media & Theme Gallery
           </h1>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800">
+          <span className="inline-flex items-center gap-1.5 w-fit rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-800 whitespace-nowrap">
             Live: {activeThemeObj?.name || 'diwali 2026'}
           </span>
         </div>
 
         {/* Header Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={handleOpenUploadModal}
             style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 hover:brightness-95 active:scale-[0.98] text-white rounded-lg text-xs font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer"
+            className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 hover:brightness-95 active:scale-[0.98] text-white rounded-lg text-xs font-semibold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer whitespace-nowrap"
           >
             <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
             <span>Upload Images</span>
@@ -508,14 +508,17 @@ export default function GalleryView() {
         </div>
       </div>
 
-      {/* ─── 3. FILTER & TOOLBAR (Compact Layout) ─── */}
-      <div className="rounded-lg border border-stone-200/90 bg-white p-2.5 sm:p-3 shadow-2xs">
-        <div className="flex flex-wrap items-center justify-between gap-2.5">
-          <div className="flex flex-wrap items-center gap-2.5">
+      {/* ─── 3. FILTER & TOOLBAR (Compact Responsive Layout) ─── */}
+      <div className="rounded-xl border border-stone-200/90 bg-white p-2.5 sm:p-3 shadow-2xs">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2.5">
+          {/* Placement + Theme Dropdowns: 2-column grid on mobile, inline on sm+ */}
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap sm:items-center gap-2 sm:gap-2.5">
             {/* Placement Type Dropdown Filter */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[11px] font-semibold text-stone-600 whitespace-nowrap">Placement:</span>
-              <div className="w-48 sm:w-52">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 min-w-0">
+              <span className="text-[10px] sm:text-[11px] font-bold sm:font-semibold uppercase sm:normal-case tracking-wider sm:tracking-normal text-stone-400 sm:text-stone-600 whitespace-nowrap">
+                Placement
+              </span>
+              <div className="w-full sm:w-48 md:w-52">
                 <PlacementSelect
                   size="sm"
                   includeAll={true}
@@ -527,9 +530,11 @@ export default function GalleryView() {
             </div>
 
             {/* Theme Dropdown Filter */}
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="text-[11px] font-semibold text-stone-600 whitespace-nowrap">Filter Theme:</span>
-              <div className="w-48 sm:w-52">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-1.5 min-w-0">
+              <span className="text-[10px] sm:text-[11px] font-bold sm:font-semibold uppercase sm:normal-case tracking-wider sm:tracking-normal text-stone-400 sm:text-stone-600 whitespace-nowrap">
+                Theme
+              </span>
+              <div className="w-full sm:w-48 md:w-52">
                 <Dropdown
                   size="sm"
                   value={selectedTheme}
@@ -539,13 +544,16 @@ export default function GalleryView() {
                 />
               </div>
             </div>
+          </div>
 
+          {/* Platform Filter + View Mode Toggle in one balanced row */}
+          <div className="flex items-center justify-between sm:justify-end gap-2">
             {/* Platform Filter: All, Web, App, Common */}
-            <div className="flex items-center gap-0.5 rounded-md border border-stone-200 bg-stone-50 p-0.5 shrink-0">
+            <div className="flex items-center gap-0.5 rounded-lg border border-stone-200 bg-stone-50 p-0.5 flex-1 sm:flex-initial">
               <button
                 type="button"
                 onClick={() => setSelectedPlatform('all')}
-                className={`rounded px-2.5 py-1 text-xs font-semibold transition cursor-pointer ${
+                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition cursor-pointer text-center ${
                   selectedPlatform === 'all'
                     ? 'bg-white text-stone-900 shadow-2xs'
                     : 'text-stone-500 hover:text-stone-800'
@@ -556,64 +564,64 @@ export default function GalleryView() {
               <button
                 type="button"
                 onClick={() => setSelectedPlatform('web')}
-                className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
                   selectedPlatform === 'web'
                     ? 'bg-white text-stone-900 shadow-2xs'
                     : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
-                <HiOutlineDesktopComputer className="h-3 w-3" />
-                Web
+                <HiOutlineDesktopComputer className="h-3 w-3 shrink-0" />
+                <span>Web</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedPlatform('app')}
-                className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
                   selectedPlatform === 'app'
                     ? 'bg-white text-stone-900 shadow-2xs'
                     : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
-                <HiOutlineDeviceMobile className="h-3 w-3" />
-                App
+                <HiOutlineDeviceMobile className="h-3 w-3 shrink-0" />
+                <span>App</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedPlatform('common')}
-                className={`rounded px-2.5 py-1 text-xs font-semibold transition flex items-center gap-1 cursor-pointer ${
+                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
                   selectedPlatform === 'common'
                     ? 'bg-white text-stone-900 shadow-2xs'
                     : 'text-stone-500 hover:text-stone-800'
                 }`}
               >
-                <IoSparklesOutline className="h-3 w-3 text-amber-600" />
-                Common
+                <IoSparklesOutline className="h-3 w-3 text-amber-600 shrink-0" />
+                <span>Common</span>
               </button>
             </div>
-          </div>
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center gap-0.5 shrink-0 rounded-md border border-stone-200 bg-stone-50 p-0.5">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              className={`rounded p-1 transition cursor-pointer ${
-                viewMode === 'grid' ? 'bg-white text-[#855836] shadow-2xs' : 'text-stone-400 hover:text-stone-700'
-              }`}
-              title="Cards Grid View"
-            >
-              <HiOutlineViewGrid className="h-3.5 w-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              className={`rounded p-1 transition cursor-pointer ${
-                viewMode === 'list' ? 'bg-white text-[#855836] shadow-2xs' : 'text-stone-400 hover:text-stone-700'
-              }`}
-              title="List / Table View"
-            >
-              <HiOutlineViewList className="h-3.5 w-3.5" />
-            </button>
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-0.5 shrink-0 rounded-lg border border-stone-200 bg-stone-50 p-0.5">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={`rounded-md p-1.5 sm:p-1 transition cursor-pointer ${
+                  viewMode === 'grid' ? 'bg-white text-[#855836] shadow-2xs' : 'text-stone-400 hover:text-stone-700'
+                }`}
+                title="Cards Grid View"
+              >
+                <HiOutlineViewGrid className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={`rounded-md p-1.5 sm:p-1 transition cursor-pointer ${
+                  viewMode === 'list' ? 'bg-white text-[#855836] shadow-2xs' : 'text-stone-400 hover:text-stone-700'
+                }`}
+                title="List / Table View"
+              >
+                <HiOutlineViewList className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
