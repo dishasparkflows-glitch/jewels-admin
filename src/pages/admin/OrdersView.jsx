@@ -682,10 +682,10 @@ export default function OrdersView() {
                                   )}
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                  <p className="font-semibold text-stone-900 text-xs truncate">
+                                  <p className="font-semibold text-stone-900 text-xs leading-snug line-clamp-2 break-words">
                                     {item.title || 'Jewellery Item'}
                                   </p>
-                                  <p className="text-[10px] text-stone-500">
+                                  <p className="text-[10px] text-stone-500 mt-0.5">
                                     {item.selectedMetal ? `${item.selectedMetal} • ` : ''}Qty: {item.quantity || 1}
                                   </p>
                                 </div>
@@ -838,8 +838,8 @@ export default function OrdersView() {
                   </th>
                   <th className="py-3 px-3 text-center w-12 whitespace-nowrap">SR NO</th>
                   <th className="py-3 px-3 whitespace-nowrap">ORDER INFO</th>
-                  <th className="py-3 px-3 whitespace-nowrap">PRODUCTS</th>
                   <th className="py-3 px-3 whitespace-nowrap">CUSTOMER</th>
+                  <th className="py-3 px-3 whitespace-nowrap">PRODUCTS</th>
                   <th className="py-3 px-3 whitespace-nowrap">PRICING & PAYMENT</th>
                   <th className="py-3 px-3 whitespace-nowrap text-center">STATUS</th>
                   <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
@@ -893,9 +893,31 @@ export default function OrdersView() {
                         </div>
                       </td>
 
-                      {/* 2. PRODUCTS COLUMN */}
-                      <td className="py-3.5 px-3 text-stone-900 text-xs align-middle">
-                        <div className="min-w-[190px] max-w-xs space-y-1.5">
+                      {/* 2. CUSTOMER DETAILS */}
+                      <td className="py-3.5 px-3 text-stone-600 text-xs align-middle">
+                        <div className="min-w-[150px] max-w-xs space-y-0.5">
+                          <div className="font-semibold text-stone-900 text-xs truncate">
+                            {ord.customer?.firstName
+                              ? `${ord.customer.firstName} ${ord.customer.lastName || ''}`.trim()
+                              : ord.shippingAddress?.fullName || ord.shippingAddress?.firstName || 'Customer'}
+                          </div>
+                          {(ord.customer?.phone || ord.shippingAddress?.phone) && (
+                            <div className="text-[11px] text-stone-500 truncate">
+                              {ord.customer?.phone || ord.shippingAddress?.phone}
+                            </div>
+                          )}
+                          {ord.shippingAddress?.city && (
+                            <div className="text-[10.5px] text-stone-500 truncate">
+                              {ord.shippingAddress.city}
+                              {ord.shippingAddress.state ? `, ${ord.shippingAddress.state}` : ''}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* 3. PRODUCTS COLUMN */}
+                      <td className="py-3.5 px-3 text-stone-900 text-xs align-middle max-w-[260px] xl:max-w-[320px]">
+                        <div className="w-full space-y-1.5">
                           {Array.isArray(ord.items) &&
                             ord.items.slice(0, 2).map((item, i) => {
                               const refDoc = item.refId;
@@ -932,7 +954,7 @@ export default function OrdersView() {
                                     >
                                       {item.title || 'Jewellery Item'}
                                     </span>
-                                    <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-stone-500">
+                                    <div className="flex items-center gap-1.5 flex-wrap text-[10px] text-stone-500 mt-0.5">
                                       {item.selectedMetal && (
                                         <span className="px-1.5 py-0.2 rounded bg-stone-100 text-stone-700 font-medium border border-stone-200/60">
                                           {item.selectedMetal}
@@ -950,28 +972,6 @@ export default function OrdersView() {
                             <span className="inline-block px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200/70 text-[10px] font-bold">
                               +{ord.items.length - 2} more item{ord.items.length - 2 > 1 ? 's' : ''}
                             </span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* 3. CUSTOMER DETAILS */}
-                      <td className="py-3.5 px-3 text-stone-600 text-xs align-middle">
-                        <div className="min-w-[150px] max-w-xs space-y-0.5">
-                          <div className="font-semibold text-stone-900 text-xs truncate">
-                            {ord.customer?.firstName
-                              ? `${ord.customer.firstName} ${ord.customer.lastName || ''}`.trim()
-                              : ord.shippingAddress?.fullName || ord.shippingAddress?.firstName || 'Customer'}
-                          </div>
-                          {(ord.customer?.phone || ord.shippingAddress?.phone) && (
-                            <div className="text-[11px] text-stone-500 truncate">
-                              {ord.customer?.phone || ord.shippingAddress?.phone}
-                            </div>
-                          )}
-                          {ord.shippingAddress?.city && (
-                            <div className="text-[10.5px] text-stone-500 truncate">
-                              {ord.shippingAddress.city}
-                              {ord.shippingAddress.state ? `, ${ord.shippingAddress.state}` : ''}
-                            </div>
                           )}
                         </div>
                       </td>

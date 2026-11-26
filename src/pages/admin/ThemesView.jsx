@@ -178,20 +178,10 @@ export default function ThemesView() {
       // 1. Call POST /api/themes/:themeId/activate (@theme.routes.js:L14)
       const res = await themesAPI.activateTheme(targetId);
 
-      // 2. Also sync storefront settings with theme colors (matching SettingsView process)
+      // 2. Also sync storefront settings with active theme ID
       const payload = {
         currentThemeId: targetId,
       };
-      if (themeToActivate.config?.colors) {
-        const c = themeToActivate.config.colors;
-        payload.themeColors = {
-          buttonColor: c.primary || '#8b6f4e',
-          buttonHoverColor: c.accent || c.primary || '#755c3e',
-          buttonTextColor: '#ffffff',
-          topBarBgColor: '#201e1b',
-          topBarTextColor: '#ffffff',
-        };
-      }
       await api.put('/settings', payload);
 
       setActiveStorefrontThemeId(String(targetId));

@@ -40,29 +40,6 @@ import {
 import { getMediaUrl } from '../../utils/imageUrl';
 import ImageCompressionDemo from '../../components/common/ImageCompressionDemo';
 
-const LUXURY_BUTTON_PALETTES = [
-  {
-    name: 'Dark Emerald',
-    bg: '#1f3a2b',
-    hover: '#162b20',
-    text: '#ffffff',
-    storefrontColors: {
-      topBarBgColor: '#1f3a2b',
-      topBarTextColor: '#ffffff',
-      headerBgColor: '#f7f4ee',
-      headerTextColor: '#252923',
-      footerBgColor: '#142820',
-      footerTextColor: '#e9dfc8',
-    },
-  },
-  { name: 'Warm Gold', bg: '#8b6f4e', hover: '#755c3e', text: '#ffffff' },
-  { name: 'Champagne Ochre', bg: '#c58b32', hover: '#a87325', text: '#ffffff' },
-  { name: 'Velvet Plum', bg: '#4a1525', hover: '#3b0e1b', text: '#ffffff' },
-  { name: 'Midnight Onyx', bg: '#1a1a1a', hover: '#0d0d0d', text: '#ffffff' },
-  { name: 'Classic Navy', bg: '#132238', hover: '#0c1624', text: '#ffffff' },
-];
-const DEFAULT_BUTTON_PALETTE = LUXURY_BUTTON_PALETTES.find((palette) => palette.name === 'Warm Gold');
-
 const DEFAULT_HEADER_FOOTER_COLORS = {
   topBarBgColor: '#201e1b',
   topBarTextColor: '#ffffff',
@@ -89,12 +66,8 @@ export default function SettingsView() {
   const [selectedThemeName, setSelectedThemeName] = useState('');
   const [themesList, setThemesList] = useState([]);
   const [savingTheme, setSavingTheme] = useState(false);
-  const [resettingButtonColors, setResettingButtonColors] = useState(false);
 
-  // Storefront Button Colors state
-  const [buttonColor, setButtonColor] = useState('#8b6f4e');
-  const [buttonHoverColor, setButtonHoverColor] = useState('#755c3e');
-  const [buttonTextColor, setButtonTextColor] = useState('#ffffff');
+  // Storefront Header, Banner & Footer Colors state
   const [topBarBgColor, setTopBarBgColor] = useState('#201e1b');
   const [topBarTextColor, setTopBarTextColor] = useState('#ffffff');
   const [headerBgColor, setHeaderBgColor] = useState('#201e1b');
@@ -230,9 +203,6 @@ export default function SettingsView() {
         if (themeName) setSelectedThemeName(themeName);
       }
       const colors = data.themeColors || {};
-      setButtonColor(colors.buttonColor || '#8b6f4e');
-      setButtonHoverColor(colors.buttonHoverColor || '#755c3e');
-      setButtonTextColor(colors.buttonTextColor || '#ffffff');
       setTopBarBgColor(colors.topBarBgColor || '#201e1b');
       setTopBarTextColor(colors.topBarTextColor || '#ffffff');
       setHeaderBgColor(colors.headerBgColor || '#201e1b');
@@ -296,9 +266,6 @@ export default function SettingsView() {
       const initialThemeId = typeof settings.currentThemeId === 'object' ? settings.currentThemeId?._id : settings.currentThemeId;
       setSelectedThemeId(initialThemeId || '');
       const colors = settings.themeColors || {};
-      setButtonColor(colors.buttonColor || '#8b6f4e');
-      setButtonHoverColor(colors.buttonHoverColor || '#755c3e');
-      setButtonTextColor(colors.buttonTextColor || '#ffffff');
       setTopBarBgColor(colors.topBarBgColor || '#201e1b');
       setTopBarTextColor(colors.topBarTextColor || '#ffffff');
       setHeaderBgColor(colors.headerBgColor || '#201e1b');
@@ -552,36 +519,12 @@ export default function SettingsView() {
     toast.success('Header & footer colors reset to defaults');
   };
 
-  const handleResetButtonColors = async () => {
-    try {
-      setResettingButtonColors(true);
-      const colors = {
-        buttonColor: DEFAULT_BUTTON_PALETTE.bg,
-        buttonHoverColor: DEFAULT_BUTTON_PALETTE.hover,
-        buttonTextColor: DEFAULT_BUTTON_PALETTE.text,
-      };
-      const res = await api.put('/settings', { themeColors: colors });
-      setSettings(res.data?.data || settings);
-      setButtonColor(colors.buttonColor);
-      setButtonHoverColor(colors.buttonHoverColor);
-      setButtonTextColor(colors.buttonTextColor);
-      toast.success('Button colors reset to the Warm Gold default');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to reset button colors');
-    } finally {
-      setResettingButtonColors(false);
-    }
-  };
-
   // Save Storefront Theme
   const handleSaveTheme = async () => {
     try {
       setSavingTheme(true);
       const payload = {
         themeColors: {
-          buttonColor,
-          buttonHoverColor,
-          buttonTextColor,
           topBarBgColor,
           topBarTextColor,
           headerBgColor,
@@ -717,10 +660,10 @@ export default function SettingsView() {
     {
       id: 'theme',
       title: 'Storefront Theme & Colors',
-      subtitle: 'Manage active website theme, button colors, and header/footer styling from one place.',
+      subtitle: 'Manage active website theme and header, banner & footer styling from one place.',
       icon: HiOutlineColorSwatch,
       badgeText: selectedThemeName
-        ? `Active: ${selectedThemeName} · Button: ${(buttonColor || '#8b6f4e').toUpperCase()}`
+        ? `Active: ${selectedThemeName} · Top Bar: ${(topBarBgColor || '#201e1b').toUpperCase()}`
         : `Colors Configured`,
       hasPreview: false,
     },
@@ -747,11 +690,6 @@ export default function SettingsView() {
       b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       b.subtitle.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const buttonColorsMatchWarmGold =
-    buttonColor.toLowerCase() === DEFAULT_BUTTON_PALETTE.bg.toLowerCase() &&
-    buttonHoverColor.toLowerCase() === DEFAULT_BUTTON_PALETTE.hover.toLowerCase() &&
-    buttonTextColor.toLowerCase() === DEFAULT_BUTTON_PALETTE.text.toLowerCase();
 
   return (
     <div className="space-y-4">
@@ -1402,196 +1340,6 @@ export default function SettingsView() {
                 <div className="h-full min-h-0 overflow-y-auto p-4 sm:p-5 lg:p-6 space-y-4 scrollbar-thin">
 
                   {/* ── Section A: Global Storefront Button Styling ── */}
-                  <div className="bg-stone-50/90 border border-stone-200/90 rounded-2xl p-4 sm:p-5 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900 flex items-center gap-2">
-                          <span className="w-3 h-3 rounded-full border border-black/10 shadow-2xs" style={{ backgroundColor: buttonColor }} />
-                          Global Storefront Button Color
-                        </h4>
-                        <p className="text-[11px] text-stone-500 mt-0.5">
-                          Controls the button color across all modals, pages, and interactive actions from one place
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Live Button Preview Card */}
-                    <div className="bg-white border border-stone-200 rounded-xl p-3.5 shadow-2xs space-y-2">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                        Live Storefront Button Preview
-                      </div>
-                      <div className="flex flex-wrap items-center gap-2.5 pt-1">
-                        <button
-                          type="button"
-                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
-                          className="px-4 py-2 rounded-lg text-xs font-semibold shadow-xs cursor-default"
-                        >
-                          Primary Button
-                        </button>
-                        <button
-                          type="button"
-                          style={{ backgroundColor: buttonHoverColor, color: buttonTextColor }}
-                          className="px-4 py-2 rounded-lg text-xs font-semibold shadow-xs cursor-default"
-                        >
-                          Hover State
-                        </button>
-                        <button
-                          type="button"
-                          style={{ backgroundColor: '#f4efe7', color: buttonColor }}
-                          className="px-4 py-2 rounded-lg text-xs font-semibold cursor-default"
-                        >
-                          Secondary Button
-                        </button>
-                        <button
-                          type="button"
-                          style={{ borderColor: buttonColor, color: buttonColor }}
-                          className="px-4 py-2 rounded-lg border text-xs font-semibold cursor-default"
-                        >
-                          Outline Button
-                        </button>
-                        <button
-                          type="button"
-                          style={{ color: buttonColor }}
-                          className="px-3 py-2 text-xs font-semibold cursor-default"
-                        >
-                          Text Button →
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Quick Luxury Presets */}
-                    <div className="space-y-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <div>
-                          <label className="text-[11px] font-semibold text-stone-700">Quick Luxury Palettes</label>
-                          <p className="text-[10px] text-stone-500">Warm Gold is the built-in default and stays available as your reset option.</p>
-                        </div>
-                        <div className="flex items-center gap-2 self-start sm:self-auto">
-                          <button
-                            type="button"
-                            onClick={handleResetButtonColors}
-                            disabled={resettingButtonColors || buttonColorsMatchWarmGold}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 active:scale-95 border border-stone-200 rounded-lg shadow-2xs transition-all cursor-pointer disabled:cursor-default disabled:opacity-60"
-                          >
-                            <HiOutlineRefresh className="w-3.5 h-3.5 text-stone-500" />
-                            {resettingButtonColors ? 'Resetting…' : 'Reset to Default'}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-                        {LUXURY_BUTTON_PALETTES.map((preset) => {
-                          const isCurrent = (buttonColor || '').toLowerCase() === preset.bg.toLowerCase();
-                          return (
-                            <button
-                              key={preset.name}
-                              type="button"
-                              aria-pressed={isCurrent}
-                              onClick={() => {
-                                setButtonColor(preset.bg);
-                                setButtonHoverColor(preset.hover);
-                                setButtonTextColor(preset.text);
-                                if (preset.storefrontColors) {
-                                  setTopBarBgColor(preset.storefrontColors.topBarBgColor);
-                                  setTopBarTextColor(preset.storefrontColors.topBarTextColor);
-                                  setHeaderBgColor(preset.storefrontColors.headerBgColor);
-                                  setHeaderTextColor(preset.storefrontColors.headerTextColor);
-                                  setFooterBgColor(preset.storefrontColors.footerBgColor);
-                                  setFooterTextColor(preset.storefrontColors.footerTextColor);
-                                }
-                              }}
-                              className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1.5 ${
-                                isCurrent
-                                  ? 'border-stone-900 bg-white ring-2 ring-stone-900/15 shadow-xs'
-                                  : 'border-stone-200 bg-white/70 hover:bg-white hover:border-stone-300'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <span
-                                  className="w-4 h-4 rounded-full border border-black/10 shrink-0 shadow-2xs"
-                                  style={{ backgroundColor: preset.bg }}
-                                />
-                                <span className="text-[10px] font-bold text-stone-800 truncate">
-                                  {preset.name}
-                                </span>
-                              </div>
-                              <span className="flex items-center gap-1" aria-hidden="true">
-                                {[preset.bg, preset.hover, preset.text].map((color) => (
-                                  <span key={color} className="h-3.5 flex-1 rounded-sm border border-black/5" style={{ backgroundColor: color }} />
-                                ))}
-                              </span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Custom Color Pickers */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-stone-200/80">
-                      <div>
-                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                          Button Background Color
-                        </label>
-                        <div className="flex items-center gap-2 h-9 px-2 rounded-lg border border-stone-200 bg-white shadow-2xs">
-                          <input
-                            type="color"
-                            value={buttonColor}
-                            onChange={(e) => setButtonColor(e.target.value)}
-                            className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0"
-                          />
-                          <input
-                            type="text"
-                            value={buttonColor}
-                            onChange={(e) => setButtonColor(e.target.value)}
-                            className="w-full text-xs font-mono font-medium text-stone-800 outline-none uppercase"
-                            placeholder="#1F3A2B"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                          Button Hover Color
-                        </label>
-                        <div className="flex items-center gap-2 h-9 px-2 rounded-lg border border-stone-200 bg-white shadow-2xs">
-                          <input
-                            type="color"
-                            value={buttonHoverColor}
-                            onChange={(e) => setButtonHoverColor(e.target.value)}
-                            className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0"
-                          />
-                          <input
-                            type="text"
-                            value={buttonHoverColor}
-                            onChange={(e) => setButtonHoverColor(e.target.value)}
-                            className="w-full text-xs font-mono font-medium text-stone-800 outline-none uppercase"
-                            placeholder="#162B20"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
-                          Button Text Color
-                        </label>
-                        <div className="flex items-center gap-2 h-9 px-2 rounded-lg border border-stone-200 bg-white shadow-2xs">
-                          <input
-                            type="color"
-                            value={buttonTextColor}
-                            onChange={(e) => setButtonTextColor(e.target.value)}
-                            className="w-6 h-6 rounded cursor-pointer border-0 bg-transparent p-0"
-                          />
-                          <input
-                            type="text"
-                            value={buttonTextColor}
-                            onChange={(e) => setButtonTextColor(e.target.value)}
-                            className="w-full text-xs font-mono font-medium text-stone-800 outline-none uppercase"
-                            placeholder="#FFFFFF"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* ── Section A2: Header, Top Bar & Footer Colors ── */}
                   <div className="rounded-2xl border border-stone-200/80 bg-stone-50/50 p-4 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
@@ -1642,7 +1390,7 @@ export default function SettingsView() {
                         </div>
                         <button
                           type="button"
-                          style={{ backgroundColor: buttonColor, color: buttonTextColor }}
+                          style={{ backgroundColor: topBarBgColor, color: topBarTextColor }}
                           className="px-2.5 py-1 rounded-md text-[10px] font-semibold"
                         >
                           Explore
