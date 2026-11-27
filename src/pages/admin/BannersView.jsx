@@ -17,7 +17,6 @@ import {
   HiOutlineCode,
   HiOutlineDotsHorizontal,
   HiOutlineDesktopComputer,
-  HiOutlineDuplicate,
     HiOutlineAdjustments,
     } from 'react-icons/hi';
 import toast from 'react-hot-toast';
@@ -712,39 +711,6 @@ export default function BannersView() {
     }
   };
 
-  // Duplicate a banner
-  const handleDuplicate = async (banner, e) => {
-    e?.stopPropagation();
-    try {
-      const origTitle = banner.content?.title || banner.title || 'Banner';
-      const payload = {
-        content: {
-          ...(banner.content || {}),
-          title: `${origTitle} (Copy)`,
-        },
-        display: {
-          ...(banner.display || {}),
-          order: (banner.display?.order ?? 0) + 1,
-        },
-        image: banner.image?.url ? { url: banner.image.url, key: banner.image.key } : undefined,
-        mobileImage: banner.mobileImage?.url ? { url: banner.mobileImage.url, key: banner.mobileImage.key } : undefined,
-        collectionImages: banner.collectionImages?.length ? banner.collectionImages : undefined,
-        mediaType: banner.mediaType || 'image',
-        status: 'inactive', // Draft
-        startDate: banner.startDate || undefined,
-        endDate: banner.endDate || undefined,
-        themeId: banner.themeId?._id || banner.themeId || undefined,
-      };
-
-      await api.post('/banners', payload);
-      toast.success(`"${origTitle}" duplicated as draft`);
-      fetchListBanners();
-    } catch (err) {
-      console.error('Failed to duplicate:', err);
-      toast.error('Failed to duplicate banner');
-    }
-  };
-
   // Delete a banner
   const handleDelete = async (banner, e) => {
     e?.stopPropagation();
@@ -1276,16 +1242,6 @@ export default function BannersView() {
                         {/* ACTIONS */}
                         <td className="py-3.5 pr-6 pl-4 whitespace-nowrap text-right">
                           <div className="inline-flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
-                            {/* Duplicate */}
-                            <button
-                              type="button"
-                              onClick={(e) => handleDuplicate(banner, e)}
-                              title="Duplicate banner"
-                              className="w-7 h-7 rounded-lg border border-stone-200 bg-white hover:bg-[#faf6f0] text-stone-600 hover:text-[#8a6d4b] active:scale-95 transition-all inline-flex items-center justify-center cursor-pointer shadow-2xs"
-                            >
-                              <HiOutlineDuplicate className="w-3.5 h-3.5 stroke-[1.8]" />
-                            </button>
-
                             {/* Edit Action */}
                             <EditActionButton
                               onClick={() => {

@@ -48,13 +48,13 @@ export default function CouponsView() {
   const [totalUsageLimit, setTotalUsageLimit] = useState('');
   const [limitPerUser, setLimitPerUser] = useState('1');
   const [categoryId, setCategoryId] = useState('');
-  const { categoryOptions, loading: categoriesLoading } = useCategoryLookup();
+  const { categories, loading: categoriesLoading } = useCategoryLookup();
   const categorySelectOptions = useMemo(() => {
     return [
       { value: '', label: 'All Categories / None (Optional)' },
-      ...(categoryOptions || []),
+      ...(categories || []).map((c) => ({ value: c._id, label: c.name })),
     ];
-  }, [categoryOptions]);
+  }, [categories]);
 
   // Fetch all coupons
   const [currentPage, setCurrentPage] = useState(1);

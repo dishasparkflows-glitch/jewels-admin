@@ -184,8 +184,8 @@ export const vtoMastersAPI = {
 
 // --- Media & Theme Gallery -------------------------
 export const galleryAPI = {
-  getLookup: (params) => api.get('/gallery/lookup', { params }),
-  getAll: (params) => api.get('/gallery', { params }),
+  getLookup: (params, config = {}) => api.get('/gallery/lookup', { params, ...config }),
+  getAll: (params, config = {}) => api.get('/gallery', { params, ...config }),
   getOne: (id) => api.get('/gallery/' + id),
   create: (data) => api.post('/gallery', data),
   uploadAssign: (data) => api.post('/gallery/upload-assign', data),

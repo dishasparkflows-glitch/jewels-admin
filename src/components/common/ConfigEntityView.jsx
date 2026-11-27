@@ -8,6 +8,7 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { clearRequestCache } from '../../utils/requestCache';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { formatDate } from '../../utils/formatters';
@@ -284,6 +285,7 @@ export default function ConfigEntityView({
     try {
       const nextStatus = itemRecord.status === 'active' ? 'inactive' : 'active';
       await api.put(`${endpoint}/${itemRecord._id}`, { status: nextStatus });
+      if (endpoint) clearRequestCache(`config:${endpoint}`);
       toast.success(`${itemRecord.name} status set to ${nextStatus}`);
       setItems((prev) =>
         prev.map((it) => (it._id === itemRecord._id ? { ...it, status: nextStatus } : it))
@@ -307,6 +309,7 @@ export default function ConfigEntityView({
 
     try {
       await api.delete(`${endpoint}/${id}`);
+      if (endpoint) clearRequestCache(`config:${endpoint}`);
       toast.success(`${singularTitle} deleted successfully`);
       setItems((prev) => prev.filter((it) => it._id !== id));
       removeFromSelection(id);
@@ -342,6 +345,7 @@ export default function ConfigEntityView({
           throw bulkErr;
         }
       }
+      if (endpoint) clearRequestCache(`config:${endpoint}`);
       toast.success(`${idsToDelete.length} ${title.toLowerCase()} deleted successfully`);
       setItems((prev) => prev.filter((it) => !selectedIds.has(it._id)));
       clearSelection();

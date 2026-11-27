@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import api from '../../api/axios';
-import { getCachedData, setCachedData, isAbortError } from '../../utils/requestCache';
+import { getCachedData, setCachedData, clearRequestCache, isAbortError } from '../../utils/requestCache';
 import toast from 'react-hot-toast';
 import {
   HiOutlineShoppingBag,
@@ -52,6 +52,7 @@ export default function OrdersView() {
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 300);
   const [orderStatusTab, setOrderStatusTab] = useState('all');
@@ -173,8 +174,12 @@ export default function OrdersView() {
       if (cached.counts) setStatusCounts(cached.counts);
       hasLoadedOrdersRef.current = true;
       setLoading(false);
+      setRefreshing(false);
     } else if (!hasLoadedOrdersRef.current) {
       setLoading(true);
+      setRefreshing(false);
+    } else {
+      setRefreshing(true);
     }
 
     try {
@@ -234,6 +239,7 @@ export default function OrdersView() {
     } finally {
       if (!controller.signal.aborted) {
         setLoading(false);
+        setRefreshing(false);
       }
     }
   }, [currentPage, pageSize, orderStatusTab, debouncedSearch]);
@@ -328,6 +334,7 @@ export default function OrdersView() {
     try {
       setUpdatingOrderStatus(true);
       await api.patch(`/orders/${orderId}/status`, { orderStatus: newStatus });
+      clearRequestCache('orders:');
       toast.success(`Order updated to ${newStatus}`);
       setOrders((prev) =>
         prev.map((ord) => ((ord._id || ord.id) === orderId ? { ...ord, orderStatus: newStatus, status: newStatus } : ord))
@@ -378,6 +385,7 @@ export default function OrdersView() {
 
     try {
       await api.delete(`/orders/${orderId}`);
+      clearRequestCache('orders:');
       toast.success('Order deleted successfully');
       setOrders((prev) => prev.filter((ord) => (ord._id || ord.id) !== orderId));
       setSelectedIds((prev) => {
@@ -415,6 +423,7 @@ export default function OrdersView() {
     const idsToDelete = Array.from(selectedIds);
     try {
       await api.post('/orders/bulk-delete', { ids: idsToDelete });
+      clearRequestCache('orders:');
       setOrders((prev) => prev.filter((ord) => !selectedIds.has(ord._id || ord.id)));
       if (viewingOrder && selectedIds.has(viewingOrder._id || viewingOrder.id)) {
         setViewingOrder(null);
@@ -488,7 +497,7 @@ export default function OrdersView() {
         extraActions={
           <button
             type="button"
-            onClick={fetchOrders}
+            onClick={() => { clearRequestCache('orders:'); fetchOrders(); }}
             title="Refresh List"
             className="flex items-center gap-1.5 px-3 py-2 bg-white border border-stone-200/90 hover:border-stone-300 rounded-xl text-xs font-semibold text-stone-700 shadow-2xs hover:bg-stone-50 transition-all cursor-pointer"
           >
@@ -559,8 +568,16 @@ export default function OrdersView() {
       </div>
 
       {/* ─── Orders Table ─── */}
-      <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-xl border border-stone-200/90 shadow-2xs overflow-hidden relative">
+        {refreshing && (
+          <div className="h-0.5 w-full bg-stone-200/70 overflow-hidden">
+            <div
+              style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+              className="h-full w-1/3 rounded-full animate-pulse"
+            />
+          </div>
+        )}
+        <div className={`overflow-x-auto transition-opacity duration-150 ${refreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {loading ? (
             <div className="py-12 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-2">
               <HiOutlineRefresh className="w-5 h-5 animate-spin text-[#8b6f4e]" />
@@ -1694,6 +1711,7 @@ export default function OrdersView() {
               shiprocketInfo: updatedInfo,
               orderStatus: prev.orderStatus === 'pending' ? 'processing' : prev.orderStatus,
             }));
+            clearRequestCache('orders:');
             fetchOrders();
           }
         }}

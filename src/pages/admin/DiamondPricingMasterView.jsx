@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   HiOutlinePlus,
@@ -15,6 +15,12 @@ import { DeleteActionButton } from '../../components/common/RowActions';
 import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { downloadCsv } from '../../utils/fileDownload';
+import {
+  getCachedData,
+  setCachedData,
+  clearRequestCache,
+  isAbortError,
+} from '../../utils/requestCache';
 
 export default function DiamondPricingMasterView() {
   const [searchParams] = useSearchParams();
@@ -41,8 +47,11 @@ export default function DiamondPricingMasterView() {
   const [pageSize, setPageSize] = useAdminPageSize();
   const [serverTotal, setServerTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const abortControllerRef = useRef(null);
+  const hasLoadedTabRef = useRef({ center: false, side: false });
 
   // Sync initial query params if present (e.g. ?type=Lab+Grown+Diamond&shape=FANCY...)
   useEffect(() => {
@@ -114,62 +123,113 @@ export default function DiamondPricingMasterView() {
     loadMasters();
   }, []);
 
-  // Fetch Diamond Prices from Backend API
-  const fetchPrices = async (page = currentPage, limit = pageSize) => {
-    try {
-      setLoading(true);
-      const endpoint = activeTab === 'center' ? '/center-diamond-prices' : '/side-diamond-prices';
-      const typeId = masterIds.types[activeType.toLowerCase()];
-      const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-      if (typeId) params.set('diamondTypeId', typeId);
-      const res = await api.get(`${endpoint}?${params.toString()}`);
-      const items = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
-      setServerTotal(Number(res.data?.pagination?.totalDocs ?? items.length));
+  // Fetch Diamond Prices from Backend API with AbortController + SWR cache
+  const fetchPrices = useCallback(
+    async (page = currentPage, limit = pageSize, { silent = false } = {}) => {
+      if (silent) {
+        clearRequestCache('diamond-prices:');
+      }
 
-      if (Array.isArray(items)) {
-        const formatted = items.map((doc) => {
-          const sName = doc.diamondShapeId?.name || doc.diamondShape || '';
-          const cName = doc.diamondColorId?.name || doc.diamondColor || '';
-          const clName = doc.diamondClarityId?.name || doc.diamondClarity || '';
-          const tName = doc.diamondTypeId?.name || doc.diamondType || activeType;
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
-          return {
-            _id: doc._id || doc.id,
-            id: doc._id || doc.id,
-            type: tName,
-            shape: String(sName).toUpperCase(),
-            color: String(cName).toUpperCase(),
-            clarity: String(clName).toUpperCase(),
-            sizeFrom: doc.sizeFrom ?? '',
-            sizeTo: doc.sizeTo ?? '',
-            priceINR: doc.priceINR ?? '',
-            priceUSD: Number(doc.priceUSD ?? 0),
-          };
-        });
+      const cacheKey = `diamond-prices:tab=${activeTab}:type=${activeType}:p=${page}:l=${limit}`;
+      const cached = !silent ? getCachedData(cacheKey, 60_000) : null;
 
-        if (activeTab === 'center') {
-          setCenterRows(formatted);
+      if (cached) {
+        if (activeTab === 'center') setCenterRows(cached.formatted);
+        else setSideRows(cached.formatted);
+        setServerTotal(cached.total);
+        hasLoadedTabRef.current[activeTab] = true;
+        setLoading(false);
+        setRefreshing(false);
+      } else if (!silent) {
+        if (hasLoadedTabRef.current[activeTab]) {
+          setRefreshing(true);
+          setLoading(false);
         } else {
-          setSideRows(formatted);
+          setLoading(true);
+          setRefreshing(false);
         }
       }
-    } catch (err) {
-      console.warn(`Could not load ${activeTab} diamond prices from API:`, err);
-      setServerTotal(0);
-      if (activeTab === 'center') setCenterRows([]);
-      else setSideRows([]);
-    } finally {
-      setLoading(false);
-    }
+
+      try {
+        const endpoint = activeTab === 'center' ? '/center-diamond-prices' : '/side-diamond-prices';
+        const typeId = masterIds.types[activeType.toLowerCase()];
+        const params = new URLSearchParams({ page: String(page), limit: String(limit) });
+        if (typeId) params.set('diamondTypeId', typeId);
+
+        const res = await api.get(`${endpoint}?${params.toString()}`, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+
+        const items = res.data?.data?.items || (Array.isArray(res.data?.data) ? res.data.data : []);
+        const total = Number(res.data?.pagination?.totalDocs ?? items.length);
+
+        const formatted = Array.isArray(items)
+          ? items.map((doc) => {
+              const sName = doc.diamondShapeId?.name || doc.diamondShape || '';
+              const cName = doc.diamondColorId?.name || doc.diamondColor || '';
+              const clName = doc.diamondClarityId?.name || doc.diamondClarity || '';
+              const tName = doc.diamondTypeId?.name || doc.diamondType || activeType;
+
+              return {
+                _id: doc._id || doc.id,
+                id: doc._id || doc.id,
+                type: tName,
+                shape: String(sName).toUpperCase(),
+                color: String(cName).toUpperCase(),
+                clarity: String(clName).toUpperCase(),
+                sizeFrom: doc.sizeFrom ?? '',
+                sizeTo: doc.sizeTo ?? '',
+                priceINR: doc.priceINR ?? '',
+                priceUSD: Number(doc.priceUSD ?? 0),
+              };
+            })
+          : [];
+
+        hasLoadedTabRef.current[activeTab] = true;
+        setServerTotal(total);
+        if (activeTab === 'center') setCenterRows(formatted);
+        else setSideRows(formatted);
+        setCachedData(cacheKey, { formatted, total });
+      } catch (err) {
+        if (isAbortError(err)) return;
+        console.warn(`Could not load ${activeTab} diamond prices from API:`, err);
+        if (!cached) {
+          setServerTotal(0);
+          if (activeTab === 'center') setCenterRows([]);
+          else setSideRows([]);
+        }
+      } finally {
+        if (!controller.signal.aborted && !silent) {
+          setLoading(false);
+          setRefreshing(false);
+        }
+      }
+    },
+    [activeTab, activeType, currentPage, pageSize, masterIds.types]
+  );
+
+  useEffect(() => {
+    if (!mastersLoaded) return;
+    fetchPrices(currentPage, pageSize);
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, [mastersLoaded, fetchPrices, currentPage, pageSize]);
+
+  const handleTypeSelect = (type) => {
+    if (type.toLowerCase() === activeType.toLowerCase()) return;
+    setActiveType(type);
+    setCurrentPage(1);
   };
 
-  useEffect(() => {
-    if (mastersLoaded) fetchPrices(currentPage, pageSize);
-  }, [activeTab, activeType, currentPage, pageSize, mastersLoaded, masterIds.types]);
-
-  useEffect(() => {
+  const handleTabSelect = (tab) => {
+    if (tab === activeTab) return;
+    setActiveTab(tab);
     setCurrentPage(1);
-  }, [activeTab, activeType]);
+  };
 
   // Current active rows
   const currentRows = activeTab === 'center' ? centerRows : sideRows;
@@ -233,6 +293,7 @@ export default function DiamondPricingMasterView() {
       try {
         const endpoint = activeTab === 'center' ? '/center-diamond-prices' : '/side-diamond-prices';
         await api.delete(`${endpoint}/${id}`);
+        clearRequestCache('diamond-prices:');
       } catch (err) {
         console.warn('Backend delete error (ignorable if offline):', err);
       }
@@ -297,7 +358,7 @@ export default function DiamondPricingMasterView() {
       const count = response.data?.data?.count ?? 0;
       toast.success(`Imported and saved ${count} ${activeTab} diamond price rows`);
       setCurrentPage(1);
-      await fetchPrices(1, pageSize);
+      await fetchPrices(1, pageSize, { silent: true });
     } catch (error) {
       toast.error(error.response?.data?.message || error.message || 'Failed to import Excel file');
     } finally {
@@ -348,7 +409,7 @@ export default function DiamondPricingMasterView() {
       }
 
       toast.success(`${activeTab === 'center' ? 'Center' : 'Side'} Diamond Pricing Master saved successfully!`);
-      fetchPrices();
+      fetchPrices(currentPage, pageSize, { silent: true });
     } catch (err) {
       console.error('Failed to save master:', err);
       toast.error('Error saving diamond pricing master');
@@ -440,7 +501,7 @@ export default function DiamondPricingMasterView() {
             <button
               key={type}
               type="button"
-              onClick={() => setActiveType(type)}
+              onClick={() => handleTypeSelect(type)}
               className={`px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 isSelected
                   ? 'bg-[#8b6f4e] text-white shadow-2xs'
@@ -458,7 +519,7 @@ export default function DiamondPricingMasterView() {
         <div className="bg-stone-100/90 p-1 rounded-2xl inline-flex items-center gap-1 border border-stone-200/60 shadow-2xs">
           <button
             type="button"
-            onClick={() => setActiveTab('center')}
+            onClick={() => handleTabSelect('center')}
             className={`px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'center'
                 ? 'bg-white text-stone-900 shadow-xs'
@@ -469,7 +530,7 @@ export default function DiamondPricingMasterView() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveTab('side')}
+            onClick={() => handleTabSelect('side')}
             className={`px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'side'
                 ? 'bg-white text-stone-900 shadow-xs'
@@ -487,7 +548,13 @@ export default function DiamondPricingMasterView() {
       </div>
 
       {/* Diamond Pricing Master Table (Mobile Grid + Desktop Table) */}
-      <div className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden relative">
+        {refreshing && (
+          <div className="h-0.5 w-full bg-stone-200/70 overflow-hidden">
+            <div className="h-full w-1/3 rounded-full bg-[#8b6f4e] animate-pulse" />
+          </div>
+        )}
+        <div className={`transition-opacity duration-150 ${refreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
         <MobileGridList
           loading={loading}
           loadingText="Loading diamond rates from API..."
@@ -726,6 +793,7 @@ export default function DiamondPricingMasterView() {
           </span>
         </div>
         <div ref={tableEndRef} />
+        </div>
       </div>
     </div>
   );

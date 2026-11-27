@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import toast from 'react-hot-toast';
 import { IoClose, IoRefreshOutline, IoCubeOutline, IoSearchOutline, IoGridOutline, IoListOutline, IoEyeOutline, IoChevronBack, IoChevronForward, IoCheckmark } from 'react-icons/io5';
 import Dropdown from './Dropdown';
+import Modal from './Modal';
 import Pagination from './Pagination';
 import { useAdminPageSize, PAGE_SIZE_OPTIONS } from '../../utils/adminPagination';
 import api from '../../api/axios';
@@ -64,7 +65,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
   useEffect(() => {
     if (!isOpen) return;
     document.body.style.overflow = 'hidden';
-    const escape = (event) => { if (event.key === 'Escape' && !syncing) { if (detailId) setDetailId(null); else onClose?.(); } };
+    const escape = (event) => { if (event.key === 'Escape' && !syncing && !detailId) onClose?.(); };
     window.addEventListener('keydown', escape);
     return () => {
       window.removeEventListener('keydown', escape);
@@ -143,10 +144,12 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
   };
   if (!isOpen) return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
-    <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !syncing && onClose?.()} />
-    <section role="dialog" aria-modal="true" aria-labelledby="ornate-sync-title" className="relative w-full max-w-[1250px] max-h-[92dvh] flex flex-col rounded-[22px] bg-white shadow-2xl overflow-hidden">
+  return (
+    <>
+      {createPortal(
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+          <div className="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onClick={() => !syncing && onClose?.()} />
+          <section role="dialog" aria-modal="true" aria-labelledby="ornate-sync-title" className="relative w-full max-w-[1250px] max-h-[92dvh] flex flex-col rounded-[22px] bg-white shadow-2xl overflow-hidden">
       <header className="flex items-start sm:items-center gap-3 sm:gap-4 border-b border-stone-100 px-4 sm:px-6 py-4 sm:py-5 shrink-0">
         <div className="p-2.5 sm:p-3 rounded-xl bg-[#f4ece0] text-[#8b6f4e] shrink-0"><IoCubeOutline size={24} /></div>
         <div className="flex-1 min-w-0"><h2 id="ornate-sync-title" className="text-lg sm:text-[20px] font-bold">Sync Products from Ornate ERP</h2><p className="mt-1 text-xs sm:text-[13px] text-stone-500">Select products to import in bulk, or open any product to view its ERP details.</p></div>
@@ -241,7 +244,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
             </div>
           </div>
         )}
-        {loading ? <div className="p-20 text-center text-stone-500"><IoRefreshOutline size={30} className="animate-spin mx-auto mb-3" />Loading products from Ornate ERP...</div> : error ? <div className="p-8 text-red-700" role="alert">{error}<button type="button" className={`${button} ml-4`} onClick={() => setRetry((n) => n + 1)}>Retry</button></div> : <div className={`grid ${detail ? 'lg:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]' : ''}`}>
+        {loading ? <div className="p-20 text-center text-stone-500"><IoRefreshOutline size={30} className="animate-spin mx-auto mb-3" />Loading products from Ornate ERP...</div> : error ? <div className="p-8 text-red-700" role="alert">{error}<button type="button" className={`${button} ml-4`} onClick={() => setRetry((n) => n + 1)}>Retry</button></div> : (
           <div className="p-4 sm:p-6 min-w-0">
             <Pagination
               currentPage={currentPage}
@@ -304,19 +307,34 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
               }
             />
             {!visible.length && <p className="py-16 text-center text-stone-500">No products match these filters.</p>}
-            <div className={view === 'grid' ? `grid grid-cols-1 sm:grid-cols-2 ${detail ? '' : 'lg:grid-cols-3 xl:grid-cols-4'} gap-3` : 'space-y-2'}>
+            <div className={view === 'grid' ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3' : 'space-y-2'}>
               {visible.map((product) => { const image = imagesFor(product)[0]; return <article key={product.key} className={`rounded-xl border overflow-hidden ${selected.has(product.id) ? 'border-[#b8946c] bg-[#faf6f0]' : 'border-stone-200 bg-white'} ${detailId === product.key ? 'ring-2 ring-[#8b6f4e]/30' : ''}`}>
                 <div className={`p-3 ${view === 'list' ? 'flex items-center gap-3' : ''}`}>
-                  <div className={`flex items-center justify-between gap-3 ${view === 'grid' ? 'mb-2' : ''}`}><input type="checkbox" aria-label={`Select ${product.itemName || product.labelNo}`} checked={selected.has(product.id)} disabled={syncing || !product.id} onChange={() => toggle(product.id)} className="w-[18px] h-[18px] accent-[#8b6f4e]" />{view === 'grid' && <button type="button" aria-label={`View ${product.itemName || 'product'} details`} onClick={() => openDetails(product)} className="rounded-full p-1.5 text-[#8b6f4e] hover:bg-[#f4ece0]"><IoEyeOutline size={18} /></button>}</div>
+                  <div className={`flex items-center justify-between gap-3 ${view === 'grid' ? 'mb-2' : ''}`}>
+                    <input type="checkbox" aria-label={`Select ${product.itemName || product.labelNo}`} checked={selected.has(product.id)} disabled={syncing || !product.id} onChange={() => toggle(product.id)} className="w-[18px] h-[18px] accent-[#8b6f4e] cursor-pointer" />
+                    {view === 'grid' && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="text-[14px] font-bold text-stone-900">{money(product.price)}</span>
+                        <button type="button" aria-label={`View ${product.itemName || 'product'} details`} onClick={() => openDetails(product)} className="rounded-full p-1.5 text-[#8b6f4e] hover:bg-[#f4ece0] cursor-pointer"><IoEyeOutline size={18} /></button>
+                      </div>
+                    )}
+                  </div>
                   {image && <ProductPhoto url={image} name={product.itemName} className={view === 'grid' ? 'w-full h-[130px] object-contain rounded-lg bg-stone-50 mb-3' : 'w-[56px] h-[56px] object-contain rounded-lg shrink-0'} />}
-                  <button type="button" onClick={() => openDetails(product)} className="text-left min-w-0 flex-1 w-full">
+                  <button type="button" onClick={() => openDetails(product)} className="text-left min-w-0 flex-1 w-full cursor-pointer">
                     <h3 className="text-[13px] leading-relaxed font-bold break-words">{product.itemName || 'Unnamed ERP product'}</h3>
                     <p className="text-[12px] text-stone-500 mt-1 break-all">Label: {valueOrDash(product.labelNo)}</p>
                     <div className="flex flex-wrap gap-1 mt-2">{[product.metalName, product.carat].filter(Boolean).map((tag, index) => <span key={index} className="rounded bg-[#f1e7da] text-[#785e40] px-2 py-0.5 text-[11px]">{tag}</span>)}</div>
                     <p className="text-[11px] text-stone-500 mt-2">Gross: {weight(product.grossWt)} · Net: {weight(product.netWt)}</p>
                     <p className="text-[11px] text-stone-500 mt-1 break-all">Barcode: {valueOrDash(product.barcodeNo)}</p>
-                    <p className="text-[14px] font-bold mt-3">{money(product.price)}</p>
                   </button>
+                  {view === 'list' && (
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-[14px] font-bold text-stone-900 whitespace-nowrap">{money(product.price)}</span>
+                      <button type="button" aria-label={`View ${product.itemName || 'product'} details`} onClick={() => openDetails(product)} className="rounded-full p-1.5 text-[#8b6f4e] hover:bg-[#f4ece0] cursor-pointer">
+                        <IoEyeOutline size={18} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </article>; })}
             </div>
@@ -339,16 +357,7 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
               </div>
             )}
           </div>
-          {detail && <aside className="border-t lg:border-t-0 lg:border-l border-stone-200 p-4 sm:p-6 bg-stone-50/50 min-w-0">
-            <div className="flex items-center justify-between mb-4"><h3 className="text-[14px] font-bold">Product details</h3><button type="button" aria-label="Close product details" onClick={() => setDetailId(null)} className="p-2"><IoClose size={20} /></button></div>
-            {photos.length > 0 && <div className="mb-4"><ProductPhoto url={photos[imageIndex]} name={detail.itemName} className="w-full max-h-[240px] object-contain rounded-xl" />{photos.length > 1 && <div className="flex justify-between items-center mt-2"><button type="button" aria-label="Previous image" onClick={() => setImageIndex((imageIndex + photos.length - 1) % photos.length)}><IoChevronBack /></button><span>{imageIndex + 1} / {photos.length}</span><button type="button" aria-label="Next image" onClick={() => setImageIndex((imageIndex + 1) % photos.length)}><IoChevronForward /></button></div>}</div>}
-            <h4 className="text-[16px] font-bold leading-relaxed mb-4">{detail.itemName || 'Unnamed ERP product'}</h4>
-            <dl className="rounded-xl border border-stone-200 bg-white overflow-hidden text-[12px]">{[
-              ['Category', detail.groupName], ['Metal', detail.metalName], ['Carat / purity code', detail.carat], ['ERP unique label ID', detail.uniqueLabelID], ['Label number', detail.labelNo], ['Barcode', detail.barcodeNo], ['Gross weight', weight(detail.grossWt)], ['Net weight', weight(detail.netWt)], ['Price', money(detail.price)], ['Stock', detail.inStock == null ? null : Number(detail.inStock) === 1 ? 'In stock' : 'Out of stock'],
-            ].map(([label, value]) => <div key={label} className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-3 p-3 border-b last:border-0 border-stone-100"><dt className="text-stone-500">{label}</dt><dd className="font-medium break-words">{valueOrDash(value)}</dd></div>)}</dl>
-            <button type="button" disabled={syncing || !detail.id} onClick={() => toggle(detail.id)} className="w-full mt-4 bg-[#8b6f4e] text-white rounded-xl px-4 py-3 text-[13px] font-semibold disabled:opacity-40">{selected.has(detail.id) ? 'Remove from selection' : 'Add to selection'}</button>
-          </aside>}
-        </div>}
+        )}
       </div>
       <footer className="px-4 sm:px-6 py-3.5 sm:py-4 border-t border-stone-200 shrink-0 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3 text-[13px]">
@@ -363,8 +372,70 @@ export default function OrnateSyncModal({ isOpen, onClose, onSyncComplete }) {
         </div>
         <div className="flex flex-wrap justify-end gap-3"><button type="button" className={`${button} mr-auto text-red-600`} disabled={syncing || !selected.size} onClick={() => setSelected(new Set())}>Clear All</button><button type="button" className={button} disabled={syncing} onClick={onClose}>Cancel</button><button type="button" disabled={loading || !!error || syncing || !selected.size} onClick={sync} className="flex items-center gap-2 rounded-xl px-6 py-3 bg-[#8b6f4e] hover:bg-[#785e40] text-white text-[13px] font-semibold disabled:opacity-40 disabled:cursor-not-allowed"><IoRefreshOutline size={18} className={syncing ? 'animate-spin' : ''} />{syncing ? 'Syncing...' : `Sync Selected (${selected.size} Products)`}</button></div>
       </footer>
-    </section>
-  </div>,
-  document.body
-);
+          </section>
+        </div>,
+        document.body
+      )}
+      <Modal
+        isOpen={Boolean(detail)}
+        onClose={() => setDetailId(null)}
+        title="Product details"
+        subtitle={detail?.groupName || undefined}
+        maxWidth="max-w-lg"
+      >
+        {detail && (
+          <div>
+            {photos.length > 0 && (
+              <div className="mb-4 rounded-xl bg-stone-50 p-3 border border-stone-100">
+                <ProductPhoto url={photos[imageIndex]} name={detail.itemName} className="w-full max-h-[240px] object-contain rounded-lg" />
+                {photos.length > 1 && (
+                  <div className="flex justify-between items-center mt-2 text-xs text-stone-600">
+                    <button
+                      type="button"
+                      aria-label="Previous image"
+                      onClick={() => setImageIndex((imageIndex + photos.length - 1) % photos.length)}
+                      className="p-1.5 rounded-lg hover:bg-stone-200/70 cursor-pointer"
+                    >
+                      <IoChevronBack />
+                    </button>
+                    <span>{imageIndex + 1} / {photos.length}</span>
+                    <button
+                      type="button"
+                      aria-label="Next image"
+                      onClick={() => setImageIndex((imageIndex + 1) % photos.length)}
+                      className="p-1.5 rounded-lg hover:bg-stone-200/70 cursor-pointer"
+                    >
+                      <IoChevronForward />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+            <h4 className="text-[16px] font-bold text-stone-900 leading-relaxed mb-4">
+              {detail.itemName || 'Unnamed ERP product'}
+            </h4>
+            <dl className="rounded-xl border border-stone-200 bg-white overflow-hidden text-[12px]">
+              {[
+                ['Category', detail.groupName],
+                ['Metal', detail.metalName],
+                ['Carat / purity code', detail.carat],
+                ['ERP unique label ID', detail.uniqueLabelID],
+                ['Label number', detail.labelNo],
+                ['Barcode', detail.barcodeNo],
+                ['Gross weight', weight(detail.grossWt)],
+                ['Net weight', weight(detail.netWt)],
+                ['Price', money(detail.price)],
+                ['Stock', detail.inStock == null ? null : Number(detail.inStock) === 1 ? 'In stock' : 'Out of stock'],
+              ].map(([label, value]) => (
+                <div key={label} className="grid grid-cols-1 sm:grid-cols-2 gap-1 sm:gap-3 p-3 border-b last:border-0 border-stone-100">
+                  <dt className="text-stone-500">{label}</dt>
+                  <dd className="font-medium text-stone-900 break-words">{valueOrDash(value)}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        )}
+      </Modal>
+    </>
+  );
 }

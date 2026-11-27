@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
@@ -31,6 +31,12 @@ import MobileGridList from '../../components/common/MobileGridList';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { DeleteActionButton, EditActionButton } from '../../components/common/RowActions';
+import {
+  getCachedData,
+  setCachedData,
+  clearRequestCache,
+  isAbortError,
+} from '../../utils/requestCache';
 
 const BANNER_TYPES = [
   { key: 'all', label: 'All Media', icon: HiOutlinePhotograph },
@@ -39,7 +45,7 @@ const BANNER_TYPES = [
   { key: 'categorybanner', label: 'Category Banners', icon: HiOutlineViewGrid },
   { key: 'offerbanner', label: 'Offer Banners', icon: HiOutlineGift },
   { key: 'celebrate', label: 'Celebrate & Gifts', icon: IoDiamondOutline },
-{ key: 'mobileappbanner', label: 'Mobile App', icon: HiOutlineDeviceMobile },
+  { key: 'mobileappbanner', label: 'Mobile App', icon: HiOutlineDeviceMobile },
   { key: 'bookappointbanner', label: 'Appointments', icon: HiOutlineCalendar },
   { key: 'customizebanner', label: 'Custom Banners', icon: HiOutlineSparkles },
   { key: 'asset', label: 'Media Assets', icon: HiOutlinePhotograph },
@@ -161,10 +167,41 @@ export default function GalleryView() {
     }
   }, [searchParams, fetchThemesLookup, setSearchParams]);
 
-  // ─── Fetch Gallery Items (With Pagination) ──────────────────
-  const fetchGallery = useCallback(async (targetPage = page, targetLimit = pageSize) => {
+  const [refreshing, setRefreshing] = useState(false);
+  const abortControllerRef = useRef(null);
+  const hasLoadedRef = useRef(false);
+
+  // ─── Fetch Gallery Items (With Pagination, AbortController & SWR cache) ───
+  const fetchGallery = useCallback(async (targetPage = page, targetLimit = pageSize, { silent = false } = {}) => {
+    if (silent) {
+      clearRequestCache('gallery:');
+    }
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const cacheKey = `gallery:th=${selectedTheme}:tp=${selectedType}:pl=${selectedPlatform}:p=${targetPage}:l=${targetLimit}`;
+    const cached = !silent ? getCachedData(cacheKey, 60_000) : null;
+
+    if (cached) {
+      setItems(cached.items);
+      setCounts(cached.counts);
+      setTotalItems(cached.total);
+      hasLoadedRef.current = true;
+      setLoading(false);
+      setRefreshing(false);
+    } else if (!silent) {
+      if (hasLoadedRef.current) {
+        setRefreshing(true);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setRefreshing(false);
+      }
+    }
+
     try {
-      setLoading(true);
       const res = await galleryAPI.getAll({
         themeId: selectedTheme,
         type: selectedType,
@@ -173,7 +210,9 @@ export default function GalleryView() {
         sortBy: 'newest',
         page: targetPage,
         limit: targetLimit,
-      });
+      }, { signal: controller.signal });
+      if (controller.signal.aborted) return;
+
       const data = res.data?.data || {};
       const rawItems = data.items || [];
       const normalizedItems = rawItems.map((item) => {
@@ -196,9 +235,15 @@ export default function GalleryView() {
           isThemeLive,
         };
       });
+      const resolvedCounts = data.counts || {};
+      const resolvedTotal = data.pagination?.totalDocs ?? data.pagination?.totalItems ?? (data.items || []).length;
+
+      hasLoadedRef.current = true;
       setItems(normalizedItems);
-      setCounts(data.counts || {});
-      setTotalItems(data.pagination?.totalDocs ?? data.pagination?.totalItems ?? (data.items || []).length);
+      setCounts(resolvedCounts);
+      setTotalItems(resolvedTotal);
+      setCachedData(cacheKey, { items: normalizedItems, counts: resolvedCounts, total: resolvedTotal });
+
       if (data.themes && (!themes || themes.length === 0)) {
         setThemes(data.themes);
         const active = data.themes.find((t) => t.isLive);
@@ -207,21 +252,45 @@ export default function GalleryView() {
         }
       }
     } catch (err) {
+      if (isAbortError(err)) return;
       console.error('Failed to fetch gallery items:', err);
-      toast.error('Could not load gallery images.');
+      if (!cached) {
+        toast.error('Could not load gallery images.');
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && !silent) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
   }, [page, pageSize, selectedTheme, selectedType, selectedPlatform, themes, uploadThemeId]);
 
-  // Reset to page 1 when any filter or search changes
-  useEffect(() => {
+  const handleSelectType = (nextType) => {
+    const val = nextType || 'all';
+    if (val === selectedType) return;
+    setSelectedType(val);
     setPage(1);
-  }, [selectedTheme, selectedType, selectedPlatform]);
+  };
+
+  const handleSelectTheme = (nextTheme) => {
+    const val = nextTheme || 'all';
+    if (val === selectedTheme) return;
+    setSelectedTheme(val);
+    setPage(1);
+  };
+
+  const handleSelectPlatform = (nextPlatform) => {
+    if (nextPlatform === selectedPlatform) return;
+    setSelectedPlatform(nextPlatform);
+    setPage(1);
+  };
 
   // On mount and filter changes: ONLY call gallery get list API with pagination
   useEffect(() => {
     fetchGallery(page, pageSize);
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [page, pageSize, selectedTheme, selectedType, selectedPlatform]);
 
   // ─── Modal Scroll Lock & ESC Key Handling ───────────────────
@@ -266,7 +335,7 @@ export default function GalleryView() {
     try {
       await galleryAPI.deleteItem(item.id);
       toast.success('Media item removed successfully.');
-      await fetchGallery();
+      await fetchGallery(page, pageSize, { silent: true });
     } catch (err) {
       console.error('Delete failed:', err);
       toast.error(err.response?.data?.message || 'Could not delete media item.');
@@ -278,6 +347,7 @@ export default function GalleryView() {
     try {
       const nextStatus = item.status === 'active' ? 'inactive' : 'active';
       await galleryAPI.toggleStatus(item.id);
+      clearRequestCache('gallery:');
       toast.success(`${item.typeLabel || item.type || 'Media'} set to ${nextStatus}`);
       setItems((prev) =>
         prev.map((i) => (i.id === item.id ? { ...i, status: nextStatus } : i))
@@ -333,8 +403,7 @@ export default function GalleryView() {
       },
       ...themes.map((t) => ({
         value: String(t._id),
-        label: t.isLive ? `${t.name} ★ (Current Live Theme)` : t.status ? `${t.name} (${t.status})` : t.name,
-        sublabel: t.isLive ? 'Current Live Storefront Theme' : t.status ? `Status: ${t.status}` : t.code || '',
+        label: t.name,
       })),
     ];
   }, [themes]);
@@ -389,12 +458,11 @@ export default function GalleryView() {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-2.5">
         {/* Total Media */}
         <div
-          onClick={() => setSelectedType('all')}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            selectedType === 'all'
-              ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
-              : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
-          }`}
+          onClick={() => handleSelectType('all')}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${selectedType === 'all'
+            ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
+            : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#fcf5e5] text-[#b45309] border border-amber-200/50 flex items-center justify-center shrink-0">
             <IoLayersOutline className="w-3.5 h-3.5 stroke-[2]" />
@@ -409,12 +477,11 @@ export default function GalleryView() {
 
         {/* Hero Banners */}
         <div
-          onClick={() => setSelectedType('herobanner')}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            selectedType === 'herobanner'
-              ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
-              : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
-          }`}
+          onClick={() => handleSelectType('herobanner')}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${selectedType === 'herobanner'
+            ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
+            : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#fff1f2] text-[#e11d48] border border-rose-200/50 flex items-center justify-center shrink-0">
             <HiOutlineDesktopComputer className="w-3.5 h-3.5 stroke-[2]" />
@@ -429,12 +496,11 @@ export default function GalleryView() {
 
         {/* Collection Banners */}
         <div
-          onClick={() => setSelectedType('collectionbanner')}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            selectedType === 'collectionbanner'
-              ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
-              : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
-          }`}
+          onClick={() => handleSelectType('collectionbanner')}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${selectedType === 'collectionbanner'
+            ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
+            : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#eff6ff] text-[#2563eb] border border-blue-200/50 flex items-center justify-center shrink-0">
             <HiOutlineTag className="w-3.5 h-3.5 stroke-[2]" />
@@ -449,12 +515,11 @@ export default function GalleryView() {
 
         {/* Category Banners */}
         <div
-          onClick={() => setSelectedType('categorybanner')}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            selectedType === 'categorybanner'
-              ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
-              : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
-          }`}
+          onClick={() => handleSelectType('categorybanner')}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${selectedType === 'categorybanner'
+            ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
+            : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#faf5ff] text-[#9333ea] border border-purple-200/50 flex items-center justify-center shrink-0">
             <HiOutlineViewGrid className="w-3.5 h-3.5 stroke-[2]" />
@@ -469,12 +534,11 @@ export default function GalleryView() {
 
         {/* Offer Banners */}
         <div
-          onClick={() => setSelectedType('offerbanner')}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            selectedType === 'offerbanner'
-              ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
-              : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
-          }`}
+          onClick={() => handleSelectType('offerbanner')}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${selectedType === 'offerbanner'
+            ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
+            : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#fef6ee] text-[#ea580c] border border-orange-200/50 flex items-center justify-center shrink-0">
             <HiOutlineGift className="w-3.5 h-3.5 stroke-[2]" />
@@ -489,12 +553,11 @@ export default function GalleryView() {
 
         {/* Celebrate & Gifts */}
         <div
-          onClick={() => setSelectedType('celebrate')}
-          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${
-            selectedType === 'celebrate'
-              ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
-              : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
-          }`}
+          onClick={() => handleSelectType('celebrate')}
+          className={`bg-white rounded-lg border px-3 py-1.5 sm:py-2 shadow-2xs flex items-center gap-2.5 transition-all cursor-pointer ${selectedType === 'celebrate'
+            ? 'border-[#8b6f4e] ring-1 ring-[#8b6f4e]/30'
+            : 'border-stone-200/90 hover:border-stone-300 hover:shadow-xs'
+            }`}
         >
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#effaf2] text-[#16a34a] border border-emerald-200/50 flex items-center justify-center shrink-0">
             <IoDiamondOutline className="w-3.5 h-3.5 stroke-[2]" />
@@ -524,7 +587,7 @@ export default function GalleryView() {
                   includeAll={true}
                   allLabel="All Placements"
                   value={selectedType}
-                  onChange={(val) => setSelectedType(val || 'all')}
+                  onChange={(val) => handleSelectType(val || 'all')}
                 />
               </div>
             </div>
@@ -538,7 +601,7 @@ export default function GalleryView() {
                 <Dropdown
                   size="sm"
                   value={selectedTheme}
-                  onChange={(val) => setSelectedTheme(val || 'all')}
+                  onChange={(val) => handleSelectTheme(val || 'all')}
                   options={filterThemeOptions}
                   placeholder="All Website Themes"
                 />
@@ -552,47 +615,43 @@ export default function GalleryView() {
             <div className="flex items-center gap-0.5 rounded-lg border border-stone-200 bg-stone-50 p-0.5 flex-1 sm:flex-initial">
               <button
                 type="button"
-                onClick={() => setSelectedPlatform('all')}
-                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition cursor-pointer text-center ${
-                  selectedPlatform === 'all'
-                    ? 'bg-white text-stone-900 shadow-2xs'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
+                onClick={() => handleSelectPlatform('all')}
+                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition cursor-pointer text-center ${selectedPlatform === 'all'
+                  ? 'bg-white text-stone-900 shadow-2xs'
+                  : 'text-stone-500 hover:text-stone-800'
+                  }`}
               >
                 All
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedPlatform('web')}
-                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
-                  selectedPlatform === 'web'
-                    ? 'bg-white text-stone-900 shadow-2xs'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
+                onClick={() => handleSelectPlatform('web')}
+                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${selectedPlatform === 'web'
+                  ? 'bg-white text-stone-900 shadow-2xs'
+                  : 'text-stone-500 hover:text-stone-800'
+                  }`}
               >
                 <HiOutlineDesktopComputer className="h-3 w-3 shrink-0" />
                 <span>Web</span>
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedPlatform('app')}
-                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
-                  selectedPlatform === 'app'
-                    ? 'bg-white text-stone-900 shadow-2xs'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
+                onClick={() => handleSelectPlatform('app')}
+                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${selectedPlatform === 'app'
+                  ? 'bg-white text-stone-900 shadow-2xs'
+                  : 'text-stone-500 hover:text-stone-800'
+                  }`}
               >
                 <HiOutlineDeviceMobile className="h-3 w-3 shrink-0" />
                 <span>App</span>
               </button>
               <button
                 type="button"
-                onClick={() => setSelectedPlatform('common')}
-                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${
-                  selectedPlatform === 'common'
-                    ? 'bg-white text-stone-900 shadow-2xs'
-                    : 'text-stone-500 hover:text-stone-800'
-                }`}
+                onClick={() => handleSelectPlatform('common')}
+                className={`flex-1 sm:flex-initial rounded-md px-2 sm:px-2.5 py-1 text-[11px] sm:text-xs font-semibold transition flex items-center justify-center gap-1 cursor-pointer ${selectedPlatform === 'common'
+                  ? 'bg-white text-stone-900 shadow-2xs'
+                  : 'text-stone-500 hover:text-stone-800'
+                  }`}
               >
                 <IoSparklesOutline className="h-3 w-3 text-amber-600 shrink-0" />
                 <span>Common</span>
@@ -604,9 +663,8 @@ export default function GalleryView() {
               <button
                 type="button"
                 onClick={() => setViewMode('grid')}
-                className={`rounded-md p-1.5 sm:p-1 transition cursor-pointer ${
-                  viewMode === 'grid' ? 'bg-white text-[#855836] shadow-2xs' : 'text-stone-400 hover:text-stone-700'
-                }`}
+                className={`rounded-md p-1.5 sm:p-1 transition cursor-pointer ${viewMode === 'grid' ? 'bg-white text-[#855836] shadow-2xs' : 'text-stone-400 hover:text-stone-700'
+                  }`}
                 title="Cards Grid View"
               >
                 <HiOutlineViewGrid className="h-3.5 w-3.5" />
@@ -614,9 +672,8 @@ export default function GalleryView() {
               <button
                 type="button"
                 onClick={() => setViewMode('list')}
-                className={`rounded-md p-1.5 sm:p-1 transition cursor-pointer ${
-                  viewMode === 'list' ? 'bg-white text-[#855836] shadow-2xs' : 'text-stone-400 hover:text-stone-700'
-                }`}
+                className={`rounded-md p-1.5 sm:p-1 transition cursor-pointer ${viewMode === 'list' ? 'bg-white text-[#855836] shadow-2xs' : 'text-stone-400 hover:text-stone-700'
+                  }`}
                 title="List / Table View"
               >
                 <HiOutlineViewList className="h-3.5 w-3.5" />
@@ -627,328 +684,333 @@ export default function GalleryView() {
       </div>
 
       {/* ─── 4. MEDIA DISPLAY GRID / LIST ─── */}
-      {loading ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-stone-200 bg-white p-12 shadow-2xs">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#8b6f4e] border-t-transparent"></div>
-          <p className="mt-3 text-xs font-medium text-stone-500">Loading gallery images…</p>
+      {refreshing && (
+        <div className="mb-2 h-0.5 w-full rounded-full bg-stone-200/80 overflow-hidden">
+          <div className="h-full w-1/3 rounded-full bg-[#8b6f4e] animate-pulse" />
         </div>
-      ) : effectiveItems.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center shadow-2xs">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#8b6f4e]/10 text-[#8b6f4e]">
-            <HiOutlinePhotograph className="h-6 w-6" />
+      )}
+      <div className={`transition-opacity duration-150 ${refreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-stone-200 bg-white p-12 shadow-2xs">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#8b6f4e] border-t-transparent"></div>
+            <p className="mt-3 text-xs font-medium text-stone-500">Loading gallery images…</p>
           </div>
-          <h3 className="mt-3 text-sm font-bold text-stone-800">No media found</h3>
-          <button
-            type="button"
-            onClick={handleOpenUploadModal}
-            className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#8b6f4e] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#785e40] transition cursor-pointer"
-          >
-            <HiOutlinePlus className="h-4 w-4" />
-            Upload New Image
-          </button>
-        </div>
-      ) : viewMode === 'list' ? (
-        /* ─── LIST VIEW (Mobile Grid + Desktop Table) ────────────────── */
-        <div className="rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden">
-          <MobileGridList
-            items={effectiveItems}
-            renderCard={(item) => (
-              <div
-                key={item.id}
-                onClick={() => setPreviewItem(item)}
-                className="rounded-xl border border-stone-200/90 hover:border-stone-300 p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="h-11 w-14 overflow-hidden rounded-lg border border-stone-200 bg-stone-100 shrink-0">
-                      <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+        ) : effectiveItems.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-stone-300 bg-white p-12 text-center shadow-2xs">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#8b6f4e]/10 text-[#8b6f4e]">
+              <HiOutlinePhotograph className="h-6 w-6" />
+            </div>
+            <h3 className="mt-3 text-sm font-bold text-stone-800">No media found</h3>
+            <button
+              type="button"
+              onClick={handleOpenUploadModal}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-[#8b6f4e] px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-[#785e40] transition cursor-pointer"
+            >
+              <HiOutlinePlus className="h-4 w-4" />
+              Upload New Image
+            </button>
+          </div>
+        ) : viewMode === 'list' ? (
+          /* ─── LIST VIEW (Mobile Grid + Desktop Table) ────────────────── */
+          <div className="rounded-xl border border-stone-200 bg-white shadow-2xs overflow-hidden">
+            <MobileGridList
+              items={effectiveItems}
+              renderCard={(item) => (
+                <div
+                  key={item.id}
+                  onClick={() => setPreviewItem(item)}
+                  className="rounded-xl border border-stone-200/90 hover:border-stone-300 p-3.5 bg-white shadow-2xs transition-all cursor-pointer space-y-2.5"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-11 w-14 overflow-hidden rounded-lg border border-stone-200 bg-stone-100 shrink-0">
+                        <img src={item.url} alt={item.name} className="h-full w-full object-cover" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-semibold text-stone-900 text-xs truncate">{item.typeLabel || item.type}</p>
+                        <p className="text-[10px] text-stone-400 truncate">{item.themeName || 'Global'}</p>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <p className="font-semibold text-stone-900 text-xs truncate">{item.typeLabel || item.type}</p>
-                      <p className="text-[10px] text-stone-400 truncate">{item.themeName || 'Global'}</p>
+                    <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setEditingItem(item)}
+                        className="p-1.5 rounded-lg text-stone-500 hover:bg-stone-100 cursor-pointer"
+                        title="Edit"
+                      >
+                        <HiOutlinePencil className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteItem(item)}
+                        className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
+                        title="Delete"
+                      >
+                        <HiOutlineTrash className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
-                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 shrink-0">
-                    <button
-                      type="button"
-                      onClick={() => setEditingItem(item)}
-                      className="p-1.5 rounded-lg text-stone-500 hover:bg-stone-100 cursor-pointer"
-                      title="Edit"
-                    >
-                      <HiOutlinePencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteItem(item)}
-                      className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 cursor-pointer"
-                      title="Delete"
-                    >
-                      <HiOutlineTrash className="w-3.5 h-3.5" />
-                    </button>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[10px]">
+                    <span className="rounded-md bg-stone-100 px-2 py-0.5 font-semibold text-stone-700 truncate">
+                      {item.platform === 'common' ? 'Web & App' : item.platform === 'app' ? 'App' : 'Web'}
+                    </span>
+                    <span className={`rounded-md px-2 py-0.5 font-bold ${item.isThemeLive ? 'bg-emerald-50 text-emerald-800' : 'bg-stone-100 text-stone-600'
+                      }`}>
+                      {item.isThemeLive ? 'Live Theme' : 'Standby'}
+                    </span>
                   </div>
                 </div>
+              )}
+            />
 
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[10px]">
-                  <span className="rounded-md bg-stone-100 px-2 py-0.5 font-semibold text-stone-700 truncate">
-                    {item.platform === 'common' ? 'Web & App' : item.platform === 'app' ? 'App' : 'Web'}
-                  </span>
-                  <span className={`rounded-md px-2 py-0.5 font-bold ${
-                    item.isThemeLive ? 'bg-emerald-50 text-emerald-800' : 'bg-stone-100 text-stone-600'
-                  }`}>
-                    {item.isThemeLive ? 'Live Theme' : 'Standby'}
-                  </span>
-                </div>
-              </div>
-            )}
-          />
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse min-w-[760px]">
+                <thead>
+                  <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                    <th className="py-3 px-3 whitespace-nowrap">Preview</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Image Name / Banner Title</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Placement Type</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Target Platform</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Assigned Theme</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Status</th>
+                    <th className="py-3 px-3 text-right whitespace-nowrap">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
+                  {effectiveItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-stone-50/70 transition">
+                      <td className="py-2.5 px-3">
+                        <div
+                          onClick={() => setPreviewItem(item)}
+                          className="h-10 w-14 cursor-pointer overflow-hidden rounded-lg border border-stone-200 bg-stone-100 shadow-2xs group"
+                        >
+                          <img
+                            src={item.url}
+                            alt={item.name}
+                            className="h-full w-full object-cover transition group-hover:scale-105"
+                          />
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 font-semibold text-stone-900">
+                        <div className="flex flex-col">
+                          <span className="truncate max-w-xs">{item.typeLabel || item.type}</span>
+                          {item.linkedBanner?.title ? (
+                            <span className="text-[10px] text-[#8b6c3a] font-medium truncate">
+                              Banner: {item.linkedBanner.title}
+                            </span>
+                          ) : item.linkedFeatured?.title ? (
+                            <span className="text-[10px] text-[#8b6c3a] font-medium truncate">
+                              Celebrate: {item.linkedFeatured.title}
+                            </span>
+                          ) : item.categoryName ? (
+                            <span className="text-[10px] text-stone-400">Category: {item.categoryName}</span>
+                          ) : null}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-700">
+                          {item.typeLabel}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3">
+                        {item.platform === 'common' ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                            <IoSparklesOutline className="h-3 w-3 text-amber-600" /> Common (Web & App)
+                          </span>
+                        ) : item.platform === 'app' ? (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 border border-sky-200">
+                            <HiOutlineDeviceMobile className="h-3 w-3" /> App
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-700">
+                            <HiOutlineDesktopComputer className="h-3 w-3" /> Web
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${item.isThemeLive
+                            ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                            : 'bg-stone-100 text-stone-700'
+                            }`}
+                        >
+                          {item.themeName || 'Global'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center">
+                          <ToggleSwitch
+                            checked={item.status === 'active'}
+                            onChange={() => handleToggleStatus(item)}
+                            size="sm"
+                            ariaLabel={`Set ${item.title || 'asset'} ${item.status === 'active' ? 'Inactive' : 'Active'}`}
+                          />
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewItem(item)}
+                            className="p-1 rounded-lg border border-[#e0e7ff] bg-[#eef2ff] text-[#4f46e5] hover:bg-[#dbeafe] hover:border-[#bfdbfe] transition cursor-pointer"
+                            title="Preview Media Image"
+                          >
+                            <HiOutlineEye className="w-3.5 h-3.5" />
+                          </button>
+                          <EditActionButton
+                            onClick={() => handleOpenEdit(item)}
+                            title="Edit Details"
+                          />
+                          <DeleteActionButton
+                            onClick={() => handleDeleteItem(item)}
+                            title="Remove Media Item"
+                          />
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : (
+          /* ─── GRID VIEW (6 items per row on desktop for larger card sizing) ─────────────── */
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6">
+            {effectiveItems.map((item) => {
+              const bt = BANNER_TYPES.find((b) => b.key === item.type) || { icon: HiOutlinePhotograph };
+              const Icon = bt.icon;
+              const { fileName } = getMediaDisplayInfo(item);
 
-          <div className="hidden md:block overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[760px]">
-            <thead>
-              <tr className="border-b border-stone-200/80 bg-[#eef2f6] text-[11px] font-bold text-stone-700 uppercase tracking-wider">
-                <th className="py-3 px-3 whitespace-nowrap">Preview</th>
-                <th className="py-3 px-3 whitespace-nowrap">Image Name / Banner Title</th>
-                <th className="py-3 px-3 whitespace-nowrap">Placement Type</th>
-                <th className="py-3 px-3 whitespace-nowrap">Target Platform</th>
-                <th className="py-3 px-3 whitespace-nowrap">Assigned Theme</th>
-                <th className="py-3 px-3 whitespace-nowrap">Status</th>
-                <th className="py-3 px-3 text-right whitespace-nowrap">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100 text-xs text-stone-700">
-              {effectiveItems.map((item) => (
-                <tr key={item.id} className="hover:bg-stone-50/70 transition">
-                  <td className="py-2.5 px-3">
-                    <div
-                      onClick={() => setPreviewItem(item)}
-                      className="h-10 w-14 cursor-pointer overflow-hidden rounded-lg border border-stone-200 bg-stone-100 shadow-2xs group"
-                    >
-                      <img
-                        src={item.url}
-                        alt={item.name}
-                        className="h-full w-full object-cover transition group-hover:scale-105"
-                      />
+              return (
+                <div
+                  key={item.id}
+                  className="group relative flex flex-col justify-between rounded-lg border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs transition-all overflow-hidden"
+                >
+                  {/* Image Media Box (16:10 aspect ratio) */}
+                  <div
+                    onClick={() => setPreviewItem(item)}
+                    className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden cursor-pointer group/media"
+                    title="Click to preview image"
+                  >
+                    <img
+                      src={item.url}
+                      alt={fileName}
+                      loading="lazy"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+
+                    {/* Hover Overlay with Eye Icon */}
+                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center">
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold shadow-lg">
+                        <HiOutlineEye className="w-3 h-3" />
+                        <span>Preview</span>
+                      </span>
                     </div>
-                  </td>
-                  <td className="py-2.5 px-3 font-semibold text-stone-900">
-                    <div className="flex flex-col">
-                      <span className="truncate max-w-xs">{item.typeLabel || item.type}</span>
+
+                    {/* Top-Left: Placement Badge */}
+                    <div className="absolute left-1 top-1 z-10 pointer-events-none">
+                      <span className="inline-flex items-center gap-0.5 rounded bg-black/65 backdrop-blur-md px-1 py-0.5 text-[8px] font-medium text-white shadow-xs">
+                        <Icon className="h-2 w-2" />
+                        <span>{item.typeLabel || 'Asset'}</span>
+                      </span>
+                    </div>
+
+                    {/* Top-Right: Platform Badge */}
+                    <div className="absolute right-1 top-1 z-10 pointer-events-none">
+                      <span className="inline-flex items-center gap-0.5 rounded bg-black/65 backdrop-blur-md px-1 py-0.5 text-[8px] font-medium text-white shadow-xs">
+                        {item.platform === 'common' ? (
+                          <>
+                            <IoSparklesOutline className="h-2 w-2 text-amber-300" />
+                            <span>Common</span>
+                          </>
+                        ) : item.platform === 'app' ? (
+                          <>
+                            <HiOutlineDeviceMobile className="h-2 w-2 text-sky-300" />
+                            <span>App</span>
+                          </>
+                        ) : (
+                          <>
+                            <HiOutlineDesktopComputer className="h-2 w-2 text-stone-300" />
+                            <span>Web</span>
+                          </>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Card Info Content */}
+                  <div className="p-2 flex flex-col justify-between flex-1">
+                    <div>
+                      {item.themeName ? (
+                        <h4 className="text-[11px] font-bold text-stone-900 truncate" title={item.themeName}>
+                          {item.themeName}
+                        </h4>
+                      ) : null}
                       {item.linkedBanner?.title ? (
-                        <span className="text-[10px] text-[#8b6c3a] font-medium truncate">
-                          Banner: {item.linkedBanner.title}
-                        </span>
+                        <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedBanner.title}>
+                          <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
+                          <span>{item.linkedBanner.title}</span>
+                        </p>
                       ) : item.linkedFeatured?.title ? (
-                        <span className="text-[10px] text-[#8b6c3a] font-medium truncate">
-                          Celebrate: {item.linkedFeatured.title}
-                        </span>
-                      ) : item.categoryName ? (
-                        <span className="text-[10px] text-stone-400">Category: {item.categoryName}</span>
+                        <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedFeatured.title}>
+                          <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
+                          <span>Celebrate: {item.linkedFeatured.title}</span>
+                        </p>
+                      ) : item.linkedRecord?.module === 'banner' ? (
+                        <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                          <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
+                          <span>Banner #{String(item.linkedRecord.recordId).slice(-4)}</span>
+                        </p>
+                      ) : item.linkedRecord?.module === 'featured' ? (
+                        <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                          <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
+                          <span>Celebrate #{String(item.linkedRecord.recordId).slice(-4)}</span>
+                        </p>
+                      ) : item.typeLabel ? (
+                        <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
+                          <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
+                          <span>{item.typeLabel}</span>
+                        </p>
                       ) : null}
                     </div>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-700">
-                      {item.typeLabel}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3">
-                    {item.platform === 'common' ? (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
-                        <IoSparklesOutline className="h-3 w-3 text-amber-600" /> Common (Web & App)
-                      </span>
-                    ) : item.platform === 'app' ? (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-sky-50 px-2 py-0.5 text-[10px] font-semibold text-sky-700 border border-sky-200">
-                        <HiOutlineDeviceMobile className="h-3 w-3" /> App
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 text-[10px] font-semibold text-stone-700">
-                        <HiOutlineDesktopComputer className="h-3 w-3" /> Web
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-2.5 px-3">
-                    <span
-                      className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-bold ${
-                        item.isThemeLive
-                          ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                          : 'bg-stone-100 text-stone-700'
-                      }`}
-                    >
-                      {item.themeName || 'Global'}
-                    </span>
-                  </td>
-                  <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-center">
-                      <ToggleSwitch
-                        checked={item.status === 'active'}
-                        onChange={() => handleToggleStatus(item)}
-                        size="sm"
-                        ariaLabel={`Set ${item.title || 'asset'} ${item.status === 'active' ? 'Inactive' : 'Active'}`}
-                      />
-                    </div>
-                  </td>
-                  <td className="py-2.5 px-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
+
+                    {/* Action Buttons Row */}
+                    <div className="mt-1.5 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         onClick={() => setPreviewItem(item)}
-                        className="p-1 rounded-lg border border-[#e0e7ff] bg-[#eef2ff] text-[#4f46e5] hover:bg-[#dbeafe] hover:border-[#bfdbfe] transition cursor-pointer"
-                        title="Preview Media Image"
+                        className="flex-1 py-1 flex items-center justify-center rounded-md border border-[#e0e7ff] bg-[#eef2ff] text-[#4f46e5] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                        title="Preview Media Item"
                       >
-                        <HiOutlineEye className="w-3.5 h-3.5" />
+                        <HiOutlineEye className="h-3 w-3 stroke-[2]" />
                       </button>
-                      <EditActionButton
+
+                      <button
+                        type="button"
                         onClick={() => handleOpenEdit(item)}
-                        title="Edit Details"
-                      />
-                      <DeleteActionButton
+                        className="flex-1 py-1 flex items-center justify-center rounded-md border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                        title="Edit Media Item"
+                      >
+                        <HiOutlinePencil className="h-3 w-3 stroke-[2]" />
+                      </button>
+
+                      <button
+                        type="button"
                         onClick={() => handleDeleteItem(item)}
+                        className="flex-1 py-1 flex items-center justify-center rounded-md border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 transition-all shadow-2xs cursor-pointer"
                         title="Remove Media Item"
-                      />
+                      >
+                        <HiOutlineTrash className="h-3 w-3 stroke-[2]" />
+                      </button>
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-        </div>
-      ) : (
-        /* ─── GRID VIEW (6 items per row on desktop for larger card sizing) ─────────────── */
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6">
-          {effectiveItems.map((item) => {
-            const bt = BANNER_TYPES.find((b) => b.key === item.type) || { icon: HiOutlinePhotograph };
-            const Icon = bt.icon;
-            const { fileName } = getMediaDisplayInfo(item);
-
-            return (
-              <div
-                key={item.id}
-                className="group relative flex flex-col justify-between rounded-lg border border-stone-200/90 bg-white shadow-2xs hover:shadow-xs transition-all overflow-hidden"
-              >
-                {/* Image Media Box (16:10 aspect ratio) */}
-                <div
-                  onClick={() => setPreviewItem(item)}
-                  className="relative aspect-[16/10] w-full bg-stone-100 overflow-hidden cursor-pointer group/media"
-                  title="Click to preview image"
-                >
-                  <img
-                    src={item.url}
-                    alt={fileName}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-
-                  {/* Hover Overlay with Eye Icon */}
-                  <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/media:opacity-100 transition-opacity flex items-center justify-center">
-                    <span className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-semibold shadow-lg">
-                      <HiOutlineEye className="w-3 h-3" />
-                      <span>Preview</span>
-                    </span>
-                  </div>
-
-                  {/* Top-Left: Placement Badge */}
-                  <div className="absolute left-1 top-1 z-10 pointer-events-none">
-                    <span className="inline-flex items-center gap-0.5 rounded bg-black/65 backdrop-blur-md px-1 py-0.5 text-[8px] font-medium text-white shadow-xs">
-                      <Icon className="h-2 w-2" />
-                      <span>{item.typeLabel || 'Asset'}</span>
-                    </span>
-                  </div>
-
-                  {/* Top-Right: Platform Badge */}
-                  <div className="absolute right-1 top-1 z-10 pointer-events-none">
-                    <span className="inline-flex items-center gap-0.5 rounded bg-black/65 backdrop-blur-md px-1 py-0.5 text-[8px] font-medium text-white shadow-xs">
-                      {item.platform === 'common' ? (
-                        <>
-                          <IoSparklesOutline className="h-2 w-2 text-amber-300" />
-                          <span>Common</span>
-                        </>
-                      ) : item.platform === 'app' ? (
-                        <>
-                          <HiOutlineDeviceMobile className="h-2 w-2 text-sky-300" />
-                          <span>App</span>
-                        </>
-                      ) : (
-                        <>
-                          <HiOutlineDesktopComputer className="h-2 w-2 text-stone-300" />
-                          <span>Web</span>
-                        </>
-                      )}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Card Info Content */}
-                <div className="p-2 flex flex-col justify-between flex-1">
-                  <div>
-                    {item.themeName ? (
-                      <h4 className="text-[11px] font-bold text-stone-900 truncate" title={item.themeName}>
-                        {item.themeName}
-                      </h4>
-                    ) : null}
-                    {item.linkedBanner?.title ? (
-                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedBanner.title}>
-                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
-                        <span>{item.linkedBanner.title}</span>
-                      </p>
-                    ) : item.linkedFeatured?.title ? (  
-                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1" title={item.linkedFeatured.title}>
-                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
-                        <span>Celebrate: {item.linkedFeatured.title}</span>
-                      </p>
-                    ) : item.linkedRecord?.module === 'banner' ? (
-                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
-                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
-                        <span>Banner #{String(item.linkedRecord.recordId).slice(-4)}</span>
-                      </p>
-                    ) : item.linkedRecord?.module === 'featured' ? (
-                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
-                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
-                        <span>Celebrate #{String(item.linkedRecord.recordId).slice(-4)}</span>
-                      </p>
-                    ) : item.typeLabel ? (
-                      <p className="mt-0.5 text-[9.5px] text-[#8b6c3a] font-semibold truncate flex items-center gap-1">
-                        <span className="h-1 w-1 rounded-full bg-[#8b6c3a]" />
-                        <span>{item.typeLabel}</span>
-                      </p>
-                    ) : null}
-                  </div>
-
-                  {/* Action Buttons Row */}
-                  <div className="mt-1.5 flex items-center justify-between gap-1.5 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={() => setPreviewItem(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-[#e0e7ff] bg-[#eef2ff] text-[#4f46e5] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
-                      title="Preview Media Item"
-                    >
-                      <HiOutlineEye className="h-3 w-3 stroke-[2]" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleOpenEdit(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-[#dbeafe] bg-[#eff6ff] text-[#2563eb] hover:bg-[#dbeafe] hover:border-[#bfdbfe] active:scale-95 transition-all shadow-2xs cursor-pointer"
-                      title="Edit Media Item"
-                    >
-                      <HiOutlinePencil className="h-3 w-3 stroke-[2]" />
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteItem(item)}
-                      className="flex-1 py-1 flex items-center justify-center rounded-md border border-[#fadbd8] bg-[#fdeeed] text-[#d93025] hover:bg-[#fadbd8] hover:border-[#f5b7b1] active:scale-95 transition-all shadow-2xs cursor-pointer"
-                      title="Remove Media Item"
-                    >
-                      <HiOutlineTrash className="h-3 w-3 stroke-[2]" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ─── Pagination Footer ─── */}
       {!loading && totalItems > 0 && (
@@ -974,7 +1036,7 @@ export default function GalleryView() {
         defaultType={initialUploadType}
         modalThemeOptions={modalThemeOptions}
         placementTypeOptions={placementTypeOptions}
-        onSuccess={fetchGallery}
+        onSuccess={() => fetchGallery(page, pageSize, { silent: true })}
       />
 
       {/* ─── 6. IMAGE FULLSCREEN / INSPECTOR MODAL ──────────────── */}
@@ -1035,8 +1097,8 @@ export default function GalleryView() {
                         {previewItem.platform === 'common'
                           ? 'Common (Web & App Universal)'
                           : previewItem.platform === 'app'
-                          ? 'App'
-                          : 'Web'}
+                            ? 'App'
+                            : 'Web'}
                       </span>
                     </div>
                     <div>
@@ -1088,7 +1150,7 @@ export default function GalleryView() {
         onClose={() => setEditingItem(null)}
         modalThemeOptions={modalThemeOptions}
         placementTypeOptions={placementTypeOptions}
-        onSuccess={fetchGallery}
+        onSuccess={() => fetchGallery(page, pageSize, { silent: true })}
       />
     </div>
   );

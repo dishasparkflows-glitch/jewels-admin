@@ -5,6 +5,7 @@ import { selectedMenuIds } from '../../utils/menuItems';
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import { clearRequestCache } from '../../utils/requestCache';
 import toast from 'react-hot-toast';
 import { createProductId, deleteUploadedFile, uploadWithPresignedUrl, uploadFilesWithPresignedUrls, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import Dropdown from '../../components/common/Dropdown';
@@ -990,10 +991,14 @@ export default function OrnateProductEdit() {
 
       if (isEditMode) {
         await api.put(`/products/${id}`, payload);
+        clearRequestCache('ornate-view:');
+        clearRequestCache('dyn:/products');
         setProductRecord((prev) => ({ ...(prev || {}), ...payload }));
         toast.success('Ornate ERP product updated successfully!');
       } else {
         const createRes = await api.post('/products', payload);
+        clearRequestCache('ornate-view:');
+        clearRequestCache('dyn:/products');
         const newId = createRes.data?.data?._id || createRes.data?._id;
         toast.success('New Ornate product created successfully!');
         if (newId) {

@@ -118,14 +118,41 @@ export default function DatePicker({
   const [isMonthYearPickerOpen, setIsMonthYearPickerOpen] = useState(false);
   const [popupPosition, setPopupPosition] = useState({});
 
-  // Parse initial selected date
+  // Parse date string/Date safely at local midnight for YYYY-MM-DD inputs
   const parseDateValue = useCallback((val) => {
     if (!val) return null;
-    const d = new Date(val);
+    if (val instanceof Date) {
+      return isNaN(val.getTime()) ? null : new Date(val.getTime());
+    }
+    const raw = String(val).trim();
+    const isoDateOnly = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoDateOnly) {
+      const [, y, m, d] = isoDateOnly;
+      return new Date(Number(y), Number(m) - 1, Number(d));
+    }
+    const d = new Date(raw);
     return isNaN(d.getTime()) ? null : d;
   }, []);
 
   const parsedVal = parseDateValue(value);
+
+  const normalizeDay = useCallback((d) => {
+    if (!d) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  }, []);
+
+  const clampDateToBounds = useCallback(
+    (date) => {
+      let target = normalizeDay(date);
+      if (!target) return null;
+      const min = normalizeDay(parseDateValue(minDate));
+      const max = normalizeDay(parseDateValue(maxDate));
+      if (min && target < min) target = new Date(min.getTime());
+      if (max && target > max) target = new Date(max.getTime());
+      return target;
+    },
+    [minDate, maxDate, normalizeDay, parseDateValue]
+  );
 
   // Month & year currently shown in calendar view
   const [viewDate, setViewDate] = useState(() => {
@@ -135,8 +162,11 @@ export default function DatePicker({
     return new Date();
   });
 
-  // Date currently selected (pending Apply)
+  // Date currently selected (pending Apply when includeTime=true)
   const [selectedDate, setSelectedDate] = useState(parsedVal);
+
+  // Keyboard-highlighted date inside the calendar grid
+  const [focusedDate, setFocusedDate] = useState(() => clampDateToBounds(parsedVal || new Date()));
 
   // Time state (hours & minutes)
   const [timeHours, setTimeHours] = useState(() => {
@@ -153,6 +183,15 @@ export default function DatePicker({
   const popupRef = useRef(null);
   const isPointerDownRef = useRef(false);
 
+  const openCalendar = useCallback(() => {
+    const initialFocus = clampDateToBounds(selectedDate || parseDateValue(value) || new Date());
+    if (initialFocus) {
+      setFocusedDate(initialFocus);
+      setViewDate(new Date(initialFocus.getFullYear(), initialFocus.getMonth(), 1));
+    }
+    setIsOpen(true);
+  }, [clampDateToBounds, selectedDate, parseDateValue, value]);
+
   const handleTriggerPointerDown = () => {
     isPointerDownRef.current = true;
   };
@@ -160,7 +199,12 @@ export default function DatePicker({
   const handleClick = () => {
     if (disabled) return;
     isPointerDownRef.current = false;
-    setIsOpen((prev) => !prev);
+    if (isOpen) {
+      setIsOpen(false);
+      setIsMonthYearPickerOpen(false);
+    } else {
+      openCalendar();
+    }
   };
 
   // Keyboard Tab focus automatically opens the date box
@@ -168,7 +212,7 @@ export default function DatePicker({
     if (disabled) return;
     // If focused by a mouse pointer down, do not auto-open; handleClick handles toggle
     if (isPointerDownRef.current) return;
-    setIsOpen(true);
+    openCalendar();
   };
 
   // Tabbing away or blurring outside container closes the date box
@@ -186,21 +230,127 @@ export default function DatePicker({
     setIsMonthYearPickerOpen(false);
   };
 
-  // Keyboard navigation on trigger button
-  const handleKeyDown = (e) => {
-    if (e.key === 'Tab') {
-      // When tabbing out to the next field, close this date box
+  const stepFocusedDate = useCallback(
+    ({ days = 0, months = 0 }) => {
+      const base = focusedDate || clampDateToBounds(selectedDate || new Date()) || normalizeDay(new Date());
+      const candidate =
+        months !== 0
+          ? new Date(base.getFullYear(), base.getMonth() + months, base.getDate())
+          : new Date(base.getFullYear(), base.getMonth(), base.getDate() + days);
+
+      // Handle month rollover when target month has fewer days (e.g. Jan 31 + 1 month)
+      if (months !== 0 && candidate.getDate() !== base.getDate()) {
+        candidate.setDate(0);
+      }
+
+      const clamped = clampDateToBounds(candidate);
+      if (!clamped) return;
+      setFocusedDate(clamped);
+      setViewDate(new Date(clamped.getFullYear(), clamped.getMonth(), 1));
+    },
+    [focusedDate, clampDateToBounds, selectedDate, normalizeDay]
+  );
+
+  const commitDateSelection = useCallback(
+    (targetDate) => {
+      if (!targetDate) return;
+      const normalized = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+      const min = normalizeDay(parseDateValue(minDate));
+      const max = normalizeDay(parseDateValue(maxDate));
+      if ((min && normalized < min) || (max && normalized > max)) {
+        return;
+      }
+
+      if (includeTime) {
+        normalized.setHours(timeHours, timeMinutes, 0, 0);
+        const alreadySameDay =
+          selectedDate &&
+          selectedDate.getFullYear() === normalized.getFullYear() &&
+          selectedDate.getMonth() === normalized.getMonth() &&
+          selectedDate.getDate() === normalized.getDate();
+
+        setSelectedDate(normalized);
+        setViewDate(new Date(normalized.getFullYear(), normalized.getMonth(), 1));
+        if (alreadySameDay) {
+          emitChange(formatDateTimeToISO(normalized));
+          setIsOpen(false);
+          setIsMonthYearPickerOpen(false);
+        }
+        return;
+      }
+
+      setSelectedDate(normalized);
+      setFocusedDate(normalized);
+      emitChange(formatDateToISO(normalized));
       setIsOpen(false);
       setIsMonthYearPickerOpen(false);
-    } else if (e.key === 'Enter' || e.key === ' ') {
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [includeTime, timeHours, timeMinutes, selectedDate, minDate, maxDate, normalizeDay, parseDateValue]
+  );
+
+  // Keyboard navigation on trigger button (and calendar when opened via Tab/keyboard)
+  const handleKeyDown = (e) => {
+    if (e.key === 'Tab') {
+      // When tabbing out to the next field, close this date box cleanly
+      setIsOpen(false);
+      setIsMonthYearPickerOpen(false);
+      return;
+    }
+
+    if (e.key === 'Escape') {
+      if (isOpen) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleCancel();
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft' || e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      setIsOpen((prev) => !prev);
-    } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.stopPropagation();
+      if (!isOpen) {
+        openCalendar();
+        return;
+      }
+      if (isMonthYearPickerOpen) {
+        if (e.key === 'ArrowLeft') stepFocusedDate({ months: -1 });
+        else if (e.key === 'ArrowRight') stepFocusedDate({ months: 1 });
+        else if (e.key === 'ArrowUp') stepFocusedDate({ months: -3 });
+        else if (e.key === 'ArrowDown') stepFocusedDate({ months: 3 });
+        return;
+      }
+      if (e.key === 'ArrowRight') stepFocusedDate({ days: 1 });
+      else if (e.key === 'ArrowLeft') stepFocusedDate({ days: -1 });
+      else if (e.key === 'ArrowDown') stepFocusedDate({ days: 7 });
+      else if (e.key === 'ArrowUp') stepFocusedDate({ days: -7 });
+      return;
+    }
+
+    if (e.key === 'PageUp' || e.key === 'PageDown') {
+      if (!isOpen) return;
       e.preventDefault();
-      setIsOpen(true);
-    } else if (e.key === 'Escape') {
+      e.stopPropagation();
+      stepFocusedDate({ months: e.key === 'PageUp' ? -1 : 1 });
+      return;
+    }
+
+    if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
-      handleCancel();
+      e.stopPropagation();
+      if (!isOpen) {
+        openCalendar();
+        return;
+      }
+      if (isMonthYearPickerOpen) {
+        setIsMonthYearPickerOpen(false);
+        return;
+      }
+      const target = focusedDate || clampDateToBounds(selectedDate || new Date());
+      if (target) {
+        commitDateSelection(target);
+      }
     }
   };
 
@@ -210,10 +360,11 @@ export default function DatePicker({
     setSelectedDate(updated);
     if (updated) {
       setViewDate(new Date(updated.getFullYear(), updated.getMonth(), 1));
+      setFocusedDate(clampDateToBounds(updated));
       setTimeHours(updated.getHours());
       setTimeMinutes(updated.getMinutes());
     }
-  }, [value, parseDateValue]);
+  }, [value, parseDateValue, clampDateToBounds]);
 
   // Compute and update portal popup position anchored to trigger
   const updatePopupPosition = useCallback(() => {
@@ -300,7 +451,7 @@ export default function DatePicker({
     }
   }, [isOpen, direction, openUpward, includeTime, portal]);
 
-  // Close on outside pointer click
+  // Close on outside pointer click or Escape (capture phase so parent modals stay open)
   useEffect(() => {
     if (!isOpen) return;
 
@@ -312,17 +463,20 @@ export default function DatePicker({
       }
     };
 
-    const handleKeyDown = (e) => {
+    const handleGlobalKeyDown = (e) => {
       if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
         handleCancel();
+        triggerRef.current?.focus();
       }
     };
 
     document.addEventListener('pointerdown', handlePointerDown);
-    document.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleGlobalKeyDown, true);
     return () => {
       document.removeEventListener('pointerdown', handlePointerDown);
-      document.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleGlobalKeyDown, true);
     };
   }, [isOpen]);
 
@@ -385,6 +539,7 @@ export default function DatePicker({
   // Day click handler - immediately applies selected date and closes popup
   const handleDayClick = (cell) => {
     const targetDate = new Date(cell.year, cell.month, cell.day);
+    setFocusedDate(targetDate);
     if (includeTime) {
       targetDate.setHours(timeHours, timeMinutes, 0, 0);
       setSelectedDate(targetDate);
@@ -481,39 +636,46 @@ export default function DatePicker({
     setIsMonthYearPickerOpen(false);
   };
 
+  // Check if a calendar cell is keyboard-focused
+  const isCellFocused = (cell) => {
+    if (!focusedDate) return false;
+    const resolved = new Date(cell.year, cell.month, cell.day);
+    return (
+      focusedDate.getFullYear() === resolved.getFullYear() &&
+      focusedDate.getMonth() === resolved.getMonth() &&
+      focusedDate.getDate() === resolved.getDate()
+    );
+  };
+
   // Check if a calendar cell matches the selected date
   const isCellSelected = (cell) => {
     if (!selectedDate) return false;
+    const resolved = new Date(cell.year, cell.month, cell.day);
     return (
-      selectedDate.getFullYear() === cell.year &&
-      selectedDate.getMonth() === cell.month &&
-      selectedDate.getDate() === cell.day
+      selectedDate.getFullYear() === resolved.getFullYear() &&
+      selectedDate.getMonth() === resolved.getMonth() &&
+      selectedDate.getDate() === resolved.getDate()
     );
   };
 
   // Check if a calendar cell is today
   const isCellToday = (cell) => {
     const today = new Date();
+    const resolved = new Date(cell.year, cell.month, cell.day);
     return (
-      today.getFullYear() === cell.year &&
-      today.getMonth() === cell.month &&
-      today.getDate() === cell.day
+      today.getFullYear() === resolved.getFullYear() &&
+      today.getMonth() === resolved.getMonth() &&
+      today.getDate() === resolved.getDate()
     );
   };
 
   // Check min / max date constraints
   const isCellDisabled = (cell) => {
     const d = new Date(cell.year, cell.month, cell.day);
-    if (minDate) {
-      const min = new Date(minDate);
-      min.setHours(0, 0, 0, 0);
-      if (d < min) return true;
-    }
-    if (maxDate) {
-      const max = new Date(maxDate);
-      max.setHours(23, 59, 59, 999);
-      if (d > max) return true;
-    }
+    const min = normalizeDay(parseDateValue(minDate));
+    if (min && d < min) return true;
+    const max = normalizeDay(parseDateValue(maxDate));
+    if (max && d > max) return true;
     return false;
   };
 
@@ -594,7 +756,7 @@ export default function DatePicker({
             {value && !disabled && (
               <span
                 role="button"
-                tabIndex={0}
+                tabIndex={-1}
                 onClick={(e) => {
                   e.stopPropagation();
                   handleClear(e);
@@ -622,6 +784,22 @@ export default function DatePicker({
             ref={popupRef}
             data-datepicker-popup="true"
             style={portal ? popupPosition : undefined}
+            onMouseDown={(e) => {
+              const tag = e.target?.tagName;
+              if (tag !== 'SELECT' && tag !== 'OPTION' && tag !== 'INPUT') {
+                e.preventDefault();
+              }
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                handleKeyDown(e);
+              } else if (e.key === 'Enter' && e.target?.closest?.('[data-calendar-grid="true"]')) {
+                handleKeyDown(e);
+              } else if (e.key === 'Tab') {
+                setIsOpen(false);
+                setIsMonthYearPickerOpen(false);
+              }
+            }}
             className={`datepicker-popup ${
               portal
                 ? ''
@@ -729,9 +907,10 @@ export default function DatePicker({
               </div>
 
               {/* 42-cell Days Grid */}
-              <div className="grid grid-cols-7 gap-1 text-center">
+              <div data-calendar-grid="true" className="grid grid-cols-7 gap-1 text-center">
                 {allCalendarDays.map((cell, idx) => {
                   const selected = isCellSelected(cell);
+                  const focused = isCellFocused(cell);
                   const isToday = isCellToday(cell);
                   const disabledDay = isCellDisabled(cell);
 
@@ -740,12 +919,19 @@ export default function DatePicker({
                       key={idx}
                       type="button"
                       disabled={disabledDay}
+                      onMouseEnter={() => {
+                        if (!disabledDay) {
+                          setFocusedDate(new Date(cell.year, cell.month, cell.day));
+                        }
+                      }}
                       onClick={() => !disabledDay && handleDayClick(cell)}
                       className={`h-9 w-9 mx-auto rounded-xl flex items-center justify-center text-xs font-medium transition-all duration-150 cursor-pointer ${
                         disabledDay
                           ? 'opacity-25 cursor-not-allowed hover:bg-transparent'
                           : selected
-                          ? 'text-white font-bold shadow-md hover:opacity-90'
+                          ? `text-white font-bold shadow-md hover:opacity-90 ${focused ? 'ring-2 ring-offset-1' : ''}`
+                          : focused
+                          ? 'bg-stone-100 text-stone-900 font-bold ring-2'
                           : !cell.isCurrentMonth
                           ? 'text-stone-300 hover:text-stone-600 hover:bg-stone-50'
                           : isToday
@@ -754,7 +940,17 @@ export default function DatePicker({
                       }`}
                       style={
                         selected
-                          ? { backgroundColor: 'var(--theme-primary, #8b6f4e)', color: '#ffffff' }
+                          ? {
+                              backgroundColor: 'var(--theme-primary, #8b6f4e)',
+                              color: '#ffffff',
+                              ...(focused ? { '--tw-ring-color': 'var(--theme-primary, #8b6f4e)' } : {}),
+                            }
+                          : focused
+                          ? {
+                              '--tw-ring-color': 'var(--theme-primary, #8b6f4e)',
+                              color: 'var(--theme-primary, #8b6f4e)',
+                              backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.14)',
+                            }
                           : isToday && cell.isCurrentMonth
                           ? {
                               color: 'var(--theme-primary, #8b6f4e)',

@@ -12,7 +12,8 @@ import { TbListDetails } from 'react-icons/tb';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import { diamondsAPI } from '../../api/services';
-import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
+import { uploadWithPresignedUrl, deleteUploadedFile } from '../../utils/uploadWithPresignedUrl';
+import { clearRequestCache } from '../../utils/requestCache';
 import Dropdown from '../../components/common/Dropdown';
 import { DeleteActionButton } from '../../components/common/RowActions';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
@@ -22,6 +23,7 @@ export default function AddDiamonds() {
   const navigate = useNavigate();
   const { currentTheme } = useTheme();
   const fileInputRef = useRef(null);
+  const caratInputRef = useRef(null);
   const rowFileInputRefs = useRef({});
 
   // Attributes lookups (loaded from API)
@@ -40,7 +42,9 @@ export default function AddDiamonds() {
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedClarity, setSelectedClarity] = useState('');
   const [globalImage, setGlobalImage] = useState('');
+  const [globalImageKey, setGlobalImageKey] = useState('');
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isRemovingImage, setIsRemovingImage] = useState(false);
   const [uploadingRowId, setUploadingRowId] = useState(null);
 
   // Card 2: Carat Weight Configuration
@@ -209,12 +213,14 @@ export default function AddDiamonds() {
     const num = parseFloat(value !== undefined ? value : caratInput);
     if (isNaN(num) || num <= 0) {
       toast.error('Please enter a valid carat weight (e.g. 1.05)');
+      caratInputRef.current?.focus();
       return;
     }
 
     const rounded = parseFloat(num.toFixed(2));
     if (caratWeights.includes(rounded)) {
       toast.error(`Carat weight ${rounded} ct is already added`);
+      caratInputRef.current?.focus();
       return;
     }
 
@@ -244,19 +250,24 @@ export default function AddDiamonds() {
       title: generateTitle(selectedType, selectedShape, selectedColor, selectedClarity, rounded),
       rate: defaultRate,
       price: price,
-      image: globalImage ? { url: globalImage } : null,
+      image: globalImage ? { url: globalImage, ...(globalImageKey ? { key: globalImageKey } : {}) } : null,
       status: 'approved',
       isSaved: false,
       isMatrixPriced: matrixRate > 0,
     };
 
     setVariants((prev) => [...prev, newVariant]);
+    caratInputRef.current?.focus();
   };
 
   // Remove a Carat Weight
   const handleRemoveCarat = (weightToRemove) => {
+    variants
+      .filter((v) => v.carat === weightToRemove && !v.isSaved && v.hasCustomImage && v.image?.url)
+      .forEach((v) => deleteUploadedFile(v.image));
     setCaratWeights((prev) => prev.filter((w) => w !== weightToRemove));
     setVariants((prev) => prev.filter((v) => v.carat !== weightToRemove));
+    caratInputRef.current?.focus();
   };
 
   // Update variants when base information changes
@@ -292,17 +303,28 @@ export default function AddDiamonds() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const prevUrl = globalImage;
+    const prevKey = globalImageKey;
+
     try {
       setIsUploadingImage(true);
       const res = await uploadWithPresignedUrl(file, 'diamonds');
       const url = res.fileUrl;
+      const key = res.key || '';
+      const imageObj = key ? { url, key } : { url };
       setGlobalImage(url);
+      setGlobalImageKey(key);
+
+      // Clean up previously uploaded unsaved global image when replacing it
+      if (prevKey || prevUrl) {
+        await deleteUploadedFile({ key: prevKey, url: prevUrl });
+      }
 
       // Apply to all existing variants that don't have custom images
       setVariants((prev) =>
         prev.map((v) => ({
           ...v,
-          image: v.hasCustomImage ? v.image : { url },
+          image: v.hasCustomImage ? v.image : imageObj,
         }))
       );
       toast.success('Global diamond image uploaded');
@@ -315,20 +337,64 @@ export default function AddDiamonds() {
     }
   };
 
+  // Handle Global Image Remove (deletes object from Cloudflare R2)
+  const handleRemoveGlobalImage = async () => {
+    if ((!globalImage && !globalImageKey) || isRemovingImage) return;
+    const prevUrl = globalImage;
+    const prevKey = globalImageKey;
+
+    try {
+      setIsRemovingImage(true);
+      const deleted = await deleteUploadedFile({ key: prevKey, url: prevUrl });
+
+      setGlobalImage('');
+      setGlobalImageKey('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+
+      setVariants((prev) =>
+        prev.map((v) =>
+          !v.hasCustomImage && v.image?.url === prevUrl
+            ? { ...v, image: null }
+            : v
+        )
+      );
+
+      if (deleted) {
+        toast.success('Global diamond image removed');
+      } else {
+        toast.error('Cleared image preview, but failed to delete file from storage');
+      }
+    } finally {
+      setIsRemovingImage(false);
+    }
+  };
+
   // Handle Variant-Specific Image Upload
   const handleRowImageUpload = async (variantId, e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const existingVariant = variants.find((v) => v.id === variantId);
+    const prevUnsavedCustom =
+      existingVariant && !existingVariant.isSaved && existingVariant.hasCustomImage && existingVariant.image?.url
+        ? existingVariant.image
+        : null;
+
     try {
       setUploadingRowId(variantId);
       const res = await uploadWithPresignedUrl(file, 'diamonds');
       const url = res.fileUrl;
+      const key = res.key || '';
+      const imageObj = key ? { url, key } : { url };
+
+      if (prevUnsavedCustom) {
+        await deleteUploadedFile(prevUnsavedCustom);
+      }
 
       setVariants((prev) =>
         prev.map((v) =>
           v.id === variantId
-            ? { ...v, image: { url }, hasCustomImage: true }
+            ? { ...v, image: imageObj, hasCustomImage: true }
             : v
         )
       );
@@ -393,6 +459,9 @@ export default function AddDiamonds() {
     setVariants((prev) => prev.filter((v) => v.id !== id));
     if (vToRemove) {
       setCaratWeights((prev) => prev.filter((w) => w !== vToRemove.carat));
+      if (!vToRemove.isSaved && vToRemove.hasCustomImage && vToRemove.image?.url) {
+        deleteUploadedFile(vToRemove.image);
+      }
     }
   };
 
@@ -438,12 +507,17 @@ export default function AddDiamonds() {
           shapeId: shapeObj?._id,
           colorId: colorObj?._id,
           clarityId: clarityObj?._id,
-          image: v.image?.url ? { url: v.image.url } : globalImage ? { url: globalImage } : undefined,
+          image: v.image?.url
+            ? { url: v.image.url, ...(v.image.key ? { key: v.image.key } : {}) }
+            : globalImage
+            ? { url: globalImage, ...(globalImageKey ? { key: globalImageKey } : {}) }
+            : undefined,
           status: v.status || 'approved',
         };
       });
 
       await diamondsAPI.bulkCreate(payload);
+      clearRequestCache('diamonds:');
       toast.success(`Successfully published ${variants.length} diamond variants!`);
       navigate('/diamonds');
     } catch (err) {
@@ -618,11 +692,16 @@ export default function AddDiamonds() {
                 <span className="text-xs text-stone-700 truncate font-medium flex-1">Image added</span>
                 <button
                   type="button"
-                  onClick={() => setGlobalImage('')}
-                  className="p-1 text-stone-400 hover:text-rose-600 rounded transition-colors cursor-pointer"
+                  onClick={handleRemoveGlobalImage}
+                  disabled={isRemovingImage || isUploadingImage}
+                  className="p-1 text-stone-400 hover:text-rose-600 rounded transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Remove image"
                 >
-                  <HiOutlineX className="w-4 h-4" />
+                  {isRemovingImage ? (
+                    <div className="w-4 h-4 border-2 border-rose-500 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <HiOutlineX className="w-4 h-4" />
+                  )}
                 </button>
               </div>
             ) : (
@@ -667,6 +746,7 @@ export default function AddDiamonds() {
             <div className="flex items-center gap-2">
               <div className="relative flex-1">
                 <input
+                  ref={caratInputRef}
                   type="number"
                   step="0.01"
                   min="0.01"
@@ -686,6 +766,7 @@ export default function AddDiamonds() {
               {/* '+' button filled with user selected theme */}
               <button
                 type="button"
+                onMouseDown={(e) => e.preventDefault()}
                 onClick={() => handleAddCarat()}
                 style={{
                   backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)',

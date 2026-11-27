@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import api from '../../api/axios';
+import { clearRequestCache } from '../../utils/requestCache';
 import toast from 'react-hot-toast';
 import {
   createProductId,
@@ -3321,6 +3322,7 @@ export default function AddJewelryProduct() {
       } else if (statusOverride === 'approved') {
         successMsg = productId ? `${productName} published successfully!` : `${productName} published successfully!`;
       }
+      clearRequestCache('dyn:/products');
       toast.success(successMsg);
 
       if (stayOnPage) {

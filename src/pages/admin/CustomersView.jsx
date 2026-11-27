@@ -12,6 +12,7 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { clearRequestCache } from '../../utils/requestCache';
 import Pagination from '../../components/common/Pagination';
 import useAdminList from '../../hooks/useAdminList';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -99,6 +100,7 @@ export default function CustomersView() {
     if (!isConfirmed) return;
     try {
       await api.delete(`/users/${id}`);
+      clearRequestCache('customers');
       toast.success('Customer deleted successfully');
       setUsers((prev) => prev.filter((u) => (u._id || u.id) !== id));
       removeFromSelection(id);
@@ -126,6 +128,7 @@ export default function CustomersView() {
     const idsToDelete = Array.from(selectedIds);
     try {
       await api.post('/users/bulk-delete', { ids: idsToDelete });
+      clearRequestCache('customers');
       setUsers((prev) => prev.filter((u) => !selectedIds.has(u._id || u.id)));
       clearSelection();
       toast.success(`${count} customer${count > 1 ? 's' : ''} deleted successfully`);

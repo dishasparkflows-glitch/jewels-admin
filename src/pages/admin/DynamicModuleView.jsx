@@ -2,9 +2,15 @@ import { createPortal } from "react-dom";
 import ThemeImageField from '../../components/common/ThemeImageField';
 import { savePendingThemeMedia } from '../../utils/savePendingThemeMedia';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import {
+  getCachedData,
+  setCachedData,
+  clearRequestCache,
+  isAbortError,
+} from '../../utils/requestCache';
 import toast from 'react-hot-toast';
 import {
   HiOutlinePlus,
@@ -89,6 +95,7 @@ const DynamicModuleView = () => {
 
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useAdminPageSize();
@@ -97,6 +104,10 @@ const DynamicModuleView = () => {
   const [selectedIds, setSelectedIds] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
+
+  const abortControllerRef = useRef(null);
+  const activePathnameRef = useRef(pathname);
+  const loadedEndpointRef = useRef(null);
 
   // Demo Metrics Quick Edit Modal state
   const [editingMetricsProduct, setEditingMetricsProduct] = useState(null);
@@ -122,6 +133,7 @@ const DynamicModuleView = () => {
         },
       };
       await api.put('/products/' + prodId, payload);
+      clearRequestCache(`dyn:${config.endpoint}`);
       setItems((prev) =>
         prev.map((item) =>
           (item._id || item.id) === prodId ? { ...item, ...payload } : item
@@ -480,45 +492,97 @@ const DynamicModuleView = () => {
   };
 
   const fetchItems = useCallback(
-    async (page = currentPage, limit = pageSize, q = search) => {
-      try {
-        setLoading(true);
-        const params = { page, limit };
-        if (q && q.trim()) params.search = q.trim();
-        const res = await api.get(config.endpoint, { params });
-        const data = res.data?.data?.items || res.data?.data || [];
-        setItems(Array.isArray(data) ? data : []);
-        if (res.data?.data?.pagination?.total !== undefined) {
-          setServerTotal(res.data.data.pagination.total);
-        } else if (res.data?.pagination?.totalDocs !== undefined) {
-          setServerTotal(res.data.pagination.totalDocs);
+    async (page = currentPage, limit = pageSize, q = search, { silent = false } = {}) => {
+      if (silent) {
+        clearRequestCache(`dyn:${config.endpoint}`);
+      }
+
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      const trimmedQ = String(q || '').trim();
+      const cacheKey = `dyn:${config.endpoint}:p=${page}:l=${limit}:q=${trimmedQ}`;
+      const cached = !silent ? getCachedData(cacheKey, 60_000) : null;
+      const sameEndpointLoaded = loadedEndpointRef.current === config.endpoint;
+
+      if (cached) {
+        setItems(cached.items);
+        setServerTotal(cached.serverTotal);
+        setServerMaxOrder(cached.serverMaxOrder);
+        loadedEndpointRef.current = config.endpoint;
+        setLoading(false);
+        setRefreshing(false);
+      } else if (!silent) {
+        if (sameEndpointLoaded) {
+          setRefreshing(true);
+          setLoading(false);
         } else {
-          setServerTotal(null);
+          setLoading(true);
+          setRefreshing(false);
+        }
+      }
+
+      try {
+        const params = { page, limit };
+        if (trimmedQ) params.search = trimmedQ;
+        const res = await api.get(config.endpoint, { params, signal: controller.signal });
+        if (controller.signal.aborted) return;
+
+        const data = res.data?.data?.items || res.data?.data || [];
+        const list = Array.isArray(data) ? data : [];
+        let nextTotal = null;
+        if (res.data?.data?.pagination?.total !== undefined) {
+          nextTotal = res.data.data.pagination.total;
+        } else if (res.data?.pagination?.totalDocs !== undefined) {
+          nextTotal = res.data.pagination.totalDocs;
         }
         const maxOrd = res.data?.pagination?.maxOrder ?? res.data?.data?.pagination?.maxOrder;
-        setServerMaxOrder(maxOrd !== undefined && maxOrd !== null ? Number(maxOrd) : null);
+        const nextMaxOrder = maxOrd !== undefined && maxOrd !== null ? Number(maxOrd) : null;
+
+        loadedEndpointRef.current = config.endpoint;
+        setItems(list);
+        setServerTotal(nextTotal);
+        setServerMaxOrder(nextMaxOrder);
+        setCachedData(cacheKey, {
+          items: list,
+          serverTotal: nextTotal,
+          serverMaxOrder: nextMaxOrder,
+        });
       } catch (err) {
+        if (isAbortError(err)) return;
         console.error('Failed to load records for', config.endpoint, err);
-        setItems([]);
-        setServerTotal(null);
-        setServerMaxOrder(null);
+        if (!cached && !sameEndpointLoaded) {
+          setItems([]);
+          setServerTotal(null);
+          setServerMaxOrder(null);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted && !silent) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [config.endpoint, currentPage, pageSize, search]
   );
 
   useEffect(() => {
-    setCurrentPage(1);
-    setSearch('');
-    setSelectedIds([]);
-    setServerMaxOrder(null);
-  }, [pathname]);
-
-  useEffect(() => {
+    if (activePathnameRef.current !== pathname) {
+      activePathnameRef.current = pathname;
+      setSelectedIds([]);
+      setServerMaxOrder(null);
+      if (currentPage !== 1 || search !== '') {
+        setCurrentPage(1);
+        setSearch('');
+        return;
+      }
+    }
     fetchItems(currentPage, pageSize, search);
-  }, [fetchItems, currentPage, pageSize, search]);
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, [pathname, fetchItems, currentPage, pageSize, search]);
 
   // Fetch lookup options when modal opens for fields with type: 'lookup'
   useEffect(() => {
@@ -708,7 +772,8 @@ const DynamicModuleView = () => {
       setIsModalOpen(false);
       setEditingRecord(null);
       setFormData({});
-      fetchItems();
+      clearRequestCache(`dyn:${config.endpoint}`);
+      fetchItems(currentPage, pageSize, search, { silent: true });
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save record');
     } finally {
@@ -731,6 +796,7 @@ const DynamicModuleView = () => {
       toast.success('Record deleted successfully');
       setItems((prev) => prev.filter((i) => i._id !== id && i.id !== id));
       setSelectedIds((prev) => prev.filter((i) => i !== id));
+      clearRequestCache(`dyn:${config.endpoint}`);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete record');
     }
@@ -783,6 +849,7 @@ const DynamicModuleView = () => {
       }
       setItems((prev) => prev.filter((i) => !selectedIds.includes(i._id) && !selectedIds.includes(i.id)));
       setSelectedIds([]);
+      clearRequestCache(`dyn:${config.endpoint}`);
       toast.success(`${count} record${count > 1 ? 's' : ''} deleted successfully`);
     } catch {
       toast.error('Failed to delete some records');
@@ -944,6 +1011,7 @@ const DynamicModuleView = () => {
           : { 'visibility.app': nextApp };
 
       await api.put(`/products/${rowId}`, payload);
+      clearRequestCache(`dyn:${config.endpoint}`);
       toast.success(
         `${platform === 'web' ? 'Web' : 'App'} visibility ${
           (platform === 'web' ? nextWeb : nextApp) ? 'enabled' : 'disabled'
@@ -993,6 +1061,7 @@ const DynamicModuleView = () => {
 
     try {
       await api.put(`/products/${rowId}`, { status: nextStatus });
+      clearRequestCache(`dyn:${config.endpoint}`);
       toast.success(`Status updated to ${nextStatus}`);
     } catch (err) {
       console.error('Failed to update product status:', err);
@@ -1154,9 +1223,14 @@ const DynamicModuleView = () => {
       />
 
       {/* ─── Table Card Container ─── */}
-      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
+      <div className="bg-white rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden relative">
+        {refreshing && (
+          <div className="h-0.5 w-full bg-stone-200/70 overflow-hidden">
+            <div className="h-full w-1/3 rounded-full bg-[#8b6f4e] animate-pulse" />
+          </div>
+        )}
         {/* Table view */}
-        <div className="overflow-x-auto">
+        <div className={`overflow-x-auto transition-opacity duration-150 ${refreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {loading ? (
             <div className="py-8 text-center text-xs text-stone-400 flex flex-col items-center justify-center gap-1.5">
               <HiOutlineRefresh className="w-4 h-4 animate-spin text-[#8b6f4e]" />
@@ -1737,6 +1811,7 @@ const DynamicModuleView = () => {
                                 if (val === (row.order ?? 0)) return;
                                 try {
                                   await api.put(`/categories/${row._id || row.id}`, { order: val });
+                                  clearRequestCache(`dyn:${config.endpoint}`);
                                   toast.success(`Order updated to ${val}`);
                                   setItems((prev) =>
                                     prev.map((item) =>
@@ -3633,7 +3708,7 @@ const DynamicModuleView = () => {
           isOpen={isOrnateSyncModalOpen}
           onClose={() => setIsOrnateSyncModalOpen(false)}
           onSyncComplete={() => {
-            fetchItems();
+            fetchItems(currentPage, pageSize, search, { silent: true });
           }}
         />
       )}

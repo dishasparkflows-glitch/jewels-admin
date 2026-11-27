@@ -347,6 +347,12 @@ input[type="radio"] {
   accent-color: var(--theme-primary, #8b6f4e);
 }
 
+input[type="checkbox"]:focus-visible,
+input[type="radio"]:focus-visible {
+  outline: 2px solid var(--theme-primary, #8b6f4e);
+  outline-offset: 2px;
+}
+
 
 /* Announcement Bar Slide Animations */
 @keyframes slide-top-to-bottom {

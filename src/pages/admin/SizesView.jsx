@@ -698,6 +698,7 @@ export default function SizesView() {
                     label: cat.name,
                   }))}
                   placeholder="Select Category"
+                  portal={true}
                   buttonClassName="w-full h-10 rounded-xl text-xs sm:text-[13px] font-medium border border-[#d6cfc2] hover:border-[#bdae99] bg-white text-stone-900"
                 />
               </div>

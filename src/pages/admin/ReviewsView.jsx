@@ -12,6 +12,7 @@ import {
 import { IoStar } from 'react-icons/io5';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { clearRequestCache } from '../../utils/requestCache';
 import Pagination from '../../components/common/Pagination';
 import useAdminList from '../../hooks/useAdminList';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -236,6 +237,7 @@ export default function ReviewsView() {
     if (!isConfirmed) return;
     try {
       await api.delete(`/reviews/${id}`);
+      clearRequestCache('reviews');
       toast.success('Review deleted');
       setReviews((prev) => prev.filter((r) => (r._id || r.id) !== id));
       removeFromSelection(id);
@@ -265,6 +267,7 @@ export default function ReviewsView() {
     const idsToDelete = Array.from(selectedIds);
     try {
       await api.post('/reviews/bulk-delete', { ids: idsToDelete });
+      clearRequestCache('reviews');
       setReviews((prev) => prev.filter((r) => !selectedIds.has(r._id || r.id)));
       clearSelection();
       toast.success(`${count} review${count > 1 ? 's' : ''} deleted successfully`);
@@ -291,6 +294,7 @@ export default function ReviewsView() {
 
     try {
       await api.put(`/reviews/${id}`, { status: newStatus });
+      clearRequestCache('reviews');
       toast.success(
         newStatus === 'approved'
           ? 'Review approved successfully'

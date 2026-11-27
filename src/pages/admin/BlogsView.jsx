@@ -642,7 +642,14 @@ export default function BlogsView() {
                               className="w-12 h-12 rounded-xl object-cover border border-stone-200 shrink-0 shadow-2xs"
                             />
                           ) : (
-                            <div className="w-12 h-12 rounded-xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center text-[#8b6f4e] shrink-0">
+                            <div
+                              className="w-12 h-12 rounded-xl border flex items-center justify-center shrink-0"
+                              style={{
+                                backgroundColor: 'var(--theme-primary-soft, #faf5ee)',
+                                borderColor: 'var(--theme-primary-border, #e8d9c2)',
+                                color: 'var(--theme-primary, #8b6f4e)',
+                              }}
+                            >
                               <HiOutlinePhotograph className="w-5 h-5 text-stone-400" />
                             </div>
                           )}
@@ -650,7 +657,7 @@ export default function BlogsView() {
                             onClick={() => navigate(`/blogs/edit/${blog._id}`)}
                             className="min-w-0 cursor-pointer group/title"
                           >
-                            <p className="font-bold text-stone-900 group-hover/title:text-[#8b6f4e] transition-colors truncate leading-snug">
+                            <p className="font-bold text-stone-900 group-hover/title:text-[var(--theme-primary,#8b6f4e)] transition-colors truncate leading-snug">
                               {blogTitle}
                             </p>
                             <p className="text-[11px] text-stone-400 font-mono truncate">
@@ -662,7 +669,14 @@ export default function BlogsView() {
 
                       {/* Category Badge */}
                       <td className="py-3.5 px-4">
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d9c2]">
+                        <span
+                          className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-xs font-semibold border"
+                          style={{
+                            backgroundColor: 'var(--theme-primary-soft, #faf5ee)',
+                            color: 'var(--theme-primary, #8b6f4e)',
+                            borderColor: 'var(--theme-primary-border, #e8d9c2)',
+                          }}
+                        >
                           <HiOutlineTag className="w-3 h-3" />
                           <span>{categoryName}</span>
                         </span>

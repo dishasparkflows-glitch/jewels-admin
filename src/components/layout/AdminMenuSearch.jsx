@@ -301,8 +301,7 @@ export default function AdminMenuSearch() {
                     </div>
 
                     {/* Action Arrow */}
-                    <div className="shrink-0 flex items-center gap-1 text-[11px] font-medium text-stone-400">
-                      <span className="font-mono text-[10px] text-stone-400 hidden sm:inline">{item.path}</span>
+                    <div className="shrink-0 flex items-center text-stone-400">
                       <HiOutlineArrowRight
                         className={`w-3.5 h-3.5 transition-transform ${
                           isSelected ? 'translate-x-0.5 text-[#8b6f4e]' : 'opacity-40'

@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlineX,
@@ -14,6 +14,12 @@ import {
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
 import Dropdown from './Dropdown';
+import {
+  getCachedData,
+  setCachedData,
+  clearRequestCache,
+  isAbortError,
+} from '../../utils/requestCache';
 
 const PRODUCT_PICKER_TABS = [
   { id: 'gold', label: 'Gold Jewelry', icon: IoDiamondOutline, badge: 'GOLD' },
@@ -35,9 +41,11 @@ export default function ProductPickerModal({
 }) {
   const [pickerTab, setPickerTab] = useState(defaultTab || 'gold'); // 'gold' | 'silver' | 'ornate' | 'all'
   const [pickerSearch, setPickerSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pickerPage, setPickerPage] = useState(1);
   const [pickerLimit, setPickerLimit] = useState(25);
   const [pickerLoading, setPickerLoading] = useState(false);
+  const [pickerRefreshing, setPickerRefreshing] = useState(false);
   const [pickerProducts, setPickerProducts] = useState([]);
   const [pickerPagination, setPickerPagination] = useState({
     currentPage: 1,
@@ -49,15 +57,34 @@ export default function ProductPickerModal({
   // Map of productId -> full product object across tabs and pages
   const [tempSelectedMap, setTempSelectedMap] = useState(new Map());
 
+  const abortControllerRef = useRef(null);
+  const prefetchControllersRef = useRef(new Map());
+  const hasLoadedOnceRef = useRef(false);
+  const prefetchedSessionRef = useRef(false);
+
+  const buildCacheKey = useCallback(
+    (type, page, limit, searchStr = '') =>
+      `picker:s=${statusFilter || 'approved'}:t=${type || 'all'}:p=${page}:l=${limit}:q=${String(searchStr || '').trim()}`,
+    [statusFilter]
+  );
+
   const excludeIdSet = useMemo(
     () => new Set((excludeIds || []).map((id) => String(id))),
     [excludeIds]
   );
 
-  // Initialize selected products map when modal opens
+  // Initialize selected products map & reset state when modal opens
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      abortControllerRef.current?.abort();
+      prefetchControllersRef.current.forEach((ctrl) => ctrl.abort());
+      prefetchControllersRef.current.clear();
+      hasLoadedOnceRef.current = false;
+      prefetchedSessionRef.current = false;
+      return;
+    }
 
+    clearRequestCache('picker:');
     const newMap = new Map();
     (initialSelected || []).forEach((item) => {
       if (!item) return;
@@ -69,9 +96,20 @@ export default function ProductPickerModal({
 
     setTempSelectedMap(newMap);
     setPickerSearch('');
+    setDebouncedSearch('');
     setPickerPage(1);
     setPickerTab(defaultTab || 'gold');
+    hasLoadedOnceRef.current = false;
+    prefetchedSessionRef.current = false;
   }, [isOpen, initialSelected, defaultTab]);
+
+  // Debounce search text only; tab/page/limit changes remain immediate
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(pickerSearch);
+    }, pickerSearch ? 250 : 0);
+    return () => clearTimeout(timer);
+  }, [pickerSearch]);
 
   // Lock body scroll when modal is open
   useEffect(() => {
@@ -83,70 +121,156 @@ export default function ProductPickerModal({
     };
   }, [isOpen]);
 
-  // Fetch products from API
-  const fetchPickerProducts = useCallback(async (
-    page = pickerPage,
-    type = pickerTab,
-    searchStr = pickerSearch,
-    limit = pickerLimit
-  ) => {
-    try {
-      setPickerLoading(true);
+  const enrichSelectedMap = useCallback((items) => {
+    if (!Array.isArray(items) || items.length === 0) return;
+    setTempSelectedMap((prevMap) => {
+      let updated = false;
+      const next = new Map(prevMap);
+      items.forEach((item) => {
+        const key = String(item._id || item.id);
+        if (next.has(key)) {
+          const existing = next.get(key);
+          if (!existing.title || !existing.thumbnail || !existing.productType || existing.isOrnate === undefined) {
+            next.set(key, { ...existing, ...item });
+            updated = true;
+          }
+        }
+      });
+      return updated ? next : prevMap;
+    });
+  }, []);
+
+  const requestLookup = useCallback(
+    async (page, type, searchStr, limit, signal) => {
       const params = new URLSearchParams();
       params.append('page', String(page));
       params.append('limit', String(limit));
       params.append('status', statusFilter || 'approved');
+      params.append('primaryOnly', 'true');
       if (type && type !== 'all') {
         params.append('productType', type);
       }
       if (searchStr && searchStr.trim()) {
         params.append('search', searchStr.trim());
       }
-
-      const res = await api.get(`/products/lookup?${params.toString()}`);
-      const items = res.data?.data || [];
+      const res = await api.get(`/products/lookup?${params.toString()}`, { signal });
+      const items = Array.isArray(res.data?.data) ? res.data.data : [];
       const pagination = res.data?.pagination || {
         currentPage: page,
         totalPages: 1,
         totalDocs: items.length,
         limit,
       };
+      return { items, pagination };
+    },
+    [statusFilter]
+  );
 
-      setPickerProducts(Array.isArray(items) ? items : []);
-      setPickerPagination(pagination);
-      setPickerPage(page);
+  // Quietly warm up uncached sibling tabs in memory so switching tabs feels instantaneous
+  const prefetchTab = useCallback(
+    async (tabId, limit = pickerLimit) => {
+      if (!isOpen) return;
+      const key = buildCacheKey(tabId, 1, limit, '');
+      if (getCachedData(key, 60_000) || prefetchControllersRef.current.has(key)) return;
 
-      // Enrich any stub items in tempSelectedMap with fresh API data
-      setTempSelectedMap((prevMap) => {
-        let updated = false;
-        const next = new Map(prevMap);
-        items.forEach((item) => {
-          const key = String(item._id || item.id);
-          if (next.has(key)) {
-            const existing = next.get(key);
-            if (!existing.title || !existing.thumbnail || !existing.productType || existing.isOrnate === undefined) {
-              next.set(key, { ...existing, ...item });
-              updated = true;
-            }
-          }
-        });
-        return updated ? next : prevMap;
-      });
-    } catch (err) {
-      console.error('Failed to load products for picker:', err);
-      toast.error('Failed to load catalog products');
-    } finally {
-      setPickerLoading(false);
-    }
-  }, [pickerPage, pickerTab, pickerSearch, pickerLimit, statusFilter]);
+      const controller = new AbortController();
+      prefetchControllersRef.current.set(key, controller);
+      try {
+        const result = await requestLookup(1, tabId, '', limit, controller.signal);
+        if (!controller.signal.aborted) {
+          setCachedData(key, result);
+          enrichSelectedMap(result.items);
+        }
+      } catch {
+        // Ignore background prefetch errors
+      } finally {
+        prefetchControllersRef.current.delete(key);
+      }
+    },
+    [isOpen, pickerLimit, buildCacheKey, requestLookup, enrichSelectedMap]
+  );
+
+  // Fetch products from API with AbortController + SWR cache
+  const fetchPickerProducts = useCallback(
+    async (
+      page = pickerPage,
+      type = pickerTab,
+      searchStr = debouncedSearch,
+      limit = pickerLimit
+    ) => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      const key = buildCacheKey(type, page, limit, searchStr);
+      const cached = getCachedData(key, 60_000);
+
+      if (cached) {
+        setPickerProducts(cached.items);
+        setPickerPagination(cached.pagination);
+        setPickerPage(page);
+        hasLoadedOnceRef.current = true;
+        setPickerLoading(false);
+        setPickerRefreshing(false);
+        enrichSelectedMap(cached.items);
+      } else if (!hasLoadedOnceRef.current) {
+        setPickerLoading(true);
+        setPickerRefreshing(false);
+      } else {
+        setPickerRefreshing(true);
+        setPickerLoading(false);
+      }
+
+      try {
+        const result = await requestLookup(page, type, searchStr, limit, controller.signal);
+        if (controller.signal.aborted) return;
+
+        setCachedData(key, result);
+        setPickerProducts(result.items);
+        setPickerPagination(result.pagination);
+        setPickerPage(page);
+        hasLoadedOnceRef.current = true;
+        enrichSelectedMap(result.items);
+
+        // Prefetch other tabs once after first visible load finishes
+        if (!prefetchedSessionRef.current && !searchStr) {
+          prefetchedSessionRef.current = true;
+          PRODUCT_PICKER_TABS.forEach((t) => {
+            if (t.id !== type) prefetchTab(t.id, limit);
+          });
+        }
+      } catch (err) {
+        if (isAbortError(err)) return;
+        console.error('Failed to load products for picker:', err);
+        if (!cached) {
+          toast.error('Failed to load catalog products');
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setPickerLoading(false);
+          setPickerRefreshing(false);
+        }
+      }
+    },
+    [
+      pickerPage,
+      pickerTab,
+      debouncedSearch,
+      pickerLimit,
+      buildCacheKey,
+      requestLookup,
+      enrichSelectedMap,
+      prefetchTab,
+    ]
+  );
 
   useEffect(() => {
     if (!isOpen) return;
-    const timer = setTimeout(() => {
-      fetchPickerProducts(pickerPage, pickerTab, pickerSearch, pickerLimit);
-    }, 250);
-    return () => clearTimeout(timer);
-  }, [isOpen, pickerTab, pickerSearch, pickerPage, pickerLimit, fetchPickerProducts]);
+    fetchPickerProducts(pickerPage, pickerTab, debouncedSearch, pickerLimit);
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, [isOpen, pickerTab, debouncedSearch, pickerPage, pickerLimit, fetchPickerProducts]);
 
   // Toggle single product selection
   const handleToggleProduct = (product) => {
@@ -238,7 +362,7 @@ export default function ProductPickerModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-3xl border border-stone-200 shadow-2xl w-full max-w-5xl overflow-hidden my-auto max-h-[92vh] flex flex-col cursor-default relative z-[100051] animate-scaleIn"
+        className="bg-white rounded-3xl border border-stone-200 shadow-2xl w-full max-w-5xl overflow-hidden my-auto h-[90dvh] sm:h-[85vh] max-h-[820px] flex flex-col cursor-default relative z-[100051] animate-scaleIn"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Picker Header */}
@@ -279,6 +403,7 @@ export default function ProductPickerModal({
                 <button
                   key={tab.id}
                   type="button"
+                  onMouseEnter={() => prefetchTab(tab.id)}
                   onClick={() => {
                     setPickerTab(tab.id);
                     setPickerPage(1);
@@ -368,25 +493,45 @@ export default function ProductPickerModal({
         </div>
 
         {/* Product Grid Area */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 bg-stone-50/20 scrollbar-thin">
-          {pickerLoading ? (
-            <div className="py-20 flex flex-col items-center justify-center text-stone-400 gap-2">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 bg-stone-50/20 scrollbar-thin relative">
+          {pickerRefreshing && (
+            <div className="sticky top-0 left-0 right-0 z-20 -mx-4 -mt-4 sm:-mx-6 sm:-mt-6 mb-3 sm:mb-5 h-0.5 bg-stone-200/70 overflow-hidden">
               <div
-                style={{ borderTopColor: 'var(--theme-primary, #8b6f4e)' }}
-                className="w-8 h-8 border-2 border-stone-300 rounded-full animate-spin"
+                style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+                className="h-full w-1/3 rounded-full animate-pulse"
               />
-              <span className="text-xs font-semibold">Loading catalog pieces...</span>
+            </div>
+          )}
+
+          {pickerLoading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+              {Array.from({ length: 12 }).map((_, i) => (
+                <div key={i} className="p-2.5 rounded-2xl bg-white border border-stone-200/80 animate-pulse space-y-2">
+                  <div className="flex justify-between">
+                    <div className="w-4 h-4 rounded-full bg-stone-100" />
+                    <div className="w-10 h-3 rounded bg-stone-100" />
+                  </div>
+                  <div className="h-28 rounded-xl bg-stone-100" />
+                  <div className="h-3 rounded bg-stone-100 w-4/5" />
+                  <div className="h-3.5 rounded bg-stone-200/80 w-1/2" />
+                  <div className="h-2.5 rounded bg-stone-100 w-2/3" />
+                </div>
+              ))}
             </div>
           ) : pickerProducts.length === 0 ? (
-            <div className="py-16 text-center">
-              <IoDiamondOutline className="w-10 h-10 text-stone-300 mx-auto mb-2" />
+            <div className="h-full min-h-[260px] flex flex-col items-center justify-center text-center py-12">
+              <IoDiamondOutline className="w-10 h-10 text-stone-300 mb-2" />
               <h4 className="text-sm font-bold text-stone-800">No products found</h4>
               <p className="text-xs text-stone-500 mt-1">
                 Try adjusting your search query or selecting a different jewelry category.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div
+              className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 transition-opacity duration-150 ${
+                pickerRefreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'
+              }`}
+            >
               {pickerProducts.map((prod) => {
                 const prodId = String(prod._id || prod.id);
                 const isExcluded = excludeIdSet.has(prodId);
@@ -447,7 +592,6 @@ export default function ProductPickerModal({
                           src={thumb}
                           alt={prod.title}
                           className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-200"
-                          loading="lazy"
                         />
                       ) : (
                         <IoDiamondOutline className="w-8 h-8 text-stone-300" />

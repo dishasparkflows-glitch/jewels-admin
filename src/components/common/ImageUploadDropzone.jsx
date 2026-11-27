@@ -173,7 +173,7 @@ export default function ImageUploadDropzone({
               handleTriggerAction();
             }
           }}
-          className={`border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[var(--theme-primary,#8b6f4e)]/20 focus:outline-hidden bg-white hover:bg-[#f6faf9]/60 rounded-xl p-3 text-center transition-all ${heightClass} flex flex-col items-center justify-center group shadow-2xs ${
+          className={`border-2 border-dashed border-stone-300 hover:border-[var(--theme-primary,#8b6f4e)] focus:border-[var(--theme-primary,#8b6f4e)] focus:ring-2 focus:ring-[var(--theme-primary,#8b6f4e)]/20 focus:outline-hidden bg-white hover:bg-stone-50/70 rounded-xl p-3 text-center transition-all ${heightClass} flex flex-col items-center justify-center group shadow-2xs ${
             disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
           }`}
         >
@@ -190,7 +190,12 @@ export default function ImageUploadDropzone({
           ) : (
             <>
               <div
-                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-[#ecf7f7] border border-[#cbebeb] flex items-center justify-center text-[#1c7878] group-hover:scale-105 mb-1 transition-transform cursor-pointer shadow-2xs"
+                style={{
+                  backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.1)',
+                  borderColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.25)',
+                  color: 'var(--theme-primary, #8b6f4e)',
+                }}
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border flex items-center justify-center group-hover:scale-105 mb-1 transition-transform cursor-pointer shadow-2xs"
               >
                 <HiOutlinePhotograph className="w-4 h-4 stroke-[1.8]" />
               </div>

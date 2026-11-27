@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Suspense } from 'react';
+import { Suspense, useEffect } from 'react';
 import toast, { Toaster, ToastBar } from 'react-hot-toast';
 import { HiOutlineX } from 'react-icons/hi';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -75,6 +75,24 @@ const {
 } = adminPages;
 
 function App() {
+  useEffect(() => {
+    const handleCheckboxEnter = (e) => {
+      if (e.key !== 'Enter') return;
+      const target = e.target;
+      if (!target || target.disabled || target.readOnly) return;
+      const isNativeCheckbox = target.tagName === 'INPUT' && target.type === 'checkbox';
+      const isRoleCheckbox =
+        target.getAttribute?.('role') === 'checkbox' && target.tagName !== 'BUTTON';
+      if (isNativeCheckbox || isRoleCheckbox) {
+        e.preventDefault();
+        e.stopPropagation();
+        target.click();
+      }
+    };
+    document.addEventListener('keydown', handleCheckboxEnter, true);
+    return () => document.removeEventListener('keydown', handleCheckboxEnter, true);
+  }, []);
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>

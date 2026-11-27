@@ -518,7 +518,7 @@ export default function GalleryUploadModal({
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-stone-500">
-                Configure theme & placement targets on the left, upload and map media files on the right.
+                Configure theme and placement targets above, upload and map media files below.
               </p>
             </div>
           </div>
@@ -535,13 +535,13 @@ export default function GalleryUploadModal({
 
         {/* Modal Form with Scrollable Body & Sticky Action Footer */}
         <form onSubmit={handleUploadAndAssign} className="flex-1 flex flex-col overflow-hidden min-h-0">
-          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start">
-              {/* ─── LEFT COLUMN: TARGET SELECTION & BANNER/FEATURED MAPPING (col-span-5) ─── */}
-              <div className="lg:col-span-5 space-y-4">
-                {/* STEP 1: SELECT THEME */}
-                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-5 space-y-4">
+            {/* ─── TOP SECTION: TARGET SELECTION (STEPS 1, 2, 3 SIDE BY SIDE) ─── */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* STEP 1: SELECT THEME */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
                     <label className="block text-xs font-bold text-stone-800">
                       1. Select Website Theme <span className="text-rose-500">*</span>
                     </label>
@@ -557,10 +557,12 @@ export default function GalleryUploadModal({
                     menuClassName="z-[11000]"
                   />
                 </div>
+              </div>
 
-                {/* STEP 2: SELECT PLACEMENT TYPE VIA COMMON DROPDOWN */}
-                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
+              {/* STEP 2: SELECT PLACEMENT TYPE VIA COMMON DROPDOWN */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
                     <label className="block text-xs font-bold text-stone-800">
                       2. Image Placement Type <span className="text-rose-500">*</span>
                     </label>
@@ -576,177 +578,12 @@ export default function GalleryUploadModal({
                     menuClassName="z-[11000]"
                   />
                 </div>
+              </div>
 
-                {/* STEP 2.5: SELECT LINKED TARGET RECORD(S) WHEN PLACEMENT IS HERO BANNER OR CELEBRATE & GIFTS */}
-                {isTargetMappable && (
-                  <div className="rounded-2xl border border-[#8b6c3a]/30 bg-[#faf6f0]/70 p-4 space-y-3 animate-fadeIn">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <label className="block text-xs font-bold text-stone-900 flex items-center gap-1.5">
-                          <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#8b6c3a] text-white text-[10px]">
-                            ✓
-                          </span>
-                          Link to {targetModuleTitle}
-                        </label>
-                      </div>
-                      {availableRecords.length > 0 && (
-                        <div className="flex items-center gap-2">
-                          <button
-                            type="button"
-                            onClick={handleSelectAllRecords}
-                            className="text-[10.5px] font-semibold text-[#8b6c3a] hover:underline cursor-pointer"
-                          >
-                            All ({availableRecords.length})
-                          </button>
-                          <span className="text-stone-300">|</span>
-                          <button
-                            type="button"
-                            onClick={handleClearRecordSelection}
-                            className="text-[10.5px] font-semibold text-stone-400 hover:text-stone-600 cursor-pointer"
-                          >
-                            Clear
-                          </button>
-                        </div>
-                      )}
-                    </div>
-
-                    {loadingRecords ? (
-                      <div className="flex items-center justify-center py-6 gap-2 text-xs text-stone-500">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#8b6c3a] border-t-transparent" />
-                        <span>Loading {targetModuleTitle.toLowerCase()}…</span>
-                      </div>
-                    ) : availableRecords.length === 0 ? (
-                      <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-[11px] text-amber-800 flex items-center gap-2">
-                        <span>ℹ️</span>
-                        <span>No {targetModuleTitle.toLowerCase()} found. Images will be saved as general assets.</span>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
-                          {availableRecords.map((r) => {
-                            const isSelected = selectedRecordIds.includes(r._id);
-                            const displayName = r.title || r.name || 'Untitled';
-                            const badgeType = r.displayType || (r.display?.type) || r.type || r.platform || 'Asset';
-                            const categoryLabel = r.categoryName || r.categoryId?.name || '';
-                            const thumbUrl = r.image?.url || r.imageUrl;
-
-                            return (
-                              <div
-                                key={r._id}
-                                onClick={() => toggleRecordSelection(r._id)}
-                                className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left cursor-pointer transition ${
-                                  isSelected
-                                    ? 'border-[#8b6c3a] bg-white ring-1 ring-[#8b6c3a]/40 shadow-xs'
-                                    : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50'
-                                }`}
-                              >
-                                <div
-                                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
-                                    isSelected
-                                      ? 'border-[#8b6c3a] bg-[#8b6c3a] text-white'
-                                      : 'border-stone-300 bg-white'
-                                  }`}
-                                >
-                                  {isSelected && <HiOutlineCheck className="h-3 w-3 stroke-[3]" />}
-                                </div>
-
-                                <div
-                                  onClick={(e) => {
-                                    if (thumbUrl) {
-                                      e.stopPropagation();
-                                      setPreviewModalData({
-                                        url: thumbUrl,
-                                        title: displayName,
-                                        subtitle: `${targetSingularLabel} • ${categoryLabel || badgeType}`,
-                                      });
-                                    }
-                                  }}
-                                  className={`h-10 w-14 shrink-0 rounded-lg overflow-hidden border border-stone-200 bg-stone-100 flex items-center justify-center relative group/thumb ${
-                                    thumbUrl ? 'cursor-pointer hover:ring-2 hover:ring-[#8b6c3a]/50' : ''
-                                  }`}
-                                  title={thumbUrl ? "Click to preview banner image" : undefined}
-                                >
-                                  {thumbUrl ? (
-                                    <>
-                                      <img src={thumbUrl} alt={displayName} className="h-full w-full object-cover transition-transform duration-300 group-hover/thumb:scale-110" />
-                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
-                                        <HiOutlineEye className="w-3.5 h-3.5 text-white drop-shadow" />
-                                      </div>
-                                    </>
-                                  ) : (
-                                    <HiOutlinePhotograph className="h-5 w-5 text-stone-400" />
-                                  )}
-                                </div>
-
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-bold text-stone-800 truncate">
-                                    {displayName}
-                                  </p>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <span className="text-[9px] uppercase font-semibold text-stone-500 bg-stone-100 px-1 py-0.2 rounded">
-                                      {badgeType}
-                                    </span>
-                                    {categoryLabel && (
-                                      <>
-                                        <span className="text-stone-300">•</span>
-                                        <span className="text-[9.5px] text-[#8b6c3a] truncate max-w-[120px]">
-                                          {categoryLabel}
-                                        </span>
-                                      </>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {thumbUrl && (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setPreviewModalData({
-                                        url: thumbUrl,
-                                        title: displayName,
-                                        subtitle: `${targetSingularLabel} • ${categoryLabel || badgeType}`,
-                                      });
-                                    }}
-                                    className="shrink-0 p-1.5 rounded-lg border border-stone-200 bg-stone-50 hover:bg-[#8b6c3a]/10 hover:border-[#8b6c3a] text-stone-500 hover:text-[#8b6c3a] transition cursor-pointer shadow-2xs"
-                                    title="Preview banner image"
-                                  >
-                                    <HiOutlineEye className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-
-                                {isSelected && (
-                                  <span className="shrink-0 text-[10px] font-bold text-[#8b6c3a] bg-[#8b6c3a]/10 px-2 py-0.5 rounded-full">
-                                    Selected
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {selectedRecordIds.length > 1 && selectedFiles.length > 1 && (
-                          <div className="flex items-center justify-between pt-1 text-[11px] text-stone-700 bg-white p-2.5 rounded-xl border border-[#8b6c3a]/25">
-                            <span>
-                              💡 <strong>{selectedRecordIds.length}</strong> {targetModuleTitle.toLowerCase()} selected.
-                            </span>
-                            <button
-                              type="button"
-                              onClick={handleAutoDistributeRecords}
-                              className="font-bold text-[#8b6c3a] hover:underline cursor-pointer flex items-center gap-1"
-                            >
-                              <span>⚡</span> Auto-distribute to {selectedFiles.length} images
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* STEP 3: TARGET PLATFORM (WEB / APP / COMMON) */}
-                <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
+              {/* STEP 3: TARGET PLATFORM (WEB / APP / COMMON) */}
+              <div className="rounded-2xl border border-stone-200 bg-stone-50/70 p-4 space-y-2 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
                     <label className="block text-xs font-bold text-stone-800">
                       3. Target Platform <span className="text-rose-500">*</span>
                     </label>
@@ -757,19 +594,16 @@ export default function GalleryUploadModal({
                       {
                         id: 'web',
                         label: 'Web',
-                        sublabel: 'Storefront Web',
                         icon: HiOutlineDesktopComputer,
                       },
                       {
                         id: 'app',
                         label: 'App',
-                        sublabel: 'Mobile App',
                         icon: HiOutlineDeviceMobile,
                       },
                       {
                         id: 'common',
                         label: 'Common',
-                        sublabel: 'Web & App',
                         icon: IoSparklesOutline,
                       },
                     ].map((plat) => {
@@ -780,7 +614,7 @@ export default function GalleryUploadModal({
                           key={plat.id}
                           type="button"
                           onClick={() => setUploadPlatform(plat.id)}
-                          className={`group flex flex-col items-center justify-center rounded-xl border p-2 text-center transition cursor-pointer ${
+                          className={`group flex flex-col items-center justify-center rounded-xl border p-2.5 text-center transition cursor-pointer ${
                             isSelected
                               ? 'border-[#8b6c3a] bg-[#8b6c3a]/10 text-[#8b6c3a] font-bold shadow-xs ring-1 ring-[#8b6c3a]/30'
                               : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300 hover:bg-stone-50'
@@ -788,284 +622,448 @@ export default function GalleryUploadModal({
                         >
                           <Icon className={`h-4 w-4 ${isSelected ? 'text-[#8b6c3a]' : 'text-stone-400'}`} />
                           <span className="mt-1 text-xs font-bold">{plat.label}</span>
-                          <span className="text-[9.5px] text-stone-400">{plat.sublabel}</span>
                         </button>
                       );
                     })}
                   </div>
                 </div>
               </div>
+            </div>
 
-              {/* ─── RIGHT COLUMN: FILE UPLOAD ZONE & STAGED IMAGES MAPPING (col-span-7) ─── */}
-              <div className="lg:col-span-7 space-y-4">
-                {/* Header & Compression Info Banner */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-xs font-bold text-stone-800">
-                      4. Upload Image File{selectedFiles.length > 1 ? 's' : ''} {isTargetMappable ? `& ${targetSingularLabel} Mapping` : ''} <span className="text-rose-500">*</span>
-                    </label>
-                    {selectedFiles.length > 0 && (
-                      <div className="flex items-center gap-1.5 text-[11px]">
-                        <span className="text-stone-400 font-mono line-through" title="Original File Size">
-                          {formatBytes(totalOriginalBytes)}
-                        </span>
-                        <span className="text-stone-300">→</span>
-                        <span className="font-bold font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1 shadow-2xs">
-                          <span className="text-[10px]">⚡</span> {formatBytes(totalCompressedBytes)} WebP
-                          {totalSavingsPercent > 0 && (
-                            <span className="text-[10px] text-emerald-600 font-semibold">(-{totalSavingsPercent}%)</span>
-                          )}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Smart Image Compression Info Banner */}
-                  <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200/90 bg-emerald-50/70 p-2 text-[11px] text-emerald-900 shadow-2xs">
-                    <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-[11px] shadow-2xs">
-                      ⚡
-                    </div>
-                    <div className="flex-1 flex items-center gap-2 flex-wrap">
-                      <span className="font-bold text-emerald-950">
-                        {compressionSettings.enabled !== false ? 'Smart Image Compression Active' : 'Image Compression Inactive'}
+            {/* STEP 2.5: SELECT LINKED TARGET RECORD(S) WHEN PLACEMENT IS HERO BANNER OR CELEBRATE & GIFTS */}
+            {isTargetMappable && (
+              <div className="rounded-2xl border border-[#8b6c3a]/30 bg-[#faf6f0]/70 p-4 space-y-3 animate-fadeIn">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-bold text-stone-900 flex items-center gap-1.5">
+                      <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#8b6c3a] text-white text-[10px]">
+                        ✓
                       </span>
-                      {compressionSettings.enabled !== false && (
-                        <span className="inline-flex items-center rounded-md bg-emerald-200/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-emerald-800">
-                          Auto WebP · ~{compressionSettings.quality || 60}% Quality
-                        </span>
-                      )}
-                    </div>
+                      Link to {targetModuleTitle}
+                    </label>
                   </div>
+                  {availableRecords.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSelectAllRecords}
+                        className="text-[10.5px] font-semibold text-[#8b6c3a] hover:underline cursor-pointer"
+                      >
+                        All ({availableRecords.length})
+                      </button>
+                      <span className="text-stone-300">|</span>
+                      <button
+                        type="button"
+                        onClick={handleClearRecordSelection}
+                        className="text-[10.5px] font-semibold text-stone-400 hover:text-stone-600 cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  )}
                 </div>
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={(e) => {
-                    addFiles(e.target.files);
-                    if (e.target) e.target.value = '';
-                  }}
-                  className="hidden"
-                />
-
-                {selectedFiles.length === 0 ? (
-                  <div
-                    {...getUploadTriggerProps(() => fileInputRef.current?.click())}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(true);
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(false);
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setIsDragging(false);
-                      addFiles(e.dataTransfer.files);
-                    }}
-                    className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all min-h-[320px] focus:outline-none focus:border-[#8b6c3a] focus:ring-2 focus:ring-[#8b6c3a]/25 ${
-                      isDragging
-                        ? 'border-[#8b6c3a] bg-[#faf5ee] scale-[0.99]'
-                        : 'border-stone-300 bg-stone-50/70 hover:border-[#8b6c3a] hover:bg-stone-50'
-                    }`}
-                  >
-                    <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#8b6c3a]/10 text-[#8b6c3a] shadow-sm">
-                      <HiOutlineUpload className="h-8 w-8" />
-                    </div>
-                    <p className="mt-3 text-sm font-bold text-stone-800">
-                      Click or drag and drop images here
-                    </p>
-                    <span className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-stone-200 shadow-2xs text-xs font-semibold text-stone-700 hover:bg-stone-50">
-                      Browse Files
-                    </span>
+                {loadingRecords ? (
+                  <div className="flex items-center justify-center py-6 gap-2 text-xs text-stone-500">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#8b6c3a] border-t-transparent" />
+                    <span>Loading {targetModuleTitle.toLowerCase()}…</span>
+                  </div>
+                ) : availableRecords.length === 0 ? (
+                  <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-[11px] text-amber-800 flex items-center gap-2">
+                    <span>ℹ️</span>
+                    <span>No {targetModuleTitle.toLowerCase()} found. Images will be saved as general assets.</span>
                   </div>
                 ) : (
-                  <div className="rounded-2xl border border-stone-200 bg-stone-50/60 p-3.5 space-y-3">
-                    {/* Top Action Toolbar inside Staged Area */}
-                    <div className="flex items-center justify-between gap-2 flex-wrap">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-stone-800">
-                          {selectedFiles.length} Image{selectedFiles.length === 1 ? '' : 's'} Staged
-                        </span>
-                        <span className="text-stone-300">•</span>
-                        <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
-                          {formatBytes(totalCompressedBytes)} total
-                        </span>
-                      </div>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-56 overflow-y-auto pr-1">
+                      {availableRecords.map((r) => {
+                        const isSelected = selectedRecordIds.includes(r._id);
+                        const displayName = r.title || r.name || 'Untitled';
+                        const badgeType = r.displayType || (r.display?.type) || r.type || r.platform || 'Asset';
+                        const categoryLabel = r.categoryName || r.categoryId?.name || '';
+                        const thumbUrl = r.image?.url || r.imageUrl;
 
-                      <div className="flex items-center gap-2">
-                        {isTargetMappable && availableRecords.length > 1 && selectedFiles.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={handleAutoDistributeRecords}
-                            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#8b6c3a]/10 border border-[#8b6c3a]/30 text-[#8b6c3a] text-[11px] font-bold hover:bg-[#8b6c3a]/20 transition cursor-pointer"
-                            title={`Auto map ${targetModuleTitle.toLowerCase()} sequentially`}
+                        return (
+                          <div
+                            key={r._id}
+                            onClick={() => toggleRecordSelection(r._id)}
+                            className={`flex items-center gap-2.5 p-2.5 rounded-xl border text-left cursor-pointer transition ${
+                              isSelected
+                                ? 'border-[#8b6c3a] bg-white ring-1 ring-[#8b6c3a]/40 shadow-xs'
+                                : 'border-stone-200 bg-white hover:border-stone-300 hover:bg-stone-50'
+                            }`}
                           >
-                            <span>⚡</span> Auto-Map 1-to-1
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-stone-700 text-[11px] font-semibold hover:bg-stone-50 transition cursor-pointer shadow-2xs"
-                        >
-                          + Add More
-                        </button>
-                        <button
-                          type="button"
-                          onClick={resetUploadModal}
-                          className="text-rose-600 hover:text-rose-700 text-[11px] font-semibold hover:underline cursor-pointer ml-1"
-                        >
-                          Clear
-                        </button>
-                      </div>
-                    </div>
+                            <div
+                              className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition ${
+                                isSelected
+                                  ? 'border-[#8b6c3a] bg-[#8b6c3a] text-white'
+                                  : 'border-stone-300 bg-white'
+                              }`}
+                            >
+                              {isSelected && <HiOutlineCheck className="h-3 w-3 stroke-[3]" />}
+                            </div>
 
-                    {/* Grid of staged thumbnails (spacious 2 or 3 columns) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 max-h-[460px] overflow-y-auto p-1">
-                      {selectedFiles.map((item, idx) => (
-                        <div
-                          key={item.id}
-                          className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs hover:border-[#8b6c3a]/50 hover:shadow-md transition"
-                        >
-                          <div className="relative aspect-video w-full bg-stone-100 flex items-center justify-center overflow-hidden">
-                            <img
-                              src={item.previewUrl}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
-                            />
-                            <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/65 text-white backdrop-blur-xs shadow-xs">
-                              #{idx + 1}
-                            </span>
+                            <div
+                              onClick={(e) => {
+                                if (thumbUrl) {
+                                  e.stopPropagation();
+                                  setPreviewModalData({
+                                    url: thumbUrl,
+                                    title: displayName,
+                                    subtitle: `${targetSingularLabel} • ${categoryLabel || badgeType}`,
+                                  });
+                                }
+                              }}
+                              className={`h-10 w-14 shrink-0 rounded-lg overflow-hidden border border-stone-200 bg-stone-100 flex items-center justify-center relative group/thumb ${
+                                thumbUrl ? 'cursor-pointer hover:ring-2 hover:ring-[#8b6c3a]/50' : ''
+                              }`}
+                              title={thumbUrl ? "Click to preview banner image" : undefined}
+                            >
+                              {thumbUrl ? (
+                                <>
+                                  <img src={thumbUrl} alt={displayName} className="h-full w-full object-cover transition-transform duration-300 group-hover/thumb:scale-110" />
+                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 transition-opacity flex items-center justify-center">
+                                    <HiOutlineEye className="w-3.5 h-3.5 text-white drop-shadow" />
+                                  </div>
+                                </>
+                              ) : (
+                                <HiOutlinePhotograph className="h-5 w-5 text-stone-400" />
+                              )}
+                            </div>
 
-                            {/* Top reduction or optimizing badge */}
-                            {item.isCompressing ? (
-                              <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500 text-white shadow-xs animate-pulse flex items-center gap-1">
-                                <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
-                                Optimizing...
-                              </span>
-                            ) : item.savingsPercent > 0 ? (
-                              <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600 text-white shadow-xs flex items-center gap-0.5">
-                                <span>⚡</span> -{item.savingsPercent}%
-                              </span>
-                            ) : (
-                              <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-700/80 text-white shadow-xs">
-                                WebP
-                              </span>
-                            )}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-bold text-stone-800 truncate">
+                                {displayName}
+                              </p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                <span className="text-[9px] uppercase font-semibold text-stone-500 bg-stone-100 px-1 py-0.2 rounded">
+                                  {badgeType}
+                                </span>
+                                {categoryLabel && (
+                                  <>
+                                    <span className="text-stone-300">•</span>
+                                    <span className="text-[9.5px] text-[#8b6c3a] truncate max-w-[120px]">
+                                      {categoryLabel}
+                                    </span>
+                                  </>
+                                )}
+                              </div>
+                            </div>
 
-                            <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10" onClick={(e) => e.stopPropagation()}>
+                            {thumbUrl && (
                               <button
                                 type="button"
-                                onClick={() =>
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setPreviewModalData({
-                                    url: item.previewUrl,
-                                    title: item.name,
-                                    subtitle: `Staged File • ${formatBytes(item.compressedSize || item.size)}`,
-                                  })
-                                }
-                                className="h-6 w-6 rounded-full bg-black/60 hover:bg-[#8b6c3a] text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
-                                title="Preview image"
+                                    url: thumbUrl,
+                                    title: displayName,
+                                    subtitle: `${targetSingularLabel} • ${categoryLabel || badgeType}`,
+                                  });
+                                }}
+                                className="shrink-0 p-1.5 rounded-lg border border-stone-200 bg-stone-50 hover:bg-[#8b6c3a]/10 hover:border-[#8b6c3a] text-stone-500 hover:text-[#8b6c3a] transition cursor-pointer shadow-2xs"
+                                title="Preview banner image"
                               >
                                 <HiOutlineEye className="w-3.5 h-3.5" />
                               </button>
-                              {!isUploading && (
-                                <button
-                                  type="button"
-                                  onClick={() => removeFile(item.id)}
-                                  className="h-6 w-6 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
-                                  title="Remove image"
-                                >
-                                  <HiOutlineX className="w-3.5 h-3.5 stroke-[3]" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
+                            )}
 
-                          {/* Card Meta with Original (OG) vs Compressed Size */}
-                          <div className="p-2.5 flex flex-col gap-1.5 text-xs bg-white border-t border-stone-100">
-                            <div className="flex items-center justify-between">
-                              <span className="truncate font-semibold text-stone-800 text-[11px]" title={item.name}>
-                                {item.name}
+                            {isSelected && (
+                              <span className="shrink-0 text-[10px] font-bold text-[#8b6c3a] bg-[#8b6c3a]/10 px-2 py-0.5 rounded-full">
+                                Selected
                               </span>
-                              <span className="text-[9.5px] font-bold text-emerald-700 uppercase bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded">
-                                WebP
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between text-[10.5px]">
-                              <span className="text-stone-400 font-mono line-through" title="Original size">
-                                {formatBytes(item.originalSize || item.size)}
-                              </span>
-                              <span className="text-stone-300">→</span>
-                              <span className="font-mono font-bold text-emerald-700" title="Compressed WebP size">
-                                {formatBytes(item.compressedSize || item.size)}
-                              </span>
-                            </div>
-
-                            {/* Target Record Mapping Dropdown for each image */}
-                            {isTargetMappable && availableRecords.length > 0 && (
-                              <div className="pt-2 border-t border-stone-100 flex flex-col gap-1">
-                                <label className="text-[10px] font-bold text-[#8b6c3a] flex items-center justify-between">
-                                  <span className="flex items-center gap-1">
-                                    <HiOutlineLink className="w-3 h-3" /> Linked {targetSingularLabel}:
-                                  </span>
-                                  {imageRecordMap[item.id] ? (
-                                    <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded">
-                                      Mapped
-                                    </span>
-                                  ) : (
-                                    <span className="text-[9px] text-stone-400">Default</span>
-                                  )}
-                                </label>
-                                <Dropdown
-                                  size="sm"
-                                  portal={true}
-                                  autoMenuWidth={true}
-                                  menuClassName="z-[11000]"
-                                  buttonClassName="w-full h-8 text-[11px] px-2 bg-stone-50 border-stone-200 font-medium text-stone-800 focus:bg-white focus:border-[#8b6c3a] rounded-xl"
-                                  value={
-                                    imageRecordMap[item.id] !== undefined
-                                      ? imageRecordMap[item.id]
-                                      : (selectedRecordIds[idx % selectedRecordIds.length] || selectedRecordIds[0] || '')
-                                  }
-                                  onChange={(val) => {
-                                    setImageRecordMap((prev) => ({ ...prev, [item.id]: val || '' }));
-                                  }}
-                                  options={recordDropdownOptions}
-                                  placeholder="Select linked item..."
-                                />
-                              </div>
                             )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
-                  </div>
-                )}
 
-                {/* Upload Progress Bar */}
-                {isUploading && (
-                  <div className="space-y-1.5 rounded-xl border border-stone-200 bg-stone-50 p-3">
-                    <div className="flex justify-between text-xs font-semibold text-stone-700">
-                      <span>{uploadProgressText || 'Uploading and assigning images…'}</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#8b6c3a] to-emerald-500 transition-all duration-300"
-                        style={{ width: `${uploadProgress}%` }}
-                      ></div>
-                    </div>
+                    {selectedRecordIds.length > 1 && selectedFiles.length > 1 && (
+                      <div className="flex items-center justify-between pt-1 text-[11px] text-stone-700 bg-white p-2.5 rounded-xl border border-[#8b6c3a]/25">
+                        <span>
+                          💡 <strong>{selectedRecordIds.length}</strong> {targetModuleTitle.toLowerCase()} selected.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={handleAutoDistributeRecords}
+                          className="font-bold text-[#8b6c3a] hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>⚡</span> Auto-distribute to {selectedFiles.length} images
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
+            )}
+
+            {/* ─── BOTTOM SECTION: STEP 4 FILE UPLOAD ZONE & STAGED IMAGES MAPPING (FULL WIDTH) ─── */}
+            <div className="space-y-3">
+              {/* Header & Compression Info Banner */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <label className="block text-xs font-bold text-stone-800">
+                  4. Upload Image File{selectedFiles.length > 1 ? 's' : ''} {isTargetMappable ? `& ${targetSingularLabel} Mapping` : ''} <span className="text-rose-500">*</span>
+                </label>
+                {selectedFiles.length > 0 && (
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <span className="text-stone-400 font-mono line-through" title="Original File Size">
+                      {formatBytes(totalOriginalBytes)}
+                    </span>
+                    <span className="text-stone-300">→</span>
+                    <span className="font-bold font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/80 flex items-center gap-1 shadow-2xs">
+                      <span className="text-[10px]">⚡</span> {formatBytes(totalCompressedBytes)} WebP
+                      {totalSavingsPercent > 0 && (
+                        <span className="text-[10px] text-emerald-600 font-semibold">(-{totalSavingsPercent}%)</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Smart Image Compression Info Banner */}
+              <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200/90 bg-emerald-50/70 p-2 text-[11px] text-emerald-900 shadow-2xs">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-[11px] shadow-2xs">
+                  ⚡
+                </div>
+                <div className="flex-1 flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-emerald-950">
+                    {compressionSettings.enabled !== false ? 'Smart Image Compression Active' : 'Image Compression Inactive'}
+                  </span>
+                  {compressionSettings.enabled !== false && (
+                    <span className="inline-flex items-center rounded-md bg-emerald-200/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-emerald-800">
+                      Auto WebP · ~{compressionSettings.quality || 60}% Quality
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={(e) => {
+                  addFiles(e.target.files);
+                  if (e.target) e.target.value = '';
+                }}
+                className="hidden"
+              />
+
+              {selectedFiles.length === 0 ? (
+                <div
+                  {...getUploadTriggerProps(() => fileInputRef.current?.click())}
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragging(true);
+                  }}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragging(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsDragging(false);
+                    addFiles(e.dataTransfer.files);
+                  }}
+                  className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 text-center cursor-pointer transition-all min-h-[220px] focus:outline-none focus:border-[#8b6c3a] focus:ring-2 focus:ring-[#8b6c3a]/25 ${
+                    isDragging
+                      ? 'border-[#8b6c3a] bg-[#faf5ee] scale-[0.99]'
+                      : 'border-stone-300 bg-stone-50/70 hover:border-[#8b6c3a] hover:bg-stone-50'
+                  }`}
+                >
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#8b6c3a]/10 text-[#8b6c3a] shadow-sm">
+                    <HiOutlineUpload className="h-7 w-7" />
+                  </div>
+                  <p className="mt-3 text-sm font-bold text-stone-800">
+                    Click or drag and drop images here
+                  </p>
+                  <span className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white border border-stone-200 shadow-2xs text-xs font-semibold text-stone-700 hover:bg-stone-50">
+                    Browse Files
+                  </span>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-stone-200 bg-stone-50/60 p-3.5 space-y-3">
+                  {/* Top Action Toolbar inside Staged Area */}
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-bold text-stone-800">
+                        {selectedFiles.length} Image{selectedFiles.length === 1 ? '' : 's'} Staged
+                      </span>
+                      <span className="text-stone-300">•</span>
+                      <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
+                        {formatBytes(totalCompressedBytes)} total
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {isTargetMappable && availableRecords.length > 1 && selectedFiles.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={handleAutoDistributeRecords}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-[#8b6c3a]/10 border border-[#8b6c3a]/30 text-[#8b6c3a] text-[11px] font-bold hover:bg-[#8b6c3a]/20 transition cursor-pointer"
+                          title={`Auto map ${targetModuleTitle.toLowerCase()} sequentially`}
+                        >
+                          <span>⚡</span> Auto-Map 1-to-1
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-stone-200 text-stone-700 text-[11px] font-semibold hover:bg-stone-50 transition cursor-pointer shadow-2xs"
+                      >
+                        + Add More
+                      </button>
+                      <button
+                        type="button"
+                        onClick={resetUploadModal}
+                        className="text-rose-600 hover:text-rose-700 text-[11px] font-semibold hover:underline cursor-pointer ml-1"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Grid of staged thumbnails (spacious 2, 3, or 4 columns) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 max-h-[460px] overflow-y-auto p-1">
+                    {selectedFiles.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className="group relative flex flex-col rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs hover:border-[#8b6c3a]/50 hover:shadow-md transition"
+                      >
+                        <div className="relative aspect-video w-full bg-stone-100 flex items-center justify-center overflow-hidden">
+                          <img
+                            src={item.previewUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-black/65 text-white backdrop-blur-xs shadow-xs">
+                            #{idx + 1}
+                          </span>
+
+                          {/* Top reduction or optimizing badge */}
+                          {item.isCompressing ? (
+                            <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500 text-white shadow-xs animate-pulse flex items-center gap-1">
+                              <span className="h-1.5 w-1.5 rounded-full bg-white animate-ping" />
+                              Optimizing...
+                            </span>
+                          ) : item.savingsPercent > 0 ? (
+                            <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600 text-white shadow-xs flex items-center gap-0.5">
+                              <span>⚡</span> -{item.savingsPercent}%
+                            </span>
+                          ) : (
+                            <span className="absolute top-1.5 left-1.5 px-2 py-0.5 rounded-md text-[10px] font-bold bg-stone-700/80 text-white shadow-xs">
+                              WebP
+                            </span>
+                          )}
+
+                          <div className="absolute top-1.5 right-1.5 flex items-center gap-1 z-10" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPreviewModalData({
+                                  url: item.previewUrl,
+                                  title: item.name,
+                                  subtitle: `Staged File • ${formatBytes(item.compressedSize || item.size)}`,
+                                })
+                              }
+                              className="h-6 w-6 rounded-full bg-black/60 hover:bg-[#8b6c3a] text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
+                              title="Preview image"
+                            >
+                              <HiOutlineEye className="w-3.5 h-3.5" />
+                            </button>
+                            {!isUploading && (
+                              <button
+                                type="button"
+                                onClick={() => removeFile(item.id)}
+                                className="h-6 w-6 rounded-full bg-black/60 hover:bg-rose-600 text-white flex items-center justify-center transition shadow-xs cursor-pointer opacity-90 hover:opacity-100"
+                                title="Remove image"
+                              >
+                                <HiOutlineX className="w-3.5 h-3.5 stroke-[3]" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Card Meta with Original (OG) vs Compressed Size */}
+                        <div className="p-2.5 flex flex-col gap-1.5 text-xs bg-white border-t border-stone-100">
+                          <div className="flex items-center justify-between">
+                            <span className="truncate font-semibold text-stone-800 text-[11px]" title={item.name}>
+                              {item.name}
+                            </span>
+                            <span className="text-[9.5px] font-bold text-emerald-700 uppercase bg-emerald-50 border border-emerald-200/60 px-1.5 py-0.2 rounded">
+                              WebP
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10.5px]">
+                            <span className="text-stone-400 font-mono line-through" title="Original size">
+                              {formatBytes(item.originalSize || item.size)}
+                            </span>
+                            <span className="text-stone-300">→</span>
+                            <span className="font-mono font-bold text-emerald-700" title="Compressed WebP size">
+                              {formatBytes(item.compressedSize || item.size)}
+                            </span>
+                          </div>
+
+                          {/* Target Record Mapping Dropdown for each image */}
+                          {isTargetMappable && availableRecords.length > 0 && (
+                            <div className="pt-2 border-t border-stone-100 flex flex-col gap-1">
+                              <label className="text-[10px] font-bold text-[#8b6c3a] flex items-center justify-between">
+                                <span className="flex items-center gap-1">
+                                  <HiOutlineLink className="w-3 h-3" /> Linked {targetSingularLabel}:
+                                </span>
+                                {imageRecordMap[item.id] ? (
+                                  <span className="text-[9px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded">
+                                    Mapped
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] text-stone-400">Default</span>
+                                )}
+                              </label>
+                              <Dropdown
+                                size="sm"
+                                portal={true}
+                                autoMenuWidth={true}
+                                menuClassName="z-[11000]"
+                                buttonClassName="w-full h-8 text-[11px] px-2 bg-stone-50 border-stone-200 font-medium text-stone-800 focus:bg-white focus:border-[#8b6c3a] rounded-xl"
+                                value={
+                                  imageRecordMap[item.id] !== undefined
+                                    ? imageRecordMap[item.id]
+                                    : (selectedRecordIds[idx % selectedRecordIds.length] || selectedRecordIds[0] || '')
+                                }
+                                onChange={(val) => {
+                                  setImageRecordMap((prev) => ({ ...prev, [item.id]: val || '' }));
+                                }}
+                                options={recordDropdownOptions}
+                                placeholder="Select linked item..."
+                              />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Upload Progress Bar */}
+              {isUploading && (
+                <div className="space-y-1.5 rounded-xl border border-stone-200 bg-stone-50 p-3">
+                  <div className="flex justify-between text-xs font-semibold text-stone-700">
+                    <span>{uploadProgressText || 'Uploading and assigning images…'}</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
+                    <div
+                      className="h-full bg-gradient-to-r from-[#8b6c3a] to-emerald-500 transition-all duration-300"
+                      style={{ width: `${uploadProgress}%` }}
+                    ></div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

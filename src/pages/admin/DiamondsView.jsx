@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -24,6 +24,12 @@ import Dropdown from '../../components/common/Dropdown';
 import RowActions from '../../components/common/RowActions';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import { useAdminPageSize } from '../../utils/adminPagination';
+import {
+  getCachedData,
+  setCachedData,
+  clearRequestCache,
+  isAbortError,
+} from '../../utils/requestCache';
 
 export default function DiamondsView() {
   const navigate = useNavigate();
@@ -32,6 +38,9 @@ export default function DiamondsView() {
 
   const [diamonds, setDiamonds] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const abortControllerRef = useRef(null);
+  const hasLoadedRef = useRef(false);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
   const [shapeFilter, setShapeFilter] = useState('all');
@@ -64,34 +73,78 @@ export default function DiamondsView() {
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const editFileInputRef = useRef(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async ({ silent = false } = {}) => {
+    if (silent) {
+      clearRequestCache('diamonds:');
+    }
+
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    const trimmedQ = search.trim();
+    const cacheKey = `diamonds:t=${typeFilter}:s=${shapeFilter}:p=${page}:l=${pageSize}:q=${trimmedQ}`;
+    const cached = !silent ? getCachedData(cacheKey, 60_000) : null;
+
+    if (cached) {
+      setDiamonds(cached.items);
+      if (cached.pagination) setPagination(cached.pagination);
+      setSelectedIds(new Set());
+      hasLoadedRef.current = true;
+      setLoading(false);
+      setRefreshing(false);
+    } else if (!silent) {
+      if (hasLoadedRef.current) {
+        setRefreshing(true);
+        setLoading(false);
+      } else {
+        setLoading(true);
+        setRefreshing(false);
+      }
+    }
+
     try {
-      setLoading(true);
       const params = {
         page,
         limit: pageSize,
-        search: search.trim() || undefined,
+        search: trimmedQ || undefined,
       };
       if (typeFilter !== 'all') params.typeId = typeFilter;
       if (shapeFilter !== 'all') params.shapeId = shapeFilter;
 
-      const res = await diamondsAPI.getAll(params);
+      const res = await api.get('/diamonds', { params, signal: controller.signal });
+      if (controller.signal.aborted) return;
+
       const items = res.data?.data?.items || res.data?.data || [];
-      setDiamonds(Array.isArray(items) ? items : []);
+      const list = Array.isArray(items) ? items : [];
+      const nextPagination = res.data?.pagination || null;
+
+      hasLoadedRef.current = true;
+      setDiamonds(list);
       setSelectedIds(new Set());
-      if (res.data?.pagination) {
-        setPagination(res.data.pagination);
+      if (nextPagination) {
+        setPagination(nextPagination);
       }
+      setCachedData(cacheKey, { items: list, pagination: nextPagination });
     } catch (err) {
+      if (isAbortError(err)) return;
       console.error('Failed to load diamonds:', err);
-      toast.error('Failed to load diamonds list');
+      if (!cached) {
+        toast.error('Failed to load diamonds list');
+      }
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted && !silent) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  };
+  }, [page, pageSize, typeFilter, shapeFilter, search]);
 
   useEffect(() => {
     fetchData();
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [page, pageSize, typeFilter, shapeFilter]);
 
   // Lazy fetch filter lookups only when needed (e.g. user opens filters or edits a diamond)
@@ -129,6 +182,7 @@ export default function DiamondsView() {
 
     try {
       await diamondsAPI.delete(item._id);
+      clearRequestCache('diamonds:');
       toast.success('Diamond removed from stock');
       setDiamonds((prev) => prev.filter((d) => d._id !== item._id));
       setSelectedIds((prev) => {
@@ -179,6 +233,7 @@ export default function DiamondsView() {
     const idsToDelete = Array.from(selectedIds);
     try {
       await api.post('/diamonds/bulk-delete', { ids: idsToDelete });
+      clearRequestCache('diamonds:');
       setDiamonds((prev) => prev.filter((d) => !selectedIds.has(d._id)));
       setSelectedIds(new Set());
       setPagination((prev) => ({
@@ -216,6 +271,7 @@ export default function DiamondsView() {
         },
       };
       await diamondsAPI.update(diamondId, payload);
+      clearRequestCache('diamonds:');
       setDiamonds((prev) =>
         prev.map((item) =>
           item._id === diamondId ? { ...item, ...payload } : item
@@ -269,6 +325,7 @@ export default function DiamondsView() {
           : { 'visibility.app': nextApp };
 
       await diamondsAPI.update(diamondId, payload);
+      clearRequestCache('diamonds:');
       toast.success(
         `${platform === 'web' ? 'Web' : 'App'} visibility ${
           (platform === 'web' ? nextWeb : nextApp) ? 'enabled' : 'disabled'
@@ -308,6 +365,7 @@ export default function DiamondsView() {
         prev.map((d) => (d._id === item._id ? { ...d, status: nextStatus } : d))
       );
       await diamondsAPI.update(item._id, { status: nextStatus });
+      clearRequestCache('diamonds:');
       toast.success(`Status updated to ${nextStatus === 'approved' ? 'Approved' : 'Draft'}`);
     } catch {
       toast.error('Failed to update status');
@@ -424,6 +482,7 @@ export default function DiamondsView() {
       };
 
       const res = await diamondsAPI.update(editingDiamond._id, payload);
+      clearRequestCache('diamonds:');
       const updatedItem = res.data?.data || res.data || payload;
 
       setDiamonds((prev) =>
@@ -523,7 +582,10 @@ export default function DiamondsView() {
           <div className="w-full sm:w-36" onMouseDown={fetchLookups} onTouchStart={fetchLookups}>
             <Dropdown
               value={shapeFilter}
-              onChange={(val) => setShapeFilter(val)}
+              onChange={(val) => {
+                setShapeFilter(val);
+                setPage(1);
+              }}
               options={[
                 { value: 'all', label: 'All Shapes' },
                 ...shapes.map((s) => ({ value: s._id, label: s.name })),
@@ -537,7 +599,10 @@ export default function DiamondsView() {
           <div className="w-full sm:w-36" onMouseDown={fetchLookups} onTouchStart={fetchLookups}>
             <Dropdown
               value={typeFilter}
-              onChange={(val) => setTypeFilter(val)}
+              onChange={(val) => {
+                setTypeFilter(val);
+                setPage(1);
+              }}
               options={[
                 { value: 'all', label: 'All Types' },
                 ...types.map((t) => ({ value: t._id, label: t.name })),
@@ -565,8 +630,13 @@ export default function DiamondsView() {
       </div>
 
       {/* ─── Diamonds List Table & Mobile Cards ─── */}
-      <div className="bg-white rounded-xl sm:rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-xl sm:rounded-lg border border-stone-200/90 shadow-2xs overflow-hidden relative">
+        {refreshing && (
+          <div className="h-0.5 w-full bg-stone-200/70 overflow-hidden">
+            <div className="h-full w-1/3 rounded-full bg-[#8b6f4e] animate-pulse" />
+          </div>
+        )}
+        <div className={`overflow-x-auto transition-opacity duration-150 ${refreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
           {loading ? (
             <div className="py-20 text-center">
               <div className="w-8 h-8 border-2 border-[#8b6f4e] border-t-transparent rounded-full animate-spin mx-auto mb-3" />

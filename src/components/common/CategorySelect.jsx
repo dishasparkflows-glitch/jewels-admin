@@ -20,6 +20,7 @@ export default function CategorySelect({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
+  const isPointerDownRef = useRef(false);
 
   // Close when clicking outside
   useEffect(() => {
@@ -85,13 +86,48 @@ export default function CategorySelect({
     onChangeCollections?.(next);
   };
 
+  const handleFocus = () => {
+    if (disabled || isPointerDownRef.current) return;
+    setIsOpen(true);
+  };
+
+  const handleBlur = (e) => {
+    if (e.relatedTarget && containerRef.current?.contains(e.relatedTarget)) {
+      return;
+    }
+    if (!e.relatedTarget) return;
+    setIsOpen(false);
+  };
+
+  const handleTriggerKeyDown = (e) => {
+    if (disabled) return;
+    if (!isOpen && ['ArrowDown', 'ArrowUp', 'Enter', ' '].includes(e.key)) {
+      e.preventDefault();
+      setIsOpen(true);
+    } else if (isOpen && e.key === 'Tab') {
+      setIsOpen(false);
+    }
+  };
+
   return (
-    <div ref={containerRef} className={`relative w-full text-left font-sans ${className}`}>
+    <div
+      ref={containerRef}
+      onBlur={handleBlur}
+      className={`relative w-full text-left font-sans ${className}`}
+    >
       {/* Trigger Button */}
       <button
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        onPointerDown={() => {
+          isPointerDownRef.current = true;
+        }}
+        onFocus={handleFocus}
+        onKeyDown={handleTriggerKeyDown}
+        onClick={() => {
+          isPointerDownRef.current = false;
+          if (!disabled) setIsOpen((prev) => !prev);
+        }}
         className={`w-full h-[42px] px-3.5 flex items-center justify-between gap-2 rounded-xl border bg-white text-xs sm:text-[13px] transition-all shadow-2xs cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed select-none ${
           isOpen
             ? 'border-[#8b6f4e] ring-2 ring-[#8b6f4e]/20'

@@ -14,6 +14,7 @@ import {
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
+import { clearRequestCache } from '../../utils/requestCache';
 import Pagination from '../../components/common/Pagination';
 import useAdminList from '../../hooks/useAdminList';
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -149,6 +150,7 @@ export default function AppointmentsView() {
       } catch {
         await api.put(`/appointments/${id}`, { status: newStatus });
       }
+      clearRequestCache('appointments');
       toast.success(
         newStatus === 'confirmed'
           ? 'Appointment confirmed'
@@ -219,6 +221,7 @@ export default function AppointmentsView() {
 
     try {
       await api.delete(`/appointments/${id}`);
+      clearRequestCache('appointments');
       setAppointments((prev) => prev.filter((a) => (a._id || a.id) !== id));
       removeFromSelection(id);
       setServerTotal((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
@@ -247,6 +250,7 @@ export default function AppointmentsView() {
     const idsToDelete = Array.from(selectedIds);
     try {
       await api.post('/appointments/bulk-delete', { ids: idsToDelete });
+      clearRequestCache('appointments');
       setAppointments((prev) => prev.filter((a, idx) => !selectedIds.has(a._id || a.id || `apt_${idx}`)));
       clearSelection();
       setServerTotal((prev) => (prev !== null ? Math.max(0, prev - idsToDelete.length) : 0));
@@ -304,6 +308,7 @@ export default function AppointmentsView() {
       };
 
       await api.put(`/appointments/${aptId}`, payload);
+      clearRequestCache('appointments');
 
       setAppointments((prev) =>
         prev.map((a) => {
@@ -345,6 +350,7 @@ export default function AppointmentsView() {
       };
 
       const res = await api.post('/appointments', payload);
+      clearRequestCache('appointments');
       const created = res.data?.data || payload;
       setAppointments((prev) => [created, ...prev]);
       setServerTotal((prev) => (prev !== null ? prev + 1 : 1));

@@ -13,6 +13,8 @@ import {
   HiOutlineEye,
   HiOutlineGift,
   HiOutlineMenuAlt4,
+  HiOutlineLink,
+  HiOutlineInformationCircle,
 } from 'react-icons/hi';
 import { IoCubeOutline, IoDiamondOutline, IoLayersOutline } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -48,13 +50,14 @@ export default function CelebrateGiftsView() {
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalSize, setModalSize] = useState('standard'); // 'standard' | 'wide' | 'full'
   const [isReorderModalOpen, setIsReorderModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewingItem, setViewingItem] = useState(null);
   const [editingItem, setEditingItem] = useState(null);
 
   // Category and Menu Item lookup
-  const { categories = [], categoryOptions = [] } = useCategoryLookup();
+  const { categories = [] } = useCategoryLookup();
 
   // Form State
   const [title, setTitle] = useState('');
@@ -561,7 +564,8 @@ export default function CelebrateGiftsView() {
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
-      <ModuleHeader        title="Celebrate & Gifts"
+      <ModuleHeader
+        title="Celebrate & Gifts"
         subtitle="Configure promotional product showcases, seasonal gift curations and storefront groupings."
         onAdd={openAddModal}
         addLabel={
@@ -570,7 +574,8 @@ export default function CelebrateGiftsView() {
             : placementFilter === 'Gifts'
             ? 'Add Gift Showcase'
             : 'Add Showcase'
-        }      />
+        }
+      />
 
       {/* ─── 4 Stat Cards Row ─── */}
       <StatCards cards={statCardsData} />
@@ -612,18 +617,6 @@ export default function CelebrateGiftsView() {
                 </button>
               );
             })}
-          </div>
-
-          <div className="flex items-center gap-2 pb-2.5">
-            <button
-              type="button"
-              onClick={openReorderModal}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[#8b6f4e] bg-[#fbf7f0] hover:bg-[#f3ebd9] border border-[#e5d7c3] transition-all cursor-pointer shadow-2xs active:scale-95"
-              title="Reorder showcases"
-            >
-              <HiOutlineMenuAlt4 className="w-3.5 h-3.5 stroke-2" />
-              <span>Reorder {placementFilter !== 'all' ? placementFilter : ''}</span>
-            </button>
           </div>
         </div>
 
@@ -911,7 +904,13 @@ export default function CelebrateGiftsView() {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl lg:max-w-4xl overflow-hidden border border-stone-200 animate-in fade-in zoom-in duration-200"
+            className={`bg-white rounded-3xl shadow-2xl w-full overflow-hidden border border-stone-200 animate-in fade-in zoom-in duration-200 transition-all ${
+              modalSize === 'full'
+                ? 'max-w-[96vw]'
+                : modalSize === 'wide'
+                ? 'max-w-6xl'
+                : 'max-w-3xl lg:max-w-4xl'
+            }`}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
@@ -924,211 +923,308 @@ export default function CelebrateGiftsView() {
                   CAMPAIGN GROUPING
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
-              >
-                <HiOutlineX className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <div className="hidden sm:inline-flex items-center gap-1 bg-stone-100 p-0.5 rounded-xl border border-stone-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setModalSize('standard')}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                      modalSize === 'standard' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                  >
+                    Standard
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalSize('wide')}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                      modalSize === 'wide' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                  >
+                    Wide
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalSize('full')}
+                    className={`px-2.5 py-1 rounded-lg font-medium transition-all cursor-pointer ${
+                      modalSize === 'full' ? 'bg-white text-stone-900 shadow-2xs font-semibold' : 'text-stone-500 hover:text-stone-800'
+                    }`}
+                  >
+                    Full Stretch
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsModalOpen(false)}
+                  className="w-8 h-8 rounded-full border border-stone-200 flex items-center justify-center text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
+                >
+                  <HiOutlineX className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Modal Form */}
-            <form ref={modalFormRef} onSubmit={handleSaveGroup} className="p-6 sm:p-7 space-y-4 max-h-[85vh] overflow-y-auto overflow-x-hidden">
-              {/* GROUP TITLE, SLUG & SHOWCASE STATUS */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                {/* GROUP TITLE */}
-                <div className="sm:col-span-2">
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
-                      GROUP TITLE
-                    </label>
-                    <span className="text-[10px] font-medium text-stone-400">Unique</span>
+            <form ref={modalFormRef} onSubmit={handleSaveGroup} className="p-6 sm:p-7 space-y-5 max-h-[85vh] overflow-y-auto overflow-x-hidden">
+              {/* ─── SECTION 1: GROUP DETAILS ─── */}
+              <div className="rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
+                <div className="flex items-center gap-2.5 pb-2.5 border-b border-stone-150">
+                  <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center border border-stone-300 shadow-2xs shrink-0">
+                    1
+                  </span>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900 leading-tight">
+                      Group details
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Configure title, slug, placement and navigation mapping.
+                    </p>
                   </div>
-                  <input
-                    type="text"
-                    value={title}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="e.g. Wedding Bestsellers"
-                    className="w-full px-4 py-2.5 rounded-xl border border-stone-200 text-sm text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
-                  />
                 </div>
 
-                {/* URL SLUG */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
-                      URL SLUG
+                {/* GROUP TITLE, SLUG & SHOWCASE STATUS */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {/* GROUP TITLE */}
+                  <div>
+                    <label className="block text-xs font-bold text-stone-900 mb-1.5">
+                      Group Title <span className="text-stone-900">*</span>
                     </label>
-                    <span className="text-[10px] font-medium text-stone-400">Unique</span>
+                    <div className="flex items-center gap-2.5 h-[42px] px-3.5 rounded-xl border border-stone-200 bg-white focus-within:border-[var(--theme-primary,#8f6d43)] focus-within:ring-2 focus-within:ring-[var(--theme-primary,#8f6d43)]/15 transition-all">
+                      <span
+                        aria-hidden="true"
+                        className="text-stone-400 font-semibold leading-none select-none shrink-0 inline-flex items-baseline"
+                      >
+                        <span className="text-[13px]">T</span>
+                        <span className="text-[10px]">T</span>
+                      </span>
+                      <input
+                        type="text"
+                        value={title}
+                        onChange={(e) => handleTitleChange(e.target.value)}
+                        placeholder="e.g. Wedding Bestsellers"
+                        className="w-full bg-transparent text-xs sm:text-[13px] text-stone-800 placeholder-stone-400 focus:outline-none"
+                      />
+                    </div>
                   </div>
-                  <input
-                    type="text"
-                    value={slug}
-                    onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[\s\W-]+/g, '-'))}
-                    placeholder="e.g. wedding-bestsellers"
-                    className="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-xs font-mono text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
-                  />
+
+                  {/* URL SLUG */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <label className="block text-xs font-bold text-stone-900">
+                        URL Slug
+                      </label>
+                      <span
+                        title="Unique URL-friendly identifier used in campaign links"
+                        data-tooltip="Unique URL-friendly identifier used in campaign links"
+                        className="text-stone-400 hover:text-stone-600 cursor-help inline-flex items-center"
+                      >
+                        <HiOutlineInformationCircle className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2.5 h-[42px] px-3.5 rounded-xl border border-stone-200 bg-white focus-within:border-[var(--theme-primary,#8f6d43)] focus-within:ring-2 focus-within:ring-[var(--theme-primary,#8f6d43)]/15 transition-all">
+                      <HiOutlineLink className="w-4 h-4 text-stone-400 shrink-0" />
+                      <input
+                        type="text"
+                        value={slug}
+                        onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[\s\W-]+/g, '-'))}
+                        placeholder="e.g. wedding-bestsellers"
+                        className="w-full bg-transparent text-xs sm:text-[13px] text-stone-800 placeholder-stone-400 focus:outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* SHOWCASE STATUS */}
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <label className="block text-xs font-bold text-stone-900">
+                        Showcase Status
+                      </label>
+                      <span
+                        title="Control whether this campaign group is visible on the storefront"
+                        data-tooltip="Control whether this campaign group is visible on the storefront"
+                        className="text-stone-400 hover:text-stone-600 cursor-help inline-flex items-center"
+                      >
+                        <HiOutlineInformationCircle className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                    <div
+                      onClick={() => setStatus(status === 'active' ? 'inactive' : 'active')}
+                      style={
+                        status === 'active'
+                          ? {
+                              backgroundColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.08)',
+                              borderColor: 'rgba(var(--theme-primary-rgb, 139, 111, 78), 0.22)',
+                            }
+                          : undefined
+                      }
+                      className={`flex items-center gap-3 h-[42px] px-3.5 rounded-xl border transition-all cursor-pointer select-none ${
+                        status === 'active'
+                          ? ''
+                          : 'border-stone-200 bg-stone-50/80'
+                      }`}
+                    >
+                      <div onClick={(e) => e.stopPropagation()} className="flex items-center shrink-0">
+                        <ToggleSwitch
+                          checked={status === 'active'}
+                          onChange={(nextVal) => setStatus(nextVal ? 'active' : 'inactive')}
+                          size="md"
+                          ariaLabel="Showcase Status"
+                        />
+                      </div>
+                      <span
+                        style={status === 'active' ? { color: 'var(--theme-primary, #8b6f4e)' } : undefined}
+                        className={`text-xs font-semibold truncate ${
+                          status === 'active' ? '' : 'text-stone-500'
+                        }`}
+                      >
+                        {status === 'active' ? 'Show on showcase' : 'Hidden'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
-                {/* SHOWCASE STATUS */}
-                <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
-                    SHOWCASE STATUS
-                  </label>
-                  <div className="flex items-center justify-center h-[42px] px-3.5 rounded-xl border border-stone-200 bg-stone-50/60">
-                    <ToggleSwitch
-                      checked={status === 'active'}
-                      onChange={(nextVal) => setStatus(nextVal ? 'active' : 'inactive')}
-                      size="md"
-                      ariaLabel="Showcase Status"
+                {/* DISPLAY CONFIG: BANNER TYPE, PLATFORM & ORDER */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* BANNER TYPE */}
+                  <div>
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
+                      BANNER TYPE *
+                    </label>
+                    <Dropdown
+                      size="field"
+                      variant="input"
+                      portal={true}
+                      value={placement}
+                      onChange={(val) => {
+                        setPlacement(val);
+                        if (!editingItem && !orderManuallyEdited) {
+                          setOrder(getNextDisplayOrder(val));
+                        }
+                      }}
+                      placeholder="Select Banner Type"
+                      options={[
+                        { value: 'Celebrate', label: 'Celebrate' },
+                        { value: 'Gifts', label: 'Gifts' },
+                      ]}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* PLATFORM */}
+                  <div>
+                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
+                      PLATFORM
+                    </label>
+                    <div className="grid grid-cols-3 gap-1">
+                      {[
+                        { key: 'web', label: 'Web' },
+                        { key: 'mobile', label: 'Mobile' },
+                        { key: 'common', label: 'All' },
+                      ].map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => setPlatform(opt.key)}
+                          className={`py-2 px-1 rounded-xl border text-[11px] font-semibold tracking-wide transition-all cursor-pointer text-center ${
+                            platform === opt.key
+                              ? 'bg-[#8f6d43] border-[#8f6d43] text-white shadow-xs'
+                              : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* DISPLAY ORDER */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
+                        DISPLAY ORDER
+                      </label>
+                      {!editingItem && (
+                        <span className="text-[10px] font-medium text-[#8f6d43]">Auto</span>
+                      )}
+                    </div>
+                    <input
+                      type="number"
+                      min="0"
+                      value={order}
+                      onChange={(e) => {
+                        const raw = e.target.value;
+                        setOrderManuallyEdited(true);
+                        setOrder(raw === '' ? '' : Math.max(0, parseInt(raw, 10) || 0));
+                      }}
+                      placeholder={String(getNextDisplayOrder(placement))}
+                      className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
+                    />
+                  </div>
+                </div>
+
+                {/* CATEGORY & MENU ITEM LIST (OPTIONAL) */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-0.5">
+                  {/* CATEGORY DROPDOWN */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
+                        CATEGORY
+                      </label>
+                      <span className="text-[10px] text-stone-400 font-medium">Optional</span>
+                    </div>
+                    <Dropdown
+                      size="field"
+                      variant="input"
+                      portal={true}
+                      value={categoryId}
+                      onChange={(val) => {
+                        if (val !== categoryId) {
+                          setMenuItemIds([]);
+                        }
+                        setCategoryId(val);
+                      }}
+                      placeholder="Select Category (Optional)"
+                      options={[
+                        { value: '', label: 'None (No Category)' },
+                        ...categories.map((c) => ({ value: c._id, label: c.name })),
+                      ]}
+                      className="w-full"
+                    />
+                  </div>
+
+                  {/* MENU ITEM LIST DROPDOWN */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
+                        MENU ITEM LIST
+                      </label>
+                      <span className="text-[10px] text-stone-400 font-medium">Optional</span>
+                    </div>
+                    <MenuItemSelect
+                      key={categoryId || 'all'}
+                      categoryId={categoryId}
+                      value={menuItemIds}
+                      onChange={setMenuItemIds}
+                      placeholder="Select Menu Items (Optional)"
                     />
                   </div>
                 </div>
               </div>
 
-              {/* DISPLAY CONFIG: BANNER TYPE, PLATFORM & ORDER */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* BANNER TYPE */}
-                <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
-                    BANNER TYPE *
-                  </label>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {['Celebrate', 'Gifts'].map((opt) => (
-                      <button
-                        key={opt}
-                        type="button"
-                        onClick={() => {
-                          setPlacement(opt);
-                          if (!editingItem && !orderManuallyEdited) {
-                            setOrder(getNextDisplayOrder(opt));
-                          }
-                        }}
-                        className={`py-2 px-2 rounded-xl border text-xs font-semibold tracking-wide transition-all cursor-pointer text-center ${
-                          placement === opt
-                            ? 'bg-[#8f6d43] border-[#8f6d43] text-white shadow-xs'
-                            : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
-                        }`}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* PLATFORM */}
-                <div>
-                  <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase mb-1.5">
-                    PLATFORM
-                  </label>
-                  <div className="grid grid-cols-3 gap-1">
-                    {[
-                      { key: 'web', label: 'Web' },
-                      { key: 'mobile', label: 'Mobile' },
-                      { key: 'common', label: 'All' },
-                    ].map((opt) => (
-                      <button
-                        key={opt.key}
-                        type="button"
-                        onClick={() => setPlatform(opt.key)}
-                        className={`py-2 px-1 rounded-xl border text-[11px] font-semibold tracking-wide transition-all cursor-pointer text-center ${
-                          platform === opt.key
-                            ? 'bg-[#8f6d43] border-[#8f6d43] text-white shadow-xs'
-                            : 'bg-stone-50 border-stone-200 text-stone-700 hover:bg-stone-100'
-                        }`}
-                      >
-                        {opt.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* DISPLAY ORDER */}
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
-                      DISPLAY ORDER
-                    </label>
-                    {!editingItem && (
-                      <span className="text-[10px] font-medium text-[#8f6d43]">Auto</span>
-                    )}
-                  </div>
-                  <input
-                    type="number"
-                    min="0"
-                    value={order}
-                    onChange={(e) => {
-                      const raw = e.target.value;
-                      setOrderManuallyEdited(true);
-                      setOrder(raw === '' ? '' : Math.max(0, parseInt(raw, 10) || 0));
-                    }}
-                    placeholder={String(getNextDisplayOrder(placement))}
-                    className="w-full px-3 py-2 rounded-xl border border-stone-200 text-xs text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-[#8f6d43] transition-colors"
-                  />
-                </div>
-              </div>
-
-              {/* CATEGORY & MENU ITEM LIST (OPTIONAL) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-0.5">
-                {/* CATEGORY DROPDOWN */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
-                      CATEGORY
-                    </label>
-                    <span className="text-[10px] text-stone-400 font-medium">Optional</span>
-                  </div>
-                  <Dropdown
-                    size="field"
-                    variant="input"
-                    value={categoryId}
-                    onChange={(val) => {
-                      if (val !== categoryId) {
-                        setMenuItemIds([]);
-                      }
-                      setCategoryId(val);
-                    }}
-                    placeholder="Select Category (Optional)"
-                    options={[
-                      { value: '', label: 'None (No Category)' },
-                      ...categoryOptions,
-                    ]}
-                    className="w-full"
-                  />
-                </div>
-
-                {/* MENU ITEM LIST DROPDOWN */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <label className="block text-[11px] font-bold tracking-wider text-stone-500 uppercase">
-                      MENU ITEM LIST
-                    </label>
-                    <span className="text-[10px] text-stone-400 font-medium">Optional</span>
-                  </div>
-                  <MenuItemSelect
-                    key={categoryId || 'all'}
-                    categoryId={categoryId}
-                    value={menuItemIds}
-                    onChange={setMenuItemIds}
-                    placeholder="Select Menu Items (Optional)"
-                  />
-                </div>
-              </div>
-
-              {/* WEBSITE THEME & MEDIA */}
-              <div className="bg-[#fcfbf9] rounded-2xl border border-stone-200/80 p-4 sm:p-5 space-y-4">
+              {/* ─── SECTION 2: WEBSITE THEME & MEDIA ─── */}
+              <div className="rounded-2xl border border-stone-200/90 bg-[#fcfbf9] p-4 sm:p-5 space-y-4 shadow-2xs">
                 {/* Top: Section Header */}
-                <div className="pb-3 border-b border-stone-200/70">
-                  <div className="flex items-center gap-2 text-stone-900">
-                    <HiOutlineColorSwatch className="w-4 h-4 text-[var(--theme-primary,#8a6d4b)]" />
-                    <h3 className="text-xs font-bold uppercase tracking-wider">
-                      Website Theme & Media
-                    </h3>
+                <div className="flex items-center gap-2.5 pb-2.5 border-b border-stone-200/70">
+                  <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center border border-stone-300 shadow-2xs shrink-0">
+                    2
+                  </span>
+                  <div>
+                    <h4 className="text-sm font-bold text-stone-900 leading-tight">
+                      Website theme & media
+                    </h4>
+                    <p className="text-[11px] text-stone-500 mt-0.5">
+                      Select campaign cover image from the media gallery.
+                    </p>
                   </div>
-                  <p className="text-[11px] text-stone-500 mt-0.5">
-                    Select campaign cover image from the media gallery.
-                  </p>
                 </div>
 
                 {/* Cover Image Box */}
@@ -1140,21 +1236,23 @@ export default function CelebrateGiftsView() {
                 />
               </div>
 
-              {/* SELECT PRODUCTS SECTION */}
-              <div className="space-y-3 pt-2 border-t border-stone-200/70">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <IoDiamondOutline className="w-4 h-4 text-[var(--theme-primary,#8a6d4b)]" />
-                      <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900">
-                        Campaign Products ({selectedProducts.length} Selected)
-                      </h3>
+              {/* ─── SECTION 3: CAMPAIGN PRODUCTS ─── */}
+              <div className="rounded-2xl border border-stone-200/90 bg-white p-4 sm:p-5 space-y-4 shadow-2xs">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-2.5 border-b border-stone-150">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-stone-100 text-stone-700 text-xs font-bold flex items-center justify-center border border-stone-300 shadow-2xs shrink-0">
+                      3
+                    </span>
+                    <div>
+                      <h4 className="text-sm font-bold text-stone-900 leading-tight">
+                        Campaign products ({selectedProducts.length} selected)
+                      </h4>
+                      <p className="text-[11px] text-stone-500 mt-0.5">
+                        {selectedProducts.length > 0
+                          ? 'Manage or pick additional products to feature in this campaign.'
+                          : 'Open the product catalog popup to select products for this group.'}
+                      </p>
                     </div>
-                    <p className="text-[11px] text-stone-500 mt-0.5">
-                      {selectedProducts.length > 0
-                        ? 'Manage or pick additional products to feature in this campaign.'
-                        : 'Open the product catalog popup to select products for this group.'}
-                    </p>
                   </div>
 
                   {selectedProducts.length > 0 && (
@@ -1179,6 +1277,9 @@ export default function CelebrateGiftsView() {
                     <h4 className="text-xs font-bold text-stone-800 mb-0.5">
                       No products added to this group yet
                     </h4>
+                    <p className="text-[11px] text-stone-400 mb-3 max-w-sm mx-auto">
+                      Curate products for this campaign showcase to feature them on the storefront.
+                    </p>
                     <button
                       type="button"
                       onClick={() => setIsProductPickerOpen(true)}

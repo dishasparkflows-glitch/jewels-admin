@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   HiOutlineX,
@@ -17,6 +17,12 @@ import api from '../../api/axios';
 import { themesAPI } from '../../api/services';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { useImagePreview } from '../../contexts/ImagePreviewContext';
+import {
+  getCachedData,
+  setCachedData,
+  clearRequestCache,
+  isAbortError,
+} from '../../utils/requestCache';
 
 // Cache themes lookup across modal mounts for instant rendering
 let cachedThemesLookup = null;
@@ -61,14 +67,19 @@ export default function GalleryMediaPickerModal({
   const [pickerPlacementFilter, setPickerPlacementFilter] = useState(initialPlacement || 'all');
   const [pickerDeviceFilter, setPickerDeviceFilter] = useState(initialPlatform || 'web');
   const [pickerSearch, setPickerSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [pickerImages, setPickerImages] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const { openImagePreview } = useImagePreview();
+
+  const abortControllerRef = useRef(null);
+  const hasLoadedOnceRef = useRef(false);
 
   const handlePreview = (e, img, idx) => {
     e.stopPropagation();
@@ -84,14 +95,28 @@ export default function GalleryMediaPickerModal({
 
   // Sync initial filters when modal opens
   useEffect(() => {
-    if (isOpen) {
-      setPickerThemeFilter(initialTheme ? String(initialTheme) : 'all');
-      setPickerPlacementFilter(initialPlacement || 'all');
-      setPickerDeviceFilter(initialPlatform || 'web');
-      setPickerSearch('');
-      setPage(1);
+    if (!isOpen) {
+      abortControllerRef.current?.abort();
+      hasLoadedOnceRef.current = false;
+      return;
     }
+    clearRequestCache('gmp:');
+    setPickerThemeFilter(initialTheme ? String(initialTheme) : 'all');
+    setPickerPlacementFilter(initialPlacement || 'all');
+    setPickerDeviceFilter(initialPlatform || 'web');
+    setPickerSearch('');
+    setDebouncedSearch('');
+    setPage(1);
+    hasLoadedOnceRef.current = false;
   }, [isOpen, initialTheme, initialPlacement, initialPlatform]);
+
+  // Debounce search text cleanly without delaying dropdown/filter switches
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(pickerSearch);
+    }, pickerSearch ? 250 : 0);
+    return () => clearTimeout(timer);
+  }, [pickerSearch]);
 
   // Synchronize passed themes if provided, else load via theme lookup API
   useEffect(() => {
@@ -118,10 +143,39 @@ export default function GalleryMediaPickerModal({
       platform = pickerDeviceFilter,
       currentPage = page,
       limit = pageSize,
-      search = pickerSearch
+      search = debouncedSearch,
+      { silent = false } = {}
     ) => {
+      if (silent) {
+        clearRequestCache('gmp:');
+      }
+
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      const trimmedQ = String(search || '').trim();
+      const cacheKey = `gmp:th=${theme || 'all'}:pl=${placement || 'all'}:dv=${platform || 'all'}:p=${currentPage}:l=${limit}:q=${trimmedQ}`;
+      const cached = !silent ? getCachedData(cacheKey, 60_000) : null;
+
+      if (cached) {
+        setPickerImages(cached.items);
+        setTotalItems(cached.total);
+        setTotalPages(cached.totalPages);
+        hasLoadedOnceRef.current = true;
+        setLoading(false);
+        setRefreshing(false);
+      } else if (!silent) {
+        if (hasLoadedOnceRef.current) {
+          setRefreshing(true);
+          setLoading(false);
+        } else {
+          setLoading(true);
+          setRefreshing(false);
+        }
+      }
+
       try {
-        setLoading(true);
         const params = {
           page: currentPage,
           limit,
@@ -133,40 +187,50 @@ export default function GalleryMediaPickerModal({
         if (platform && platform !== 'all') {
           params.platform = platform;
         }
-        if (search && search.trim()) {
-          params.search = search.trim();
+        if (trimmedQ) {
+          params.search = trimmedQ;
         }
 
-        const res = await api.get('/gallery/lookup', { params });
+        const res = await api.get('/gallery/lookup', { params, signal: controller.signal });
+        if (controller.signal.aborted) return;
+
         const data = res.data?.data;
         const items = Array.isArray(data) ? data : (data?.items || []);
         const pagination = res.data?.pagination || data?.pagination || {};
-
-        setPickerImages(items);
         const total = pagination.totalDocs ?? pagination.totalItems ?? items.length;
+        const resolvedPages = pagination.totalPages || Math.max(1, Math.ceil(total / limit));
+
+        hasLoadedOnceRef.current = true;
+        setPickerImages(items);
         setTotalItems(total);
-        setTotalPages(pagination.totalPages || Math.max(1, Math.ceil(total / limit)));
+        setTotalPages(resolvedPages);
+        setCachedData(cacheKey, { items, total, totalPages: resolvedPages });
       } catch (err) {
+        if (isAbortError(err)) return;
         console.error('Failed to load picker images:', err);
-        setPickerImages([]);
-        setTotalItems(0);
-        setTotalPages(1);
+        if (!cached) {
+          setPickerImages([]);
+          setTotalItems(0);
+          setTotalPages(1);
+        }
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted && !silent) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
-    [pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch]
+    [pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, debouncedSearch]
   );
 
-  // Trigger fetch when modal opens or primary filters/search/page change
+  // Trigger fetch immediately when modal opens or filters/search/page change
   useEffect(() => {
-    if (isOpen) {
-      const timer = setTimeout(() => {
-        fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch);
-      }, pickerSearch ? 300 : 0);
-      return () => clearTimeout(timer);
-    }
-  }, [isOpen, pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch, fetchImages]);
+    if (!isOpen) return;
+    fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, debouncedSearch);
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, [isOpen, pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, debouncedSearch, fetchImages]);
 
   const activeThemes = useMemo(() => {
     const list = Array.isArray(passedThemes) && passedThemes.length > 0 ? passedThemes : internalThemes;
@@ -186,16 +250,7 @@ export default function GalleryMediaPickerModal({
       },
       ...activeThemes.map((t) => ({
         value: String(t._id),
-        label: t.isLive || t.status === 'active'
-          ? `${t.name} ★ (Current Live Theme)`
-          : t.status
-          ? `${t.name} (${t.status})`
-          : t.name,
-        sublabel: t.isLive || t.status === 'active'
-          ? 'Current Live Storefront Theme'
-          : t.status
-          ? `Status: ${t.status}`
-          : t.code || '',
+        label: t.name,
       })),
     ];
   }, [activeThemes]);
@@ -226,7 +281,7 @@ export default function GalleryMediaPickerModal({
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-4xl max-h-[90vh] flex flex-col bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden my-auto animate-scaleIn"
+        className="relative w-full max-w-4xl h-[88dvh] sm:h-[84vh] max-h-[800px] flex flex-col bg-white rounded-2xl sm:rounded-3xl border border-stone-200 shadow-2xl overflow-hidden my-auto animate-scaleIn"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -341,28 +396,40 @@ export default function GalleryMediaPickerModal({
           {/* Refresh */}
           <button
             type="button"
-            onClick={() => fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, pickerSearch)}
+            onClick={() => fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, page, pageSize, debouncedSearch, { silent: true })}
             title="Refresh images"
             className="w-full sm:w-9 h-9 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-600 flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-2xs"
           >
-            <HiOutlineRefresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <HiOutlineRefresh className={`w-4 h-4 ${(loading || refreshing) ? 'animate-spin' : ''}`} />
             <span className="sm:hidden text-xs font-medium">Refresh</span>
           </button>
         </div>
 
         {/* Picker Images Grid */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-5 scrollbar-thin">
-          {loading ? (
-            <div className="py-20 text-center text-stone-400">
+        <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-5 scrollbar-thin relative">
+          {refreshing && (
+            <div className="sticky top-0 left-0 right-0 z-20 -mx-4 -mt-4 sm:-mx-5 sm:-mt-5 mb-3 sm:mb-4 h-0.5 bg-stone-200/70 overflow-hidden">
               <div
-                className="w-8 h-8 border-2 border-stone-300 rounded-full animate-spin mx-auto mb-3"
-                style={{ borderTopColor: 'var(--theme-primary, #8a6d4b)' }}
+                style={{ backgroundColor: 'var(--theme-primary, #8a6d4b)' }}
+                className="h-full w-1/3 rounded-full animate-pulse"
               />
-              <p className="text-xs font-medium text-stone-600">Loading placement images...</p>
+            </div>
+          )}
+          {loading ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="rounded-2xl border border-stone-200/80 bg-white overflow-hidden animate-pulse">
+                  <div className="aspect-[16/10] bg-stone-100" />
+                  <div className="p-2 flex justify-between">
+                    <div className="h-2.5 w-1/2 rounded bg-stone-100" />
+                    <div className="h-2.5 w-8 rounded bg-stone-100" />
+                  </div>
+                </div>
+              ))}
             </div>
           ) : pickerImages.length === 0 ? (
-            <div className="py-20 text-center text-stone-400">
-              <HiOutlinePhotograph className="w-12 h-12 mx-auto text-stone-300 mb-2 stroke-1" />
+            <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center text-stone-400">
+              <HiOutlinePhotograph className="w-12 h-12 text-stone-300 mb-2 stroke-1" />
               <p className="text-sm font-medium text-stone-600">No images found</p>
               <p className="text-xs text-stone-400 mt-1 max-w-sm mx-auto">
                 No images matching the selected theme and placement. Try switching to &quot;All Website Themes&quot; or &quot;All Placements&quot;.
@@ -378,7 +445,11 @@ export default function GalleryMediaPickerModal({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5">
+            <div
+              className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3.5 transition-opacity duration-150 ${
+                refreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'
+              }`}
+            >
               {pickerImages.map((img, idx) => {
                 const imgUrl = img.image?.url || img.url;
                 const imgTitle = img.name || img.title || img.recordTitle || `Theme Image ${idx + 1}`;
@@ -524,7 +595,7 @@ export default function GalleryMediaPickerModal({
           onSuccess={() => {
             setIsUploadModalOpen(false);
             setPage(1);
-            fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, 1, pageSize, pickerSearch);
+            fetchImages(pickerThemeFilter, pickerPlacementFilter, pickerDeviceFilter, 1, pageSize, debouncedSearch, { silent: true });
           }}
           zIndexClass="z-[10500]"
         />

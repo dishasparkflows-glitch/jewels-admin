@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -31,6 +31,12 @@ import { openProductPreview } from '../../utils/productPreview';
 import StatusBadge from '../../components/common/StatusBadge';
 import { money } from '../../utils/formatters';
 import { getProductImage } from '../../utils/imageUrl';
+import {
+  getCachedData,
+  setCachedData,
+  clearRequestCache,
+  isAbortError,
+} from '../../utils/requestCache';
 import api from '../../api/axios';
 
 export default function OrnateProductsView() {
@@ -43,6 +49,7 @@ export default function OrnateProductsView() {
   const [collapsedSections, setCollapsedSections] = useState({ single: false, multi: false });
   const [viewMode, setViewMode] = useState('grid'); // grid, list
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [sortBy, setSortBy] = useState('single_first');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
@@ -55,6 +62,11 @@ export default function OrnateProductsView() {
   const [groups, setGroups] = useState([]);
   const [totalDocs, setTotalDocs] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const abortControllerRef = useRef(null);
+  const hasGroupsLoadedRef = useRef(false);
+  const hasProductsLoadedRef = useRef(false);
 
   // Tab Counts State (accurate from backend)
   const [tabCounts, setTabCounts] = useState({
@@ -120,29 +132,77 @@ export default function OrnateProductsView() {
     }
   }, []);
 
-  // Fetch Main Content based on active tab
+  // Debounce search text cleanly without delaying tab/filter/sort transitions
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, searchQuery ? 250 : 0);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Fetch Main Content based on active tab with AbortController + SWR cache
   const fetchData = useCallback(
     async ({ silent = false } = {}) => {
       const savedScrollY = typeof window !== 'undefined' ? window.scrollY : 0;
-      try {
-        if (!silent) setLoading(true);
+      if (silent) {
+        clearRequestCache('ornate-view:');
+      }
 
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
+      const isUngrouped = activeTab === 'ungrouped';
+      const trimmedQ = debouncedSearch.trim();
+      const cacheKey = `ornate-view:tab=${activeTab}:gt=${isUngrouped ? 'ungrouped' : groupFilterType}:p=${page}:l=${pageSize}:s=${sortBy}:q=${trimmedQ}`;
+      const cached = !silent ? getCachedData(cacheKey, 60_000) : null;
+
+      if (cached) {
+        if (isUngrouped) {
+          setProducts(cached.items);
+          hasProductsLoadedRef.current = true;
+        } else {
+          setGroups(cached.items);
+          hasGroupsLoadedRef.current = true;
+        }
+        setTotalDocs(cached.totalDocs);
+        setLoading(false);
+        setRefreshing(false);
+      } else if (!silent) {
+        const hasExistingTargetData = isUngrouped ? hasProductsLoadedRef.current : hasGroupsLoadedRef.current;
+        if (hasExistingTargetData) {
+          setRefreshing(true);
+          setLoading(false);
+        } else {
+          setLoading(true);
+          setRefreshing(false);
+        }
+      }
+
+      try {
         // CASE 1: UNGROUPED PRODUCTS TAB
-        if (activeTab === 'ungrouped') {
+        if (isUngrouped) {
           const params = new URLSearchParams({
             isOrnate: 'true',
             status: 'all',
             page: String(page),
             limit: String(pageSize),
           });
-          if (searchQuery.trim()) params.set('search', searchQuery.trim());
+          if (trimmedQ) params.set('search', trimmedQ);
           if (sortBy) params.set('sort', sortBy);
 
-          const res = await api.get(`/products?${params.toString()}`);
+          const res = await api.get(`/products?${params.toString()}`, { signal: controller.signal });
+          if (controller.signal.aborted) return;
+
           const data = res.data?.data || [];
           const items = Array.isArray(data) ? data : data.items || [];
+          const resolvedTotal = Number(res.data?.pagination?.totalDocs || items.length);
+
+          hasProductsLoadedRef.current = true;
           setProducts(items);
-          setTotalDocs(Number(res.data?.pagination?.totalDocs || items.length));
+          setTotalDocs(resolvedTotal);
+          setCachedData(cacheKey, { items, totalDocs: resolvedTotal });
+
           if (silent && savedScrollY > 0) {
             requestAnimationFrame(() => {
               window.scrollTo({ top: savedScrollY, behavior: 'instant' });
@@ -163,32 +223,43 @@ export default function OrnateProductsView() {
         else params.set('status', 'all');
 
         if (groupFilterType !== 'all') params.set('groupType', groupFilterType);
-        if (searchQuery.trim()) params.set('search', searchQuery.trim());
+        if (trimmedQ) params.set('search', trimmedQ);
         if (sortBy) params.set('sort', sortBy);
 
-        const res = await api.get(`/product-groups?${params.toString()}`);
+        const res = await api.get(`/product-groups?${params.toString()}`, { signal: controller.signal });
+        if (controller.signal.aborted) return;
+
         const data = res.data?.data || [];
         const items = Array.isArray(data) ? data : data.items || [];
+        const resolvedTotal = Number(res.data?.pagination?.totalDocs || items.length);
+
+        hasGroupsLoadedRef.current = true;
         setGroups(items);
-        setTotalDocs(Number(res.data?.pagination?.totalDocs || items.length));
+        setTotalDocs(resolvedTotal);
+        setCachedData(cacheKey, { items, totalDocs: resolvedTotal });
+
         if (silent && savedScrollY > 0) {
           requestAnimationFrame(() => {
             window.scrollTo({ top: savedScrollY, behavior: 'instant' });
           });
         }
       } catch (err) {
+        if (isAbortError(err)) return;
         console.error('Failed to fetch data:', err);
         toast.error('Could not load data');
-        if (!silent) {
-          setProducts([]);
-          setGroups([]);
+        if (!silent && !cached) {
+          if (isUngrouped) setProducts([]);
+          else setGroups([]);
           setTotalDocs(0);
         }
       } finally {
-        if (!silent) setLoading(false);
+        if (!controller.signal.aborted && !silent) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
-    [activeTab, groupFilterType, page, pageSize, searchQuery, sortBy]
+    [activeTab, groupFilterType, page, pageSize, debouncedSearch, sortBy]
   );
 
   useEffect(() => {
@@ -197,13 +268,36 @@ export default function OrnateProductsView() {
 
   useEffect(() => {
     fetchData();
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, [fetchData]);
 
-  // Reset pagination & selection on filter change
-  useEffect(() => {
+  const handleTabChange = (nextTab) => {
+    if (nextTab === activeTab) return;
+    setActiveTab(nextTab);
     setPage(1);
     setSelectedIds(new Set());
-  }, [activeTab, groupFilterType, searchQuery, sortBy]);
+  };
+
+  const handleGroupFilterChange = (nextType) => {
+    if (nextType === groupFilterType) return;
+    setGroupFilterType(nextType);
+    setPage(1);
+    setSelectedIds(new Set());
+  };
+
+  const handleSearchChange = (value) => {
+    setSearchQuery(value);
+    setPage(1);
+    setSelectedIds(new Set());
+  };
+
+  const handleSortChange = (value) => {
+    setSortBy(value);
+    setPage(1);
+    setSelectedIds(new Set());
+  };
 
   // Split loaded groups into 1-product (single) and multi-product groups
   const singleGroups = useMemo(
@@ -406,6 +500,7 @@ export default function OrnateProductsView() {
           ? { 'visibility.web': nextWeb }
           : { 'visibility.app': nextApp };
       await api.put(`/products/${pid}`, payload);
+      clearRequestCache('ornate-view:');
       toast.success(
         `${platform === 'web' ? 'Web' : 'App'} visibility ${
           (platform === 'web' ? nextWeb : nextApp) ? 'enabled' : 'disabled'
@@ -567,7 +662,7 @@ export default function OrnateProductsView() {
               <button
                 key={tab.key}
                 type="button"
-                onClick={() => setActiveTab(tab.key)}
+                onClick={() => handleTabChange(tab.key)}
                 className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   isActive
                     ? 'bg-[#8b6f4e] text-white shadow-2xs'
@@ -612,7 +707,7 @@ export default function OrnateProductsView() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               placeholder={
                 activeTab === 'ungrouped'
                   ? 'Search by product name, SKU, barcode, tag...'
@@ -623,7 +718,7 @@ export default function OrnateProductsView() {
             {searchQuery && (
               <button
                 type="button"
-                onClick={() => setSearchQuery('')}
+                onClick={() => handleSearchChange('')}
                 className="absolute right-2.5 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600"
               >
                 <HiOutlineX className="w-3.5 h-3.5" />
@@ -636,7 +731,7 @@ export default function OrnateProductsView() {
             <div className="flex items-center gap-1 bg-stone-100 p-1 rounded-xl border border-stone-200 shrink-0 w-full lg:w-auto justify-center overflow-x-auto">
               <button
                 type="button"
-                onClick={() => setGroupFilterType('single')}
+                onClick={() => handleGroupFilterChange('single')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                   groupFilterType === 'single'
                     ? 'text-white shadow-2xs font-bold'
@@ -661,7 +756,7 @@ export default function OrnateProductsView() {
               </button>
               <button
                 type="button"
-                onClick={() => setGroupFilterType('multi')}
+                onClick={() => handleGroupFilterChange('multi')}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
                   groupFilterType === 'multi'
                     ? 'text-white shadow-2xs font-bold'
@@ -694,7 +789,7 @@ export default function OrnateProductsView() {
                 size="sm"
                 value={sortBy}
                 options={sortOptions}
-                onChange={setSortBy}
+                onChange={handleSortChange}
                 placeholder="Sort by"
               />
             </div>
@@ -734,6 +829,13 @@ export default function OrnateProductsView() {
       </div>
 
       {/* ─── 4. Main Tab Content ─── */}
+      <div className="relative">
+        {refreshing && (
+          <div className="mb-2 h-0.5 w-full rounded-full bg-stone-200/80 overflow-hidden">
+            <div className="h-full w-1/3 rounded-full bg-[#8b6f4e] animate-pulse" />
+          </div>
+        )}
+        <div className={`transition-opacity duration-150 ${refreshing ? 'opacity-60 pointer-events-none' : 'opacity-100'}`}>
       {loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-6 gap-3.5">
           {Array.from({ length: 12 }).map((_, i) => (
@@ -1526,8 +1628,8 @@ export default function OrnateProductsView() {
           </div>
         )
       )}
-
-
+        </div>
+      </div>
 
       {/* ─── 6. Modals & Drawers ─── */}
 
@@ -1538,7 +1640,8 @@ export default function OrnateProductsView() {
         initialSelectedIds={Array.from(selectedIds)}
         onSuccess={() => {
           setSelectedIds(new Set());
-          fetchData();
+          clearRequestCache('ornate-view:');
+          fetchData({ silent: true });
           fetchTabCounts();
         }}
       />
@@ -1679,7 +1782,8 @@ export default function OrnateProductsView() {
         onClose={() => setIsSyncModalOpen(false)}
         onSyncComplete={() => {
           setIsSyncModalOpen(false);
-          fetchData();
+          clearRequestCache('ornate-view:');
+          fetchData({ silent: true });
           fetchTabCounts();
         }}
       />

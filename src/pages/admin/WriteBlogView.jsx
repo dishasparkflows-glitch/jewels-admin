@@ -499,7 +499,7 @@ export default function WriteBlogView() {
               SEO Settings
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-4">
               {/* Meta Title */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
@@ -508,13 +508,18 @@ export default function WriteBlogView() {
                     {formData.metaTitle?.length || 0}/60
                   </span>
                 </div>
-                <input
-                  type="text"
+                <textarea
+                  rows={2}
                   maxLength={60}
                   placeholder="How to Care for 18K Gold and Diamond Jewellery | Neirah Jewellers"
                   value={formData.metaTitle}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, metaTitle: e.target.value }))}
-                  className="w-full h-10 px-3.5 rounded-xl border border-stone-200 hover:border-stone-300 focus:border-[#8b6f4e] text-xs sm:text-sm text-stone-800 outline-none transition-colors shadow-2xs"
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      metaTitle: e.target.value.replace(/[\r\n]+/g, ' '),
+                    }))
+                  }
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 hover:border-stone-300 focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 text-xs sm:text-sm text-stone-800 outline-none transition-all resize-y shadow-2xs leading-relaxed"
                 />
               </div>
 
@@ -527,14 +532,14 @@ export default function WriteBlogView() {
                   </span>
                 </div>
                 <textarea
-                  rows={2}
+                  rows={3}
                   maxLength={160}
                   placeholder="Learn expert tips on cleaning, storing and maintaining your 18K gold and diamond jewellery at home from Neirah Jewellers."
                   value={formData.metaDescription}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, metaDescription: e.target.value }))
                   }
-                  className="w-full px-3.5 py-2 rounded-xl border border-stone-200 hover:border-stone-300 focus:border-[#8b6f4e] text-xs sm:text-sm text-stone-800 outline-none transition-colors shadow-2xs resize-none"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-stone-200 hover:border-stone-300 focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/15 text-xs sm:text-sm text-stone-800 outline-none transition-all resize-y shadow-2xs leading-relaxed"
                 />
               </div>
             </div>
@@ -613,16 +618,6 @@ export default function WriteBlogView() {
                       <span>Edit</span>
                     </button>
                   </div>
-                </div>
-
-                {/* File Meta Row */}
-                <div className="flex items-center justify-between text-[11px] font-mono text-stone-500 px-0.5">
-                  <span className="truncate max-w-[200px]" title={formData.image.name || 'featured-image.jpg'}>
-                    {formData.image.name || 'featured-image.jpg'}
-                  </span>
-                  <span className="shrink-0 text-stone-400">
-                    {formData.image.size || '420 KB'}
-                  </span>
                 </div>
               </div>
             ) : (
