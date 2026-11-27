@@ -43,8 +43,8 @@ const getPostShortcode = (rawUrl) => {
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'All Status' },
-  { value: 'active', label: 'Active', dotColor: 'bg-emerald-500' },
-  { value: 'inactive', label: 'Inactive', dotColor: 'bg-stone-400' },
+  { value: 'approved', label: 'Approved', dotColor: 'bg-emerald-500' },
+  { value: 'draft', label: 'Draft', dotColor: 'bg-stone-400' },
 ];
 
 export default function InstagramPostsView() {
@@ -74,7 +74,7 @@ export default function InstagramPostsView() {
   const [viewingPost, setViewingPost] = useState(null);
   const [title, setTitle] = useState('');
   const [url, setUrl] = useState('');
-  const [isActive, setIsActive] = useState(true);
+  const [status, setStatus] = useState('approved');
   const [submitting, setSubmitting] = useState(false);
 
   // Fetch posts from API
@@ -115,8 +115,7 @@ export default function InstagramPostsView() {
 
     // Status filter
     if (statusFilter !== 'all') {
-      const wantActive = statusFilter === 'active';
-      result = result.filter((p) => (p.isActive !== false) === wantActive);
+      result = result.filter((p) => p.status === statusFilter);
     }
 
     return result;
@@ -134,7 +133,7 @@ export default function InstagramPostsView() {
 
   // Counts for stat cards
   const totalPostsCount = posts.length;
-  const activeCount = posts.filter((p) => p.isActive !== false).length;
+  const approvedCount = posts.filter((p) => p.status === 'approved').length;
 
   // Selection handlers
   const handleSelectItem = (id) => {
@@ -148,7 +147,7 @@ export default function InstagramPostsView() {
     setEditingPost(null);
     setTitle('');
     setUrl('');
-    setIsActive(true);
+    setStatus('approved');
     setIsModalOpen(true);
   };
 
@@ -157,7 +156,7 @@ export default function InstagramPostsView() {
     setEditingPost(post);
     setTitle(post.title || '');
     setUrl(post.url || '');
-    setIsActive(post.isActive !== false);
+    setStatus(post.status);
     setIsModalOpen(true);
   };
 
@@ -174,7 +173,7 @@ export default function InstagramPostsView() {
       const payload = {
         title: title.trim(),
         url: url.trim(),
-        isActive,
+        status,
       };
 
       if (editingPost) {
@@ -418,7 +417,7 @@ export default function InstagramPostsView() {
           </div>
         </div>
 
-        {/* Card 2: Active Posts */}
+        {/* Card 2: Approved Posts */}
         <div className="bg-white rounded-xl border border-stone-200/90 p-4 flex items-center gap-3.5 shadow-2xs">
           <div className="w-11 h-11 rounded-full bg-[#ecf8ee] border border-[#d6f0d9] flex items-center justify-center shrink-0">
             <span className="w-3 h-3 rounded-full bg-[#10b981]" />
@@ -426,11 +425,11 @@ export default function InstagramPostsView() {
           <div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-bold text-stone-900 leading-none">
-                {activeCount}
+                {approvedCount}
               </span>
-              <span className="text-xs font-semibold text-stone-800">Active</span>
+              <span className="text-xs font-semibold text-stone-800">Approved</span>
             </div>
-            <p className="text-[11px] text-stone-400 mt-1">Currently active posts</p>
+            <p className="text-[11px] text-stone-400 mt-1">Currently approved posts</p>
           </div>
         </div>
       </div>
@@ -584,12 +583,12 @@ export default function InstagramPostsView() {
                     </span>
                     <span
                       className={`px-2.5 py-0.5 rounded-lg border text-[11px] font-semibold shadow-2xs ${
-                        post.isActive !== false
+                        post.status === 'approved'
                           ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80'
                           : 'bg-stone-100 text-stone-500 border-stone-200/80'
                       }`}
                     >
-                      {post.isActive !== false ? 'Active' : 'Inactive'}
+                      {post.status === 'approved' ? 'Approved' : 'Draft'}
                     </span>
                   </div>
                 </div>
@@ -758,17 +757,17 @@ export default function InstagramPostsView() {
               <div className="pt-2 flex items-center justify-between border-t border-stone-100">
                 <div>
                   <span className="block text-xs font-semibold text-stone-900">
-                    Storefront Visibility
+                    Status ({status === 'approved' ? 'Approved' : 'Draft'})
                   </span>
                   <span className="text-[11px] text-stone-400">
-                    Show this post in customer social feeds
+                    Approved posts are shown in customer social feeds
                   </span>
                 </div>
                 <ToggleSwitch
-                  checked={isActive}
-                  onChange={() => setIsActive(!isActive)}
+                  checked={status === 'approved'}
+                  onChange={() => setStatus(status === 'approved' ? 'draft' : 'approved')}
                   size="md"
-                  ariaLabel="Toggle Storefront Visibility"
+                  ariaLabel="Toggle Post Status"
                 />
               </div>
 
@@ -871,10 +870,10 @@ export default function InstagramPostsView() {
                   </span>
                   <span
                     className={`font-bold uppercase ${
-                      viewingPost.isActive !== false ? 'text-emerald-600' : 'text-stone-400'
+                      viewingPost.status === 'approved' ? 'text-emerald-600' : 'text-stone-400'
                     }`}
                   >
-                    {viewingPost.isActive !== false ? 'Active' : 'Inactive'}
+                    {viewingPost.status === 'approved' ? 'Approved' : 'Draft'}
                   </span>
                 </div>
               </div>

@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { useState, useEffect, useMemo } from 'react';
 import {
+  HiOutlinePlus,
   HiOutlineRefresh,
   HiOutlineSearch,
   HiOutlineX,
@@ -41,6 +42,42 @@ export default function CurrenciesView() {
   const [formIsBase, setFormIsBase] = useState(false);
   const [formSortOrder, setFormSortOrder] = useState('0');
 
+  // Storefront Display Setting
+  const [showOnStorefront, setShowOnStorefront] = useState(true);
+  const [togglingStorefront, setTogglingStorefront] = useState(false);
+
+  // Fetch settings for currency storefront visibility
+  const fetchStorefrontSetting = async () => {
+    try {
+      const res = await api.get('/settings');
+      const s = res.data?.data || res.data;
+      if (s) {
+        setShowOnStorefront(s.currency?.showOnStorefront !== false);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch currency storefront setting:', err);
+    }
+  };
+
+  const handleToggleStorefront = async () => {
+    const nextVal = !showOnStorefront;
+    setTogglingStorefront(true);
+    try {
+      await api.put('/settings', { currency: { showOnStorefront: nextVal } });
+      setShowOnStorefront(nextVal);
+      toast.success(
+        nextVal
+          ? 'Currency selector is now visible on storefront'
+          : 'Currency selector is now hidden from storefront'
+      );
+    } catch (err) {
+      console.error('Failed to update currency storefront visibility:', err);
+      toast.error(err.response?.data?.message || 'Failed to update storefront display setting');
+    } finally {
+      setTogglingStorefront(false);
+    }
+  };
+
   // Fetch currencies from API
   const fetchCurrencies = async () => {
     try {
@@ -58,6 +95,7 @@ export default function CurrenciesView() {
 
   useEffect(() => {
     fetchCurrencies();
+    fetchStorefrontSetting();
   }, []);
 
   // Sync all live exchange rates
@@ -313,26 +351,56 @@ export default function CurrenciesView() {
           </div>
         </div>
 
-        {/* Action Buttons (Matches Screenshot: Sync Live Rates & + ADD CURRENCY) */}
-        <div className="flex items-center gap-2.5">
+        {/* Action Buttons (Matches Screenshot: Storefront Display, Sync Live Rates & Add Currency) */}
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <div className="flex items-center gap-3 h-[42px] bg-white border border-stone-200/90 rounded-xl px-3.5 shadow-2xs">
+            <div className="flex flex-col text-left">
+              <span className="text-xs font-bold text-stone-800 leading-tight">
+                Storefront Display
+              </span>
+              <span className="text-[10.5px] text-stone-500 font-medium leading-tight">
+                {showOnStorefront ? 'Visible on Storefront' : 'Hidden from Storefront'}
+              </span>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showOnStorefront}
+              disabled={togglingStorefront}
+              onClick={handleToggleStorefront}
+              style={showOnStorefront ? { backgroundColor: 'var(--theme-primary, #8b6f4e)' } : undefined}
+              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer disabled:opacity-50 ${
+                showOnStorefront ? 'bg-[var(--theme-primary,#8b6f4e)]' : 'bg-stone-300'
+              }`}
+              title={showOnStorefront ? 'Click to hide currency selector from storefront' : 'Click to display currency selector on storefront'}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-xs transition-transform ${
+                  showOnStorefront ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
           <button
             type="button"
             onClick={handleSyncAllLiveRates}
             disabled={syncingAll || loading}
-            className="flex items-center gap-1.5 px-3.5 py-2 border border-stone-200/90 bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-700 rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-1.5 h-[42px] px-3.5 border border-stone-200/90 bg-white hover:bg-stone-50 active:bg-stone-100 text-stone-700 rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
             title="Synchronize live exchange rates from forex feed"
           >
-            <HiOutlineRefresh className={`w-3.5 h-3.5 ${syncingAll ? 'animate-spin' : ''}`} />
+            <HiOutlineRefresh className={`w-3.5 h-3.5 shrink-0 ${syncingAll ? 'animate-spin' : ''}`} />
             <span>{syncingAll ? 'Syncing...' : 'Sync Live Rates'}</span>
           </button>
 
           <button
             type="button"
             onClick={openAddModal}
-            className="flex items-center gap-1 px-4 py-2 bg-[#8b6f4e] hover:bg-[#785e40] active:bg-[#685034] text-white rounded-xl text-xs font-bold tracking-wider uppercase transition-all shadow-xs hover:shadow cursor-pointer"
+            style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
+            className="inline-flex items-center justify-center gap-2 h-[42px] px-4 sm:px-5 hover:brightness-95 active:scale-[0.98] text-white rounded-xl text-xs sm:text-[13.5px] font-bold tracking-wide transition-all shadow-xs hover:shadow cursor-pointer whitespace-nowrap"
           >
-            <span className="text-sm font-bold leading-none">+</span>
-            <span>ADD CURRENCY</span>
+            <HiOutlinePlus className="w-4 h-4 stroke-[2.5] shrink-0" />
+            <span>Add Currency</span>
           </button>
         </div>
       </div>

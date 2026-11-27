@@ -10,9 +10,24 @@ import {
   HiOutlineSearch,
   HiOutlineChevronRight,
   HiOutlineFilter,
+  HiOutlinePlus,
 } from 'react-icons/hi';
 import api from '../../api/axios';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
+import { DeleteActionButton } from '../../components/common/RowActions';
+
+const isPriceRangeFilter = (flt) =>
+  flt?.type === 'range' || flt?.filterId === 'price-range' || flt?.key === 'price';
+
+const formatPriceRangePreview = (min, max) => {
+  const hasMin = min !== '' && min !== null && min !== undefined;
+  const hasMax = max !== '' && max !== null && max !== undefined;
+  const fmt = (val) => `₹${Number(val).toLocaleString('en-IN')}`;
+  if (!hasMin && hasMax) return `Below ${fmt(max)}`;
+  if (hasMin && !hasMax) return `Above ${fmt(min)}`;
+  if (hasMin && hasMax) return `${fmt(min)} - ${fmt(max)}`;
+  return 'Enter min or max price';
+};
 
 export default function CategoryFiltersView() {
   const [filters, setFilters] = useState([]);
@@ -22,6 +37,25 @@ export default function CategoryFiltersView() {
   const [openActionId, setOpenActionId] = useState(null);
   const [editTitleId, setEditTitleId] = useState(null);
   const [tempTitle, setTempTitle] = useState('');
+  const [priceRangesDraft, setPriceRangesDraft] = useState([]);
+  const [savingPriceRanges, setSavingPriceRanges] = useState(false);
+
+  // Sync draft price ranges whenever selectedFilter changes
+  useEffect(() => {
+    if (isPriceRangeFilter(selectedFilter)) {
+      const list = Array.isArray(selectedFilter.priceRanges) ? selectedFilter.priceRanges : [];
+      setPriceRangesDraft(
+        list.map((r) => ({
+          _id: r._id,
+          label: r.label || '',
+          min: r.min === null || r.min === undefined ? '' : String(r.min),
+          max: r.max === null || r.max === undefined ? '' : String(r.max),
+        }))
+      );
+    } else {
+      setPriceRangesDraft([]);
+    }
+  }, [selectedFilter]);
 
   // Close menus when clicking outside or pressing Escape
   useEffect(() => {
@@ -205,6 +239,89 @@ export default function CategoryFiltersView() {
     setTempTitle('');
   };
 
+  // Price Range Preset Array handlers
+  const handleAddPriceRange = () => {
+    setPriceRangesDraft((prev) => [...prev, { label: '', min: '', max: '' }]);
+  };
+
+  const handleUpdatePriceRangeField = (index, field, value) => {
+    setPriceRangesDraft((prev) =>
+      prev.map((row, i) => (i === index ? { ...row, [field]: value } : row))
+    );
+  };
+
+  const handleRemovePriceRange = (index) => {
+    setPriceRangesDraft((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleMovePriceRange = (index, direction) => {
+    const target = direction === 'up' ? index - 1 : index + 1;
+    if (target < 0 || target >= priceRangesDraft.length) return;
+    setPriceRangesDraft((prev) => {
+      const next = [...prev];
+      const temp = next[index];
+      next[index] = next[target];
+      next[target] = temp;
+      return next;
+    });
+  };
+
+  const handleSavePriceRanges = async () => {
+    if (!selectedFilter) return;
+
+    const cleaned = [];
+    for (let i = 0; i < priceRangesDraft.length; i += 1) {
+      const row = priceRangesDraft[i];
+      const hasMin = row.min !== '' && row.min !== null && row.min !== undefined;
+      const hasMax = row.max !== '' && row.max !== null && row.max !== undefined;
+      const minVal = hasMin ? Number(row.min) : null;
+      const maxVal = hasMax ? Number(row.max) : null;
+
+      if (!hasMin && !hasMax) {
+        toast.error(`Range #${i + 1}: enter at least a Min or Max price`);
+        return;
+      }
+      if ((minVal !== null && minVal < 0) || (maxVal !== null && maxVal < 0)) {
+        toast.error(`Range #${i + 1}: price cannot be negative`);
+        return;
+      }
+      if (minVal !== null && maxVal !== null && minVal > maxVal) {
+        toast.error(`Range #${i + 1}: Max price must be greater than or equal to Min price`);
+        return;
+      }
+
+      cleaned.push({
+        ...(row._id ? { _id: row._id } : {}),
+        label: String(row.label || '').trim(),
+        min: minVal,
+        max: maxVal,
+        order: i + 1,
+      });
+    }
+
+    try {
+      setSavingPriceRanges(true);
+      const res = await api.put(`/filters/${selectedFilter.filterId}`, {
+        priceRanges: cleaned,
+      });
+      const savedRanges = res.data?.data?.priceRanges ?? cleaned;
+      setFilters((prev) =>
+        prev.map((f) =>
+          f.filterId === selectedFilter.filterId ? { ...f, priceRanges: savedRanges } : f
+        )
+      );
+      setSelectedFilter((prev) =>
+        prev?.filterId === selectedFilter.filterId ? { ...prev, priceRanges: savedRanges } : prev
+      );
+      toast.success('Price range options saved', { id: 'price-ranges-save' });
+    } catch (err) {
+      console.error('Failed to save price ranges:', err);
+      toast.error(err.response?.data?.message || 'Failed to save price ranges');
+    } finally {
+      setSavingPriceRanges(false);
+    }
+  };
+
   // Filtered filters for left sidebar search
   const filteredFilters = filters.filter((f) =>
     (f.title || '').toLowerCase().includes(filterSearch.toLowerCase().trim()) ||
@@ -348,6 +465,157 @@ export default function CategoryFiltersView() {
 
         {/* ── Right Workspace: Category Name List for Selected Filter (9 of 12) ── */}
         <div className="lg:col-span-8 xl:col-span-9 space-y-4">
+          {isPriceRangeFilter(selectedFilter) && (
+            <div className="bg-white rounded-2xl shadow-sm border border-stone-200/90 overflow-hidden">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 sm:px-6 border-b border-stone-150 bg-[#FCFBF9]">
+                <div className="flex items-center gap-3.5">
+                  <div className="h-10 w-10 rounded-xl bg-[#EBF3FB] border border-[#cde0f5] flex items-center justify-center text-[#2F73B8] font-bold text-sm shrink-0">
+                    ₹
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-semibold text-stone-900 tracking-tight">
+                        Price Range Presets
+                      </h2>
+                      <span className="text-[11px] font-mono font-semibold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                        {priceRangesDraft.length} {priceRangesDraft.length === 1 ? 'Range' : 'Ranges'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-stone-400 mt-0.5">
+                      Manage selectable price brackets shown alongside custom Min &amp; Max inputs on the storefront.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+                  <button
+                    type="button"
+                    onClick={handleAddPriceRange}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#8c6b45]/30 bg-[#faf6f1] hover:bg-[#f3ebe0] text-xs font-semibold text-[#8c6b45] transition-colors cursor-pointer"
+                  >
+                    <HiOutlinePlus className="w-3.5 h-3.5" />
+                    <span>Add Price Range</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSavePriceRanges}
+                    disabled={savingPriceRanges}
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-[#8c6b45] hover:bg-[#785936] disabled:opacity-50 text-xs font-bold text-white shadow-2xs transition-colors cursor-pointer"
+                  >
+                    <HiOutlineCheck className="w-3.5 h-3.5" />
+                    <span>{savingPriceRanges ? 'Saving...' : 'Save Ranges'}</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-5 sm:px-6 space-y-3">
+                {priceRangesDraft.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-stone-200 bg-stone-50/50 py-8 px-4 text-center space-y-2">
+                    <p className="text-xs font-medium text-stone-500">
+                      No price brackets configured yet. Storefront will show custom Min &amp; Max inputs.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handleAddPriceRange}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[#8c6b45]/30 bg-[#faf6f1] hover:bg-[#f3ebe0] text-xs font-semibold text-[#8c6b45] transition-colors cursor-pointer"
+                    >
+                      <HiOutlinePlus className="w-3.5 h-3.5" />
+                      <span>Add Price Range</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-2.5">
+                    {priceRangesDraft.map((row, idx) => (
+                      <div
+                        key={row._id || `range-${idx}`}
+                        className="grid grid-cols-1 md:grid-cols-12 gap-2.5 items-center rounded-xl border border-stone-200/80 bg-[#FCFBF9] p-3"
+                      >
+                        <div className="md:col-span-5 flex items-center gap-2.5">
+                          <span className="w-6 h-6 rounded-lg bg-white border border-stone-200 flex items-center justify-center text-[11px] font-mono font-bold text-stone-600 shrink-0">
+                            {idx + 1}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <label className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-0.5">
+                              Display Label (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={row.label}
+                              onChange={(e) => handleUpdatePriceRangeField(idx, 'label', e.target.value)}
+                              placeholder={formatPriceRangePreview(row.min, row.max)}
+                              className="w-full h-9 px-3 rounded-lg border border-stone-200 bg-white text-xs font-medium text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8c6b45]"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="md:col-span-3">
+                          <label className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-0.5">
+                            Min Price (₹)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={row.min}
+                            onChange={(e) => handleUpdatePriceRangeField(idx, 'min', e.target.value)}
+                            placeholder="Empty = Below"
+                            className="w-full h-9 px-3 rounded-lg border border-stone-200 bg-white text-xs font-medium text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8c6b45]"
+                          />
+                        </div>
+
+                        <div className="md:col-span-3">
+                          <label className="block text-[10px] font-semibold uppercase tracking-wider text-stone-400 mb-0.5">
+                            Max Price (₹)
+                          </label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={row.max}
+                            onChange={(e) => handleUpdatePriceRangeField(idx, 'max', e.target.value)}
+                            placeholder="Empty = Above"
+                            className="w-full h-9 px-3 rounded-lg border border-stone-200 bg-white text-xs font-medium text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8c6b45]"
+                          />
+                        </div>
+
+                        <div className="md:col-span-1 flex items-center justify-end gap-1 pt-3 md:pt-4">
+                          <div className="flex flex-col">
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMovePriceRange(idx, 'up')}
+                              title="Move up"
+                              className="p-0.5 text-stone-400 hover:text-[#8c6b45] disabled:opacity-25 cursor-pointer"
+                            >
+                              <HiOutlineChevronUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === priceRangesDraft.length - 1}
+                              onClick={() => handleMovePriceRange(idx, 'down')}
+                              title="Move down"
+                              className="p-0.5 text-stone-400 hover:text-[#8c6b45] disabled:opacity-25 cursor-pointer"
+                            >
+                              <HiOutlineChevronDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <DeleteActionButton
+                            onClick={() => handleRemovePriceRange(idx)}
+                            title="Remove range"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-[11px] text-stone-400">
+                  Tip: Leave Min blank for &quot;Below Max&quot; (e.g. Below ₹10,000), or leave Max blank for &quot;Above Min&quot; (e.g. Above ₹2,00,001). Click <strong>Save Ranges</strong> to apply.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-white rounded-2xl shadow-sm border border-stone-200/90 overflow-hidden">
             {/* Card Header: Category Availability + Status Badge */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 sm:px-6 border-b border-stone-150 bg-[#FCFBF9]">

@@ -46,11 +46,68 @@ const DEFAULT_HEADER_FOOTER_COLORS = {
   topBarTextColor: '#ffffff',
   headerBgColor: '#201e1b',
   headerTextColor: '#ffffff',
+  navBgColor: '#201e1b',
+  navTextColor: '#d6d3d1',
+  megaMenuBgColor: '#1c1a19',
+  megaMenuTextColor: '#e7e5e4',
   couponBgColor: '#201e1b',
   couponTextColor: '#ffffff',
   footerBgColor: '#0f0d0b',
   footerTextColor: '#c8b89e',
 };
+
+const normalizeThemeColors = (colors = {}) =>
+  Object.fromEntries(
+    Object.entries(DEFAULT_HEADER_FOOTER_COLORS).map(([key, fallback]) => [
+      key,
+      colors[key] || fallback,
+    ])
+  );
+
+const THEME_COLOR_SECTIONS = [
+  {
+    key: 'topBar',
+    title: 'Top Announcement Bar',
+    resetTitle: 'Reset top bar colors to default',
+    bgKey: 'topBarBgColor',
+    textKey: 'topBarTextColor',
+  },
+  {
+    key: 'header',
+    title: 'Main Header',
+    resetTitle: 'Reset main header colors to default',
+    bgKey: 'headerBgColor',
+    textKey: 'headerTextColor',
+  },
+  {
+    key: 'nav',
+    title: 'Category Nav Bar',
+    resetTitle: 'Reset category nav bar colors to default',
+    bgKey: 'navBgColor',
+    textKey: 'navTextColor',
+  },
+  {
+    key: 'megaMenu',
+    title: 'Mega Menu Dropdown',
+    resetTitle: 'Reset mega menu dropdown colors to default',
+    bgKey: 'megaMenuBgColor',
+    textKey: 'megaMenuTextColor',
+  },
+  {
+    key: 'coupon',
+    title: 'Coupon Banner Strip',
+    resetTitle: 'Reset coupon banner colors to default',
+    bgKey: 'couponBgColor',
+    textKey: 'couponTextColor',
+  },
+  {
+    key: 'footer',
+    title: 'Footer Section',
+    resetTitle: 'Reset footer colors to default',
+    bgKey: 'footerBgColor',
+    textKey: 'footerTextColor',
+  },
+];
 
 export default function SettingsView() {
   const navigate = useNavigate();
@@ -68,15 +125,8 @@ export default function SettingsView() {
   const [themesList, setThemesList] = useState([]);
   const [savingTheme, setSavingTheme] = useState(false);
 
-  // Storefront Header, Banner & Footer Colors state
-  const [topBarBgColor, setTopBarBgColor] = useState('#201e1b');
-  const [topBarTextColor, setTopBarTextColor] = useState('#ffffff');
-  const [headerBgColor, setHeaderBgColor] = useState('#201e1b');
-  const [headerTextColor, setHeaderTextColor] = useState('#ffffff');
-  const [couponBgColor, setCouponBgColor] = useState('#201e1b');
-  const [couponTextColor, setCouponTextColor] = useState('#ffffff');
-  const [footerBgColor, setFooterBgColor] = useState('#0f0d0b');
-  const [footerTextColor, setFooterTextColor] = useState('#c8b89e');
+  // Storefront Header, Nav, Mega Menu, Banner & Footer Colors state
+  const [themeColors, setThemeColors] = useState(DEFAULT_HEADER_FOOTER_COLORS);
 
   // Trust Badges state
   const [trustBadges, setTrustBadges] = useState([]);
@@ -144,6 +194,13 @@ export default function SettingsView() {
   });
   const [savingSocialMedia, setSavingSocialMedia] = useState(false);
 
+  // OTP Verification Settings
+  const [otpForm, setOtpForm] = useState({
+    enableRegistrationOtp: true,
+    enableOrderOtp: true,
+  });
+  const [savingOtp, setSavingOtp] = useState(false);
+
   // Fetch settings from API
   const fetchSettings = async () => {
     try {
@@ -176,6 +233,12 @@ export default function SettingsView() {
           whatsapp: data.socialMedia.whatsapp ?? '',
         });
       }
+      if (data.otpSettings) {
+        setOtpForm({
+          enableRegistrationOtp: data.otpSettings.enableRegistrationOtp !== false,
+          enableOrderOtp: data.otpSettings.enableOrderOtp !== false,
+        });
+      }
 
       const bDetails = data.businessDetails || {};
       setBusinessForm({
@@ -203,15 +266,7 @@ export default function SettingsView() {
         setSelectedThemeId(themeId || '');
         if (themeName) setSelectedThemeName(themeName);
       }
-      const colors = data.themeColors || {};
-      setTopBarBgColor(colors.topBarBgColor || '#201e1b');
-      setTopBarTextColor(colors.topBarTextColor || '#ffffff');
-      setHeaderBgColor(colors.headerBgColor || '#201e1b');
-      setHeaderTextColor(colors.headerTextColor || '#ffffff');
-      setCouponBgColor(colors.couponBgColor || '#201e1b');
-      setCouponTextColor(colors.couponTextColor || '#ffffff');
-      setFooterBgColor(colors.footerBgColor || '#0f0d0b');
-      setFooterTextColor(colors.footerTextColor || '#c8b89e');
+      setThemeColors(normalizeThemeColors(data.themeColors));
     } catch (err) {
       console.error('Failed to load settings:', err);
       toast.error('Failed to load system settings');
@@ -266,15 +321,13 @@ export default function SettingsView() {
       setImageCompression({ ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(settings.mediaCompression || {}) });
       const initialThemeId = typeof settings.currentThemeId === 'object' ? settings.currentThemeId?._id : settings.currentThemeId;
       setSelectedThemeId(initialThemeId || '');
-      const colors = settings.themeColors || {};
-      setTopBarBgColor(colors.topBarBgColor || '#201e1b');
-      setTopBarTextColor(colors.topBarTextColor || '#ffffff');
-      setHeaderBgColor(colors.headerBgColor || '#201e1b');
-      setHeaderTextColor(colors.headerTextColor || '#ffffff');
-      setCouponBgColor(colors.couponBgColor || '#201e1b');
-      setCouponTextColor(colors.couponTextColor || '#ffffff');
-      setFooterBgColor(colors.footerBgColor || '#0f0d0b');
-      setFooterTextColor(colors.footerTextColor || '#c8b89e');
+      setThemeColors(normalizeThemeColors(settings.themeColors));
+      if (settings.otpSettings) {
+        setOtpForm({
+          enableRegistrationOtp: settings.otpSettings.enableRegistrationOtp !== false,
+          enableOrderOtp: settings.otpSettings.enableOrderOtp !== false,
+        });
+      }
     }
     setActiveModal(null);
   };
@@ -507,17 +560,10 @@ export default function SettingsView() {
     }
   };
 
-  // Reset Storefront Header & Footer Colors to Defaults
+  // Reset Storefront Header, Nav, Mega Menu & Footer Colors to Defaults
   const handleResetHeaderFooterDefaults = () => {
-    setTopBarBgColor(DEFAULT_HEADER_FOOTER_COLORS.topBarBgColor);
-    setTopBarTextColor(DEFAULT_HEADER_FOOTER_COLORS.topBarTextColor);
-    setHeaderBgColor(DEFAULT_HEADER_FOOTER_COLORS.headerBgColor);
-    setHeaderTextColor(DEFAULT_HEADER_FOOTER_COLORS.headerTextColor);
-    setCouponBgColor(DEFAULT_HEADER_FOOTER_COLORS.couponBgColor);
-    setCouponTextColor(DEFAULT_HEADER_FOOTER_COLORS.couponTextColor);
-    setFooterBgColor(DEFAULT_HEADER_FOOTER_COLORS.footerBgColor);
-    setFooterTextColor(DEFAULT_HEADER_FOOTER_COLORS.footerTextColor);
-    toast.success('Header & footer colors reset to defaults');
+    setThemeColors(DEFAULT_HEADER_FOOTER_COLORS);
+    toast.success('Header, navigation, mega menu & footer colors reset to defaults');
   };
 
   // Save Storefront Theme
@@ -525,16 +571,7 @@ export default function SettingsView() {
     try {
       setSavingTheme(true);
       const payload = {
-        themeColors: {
-          topBarBgColor,
-          topBarTextColor,
-          headerBgColor,
-          headerTextColor,
-          couponBgColor,
-          couponTextColor,
-          footerBgColor,
-          footerTextColor,
-        },
+        themeColors: { ...themeColors },
       };
       if (selectedThemeId) payload.currentThemeId = selectedThemeId;
       const res = await api.put('/settings', payload);
@@ -595,6 +632,27 @@ export default function SettingsView() {
       toast.error(err.response?.data?.message || 'Failed to update social media links');
     } finally {
       setSavingSocialMedia(false);
+    }
+  };
+
+  // Save OTP Verification Settings
+  const handleSaveOtpSettings = async () => {
+    try {
+      setSavingOtp(true);
+      const res = await api.put('/settings', {
+        otpSettings: {
+          enableRegistrationOtp: Boolean(otpForm.enableRegistrationOtp),
+          enableOrderOtp: Boolean(otpForm.enableOrderOtp),
+        },
+      });
+      setSettings(res.data?.data || {});
+      toast.success('OTP verification settings saved successfully');
+      setActiveModal(null);
+    } catch (err) {
+      console.error('Failed to save OTP settings:', err);
+      toast.error(err.response?.data?.message || 'Failed to update OTP settings');
+    } finally {
+      setSavingOtp(false);
     }
   };
 
@@ -661,10 +719,10 @@ export default function SettingsView() {
     {
       id: 'theme',
       title: 'Storefront Theme & Colors',
-      subtitle: 'Manage active website theme and header, banner & footer styling from one place.',
+      subtitle: 'Manage active website theme and header, nav bar, mega menu, banner & footer styling.',
       icon: HiOutlineColorSwatch,
       badgeText: selectedThemeName
-        ? `Active: ${selectedThemeName} · Top Bar: ${(topBarBgColor || '#201e1b').toUpperCase()}`
+        ? `Active: ${selectedThemeName} · Top Bar: ${(themeColors.topBarBgColor || '#201e1b').toUpperCase()}`
         : `Colors Configured`,
       hasPreview: false,
     },
@@ -682,6 +740,14 @@ export default function SettingsView() {
       subtitle: 'Manage official store links for Instagram, Facebook, YouTube, Pinterest, X/Twitter, LinkedIn, and WhatsApp.',
       icon: HiOutlineShare,
       badgeText: `${Object.values(socialMediaForm).filter((val) => typeof val === 'string' && val.trim().length > 0).length} channels active`,
+      hasPreview: false,
+    },
+    {
+      id: 'otpSettings',
+      title: 'OTP Verification & Security',
+      subtitle: 'Control whether mobile OTP verification is required for customer registration and order checkout.',
+      icon: HiOutlineShieldCheck,
+      badgeText: `${otpForm.enableRegistrationOtp ? 'Reg OTP: ON' : 'Reg OTP: OFF'} · ${otpForm.enableOrderOtp ? 'Order OTP: ON' : 'Order OTP: OFF'}`,
       hasPreview: false,
     },
   ];
@@ -828,6 +894,7 @@ export default function SettingsView() {
                   {activeModal === 'theme' && 'Storefront Theme'}
                   {activeModal === 'socialProof' && 'Social Proof & Urgency (Reviews & Sold Counter)'}
                   {activeModal === 'socialMedia' && 'Social Media & Brand Channels'}
+                  {activeModal === 'otpSettings' && 'OTP Verification & Security Settings'}
                 </h2>
                 <p className="mt-0.5 text-xs text-stone-500">
                   {activeModal === 'logos' && 'Manage your desktop & mobile logos, and the customer login modal banner.'}
@@ -838,6 +905,7 @@ export default function SettingsView() {
                   {activeModal === 'theme' && 'Current storefront theme and styling colors for header, banners, buttons, and footer.'}
                   {activeModal === 'socialProof' && 'Manage sold count urgency, review badges, and dynamic time window shown on the product page.'}
                   {activeModal === 'socialMedia' && 'Manage official social profiles and chat channels shown in the storefront footer.'}
+                  {activeModal === 'otpSettings' && 'Enable or disable mobile OTP verification pop-up requirements for customer registration and order checkout.'}
                 </p>
               </div>
               <button
@@ -1328,15 +1396,15 @@ export default function SettingsView() {
                 <div className="h-full min-h-0 overflow-y-auto p-4 sm:p-5 lg:p-6 space-y-4 scrollbar-thin">
 
                   {/* ── Section A: Global Storefront Button Styling ── */}
-                  {/* ── Section A2: Header, Top Bar & Footer Colors ── */}
+                  {/* ── Section A2: Header, Nav, Mega Menu, Banner & Footer Colors ── */}
                   <div className="rounded-2xl border border-stone-200/80 bg-stone-50/50 p-4 space-y-4">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
                       <div>
                         <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                          Storefront Header, Banner & Footer Colors
+                          Storefront Header, Navigation, Mega Menu & Footer Colors
                         </h4>
                         <p className="text-[11px] text-stone-500 mt-0.5">
-                          Customize background and text colors for the top announcement bar, main header, coupon promotional banner, and footer.
+                          Customize background and text colors for the top bar, main header, category nav bar, mega menu dropdown, coupon banner, and footer.
                         </p>
                       </div>
                       <button
@@ -1350,11 +1418,11 @@ export default function SettingsView() {
                       </button>
                     </div>
 
-                    {/* Live Header & Footer Preview */}
+                    {/* Live Header, Nav, Mega Menu & Footer Preview */}
                     <div className="rounded-xl border border-stone-200 overflow-hidden shadow-2xs text-[11px]">
                       {/* Top Bar Preview */}
                       <div
-                        style={{ backgroundColor: topBarBgColor, color: topBarTextColor }}
+                        style={{ backgroundColor: themeColors.topBarBgColor, color: themeColors.topBarTextColor }}
                         className="px-3 py-1 flex items-center justify-between transition-colors"
                       >
                         <span className="flex items-center gap-1 font-medium text-[10px]">
@@ -1366,28 +1434,47 @@ export default function SettingsView() {
 
                       {/* Main Header Preview */}
                       <div
-                        style={{ backgroundColor: headerBgColor, color: headerTextColor }}
-                        className="px-3 py-2.5 flex items-center justify-between transition-colors"
+                        style={{ backgroundColor: themeColors.headerBgColor, color: themeColors.headerTextColor }}
+                        className="px-3 py-2 flex items-center justify-between transition-colors border-t border-black/10"
                       >
                         <span className="font-serif font-bold tracking-widest text-xs">NEIRAH</span>
-                        <div className="flex items-center gap-2 text-[10px] opacity-80">
-                          <span>RINGS</span>
-                          <span>EARRINGS</span>
-                          <span>PENDANTS</span>
-                          <span>COLLECTION</span>
-                        </div>
+                        <span className="text-[10px] opacity-75">Search jewellery, diamonds...</span>
                         <button
                           type="button"
-                          style={{ backgroundColor: topBarBgColor, color: topBarTextColor }}
+                          style={{ backgroundColor: themeColors.topBarBgColor, color: themeColors.topBarTextColor }}
                           className="px-2.5 py-1 rounded-md text-[10px] font-semibold"
                         >
                           Explore
                         </button>
                       </div>
 
+                      {/* Category Nav Bar Preview */}
+                      <div
+                        style={{ backgroundColor: themeColors.navBgColor, color: themeColors.navTextColor }}
+                        className="px-3 py-1.5 flex items-center justify-center gap-4 text-[10px] font-medium uppercase tracking-wider border-t border-black/10 transition-colors"
+                      >
+                        <span>RINGS</span>
+                        <span>EARRINGS</span>
+                        <span>PENDANTS</span>
+                        <span className="underline underline-offset-4">COLLECTION</span>
+                      </div>
+
+                      {/* Mega Menu Dropdown Preview */}
+                      <div
+                        style={{ backgroundColor: themeColors.megaMenuBgColor, color: themeColors.megaMenuTextColor }}
+                        className="px-3.5 py-2.5 flex items-center justify-between gap-4 border-t border-black/10 transition-colors"
+                      >
+                        <div className="space-y-0.5 text-left">
+                          <div className="text-[9px] font-bold uppercase tracking-wider opacity-65">COLLECTION</div>
+                          <div className="text-[10px] opacity-90">Discover our exclusive collection of handcrafted jewellery.</div>
+                          <div className="text-[9.5px] font-bold uppercase tracking-widest underline">EXPLORE ALL</div>
+                        </div>
+                        <span className="text-[9px] opacity-70 shrink-0">Featured Preview</span>
+                      </div>
+
                       {/* Coupon Banner Strip Preview */}
                       <div
-                        style={{ backgroundColor: couponBgColor, color: couponTextColor }}
+                        style={{ backgroundColor: themeColors.couponBgColor, color: themeColors.couponTextColor }}
                         className="px-3 py-1.5 flex items-center justify-center gap-1.5 transition-colors border-t border-b border-black/10"
                       >
                         <span className="font-medium text-[10px] tracking-wide">
@@ -1397,7 +1484,7 @@ export default function SettingsView() {
 
                       {/* Footer Preview */}
                       <div
-                        style={{ backgroundColor: footerBgColor, color: footerTextColor }}
+                        style={{ backgroundColor: themeColors.footerBgColor, color: themeColors.footerTextColor }}
                         className="px-3 py-2 flex items-center justify-between transition-colors"
                       >
                         <span className="font-serif font-semibold text-[10px]">NEIRAH FINE JEWELLERY</span>
@@ -1406,214 +1493,56 @@ export default function SettingsView() {
                     </div>
 
                     {/* Pickers Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 pt-1">
-                      {/* 1. Top Bar */}
-                      <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-stone-800">Top Announcement Bar</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setTopBarBgColor(DEFAULT_HEADER_FOOTER_COLORS.topBarBgColor);
-                              setTopBarTextColor(DEFAULT_HEADER_FOOTER_COLORS.topBarTextColor);
-                            }}
-                            className="text-[10px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
-                            title="Reset top bar colors to default"
-                          >
-                            Default
-                          </button>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
-                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
-                            <input
-                              type="color"
-                              value={topBarBgColor}
-                              onChange={(e) => setTopBarBgColor(e.target.value)}
-                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
-                            />
-                            <input
-                              type="text"
-                              value={topBarBgColor}
-                              onChange={(e) => setTopBarBgColor(e.target.value)}
-                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
-                            />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-1">
+                      {THEME_COLOR_SECTIONS.map((sec) => (
+                        <div key={sec.key} className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[11px] font-bold text-stone-800">{sec.title}</span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setThemeColors((prev) => ({
+                                  ...prev,
+                                  [sec.bgKey]: DEFAULT_HEADER_FOOTER_COLORS[sec.bgKey],
+                                  [sec.textKey]: DEFAULT_HEADER_FOOTER_COLORS[sec.textKey],
+                                }))
+                              }
+                              className="text-[10px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                              title={sec.resetTitle}
+                            >
+                              Default
+                            </button>
                           </div>
+                          {[
+                            { field: sec.bgKey, label: 'Background Color' },
+                            { field: sec.textKey, label: 'Text Color' },
+                          ].map(({ field, label }) => {
+                            const val = themeColors[field] || DEFAULT_HEADER_FOOTER_COLORS[field];
+                            const pickerVal = /^#[0-9a-f]{6}$/i.test(val)
+                              ? val
+                              : DEFAULT_HEADER_FOOTER_COLORS[field];
+                            return (
+                              <div key={field}>
+                                <label className="block text-[10px] font-medium text-stone-500 mb-1">{label}</label>
+                                <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
+                                  <input
+                                    type="color"
+                                    value={pickerVal}
+                                    onChange={(e) => setThemeColors((prev) => ({ ...prev, [field]: e.target.value }))}
+                                    className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={val}
+                                    onChange={(e) => setThemeColors((prev) => ({ ...prev, [field]: e.target.value }))}
+                                    className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
+                                  />
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
-                        <div>
-                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Text Color</label>
-                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
-                            <input
-                              type="color"
-                              value={topBarTextColor}
-                              onChange={(e) => setTopBarTextColor(e.target.value)}
-                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
-                            />
-                            <input
-                              type="text"
-                              value={topBarTextColor}
-                              onChange={(e) => setTopBarTextColor(e.target.value)}
-                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 2. Main Header */}
-                      <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-stone-800">Main Header & Nav</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setHeaderBgColor(DEFAULT_HEADER_FOOTER_COLORS.headerBgColor);
-                              setHeaderTextColor(DEFAULT_HEADER_FOOTER_COLORS.headerTextColor);
-                            }}
-                            className="text-[10px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
-                            title="Reset header colors to default"
-                          >
-                            Default
-                          </button>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
-                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
-                            <input
-                              type="color"
-                              value={headerBgColor}
-                              onChange={(e) => setHeaderBgColor(e.target.value)}
-                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
-                            />
-                            <input
-                              type="text"
-                              value={headerBgColor}
-                              onChange={(e) => setHeaderBgColor(e.target.value)}
-                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Text Color</label>
-                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
-                            <input
-                              type="color"
-                              value={headerTextColor}
-                              onChange={(e) => setHeaderTextColor(e.target.value)}
-                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
-                            />
-                            <input
-                              type="text"
-                              value={headerTextColor}
-                              onChange={(e) => setHeaderTextColor(e.target.value)}
-                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 3. Coupon Banner */}
-                      <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-stone-800">Coupon Banner Strip</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setCouponBgColor(DEFAULT_HEADER_FOOTER_COLORS.couponBgColor);
-                              setCouponTextColor(DEFAULT_HEADER_FOOTER_COLORS.couponTextColor);
-                            }}
-                            className="text-[10px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
-                            title="Reset coupon banner colors to default"
-                          >
-                            Default
-                          </button>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
-                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
-                            <input
-                              type="color"
-                              value={couponBgColor}
-                              onChange={(e) => setCouponBgColor(e.target.value)}
-                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
-                            />
-                            <input
-                              type="text"
-                              value={couponBgColor}
-                              onChange={(e) => setCouponBgColor(e.target.value)}
-                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Text Color</label>
-                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
-                            <input
-                              type="color"
-                              value={couponTextColor}
-                              onChange={(e) => setCouponTextColor(e.target.value)}
-                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
-                            />
-                            <input
-                              type="text"
-                              value={couponTextColor}
-                              onChange={(e) => setCouponTextColor(e.target.value)}
-                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* 4. Footer */}
-                      <div className="p-3 bg-white rounded-xl border border-stone-200 shadow-2xs space-y-2.5">
-                        <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-stone-800">Footer Section</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFooterBgColor(DEFAULT_HEADER_FOOTER_COLORS.footerBgColor);
-                              setFooterTextColor(DEFAULT_HEADER_FOOTER_COLORS.footerTextColor);
-                            }}
-                            className="text-[10px] font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
-                            title="Reset footer colors to default"
-                          >
-                            Default
-                          </button>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Background Color</label>
-                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
-                            <input
-                              type="color"
-                              value={footerBgColor}
-                              onChange={(e) => setFooterBgColor(e.target.value)}
-                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
-                            />
-                            <input
-                              type="text"
-                              value={footerBgColor}
-                              onChange={(e) => setFooterBgColor(e.target.value)}
-                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-[10px] font-medium text-stone-500 mb-1">Text Color</label>
-                          <div className="flex items-center gap-1.5 h-8 px-2 rounded-lg border border-stone-200 bg-white">
-                            <input
-                              type="color"
-                              value={footerTextColor}
-                              onChange={(e) => setFooterTextColor(e.target.value)}
-                              className="w-5 h-5 rounded cursor-pointer border-0 bg-transparent p-0"
-                            />
-                            <input
-                              type="text"
-                              value={footerTextColor}
-                              onChange={(e) => setFooterTextColor(e.target.value)}
-                              className="w-full text-[11px] font-mono font-medium text-stone-800 outline-none uppercase"
-                            />
-                          </div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
 
@@ -1950,6 +1879,114 @@ export default function SettingsView() {
                   </div>
                 </div>
               )}
+
+              {/* 9. OTP Verification & Security Settings Modal */}
+              {activeModal === 'otpSettings' && (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-stone-200/90 bg-stone-50/60 p-4 space-y-4">
+                    {/* Item 1: Registration OTP */}
+                    <div className="flex items-start justify-between gap-4 p-4 rounded-xl border border-stone-200 bg-white shadow-2xs">
+                      <div className="space-y-1 pr-2">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-bold text-stone-900 cursor-pointer">
+                            Customer Registration OTP Verification
+                          </label>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              otpForm.enableRegistrationOtp
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-stone-100 text-stone-500 border border-stone-200'
+                            }`}
+                          >
+                            {otpForm.enableRegistrationOtp ? 'Active' : 'Disabled'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-stone-500 leading-relaxed">
+                          When enabled, new customers must verify their mobile phone number with a 4-digit OTP code before their account is registered. If disabled, customers are registered directly without showing an OTP pop-up.
+                        </p>
+                      </div>
+
+                      {/* Toggle Switch */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={otpForm.enableRegistrationOtp}
+                        onClick={() =>
+                          setOtpForm((prev) => ({
+                            ...prev,
+                            enableRegistrationOtp: !prev.enableRegistrationOtp,
+                          }))
+                        }
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary,#8b6f4e)] focus:ring-offset-2 ${
+                          otpForm.enableRegistrationOtp
+                            ? 'bg-[var(--theme-primary,#8b6f4e)]'
+                            : 'bg-stone-300'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            otpForm.enableRegistrationOtp ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    {/* Item 2: Order Checkout OTP */}
+                    <div className="flex items-start justify-between gap-4 p-4 rounded-xl border border-stone-200 bg-white shadow-2xs">
+                      <div className="space-y-1 pr-2">
+                        <div className="flex items-center gap-2">
+                          <label className="text-sm font-bold text-stone-900 cursor-pointer">
+                            Order Checkout OTP Verification
+                          </label>
+                          <span
+                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              otpForm.enableOrderOtp
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                : 'bg-stone-100 text-stone-500 border border-stone-200'
+                            }`}
+                          >
+                            {otpForm.enableOrderOtp ? 'Active' : 'Disabled'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-stone-500 leading-relaxed">
+                          When enabled, customers must verify their mobile number with an OTP pop-up modal on the checkout page before confirming their order. If disabled, orders are placed immediately without the OTP pop-up.
+                        </p>
+                      </div>
+
+                      {/* Toggle Switch */}
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={otpForm.enableOrderOtp}
+                        onClick={() =>
+                          setOtpForm((prev) => ({
+                            ...prev,
+                            enableOrderOtp: !prev.enableOrderOtp,
+                          }))
+                        }
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-[var(--theme-primary,#8b6f4e)] focus:ring-offset-2 ${
+                          otpForm.enableOrderOtp
+                            ? 'bg-[var(--theme-primary,#8b6f4e)]'
+                            : 'bg-stone-300'
+                        }`}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            otpForm.enableOrderOtp ? 'translate-x-5' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-amber-200/80 bg-amber-50/70 p-3 text-xs text-amber-900 flex items-start gap-2">
+                    <span className="text-sm">💡</span>
+                    <span>
+                      Changes take effect dynamically across the customer storefront in real-time without requiring a website restart.
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
@@ -2043,6 +2080,18 @@ export default function SettingsView() {
                   className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
                 >
                   {savingSocialMedia ? 'Saving…' : 'Save Social Media Links'}
+                </button>
+              )}
+
+              {activeModal === 'otpSettings' && (
+                <button
+                  type="button"
+                  onClick={handleSaveOtpSettings}
+                  disabled={savingOtp}
+                  style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {savingOtp ? 'Saving…' : 'Save OTP Settings'}
                 </button>
               )}
             </div>

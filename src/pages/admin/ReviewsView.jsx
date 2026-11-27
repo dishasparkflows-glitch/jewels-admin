@@ -8,6 +8,7 @@ import {
   HiOutlineStar,
   HiOutlineTrash,
   HiOutlineCheck,
+  HiOutlineEye,
 } from 'react-icons/hi';
 import { IoStar } from 'react-icons/io5';
 import toast from 'react-hot-toast';
@@ -16,6 +17,7 @@ import { clearRequestCache } from '../../utils/requestCache';
 import Pagination from '../../components/common/Pagination';
 import useAdminList from '../../hooks/useAdminList';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useImagePreview } from '../../contexts/ImagePreviewContext';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
@@ -35,6 +37,7 @@ const REVIEW_STATUS_OPTIONS = [
 
 export default function ReviewsView() {
   const confirm = useConfirm();
+  const { openImagePreview } = useImagePreview();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingReview, setEditingReview] = useState(null);
   const [viewingReview, setViewingReview] = useState(null);
@@ -875,18 +878,42 @@ export default function ReviewsView() {
 
                 {imagePreview ? (
                   <div className="relative flex items-center gap-3 p-3 rounded-xl border border-stone-200 bg-stone-50/70">
-                    <div className="w-14 h-14 rounded-lg overflow-hidden bg-white border border-stone-200 shrink-0 shadow-2xs">
+                    <div
+                      onClick={() =>
+                        openImagePreview(imagePreview, {
+                          title: formData.name ? `${formData.name} — Review Photo` : 'Review Image Preview',
+                        })
+                      }
+                      className="relative group w-14 h-14 rounded-lg overflow-hidden bg-white border border-stone-200 shrink-0 shadow-2xs cursor-pointer"
+                      title="Click to preview image"
+                    >
                       <img
                         src={imagePreview}
                         alt="Review Preview"
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200"
                       />
+                      <div className="absolute inset-0 bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white pointer-events-none">
+                        <HiOutlineEye className="w-4 h-4" />
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          openImagePreview(imagePreview, {
+                            title: formData.name ? `${formData.name} — Review Photo` : 'Review Image Preview',
+                          })
+                        }
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-stone-200 bg-white hover:bg-stone-50 text-xs font-semibold text-stone-700 hover:text-stone-900 shadow-2xs transition-colors cursor-pointer"
+                      >
+                        <HiOutlineEye className="w-3.5 h-3.5" />
+                        <span>Preview</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-xs font-semibold text-[#8b6f4e] hover:underline cursor-pointer"
+                        style={{ color: 'var(--theme-primary, #8b6f4e)' }}
+                        className="text-xs font-semibold hover:underline cursor-pointer px-1.5 py-1"
                       >
                         Change Photo
                       </button>
