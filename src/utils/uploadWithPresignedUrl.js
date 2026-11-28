@@ -80,7 +80,7 @@ export function createProductId() {
 }
 
 export function getUploadedObjectKey(asset) {
-  const knownPrefixRegex = /(gemstones|gemstone-shapes|gemstone-types|products|categories|users|banners|navigation|diamonds|reviews|vto|birthstones|celebrate-gifts|settings|website-themes|general|ornateproducts|blogs|custom-inquiries|before-after|home-sections|brand-logos|certificates)\/.*$/i;
+  const knownPrefixRegex = /(gemstones|gemstone-shapes|gemstone-types|products|categories|users|banners|navigation|diamonds|reviews|vto|birthstones|celebrate-gifts|settings|website-themes|general|ornateproducts|blogs|custom-inquiries|before-after|home-sections|brand-logos|certificates|stores)\/.*$/i;
 
   if (typeof asset === 'object' && asset !== null) {
     if (asset.key && typeof asset.key === 'string') {

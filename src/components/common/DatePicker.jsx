@@ -66,7 +66,7 @@ const WEEKDAY_NAMES = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 /**
  * Common Luxury DatePicker Component
  *
- * Matches the Neirah luxury design system.
+ * Matches the luxury design system.
  * Supports single date selection, optional time picker, quick month/year jumps,
  * smart auto-flip (opens upward when near bottom of modal/screen), custom triggers,
  * and standard YYYY-MM-DD or YYYY-MM-DDTHH:mm formats.

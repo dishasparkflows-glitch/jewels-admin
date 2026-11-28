@@ -1,5 +1,5 @@
 /**
- * Universal Image Fallback Utility for Neirah Admin Portal
+ * Universal Image Fallback Utility for Admin Portal
  * Automatically provides a theme-matched "No Img" placeholder whenever
  * an image is missing, empty, or fails to load anywhere in the admin panel.
  */

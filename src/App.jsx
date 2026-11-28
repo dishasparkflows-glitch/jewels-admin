@@ -68,6 +68,7 @@ const {
   ProfileView,
   AnalyticsView,
   StaticPagesView,
+  StoresView,
   ThemesView,
   GalleryView,
   OwnersView,
@@ -225,6 +226,7 @@ function App() {
             <Route path="/website/themes" element={<ThemesView />} />
             <Route path="/themes" element={<ThemesView />} />
             <Route path="/static-pages" element={<StaticPagesView />} />
+            <Route path="/stores" element={<StoresView />} />
             <Route path="/website/static-pages" element={<StaticPagesView />} />
             <Route path="/website-content/static-pages" element={<StaticPagesView />} />
             <Route path="/pages" element={<StaticPagesView />} />

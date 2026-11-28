@@ -474,9 +474,9 @@ export default function BlogCategoriesView() {
                   <td colSpan="8" className="py-12 text-center text-stone-500">
                     <HiOutlineTag className="w-8 h-8 text-stone-300 mx-auto mb-2" />
                     <p className="font-semibold text-stone-700">No blog categories found</p>
-                    <p className="text-xs text-stone-400 mt-1">
-                      {search ? 'Try adjusting your search criteria' : 'Click "Add Blog Category" to get started'}
-                    </p>
+                    {search && (
+                      <p className="text-xs text-stone-400 mt-1">Try adjusting your search criteria</p>
+                    )}
                   </td>
                 </tr>
               ) : (

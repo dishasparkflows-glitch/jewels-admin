@@ -380,9 +380,7 @@ export default function OrnateProductEdit() {
 
           // Populate Base Information
           const rawPromo = product.promoBanner || product.basicInfo?.promoBanner || [];
-          const promoArr = Array.isArray(rawPromo)
-            ? rawPromo.map((p) => String(p)).filter(Boolean)
-            : (rawPromo ? [String(rawPromo)] : []);
+          const promoArr = (Array.isArray(rawPromo) ? rawPromo : [rawPromo]).filter(Boolean).map(String);
           setBaseInfo({
             title: product.basicInfo?.title || '',
             sku: product.basicInfo?.sku || product.ornate?.tagNo || '',
@@ -391,13 +389,12 @@ export default function OrnateProductEdit() {
             menuItem: selectedMenuIds(product),
             targetGender: (() => {
               const raw = product.basicInfo?.gender ?? product.gender ?? [];
-              const arr = Array.isArray(raw) ? raw : (raw ? [raw] : []);
-              return arr.map((g) => {
+              return (Array.isArray(raw) ? raw : [raw]).filter(Boolean).map((g) => {
                 const matched = GENDER_OPTIONS.find(
                   (opt) => opt.value.toLowerCase() === String(g).trim().toLowerCase()
                 );
                 return matched ? matched.value : g;
-              }).filter(Boolean);
+              });
             })(),
             status: product.status || 'draft',
             stockStatus: product.stockStatus || '',
@@ -850,13 +847,9 @@ export default function OrnateProductEdit() {
         ...(!isEditMode ? { _id: draftProductId } : {}),
         // Product identity and copy live in basicInfo.
         categoryIds: finalCategoryIds,
-        promoBanner: Array.isArray(baseInfo.promoBanner)
-          ? baseInfo.promoBanner.filter(Boolean)
-          : (baseInfo.promoBanner ? [baseInfo.promoBanner] : []),
+        promoBanner: (baseInfo.promoBanner || []).filter(Boolean),
         menuItemIds: baseInfo.menuItem,
-        gender: Array.isArray(baseInfo.targetGender)
-          ? baseInfo.targetGender.filter(Boolean)
-          : (baseInfo.targetGender ? [baseInfo.targetGender] : []),
+        gender: (baseInfo.targetGender || []).filter(Boolean),
         status: activeStatus,
         stockStatus: baseInfo.stockStatus || undefined,
         visibility: {

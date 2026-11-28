@@ -1,6 +1,8 @@
 import { HiOutlineViewGrid } from 'react-icons/hi';
 import { navSections } from '../config/navigation';
 
+const SIDEBAR_HIDDEN_SLUGS = new Set(['profile']);
+
 /**
  * Checks whether a single module slug is allowed under the active allowedModules list.
  * When allowedModules is null/undefined, full access is granted.
@@ -88,7 +90,13 @@ export function resolveNavSections(sections = navSections, dbModules = null, all
 
     const extraActive = dbModules.filter((mod) => {
       const key = getModKey(mod);
-      return mod?.status === 'active' && key && !seenIds.has(key) && mod.path;
+      return (
+        mod?.status === 'active' &&
+        key &&
+        !SIDEBAR_HIDDEN_SLUGS.has(key) &&
+        !seenIds.has(key) &&
+        mod.path
+      );
     });
     if (extraActive.length > 0) {
       resolved = resolved.map((sec) => ({
@@ -193,6 +201,7 @@ const ROUTE_MODULE_RULES = [
   { prefix: '/marketing/home-sections', slug: 'home-sections' },
   { prefix: '/banners', slug: 'banners' },
   { prefix: '/marketing/banners', slug: 'banners' },
+  { prefix: '/stores', slug: 'stores' },
   { prefix: '/top-announcement', slug: 'banners' },
   { prefix: '/top-announcements', slug: 'banners' },
   { prefix: '/celebrate-gifts', slug: 'celebrate-gifts' },

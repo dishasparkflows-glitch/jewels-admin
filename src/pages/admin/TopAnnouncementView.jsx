@@ -51,7 +51,7 @@ export default function TopAnnouncementView() {
   const [formData, setFormData] = useState({
     message: '',
     link: '',
-    isActive: true,
+    status: 'active',
     hasNoEndDate: true,
     date: {
       start: toInputDate(new Date()),
@@ -91,7 +91,7 @@ export default function TopAnnouncementView() {
 
   // Filter active announcements for the top interactive preview banner
   const activeAnnouncements = useMemo(() => {
-    return announcements.filter((a) => a.isActive);
+    return announcements.filter((a) => a.status === 'active');
   }, [announcements]);
 
   // Keep preview index in bounds
@@ -151,7 +151,7 @@ export default function TopAnnouncementView() {
     setFormData({
       message: '',
       link: '',
-      isActive: true,
+      status: 'active',
       hasNoEndDate: true,
       date: {
         start: toInputDate(new Date()),
@@ -169,7 +169,7 @@ export default function TopAnnouncementView() {
     setFormData({
       message: item.message || '',
       link: item.link || '',
-      isActive: item.isActive ?? true,
+      status: item.status,
       hasNoEndDate: item.hasNoEndDate ?? true,
       date: {
         start: toInputDate(startVal) || toInputDate(new Date()),
@@ -192,7 +192,7 @@ export default function TopAnnouncementView() {
       const payload = {
         message: formData.message.trim(),
         link: formData.link.trim(),
-        isActive: formData.isActive,
+        status: formData.status,
         hasNoEndDate: formData.hasNoEndDate,
         date: {
           start: formData.date?.start ? new Date(formData.date.start) : new Date(),
@@ -220,19 +220,20 @@ export default function TopAnnouncementView() {
 
   // Toggle individual announcement active status
   const handleToggleStatus = async (item) => {
+    const nextStatus = item.status === 'active' ? 'inactive' : 'active';
     try {
       // Optimistic update
       setAnnouncements((prev) =>
-        prev.map((a) => (a._id === item._id ? { ...a, isActive: !a.isActive } : a))
+        prev.map((a) => (a._id === item._id ? { ...a, status: nextStatus } : a))
       );
       await topAnnouncementsAPI.toggleStatus(item._id);
-      toast.success(`Announcement set to ${!item.isActive ? 'active' : 'inactive'}`);
+      toast.success(`Announcement set to ${nextStatus}`);
     } catch (err) {
       console.error('Failed to toggle status:', err);
       toast.error('Failed to toggle status');
       // Revert on error
       setAnnouncements((prev) =>
-        prev.map((a) => (a._id === item._id ? { ...a, isActive: item.isActive } : a))
+        prev.map((a) => (a._id === item._id ? { ...a, status: item.status } : a))
       );
     }
   };
@@ -526,7 +527,7 @@ export default function TopAnnouncementView() {
 
                     <div className="flex items-center justify-between gap-2 pt-2 border-t border-stone-100 text-[11px]" onClick={(e) => e.stopPropagation()}>
                       <ToggleSwitch
-                        checked={item.isActive !== false}
+                        checked={item.status === 'active'}
                         onChange={() => handleToggleStatus(item)}
                         size="sm"
                       />
@@ -601,11 +602,11 @@ export default function TopAnnouncementView() {
                       {/* Status Toggle Switch */}
                       <td className="text-center align-middle px-2">
                         <ToggleSwitch
-                          checked={item.isActive}
+                          checked={item.status === 'active'}
                           onChange={() => handleToggleStatus(item)}
                           size="md"
                           stopPropagation={true}
-                          ariaLabel={`Set announcement status ${item.isActive ? 'Inactive' : 'Active'}`}
+                          ariaLabel={`Set announcement status ${item.status === 'active' ? 'Inactive' : 'Active'}`}
                         />
                       </td>
 
@@ -735,12 +736,17 @@ export default function TopAnnouncementView() {
                 Status
               </span>
               <span className="text-[11px] text-stone-500">
-                {formData.isActive ? 'Active and visible on rotating banner' : 'Inactive (hidden from rotation)'}
+                {formData.status === 'active' ? 'Active and visible on rotating banner' : 'Inactive (hidden from rotation)'}
               </span>
             </div>
             <ToggleSwitch
-              checked={Boolean(formData.isActive)}
-              onChange={() => setFormData({ ...formData, isActive: !formData.isActive })}
+              checked={formData.status === 'active'}
+              onChange={() =>
+                setFormData({
+                  ...formData,
+                  status: formData.status === 'active' ? 'inactive' : 'active',
+                })
+              }
               size="md"
               ariaLabel="Toggle Announcement Status"
             />

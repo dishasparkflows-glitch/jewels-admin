@@ -1,23 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import toast from 'react-hot-toast';
-import api from '../../api/axios';
-import { getMediaUrl } from '../../utils/imageUrl';
 import { getFirstAllowedPath, isPathAllowed } from '../../utils/moduleAccess';
 import { HiOutlineMail, HiOutlineLockClosed, HiOutlineEye, HiOutlineEyeOff, HiOutlineSparkles } from 'react-icons/hi';
 
 const Login = () => {
   const { login } = useAuth();
+  const { companyName, brandLogo: themeLogos } = useTheme();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [brandLogo, setBrandLogo] = useState('');
-
-  useEffect(() => {
-    api.get('/settings').then(({ data }) => setBrandLogo(getMediaUrl(data?.data?.logoImage?.url))).catch(() => {});
-  }, []);
+  const brandLogo = themeLogos?.desktop || '';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -45,10 +41,10 @@ const Login = () => {
         {/* Brand Header */}
         <div className="text-center space-y-2 mb-6 sm:mb-8">
           <div className="w-12 h-12 rounded-2xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center mx-auto mb-3 shadow-xs overflow-hidden">
-            {brandLogo ? <img src={brandLogo} alt="Neirah Jewellers" className="max-w-full max-h-full object-contain p-1" /> : <HiOutlineSparkles className="w-6 h-6 text-[#8b6f4e]" />}
+            {brandLogo ? <img src={brandLogo} alt={companyName} className="max-w-full max-h-full object-contain p-1" /> : <HiOutlineSparkles className="w-6 h-6 text-[#8b6f4e]" />}
           </div>
           <h1 className="text-sm font-bold tracking-[0.2em] text-stone-900 uppercase">
-            NEIRAH JEWELLERS
+            {companyName}
           </h1>
           <p className="text-[10px] tracking-[0.3em] text-[#8b6f4e] font-semibold uppercase">
             LUXURY PORTAL LOGIN
@@ -67,7 +63,7 @@ const Login = () => {
                 autoComplete="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="admin@neirah.com"
+                placeholder="admin@jewels.com"
                 className="w-full pl-10 pr-4 py-2.5 text-base sm:text-xs rounded-xl bg-white border border-stone-200 text-stone-900 placeholder-stone-400 focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30 transition-all"
                 required
               />

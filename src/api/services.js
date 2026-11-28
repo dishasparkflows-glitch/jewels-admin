@@ -170,6 +170,20 @@ export const staticPagesAPI = {
   delete: (id) => api.delete(`/static-pages/${id}`),
 };
 
+// ─── Stores ───────────────────────────────────────
+export const storesAPI = {
+  getAll: (params) => api.get('/stores', { params }),
+  getLookup: (params) => api.get('/stores/lookup', { params }),
+  getStates: (params) => api.get('/stores/states', { params }),
+  getById: (id) => api.get(`/stores/${id}`),
+  getBySlug: (slug) => api.get(`/stores/slug/${slug}`),
+  create: (data) => api.post('/stores', data),
+  bulkDelete: (ids) => api.post('/stores/bulk-delete', { ids }),
+  update: (id, data) => api.put(`/stores/${id}`, data),
+  toggleStatus: (id) => api.patch(`/stores/${id}/status`),
+  delete: (id) => api.delete(`/stores/${id}`),
+};
+
 
 // ─── VTO Masters ──────────────────────────────────
 export const vtoMastersAPI = {

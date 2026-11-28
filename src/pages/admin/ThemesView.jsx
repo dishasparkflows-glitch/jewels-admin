@@ -30,43 +30,10 @@ import { slugify } from '../../utils/formatters';
 
 
 
-const DEFAULT_CONFIG = {
-  colors: {
-    primary: '#8B6C3A',
-    secondary: '#EADCC8',
-    background: '#FBF9F5',
-    surface: '#FFFFFF',
-    text: '#29251F',
-    accent: '#A67536',
-  },
-  typography: { headingFont: 'Cormorant Garamond', bodyFont: 'Montserrat' },
-  buttonStyle: 'filled',
-  borderRadius: 8,
-  seo: { metaTitle: '', metaDescription: '' },
-  bannerSelections: [],
-  featuredSelections: [],
-  categoryAppearances: [],
-  navigation: [],
-  sections: [
-    { key: 'hero', visible: true, order: 1 },
-    { key: 'celebrate', visible: true, order: 2 },
-    { key: 'categories', visible: true, order: 3 },
-    { key: 'products', visible: true, order: 4 },
-    { key: 'collections', visible: true, order: 5 },
-    { key: 'trustBadges', visible: true, order: 6 },
-    { key: 'customBanner', visible: true, order: 7 },
-    { key: 'mobileApp', visible: true, order: 8 },
-    { key: 'appointment', visible: true, order: 9 },
-    { key: 'reviews', visible: true, order: 10 },
-    { key: 'instagram', visible: true, order: 11 },
-  ],
-};
-
 const emptyTheme = () => ({
   name: '',
   code: '',
   description: '',
-  config: structuredClone(DEFAULT_CONFIG),
   schedule: {},
 });
 
@@ -307,15 +274,6 @@ export default function ThemesView() {
       setEditing({
         ...base,
         ...data,
-        config: {
-          ...base.config,
-          ...(data.config || {}),
-          bannerSelections: data.config?.bannerSelections || [],
-          featuredSelections: data.config?.featuredSelections || [],
-          colors: { ...base.config.colors, ...data.config?.colors },
-          typography: { ...base.config.typography, ...data.config?.typography },
-          sections: data.config?.sections?.length ? data.config.sections : base.config.sections,
-        },
       });
 
       setPublishStart(data.schedule?.startAt ? new Date(data.schedule.startAt).toISOString().slice(0, 16) : '');
@@ -331,12 +289,10 @@ export default function ThemesView() {
   const saveTheme = async () => {
     if (!editing?.name?.trim()) return toast.error('Enter a theme name first');
 
-    const themeConfig = { ...editing.config };
     const payload = {
       name: editing.name.trim(),
       code: editing.code?.trim() || slugify(editing.name),
       description: editing.description || '',
-      config: themeConfig,
       schedule: {
         ...(editing.schedule || {}),
         ...(publishStart ? { startAt: istDateToIso(publishStart) } : {}),
@@ -555,7 +511,7 @@ export default function ThemesView() {
               <div>
                 <h3 className="font-bold text-stone-900 text-sm">Publish or Schedule Campaign</h3>
                 <p className="mt-0.5 text-xs text-stone-500">
-                  Release dates use the Neirah storefront timezone (Asia/Kolkata).
+                  Release dates use the storefront timezone (Asia/Kolkata).
                 </p>
               </div>
 

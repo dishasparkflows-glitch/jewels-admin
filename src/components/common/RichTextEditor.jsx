@@ -220,7 +220,7 @@ export default function RichTextEditor({
   const handleInsertCallout = () => {
     if (isHtmlMode) return;
     restoreSelection();
-    const quoteHtml = `<blockquote style="display: flex; gap: 12px; align-items: flex-start; padding: 16px 20px; background: #faf5ee; border-left: 4px solid #8b6f4e; border-radius: 12px; margin: 20px 0; color: #785327;"><span style="font-size: 18px; line-height: 1;">💡</span><span style="font-size: 0.95rem; line-height: 1.5;">Store each piece in its individual velvet Neirah box to prevent delicate metals from coming into contact with one another.</span></blockquote><p><br></p>`;
+    const quoteHtml = `<blockquote style="display: flex; gap: 12px; align-items: flex-start; padding: 16px 20px; background: #faf5ee; border-left: 4px solid #8b6f4e; border-radius: 12px; margin: 20px 0; color: #785327;"><span style="font-size: 18px; line-height: 1;">💡</span><span style="font-size: 0.95rem; line-height: 1.5;">Store each piece in its individual velvet jewellery box to prevent delicate metals from coming into contact with one another.</span></blockquote><p><br></p>`;
     exec('insertHTML', quoteHtml);
     toast.success('Inserted callout note');
   };

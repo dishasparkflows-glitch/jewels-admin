@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import api from '../api/axios';
+import { getMediaUrl } from '../utils/imageUrl';
 import {
   DEFAULT_THEME,
   THEME_PRESETS,
@@ -106,6 +108,44 @@ export const ThemeProvider = ({ children }) => {
     query.addEventListener('change', handleChange);
     return () => query.removeEventListener('change', handleChange);
   }, []);
+
+  // Brand name & logos from Settings (Business & Identity)
+  const [storeSettings, setStoreSettings] = useState({});
+
+  const applyStoreSettings = useCallback((settingsData) => {
+    if (settingsData && typeof settingsData === 'object') {
+      setStoreSettings(settingsData);
+    }
+  }, []);
+
+  const refreshBrandSettings = useCallback(async () => {
+    try {
+      const { data } = await api.get('/settings');
+      const s = data?.data || {};
+      applyStoreSettings(s);
+      return s;
+    } catch {
+      return null;
+    }
+  }, [applyStoreSettings]);
+
+  useEffect(() => {
+    refreshBrandSettings();
+  }, [refreshBrandSettings]);
+
+  const companyName =
+    String(storeSettings?.businessDetails?.companyName || storeSettings?.storeName || '').trim() ||
+    'Jewels';
+  const brandLogo = {
+    desktop: getMediaUrl(storeSettings?.logoImage?.url),
+    mobile: getMediaUrl(storeSettings?.mobileLogoImage?.url),
+  };
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.title = `${companyName} Admin | Fine Jewellery Portal`;
+    }
+  }, [companyName]);
 
   // Mobile drawer state
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -333,6 +373,11 @@ export const ThemeProvider = ({ children }) => {
         mobileSidebarOpen,
         setMobileSidebarOpen,
         toggleMobileSidebar,
+        storeSettings,
+        companyName,
+        brandLogo,
+        refreshBrandSettings,
+        applyStoreSettings,
       }}
     >
       {children}

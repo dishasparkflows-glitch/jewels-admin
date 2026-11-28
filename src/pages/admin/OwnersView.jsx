@@ -912,7 +912,7 @@ export default function OwnersView() {
                 type="text"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Neirah Jewels"
+                placeholder="e.g. Jewels Store"
                 required
                 className="w-full h-10 px-3.5 rounded-xl border border-stone-200 bg-white text-xs font-medium text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20"
               />

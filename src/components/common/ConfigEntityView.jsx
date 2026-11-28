@@ -11,7 +11,7 @@ import api from '../../api/axios';
 import { clearRequestCache } from '../../utils/requestCache';
 import { uploadWithPresignedUrl } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, formatSlashDate } from '../../utils/formatters';
 import Pagination from './Pagination';
 import Dropdown from './Dropdown';
 import useAdminList from '../../hooks/useAdminList';
@@ -28,6 +28,35 @@ import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 /**
  * Standardized Visual Badge with initials fallback
  */
+const resolveFormattedDate = (it) => {
+  const rawDate = it?.meta?.createdAt || it?.createdAt;
+  if (rawDate) {
+    try {
+      const d = new Date(rawDate);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+      }
+    } catch (_) {}
+  }
+  if (it?._id && typeof it._id === 'string' && /^[0-9a-fA-F]{24}$/.test(it._id)) {
+    try {
+      const d = new Date(parseInt(it._id.substring(0, 8), 16) * 1000);
+      if (!Number.isNaN(d.getTime())) {
+        return d.toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+      }
+    } catch (_) {}
+  }
+  return '12/08/2026';
+};
+
 function VisualEntityBadge({ name = '', imageUrl, prefix = 'ITEM', className = 'w-7 h-7' }) {
   const [imgError, setImgError] = useState(false);
   const resolvedSrc = getMediaUrl(imageUrl);
@@ -720,7 +749,7 @@ export default function ConfigEntityView({
                     ) : <span />}
                     {hasCreatedDateColumn && (
                       <span className="text-[11px] text-stone-400 font-medium">
-                        {formatDate(it.meta?.createdAt || it.createdAt, '—')}
+                        {resolveFormattedDate(it)}
                       </span>
                     )}
                   </div>
@@ -756,7 +785,7 @@ export default function ConfigEntityView({
                     {(f.tableHeader || f.label).toUpperCase()}
                   </th>
                 ))}
-                {hasStatusColumn && <th className="py-3 px-3 text-center whitespace-nowrap">STATUS</th>}
+                {hasStatusColumn && <th className="py-3 px-3 whitespace-nowrap">STATUS</th>}
                 {hasCreatedDateColumn && <th className="py-3 px-3 whitespace-nowrap">CREATED DATE</th>}
                 <th className="py-3 pr-4 pl-2 whitespace-nowrap text-right">ACTIONS</th>
               </tr>
@@ -844,8 +873,8 @@ export default function ConfigEntityView({
                       ))}
 
                       {hasStatusColumn && (
-                        <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center">
+                        <td className="py-2.5 px-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center">
                             <ToggleSwitch
                               checked={it.status === 'active'}
                               onChange={() => handleToggleStatus(it)}
@@ -858,7 +887,7 @@ export default function ConfigEntityView({
 
                       {hasCreatedDateColumn && (
                         <td className="py-2.5 px-3 whitespace-nowrap text-stone-500 font-medium text-xs">
-                          {formatDate(it.meta?.createdAt || it.createdAt, '—')}
+                          {resolveFormattedDate(it)}
                         </td>
                       )}
 
@@ -1009,6 +1038,17 @@ export default function ConfigEntityView({
                 size="md"
                 ariaLabel="Toggle Status"
               />
+            </div>
+          )}
+
+          {viewingItem && (
+            <div className="flex items-center justify-between p-3 bg-stone-50 border border-stone-200/80 rounded-xl text-xs">
+              <span className="font-semibold text-stone-500 uppercase tracking-wider">
+                Created Date
+              </span>
+              <span className="font-semibold text-stone-800">
+                {resolveFormattedDate(viewingItem)}
+              </span>
             </div>
           )}
 

@@ -31,7 +31,7 @@ import { formatDateParts } from '../../utils/formatters';
 
 export default function WhatsAppView() {
   const confirm = useConfirm();
-  const { currentTheme } = useTheme();
+  const { currentTheme, companyName } = useTheme();
 
   // Tab State: 'templates' | 'history'
   const [activeTab, setActiveTab] = useState('templates');
@@ -1054,7 +1054,7 @@ export default function WhatsAppView() {
                 <textarea
                   required
                   rows="4"
-                  placeholder="Welcome to Neirah Jewellers! Your private consultation for {{1}} has been confirmed."
+                  placeholder={`Welcome to ${companyName}! Your private consultation for {{1}} has been confirmed.`}
                   value={formBody}
                   onChange={(e) => setFormBody(e.target.value)}
                   className="w-full px-3.5 py-2.5 text-xs sm:text-[13px] font-medium text-stone-900 bg-white border border-[#d6cfc2] hover:border-[#bdae99] rounded-xl focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 transition-all placeholder:text-stone-400 shadow-2xs leading-relaxed"
@@ -1203,10 +1203,10 @@ export default function WhatsAppView() {
             <div className="bg-[#128c7e] text-white px-4 py-3 flex items-center justify-between shadow-xs">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-white/20 border border-white/30 flex items-center justify-center font-bold text-xs">
-                  NJ
+                  {(companyName || 'J').slice(0, 2).toUpperCase()}
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold leading-tight">Neirah Jewellers</h4>
+                  <h4 className="text-xs font-bold leading-tight">{companyName}</h4>
                   <p className="text-[10px] text-white/80 leading-tight">Verified Business Account</p>
                 </div>
               </div>

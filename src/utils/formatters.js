@@ -1,5 +1,5 @@
 /**
- * Standardized Formatting Utilities for Neirah Admin Portal
+ * Standardized Formatting Utilities for Admin Portal
  *
  * Provides consistent, localized formatting across dates, currency (INR),
  * numbers, and file sizes. Eliminates duplicate ad-hoc formatters.
@@ -215,7 +215,12 @@ export function formatDateParts(dateStr, options = {}) {
  */
 export function formatSlashDate(dateStr, fallback = '') {
   if (!dateStr) return fallback;
-  const d = new Date(dateStr);
+  let d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) {
+    if (typeof dateStr === 'string' && /^[0-9a-fA-F]{24}$/.test(dateStr)) {
+      d = new Date(parseInt(dateStr.substring(0, 8), 16) * 1000);
+    }
+  }
   if (Number.isNaN(d.getTime())) return fallback;
   const day = String(d.getDate()).padStart(2, '0');
   const month = String(d.getMonth() + 1).padStart(2, '0');

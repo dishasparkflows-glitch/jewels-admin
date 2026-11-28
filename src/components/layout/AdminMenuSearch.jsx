@@ -37,6 +37,7 @@ const EXTRA_ALIASES = {
   '/reviews': ['reviews', 'ratings', 'feedback', 'testimonials', 'stars'],
   '/home-sections': ['home sections', 'homepage', 'sections', 'hero', 'layout'],
   '/banners': ['banners', 'banner', 'slider', 'carousel', 'promo banner'],
+  '/stores': ['stores', 'store locator', 'showroom', 'boutique', 'branch', 'state', 'city', 'area'],
   '/celebrate-gifts': ['celebrate', 'gifts', 'celebrate & gifts', 'gifting', 'featured'],
   '/coupons': ['coupons', 'coupon', 'offers', 'offer', 'discounts', 'discount', 'promo code', 'voucher'],
   '/birthstones': ['birthstones', 'birthstone', 'months'],

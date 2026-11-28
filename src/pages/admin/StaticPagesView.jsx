@@ -4,18 +4,19 @@ import {
   HiOutlinePlus,
   HiOutlineSearch,
   HiOutlineTrash,
-  HiOutlineEye,
+  HiOutlineExternalLink,
   HiOutlineGlobeAlt,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import { staticPagesAPI } from '../../api/services';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import Modal from '../../components/common/Modal';
 import ToggleSwitch from '../../components/common/ToggleSwitch';
 import Pagination from '../../components/common/Pagination';
 import usePagination from '../../hooks/usePagination';
 import RichTextEditor from '../../components/common/RichTextEditor';
-import { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
+import RowActions from '../../components/common/RowActions';
 import MobileGridList from '../../components/common/MobileGridList';
 import { VITE_FRONT_URL } from '../../config/env';
 import useSelection from '../../hooks/useSelection';
@@ -26,13 +27,17 @@ const EMPTY_PAGE = {
   title: '',
   slug: '',
   status: 'published',
-  seoTitle: '',
-  metaDescription: '',
+  seo: {
+    metaTitle: '',
+    metaDescription: '',
+    keywords: '',
+  },
   content: '',
 };
 
 export default function StaticPagesView() {
   const confirm = useConfirm();
+  const { companyName } = useTheme();
   const [pages, setPages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -79,12 +84,16 @@ export default function StaticPagesView() {
   const filteredPages = useMemo(() => {
     return pages.filter((p) => {
       const q = search.toLowerCase().trim();
+      const seoTitle = p.seo?.metaTitle || p.seoTitle || '';
+      const seoDescription = p.seo?.metaDescription || p.metaDescription || '';
+      const seoKeywords = p.seo?.keywords || p.keywords || '';
       const matchesSearch =
         !q ||
         (p.title || '').toLowerCase().includes(q) ||
         (p.slug || '').toLowerCase().includes(q) ||
-        (p.seoTitle || '').toLowerCase().includes(q) ||
-        (p.metaDescription || '').toLowerCase().includes(q);
+        seoTitle.toLowerCase().includes(q) ||
+        seoDescription.toLowerCase().includes(q) ||
+        seoKeywords.toLowerCase().includes(q);
 
       const isPub = p.status === 'published' || p.status === 'active';
       const matchesStatus =
@@ -152,8 +161,11 @@ export default function StaticPagesView() {
       title: page.title || '',
       slug: page.slug || '',
       status: page.status === 'draft' ? 'draft' : 'published',
-      seoTitle: page.seoTitle || '',
-      metaDescription: page.metaDescription || '',
+      seo: {
+        metaTitle: page.seo?.metaTitle || page.seoTitle || '',
+        metaDescription: page.seo?.metaDescription || page.metaDescription || '',
+        keywords: page.seo?.keywords || page.keywords || '',
+      },
       content: page.content || '',
     });
     setIsModalOpen(true);
@@ -252,7 +264,14 @@ export default function StaticPagesView() {
     }
   };
 
-  const storefrontUrl = `${VITE_FRONT_URL}/${(formData.slug || '').replace(/^\/+/, '')}`;
+  const buildStorefrontUrl = (slug) => `${VITE_FRONT_URL}/${(slug || '').replace(/^\/+/, '')}`;
+  const openStorefrontPage = (slug) => {
+    if (!slug) return;
+    window.open(buildStorefrontUrl(slug), '_blank', 'noopener,noreferrer');
+  };
+  const formatPageDateParts = (page) =>
+    formatDateParts(page?.meta?.updatedAt || page?.updatedAt || page?.meta?.createdAt || page?.createdAt);
+  const storefrontUrl = buildStorefrontUrl(formData.slug);
 
   return (
     <div className="space-y-5 animate-fadeIn">
@@ -350,7 +369,7 @@ export default function StaticPagesView() {
           onSelectAll={handleSelectAll}
           renderCard={(page, idx) => {
             const isSelected = selectedIds.has(page._id);
-            const { date } = formatDateParts(page.updatedAt || page.createdAt);
+            const { date } = formatPageDateParts(page);
             const isPub = page.status === 'published' || page.status === 'active';
             const srNo = (currentPage - 1) * pageSize + idx + 1;
 
@@ -376,9 +395,15 @@ export default function StaticPagesView() {
                       <p className="font-mono text-[10px] text-stone-400 truncate">#{srNo} · /{page.slug}</p>
                     </div>
                   </div>
-                  <div onClick={(e) => e.stopPropagation()} className="flex items-center gap-1 shrink-0">
-                    <EditActionButton onClick={() => handleOpenEdit(page)} />
-                    <DeleteActionButton onClick={() => handleDelete(page)} />
+                  <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+                    <RowActions
+                      onOpenWebsite={page.slug ? () => openStorefrontPage(page.slug) : undefined}
+                      websiteTitle="View on Storefront"
+                      onEdit={() => handleOpenEdit(page)}
+                      editTitle="Edit Page"
+                      onDelete={(e) => handleDelete(page._id, page.title, e)}
+                      deleteTitle="Delete Page"
+                    />
                   </div>
                 </div>
 
@@ -433,9 +458,8 @@ export default function StaticPagesView() {
               ) : (
                 paginatedItems.map((page, idx) => {
                   const isSelected = selectedIds.has(page._id);
-                  const { date, time } = formatDateParts(page.updatedAt || page.createdAt);
+                  const { date, time } = formatPageDateParts(page);
                   const isPub = page.status === 'published' || page.status === 'active';
-                  const pageUrl = `${VITE_FRONT_URL}/${(page.slug || '').replace(/^\/+/, '')}`;
 
                   return (
                     <tr
@@ -479,12 +503,20 @@ export default function StaticPagesView() {
 
                       {/* Col 2: SEO Details */}
                       <td className="py-3.5 px-4 hidden md:table-cell max-w-xs">
-                        <p className="font-medium text-stone-800 text-xs truncate" title={page.seoTitle}>
-                          {page.seoTitle || <span className="text-stone-300 italic">No SEO title</span>}
-                        </p>
-                        <p className="text-[11px] text-stone-400 truncate mt-0.5" title={page.metaDescription}>
-                          {page.metaDescription || <span className="text-stone-300 italic">No meta description</span>}
-                        </p>
+                        {(() => {
+                          const metaTitle = page.seo?.metaTitle || page.seoTitle || '';
+                          const metaDesc = page.seo?.metaDescription || page.metaDescription || '';
+                          return (
+                            <>
+                              <p className="font-medium text-stone-800 text-xs truncate" title={metaTitle}>
+                                {metaTitle || <span className="text-stone-300 italic">No SEO title</span>}
+                              </p>
+                              <p className="text-[11px] text-stone-400 truncate mt-0.5" title={metaDesc}>
+                                {metaDesc || <span className="text-stone-300 italic">No meta description</span>}
+                              </p>
+                            </>
+                          );
+                        })()}
                       </td>
 
                       {/* Col 3: Status Toggle */}
@@ -511,27 +543,14 @@ export default function StaticPagesView() {
 
                       {/* Col 5: Actions */}
                       <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-end gap-1.5">
-                          {page.slug && (
-                            <a
-                              href={pageUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="p-1.5 rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition-colors cursor-pointer"
-                              title="View on Storefront"
-                            >
-                              <HiOutlineEye className="w-4 h-4" />
-                            </a>
-                          )}
-                          <EditActionButton
-                            onClick={() => handleOpenEdit(page)}
-                            title="Edit Page"
-                          />
-                          <DeleteActionButton
-                            onClick={(e) => handleDelete(page._id, page.title, e)}
-                            title="Delete Page"
-                          />
-                        </div>
+                        <RowActions
+                          onOpenWebsite={page.slug ? () => openStorefrontPage(page.slug) : undefined}
+                          websiteTitle="View on Storefront"
+                          onEdit={() => handleOpenEdit(page)}
+                          editTitle="Edit Page"
+                          onDelete={(e) => handleDelete(page._id, page.title, e)}
+                          deleteTitle="Delete Page"
+                        />
                       </td>
                     </tr>
                   );
@@ -615,7 +634,7 @@ export default function StaticPagesView() {
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs font-bold text-[#8b6f4e] hover:text-[#785e40] transition-colors"
               >
-                <HiOutlineEye className="w-3.5 h-3.5" />
+                <HiOutlineExternalLink className="w-3.5 h-3.5" />
                 <span>Open in Store</span>
               </a>
             </div>
@@ -686,33 +705,55 @@ export default function StaticPagesView() {
             </div>
           </div>
 
-          {/* Row 3: SEO Title & Meta Description */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1.5">SEO Title</label>
-              <input
-                type="text"
-                value={formData.seoTitle}
-                onChange={(e) => setFormData({ ...formData, seoTitle: e.target.value })}
-                placeholder="e.g. Our Story | Neirah - Handcrafted Luxury Jewellery"
-                className="w-full px-3.5 py-2.5 text-xs text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] transition-all"
-              />
+          {/* Row 3: SEO Meta Title, Meta Description & Keywords */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1.5">Meta Title</label>
+                <input
+                  type="text"
+                  value={formData.seo?.metaTitle || ''}
+                  onChange={(e) =>
+                    setFormData({ ...formData, seo: { ...formData.seo, metaTitle: e.target.value } })
+                  }
+                  placeholder={`e.g. Our Story | ${companyName} - Handcrafted Luxury Jewellery`}
+                  className="w-full px-3.5 py-2.5 text-xs text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] transition-all"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-stone-700">Meta Description</label>
+                  <span className="text-[10px] text-stone-400">
+                    {(formData.seo?.metaDescription || '').length}/160
+                  </span>
+                </div>
+                <textarea
+                  rows={2}
+                  maxLength={160}
+                  value={formData.seo?.metaDescription || ''}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      seo: { ...formData.seo, metaDescription: e.target.value },
+                    })
+                  }
+                  placeholder={`Discover the story behind ${companyName}...`}
+                  className="w-full px-3.5 py-2 text-xs text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] transition-all resize-none"
+                />
+              </div>
             </div>
 
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-stone-700">Meta Description</label>
-                <span className="text-[10px] text-stone-400">
-                  {formData.metaDescription.length}/160
-                </span>
-              </div>
-              <textarea
-                rows={2}
-                maxLength={160}
-                value={formData.metaDescription}
-                onChange={(e) => setFormData({ ...formData, metaDescription: e.target.value })}
-                placeholder="Discover the story behind Neirah..."
-                className="w-full px-3.5 py-2 text-xs text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] transition-all resize-none"
+              <label className="block text-xs font-bold text-stone-700 mb-1.5">SEO Keywords</label>
+              <input
+                type="text"
+                value={formData.seo?.keywords || ''}
+                onChange={(e) =>
+                  setFormData({ ...formData, seo: { ...formData.seo, keywords: e.target.value } })
+                }
+                placeholder="e.g. fine jewellery, diamond rings, gold jewellery"
+                className="w-full px-3.5 py-2.5 text-xs text-stone-900 border border-stone-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e] transition-all"
               />
             </div>
           </div>

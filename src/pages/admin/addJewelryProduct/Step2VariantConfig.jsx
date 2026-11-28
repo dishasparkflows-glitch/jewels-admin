@@ -112,14 +112,14 @@ export default function Step2VariantConfig() {
         </div>
       </div>
 
-      {/* ─── Sub-Section 1: Metal Options ──────────── */}
-      <div className="p-4 sm:p-5 rounded-2xl border border-stone-200/90 bg-white space-y-3.5 shadow-2xs">
+      {/* ─── Sub-Section 1: Metal Options & Specifications ──────── */}
+      <div className="p-4 sm:p-5 rounded-2xl border border-stone-400/80 bg-white space-y-4 shadow-xs">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
             1
           </div>
           <div>
-            <h3 className="text-xs font-bold text-stone-900">Metal Options</h3>
+            <h3 className="text-xs font-bold text-stone-900">Metal Options &amp; Specifications</h3>
           </div>
         </div>
 
@@ -180,19 +180,8 @@ export default function Step2VariantConfig() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* ─── Sub-Section 2: Metal Specifications ──────────── */}
-      <div className="p-4 sm:p-5 rounded-2xl border border-stone-200/90 bg-white space-y-3.5 shadow-2xs">
-        <div className="flex items-center gap-2">
-          <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
-            2
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-stone-900">Metal Specifications</h3>
-          </div>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3.5 border-t border-stone-200">
           <label className="space-y-1.5">
             <span className="text-[11px] font-bold text-stone-700">Metal Weight (g) (14KT)</span>
             <input
@@ -230,11 +219,11 @@ export default function Step2VariantConfig() {
         </div>
       </div>
 
-      {/* ─── Sub-Section 3: Center & Side Stone Configuration ──── */}
+      {/* ─── Sub-Section 2: Center & Side Stone Configuration ──── */}
       <div className="space-y-4">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
-            3
+            2
           </div>
           <div>
             <h3 className="text-xs font-bold text-stone-900">Stone Configuration</h3>
@@ -269,9 +258,9 @@ export default function Step2VariantConfig() {
 
         {/* ── Color Stone Configuration Card ── */}
         {stoneConfigType === 'colorStone' && (
-          <div className="p-5 rounded-2xl border border-stone-200/90 bg-white space-y-4 shadow-2xs">
+          <div className="p-5 rounded-2xl border border-stone-400/80 bg-white space-y-4 shadow-xs">
             {/* Card Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100 flex-wrap gap-2">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200 flex-wrap gap-2">
               <div className="flex items-center gap-2">
                 <IoDiamondOutline className="w-4 h-4 text-[#8b6f4e]" />
                 <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
@@ -501,9 +490,9 @@ export default function Step2VariantConfig() {
 
         {/* ── Center Diamond Configuration Card ── */}
         {stoneConfigType === 'centerDiamond' && (
-          <div className="p-5 rounded-2xl border border-stone-200/90 bg-white space-y-4 shadow-2xs">
+          <div className="p-5 rounded-2xl border border-stone-400/80 bg-white space-y-4 shadow-xs">
             {/* Card Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
               <div className="flex items-center gap-2">
                 <IoDiamondOutline className="w-4 h-4 text-[#8b6f4e]" />
                 <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
@@ -774,8 +763,8 @@ export default function Step2VariantConfig() {
         )}
 
         {/* ── Side Stone Configuration Card ── */}
-        <div className="p-5 rounded-2xl border border-stone-200/90 bg-white space-y-4 shadow-2xs">
-          <div className="flex items-center justify-between pb-3 border-b border-stone-100 flex-wrap gap-2">
+        <div className="p-5 rounded-2xl border border-stone-400/80 bg-white space-y-4 shadow-xs">
+          <div className="flex items-center justify-between pb-3 border-b border-stone-200 flex-wrap gap-2">
             <div>
               <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
                 SIDE STONE CONFIGURATION
@@ -1045,7 +1034,7 @@ export default function Step2VariantConfig() {
             )}
 
             {/* Variants Table */}
-            <div className="border border-stone-200/90 rounded-xl overflow-hidden shadow-2xs bg-white">
+            <div className="border border-stone-400/80 rounded-xl overflow-hidden shadow-xs bg-white">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
@@ -1110,15 +1099,21 @@ export default function Step2VariantConfig() {
                               const shortPurity = v.purity
                                 ? String(v.purity).replace(/\s*Gold$/i, '').trim()
                                 : '';
-                              const caratVal = v.caratWeight || v.centerDiamondWeight || v.sideDiamondWeight;
+                              const caratVal = v.caratWeight || v.colorStoneWeight || v.centerDiamondWeight || v.sideDiamondWeight || v.sideColorStoneWeight;
 
-                              const detailsList = [
-                                resolvedDiamondType,
-                                resolvedDiamondColor,
-                                resolvedDiamondClarity,
-                                shortPurity,
-                                caratVal ? `${caratVal}ct` : '',
-                              ].filter(Boolean);
+                              const comboTokens = (v.combination && (v.combination.includes('·') || v.combination.includes('•')))
+                                ? v.combination.split(/[·•]/).map((s) => s.trim()).filter(Boolean)
+                                : null;
+
+                              const detailsList = (comboTokens && comboTokens.length > 1)
+                                ? comboTokens
+                                : [
+                                    resolvedDiamondType,
+                                    resolvedDiamondColor,
+                                    resolvedDiamondClarity,
+                                    shortPurity,
+                                    caratVal ? `${caratVal}ct` : '',
+                                  ].filter(Boolean);
 
                               const breakdownText = `Metal: ₹${(v.metalCost || 0).toLocaleString('en-IN')} (${v.weight || v.metalWeight}g @ ₹${v.metalRate || 0}/g)\nDiamonds: ₹${(v.diamondCost || 0).toLocaleString('en-IN')}\nLabour: ₹${(v.labourCharge || 0).toLocaleString('en-IN')}\nGST (${gstPercentage}%): ₹${(v.computedGst || 0).toLocaleString('en-IN')}${v.otherAmount ? `\nOther Amount: ₹${v.otherAmount}` : ''}`;
 

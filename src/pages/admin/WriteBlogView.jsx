@@ -17,8 +17,10 @@ import ToggleSwitch from '../../components/common/ToggleSwitch';
 import DatePicker from '../../components/common/DatePicker';
 import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 import { formatBytes, slugify, toInputDate } from '../../utils/formatters';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function WriteBlogView() {
+  const { companyName } = useTheme();
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditing = Boolean(id);
@@ -102,7 +104,7 @@ export default function WriteBlogView() {
             readTime: blog.readTime || '1 min read',
             status: blog.status || 'active',
             publishDate: toInputDate(blog.publishDate || blog.createdAt || new Date()),
-            author: blog.author || 'Neirah Atelier',
+            author: blog.basicInfo?.author || blog.author || 'Admin',
             tags: Array.isArray(blog.tags)
               ? blog.tags
               : blog.tags
@@ -136,9 +138,9 @@ export default function WriteBlogView() {
       ...prev,
       title,
       slug: isEditingSlug ? prev.slug : autoSlug,
-      metaTitle: prev.metaTitle && prev.metaTitle !== `${prev.title} | Neirah Jewellers`
+      metaTitle: prev.metaTitle && prev.metaTitle !== `${prev.title} | ${companyName}`
         ? prev.metaTitle
-        : (title ? `${title} | Neirah Jewellers` : ''),
+        : (title ? `${title} | ${companyName}` : ''),
     }));
   };
 
@@ -234,7 +236,7 @@ export default function WriteBlogView() {
         shortDescription: formData.shortDescription,
         readTime: formData.readTime || '3 min read',
         publishDate: formData.publishDate ? new Date(formData.publishDate) : new Date(),
-        author: formData.author || 'Neirah Atelier',
+        author: formData.author || 'Admin',
       },
       seo: {
         metaTitle: formData.metaTitle || formData.title,
@@ -511,7 +513,7 @@ export default function WriteBlogView() {
                 <textarea
                   rows={2}
                   maxLength={60}
-                  placeholder="How to Care for 18K Gold and Diamond Jewellery | Neirah Jewellers"
+                  placeholder={`How to Care for 18K Gold and Diamond Jewellery | ${companyName}`}
                   value={formData.metaTitle}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -534,7 +536,7 @@ export default function WriteBlogView() {
                 <textarea
                   rows={3}
                   maxLength={160}
-                  placeholder="Learn expert tips on cleaning, storing and maintaining your 18K gold and diamond jewellery at home from Neirah Jewellers."
+                  placeholder={`Learn expert tips on cleaning, storing and maintaining your 18K gold and diamond jewellery at home from ${companyName}.`}
                   value={formData.metaDescription}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, metaDescription: e.target.value }))
@@ -718,7 +720,7 @@ export default function WriteBlogView() {
               </label>
               <input
                 type="text"
-                placeholder="Neirah Atelier"
+                placeholder="Admin"
                 value={formData.author}
                 onChange={(e) => setFormData((prev) => ({ ...prev, author: e.target.value }))}
                 className="w-full h-10 px-3.5 rounded-xl border border-stone-200 hover:border-stone-300 focus:border-[#8b6f4e] text-xs font-medium text-stone-800 outline-none bg-white shadow-2xs"

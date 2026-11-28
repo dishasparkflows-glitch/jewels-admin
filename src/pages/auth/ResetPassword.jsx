@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
-import { getMediaUrl } from '../../utils/imageUrl';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   HiOutlineLockClosed,
   HiOutlineEye,
@@ -24,13 +24,7 @@ const ResetPassword = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [brandLogo, setBrandLogo] = useState('');
-
-  useEffect(() => {
-    api.get('/settings')
-      .then(({ data }) => setBrandLogo(getMediaUrl(data?.data?.logoImage?.url)))
-      .catch(() => {});
-  }, []);
+  const { companyName, brandLogo } = useTheme();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -72,13 +66,13 @@ const ResetPassword = () => {
         <div className="text-center space-y-2 mb-8">
           <div className="w-12 h-12 rounded-2xl bg-[#faf5ee] border border-[#e8d9c2] flex items-center justify-center mx-auto mb-3 shadow-xs overflow-hidden">
             {brandLogo ? (
-              <img src={brandLogo} alt="Neirah Jewellers" className="max-w-full max-h-full object-contain p-1" />
+              <img src={brandLogo} alt={companyName} className="max-w-full max-h-full object-contain p-1" />
             ) : (
               <HiOutlineSparkles className="w-6 h-6 text-[#8b6f4e]" />
             )}
           </div>
           <h1 className="text-sm font-bold tracking-[0.2em] text-stone-900 uppercase">
-            NEIRAH JEWELLERS
+            {companyName}
           </h1>
           <p className="text-[10px] tracking-[0.3em] text-[#8b6f4e] font-semibold uppercase">
             RESET PASSWORD

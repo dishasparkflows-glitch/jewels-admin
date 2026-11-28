@@ -16,7 +16,6 @@ import {
   HiOutlineColorSwatch,
   HiOutlineLogout,
   HiOutlineCheck,
-  HiOutlineSparkles,
   HiOutlineSwitchHorizontal,
   HiOutlineSun,
   HiOutlineMoon,
@@ -570,21 +569,6 @@ const Header = ({ onMobileToggle }) => {
                 >
                   <HiOutlineUser className="w-4 h-4 text-stone-400" />
                   <span>User Profile</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => handleNavigateProfile('theme')}
-                  className="w-full px-4 py-2 text-left text-xs font-semibold text-stone-700 hover:text-stone-900 hover:bg-stone-50 flex items-center justify-between transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <HiOutlineSparkles className="w-4 h-4 text-stone-400" />
-                    <span>Theme Customizer</span>
-                  </div>
-                  <span
-                    className="w-2.5 h-2.5 rounded-full"
-                    style={{ backgroundColor: currentTheme.primary }}
-                  />
                 </button>
               </div>
 

@@ -60,7 +60,7 @@ export default function BlogsView() {
     image: { url: '', key: '', alt: '' },
     readTime: '3 min read',
     status: 'active',
-    author: 'Neirah Editorial',
+    author: 'Admin',
     tags: '',
   });
 
@@ -233,7 +233,7 @@ export default function BlogsView() {
         description: formData.description,
         shortDescription: formData.shortDescription || '',
         readTime: formData.readTime || '3 min read',
-        author: formData.author || 'Neirah Editorial',
+        author: formData.author || 'Admin',
       },
       image: {
         url: formData.image?.url || '',
@@ -360,7 +360,8 @@ export default function BlogsView() {
   return (
     <div className="space-y-5 animate-fadeIn">
       {/* ─── Module Header ─── */}
-      <ModuleHeader        title="Luxury Journal & Blogs"
+      <ModuleHeader
+        title="Luxury Journal & Blogs"
         subtitle="Publish editorial articles, diamond buying guides, styling tips, and brand stories"
         onAdd={() => navigate('/blogs/write')}
         addLabel="+ Write Blog Article"
@@ -585,11 +586,9 @@ export default function BlogsView() {
                   <td colSpan="9" className="py-12 text-center text-stone-500">
                     <HiOutlineDocumentText className="w-8 h-8 text-stone-300 mx-auto mb-2" />
                     <p className="font-semibold text-stone-700">No blog posts found</p>
-                    <p className="text-xs text-stone-400 mt-1">
-                      {search || categoryFilter !== 'all' || statusFilter !== 'all'
-                        ? 'Try clearing active filters'
-                        : 'Click "+ Write Blog Post" to publish your first luxury story'}
-                    </p>
+                    {(search || categoryFilter !== 'all' || statusFilter !== 'all') && (
+                      <p className="text-xs text-stone-400 mt-1">Try clearing active filters</p>
+                    )}
                   </td>
                 </tr>
               ) : (
@@ -1017,7 +1016,7 @@ export default function BlogsView() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Neirah Editorial"
+                    placeholder="Admin"
                     value={formData.author}
                     onChange={(e) => setFormData({ ...formData, author: e.target.value })}
                     className="w-full px-3 py-2 text-xs border border-stone-200 rounded-xl bg-white focus:outline-none focus:border-[#8b6f4e]"
@@ -1089,7 +1088,7 @@ export default function BlogsView() {
               </h1>
 
               <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-stone-500 font-medium pt-1">
-                <span>By {previewBlog.basicInfo?.author || previewBlog.author || 'Neirah Editorial'}</span>
+                <span>By {previewBlog.basicInfo?.author || previewBlog.author || 'Admin'}</span>
                 <span>•</span>
                 <span>{previewBlog.basicInfo?.readTime || previewBlog.readTime || '3 min read'}</span>
                 <span>•</span>

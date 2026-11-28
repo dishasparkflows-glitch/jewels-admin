@@ -20,6 +20,7 @@ export default function ProfileView() {
   const { user, updateUser } = useAuth();
   const {
     currentTheme,
+    companyName,
     presets,
     defaultTheme,
     selectTheme,
@@ -605,7 +606,7 @@ export default function ProfileView() {
                 onChange={(e) =>
                   setProfileData({ ...profileData, bio: e.target.value })
                 }
-                placeholder="Chief Administrator for NEIRAH Jewellers Luxury Operations..."
+                placeholder={`Chief Administrator for ${companyName} Luxury Operations...`}
                 className="w-full px-3.5 py-2.5 rounded-xl border border-[#d6cfc2] hover:border-[#bdae99] text-xs sm:text-[13px] font-medium text-stone-900 focus:outline-none focus:border-[#8b6f4e] focus:ring-2 focus:ring-[#8b6f4e]/20 shadow-2xs transition-all resize-none"
               />
             </div>

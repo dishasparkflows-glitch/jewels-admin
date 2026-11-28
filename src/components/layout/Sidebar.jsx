@@ -4,8 +4,6 @@ import { navSections } from '../../config/navigation';
 import { resolveNavSections, isPathAllowed, getFirstAllowedPath } from '../../utils/moduleAccess';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import api from '../../api/axios';
-import { getMediaUrl } from '../../utils/imageUrl';
 import { hexToRgb } from '../../utils/themeUtils';
 import { preloadRoute } from '../../utils/routeLoaders';
 import {
@@ -39,6 +37,8 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
     mobileSidebarOpen,
     setMobileSidebarOpen,
     currentTheme,
+    companyName,
+    brandLogo,
   } = useTheme();
 
   const isOpen = propIsOpen !== undefined ? propIsOpen : sidebarOpen;
@@ -56,21 +56,6 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
   const [openSubmenus, setOpenSubmenus] = useState({
     catalog: true,
   });
-
-  const [brandLogo, setBrandLogo] = useState({ desktop: '', mobile: '' });
-
-  useEffect(() => {
-    api
-      .get('/settings')
-      .then(({ data }) => {
-        const settings = data?.data || {};
-        setBrandLogo({
-          desktop: getMediaUrl(settings.logoImage?.url),
-          mobile: getMediaUrl(settings.mobileLogoImage?.url),
-        });
-      })
-      .catch(() => {});
-  }, []);
 
   const checkIsChildActive = (childPath) => {
     return (
@@ -155,6 +140,8 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
           location.pathname.startsWith('/banners/') ||
           location.pathname === '/marketing/banners' ||
           location.pathname === '/website-sections')) ||
+      (childPath === '/stores' &&
+        (location.pathname === '/stores' || location.pathname.startsWith('/stores/'))) ||
       (childPath === '/gallery' &&
         (location.pathname === '/gallery' ||
           location.pathname === '/media-gallery' ||
@@ -259,7 +246,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
           to={homePath}
           onClick={() => handleNavClick(homePath)}
           className="flex items-center gap-2.5 min-w-0 cursor-pointer group"
-          title="Neirah Luxury Portal"
+          title={`${companyName} Luxury Portal`}
         >
           {brandLogo.desktop ? (
             <picture className="w-8 h-8 flex items-center justify-center flex-shrink-0">
@@ -290,7 +277,7 @@ const Sidebar = ({ isOpen: propIsOpen, mobileOpen: propMobileOpen, onMobileClose
 
           <div className="flex flex-col min-w-0 text-left">
             <span className="font-serif text-[13px] font-bold tracking-[0.16em] text-[#1F1D1A] dark:text-stone-100 group-hover:text-[#8a6d4b] uppercase truncate leading-tight transition-colors">
-              NEIRAH
+              {companyName}
             </span>
             <span className="text-[7.5px] tracking-[0.24em] text-[#A67C52] dark:text-[#d4b087] uppercase font-semibold mt-0.5">
               LUXURY PORTAL

@@ -32,6 +32,7 @@ import useDebounce from '../../hooks/useDebounce';
 import { useAdminPageSize } from '../../utils/adminPagination';
 import { downloadBlob } from '../../utils/fileDownload';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import ModuleHeader from '../../components/common/ModuleHeader';
 import StatCards from '../../components/common/StatCards';
 import SearchFilterBar from '../../components/common/SearchFilterBar';
@@ -49,6 +50,7 @@ const ORDER_TABS = [
 
 export default function OrdersView() {
   const confirm = useConfirm();
+  const { companyName } = useTheme();
 
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -135,7 +137,8 @@ export default function OrdersView() {
       });
 
       const safeOrderNum = (order.orderNumber || 'ORD').replace(/[^a-zA-Z0-9_-]/g, '_');
-      downloadBlob(res.data, `NEIRAH_INVOICE_${safeOrderNum}.pdf`, 'application/pdf');
+      const brandPrefix = (companyName || 'Jewels').replace(/[^a-zA-Z0-9]+/g, '_').replace(/^_+|_+$/g, '').toUpperCase() || 'JEWELS';
+      downloadBlob(res.data, `${brandPrefix}_INVOICE_${safeOrderNum}.pdf`, 'application/pdf');
       toast.success('Invoice downloaded successfully! 📄');
     } catch (err) {
       console.error('Failed to download invoice:', err);

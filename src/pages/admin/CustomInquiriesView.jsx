@@ -34,6 +34,36 @@ const STATUS_TABS = [
   { value: 'cancelled', label: 'CANCELLED' },
 ];
 
+const STATUS_ACTION_CONFIG = {
+  confirmed: {
+    title: 'Confirm Inquiry',
+    message: 'Confirm this custom design inquiry request?',
+    confirmLabel: 'CONFIRM',
+    successMessage: 'Custom inquiry confirmed successfully',
+    iconBg: 'bg-emerald-50 border-emerald-200 text-emerald-700',
+    btnClass: 'bg-emerald-700 hover:bg-emerald-800 shadow-emerald-900/20',
+    Icon: HiOutlineCheck,
+  },
+  completed: {
+    title: 'Mark Inquiry Completed',
+    message: 'Mark this custom design inquiry as completed?',
+    confirmLabel: 'COMPLETE',
+    successMessage: 'Custom inquiry marked as completed',
+    iconBg: 'bg-blue-50 border-blue-200 text-blue-700',
+    btnClass: 'bg-blue-700 hover:bg-blue-800 shadow-blue-900/20',
+    Icon: HiOutlineCheckCircle,
+  },
+  cancelled: {
+    title: 'Cancel Inquiry',
+    message: 'Are you sure you want to cancel this custom design inquiry request?',
+    confirmLabel: 'CANCEL INQUIRY',
+    successMessage: 'Custom inquiry cancelled',
+    iconBg: 'bg-red-50 border-red-200 text-red-700',
+    btnClass: 'bg-red-700 hover:bg-red-800 shadow-red-900/20',
+    Icon: HiOutlineBan,
+  },
+};
+
 export default function CustomInquiriesView() {
   const confirm = useConfirm();
   const { openImagePreview } = useImagePreview();
@@ -44,8 +74,8 @@ export default function CustomInquiriesView() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   // Modals
-  const [confirmModalInquiry, setConfirmModalInquiry] = useState(null);
-  const [cancelModalInquiry, setCancelModalInquiry] = useState(null);
+  const [statusModalState, setStatusModalState] = useState(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
   const [viewingInquiry, setViewingInquiry] = useState(null);
 
   // Pagination
@@ -77,45 +107,28 @@ export default function CustomInquiriesView() {
     fetchInquiries(currentPage, pageSize);
   }, [currentPage, pageSize]);
 
-  // Action: Confirm inquiry
-  const handleConfirmInquiry = async () => {
-    if (!confirmModalInquiry) return;
-    const id = confirmModalInquiry._id || confirmModalInquiry.id;
+  // Action: Update inquiry status (confirmed / completed / cancelled)
+  const handleStatusUpdate = async () => {
+    if (!statusModalState?.inquiry || !statusModalState?.targetStatus) return;
+    const { inquiry, targetStatus } = statusModalState;
+    const id = inquiry._id || inquiry.id;
+    const actionCfg = STATUS_ACTION_CONFIG[targetStatus];
     try {
-      await api.put(`/custom-inquiries/${id}`, { status: 'confirmed' });
-      toast.success('Custom inquiry confirmed successfully');
+      setUpdatingStatus(true);
+      await api.put(`/custom-inquiries/${id}`, { status: targetStatus });
+      toast.success(actionCfg?.successMessage || `Inquiry marked as ${targetStatus}`);
       setInquiries((prev) =>
-        prev.map((i) => ((i._id || i.id) === id ? { ...i, status: 'confirmed' } : i))
+        prev.map((i) => ((i._id || i.id) === id ? { ...i, status: targetStatus } : i))
       );
       if (viewingInquiry && (viewingInquiry._id || viewingInquiry.id) === id) {
-        setViewingInquiry((prev) => ({ ...prev, status: 'confirmed' }));
+        setViewingInquiry((prev) => ({ ...prev, status: targetStatus }));
       }
     } catch (err) {
-      console.error('Confirm request failed:', err);
-      toast.error(err.response?.data?.message || 'Failed to confirm inquiry');
+      console.error(`Status update (${targetStatus}) failed:`, err);
+      toast.error(err.response?.data?.message || `Failed to update inquiry status`);
     } finally {
-      setConfirmModalInquiry(null);
-    }
-  };
-
-  // Action: Cancel inquiry
-  const handleCancelInquiry = async () => {
-    if (!cancelModalInquiry) return;
-    const id = cancelModalInquiry._id || cancelModalInquiry.id;
-    try {
-      await api.put(`/custom-inquiries/${id}`, { status: 'cancelled' });
-      toast.success('Custom inquiry cancelled');
-      setInquiries((prev) =>
-        prev.map((i) => ((i._id || i.id) === id ? { ...i, status: 'cancelled' } : i))
-      );
-      if (viewingInquiry && (viewingInquiry._id || viewingInquiry.id) === id) {
-        setViewingInquiry((prev) => ({ ...prev, status: 'cancelled' }));
-      }
-    } catch (err) {
-      console.error('Cancel request failed:', err);
-      toast.error(err.response?.data?.message || 'Failed to cancel inquiry');
-    } finally {
-      setCancelModalInquiry(null);
+      setUpdatingStatus(false);
+      setStatusModalState(null);
     }
   };
 
@@ -488,6 +501,43 @@ export default function CustomInquiriesView() {
                     <p className="text-stone-600 mt-0.5 truncate">{stone} · {metal}</p>
                   </div>
                 </div>
+
+                <div
+                  className="flex items-center justify-end gap-1.5 pt-2 border-t border-stone-100"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {statusVal === 'pending' && (
+                    <button
+                      type="button"
+                      onClick={() => setStatusModalState({ inquiry: inq, targetStatus: 'confirmed' })}
+                      className="px-2.5 py-1 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-700 text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                    >
+                      Confirm
+                    </button>
+                  )}
+                  {(statusVal === 'pending' || statusVal === 'confirmed') && (
+                    <button
+                      type="button"
+                      onClick={() => setStatusModalState({ inquiry: inq, targetStatus: 'completed' })}
+                      className="px-2.5 py-1 rounded-lg border border-blue-200 bg-blue-50 text-blue-700 text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                    >
+                      Complete
+                    </button>
+                  )}
+                  {(statusVal === 'pending' || statusVal === 'confirmed') && (
+                    <button
+                      type="button"
+                      onClick={() => setStatusModalState({ inquiry: inq, targetStatus: 'cancelled' })}
+                      className="px-2.5 py-1 rounded-lg border border-rose-200 bg-rose-50 text-rose-600 text-[10px] font-bold uppercase tracking-wider cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <DeleteActionButton
+                    onClick={() => handleDelete(id, clientName)}
+                    title="Delete Inquiry"
+                  />
+                </div>
               </div>
             );
           }}
@@ -612,7 +662,7 @@ export default function CustomInquiriesView() {
                       </td>
 
                       {/* Status Badge */}
-                      <td className="py-3 px-4 whitespace-nowrap">
+                      <td className="py-3 px-4 whitespace-nowrap text-center">
                         {statusVal === 'pending' && (
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-50 text-amber-700 border border-amber-200/80">
                             PENDING
@@ -635,7 +685,7 @@ export default function CustomInquiriesView() {
                         )}
                       </td>
 
-                      {/* Actions: View Details, Confirm, Cancel, Delete */}
+                      {/* Actions: View Details, Confirm, Complete, Cancel, Delete */}
                       <td className="py-3 pr-5 pl-2 whitespace-nowrap text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           {/* View Details Eye Button */}
@@ -643,32 +693,48 @@ export default function CustomInquiriesView() {
                             type="button"
                             onClick={() => setViewingInquiry(inq)}
                             title="View Inquiry Details"
+                            data-tooltip="View Details"
                             className="w-7 h-7 rounded-lg border border-stone-200/80 bg-stone-50 text-stone-600 hover:bg-stone-100 hover:text-stone-900 hover:border-stone-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                           >
                             <HiOutlineEye className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* Confirm Green Check Button */}
-                          {statusFilter === 'pending' && (
+                          {/* Confirm Button */}
+                          {statusVal === 'pending' && (
                             <button
                               type="button"
-                              onClick={() => setConfirmModalInquiry(inq)}
+                              onClick={() => setStatusModalState({ inquiry: inq, targetStatus: 'confirmed' })}
                               title="Confirm Inquiry"
+                              data-tooltip="Confirm"
                               className="w-7 h-7 rounded-lg border border-emerald-200/80 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                             >
                               <HiOutlineCheck className="w-3.5 h-3.5 stroke-2" />
                             </button>
                           )}
 
-                          {/* Cancel Red X Button */}
-                          {(statusFilter === 'pending' || statusFilter === 'confirmed') && (
+                          {/* Complete Button */}
+                          {(statusVal === 'pending' || statusVal === 'confirmed') && (
                             <button
                               type="button"
-                              onClick={() => setCancelModalInquiry(inq)}
+                              onClick={() => setStatusModalState({ inquiry: inq, targetStatus: 'completed' })}
+                              title="Mark as Completed"
+                              data-tooltip="Complete"
+                              className="w-7 h-7 rounded-lg border border-blue-200/80 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:border-blue-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
+                            >
+                              <HiOutlineCheckCircle className="w-3.5 h-3.5 stroke-2" />
+                            </button>
+                          )}
+
+                          {/* Cancel Button */}
+                          {(statusVal === 'pending' || statusVal === 'confirmed') && (
+                            <button
+                              type="button"
+                              onClick={() => setStatusModalState({ inquiry: inq, targetStatus: 'cancelled' })}
                               title="Cancel Inquiry"
+                              data-tooltip="Cancel"
                               className="w-7 h-7 rounded-lg border border-rose-200/80 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:border-rose-300 active:scale-95 flex items-center justify-center transition-all shadow-2xs cursor-pointer"
                             >
-                              <HiOutlineX className="w-3.5 h-3.5 stroke-2" />
+                              <HiOutlineBan className="w-3.5 h-3.5 stroke-2" />
                             </button>
                           )}
 
@@ -701,108 +767,64 @@ export default function CustomInquiriesView() {
         />
       </div>
 
-      {/* ─── Confirm Inquiry Modal (Screenshot 2) ─── */}
-      {confirmModalInquiry && (
-        createPortal(<div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
-          onClick={() => setConfirmModalInquiry(null)}
-        >
+      {/* ─── Status Confirmation Modal (Confirmed / Completed / Cancelled) ─── */}
+      {statusModalState && (() => {
+        const cfg = STATUS_ACTION_CONFIG[statusModalState.targetStatus] || STATUS_ACTION_CONFIG.confirmed;
+        const ActionIcon = cfg.Icon;
+        return createPortal(
           <div
-            className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl border border-stone-100 space-y-4 text-center relative animate-scaleUp"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
+            onClick={() => !updatingStatus && setStatusModalState(null)}
           >
-            <button
-              type="button"
-              onClick={() => setConfirmModalInquiry(null)}
-              className="absolute top-5 right-5 text-stone-300 hover:text-stone-600 transition-colors cursor-pointer"
+            <div
+              className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl border border-stone-100 space-y-4 text-center relative animate-scaleUp"
+              onClick={(e) => e.stopPropagation()}
             >
-              <HiOutlineX className="w-5 h-5" />
-            </button>
-
-            {/* Success Icon */}
-            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-200 mx-auto flex items-center justify-center text-emerald-700 shadow-2xs">
-              <HiOutlineCheck className="w-7 h-7 stroke-2" />
-            </div>
-
-            <div>
-              <h3 className="text-lg font-bold text-stone-900 tracking-tight">
-                Confirm Inquiry
-              </h3>
-              <p className="text-xs text-stone-500 mt-1">
-                Confirm this custom design inquiry request?
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3 pt-3">
               <button
                 type="button"
-                onClick={() => setConfirmModalInquiry(null)}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer"
+                disabled={updatingStatus}
+                onClick={() => setStatusModalState(null)}
+                className="absolute top-5 right-5 text-stone-300 hover:text-stone-600 transition-colors cursor-pointer"
               >
-                NO, KEEP IT
+                <HiOutlineX className="w-5 h-5" />
               </button>
-              <button
-                type="button"
-                onClick={handleConfirmInquiry}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-emerald-700 hover:bg-emerald-800 shadow-sm shadow-emerald-900/20 transition-colors cursor-pointer"
-              >
-                CONFIRM
-              </button>
-            </div>
-          </div>
-        </div>, document.body)
-      )}
 
-      {/* ─── Cancel Inquiry Modal ─── */}
-      {cancelModalInquiry && (
-        createPortal(<div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 backdrop-blur-xs p-4 animate-fadeIn"
-          onClick={() => setCancelModalInquiry(null)}
-        >
-          <div
-            className="bg-white rounded-3xl max-w-sm w-full p-8 shadow-2xl border border-stone-100 space-y-4 text-center relative animate-scaleUp"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <button
-              type="button"
-              onClick={() => setCancelModalInquiry(null)}
-              className="absolute top-5 right-5 text-stone-300 hover:text-stone-600 transition-colors cursor-pointer"
-            >
-              <HiOutlineX className="w-5 h-5" />
-            </button>
+              <div className={`w-14 h-14 rounded-2xl border mx-auto flex items-center justify-center shadow-2xs ${cfg.iconBg}`}>
+                <ActionIcon className="w-7 h-7 stroke-2" />
+              </div>
 
-            <div className="w-14 h-14 rounded-2xl bg-red-50 border border-red-200 mx-auto flex items-center justify-center text-red-700 shadow-2xs">
-              <HiOutlineBan className="w-7 h-7 stroke-2" />
-            </div>
+              <div>
+                <h3 className="text-lg font-bold text-stone-900 tracking-tight">
+                  {cfg.title}
+                </h3>
+                <p className="text-xs text-stone-500 mt-1">
+                  {cfg.message}
+                </p>
+              </div>
 
-            <div>
-              <h3 className="text-lg font-bold text-stone-900 tracking-tight">
-                Cancel Inquiry
-              </h3>
-              <p className="text-xs text-stone-500 mt-1">
-                Are you sure you want to cancel this custom design inquiry request?
-              </p>
+              <div className="flex items-center gap-3 pt-3">
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={() => setStatusModalState(null)}
+                  className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer"
+                >
+                  NO, KEEP IT
+                </button>
+                <button
+                  type="button"
+                  disabled={updatingStatus}
+                  onClick={handleStatusUpdate}
+                  className={`flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white shadow-sm transition-colors cursor-pointer disabled:opacity-60 ${cfg.btnClass}`}
+                >
+                  {updatingStatus ? 'UPDATING...' : cfg.confirmLabel}
+                </button>
+              </div>
             </div>
-
-            <div className="flex items-center gap-3 pt-3">
-              <button
-                type="button"
-                onClick={() => setCancelModalInquiry(null)}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-stone-600 bg-stone-100 hover:bg-stone-200 transition-colors cursor-pointer"
-              >
-                NO, KEEP IT
-              </button>
-              <button
-                type="button"
-                onClick={handleCancelInquiry}
-                className="flex-1 py-3 px-4 rounded-xl text-xs font-bold uppercase tracking-wider text-white bg-red-700 hover:bg-red-800 shadow-sm shadow-red-900/20 transition-colors cursor-pointer"
-              >
-                CANCEL INQUIRY
-              </button>
-            </div>
-          </div>
-        </div>, document.body)
-      )}
+          </div>,
+          document.body
+        );
+      })()}
 
       {/* ─── View Details Modal ─── */}
       {viewingInquiry && (
@@ -1003,19 +1025,46 @@ export default function CustomInquiriesView() {
               )}
             </div>
 
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  const inq = viewingInquiry;
-                  setViewingInquiry(null);
-                  setConfirmModalInquiry(inq);
-                }}
-                style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
-                className="flex-1 py-2.5 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors hover:brightness-95 cursor-pointer text-center shadow-xs"
-              >
-                Confirm Request
-              </button>
+            <div className="flex flex-wrap items-center gap-2 pt-2">
+              {(viewingInquiry.status || 'pending').toLowerCase() === 'pending' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const inq = viewingInquiry;
+                    setViewingInquiry(null);
+                    setStatusModalState({ inquiry: inq, targetStatus: 'confirmed' });
+                  }}
+                  className="flex-1 min-w-[110px] py-2.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer text-center shadow-xs"
+                >
+                  Confirm
+                </button>
+              )}
+              {['pending', 'confirmed'].includes((viewingInquiry.status || 'pending').toLowerCase()) && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const inq = viewingInquiry;
+                      setViewingInquiry(null);
+                      setStatusModalState({ inquiry: inq, targetStatus: 'completed' });
+                    }}
+                    className="flex-1 min-w-[110px] py-2.5 bg-blue-700 hover:bg-blue-800 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer text-center shadow-xs"
+                  >
+                    Completed
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const inq = viewingInquiry;
+                      setViewingInquiry(null);
+                      setStatusModalState({ inquiry: inq, targetStatus: 'cancelled' });
+                    }}
+                    className="flex-1 min-w-[110px] py-2.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold uppercase tracking-wider rounded-xl transition-colors cursor-pointer text-center shadow-xs"
+                  >
+                    Cancel
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={() => setViewingInquiry(null)}

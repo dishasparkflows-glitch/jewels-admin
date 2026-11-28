@@ -5,6 +5,7 @@ import {
   HiOutlineUpload,
   HiOutlineDownload,
   HiOutlineCheck,
+  HiOutlineX,
 } from 'react-icons/hi';
 import toast from 'react-hot-toast';
 import api from '../../api/axios';
@@ -26,11 +27,14 @@ export default function DiamondPricingMasterView() {
   const [searchParams] = useSearchParams();
   const confirm = useConfirm();
   const fileInputRef = useRef(null);
-  const tableEndRef = useRef(null);
+  const tableTopRef = useRef(null);
 
   // Active Type & Tab State
   const [activeType, setActiveType] = useState('')
   const [activeTab, setActiveTab] = useState('center'); // 'center' | 'side'
+  const [shapeFilter, setShapeFilter] = useState('');
+  const [colorFilter, setColorFilter] = useState('');
+  const [clarityFilter, setClarityFilter] = useState('');
 
   // Master attributes lookup
   const [shapesList, setShapesList] = useState([]);
@@ -57,12 +61,18 @@ export default function DiamondPricingMasterView() {
   useEffect(() => {
     const qType = searchParams.get('type');
     const qTab = searchParams.get('tab');
+    const qShape = searchParams.get('shape');
+    const qColor = searchParams.get('color');
+    const qClarity = searchParams.get('clarity');
     if (qType) {
       setActiveType(qType.replace(/\+/g, ' '));
     }
     if (qTab === 'side' || qTab === 'center') {
       setActiveTab(qTab);
     }
+    if (qShape) setShapeFilter(qShape.toUpperCase());
+    if (qColor) setColorFilter(qColor.toUpperCase());
+    if (qClarity) setClarityFilter(qClarity.toUpperCase());
   }, [searchParams]);
 
   // Fetch Master Lookups (Shapes, Colors, Clarities, Types)
@@ -134,7 +144,7 @@ export default function DiamondPricingMasterView() {
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      const cacheKey = `diamond-prices:tab=${activeTab}:type=${activeType}:p=${page}:l=${limit}`;
+      const cacheKey = `diamond-prices:tab=${activeTab}:type=${activeType}:shape=${shapeFilter || 'all'}:color=${colorFilter || 'all'}:clarity=${clarityFilter || 'all'}:p=${page}:l=${limit}`;
       const cached = !silent ? getCachedData(cacheKey, 60_000) : null;
 
       if (cached) {
@@ -157,8 +167,14 @@ export default function DiamondPricingMasterView() {
       try {
         const endpoint = activeTab === 'center' ? '/center-diamond-prices' : '/side-diamond-prices';
         const typeId = masterIds.types[activeType.toLowerCase()];
+        const shapeId = shapeFilter ? masterIds.shapes[shapeFilter.toUpperCase()] : null;
+        const colorId = colorFilter ? masterIds.colors[colorFilter.toUpperCase()] : null;
+        const clarityId = clarityFilter ? masterIds.clarities[clarityFilter.toUpperCase()] : null;
         const params = new URLSearchParams({ page: String(page), limit: String(limit) });
         if (typeId) params.set('diamondTypeId', typeId);
+        if (shapeId) params.set('diamondShapeId', shapeId);
+        if (colorId) params.set('diamondColorId', colorId);
+        if (clarityId) params.set('diamondClarityId', clarityId);
 
         const res = await api.get(`${endpoint}?${params.toString()}`, { signal: controller.signal });
         if (controller.signal.aborted) return;
@@ -208,7 +224,7 @@ export default function DiamondPricingMasterView() {
         }
       }
     },
-    [activeTab, activeType, currentPage, pageSize, masterIds.types]
+    [activeTab, activeType, shapeFilter, colorFilter, clarityFilter, currentPage, pageSize, masterIds]
   );
 
   useEffect(() => {
@@ -231,19 +247,73 @@ export default function DiamondPricingMasterView() {
     setCurrentPage(1);
   };
 
+  const handleFilterSelect = useCallback((setter) => (value) => {
+    setter(value || '');
+    setCurrentPage(1);
+  }, []);
+
+  const handleResetFilters = () => {
+    setShapeFilter('');
+    setColorFilter('');
+    setClarityFilter('');
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = Boolean(shapeFilter || colorFilter || clarityFilter);
+
   // Current active rows
   const currentRows = activeTab === 'center' ? centerRows : sideRows;
   const setCurrentRows = activeTab === 'center' ? setCenterRows : setSideRows;
 
-  // Filtered rows matching selected Diamond Type
+  // Filtered rows matching selected Diamond Type (plus fallback client filtering if master ID is unresolved)
   const filteredRows = useMemo(() => {
+    const resolvedShapeId = shapeFilter ? masterIds.shapes[shapeFilter.toUpperCase()] : null;
+    const resolvedColorId = colorFilter ? masterIds.colors[colorFilter.toUpperCase()] : null;
+    const resolvedClarityId = clarityFilter ? masterIds.clarities[clarityFilter.toUpperCase()] : null;
+
     return currentRows.filter((r) => {
-      if (!r.type) return true;
-      const isNatural = activeType.toLowerCase().includes('natural');
-      const rowNatural = String(r.type).toLowerCase().includes('natural');
-      return isNatural === rowNatural;
+      if (r.type) {
+        const isNatural = activeType.toLowerCase().includes('natural');
+        const rowNatural = String(r.type).toLowerCase().includes('natural');
+        if (isNatural !== rowNatural) return false;
+      }
+      if (r.isNew) return true;
+      if (shapeFilter && !resolvedShapeId && r.shape !== shapeFilter.toUpperCase()) return false;
+      if (colorFilter && !resolvedColorId && r.color !== colorFilter.toUpperCase()) return false;
+      if (clarityFilter && !resolvedClarityId && r.clarity !== clarityFilter.toUpperCase()) return false;
+      return true;
     });
-  }, [currentRows, activeType]);
+  }, [currentRows, activeType, shapeFilter, colorFilter, clarityFilter, masterIds]);
+
+  const filterConfigs = useMemo(
+    () => [
+      {
+        key: 'shape',
+        value: shapeFilter,
+        onChange: handleFilterSelect(setShapeFilter),
+        allLabel: 'All Shapes',
+        items: shapesList,
+        widthClass: 'w-32 sm:w-36',
+      },
+      {
+        key: 'color',
+        value: colorFilter,
+        onChange: handleFilterSelect(setColorFilter),
+        allLabel: 'All Colors',
+        items: colorsList,
+        widthClass: 'w-28 sm:w-32',
+      },
+      {
+        key: 'clarity',
+        value: clarityFilter,
+        onChange: handleFilterSelect(setClarityFilter),
+        allLabel: 'All Clarities',
+        items: claritiesList,
+        widthClass: 'w-28 sm:w-32',
+      },
+    ],
+    [shapeFilter, colorFilter, clarityFilter, shapesList, colorsList, claritiesList, handleFilterSelect]
+  );
 
   // Update a single cell in the table
   const handleUpdateRow = (id, field, value) => {
@@ -252,26 +322,26 @@ export default function DiamondPricingMasterView() {
     );
   };
 
-  // Add a new row to the table (appends row to bottom matching screenshot)
+  // Add a new row to the top of the table
   const handleAddRow = () => {
     const newId = `new_${Date.now()}`;
     const newRecord = {
       id: newId,
       _id: newId,
       type: activeType,
-      shape: 'FANCY',
-      color: 'D-E',
-      clarity: 'VS',
+      shape: shapeFilter || 'FANCY',
+      color: colorFilter || 'D-E',
+      clarity: clarityFilter || 'VS',
       sizeFrom: '',
       sizeTo: '',
       priceINR: '',
       isNew: true,
     };
 
-    setCurrentRows((prev) => [...prev, newRecord]);
+    setCurrentRows((prev) => [newRecord, ...prev]);
     toast.success('New diamond rate row added');
     setTimeout(() => {
-      tableEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      tableTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 100);
   };
 
@@ -541,14 +611,53 @@ export default function DiamondPricingMasterView() {
           </button>
         </div>
 
-        {/* Total Rows Indicator */}
-        <div className="text-xs font-extrabold uppercase tracking-widest text-stone-500">
-          TOTAL ROWS: {serverTotal}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3 ml-auto">
+          {/* Shape, Color, Clarity Filters */}
+          <div className="flex flex-wrap items-center gap-2">
+            {filterConfigs.map((filter) => (
+              <div key={filter.key} className={filter.widthClass}>
+                <Dropdown
+                  size="sm"
+                  portal
+                  autoMenuWidth
+                  value={filter.value}
+                  onChange={filter.onChange}
+                  options={[
+                    { value: '', label: filter.allLabel },
+                    ...filter.items.map((item) => ({ value: item, label: item })),
+                  ]}
+                  buttonClassName={`w-full h-9 px-3 rounded-xl border text-xs font-semibold shadow-2xs transition-colors ${
+                    filter.value
+                      ? 'bg-[#faf6f0] border-[#8b6f4e] text-[#8b6f4e]'
+                      : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300'
+                  }`}
+                  menuClassName="z-50"
+                />
+              </div>
+            ))}
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                title="Clear shape, color, and clarity filters"
+                className="h-9 px-2.5 rounded-xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-500 hover:text-stone-800 text-xs font-semibold inline-flex items-center gap-1 transition-colors cursor-pointer"
+              >
+                <HiOutlineX className="w-3.5 h-3.5" />
+                <span>Reset</span>
+              </button>
+            )}
+          </div>
+
+          {/* Total Rows Indicator */}
+          <div className="text-xs font-extrabold uppercase tracking-widest text-stone-500 whitespace-nowrap">
+            TOTAL ROWS: {serverTotal}
+          </div>
         </div>
       </div>
 
       {/* Diamond Pricing Master Table (Mobile Grid + Desktop Table) */}
-      <div className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden relative">
+      <div ref={tableTopRef} className="bg-white rounded-2xl border border-stone-200/80 shadow-2xs overflow-hidden relative">
         {refreshing && (
           <div className="h-0.5 w-full bg-stone-200/70 overflow-hidden">
             <div className="h-full w-1/3 rounded-full bg-[#8b6f4e] animate-pulse" />
@@ -559,7 +668,11 @@ export default function DiamondPricingMasterView() {
           loading={loading}
           loadingText="Loading diamond rates from API..."
           isEmpty={filteredRows.length === 0}
-          emptyText='No diamond rates found. Click "+ Add Row" or "Upload Excel" to configure prices.'
+          emptyText={
+            hasActiveFilters
+              ? 'No diamond rates match the selected filters.'
+              : 'No diamond rates found. Click "+ Add Row" or "Upload Excel" to configure prices.'
+          }
           items={filteredRows}
           renderCard={(row, index) => (
             <div
@@ -671,8 +784,14 @@ export default function DiamondPricingMasterView() {
               ) : filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-stone-400">
-                    <p className="font-semibold text-stone-700 mb-1">No diamond rates found</p>
-                    <p className="text-xs">Click &quot;+ Add Row&quot; or &quot;Upload Excel&quot; to configure prices.</p>
+                    <p className="font-semibold text-stone-700 mb-1">
+                      {hasActiveFilters ? 'No matching diamond rates found' : 'No diamond rates found'}
+                    </p>
+                    <p className="text-xs">
+                      {hasActiveFilters
+                        ? 'Try adjusting or resetting the Shape, Color, or Clarity filters.'
+                        : 'Click "+ Add Row" or "Upload Excel" to configure prices.'}
+                    </p>
                   </td>
                 </tr>
               ) : (
@@ -792,7 +911,6 @@ export default function DiamondPricingMasterView() {
             Total {serverTotal} diamond rate {serverTotal === 1 ? 'row' : 'rows'}
           </span>
         </div>
-        <div ref={tableEndRef} />
         </div>
       </div>
     </div>

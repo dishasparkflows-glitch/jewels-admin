@@ -2,10 +2,11 @@ import { useAddJewelryProductContext } from './AddJewelryProductContext';
 import SeoConfigTab from '../../../components/ornate/tabs/SeoConfigTab';
 
 export default function Step6SeoPublish() {
-  const { seo, setSeo, basicDetails, setBasicDetails } = useAddJewelryProductContext();
+  const { getStepPosition, seo, setSeo, basicDetails, setBasicDetails } = useAddJewelryProductContext();
 
   return (
     <SeoConfigTab
+      stepNumber={getStepPosition(6)}
       seo={seo}
       setSeo={setSeo}
       soldCount={basicDetails.soldCount}

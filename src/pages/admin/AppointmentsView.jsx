@@ -260,6 +260,45 @@ export default function AppointmentsView() {
     }
   };
 
+  const handleBulkComplete = async () => {
+    const count = selectedIds.size;
+    if (count === 0) {
+      toast.error('Please select appointments to mark as completed');
+      return;
+    }
+
+    const isConfirmed = await confirm({
+      title: 'Complete Selected Appointments',
+      message: `Mark ${count} selected appointment${count > 1 ? 's' : ''} as completed?`,
+      confirmText: `Mark Completed (${count})`,
+      cancelText: 'Cancel',
+      type: 'success',
+      icon: <HiOutlineCheckCircle className="w-6 h-6 stroke-[2]" />,
+    });
+    if (!isConfirmed) return;
+
+    const idsToComplete = Array.from(selectedIds);
+    try {
+      await Promise.all(
+        idsToComplete.map((id) =>
+          api.patch(`/appointments/${id}/status`, { status: 'completed' }).catch(() =>
+            api.put(`/appointments/${id}`, { status: 'completed' })
+          )
+        )
+      );
+      clearRequestCache('appointments');
+      setAppointments((prev) =>
+        prev.map((a) =>
+          selectedIds.has(a._id || a.id) ? { ...a, status: 'completed' } : a
+        )
+      );
+      clearSelection();
+      toast.success(`${count} appointment${count > 1 ? 's' : ''} marked as completed`);
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update selected appointments');
+    }
+  };
+
   const handleSelectAll = () => {
     toggleSelectAll(paginatedItems, (apt, idx) => apt._id || apt.id || `apt_${idx}`);
   };
@@ -650,6 +689,23 @@ export default function AppointmentsView() {
             )}
           </div>
 
+          {/* Bulk Complete Button (When on Confirmed Tab) */}
+          {statusFilter === 'confirmed' && (
+            <button
+              type="button"
+              onClick={handleBulkComplete}
+              disabled={selectedIds.size === 0}
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all border shadow-2xs whitespace-nowrap ${
+                selectedIds.size > 0
+                  ? 'bg-blue-50 text-blue-600 border-blue-200 hover:bg-blue-100 hover:border-blue-300 active:scale-95 ring-1 ring-blue-200/50 cursor-pointer'
+                  : 'bg-white text-stone-300 border-stone-200/90 cursor-not-allowed opacity-60'
+              }`}
+            >
+              <HiOutlineCheckCircle className="w-3.5 h-3.5 shrink-0 text-blue-600" />
+              <span>Mark Completed{selectedIds.size > 0 ? ` (${selectedIds.size})` : ''}</span>
+            </button>
+          )}
+
           {/* Bulk Delete Button */}
           <button
             type="button"
@@ -680,7 +736,6 @@ export default function AppointmentsView() {
             <HiOutlineCalendar className="w-6 h-6 stroke-[1.8]" />
           </div>
           <p className="text-sm text-stone-600 font-bold">No appointments found</p>
-          <p className="text-xs text-stone-400">Try adjusting your status tabs or search criteria</p>
         </div>
       ) : (
         /* ─── TABLE VIEW (Mobile Grid + Desktop Table) ─── */
@@ -725,7 +780,22 @@ export default function AppointmentsView() {
                         <p className="text-[10px] text-stone-400 truncate">#{srNo} · {clientEmail}</p>
                       </div>
                     </div>
-                    <div className="shrink-0">{renderStatusPill(apt.status)}</div>
+                    <div className="shrink-0 flex items-center gap-1.5">
+                      {renderStatusPill(apt.status)}
+                      {apt.status === 'confirmed' && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAcceptAppointment(apt);
+                          }}
+                          title="Mark Completed"
+                          className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                        >
+                          <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 pt-2 border-t border-stone-100 text-[11px]">
@@ -840,6 +910,16 @@ export default function AppointmentsView() {
                               onClick={() => handleAcceptAppointment(apt)}
                               title="Accept & Confirm"
                               className="w-7 h-7 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-600 border border-emerald-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
+                            >
+                              <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
+                            </button>
+                          )}
+                          {apt.status === 'confirmed' && (
+                            <button
+                              type="button"
+                              onClick={() => handleAcceptAppointment(apt)}
+                              title="Mark Completed"
+                              className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 border border-blue-200/80 flex items-center justify-center transition-all cursor-pointer shadow-2xs"
                             >
                               <HiOutlineCheckCircle className="w-4 h-4 stroke-2" />
                             </button>

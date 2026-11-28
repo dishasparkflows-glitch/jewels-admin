@@ -9,6 +9,7 @@ import { useAddJewelryProductContext } from './AddJewelryProductContext';
 
 export default function Step5CareAndSpecs() {
   const {
+    getStepPosition,
     careSections,
     handleAddCareSection,
     handleCareDragStart,
@@ -36,10 +37,26 @@ export default function Step5CareAndSpecs() {
   } = useAddJewelryProductContext();
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start animate-fadeIn">
+    <div className="bg-white rounded-2xl border border-[#eee8df] p-6 shadow-xs space-y-6 animate-fadeIn">
+      {/* Step Header */}
+      <div className="flex items-center gap-3.5 pb-4 border-b border-stone-200">
+        <div className="w-8 h-8 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+          {getStepPosition(5)}
+        </div>
+        <div>
+          <h3 className="text-base font-bold text-stone-900">
+            Care &amp; Specs
+          </h3>
+          <p className="text-xs text-stone-500">
+            Configure product care instructions, custom information sections, and technical specifications.
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-5 items-start">
       {/* Sub-block A: Product Information & Care Sections */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-2xs space-y-4 min-w-0">
-        <div className="flex items-center justify-between pb-3 border-b border-stone-100 flex-wrap gap-2">
+      <div className="bg-white rounded-2xl border border-stone-400/80 p-5 sm:p-6 shadow-xs space-y-4 min-w-0">
+        <div className="flex items-center justify-between pb-3 border-b border-stone-200 flex-wrap gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
               <HiOutlineDocumentText className="w-4 h-4" />
@@ -87,7 +104,7 @@ export default function Step5CareAndSpecs() {
                     ? 'opacity-40 border-dashed border-[#8b6f4e] bg-stone-100 scale-[0.99]'
                     : dragOverCareIndex === idx
                     ? 'border-2 border-[#8b6f4e] bg-[#faf5ee] shadow-md'
-                    : 'border-stone-200/90 bg-[#faf8f5]'
+                    : 'border-stone-400/80 bg-[#faf8f5]'
                 }`}
               >
                 {/* Top Header Row */}
@@ -196,7 +213,7 @@ export default function Step5CareAndSpecs() {
                 </div>
 
                 {/* Full-Width Formatted Content Editor */}
-                <div className="w-full rounded-xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+                <div className="w-full rounded-xl border border-stone-300 bg-white overflow-hidden shadow-2xs">
                   {/* Editor Toolbar */}
                   <div className="border-b border-stone-200/80 bg-[#fbf9f6] px-3 py-1.5 flex items-center gap-1.5 flex-wrap">
                     {/* Style selector */}
@@ -316,8 +333,8 @@ export default function Step5CareAndSpecs() {
       </div>
 
       {/* Sub-block B: Product Specifications */}
-      <div className="bg-white rounded-2xl border border-stone-200/90 p-5 sm:p-6 shadow-2xs space-y-4 min-w-0">
-        <div className="flex items-center justify-between pb-3 border-b border-stone-100 flex-wrap gap-2">
+      <div className="bg-white rounded-2xl border border-stone-400/80 p-5 sm:p-6 shadow-xs space-y-4 min-w-0">
+        <div className="flex items-center justify-between pb-3 border-b border-stone-200 flex-wrap gap-2">
           <div className="flex items-center gap-2.5">
             <div className="w-7 h-7 rounded-lg bg-[#faf5ee] text-[#8b6f4e] flex items-center justify-center font-bold text-xs">
               <TbListDetails className="w-4 h-4" />
@@ -365,7 +382,7 @@ export default function Step5CareAndSpecs() {
                     ? 'opacity-40 border-dashed border-[#8b6f4e] bg-stone-100 scale-[0.99]'
                     : dragOverSpecIndex === sIdx
                     ? 'border-2 border-[#8b6f4e] bg-[#faf5ee] shadow-sm'
-                    : 'border-stone-200/90 bg-[#faf8f5]'
+                    : 'border-stone-400/80 bg-[#faf8f5]'
                 }`}
               >
                 {/* Serial Number (Sr. No.) */}
@@ -456,6 +473,7 @@ export default function Step5CareAndSpecs() {
             ))}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

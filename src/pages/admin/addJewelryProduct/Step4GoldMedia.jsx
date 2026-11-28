@@ -23,6 +23,7 @@ import { getUploadTriggerProps } from '../../../utils/filePickerAutoOpen';
 
 export default function Step4GoldMedia() {
   const {
+    getStepPosition,
     isSilverProduct,
     productColors,
     colorsList,
@@ -52,17 +53,17 @@ export default function Step4GoldMedia() {
 
   return (
     <div className="bg-white rounded-2xl border border-stone-200/90 p-4 sm:p-6 shadow-2xs space-y-5 sm:space-y-6 animate-fadeIn">
-      {/* Header Matching Screenshot */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-100">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center shadow-2xs shrink-0">
-            <HiOutlinePhotograph className="w-5 h-5" />
+      {/* Step Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-stone-200">
+        <div className="flex items-center gap-3.5">
+          <div className="w-8 h-8 rounded-full bg-[#8b6f4e] text-white flex items-center justify-center font-bold text-sm shadow-xs shrink-0">
+            {getStepPosition(4)}
           </div>
           <div>
-            <h3 className="text-sm sm:text-base font-bold text-stone-900 tracking-tight">
-              Product Media & Virtual Try-On (VTO)
+            <h3 className="text-base font-bold text-stone-900">
+              Product Media &amp; Virtual Try-On (VTO)
             </h3>
-            <p className="text-[11px] text-stone-500">
+            <p className="text-xs text-stone-500">
               Upload images, videos, and configure VTO for each metal color. You can use the existing VTO master for try-on configuration.
             </p>
           </div>

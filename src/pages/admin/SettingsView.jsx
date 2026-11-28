@@ -21,6 +21,10 @@ import {
   HiOutlineShare,
   HiOutlineExternalLink,
   HiOutlineTrash,
+  HiOutlineLink,
+  HiOutlinePlus,
+  HiOutlineArrowUp,
+  HiOutlineArrowDown,
 } from 'react-icons/hi';
 import {
   FaInstagram,
@@ -40,6 +44,29 @@ import {
 } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import ImageCompressionDemo from '../../components/common/ImageCompressionDemo';
+import ToggleSwitch from '../../components/common/ToggleSwitch';
+
+const FOOTER_LINK_COLUMNS = [
+  { key: 'brand', label: 'Brand Column', description: 'Links under the main brand column (e.g., Our Story, Our Stores, Blog).' },
+  { key: 'policies', label: 'Policies Column', description: 'Policy & legal links under the OUR POLICIES column.' },
+];
+
+const normalizeFooterLinksState = (footerLinks) => ({
+  brand: Array.isArray(footerLinks?.brand)
+    ? footerLinks.brand.map((item) => ({
+        name: item?.name ?? '',
+        path: item?.path ?? '',
+        status: item?.status === 'inactive' ? 'inactive' : 'active',
+      }))
+    : [],
+  policies: Array.isArray(footerLinks?.policies)
+    ? footerLinks.policies.map((item) => ({
+        name: item?.name ?? '',
+        path: item?.path ?? '',
+        status: item?.status === 'inactive' ? 'inactive' : 'active',
+      }))
+    : [],
+});
 
 const DEFAULT_HEADER_FOOTER_COLORS = {
   topBarBgColor: '#201e1b',
@@ -111,7 +138,7 @@ const THEME_COLOR_SECTIONS = [
 
 export default function SettingsView() {
   const navigate = useNavigate();
-  const { currentTheme } = useTheme();
+  const { currentTheme, companyName, applyStoreSettings } = useTheme();
   const [settings, setSettings] = useState(null);
   const [, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -147,6 +174,8 @@ export default function SettingsView() {
     panCode: '',
     playStoreUrl: '',
     appStoreUrl: '',
+    manufacturer: '',
+    countryOfOrigin: '',
     certificateImageUrl: '',
   });
 
@@ -201,6 +230,14 @@ export default function SettingsView() {
   });
   const [savingOtp, setSavingOtp] = useState(false);
 
+  // Footer Navigation Links state
+  const [footerLinksForm, setFooterLinksForm] = useState({
+    brand: [],
+    policies: [],
+  });
+  const [activeFooterTab, setActiveFooterTab] = useState('brand');
+  const [savingFooterLinks, setSavingFooterLinks] = useState(false);
+
   // Fetch settings from API
   const fetchSettings = async () => {
     try {
@@ -212,6 +249,7 @@ export default function SettingsView() {
       const compressionSettings = { ...DEFAULT_UPLOAD_COMPRESSION_SETTINGS, ...(data.mediaCompression || {}) };
       setImageCompression(compressionSettings);
       setUploadCompressionSettings(compressionSettings);
+      setFooterLinksForm(normalizeFooterLinksState(data.footerLinks));
       if (data.socialProof) {
         setSocialProofForm({
           showSoldCounter: data.socialProof.showSoldCounter !== false,
@@ -250,6 +288,8 @@ export default function SettingsView() {
         panCode: bDetails.panCode ?? '',
         playStoreUrl: bDetails.playStoreUrl ?? data.playStoreUrl ?? '',
         appStoreUrl: bDetails.appStoreUrl ?? data.appStoreUrl ?? '',
+        manufacturer: bDetails.manufacturer ?? '',
+        countryOfOrigin: bDetails.countryOfOrigin ?? '',
         certificateImageUrl: data.certificateImage?.url ?? '',
       });
 
@@ -309,6 +349,8 @@ export default function SettingsView() {
         panCode: bDetails.panCode ?? '',
         playStoreUrl: bDetails.playStoreUrl ?? settings.playStoreUrl ?? '',
         appStoreUrl: bDetails.appStoreUrl ?? settings.appStoreUrl ?? '',
+        manufacturer: bDetails.manufacturer ?? '',
+        countryOfOrigin: bDetails.countryOfOrigin ?? '',
         certificateImageUrl: settings.certificateImage?.url ?? '',
       });
       setMonetaryForm({
@@ -328,6 +370,7 @@ export default function SettingsView() {
           enableOrderOtp: settings.otpSettings.enableOrderOtp !== false,
         });
       }
+      setFooterLinksForm(normalizeFooterLinksState(settings.footerLinks));
     }
     setActiveModal(null);
   };
@@ -498,6 +541,8 @@ export default function SettingsView() {
           panCode: businessForm.panCode,
           playStoreUrl: businessForm.playStoreUrl,
           appStoreUrl: businessForm.appStoreUrl,
+          manufacturer: businessForm.manufacturer,
+          countryOfOrigin: businessForm.countryOfOrigin,
         },
         playStoreUrl: businessForm.playStoreUrl,
         appStoreUrl: businessForm.appStoreUrl,
@@ -507,7 +552,9 @@ export default function SettingsView() {
       };
 
       const res = await api.put('/settings', payload);
-      setSettings(res.data?.data || payload);
+      const updated = res.data?.data || payload;
+      setSettings(updated);
+      applyStoreSettings(updated);
       toast.success('Business configuration updated successfully');
       setActiveModal(null);
     } catch (err) {
@@ -656,6 +703,84 @@ export default function SettingsView() {
     }
   };
 
+  const handleAddFooterLink = (colKey) => {
+    setFooterLinksForm((prev) => ({
+      ...prev,
+      [colKey]: [...(prev[colKey] || []), { name: '', path: '', status: 'active' }],
+    }));
+  };
+
+  const handleUpdateFooterLink = (colKey, index, field, value) => {
+    setFooterLinksForm((prev) => ({
+      ...prev,
+      [colKey]: (prev[colKey] || []).map((item, idx) =>
+        idx === index ? { ...item, [field]: value } : item
+      ),
+    }));
+  };
+
+  const handleRemoveFooterLink = (colKey, index) => {
+    setFooterLinksForm((prev) => ({
+      ...prev,
+      [colKey]: (prev[colKey] || []).filter((_, idx) => idx !== index),
+    }));
+  };
+
+  const handleMoveFooterLink = (colKey, index, direction) => {
+    setFooterLinksForm((prev) => {
+      const list = [...(prev[colKey] || [])];
+      const targetIndex = index + direction;
+      if (targetIndex < 0 || targetIndex >= list.length) return prev;
+      [list[index], list[targetIndex]] = [list[targetIndex], list[index]];
+      return { ...prev, [colKey]: list };
+    });
+  };
+
+  // Save Footer Navigation Links
+  const handleSaveFooterLinks = async () => {
+    for (const col of FOOTER_LINK_COLUMNS) {
+      const items = footerLinksForm[col.key] || [];
+      const invalidIdx = items.findIndex(
+        (item) => !String(item?.name || '').trim() || !String(item?.path || '').trim()
+      );
+      if (invalidIdx !== -1) {
+        setActiveFooterTab(col.key);
+        toast.error(`Please enter both name and path for link #${invalidIdx + 1} in ${col.label}`);
+        return;
+      }
+    }
+
+    const cleanedFooterLinks = {};
+    FOOTER_LINK_COLUMNS.forEach((col) => {
+      cleanedFooterLinks[col.key] = (footerLinksForm[col.key] || []).map((item) => ({
+        name: String(item.name).trim(),
+        path: String(item.path).trim(),
+        status: item.status === 'inactive' ? 'inactive' : 'active',
+      }));
+    });
+
+    try {
+      setSavingFooterLinks(true);
+      const res = await api.put('/settings', {
+        footerLinks: cleanedFooterLinks,
+      });
+      const updated = res.data?.data;
+      setSettings((prev) => ({
+        ...(prev || {}),
+        ...(updated && typeof updated === 'object' ? updated : {}),
+        footerLinks: cleanedFooterLinks,
+      }));
+      setFooterLinksForm(normalizeFooterLinksState(cleanedFooterLinks));
+      toast.success('Footer navigation links updated successfully');
+      setActiveModal(null);
+    } catch (err) {
+      console.error('Failed to save footer links:', err);
+      toast.error(err.response?.data?.message || 'Failed to update footer links');
+    } finally {
+      setSavingFooterLinks(false);
+    }
+  };
+
   const handleOpenModal = (id) => {
     setActiveModal(id);
     if (id === 'theme') {
@@ -663,8 +788,28 @@ export default function SettingsView() {
     }
   };
 
-  // The 5 Setting Boxes
+  // Setting Boxes
   const settingBoxes = [
+    {
+      id: 'business',
+      title: 'Business & Identity',
+      subtitle: 'Store legal details, registered address, GST, and PAN numbers.',
+      icon: HiOutlineOfficeBuilding,
+      badgeText: `${businessForm.companyName || companyName} · ${
+        businessForm.gstCode ? `GST: ${businessForm.gstCode}` : 'Identity active'
+      }`,
+      hasPreview: false,
+    },
+    {
+      id: 'theme',
+      title: 'Storefront Theme & Colors',
+      subtitle: 'Manage active website theme and header, nav bar, mega menu, banner & footer styling.',
+      icon: HiOutlineColorSwatch,
+      badgeText: selectedThemeName
+        ? `Active: ${selectedThemeName} · Top Bar: ${(themeColors.topBarBgColor || '#201e1b').toUpperCase()}`
+        : `Colors Configured`,
+      hasPreview: false,
+    },
     {
       id: 'logos',
       title: 'Website Logos & Auth Banner',
@@ -687,21 +832,23 @@ export default function SettingsView() {
       hasPreview: false,
     },
     {
-      id: 'trust',
-      title: 'Trust Strip',
-      subtitle: 'Storefront assurance badges, authenticity stamps, and guarantees.',
-      icon: HiOutlineShieldCheck,
-      badgeText: `${trustBadges.length} assurance badges configured`,
+      id: 'socialMedia',
+      title: 'Social Media Channels',
+      subtitle: 'Manage official store links for Instagram, Facebook, YouTube, Pinterest, X/Twitter, LinkedIn, and WhatsApp.',
+      icon: HiOutlineShare,
+      badgeText: `${Object.values(socialMediaForm).filter((val) => typeof val === 'string' && val.trim().length > 0).length} channels active`,
       hasPreview: false,
     },
     {
-      id: 'business',
-      title: 'Business & Identity',
-      subtitle: 'Store legal details, registered address, GST, and PAN numbers.',
-      icon: HiOutlineOfficeBuilding,
-      badgeText: `${businessForm.companyName || 'Neirah Jewellers'} · ${
-        businessForm.gstCode ? `GST: ${businessForm.gstCode}` : 'Identity active'
-      }`,
+      id: 'footerLinks',
+      title: 'Footer Navigation Links',
+      subtitle: 'Manage Brand & Policy footer column links, redirect paths, display order, and active/inactive visibility.',
+      icon: HiOutlineLink,
+      badgeText: (() => {
+        const all = [...footerLinksForm.brand, ...footerLinksForm.policies];
+        const activeCount = all.filter((item) => item.status !== 'inactive').length;
+        return `${activeCount} / ${all.length} links active`;
+      })(),
       hasPreview: false,
     },
     {
@@ -717,16 +864,6 @@ export default function SettingsView() {
       hasPreview: false,
     },
     {
-      id: 'theme',
-      title: 'Storefront Theme & Colors',
-      subtitle: 'Manage active website theme and header, nav bar, mega menu, banner & footer styling.',
-      icon: HiOutlineColorSwatch,
-      badgeText: selectedThemeName
-        ? `Active: ${selectedThemeName} · Top Bar: ${(themeColors.topBarBgColor || '#201e1b').toUpperCase()}`
-        : `Colors Configured`,
-      hasPreview: false,
-    },
-    {
       id: 'socialProof',
       title: 'Social Proof & Urgency (Reviews & Sold Counter)',
       subtitle: 'Configure dummy sold count, review rating badge, and dynamic sale hours.',
@@ -735,11 +872,11 @@ export default function SettingsView() {
       hasPreview: false,
     },
     {
-      id: 'socialMedia',
-      title: 'Social Media Channels',
-      subtitle: 'Manage official store links for Instagram, Facebook, YouTube, Pinterest, X/Twitter, LinkedIn, and WhatsApp.',
-      icon: HiOutlineShare,
-      badgeText: `${Object.values(socialMediaForm).filter((val) => typeof val === 'string' && val.trim().length > 0).length} channels active`,
+      id: 'trust',
+      title: 'Trust Strip',
+      subtitle: 'Storefront assurance badges, authenticity stamps, and guarantees.',
+      icon: HiOutlineShieldCheck,
+      badgeText: `${trustBadges.length} assurance badges configured`,
       hasPreview: false,
     },
     {
@@ -800,7 +937,7 @@ export default function SettingsView() {
           return (
             <div
               key={box.id}
-              onClick={() => handleOpenModal(box.id)}
+              onClick={() => (box.route ? navigate(box.route) : handleOpenModal(box.id))}
               className="group relative flex flex-col justify-between rounded-xl border border-stone-200/90 bg-white p-4 shadow-2xs hover:border-[var(--theme-primary,#8b6f4e)] hover:shadow-md transition-all duration-200 cursor-pointer"
             >
               <div>
@@ -842,7 +979,7 @@ export default function SettingsView() {
                   </span>
                 )}
                 <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--theme-primary,#8b6f4e)] opacity-0 group-hover:opacity-100 transition-opacity">
-                  Configure →
+                  {box.route ? 'Open →' : 'Configure →'}
                 </span>
               </div>
             </div>
@@ -877,7 +1014,7 @@ export default function SettingsView() {
               ? 'max-w-5xl lg:max-w-6xl h-[92vh] max-h-[920px]'
                 : activeModal === 'compression'
                 ? 'max-w-4xl'
-                : activeModal === 'business' || activeModal === 'logos'
+                : activeModal === 'business' || activeModal === 'logos' || activeModal === 'footerLinks'
                 ? 'max-w-3xl'
                 : 'max-w-2xl'
             }`}
@@ -895,6 +1032,7 @@ export default function SettingsView() {
                   {activeModal === 'socialProof' && 'Social Proof & Urgency (Reviews & Sold Counter)'}
                   {activeModal === 'socialMedia' && 'Social Media & Brand Channels'}
                   {activeModal === 'otpSettings' && 'OTP Verification & Security Settings'}
+                  {activeModal === 'footerLinks' && 'Footer Navigation Links'}
                 </h2>
                 <p className="mt-0.5 text-xs text-stone-500">
                   {activeModal === 'logos' && 'Manage your desktop & mobile logos, and the customer login modal banner.'}
@@ -906,6 +1044,7 @@ export default function SettingsView() {
                   {activeModal === 'socialProof' && 'Manage sold count urgency, review badges, and dynamic time window shown on the product page.'}
                   {activeModal === 'socialMedia' && 'Manage official social profiles and chat channels shown in the storefront footer.'}
                   {activeModal === 'otpSettings' && 'Enable or disable mobile OTP verification pop-up requirements for customer registration and order checkout.'}
+                  {activeModal === 'footerLinks' && 'Configure column link labels, redirect paths, ordering, and active/inactive visibility for the storefront footer.'}
                 </p>
               </div>
               <button
@@ -1271,6 +1410,26 @@ export default function SettingsView() {
                         className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">Manufacturer</label>
+                      <input
+                        type="text"
+                        placeholder={`e.g. ${companyName} E-Retail India Pvt. Ltd.`}
+                        value={businessForm.manufacturer}
+                        onChange={(e) => setBusinessForm({ ...businessForm, manufacturer: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-stone-900 mb-1">Country of Origin</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. India"
+                        value={businessForm.countryOfOrigin}
+                        onChange={(e) => setBusinessForm({ ...businessForm, countryOfOrigin: e.target.value })}
+                        className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 focus:outline-none focus:ring-2 focus:ring-[rgba(var(--theme-primary-rgb,139,111,78),0.2)] focus:border-[var(--theme-primary,#8b6f4e)]"
+                      />
+                    </div>
 
                   </div>
 
@@ -1437,7 +1596,7 @@ export default function SettingsView() {
                         style={{ backgroundColor: themeColors.headerBgColor, color: themeColors.headerTextColor }}
                         className="px-3 py-2 flex items-center justify-between transition-colors border-t border-black/10"
                       >
-                        <span className="font-serif font-bold tracking-widest text-xs">NEIRAH</span>
+                        <span className="font-serif font-bold tracking-widest text-xs uppercase">{companyName}</span>
                         <span className="text-[10px] opacity-75">Search jewellery, diamonds...</span>
                         <button
                           type="button"
@@ -1487,8 +1646,8 @@ export default function SettingsView() {
                         style={{ backgroundColor: themeColors.footerBgColor, color: themeColors.footerTextColor }}
                         className="px-3 py-2 flex items-center justify-between transition-colors"
                       >
-                        <span className="font-serif font-semibold text-[10px]">NEIRAH FINE JEWELLERY</span>
-                        <span className="text-[9px] opacity-75">© 2026 Neirah. All rights reserved.</span>
+                        <span className="font-serif font-semibold text-[10px] uppercase">{companyName} FINE JEWELLERY</span>
+                        <span className="text-[9px] opacity-75">© {new Date().getFullYear()} {companyName}. All rights reserved.</span>
                       </div>
                     </div>
 
@@ -1789,7 +1948,7 @@ export default function SettingsView() {
                       {
                         key: 'instagram',
                         label: 'Instagram',
-                        placeholder: 'https://www.instagram.com/neirah.officials',
+                        placeholder: 'https://www.instagram.com/yourbrand',
                         icon: FaInstagram,
                         color: 'text-pink-600 bg-pink-50 border-pink-200',
                       },
@@ -1831,7 +1990,7 @@ export default function SettingsView() {
                       {
                         key: 'whatsapp',
                         label: 'WhatsApp Chat / Number',
-                        placeholder: 'https://wa.me/919726237723?text=Hi%20Neirah%20Jewels',
+                        placeholder: `https://wa.me/919726237723?text=Hi%20${encodeURIComponent(companyName)}`,
                         icon: FaWhatsapp,
                         color: 'text-emerald-600 bg-emerald-50 border-emerald-200',
                       },
@@ -1987,6 +2146,161 @@ export default function SettingsView() {
                   </div>
                 </div>
               )}
+
+              {/* 10. Footer Navigation Links Modal */}
+              {activeModal === 'footerLinks' && (
+                <div className="space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stone-200 pb-3">
+                    <div className="flex items-center gap-2">
+                      {FOOTER_LINK_COLUMNS.map((col) => {
+                        const items = footerLinksForm[col.key] || [];
+                        const activeCount = items.filter((i) => i.status !== 'inactive').length;
+                        const isSelected = activeFooterTab === col.key;
+                        const titleText =
+                          col.key === 'brand' ? `${businessForm.companyName || companyName || 'Brand'} Column` : 'Our Policies Column';
+                        return (
+                          <button
+                            key={col.key}
+                            type="button"
+                            onClick={() => setActiveFooterTab(col.key)}
+                            style={
+                              isSelected
+                                ? { backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }
+                                : undefined
+                            }
+                            className={`inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all cursor-pointer ${
+                              isSelected
+                                ? 'text-white shadow-xs'
+                                : 'bg-stone-100 text-stone-600 hover:bg-stone-200/80'
+                            }`}
+                          >
+                            <span>{titleText}</span>
+                            <span
+                              className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                                isSelected ? 'bg-white/20 text-white' : 'bg-white text-stone-600'
+                              }`}
+                            >
+                              {activeCount}/{items.length}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleAddFooterLink(activeFooterTab)}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-semibold text-stone-700 hover:bg-stone-50 transition-colors cursor-pointer"
+                    >
+                      <HiOutlinePlus className="h-3.5 w-3.5" />
+                      Add Link
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const currentColMeta = FOOTER_LINK_COLUMNS.find((c) => c.key === activeFooterTab) || FOOTER_LINK_COLUMNS[0];
+                    const items = footerLinksForm[activeFooterTab] || [];
+
+                    return (
+                      <div className="space-y-2.5">
+                        <p className="text-xs text-stone-500">{currentColMeta.description}</p>
+
+                        {items.length === 0 ? (
+                          <div className="rounded-xl border border-dashed border-stone-300 bg-stone-50/70 p-6 text-center text-xs text-stone-500">
+                            No footer links configured in this column yet. Click &quot;Add Link&quot; to create one.
+                          </div>
+                        ) : (
+                          <div className="space-y-2">
+                            {items.map((item, idx) => {
+                              const isActive = item.status !== 'inactive';
+                              return (
+                                <div
+                                  key={`${activeFooterTab}-${idx}`}
+                                  className={`flex flex-col sm:flex-row sm:items-center gap-2.5 rounded-xl border p-3 transition-colors ${
+                                    isActive
+                                      ? 'border-stone-200 bg-white'
+                                      : 'border-stone-200/80 bg-stone-50/80 opacity-80'
+                                  }`}
+                                >
+                                  <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-stone-100 text-[11px] font-bold text-stone-500">
+                                    {idx + 1}
+                                  </span>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1 min-w-0">
+                                    <input
+                                      type="text"
+                                      value={item.name}
+                                      onChange={(e) => handleUpdateFooterLink(activeFooterTab, idx, 'name', e.target.value)}
+                                      placeholder="Link label (e.g. Our Story)"
+                                      className="h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e]"
+                                    />
+                                    <input
+                                      type="text"
+                                      value={item.path}
+                                      onChange={(e) => handleUpdateFooterLink(activeFooterTab, idx, 'path', e.target.value)}
+                                      placeholder="Path or URL (e.g. /our-story)"
+                                      className="h-9 px-3 text-xs font-mono rounded-lg border border-stone-200 bg-white text-stone-900 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#8b6f4e]/20 focus:border-[#8b6f4e]"
+                                    />
+                                  </div>
+
+                                  <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
+                                    <ToggleSwitch
+                                      checked={isActive}
+                                      onChange={(nextChecked) =>
+                                        handleUpdateFooterLink(
+                                          activeFooterTab,
+                                          idx,
+                                          'status',
+                                          nextChecked ? 'active' : 'inactive'
+                                        )
+                                      }
+                                      size="sm"
+                                      ariaLabel={`Toggle ${item.name || `link ${idx + 1}`}`}
+                                    />
+
+                                    <div className="flex items-center gap-1 border-l border-stone-200 pl-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMoveFooterLink(activeFooterTab, idx, -1)}
+                                        disabled={idx === 0}
+                                        title="Move up"
+                                        className="flex h-7 w-7 items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-800 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                                      >
+                                        <HiOutlineArrowUp className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleMoveFooterLink(activeFooterTab, idx, 1)}
+                                        disabled={idx === items.length - 1}
+                                        title="Move down"
+                                        className="flex h-7 w-7 items-center justify-center rounded-md text-stone-500 hover:bg-stone-100 hover:text-stone-800 disabled:opacity-30 cursor-pointer disabled:cursor-not-allowed"
+                                      >
+                                        <HiOutlineArrowDown className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRemoveFooterLink(activeFooterTab, idx)}
+                                        title="Remove link"
+                                        className="flex h-7 w-7 items-center justify-center rounded-md text-rose-500 hover:bg-rose-50 hover:text-rose-700 cursor-pointer"
+                                      >
+                                        <HiOutlineTrash className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
+
+                  <div className="rounded-xl border border-stone-200 bg-stone-50/70 p-3 text-xs text-stone-600">
+                    Internal paths starting with <code className="font-mono text-stone-800">/</code> (e.g. <code className="font-mono text-stone-800">/our-story</code>, <code className="font-mono text-stone-800">/shipping-policy</code>) route inside the storefront; full URLs (<code className="font-mono text-stone-800">https://...</code>) open externally. Only links marked <strong>Active</strong> appear on the storefront footer.
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
@@ -2094,6 +2408,18 @@ export default function SettingsView() {
                   {savingOtp ? 'Saving…' : 'Save OTP Settings'}
                 </button>
               )}
+
+              {activeModal === 'footerLinks' && (
+                <button
+                  type="button"
+                  onClick={handleSaveFooterLinks}
+                  disabled={savingFooterLinks}
+                  style={{ backgroundColor: currentTheme?.primary || 'var(--theme-primary, #8b6f4e)' }}
+                  className="rounded-lg px-5 py-2 text-xs font-semibold text-white shadow-xs hover:brightness-95 disabled:opacity-50 transition-all cursor-pointer"
+                >
+                  {savingFooterLinks ? 'Saving…' : 'Save Footer Links'}
+                </button>
+              )}
             </div>
           </div>
         </div>, document.body)
@@ -2102,7 +2428,7 @@ export default function SettingsView() {
       {/* ─── Footer ─── */}
       <div className="pt-4 pb-2 text-center">
         <p className="text-[9px] tracking-[0.2em] text-stone-400 uppercase font-semibold">
-          NEIRAH JEWELLERS GLOBAL ADMIN
+          {companyName} GLOBAL ADMIN
         </p>
       </div>
     </div>

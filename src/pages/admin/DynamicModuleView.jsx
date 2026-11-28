@@ -5,6 +5,7 @@ import { getUploadTriggerProps } from '../../utils/filePickerAutoOpen';
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
+import { preloadRoute } from '../../utils/routeLoaders';
 import {
   getCachedData,
   setCachedData,
@@ -45,6 +46,7 @@ const routeMap = {
   // ─── 1. Catalog Products ──────────────────────────
   '/catalog/jewelry-products': {
     endpoint: '/products?productType=gold',
+    listEndpoint: '/products/admin-list?productType=gold',
     title: 'Jewellery Products',
     singularTitle: 'Jewellery Product',
     fields: [
@@ -55,6 +57,7 @@ const routeMap = {
   },
   '/catalog/silver-products': {
     endpoint: '/products?productType=silver',
+    listEndpoint: '/products/admin-list?productType=silver',
     title: 'Silver Products',
     fields: [
       { name: 'title', label: 'Product Title', type: 'text', required: true },
@@ -477,15 +480,26 @@ const DynamicModuleView = () => {
   const isSilverPage = pathname.includes('silver-products');
   const isProductCatalogPage = isOrnatePage || isJewelryPage || isSilverPage;
 
+  useEffect(() => {
+    if (isJewelryPage || isSilverPage) {
+      preloadRoute('/catalog/jewelry-products/edit');
+    } else if (isOrnatePage) {
+      preloadRoute('/catalog/ornate-products/edit');
+    }
+  }, [isJewelryPage, isSilverPage, isOrnatePage]);
+
   const handleEditProductRecord = (row) => {
     const id = row?._id || row?.id;
     if (!id) return;
     if (isOrnatePage) {
-      navigate(`/catalog/ornate-products/edit/${id}`);
+      preloadRoute('/catalog/ornate-products/edit');
+      navigate(`/catalog/ornate-products/edit/${id}`, { state: { previewProduct: row } });
     } else if (isSilverPage) {
-      navigate(`/catalog/silver-products/edit/${id}`);
+      preloadRoute('/catalog/silver-products/edit');
+      navigate(`/catalog/silver-products/edit/${id}`, { state: { previewProduct: row } });
     } else if (isJewelryPage) {
-      navigate(`/catalog/jewelry-products/edit/${id}`);
+      preloadRoute('/catalog/jewelry-products/edit');
+      navigate(`/catalog/jewelry-products/edit/${id}`, { state: { previewProduct: row } });
     } else {
       handleOpenEdit(row);
     }
@@ -495,6 +509,9 @@ const DynamicModuleView = () => {
     async (page = currentPage, limit = pageSize, q = search, { silent = false } = {}) => {
       if (silent) {
         clearRequestCache(`dyn:${config.endpoint}`);
+        if (config.endpoint === '/categories') {
+          clearRequestCache('lookup:categories');
+        }
       }
 
       abortControllerRef.current?.abort();
@@ -526,7 +543,8 @@ const DynamicModuleView = () => {
       try {
         const params = { page, limit };
         if (trimmedQ) params.search = trimmedQ;
-        const res = await api.get(config.endpoint, { params, signal: controller.signal });
+        const listUrl = config.listEndpoint || config.endpoint;
+        const res = await api.get(listUrl, { params, signal: controller.signal });
         if (controller.signal.aborted) return;
 
         const data = res.data?.data?.items || res.data?.data || [];
@@ -564,7 +582,7 @@ const DynamicModuleView = () => {
         }
       }
     },
-    [config.endpoint, currentPage, pageSize, search]
+    [config.endpoint, config.listEndpoint, currentPage, pageSize, search]
   );
 
   useEffect(() => {
@@ -902,6 +920,7 @@ const DynamicModuleView = () => {
   // Helper to resolve product and generic thumbnails
   const getRowThumbnail = (row) => {
     if (!row) return null;
+    if (isValidMediaUrl(row.thumbnail)) return row.thumbnail;
     // 0. Order items first image
     if (row.orderNumber && Array.isArray(row.items) && row.items.length > 0) {
       const first = row.items[0];

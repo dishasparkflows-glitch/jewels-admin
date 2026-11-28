@@ -62,6 +62,7 @@ export const adminPages = {
   ProfileView: lazyWithPreload(() => import('../pages/admin/ProfileView')),
   AnalyticsView: lazyWithPreload(() => import('../pages/admin/AnalyticsView')),
   StaticPagesView: lazyWithPreload(() => import('../pages/admin/StaticPagesView')),
+  StoresView: lazyWithPreload(() => import('../pages/admin/StoresView')),
   ThemesView: lazyWithPreload(() => import('../pages/admin/ThemesView')),
   GalleryView: lazyWithPreload(() => import('../pages/admin/GalleryView')),
   OwnersView: lazyWithPreload(() => import('../pages/admin/OwnersView')),
@@ -115,6 +116,7 @@ const PATH_TO_PAGE = {
   '/blogs': adminPages.BlogsView,
   '/blog-categories': adminPages.BlogCategoriesView,
   '/static-pages': adminPages.StaticPagesView,
+  '/stores': adminPages.StoresView,
   '/system/whatsapp': adminPages.WhatsAppView,
   '/notifications': adminPages.NotificationsView,
   '/owners': adminPages.OwnersView,
@@ -122,13 +124,22 @@ const PATH_TO_PAGE = {
   '/settings': adminPages.SettingsView,
 };
 
+const PREFIX_TO_PAGE = [
+  ['/catalog/jewelry-products/edit', adminPages.AddJewelryProduct],
+  ['/catalog/jewelry-products/add', adminPages.AddJewelryProduct],
+  ['/catalog/silver-products/edit', adminPages.AddJewelryProduct],
+  ['/catalog/silver-products/add', adminPages.AddJewelryProduct],
+  ['/catalog/ornate-products/edit', adminPages.OrnateProductEdit],
+];
+
 /**
  * Preload a lazy route chunk before navigation so tab jumps happen without
  * Suspense pauses or blank flashes.
  */
 export function preloadRoute(path) {
   if (!path) return;
-  const page = PATH_TO_PAGE[path] || adminPages.DynamicModuleView;
+  const prefixMatch = PREFIX_TO_PAGE.find(([prefix]) => path.startsWith(prefix))?.[1];
+  const page = prefixMatch || PATH_TO_PAGE[path] || adminPages.DynamicModuleView;
   page?.preload?.();
 }
 

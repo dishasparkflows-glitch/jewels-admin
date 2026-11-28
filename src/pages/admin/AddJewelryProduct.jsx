@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import api from '../../api/axios';
-import { clearRequestCache } from '../../utils/requestCache';
+import { getCachedData, setCachedData, clearRequestCache } from '../../utils/requestCache';
 import toast from 'react-hot-toast';
 import {
   createProductId,
@@ -297,7 +297,8 @@ const sortPurities = (list = []) => {
 
 export default function AddJewelryProduct() {
   const navigate = useNavigate();
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
+  const previewProduct = state?.previewProduct || null;
   const { id: productId } = useParams();
   const [draftProductId] = useState(() => productId || createProductId());
   const mediaProductId = productId || draftProductId;
@@ -343,25 +344,36 @@ export default function AddJewelryProduct() {
   const [diamondMasters, setDiamondMasters] = useState({ types: [], shapes: [], colors: [], clarities: [] });
   const mastersFetchedRef = useRef(false);
 
-  // Fetch Metal Colors master from lookup API immediately on mount (zero static defaults)
+  // Fetch Metal Colors master from lookup API immediately on mount (SWR cached)
   useEffect(() => {
     let isMounted = true;
+    const applyMetalColors = (list) => {
+      if (!Array.isArray(list) || list.length === 0) return;
+      registerMetalColors(list);
+      const mapped = list.map((c) => ({
+        id: c._id || c.id,
+        name: c.name,
+        colorCode: c.colorCode || '',
+        colorCodeEnd: c.colorCodeEnd || c.colorCode || '',
+        code: c.colorCode || '',
+        border: c.colorCodeEnd || c.colorCode || '',
+      }));
+      setColorsList((prev) => (prev.length > 0 && mastersFetchedRef.current ? prev : mapped));
+    };
+
+    const cached = getCachedData('lookup:metal-colors', 120_000);
+    if (cached) {
+      applyMetalColors(cached);
+    }
+
     metalColorsAPI
       .getLookup()
       .then((res) => {
         if (!isMounted) return;
         const list = res.data?.data || res.data || [];
         if (Array.isArray(list) && list.length > 0) {
-          registerMetalColors(list);
-          const mapped = list.map((c) => ({
-            id: c._id || c.id,
-            name: c.name,
-            colorCode: c.colorCode || '',
-            colorCodeEnd: c.colorCodeEnd || c.colorCode || '',
-            code: c.colorCode || '',
-            border: c.colorCodeEnd || c.colorCode || '',
-          }));
-          setColorsList((prev) => (prev.length > 0 ? prev : mapped));
+          setCachedData('lookup:metal-colors', list);
+          applyMetalColors(list);
         }
       })
       .catch((err) => {
@@ -377,63 +389,79 @@ export default function AddJewelryProduct() {
   useEffect(() => {
     if (activeStep < 2 || mastersFetchedRef.current) return;
     mastersFetchedRef.current = true;
+    let isMounted = true;
+
+    const applyDiamondAttributes = (combinedData) => {
+      if (!combinedData) return;
+      if (Array.isArray(combinedData.metalPurities)) {
+        const sorted = sortPurities(combinedData.metalPurities);
+        setPurityMasterList(sorted);
+        setPuritiesList(sorted.map((i) => (typeof i === 'string' ? i : i.name)));
+      }
+      if (Array.isArray(combinedData.metalColors)) {
+        registerMetalColors(combinedData.metalColors);
+        const mapped = combinedData.metalColors.map((c) => ({
+          id: c._id || c.id,
+          name: c.name,
+          colorCode: c.colorCode || '#d9a74a',
+          colorCodeEnd: c.colorCodeEnd || c.colorCode || '#b5852f',
+          code: c.colorCode || '#d9a74a',
+          border: c.colorCodeEnd || c.colorCode || '#b5852f',
+        }));
+        setColorsList(mapped);
+        setProductColors(mapped.map((c) => c.name));
+        setActiveMediaColor((prev) => (mapped.some((c) => c.name === prev) ? prev : mapped[0]?.name || ''));
+      }
+      const types = combinedData.diamondTypes;
+      if (Array.isArray(types)) {
+        setDiamondTypesList(types.map((i) => (typeof i === 'string' ? i : i.name)));
+      }
+      const shapes = combinedData.diamondShapes;
+      if (Array.isArray(shapes)) {
+        setDiamondShapesList(shapes.map((i) => (typeof i === 'string' ? i : i.name)));
+      }
+      const colors = combinedData.diamondColors;
+      if (Array.isArray(colors)) {
+        setDiamondColorsList(colors.map((i) => (typeof i === 'string' ? i : i.name)));
+      }
+      const clarities = combinedData.diamondClarities;
+      if (Array.isArray(clarities)) {
+        setDiamondClaritiesList(clarities.map((i) => (typeof i === 'string' ? i : i.name)));
+      }
+      setDiamondMasters({
+        types: Array.isArray(types) ? types : [],
+        shapes: Array.isArray(shapes) ? shapes : [],
+        colors: Array.isArray(colors) ? colors : [],
+        clarities: Array.isArray(clarities) ? clarities : [],
+      });
+    };
+
+    const cachedAttrs = getCachedData('lookup:diamonds-attributes', 120_000);
+    if (cachedAttrs) {
+      applyDiamondAttributes(cachedAttrs);
+      setMastersLoaded(true);
+    }
 
     const fetchMasters = async () => {
       try {
         const res = await api.get('/diamonds/attributes');
+        if (!isMounted) return;
         const combinedData = res.data?.data;
-
         if (combinedData) {
-          if (Array.isArray(combinedData.metalPurities)) {
-            const sorted = sortPurities(combinedData.metalPurities);
-            setPurityMasterList(sorted);
-            setPuritiesList(sorted.map((i) => (typeof i === 'string' ? i : i.name)));
-          }
-          if (Array.isArray(combinedData.metalColors)) {
-            registerMetalColors(combinedData.metalColors);
-            const mapped = combinedData.metalColors.map((c) => ({
-              id: c._id || c.id,
-              name: c.name,
-              colorCode: c.colorCode || '#d9a74a',
-              colorCodeEnd: c.colorCodeEnd || c.colorCode || '#b5852f',
-              code: c.colorCode || '#d9a74a',
-              border: c.colorCodeEnd || c.colorCode || '#b5852f',
-            }));
-            setColorsList(mapped);
-            setProductColors(mapped.map((c) => c.name));
-            setActiveMediaColor((prev) => (mapped.some((c) => c.name === prev) ? prev : mapped[0].name));
-          }
-          const types = combinedData.diamondTypes;
-          if (Array.isArray(types)) {
-            setDiamondTypesList(types.map((i) => (typeof i === 'string' ? i : i.name)));
-          }
-          const shapes = combinedData.diamondShapes;
-          if (Array.isArray(shapes)) {
-            setDiamondShapesList(shapes.map((i) => (typeof i === 'string' ? i : i.name)));
-          }
-          const colors = combinedData.diamondColors;
-          if (Array.isArray(colors)) {
-            setDiamondColorsList(colors.map((i) => (typeof i === 'string' ? i : i.name)));
-          }
-          const clarities = combinedData.diamondClarities;
-          if (Array.isArray(clarities)) {
-            setDiamondClaritiesList(clarities.map((i) => (typeof i === 'string' ? i : i.name)));
-          }
-          setDiamondMasters({
-            types: Array.isArray(types) ? types : [],
-            shapes: Array.isArray(shapes) ? shapes : [],
-            colors: Array.isArray(colors) ? colors : [],
-            clarities: Array.isArray(clarities) ? clarities : [],
-          });
+          setCachedData('lookup:diamonds-attributes', combinedData);
+          applyDiamondAttributes(combinedData);
         }
       } catch (err) {
         console.warn('Failed to load diamond attributes:', err);
       } finally {
-        setMastersLoaded(true);
+        if (isMounted) setMastersLoaded(true);
       }
     };
 
     fetchMasters();
+    return () => {
+      isMounted = false;
+    };
   }, [activeStep]);
 
   useEffect(() => {
@@ -443,7 +471,7 @@ export default function AddJewelryProduct() {
     step1HydratedId.current = '';
     setProductRecord(null);
     setProductLoading(true);
-    api.get('/products/' + productId)
+    api.get('/products/' + productId, { params: { mode: 'admin' } })
       .then((response) => {
         if (!cancelled) {
           const rec = response.data?.data?.product || response.data?.data;
@@ -466,6 +494,31 @@ export default function AddJewelryProduct() {
 
   useEffect(() => {
     let isMounted = true;
+    const applyGemstoneTypes = (types) => {
+      setGemstoneTypeOptions(
+        types.map((item) => ({
+          value: item._id,
+          label: item.name,
+          image: item.image?.url || item.swatchImage?.url,
+          color: item.colorCode,
+        }))
+      );
+    };
+    const applyGemstoneShapes = (shapes) => {
+      setGemstoneShapeOptions(
+        shapes.map((item) => ({
+          value: item._id,
+          label: item.name,
+          image: item.image?.url,
+        }))
+      );
+    };
+
+    const cachedTypes = getCachedData('lookup:gemstone-types', 120_000);
+    const cachedShapes = getCachedData('lookup:gemstone-shapes', 120_000);
+    if (cachedTypes) applyGemstoneTypes(cachedTypes);
+    if (cachedShapes) applyGemstoneShapes(cachedShapes);
+
     Promise.all([
       api.get('/gemstone-types/lookup').catch(() => ({ data: { data: [] } })),
       api.get('/gemstone-shapes/lookup').catch(() => ({ data: { data: [] } })),
@@ -478,22 +531,10 @@ export default function AddJewelryProduct() {
         ? shapesRes.data.data
         : shapesRes.data?.data?.items || [];
 
-      setGemstoneTypeOptions(
-        types.map((item) => ({
-          value: item._id,
-          label: item.name,
-          image: item.image?.url || item.swatchImage?.url,
-          color: item.colorCode,
-        }))
-      );
-
-      setGemstoneShapeOptions(
-        shapes.map((item) => ({
-          value: item._id,
-          label: item.name,
-          image: item.image?.url,
-        }))
-      );
+      setCachedData('lookup:gemstone-types', types);
+      setCachedData('lookup:gemstone-shapes', shapes);
+      applyGemstoneTypes(types);
+      applyGemstoneShapes(shapes);
     });
     return () => {
       isMounted = false;
@@ -534,9 +575,7 @@ export default function AddJewelryProduct() {
     const categoryId = regMatch || allCatIds.find((id) => !collIds.includes(id)) || allCatIds[0] || '';
 
     const rawPromo = productRecord.promoBanner || basicInfo.promoBanner || [];
-    const promoArr = Array.isArray(rawPromo)
-      ? rawPromo.map((p) => String(p)).filter(Boolean)
-      : (rawPromo ? [String(rawPromo)] : []);
+    const promoArr = (Array.isArray(rawPromo) ? rawPromo : [rawPromo]).filter(Boolean).map(String);
 
     setSelectedCollectionIds(collIds);
     setMenuItemIds(selectedMenuIds(productRecord));
@@ -547,25 +586,20 @@ export default function AddJewelryProduct() {
       promoBanner: promoArr,
       gender: (() => {
         const rawGender = basicInfo.gender ?? productRecord.gender ?? [];
-        const arr = Array.isArray(rawGender) ? rawGender : (rawGender ? [rawGender] : []);
-        return arr.map((g) => {
+        return (Array.isArray(rawGender) ? rawGender : [rawGender]).filter(Boolean).map((g) => {
           const matched = ['Female', 'Male', 'Unisex', 'Kids'].find(
             (opt) => opt.toLowerCase() === String(g).trim().toLowerCase()
           );
           return matched || g;
-        }).filter(Boolean);
+        });
       })(),
       gemstoneTypes: (() => {
-        const raw = productRecord.gemstoneTypeIds ?? (basicInfo.gemstoneTypes ?? []);
-        return Array.isArray(raw)
-          ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
-          : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
+        const raw = productRecord.gemstoneTypeIds ?? basicInfo.gemstoneTypes ?? [];
+        return (Array.isArray(raw) ? raw : [raw]).filter(Boolean).map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item)));
       })(),
       gemstoneShapes: (() => {
-        const raw = productRecord.gemstoneShapeIds ?? (basicInfo.gemstoneShapes ?? []);
-        return Array.isArray(raw)
-          ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
-          : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
+        const raw = productRecord.gemstoneShapeIds ?? basicInfo.gemstoneShapes ?? [];
+        return (Array.isArray(raw) ? raw : [raw]).filter(Boolean).map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item)));
       })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
@@ -582,25 +616,41 @@ export default function AddJewelryProduct() {
     setSelectedSizeIds(sizeIdArr);
   }, [productRecord, regularCategories, collectionCategories]);
 
-  // Fetch sizes whenever selected category changes
+  // Fetch sizes whenever selected category changes (SWR cached)
   useEffect(() => {
     if (!basicDetails.category) {
       setCategorySizes([]);
       return;
     }
-    setLoadingSizes(true);
+    let cancelled = false;
+    const sizeCacheKey = `lookup:sizes:${basicDetails.category}`;
+    const cached = getCachedData(sizeCacheKey, 120_000);
+    if (cached) {
+      setCategorySizes(cached);
+      setLoadingSizes(false);
+    } else {
+      setLoadingSizes(true);
+    }
+
     api.get(`/sizes/lookup?categoryId=${basicDetails.category}`)
       .then((res) => {
+        if (cancelled) return;
         const items = res.data?.data?.items || res.data?.data || [];
-        setCategorySizes(Array.isArray(items) ? items : []);
+        const list = Array.isArray(items) ? items : [];
+        setCachedData(sizeCacheKey, list);
+        setCategorySizes(list);
       })
       .catch((err) => {
+        if (cancelled) return;
         console.warn('Failed to load sizes for category:', err);
-        setCategorySizes([]);
+        if (!cached) setCategorySizes([]);
       })
       .finally(() => {
-        setLoadingSizes(false);
+        if (!cancelled) setLoadingSizes(false);
       });
+    return () => {
+      cancelled = true;
+    };
   }, [basicDetails.category]);
 
   const selectedCategory = useMemo(
@@ -619,7 +669,7 @@ export default function AddJewelryProduct() {
     const catInList = (categoryList || []).find(
       (c) => String(c?._id || c?.id) === String(basicDetails.category)
     );
-    if (Array.isArray(catInList?.promoBanners) && catInList.promoBanners.length > 0) {
+    if (catInList && Array.isArray(catInList.promoBanners)) {
       setCategoryPromoBanners(catInList.promoBanners);
       return;
     }
@@ -947,10 +997,12 @@ export default function AddJewelryProduct() {
 
   const handleAddColorStoneRow = () => {
     if (!colorStoneType && diamondTypesList.length > 0) {
-      setColorStoneType(diamondTypesList[0]?.value || diamondTypesList[0]?.label || '');
+      const first = diamondTypesList[0];
+      setColorStoneType(typeof first === 'string' ? first : (first?.value || first?.label || first?.name || ''));
     }
     if (!colorStoneShape && diamondShapesList.length > 0) {
-      setColorStoneShape(diamondShapesList[0]?.value || diamondShapesList[0]?.label || '');
+      const first = diamondShapesList[0];
+      setColorStoneShape(typeof first === 'string' ? first : (first?.value || first?.label || first?.name || ''));
     }
 
     const inputVal = parseFloat(colorStoneCaratInput.trim());
@@ -1150,7 +1202,16 @@ export default function AddJewelryProduct() {
     return stagedUploadFiles.reduce((acc, item) => acc + (item.size || 0), 0);
   }, [stagedUploadFiles]);
 
+  const compressionSettingsFetchedRef = useRef(false);
+
   useEffect(() => {
+    if (
+      compressionSettingsFetchedRef.current ||
+      (activeStep !== 3 && activeStep !== 4 && !showUploadModal && !showCompressionHub)
+    ) {
+      return undefined;
+    }
+    compressionSettingsFetchedRef.current = true;
     let cancelled = false;
     getUploadCompressionSettings().then((settings) => {
       if (cancelled) return;
@@ -1159,7 +1220,7 @@ export default function AddJewelryProduct() {
       setCompressionFormat(settings.format);
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [activeStep, showUploadModal, showCompressionHub]);
 
   useEffect(() => {
     if (!showCompressionHub || (compressionTab !== 'images' && compressionTab !== 'all')) return undefined;
@@ -1440,33 +1501,44 @@ export default function AddJewelryProduct() {
     // Call /vto-masters/lookup API when user enters Step 3 (Product Media) or opens VTO Studio
     if ((activeStep !== 3 && activeStep !== 4 && !isVtoStudioOpen) || vtoMastersFetchedRef.current) return;
 
+    const applyVtoMasters = (items) => {
+      if (!Array.isArray(items)) return;
+      const map = {};
+      const opts = [];
+      items.forEach((m) => {
+        const key = String(m.bodyPart || m.partKey || '').toLowerCase().trim();
+        if (key) {
+          map[key] = {
+            light: getMediaUrl(m.lightImage?.url),
+            dark: getMediaUrl(m.darkImage?.url),
+          };
+          opts.push({
+            id: m._id || key,
+            value: key,
+            label: formatVtoEnvLabel(m),
+          });
+        }
+      });
+      setVtoMasters(map);
+      setVtoEnvOptions(opts);
+    };
+
+    const cachedVto = getCachedData('lookup:vto-masters', 120_000);
+    if (cachedVto) {
+      applyVtoMasters(cachedVto);
+    }
+
     const fetchVtoMasters = async () => {
       try {
         vtoMastersFetchedRef.current = true;
         const res = await vtoMastersAPI.getLookup();
         const items = res.data?.data?.items || res.data?.data || [];
         if (Array.isArray(items)) {
-          const map = {};
-          const opts = [];
-          items.forEach((m) => {
-            const key = String(m.bodyPart || m.partKey || '').toLowerCase().trim();
-            if (key) {
-              map[key] = {
-                light: getMediaUrl(m.lightImage?.url),
-                dark: getMediaUrl(m.darkImage?.url),
-              };
-              opts.push({
-                id: m._id || key,
-                value: key,
-                label: formatVtoEnvLabel(m),
-              });
-            }
-          });
-          setVtoMasters(map);
-          setVtoEnvOptions(opts);
+          setCachedData('lookup:vto-masters', items);
+          applyVtoMasters(items);
         }
       } catch (err) {
-        vtoMastersFetchedRef.current = false;
+        if (!cachedVto) vtoMastersFetchedRef.current = false;
         console.warn('VTO Masters fetch notice:', err);
       }
     };
@@ -2311,8 +2383,17 @@ export default function AddJewelryProduct() {
   };
 
   const masterId = (items, value) => {
-    if (value?._id) return value._id;
-    const match = items.find((item) => String(item.name).toLowerCase() === String(value).toLowerCase() || String(item._id || item.id) === String(value));
+    if (!value || !items || !Array.isArray(items)) return '';
+    if (value?._id) return String(value._id);
+    const valStr = String(value?.name || value || '').trim();
+    if (/^[a-f\d]{24}$/i.test(valStr)) return valStr;
+    const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, '');
+    const targetNorm = norm(valStr);
+    const match = items.find((item) => {
+      const itemId = String(item._id || item.id || '');
+      const itemName = String(item.name || '');
+      return itemId === valStr || (itemName && norm(itemName) === targetNorm);
+    });
     return match?._id || match?.id || '';
   };
   const resolveActiveBaseCarat = () => {
@@ -2357,21 +2438,50 @@ export default function AddJewelryProduct() {
     })) : [],
     sideStoneConfigType,
     sideColorStoneRows: (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both')
-      ? sideColorStoneRows.map((row) => ({
-          diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
-          diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
-          caratWeight: Number(row.caratWeight),
-          pieces: Number(row.pieces || 1),
-          pricePerCarat: 3000,
-        }))
+      ? (sideColorStoneRows || [])
+          .filter((row) => (row.diamondTypeId || row.diamondType) && Number(row.caratWeight) > 0)
+          .map((row) => ({
+            diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
+            diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
+            caratWeight: Number(row.caratWeight),
+            pieces: Number(row.pieces || 1),
+            pricePerCarat: 3000,
+          }))
       : [],
     sideDiamondRows: (sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both')
-      ? sideRows.map((row) => ({ ...row, pieces: Number(row.pieces), caratWeight: Number(row.caratWeight), priceINR: Number(row.priceINR || 0) }))
+      ? (sideRows || [])
+          .filter((row) => {
+            const typeId = masterId(diamondMasters.types, row.diamondTypeId || row.diamondType);
+            return typeId && (Number(row.caratWeight) > 0 || Number(row.pieces) > 0);
+          })
+          .map((row) => ({
+            ...row,
+            diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
+            diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
+            diamondColorId: masterId(diamondMasters.colors, row.diamondColorId || row.diamondColor),
+            diamondClarityId: masterId(diamondMasters.clarities, row.diamondClarityId || row.diamondClarity),
+            pieces: Number(row.pieces || 1),
+            caratWeight: Number(row.caratWeight || 0),
+            priceINR: Number(row.priceINR || 0),
+          }))
       : [],
     variants: variants.map((row) => ({ ...row, _id: row._id, stock: Number(row.stock || 0) })),
   });
   const handleRegenerateVariants = async () => {
     if (computingPrices) return;
+    const metalWeight = Number(specs.metalWeight);
+    if (!metalWeight || metalWeight <= 0) {
+      return toast.error('Required: Please enter a valid base Metal Weight (14KT).');
+    }
+    if (!selectedPurities.length) {
+      return toast.error('Required: Select at least one Metal Purity.');
+    }
+    if (stoneConfigType === 'colorStone' && colorStoneCombinations.length === 0 && colorStoneCarats.length === 0) {
+      return toast.error('Required: Add at least one color stone combination.');
+    }
+    if (stoneConfigType === 'centerDiamond' && centerDiamondCombinations.length === 0 && sideRows.length === 0) {
+      return toast.error('Required: Select center diamond configuration or add side diamonds.');
+    }
     setComputingPrices(true);
     setIsVariantsPreviewCollapsed(false);
     try {
@@ -2627,7 +2737,7 @@ export default function AddJewelryProduct() {
     const colorOptions = [...colorsList, ...productMetalColors];
     const variantRecords = Array.isArray(productRecord.variants) ? productRecord.variants : [];
     const variantRows = variantRecords.map((variant, index) => {
-      const parts = String(variant.combination || '').split('/').map((part) => part.trim());
+      const parts = String(variant.combination || '').split(/[·•/]/).map((part) => part.trim());
       const purity = resolveName(variant.metalPurityId || variant.metalPurity, puritiesList) || parts[0] || '';
       const color = resolveName(variant.metalColorId || variant.metalColor, colorOptions) || parts[1] || '';
       return {
@@ -2735,25 +2845,20 @@ export default function AddJewelryProduct() {
       category: categoryId ? String(categoryId) : '',
       gender: (() => {
         const rawGender = basicInfo.gender ?? productRecord.gender ?? [];
-        const arr = Array.isArray(rawGender) ? rawGender : (rawGender ? [rawGender] : []);
-        return arr.map((g) => {
+        return (Array.isArray(rawGender) ? rawGender : [rawGender]).filter(Boolean).map((g) => {
           const matched = ['Female', 'Male', 'Unisex', 'Kids'].find(
             (opt) => opt.toLowerCase() === String(g).trim().toLowerCase()
           );
           return matched || g;
-        }).filter(Boolean);
+        });
       })(),
       gemstoneTypes: (() => {
-        const raw = productRecord.gemstoneTypeIds ?? (basicInfo.gemstoneTypes ?? []);
-        return Array.isArray(raw)
-          ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
-          : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
+        const raw = productRecord.gemstoneTypeIds ?? basicInfo.gemstoneTypes ?? [];
+        return (Array.isArray(raw) ? raw : [raw]).filter(Boolean).map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item)));
       })(),
       gemstoneShapes: (() => {
-        const raw = productRecord.gemstoneShapeIds ?? (basicInfo.gemstoneShapes ?? []);
-        return Array.isArray(raw)
-          ? raw.map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item))).filter(Boolean)
-          : (raw ? [typeof raw === 'object' && raw ? raw._id || raw.id : String(raw)] : []);
+        const raw = productRecord.gemstoneShapeIds ?? basicInfo.gemstoneShapes ?? [];
+        return (Array.isArray(raw) ? raw : [raw]).filter(Boolean).map((item) => (typeof item === 'object' && item ? item._id || item.id : String(item)));
       })(),
       description: basicInfo.description || '',
       isOrnate: Boolean(productRecord.isOrnate || productRecord.productType === 'ornate'),
@@ -2775,13 +2880,25 @@ export default function AddJewelryProduct() {
     setCenterDiamondClarities(unique(centerNames.map((row) => row.clarity)));
     const loadedCenterCarats = unique(centerNames.map((row) => Number(row.carat)).filter(Number.isFinite)).sort((a, b) => a - b);
     setCenterDiamondCarats(loadedCenterCarats);
-    setCustomComboRates(Object.fromEntries(centerNames.filter((row) => row.rateSource === 'manual' || (!row.rateSource && row.rate > 0)).map((row) => [
+    setCustomComboRates(Object.fromEntries(centerNames.filter((row) => row.rateSource === 'manual').map((row) => [
       [row.type, row.shape, row.color, row.clarity, row.carat].join('-'),
       row.rate,
     ])));
     setAutomaticPricing(productRecord.productType !== 'silver' && !productRecord.isOrnate);
     setGstPercentage(String(productRecord.pricing?.gstPercentage ?? 3));
-    setSideRows((productRecord.sideDiamondRows || []).map((row) => ({ ...row, rateSource: row.rateSource || (row.priceINR ? 'manual' : 'master') })));
+    setSideRows((productRecord.sideDiamondRows || []).map((row) => ({
+      ...row,
+      diamondTypeId: row.diamondTypeId?._id || row.diamondTypeId || row.diamondType || '',
+      diamondShapeId: row.diamondShapeId?._id || row.diamondShapeId || row.diamondShape || '',
+      diamondColorId: row.diamondColorId?._id || row.diamondColorId || row.diamondColor || '',
+      diamondClarityId: row.diamondClarityId?._id || row.diamondClarityId || row.diamondClarity || '',
+      caratWeight: row.caratWeight ?? '',
+      pieces: row.pieces ?? '',
+      sizeFrom: row.sizeFrom ?? '',
+      sizeTo: row.sizeTo ?? '',
+      priceINR: row.priceINR ?? '',
+      rateSource: row.rateSource || (row.priceINR ? 'manual' : 'master'),
+    })));
     const loadedStoneConfigType = productRecord.stoneConfigType ||
       (Array.isArray(productRecord.colorStoneRows) && productRecord.colorStoneRows.length > 0 ? 'colorStone' : 'centerDiamond');
     setStoneConfigType(loadedStoneConfigType);
@@ -3099,7 +3216,7 @@ export default function AddJewelryProduct() {
         _id: variant._id,
         metalPurityId: masterId(purityMasterList, variant.purity),
         metalColorId: masterId(colorsList, variant.color),
-        combination: [variant.purity, variant.color].filter(Boolean).join(' / '),
+        combination: variant.combination || [variant.purity, variant.color].filter(Boolean).join(' / '),
         sku: variant.sku,
         price: numberValue(String(variant.price ?? '').replace(/,/g, '')) ?? numberValue(variant.priceRaw),
         stock: numberValue(variant.stock),
@@ -3226,18 +3343,10 @@ export default function AddJewelryProduct() {
               return matched?.id || matched?._id;
             }).filter(Boolean)
         : [];
-        const genderArr = Array.isArray(basicDetails.gender)
-          ? basicDetails.gender.filter(Boolean)
-          : (basicDetails.gender ? [basicDetails.gender] : []);
-        const promoArr = Array.isArray(basicDetails.promoBanner)
-          ? basicDetails.promoBanner.filter(Boolean)
-          : (basicDetails.promoBanner ? [basicDetails.promoBanner] : []);
-        const gtArr = Array.isArray(basicDetails.gemstoneTypes)
-          ? basicDetails.gemstoneTypes.map((v) => (typeof v === 'object' && v ? v._id || v.value : v)).filter(Boolean)
-          : (basicDetails.gemstoneTypes ? [basicDetails.gemstoneTypes] : []);
-        const gsArr = Array.isArray(basicDetails.gemstoneShapes)
-          ? basicDetails.gemstoneShapes.map((v) => (typeof v === 'object' && v ? v._id || v.value : v)).filter(Boolean)
-          : (basicDetails.gemstoneShapes ? [basicDetails.gemstoneShapes] : []);
+        const genderArr = (basicDetails.gender || []).filter(Boolean);
+        const promoArr = (basicDetails.promoBanner || []).filter(Boolean);
+        const gtArr = (basicDetails.gemstoneTypes || []).map((v) => (typeof v === 'object' && v ? v._id || v.value : v)).filter(Boolean);
+        const gsArr = (basicDetails.gemstoneShapes || []).map((v) => (typeof v === 'object' && v ? v._id || v.value : v)).filter(Boolean);
         const payload = {
         ...(!productId ? { _id: draftProductId } : {}),
         productType: isSilverProduct || basicDetails.isOrnate ? 'silver' : 'gold',
@@ -3422,9 +3531,34 @@ export default function AddJewelryProduct() {
   };
 
   if (productLoading) {
+    const previewTitle = previewProduct?.basicInfo?.title || previewProduct?.title || '';
+    const previewSku = previewProduct?.basicInfo?.sku || previewProduct?.sku || '';
     return (
-      <div className="rounded-2xl border border-[#eee8df] bg-white p-8 text-center text-sm text-stone-500">
-        Loading product...
+      <div className="space-y-4 pb-8 font-sans text-stone-800">
+        <div className="rounded-2xl border border-[#eee8df] bg-white px-5 py-4 flex items-center justify-between gap-4 shadow-2xs">
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-bold text-stone-900 truncate">
+              {previewTitle || (isSilverProduct ? 'Loading Silver Product...' : 'Loading Jewellery Product...')}
+            </h1>
+            {previewSku && (
+              <p className="text-xs text-stone-500 mt-0.5 font-mono">SKU: {previewSku}</p>
+            )}
+          </div>
+          <span className="inline-flex items-center gap-2 text-xs font-medium text-stone-500 shrink-0">
+            <span className="h-3.5 w-3.5 rounded-full border-2 border-[#8b6f4e] border-t-transparent animate-spin" />
+            Loading details...
+          </span>
+        </div>
+        <div className="rounded-2xl border border-[#eee8df] bg-white p-6 space-y-4 animate-pulse">
+          <div className="h-5 w-48 rounded bg-stone-200/70" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="h-10 rounded-xl bg-stone-100" />
+            <div className="h-10 rounded-xl bg-stone-100" />
+            <div className="h-10 rounded-xl bg-stone-100" />
+            <div className="h-10 rounded-xl bg-stone-100" />
+          </div>
+          <div className="h-24 rounded-xl bg-stone-100" />
+        </div>
       </div>
     );
   }

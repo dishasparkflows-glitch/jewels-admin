@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useLayoutEffect, useId, useCallback
 import { createPortal } from 'react-dom';
 
 const MenuLayer = ({ enabled, children }) => enabled ? createPortal(children, document.body) : children;
-import { HiOutlineChevronDown, HiOutlineCheck } from 'react-icons/hi';
+import { HiOutlineChevronDown, HiOutlineCheck, HiOutlineSearch, HiOutlineX } from 'react-icons/hi';
 
 /**
  * Common Luxury Dropdown Component
@@ -64,16 +64,20 @@ export default function Dropdown({
   name,
   id,
   multiple = false,
+  searchable = false,
+  searchPlaceholder = 'Search...',
 }) {
   const isForcedDown = openDownward || direction === 'down';
   const isForcedUp = openUpward || direction === 'up';
   const [isOpen, setIsOpen] = useState(false);
   const [dropUp, setDropUp] = useState(isForcedUp && !isForcedDown);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const containerRef = useRef(null);
   const buttonRef = useRef(null);
   const menuRef = useRef(null);
+  const searchInputRef = useRef(null);
   const [menuPosition, setMenuPosition] = useState({});
   const isPointerDownRef = useRef(false);
   const hasKeyboardNavigatedRef = useRef(false);
@@ -153,15 +157,30 @@ export default function Dropdown({
 
   const hasSelection = multiple ? selectedOptions.length > 0 : Boolean(selectedOption);
 
-  // Sync highlightedIndex when dropdown opens
+  // Sync highlightedIndex & search focus when dropdown opens/closes
   useEffect(() => {
     if (isOpen) {
       setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0);
+      if (searchable) {
+        setTimeout(() => searchInputRef.current?.focus(), 20);
+      }
     } else {
       setHighlightedIndex(-1);
+      setSearchQuery('');
       hasKeyboardNavigatedRef.current = false;
     }
-  }, [isOpen, selectedIndex]);
+  }, [isOpen, selectedIndex, searchable]);
+
+  const filteredOptions = useMemo(() => {
+    if (!searchable || !searchQuery.trim()) return normalizedOptions;
+    const q = searchQuery.trim().toLowerCase();
+    return normalizedOptions.filter(
+      (opt) =>
+        !opt.isHeader &&
+        (String(opt.label || '').toLowerCase().includes(q) ||
+          String(opt.value || '').toLowerCase().includes(q))
+    );
+  }, [normalizedOptions, searchable, searchQuery]);
 
   // Compute and update portal menu position anchored to trigger button
   const updateMenuPosition = useCallback(() => {
@@ -655,8 +674,8 @@ export default function Dropdown({
           role="listbox"
           tabIndex={-1}
           onMouseDown={(e) => {
-            // Prevent trigger button from blurring when clicking options, but allow dragging scrollbar
-            if (e.target !== menuRef.current) {
+            // Prevent trigger button from blurring when clicking options, while allowing search input & scrollbar interaction
+            if (e.target !== menuRef.current && e.target.tagName !== 'INPUT') {
               e.preventDefault();
             }
           }}
@@ -673,13 +692,51 @@ export default function Dropdown({
               ? 'origin-bottom'
               : 'origin-top'
           } ${menuClassName}`}>
-          {normalizedOptions.length === 0 ? (
+          {searchable && (
+            <div className="sticky top-0 z-10 p-2 border-b border-stone-100 bg-stone-50/95 backdrop-blur-xs">
+              <div className="relative flex items-center">
+                <HiOutlineSearch className="absolute left-2.5 w-3.5 h-3.5 text-stone-400 pointer-events-none" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder={searchPlaceholder}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') {
+                      e.stopPropagation();
+                      setIsOpen(false);
+                      buttonRef.current?.focus();
+                    }
+                  }}
+                  className="w-full pl-8 pr-7 py-1.5 text-xs bg-white border border-stone-200 rounded-lg text-stone-900 placeholder:text-stone-400 focus:outline-none focus:border-[#8b6f4e]"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSearchQuery('');
+                      searchInputRef.current?.focus();
+                    }}
+                    className="absolute right-2 text-stone-400 hover:text-stone-600 p-0.5 cursor-pointer"
+                  >
+                    <HiOutlineX className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+          {filteredOptions.length === 0 ? (
             <div className="py-3.5 px-5 text-xs text-stone-400 text-center italic">
-              No options available
+              {searchable && searchQuery.trim() ? 'No matching options' : 'No options available'}
             </div>
           ) : (
             <>
-            {normalizedOptions.map((opt, idx) => {
+            {filteredOptions.map((opt, idx) => {
               if (opt.isHeader) {
                 return (
                   <div

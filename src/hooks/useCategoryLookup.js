@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import api from '../api/axios';
+import { getCachedData, setCachedData } from '../utils/requestCache';
 
 /**
  * Reusable hook that fetches the category lookup list from the backend.
@@ -15,8 +16,10 @@ import api from '../api/axios';
  * @param {{ type?: string }} opts — optional filter (e.g. { type: 'category' })
  */
 export default function useCategoryLookup(opts = {}) {
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(opts.enabled !== false);
+  const cacheKey = `lookup:categories:${opts.type || 'all'}`;
+  const initialCached = opts.enabled !== false ? getCachedData(cacheKey, 120_000) : null;
+  const [categories, setCategories] = useState(() => initialCached || []);
+  const [loading, setLoading] = useState(() => opts.enabled !== false && !initialCached);
 
   useEffect(() => {
     if (opts.enabled === false) {
@@ -25,18 +28,25 @@ export default function useCategoryLookup(opts = {}) {
     }
 
     let cancelled = false;
+    const cached = getCachedData(cacheKey, 120_000);
+    if (cached) {
+      setCategories(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
 
     const fetchLookup = async () => {
       try {
-        setLoading(true);
         const params = {};
         if (opts.type) params.type = opts.type;
 
         const res = await api.get('/categories/lookup', { params });
-        const data = res.data?.data || [];
-        if (!cancelled) setCategories(Array.isArray(data) ? data : []);
+        const list = Array.isArray(res.data?.data) ? res.data.data : [];
+        setCachedData(cacheKey, list);
+        if (!cancelled) setCategories(list);
       } catch {
-        if (!cancelled) setCategories([]);
+        if (!cancelled && !cached) setCategories([]);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -48,7 +58,7 @@ export default function useCategoryLookup(opts = {}) {
       cancelled = true;
     };
     // Re-fetch when the type filter or enabled changes
-  }, [opts.type, opts.enabled]);
+  }, [opts.type, opts.enabled, cacheKey]);
 
   // Regular categories (excluding collections)
   const regularCategories = useMemo(
