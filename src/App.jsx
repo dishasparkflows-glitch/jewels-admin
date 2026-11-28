@@ -163,177 +163,85 @@ function App() {
           >
             <Route path="/" element={<RootRedirect />} />
             <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/analytics" element={<AnalyticsView />} />
             <Route path="/reports" element={<AnalyticsView />} />
-            <Route path="/collections" element={<OrnateProductsView />} />
 
-            {/* Parent Route Auto-Redirects to First Submenu Page */}
+            {/* Catalog Module */}
             <Route path="/catalog" element={<Navigate to="/catalog/jewelry-products" replace />} />
-            <Route path="/pricing-hub" element={<Navigate to="/pricing-hub/metal-rates" replace />} />
-            <Route path="/product-config" element={<Navigate to="/metal-purity" replace />} />
-            <Route path="/diamond-config" element={<Navigate to="/diamond-types" replace />} />
-            <Route path="/sales-orders" element={<Navigate to="/orders" replace />} />
-            <Route path="/orders-sales" element={<Navigate to="/orders" replace />} />
-            <Route path="/orders" element={<OrdersView />} />
-            <Route path="/customer-hub" element={<Navigate to="/customers" replace />} />
+            <Route path="/catalog/jewelry-products/add" element={<AddJewelryProduct />} />
+            <Route path="/catalog/jewelry-products/edit/:id" element={<AddJewelryProduct />} />
+            <Route path="/catalog/silver-products/add" element={<AddJewelryProduct />} />
+            <Route path="/catalog/silver-products/edit/:id" element={<AddJewelryProduct />} />
+            <Route path="/catalog/ornate-products" element={<OrnateProductsView />} />
+            <Route path="/catalog/ornate-products/add" element={<OrnateProductEdit />} />
+            <Route path="/catalog/ornate-products/edit/:id" element={<OrnateProductEdit />} />
+            <Route path="/catalog/category-filters" element={<CategoryFiltersView />} />
+            <Route path="/catalog/navigation-menus" element={<NavigationMenusView />} />
 
-            {/* Exact Screenshot Views */}
-            <Route path="/cod-sequences" element={<CodSequencesView />} />
-            <Route path="/cod-sequence" element={<CodSequencesView />} />
-            <Route path="/customers" element={<CustomersView />} />
-            <Route path="/appointments" element={<AppointmentsView />} />
-            <Route path="/custom-inquiries" element={<CustomInquiriesView />} />
-            <Route path="/reviews" element={<ReviewsView />} />
-            {/* Luxury Diamond Module (Matches Exact User Screenshot at /diamonds/add) */}
-            <Route path="/diamonds/add" element={<AddDiamonds />} />
-            <Route path="/diamonds/new" element={<AddDiamonds />} />
-            <Route path="/diamonds" element={<DiamondsView />} />
-            <Route path="/settings" element={<SettingsView />} />
-            <Route path="/footer-settings" element={<Navigate to="/settings" replace />} />
-            <Route path="/marketing/footer" element={<Navigate to="/settings" replace />} />
-            <Route path="/instagram-posts" element={<InstagramPostsView />} />
-            <Route path="/marketing/instagram" element={<InstagramPostsView />} />
-            <Route path="/birthstones" element={<BirthstonePortfolioView />} />
-            <Route path="/marketing/birthstones" element={<BirthstonePortfolioView />} />
-            <Route path="/coupons" element={<CouponsView />} />
-            <Route path="/marketing/coupons" element={<CouponsView />} />
-            <Route path="/celebrate-gifts" element={<CelebrateGiftsView />} />
-            <Route path="/marketing/gifts" element={<CelebrateGiftsView />} />
-            <Route path="/marketing/celebrate-gifts" element={<CelebrateGiftsView />} />
-            <Route path="/top-announcement" element={<TopAnnouncementView />} />
-            <Route path="/top-announcements" element={<TopAnnouncementView />} />
-            <Route path="/marketing/top-announcement" element={<TopAnnouncementView />} />
-            <Route path="/marketing/announcements" element={<TopAnnouncementView />} />
-            <Route path="/banners" element={<BannersView />} />
-            <Route path="/banners/:typeKey" element={<BannersView />} />
-            <Route path="/banners/:typeKey/new" element={<BannersView />} />
-            <Route path="/banners/:typeKey/edit/:bannerId" element={<BannersView />} />
-            <Route path="/marketing/banners" element={<BannersView />} />
-            <Route path="/marketing/banners/:typeKey" element={<BannersView />} />
-            <Route path="/marketing/banners/:typeKey/new" element={<BannersView />} />
-            <Route path="/marketing/banners/:typeKey/edit/:bannerId" element={<BannersView />} />
-            <Route path="/website-sections" element={<BannersView />} />
-            <Route path="/marketing/website-sections" element={<BannersView />} />
-            <Route path="/marketing/before-after" element={<BeforeAfterView />} />
-            <Route path="/before-after" element={<BeforeAfterView />} />
-            <Route path="/custjewellerybeforeafter" element={<BeforeAfterView />} />
-            <Route path="/cust-jewellery-before-after" element={<BeforeAfterView />} />
-            <Route path="/home-sections" element={<HomeSectionsView />} />
-            <Route path="/gallery" element={<GalleryView />} />
-            <Route path="/media-gallery" element={<GalleryView />} />
-            <Route path="/website/gallery" element={<GalleryView />} />
-            <Route path="/marketing/gallery" element={<GalleryView />} />
-            <Route path="/website/themes" element={<ThemesView />} />
-            <Route path="/themes" element={<ThemesView />} />
-            <Route path="/static-pages" element={<StaticPagesView />} />
-            <Route path="/stores" element={<StoresView />} />
-            <Route path="/website/static-pages" element={<StaticPagesView />} />
-            <Route path="/website-content/static-pages" element={<StaticPagesView />} />
-            <Route path="/pages" element={<StaticPagesView />} />
-            <Route path="/marketing/home-sections" element={<HomeSectionsView />} />
-            <Route path="/marketing/sections" element={<HomeSectionsView />} />
-            {/* Luxury Blog Module, Editorial Studio & Categories */}
-            <Route path="/blogs" element={<BlogsView />} />
-            <Route path="/blogs/write" element={<WriteBlogView />} />
-            <Route path="/blogs/add" element={<WriteBlogView />} />
-            <Route path="/blogs/new" element={<WriteBlogView />} />
-            <Route path="/blogs/edit/:id" element={<WriteBlogView />} />
-            <Route path="/marketing/blogs" element={<BlogsView />} />
-            <Route path="/marketing/blogs/write" element={<WriteBlogView />} />
-            <Route path="/marketing/blogs/edit/:id" element={<WriteBlogView />} />
-            <Route path="/blog-categories" element={<BlogCategoriesView />} />
-            <Route path="/marketing/blog-categories" element={<BlogCategoriesView />} />
-            {/* Dedicated Diamonds Module */}
+            {/* Pricing Hub */}
+            <Route path="/pricing-hub" element={<Navigate to="/pricing-hub/metal-rates" replace />} />
+            <Route path="/pricing-hub/metal-rates" element={<MetalRatesView />} />
+            <Route path="/pricing-hub/diamond-rates" element={<DiamondPricingMasterView />} />
+            <Route path="/currencies" element={<CurrenciesView />} />
+
+            {/* Product Config */}
+            <Route path="/product-config" element={<Navigate to="/metal-purity" replace />} />
+            <Route path="/metal-purity" element={<MetalPuritiesView />} />
+            <Route path="/metal-color" element={<MetalColorsView />} />
+            <Route path="/sizes" element={<SizesView />} />
+            <Route path="/vto-masters" element={<VtoMastersView />} />
+
+            {/* Diamond Config */}
+            <Route path="/diamond-config" element={<Navigate to="/diamond-types" replace />} />
+            <Route path="/diamond-types" element={<DiamondTypesView />} />
+            <Route path="/diamond-shapes" element={<DiamondShapesView />} />
+            <Route path="/diamond-color" element={<DiamondColorsView />} />
+            <Route path="/diamond-clarity" element={<DiamondClaritiesView />} />
+            <Route path="/diamond-size" element={<DiamondSizesView />} />
+
+            {/* Gemstone Config */}
+            <Route path="/gemstone-config" element={<Navigate to="/gemstone-types" replace />} />
+            <Route path="/gemstone-types" element={<GemstoneTypesView />} />
+            <Route path="/gemstone-shapes" element={<GemstoneShapesView />} />
+
+            {/* Diamonds Module */}
             <Route path="/diamonds" element={<DiamondsView />} />
             <Route path="/diamonds/add" element={<AddDiamonds />} />
             <Route path="/diamonds/edit/:id" element={<AddDiamonds />} />
 
-            <Route path="/diamond-types" element={<DiamondTypesView />} />
-            <Route path="/diamond-config/types" element={<DiamondTypesView />} />
-            <Route path="/diamond-shapes" element={<DiamondShapesView />} />
-            <Route path="/diamond-config/shapes" element={<DiamondShapesView />} />
-            <Route path="/diamond-color" element={<DiamondColorsView />} />
-            <Route path="/diamond-config/color" element={<DiamondColorsView />} />
-            <Route path="/diamond-clarity" element={<DiamondClaritiesView />} />
-            <Route path="/diamond-config/clarity" element={<DiamondClaritiesView />} />
-            <Route path="/diamond-size" element={<DiamondSizesView />} />
-            <Route path="/diamond-config/size" element={<DiamondSizesView />} />
+            {/* Sales & Orders */}
+            <Route path="/orders" element={<OrdersView />} />
+            <Route path="/customers" element={<CustomersView />} />
+            <Route path="/appointments" element={<AppointmentsView />} />
+            <Route path="/custom-inquiries" element={<CustomInquiriesView />} />
+            <Route path="/reviews" element={<ReviewsView />} />
+            <Route path="/cod-sequences" element={<CodSequencesView />} />
 
-            {/* Gemstone Config */}
-            <Route path="/gemstone-types" element={<GemstoneTypesView />} />
-            <Route path="/gemstone-config" element={<Navigate to="/gemstone-types" replace />} />
-            <Route path="/gemstone-config/types" element={<GemstoneTypesView />} />
-            <Route path="/gemstone-shapes" element={<GemstoneShapesView />} />
-            <Route path="/gemstone-config/shapes" element={<GemstoneShapesView />} />
-            <Route path="/metal-purity" element={<MetalPuritiesView />} />
-            <Route path="/product-config/metal-purity" element={<MetalPuritiesView />} />
-            <Route path="/metal-color" element={<MetalColorsView />} />
-            <Route path="/product-config/metal-color" element={<MetalColorsView />} />
-            <Route path="/sizes" element={<SizesView />} />
-            <Route path="/product-config/sizes" element={<SizesView />} />
-            <Route path="/vto-masters" element={<VtoMastersView />} />
-            <Route path="/product-config/vto-masters" element={<VtoMastersView />} />
+            {/* Marketing & Content */}
+            <Route path="/home-sections" element={<HomeSectionsView />} />
+            <Route path="/banners" element={<BannersView />} />
+            <Route path="/banners/:typeKey" element={<BannersView />} />
+            <Route path="/banners/:typeKey/edit/:bannerId" element={<BannersView />} />
+            <Route path="/celebrate-gifts" element={<CelebrateGiftsView />} />
+            <Route path="/coupons" element={<CouponsView />} />
+            <Route path="/birthstones" element={<BirthstonePortfolioView />} />
+            <Route path="/marketing/before-after" element={<BeforeAfterView />} />
+            <Route path="/top-announcements" element={<TopAnnouncementView />} />
+            <Route path="/gallery" element={<GalleryView />} />
+            <Route path="/themes" element={<ThemesView />} />
+            <Route path="/instagram-posts" element={<InstagramPostsView />} />
+            <Route path="/blogs" element={<BlogsView />} />
+            <Route path="/blogs/write" element={<WriteBlogView />} />
+            <Route path="/blogs/edit/:id" element={<WriteBlogView />} />
+            <Route path="/blog-categories" element={<BlogCategoriesView />} />
+            <Route path="/static-pages" element={<StaticPagesView />} />
 
-            {/* Luxury Add Jewelry Product (Matches Exact User Screenshot) */}
-            <Route path="/catalog/jewelry-products/edit/:id" element={<AddJewelryProduct />} />
-            <Route path="/catalog/jewelry-products/add" element={<AddJewelryProduct />} />
-            <Route path="/catalog/jewelry-products/new" element={<AddJewelryProduct />} />
-            <Route path="/catalog/silver-products/edit/:id" element={<AddJewelryProduct />} />
-            <Route path="/catalog/silver-products/add" element={<AddJewelryProduct />} />
-            <Route path="/catalog/silver-products/new" element={<AddJewelryProduct />} />
-            <Route path="/catalog/add-jewelry-product" element={<AddJewelryProduct />} />
-            <Route path="/add-jewelry-product" element={<AddJewelryProduct />} />
-
-            {/* Luxury Ornate Products Catalog (Matches Target Mockup Design) */}
-            <Route path="/catalog/ornate-products" element={<OrnateProductsView />} />
-            <Route path="/ornate-products" element={<OrnateProductsView />} />
-
-            {/* Luxury Tab-Wise Ornate Product Edit (Matches Exact User Screenshot) */}
-            <Route path="/catalog/ornate-products/edit/:id" element={<OrnateProductEdit />} />
-            <Route path="/ornate-products/edit/:id" element={<OrnateProductEdit />} />
-            <Route path="/catalog/ornate-products/add" element={<OrnateProductEdit />} />
-            <Route path="/catalog/ornate-products/new" element={<OrnateProductEdit />} />
-            <Route path="/ornate-products/add" element={<OrnateProductEdit />} />
-            <Route path="/ornate-products/new" element={<OrnateProductEdit />} />
-            {/* Category Filters Dynamic Assignment Module */}
-            <Route path="/catalog/category-filters" element={<CategoryFiltersView />} />
-            <Route path="/category-filters" element={<CategoryFiltersView />} />
-
-            {/* Luxury Navigation Menus Module (Matches Exact 4-Screen Design) */}
-            <Route path="/catalog/navigation-menus" element={<NavigationMenusView />} />
-
-            {/* Luxury WhatsApp Management (Matches Exact User Screenshot) */}
+            {/* Business Ops & Administration */}
+            <Route path="/stores" element={<StoresView />} />
             <Route path="/system/whatsapp" element={<WhatsAppView />} />
-            <Route path="/whatsapp" element={<WhatsAppView />} />
-            <Route path="/whatsapp-management" element={<WhatsAppView />} />
-
-            {/* Notifications Center */}
             <Route path="/notifications" element={<NotificationsView />} />
-
-            {/* Website Owners & Module Permissions */}
             <Route path="/owners" element={<OwnersView />} />
-            <Route path="/clients" element={<OwnersView />} />
-
-            {/* Real-Time Price Master (Metal Rates & Gold Price - Matches Exact User Screenshot) */}
-            <Route path="/pricing-hub/metal-rates" element={<MetalRatesView />} />
-            <Route path="/metal-rates" element={<MetalRatesView />} />
-            <Route path="/goldprice" element={<MetalRatesView />} />
-
-            {/* Diamond Pricing Master (Matches Exact User Screenshot at /diamondprice) */}
-            <Route path="/pricing-hub/diamond-rates" element={<DiamondPricingMasterView />} />
-            <Route path="/pricing-hub/diamond-price" element={<DiamondPricingMasterView />} />
-            <Route path="/diamondprice" element={<DiamondPricingMasterView />} />
-            <Route path="/diamond-price" element={<DiamondPricingMasterView />} />
-            <Route path="/diamond-rates" element={<DiamondPricingMasterView />} />
-
-            {/* Currency Management (Matches Exact User Screenshot) */}
-            <Route path="/pricing-hub/currencies" element={<CurrenciesView />} />
-            <Route path="/currencies" element={<CurrenciesView />} />
-            {/* User Profile & Theme Customization */}
+            <Route path="/settings" element={<SettingsView />} />
             <Route path="/profile" element={<ProfileView />} />
-            <Route path="/theme" element={<ProfileView />} />
-            <Route path="/settings/profile" element={<ProfileView />} />
-            <Route path="/user-profile" element={<ProfileView />} />
 
             {/* Senior Dynamic View for all Config & Catalog modules */}
             <Route path="*" element={<DynamicModuleView />} />

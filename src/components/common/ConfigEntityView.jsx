@@ -315,6 +315,7 @@ export default function ConfigEntityView({
       const nextStatus = itemRecord.status === 'active' ? 'inactive' : 'active';
       await api.put(`${endpoint}/${itemRecord._id}`, { status: nextStatus });
       if (endpoint) clearRequestCache(`config:${endpoint}`);
+      clearRequestCache('lookup:');
       toast.success(`${itemRecord.name} status set to ${nextStatus}`);
       setItems((prev) =>
         prev.map((it) => (it._id === itemRecord._id ? { ...it, status: nextStatus } : it))
@@ -339,6 +340,7 @@ export default function ConfigEntityView({
     try {
       await api.delete(`${endpoint}/${id}`);
       if (endpoint) clearRequestCache(`config:${endpoint}`);
+      clearRequestCache('lookup:');
       toast.success(`${singularTitle} deleted successfully`);
       setItems((prev) => prev.filter((it) => it._id !== id));
       removeFromSelection(id);
@@ -375,6 +377,7 @@ export default function ConfigEntityView({
         }
       }
       if (endpoint) clearRequestCache(`config:${endpoint}`);
+      clearRequestCache('lookup:');
       toast.success(`${idsToDelete.length} ${title.toLowerCase()} deleted successfully`);
       setItems((prev) => prev.filter((it) => !selectedIds.has(it._id)));
       clearSelection();
@@ -435,6 +438,7 @@ export default function ConfigEntityView({
       }
 
       setIsModalOpen(false);
+      clearRequestCache('lookup:');
       await invalidateAndRefetch(currentPage, pageSize);
     } catch (err) {
       console.error(`Failed to save ${singularTitle.toLowerCase()}:`, err);

@@ -16,6 +16,10 @@ export const productsAPI = {
   update: (id, data) => api.put(`/products/${id}`, data),
   delete: (id) => api.delete(`/products/${id}`),
   bulkDelete: (ids) => api.post('/products/bulk-delete', { ids }),
+  getRecomputeStatus: () => api.get('/products/secret-recompute-publish-status'),
+  startRecomputeAll: (passkey) => api.post('/products/secret-recompute-publish-all', { passkey }),
+  resetRecomputeStatus: () => api.post('/products/secret-recompute-publish-reset'),
+  restoreRecomputeBackup: (passkey) => api.post('/products/secret-recompute-restore-backup', { passkey }),
 };
 
 // ─── Users ────────────────────────────────────────

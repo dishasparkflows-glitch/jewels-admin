@@ -11,6 +11,7 @@ import {
 import { IoSparklesOutline } from 'react-icons/io5';
 import { getMediaUrl } from '../../../utils/imageUrl';
 import { useAddJewelryProductContext } from './AddJewelryProductContext';
+import SmartCompressionBanner from '../../../components/common/SmartCompressionBanner';
 
 export default function MediaUploadModals() {
   const {
@@ -110,7 +111,13 @@ export default function MediaUploadModals() {
               )}
 
               {/* Modal Body */}
-              <div className="flex-1 overflow-y-auto max-h-[calc(92vh-190px)] p-4 sm:p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto max-h-[calc(92vh-190px)] p-4 sm:p-6 space-y-5">
+                <SmartCompressionBanner
+                  enabled={imageUploadPolicy.enabled}
+                  format={imageUploadPolicy.format}
+                  quality={imageUploadPolicy.quality}
+                />
+
                 {/* Staged Files Preview Grid */}
                 <div>
                   <div className="flex items-center justify-between mb-2.5">
@@ -196,26 +203,9 @@ export default function MediaUploadModals() {
                   </div>
                 </div>
 
-                {/* Global Image Compression Policy */}
-                <div className="border border-[#ecd9c6] bg-[#fbf9f6] rounded-2xl p-4 sm:p-5 space-y-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-xs font-bold uppercase tracking-wider text-stone-800">
-                        Automatic image compression
-                      </h4>
-                      <p className="mt-1 text-[11px] text-stone-600">
-                        {imageUploadPolicy.enabled
-                          ? `${imageUploadPolicy.format === 'image/webp' ? 'WebP' : 'JPEG'} at ${imageUploadPolicy.quality}% quality`
-                          : 'Disabled in System Settings; images will upload at their original size.'}
-                      </p>
-                    </div>
-                    <span className="shrink-0 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
-                      Set globally in Settings
-                    </span>
-                  </div>
-
-                  {stagedUploadFiles.some((f) => f.isVideo) && (
-                    <div className="flex items-center justify-between border-t border-[#ebdccb] pt-3">
+                {stagedUploadFiles.some((f) => f.isVideo) && (
+                  <div className="border border-[#ecd9c6] bg-[#fbf9f6] rounded-2xl p-4 sm:p-5">
+                    <div className="flex items-center justify-between">
                       <div>
                         <p className="text-xs font-bold text-stone-800">Encode videos to WebM VP9</p>
                         <p className="text-[10.5px] text-stone-500">Compress videos in the browser before upload.</p>
@@ -231,13 +221,8 @@ export default function MediaUploadModals() {
                         <div className="w-11 h-6 bg-stone-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-stone-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#8b6f4e]" />
                       </label>
                     </div>
-                  )}
-                </div>
-
-                {/* Upload behavior */}
-                <p className="text-[11px] text-stone-500 text-center italic">
-                  💡 Images use the saved global quality and dimension limit automatically. The original image is kept only when optimization would make it larger.
-                </p>
+                  </div>
+                )}
               </div>
 
               {/* Footer Actions */}

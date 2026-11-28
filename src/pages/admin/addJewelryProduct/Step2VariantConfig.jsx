@@ -113,7 +113,7 @@ export default function Step2VariantConfig() {
       </div>
 
       {/* ─── Sub-Section 1: Metal Options & Specifications ──────── */}
-      <div className="p-4 sm:p-5 rounded-2xl border border-stone-400/80 bg-white space-y-4 shadow-xs">
+      <div className="p-4 sm:p-5 rounded-2xl border border-stone-200 bg-white space-y-4 shadow-2xs">
         <div className="flex items-center gap-2">
           <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
             1
@@ -230,550 +230,555 @@ export default function Step2VariantConfig() {
           </div>
         </div>
 
-        {/* ── Center Stone Switcher ── */}
-        <div className="flex items-center gap-2 mb-1">
-          <button
-            type="button"
-            onClick={() => setStoneConfigType('centerDiamond')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              stoneConfigType === 'centerDiamond'
-                ? 'bg-[#8b6f4e] text-white shadow-sm'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            Center Diamond
-          </button>
-          <button
-            type="button"
-            onClick={() => setStoneConfigType('colorStone')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              stoneConfigType === 'colorStone'
-                ? 'bg-[#8b6f4e] text-white shadow-sm'
-                : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-            }`}
-          >
-            Color Stone
-          </button>
-        </div>
-
-        {/* ── Color Stone Configuration Card ── */}
-        {stoneConfigType === 'colorStone' && (
-          <div className="p-5 rounded-2xl border border-stone-400/80 bg-white space-y-4 shadow-xs">
-            {/* Card Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200 flex-wrap gap-2">
-              <div className="flex items-center gap-2">
-                <IoDiamondOutline className="w-4 h-4 text-[#8b6f4e]" />
-                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
-                  COLOR STONE CONFIGURATION
+        {/* ── Card A: Center Stone (Diamond or Color Stone) ── */}
+        <div className="rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+          {/* Unified Header Strip with Center Stone Switcher */}
+          <div className="px-5 py-3.5 bg-stone-50/70 border-b border-stone-200 flex items-center justify-between flex-wrap gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center shrink-0">
+                <IoDiamondOutline className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-xs font-bold text-stone-900">
+                  Center Stone
                 </h4>
+                <p className="text-[11px] text-stone-500">
+                  Choose primary center stone type and generate combinations.
+                </p>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-[#8b6f4e] bg-amber-50 px-2.5 py-1 rounded-full border border-[#8b6f4e]/20">
-                  Rate: ₹3,000 / ct (Fixed)
-                </span>
+            </div>
+
+            <div className="flex items-center gap-2.5 flex-wrap">
+              {stoneConfigType === 'colorStone' ? (
+                <>
+                  <span className="text-[11px] font-bold text-[#8b6f4e] bg-amber-50 px-2.5 py-1 rounded-full border border-[#8b6f4e]/20">
+                    Rate: ₹3,000 / ct (Fixed)
+                  </span>
+                  <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d8c0]">
+                    {colorStoneCombinations.length} {colorStoneCombinations.length === 1 ? 'Combination' : 'Combinations'}
+                  </span>
+                </>
+              ) : (
                 <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d8c0]">
-                  {colorStoneCombinations.length} {colorStoneCombinations.length === 1 ? 'Combination' : 'Combinations'}
+                  {centerDiamondCombinations.length} {centerDiamondCombinations.length === 1 ? 'Combination' : 'Combinations'}
                 </span>
-              </div>
-            </div>
+              )}
 
-            {/* Top Controls Grid: Type, Shape, Carat Weight */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start pt-1">
-              {/* 1. STONE TYPE */}
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                  STONE TYPE
-                </label>
-                <Dropdown
-                  size="sm"
-                  value={colorStoneType}
-                  onChange={(val) => setColorStoneType(val)}
-                  options={diamondTypesList}
-                  placeholder="Select Stone Type"
-                  buttonClassName="h-8 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800"
-                />
-              </div>
-
-              {/* 2. STONE SHAPE */}
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                  STONE SHAPE
-                </label>
-                <Dropdown
-                  size="sm"
-                  value={colorStoneShape}
-                  onChange={(val) => setColorStoneShape(val)}
-                  options={diamondShapesList}
-                  placeholder="Select Stone Shape"
-                  buttonClassName="h-8 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
-                />
-              </div>
-
-              {/* 3. TOTAL CARAT WEIGHT (CT) */}
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                  TOTAL CARAT WEIGHT (CT)
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    ref={colorStoneCaratInputRef}
-                    type="number"
-                    step="0.01"
-                    placeholder="e.g. 1.5"
-                    value={colorStoneCaratInput}
-                    onChange={(e) => setColorStoneCaratInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddColorStoneCarat();
-                        colorStoneCaratInputRef.current?.focus();
-                      }
-                    }}
-                    className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleAddColorStoneCarat();
-                      colorStoneCaratInputRef.current?.focus();
-                    }}
-                    className="w-8 h-8 flex-shrink-0 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer"
-                    title="Add Carat Weight"
-                  >
-                    +
-                  </button>
-                </div>
-
-                {/* Carat Tags with Delete 'x' */}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {colorStoneCarats.map((ct) => (
-                    <span
-                      key={ct}
-                      className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-lg bg-[#8b6f4e] text-white text-[13px] font-semibold shadow-xs select-none"
-                    >
-                      <span>{ct} ct</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveColorStoneCarat(ct)}
-                        className="w-4 h-4 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-black/20 transition-all cursor-pointer shrink-0"
-                        title={`Remove ${ct} ct`}
-                        aria-label={`Remove ${ct} ct`}
-                      >
-                        <HiOutlineX className="w-3.5 h-3.5 stroke-[2.5]" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Auto-Generated Combinations Table */}
-            <div className="pt-3 space-y-2.5">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
-                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
-                    COLOR STONE COMBINATIONS ({colorStoneCombinations.length})
-                  </h5>
-                </div>
+              <div className="flex items-center gap-1 bg-white border border-stone-200 p-1 rounded-xl">
                 <button
                   type="button"
-                  onClick={handleAddColorStoneRow}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e42] active:scale-95 transition-all shadow-xs hover:shadow cursor-pointer"
+                  onClick={() => setStoneConfigType('centerDiamond')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    stoneConfigType === 'centerDiamond'
+                      ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
                 >
-                  <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-                  <span>Add Row</span>
+                  Center Diamond
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStoneConfigType('colorStone')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    stoneConfigType === 'colorStone'
+                      ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                      : 'text-stone-600 hover:text-stone-900'
+                  }`}
+                >
+                  Color Stone
                 </button>
               </div>
+            </div>
+          </div>
 
-              {colorStoneCombinations.length === 0 ? (
-                <div className="py-8 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200 flex flex-col items-center justify-center gap-2">
-                  <p className="text-xs text-stone-400">
-                    Select stone type, shape, and add carat weights to generate color stone combinations.
-                  </p>
+          {/* ── Color Stone Body ── */}
+          {stoneConfigType === 'colorStone' && (
+            <div className="p-5 space-y-5">
+              {/* Top Controls Grid: Type, Shape, Carat Weight */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                {/* 1. STONE TYPE */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    Stone Type
+                  </label>
+                  <Dropdown
+                    size="sm"
+                    value={colorStoneType}
+                    onChange={(val) => setColorStoneType(val)}
+                    options={diamondTypesList}
+                    placeholder="Select Stone Type"
+                    buttonClassName="h-9 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800"
+                  />
+                </div>
+
+                {/* 2. STONE SHAPE */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    Stone Shape
+                  </label>
+                  <Dropdown
+                    size="sm"
+                    value={colorStoneShape}
+                    onChange={(val) => setColorStoneShape(val)}
+                    options={diamondShapesList}
+                    placeholder="Select Stone Shape"
+                    buttonClassName="h-9 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
+                  />
+                </div>
+
+                {/* 3. TOTAL CARAT WEIGHT (CT) */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    Total Carat Weight (ct)
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      ref={colorStoneCaratInputRef}
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g. 1.5"
+                      value={colorStoneCaratInput}
+                      onChange={(e) => setColorStoneCaratInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddColorStoneCarat();
+                          colorStoneCaratInputRef.current?.focus();
+                        }
+                      }}
+                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleAddColorStoneCarat();
+                        colorStoneCaratInputRef.current?.focus();
+                      }}
+                      className="w-9 h-9 flex-shrink-0 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer"
+                      title="Add Carat Weight"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* Carat Tags with Delete 'x' */}
+                  {colorStoneCarats.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {colorStoneCarats.map((ct) => (
+                        <span
+                          key={ct}
+                          className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-[#8b6f4e] text-white text-xs font-semibold shadow-2xs select-none"
+                        >
+                          <span>{ct} ct</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveColorStoneCarat(ct)}
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-black/20 transition-all cursor-pointer shrink-0"
+                            title={`Remove ${ct} ct`}
+                            aria-label={`Remove ${ct} ct`}
+                          >
+                            <HiOutlineX className="w-3 h-3 stroke-[2.5]" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Auto-Generated Combinations Table */}
+              <div className="pt-4 border-t border-stone-100 space-y-2.5">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
+                    <h5 className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                      Color Stone Combinations ({colorStoneCombinations.length})
+                    </h5>
+                  </div>
                   <button
                     type="button"
                     onClick={handleAddColorStoneRow}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e42] active:scale-95 transition-all shadow-xs cursor-pointer"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#785e42] active:scale-95 transition-all shadow-2xs cursor-pointer"
                   >
-                    <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
+                    <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
                     <span>Add Row</span>
                   </button>
                 </div>
-              ) : (
+
+                {colorStoneCombinations.length === 0 ? (
+                  <div className="py-6 px-4 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200">
+                    <p className="text-xs text-stone-400">
+                      Select stone type, shape, and add carat weights above (or click <span className="font-semibold text-stone-600">+ Add Row</span>) to generate combinations.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-stone-200 bg-stone-50/70 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                            <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
+                            <th className="py-2.5 px-4 font-bold">STONE TYPE</th>
+                            <th className="py-2.5 px-3 font-bold">SHAPE</th>
+                            <th className="py-2.5 px-3 font-bold">CARAT</th>
+                            <th className="py-2.5 px-3 font-bold">RATE / CT</th>
+                            <th className="py-2.5 px-4 font-bold text-right">TOTAL PRICE</th>
+                            <th className="py-2.5 px-3 font-bold text-center w-16">ACTION</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100">
+                          {colorStoneCombinations.map((combo, idx) => (
+                            <tr key={combo.id} className="hover:bg-stone-50/60 transition-colors">
+                              <td className="py-2.5 px-3 text-center font-medium text-stone-400">{idx + 1}</td>
+                              <td className="py-2.5 px-4 font-bold text-stone-800">{combo.diamondType || '—'}</td>
+                              <td className="py-2.5 px-3 font-semibold text-stone-800 uppercase">{combo.shape || '—'}</td>
+                              <td className="py-2.5 px-3 font-semibold text-stone-800">
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    min="0.01"
+                                    defaultValue={combo.carat}
+                                    key={`carat-${combo.carat}-${idx}`}
+                                    onBlur={(e) => {
+                                      const val = parseFloat(e.target.value);
+                                      if (!isNaN(val) && val > 0 && val !== combo.carat) {
+                                        handleUpdateColorStoneCarat(combo.carat, val);
+                                      } else {
+                                        e.target.value = combo.carat;
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') {
+                                        e.target.blur();
+                                      }
+                                    }}
+                                    className="w-20 h-7 px-2 text-xs font-semibold rounded border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] text-stone-800"
+                                  />
+                                  <span className="text-xs text-stone-500 font-medium">ct</span>
+                                </div>
+                              </td>
+                              <td className="py-2.5 px-3 font-semibold text-[#8b6f4e]">
+                                ₹3,000 / ct (Fixed)
+                              </td>
+                              <td className="py-2.5 px-4 text-right font-bold text-stone-900">
+                                ₹{combo.totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveColorStoneCarat(combo.carat)}
+                                  className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
+                                  title="Remove combination"
+                                >
+                                  <HiOutlineTrash className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex justify-end items-center gap-2.5 pt-0.5">
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50/80 border border-[#8b6f4e]/20 text-xs shadow-2xs">
+                        <span className="font-semibold text-stone-600">Total Price:</span>
+                        <span className="font-extrabold text-[#8b6f4e] text-sm">
+                          ₹{totalColorStonePrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50/80 border border-[#8b6f4e]/20 text-xs shadow-2xs">
+                        <span className="font-semibold text-stone-600">Total Stone Weight:</span>
+                        <span className="font-extrabold text-[#8b6f4e] text-sm">
+                          {Number(totalColorStoneWeight.toFixed(2))} ct
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ── Center Diamond Body ── */}
+          {stoneConfigType === 'centerDiamond' && (
+            <div className="p-5 space-y-5">
+              {/* Row 1: Primary Selectors (Type, Shape, Total Carat Weight) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
+                {/* 1. DIAMOND TYPE */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    Diamond Type
+                  </label>
+                  <Dropdown
+                    size="sm"
+                    value={centerDiamondType}
+                    onChange={(val) => {
+                      setCenterDiamondType(val);
+                    }}
+                    options={diamondTypesList}
+                    placeholder="Select Diamond Type"
+                    buttonClassName="h-9 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800"
+                  />
+                </div>
+
+                {/* 2. DIAMOND SHAPE */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    Diamond Shape
+                  </label>
+                  <Dropdown
+                    size="sm"
+                    value={centerDiamondShape}
+                    onChange={(val) => {
+                      setCenterDiamondShape(val);
+                    }}
+                    options={diamondShapesList}
+                    buttonClassName="h-9 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
+                  />
+                </div>
+
+                {/* 3. TOTAL CARAT WEIGHT (CT) */}
+                <div className="space-y-1.5">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    Total Carat Weight (ct)
+                  </label>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      ref={centerCaratInputRef}
+                      type="number"
+                      step="0.01"
+                      placeholder="e.g. 1.5"
+                      value={caratInput}
+                      onChange={(e) => setCaratInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddCarat();
+                          centerCaratInputRef.current?.focus();
+                        }
+                      }}
+                      className="w-full h-9 px-3 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleAddCarat();
+                        centerCaratInputRef.current?.focus();
+                      }}
+                      className="w-9 h-9 flex-shrink-0 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer"
+                      title="Add Carat Weight"
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  {/* Carat Tags with Delete 'x' */}
+                  {centerDiamondCarats.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {centerDiamondCarats.map((ct) => (
+                        <span
+                          key={ct}
+                          className="inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg bg-[#8b6f4e] text-white text-xs font-semibold shadow-2xs select-none"
+                        >
+                          <span>{ct} ct</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveCarat(ct)}
+                            className="w-4 h-4 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-black/20 transition-all cursor-pointer shrink-0"
+                            title={`Remove ${ct} ct`}
+                            aria-label={`Remove ${ct} ct`}
+                          >
+                            <HiOutlineX className="w-3 h-3 stroke-[2.5]" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 2: Multi-Select Quality Chips (Color & Clarity) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-stone-100">
+                {/* COLOR */}
                 <div className="space-y-2">
-                  <div className="overflow-x-auto rounded-xl border border-stone-200/80 bg-white">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    Color
+                  </label>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {centerColorOptions.map((c) => {
+                      const isSelected = centerDiamondColors.includes(c);
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => toggleCenterColor(c)}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                              : 'bg-white border border-stone-200 text-stone-700 hover:border-stone-300'
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* CLARITY */}
+                <div className="space-y-2">
+                  <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+                    Clarity
+                  </label>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {centerClarityOptions.map((cla) => {
+                      const isSelected = centerDiamondClarities.includes(cla);
+                      return (
+                        <button
+                          key={cla}
+                          type="button"
+                          onClick={() => toggleCenterClarity(cla)}
+                          className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#8b6f4e] text-white shadow-2xs'
+                              : 'bg-white border border-stone-200 text-stone-700 hover:border-stone-300'
+                          }`}
+                        >
+                          {cla}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Auto-Generated Combinations Table */}
+              <div className="pt-4 border-t border-stone-100 space-y-2.5">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
+                    <h5 className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
+                      Auto-Generated Combinations ({centerDiamondCombinations.length})
+                    </h5>
+                  </div>
+                  {centerDiamondCombinations.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setIsCombinationsCollapsed((prev) => !prev)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-stone-200 hover:border-stone-300 rounded-lg shadow-2xs transition-all cursor-pointer"
+                      title={isCombinationsCollapsed ? 'Expand Combinations Table' : 'Collapse Combinations Table'}
+                    >
+                      <span>{isCombinationsCollapsed ? 'Expand' : 'Collapse'}</span>
+                      {isCombinationsCollapsed ? (
+                        <HiOutlineChevronDown className="w-3.5 h-3.5 text-stone-500" />
+                      ) : (
+                        <HiOutlineChevronUp className="w-3.5 h-3.5 text-stone-500" />
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {centerDiamondCombinations.length === 0 ? (
+                  <div className="py-6 px-4 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200">
+                    <p className="text-xs text-stone-400">
+                      Select colors, clarities, and add carat weights above to auto-generate combinations.
+                    </p>
+                  </div>
+                ) : isCombinationsCollapsed ? (
+                  <div
+                    onClick={() => setIsCombinationsCollapsed(false)}
+                    className="py-2.5 px-4 rounded-xl border border-dashed border-stone-200 bg-stone-50/70 flex items-center justify-between text-xs text-stone-500 hover:bg-stone-100/70 transition-colors cursor-pointer"
+                  >
+                    <span>{centerDiamondCombinations.length} auto-generated combinations collapsed.</span>
+                    <span className="font-semibold text-[#8b6f4e] inline-flex items-center gap-1">
+                      Expand <HiOutlineChevronDown className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
                     <table className="w-full text-left text-xs">
                       <thead>
-                        <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                        <tr className="border-b border-stone-200 bg-stone-50/70 text-[10px] font-bold uppercase tracking-wider text-stone-400">
                           <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
-                          <th className="py-2.5 px-4 font-bold">STONE TYPE</th>
-                          <th className="py-2.5 px-3 font-bold">SHAPE</th>
-                          <th className="py-2.5 px-3 font-bold">CARAT</th>
-                          <th className="py-2.5 px-3 font-bold">RATE / CT</th>
-                          <th className="py-2.5 px-4 font-bold text-right">TOTAL PRICE</th>
-                          <th className="py-2.5 px-3 font-bold text-center w-16">ACTION</th>
+                          <th className="py-2.5 px-4 font-bold">DIAMOND TYPE</th>
+                          <th className="py-2.5 px-3 font-bold">COLOR</th>
+                          <th className="py-2.5 px-3 font-bold">CLARITY</th>
+                          <th className="py-2.5 px-3 font-bold">CARAT (CT)</th>
+                          <th className="py-2.5 px-3 font-bold">RATE / CT (₹)</th>
+                          <th className="py-2.5 px-4 font-bold text-right">TOTAL PRICE (₹)</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-stone-100">
-                        {colorStoneCombinations.map((combo, idx) => (
-                          <tr key={combo.id} className="hover:bg-stone-50/60 transition-colors">
-                            <td className="py-2.5 px-3 text-center font-medium text-stone-400">{idx + 1}</td>
-                            <td className="py-2.5 px-4 font-bold text-stone-800">{combo.diamondType || '—'}</td>
-                            <td className="py-2.5 px-3 font-semibold text-stone-800 uppercase">{combo.shape || '—'}</td>
-                            <td className="py-2.5 px-3 font-semibold text-stone-800">
-                              <div className="flex items-center gap-1.5">
+                      <tbody className="divide-y divide-stone-100 font-sans">
+                        {centerDiamondCombinations.map((combo, idx) => (
+                          <tr key={combo.id} className="hover:bg-stone-50/40 transition-colors">
+                            <td className="py-2.5 px-3 text-center text-[11px] font-semibold text-stone-500 whitespace-nowrap">
+                              {idx + 1}
+                            </td>
+                            <td className="py-2.5 px-4 whitespace-nowrap">
+                              <span className="inline-block px-2.5 py-0.5 rounded-md border border-stone-200 bg-stone-50 text-[11px] font-semibold text-stone-700">
+                                {combo.diamondType}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold text-stone-800 whitespace-nowrap">
+                              {combo.color}
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold text-stone-800 whitespace-nowrap">
+                              {combo.clarity}
+                            </td>
+                            <td className="py-2.5 px-3 font-semibold text-stone-800 whitespace-nowrap">
+                              {combo.carat} ct
+                            </td>
+                            <td className="py-2.5 px-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1 font-semibold text-stone-800">
+                                <span>₹</span>
                                 <input
                                   type="number"
-                                  step="0.01"
-                                  min="0.01"
-                                  defaultValue={combo.carat}
-                                  key={`carat-${combo.carat}-${idx}`}
-                                  onBlur={(e) => {
-                                    const val = parseFloat(e.target.value);
-                                    if (!isNaN(val) && val > 0 && val !== combo.carat) {
-                                      handleUpdateColorStoneCarat(combo.carat, val);
-                                    } else {
-                                      e.target.value = combo.carat;
-                                    }
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') {
-                                      e.target.blur();
-                                    }
-                                  }}
-                                  className="w-20 h-7 px-2 text-xs font-semibold rounded border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e] text-stone-800"
+                                  value={combo.rate}
+                                  onChange={(e) => handleUpdateComboRate(combo.id, Number(e.target.value) || 0)}
+                                  placeholder="Not Set"
+                                  className={`w-24 h-6 px-1.5 text-xs font-semibold bg-stone-50/50 border border-transparent hover:border-stone-200 focus:border-[#8b6f4e] focus:bg-white rounded transition-colors ${combo.rate === 0 ? 'text-amber-500 italic' : 'text-stone-800'}`}
                                 />
-                                <span className="text-xs text-stone-500 font-medium">ct</span>
                               </div>
+                              {combo.rate === 0 && (
+                                <span className="text-[9px] text-amber-500 mt-0.5 block">Configure in Diamond Pricing Master</span>
+                              )}
                             </td>
-                            <td className="py-2.5 px-3 font-semibold text-[#8b6f4e]">
-                              ₹3,000 / ct (Fixed)
-                            </td>
-                            <td className="py-2.5 px-4 text-right font-bold text-stone-900">
-                              ₹{combo.totalPrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </td>
-                            <td className="py-2.5 px-3 text-center">
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveColorStoneCarat(combo.carat)}
-                                className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
-                                title="Remove combination"
-                              >
-                                <HiOutlineTrash className="w-4 h-4" />
-                              </button>
+                            <td className="py-2.5 px-4 text-right font-bold whitespace-nowrap">
+                              {combo.rate === 0 ? (
+                                <span className="text-amber-500 text-[11px] italic">Not Set</span>
+                              ) : (
+                                <span className="text-stone-900">
+                                  ₹{(combo.carat * combo.rate).toLocaleString('en-IN', {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  })}
+                                </span>
+                              )}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                  <div className="flex justify-end items-center gap-2.5 pt-0.5">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50/80 border border-[#8b6f4e]/20 text-xs shadow-2xs">
-                      <span className="font-semibold text-stone-600">Total Price:</span>
-                      <span className="font-extrabold text-[#8b6f4e] text-sm">
-                        ₹{totalColorStonePrice.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                      </span>
-                    </div>
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-amber-50/80 border border-[#8b6f4e]/20 text-xs shadow-2xs">
-                      <span className="font-semibold text-stone-600">Total Stone Weight:</span>
-                      <span className="font-extrabold text-[#8b6f4e] text-sm">
-                        {Number(totalColorStoneWeight.toFixed(2))} ct
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ── Center Diamond Configuration Card ── */}
-        {stoneConfigType === 'centerDiamond' && (
-          <div className="p-5 rounded-2xl border border-stone-400/80 bg-white space-y-4 shadow-xs">
-            {/* Card Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-stone-200">
-              <div className="flex items-center gap-2">
-                <IoDiamondOutline className="w-4 h-4 text-[#8b6f4e]" />
-                <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
-                  CENTER DIAMOND CONFIGURATION
-                </h4>
-              </div>
-              <span className="px-3 py-1 text-xs font-semibold rounded-full bg-[#faf5ee] text-[#8b6f4e] border border-[#e8d8c0]">
-                {centerDiamondCombinations.length} {centerDiamondCombinations.length === 1 ? 'Combination' : 'Combinations'}
-              </span>
-            </div>
-
-            {/* Top Controls Grid: Type, Shape, Color, Clarity, Carat Weight */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start pt-1">
-              {/* 1. DIAMOND TYPE */}
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                  DIAMOND TYPE
-                </label>
-                <Dropdown
-                  size="sm"
-                  value={centerDiamondType}
-                  onChange={(val) => {
-                    setCenterDiamondType(val);
-                  }}
-                  options={diamondTypesList}
-                  placeholder="Select Diamond Type"
-                  buttonClassName="h-8 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800"
-                />
-              </div>
-
-              {/* 2. DIAMOND SHAPE */}
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                  DIAMOND SHAPE
-                </label>
-                <Dropdown
-                  size="sm"
-                  value={centerDiamondShape}
-                  onChange={(val) => {
-                    setCenterDiamondShape(val);
-                  }}
-                  options={diamondShapesList}
-                  buttonClassName="h-8 px-3 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
-                />
-              </div>
-
-              {/* 3. COLOR */}
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                  COLOR
-                </label>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {centerColorOptions.map((c) => {
-                    const isSelected = centerDiamondColors.includes(c);
-                    return (
-                      <button
-                        key={c}
-                        type="button"
-                        onClick={() => toggleCenterColor(c)}
-                        className={`px-2.5 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                            : 'bg-white border border-stone-200 text-stone-700 hover:border-stone-300'
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 4. CLARITY */}
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                  CLARITY
-                </label>
-                <div className="flex items-center gap-1.5 flex-wrap">
-                  {centerClarityOptions.map((cla) => {
-                    const isSelected = centerDiamondClarities.includes(cla);
-                    return (
-                      <button
-                        key={cla}
-                        type="button"
-                        onClick={() => toggleCenterClarity(cla)}
-                        className={`px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer ${
-                          isSelected
-                            ? 'bg-[#8b6f4e] text-white shadow-2xs'
-                            : 'bg-white border border-stone-200 text-stone-700 hover:border-stone-300'
-                        }`}
-                      >
-                        {cla}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* 5. TOTAL CARAT WEIGHT (CT) */}
-              <div className="space-y-2">
-                <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                  TOTAL CARAT WEIGHT (CT)
-                </label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    ref={centerCaratInputRef}
-                    type="number"
-                    step="0.01"
-                    placeholder="e.g. 1.5"
-                    value={caratInput}
-                    onChange={(e) => setCaratInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        handleAddCarat();
-                        centerCaratInputRef.current?.focus();
-                      }
-                    }}
-                    className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleAddCarat();
-                      centerCaratInputRef.current?.focus();
-                    }}
-                    className="w-8 h-8 flex-shrink-0 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center font-bold text-base transition-colors cursor-pointer"
-                    title="Add Carat Weight"
-                  >
-                    +
-                  </button>
-                </div>
-
-                {/* Carat Tags with Delete 'x' */}
-                <div className="flex flex-wrap gap-2 pt-1">
-                  {centerDiamondCarats.map((ct) => (
-                    <span
-                      key={ct}
-                      className="inline-flex items-center gap-1.5 pl-3 pr-1.5 py-1.5 rounded-lg bg-[#8b6f4e] text-white text-[13px] font-semibold shadow-xs select-none"
-                    >
-                      <span>{ct} ct</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveCarat(ct)}
-                        className="w-4 h-4 rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-black/20 transition-all cursor-pointer shrink-0"
-                        title={`Remove ${ct} ct`}
-                        aria-label={`Remove ${ct} ct`}
-                      >
-                        <HiOutlineX className="w-3.5 h-3.5 stroke-[2.5]" />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Auto-Generated Combinations Table */}
-            <div className="pt-3 space-y-2.5">
-              <div className="flex items-center justify-between gap-3 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
-                  <h5 className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
-                    AUTO-GENERATED COMBINATIONS ({centerDiamondCombinations.length})
-                  </h5>
-                </div>
-                {centerDiamondCombinations.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setIsCombinationsCollapsed((prev) => !prev)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-stone-200 hover:border-stone-300 rounded-lg shadow-2xs transition-all cursor-pointer"
-                    title={isCombinationsCollapsed ? 'Expand Combinations Table' : 'Collapse Combinations Table'}
-                  >
-                    <span>{isCombinationsCollapsed ? 'Expand' : 'Collapse'}</span>
-                    {isCombinationsCollapsed ? (
-                      <HiOutlineChevronDown className="w-3.5 h-3.5 text-stone-500" />
-                    ) : (
-                      <HiOutlineChevronUp className="w-3.5 h-3.5 text-stone-500" />
-                    )}
-                  </button>
                 )}
               </div>
-
-              {centerDiamondCombinations.length === 0 ? (
-                <div className="py-8 text-center bg-stone-50/60 rounded-xl border border-dashed border-stone-200">
-                  <p className="text-xs text-stone-400">
-                    Select colors, clarities, and add carat weights to generate combinations.
-                  </p>
-                </div>
-              ) : isCombinationsCollapsed ? (
-                <div
-                  onClick={() => setIsCombinationsCollapsed(false)}
-                  className="py-2.5 px-4 rounded-xl border border-dashed border-stone-200 bg-stone-50/70 flex items-center justify-between text-xs text-stone-500 hover:bg-stone-100/70 transition-colors cursor-pointer"
-                >
-                  <span>{centerDiamondCombinations.length} auto-generated combinations collapsed.</span>
-                  <span className="font-semibold text-[#8b6f4e] inline-flex items-center gap-1">
-                    Expand <HiOutlineChevronDown className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              ) : (
-                <div className="overflow-x-auto rounded-xl border border-stone-200/80 bg-white">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                        <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
-                        <th className="py-2.5 px-4 font-bold">DIAMOND TYPE</th>
-                        <th className="py-2.5 px-3 font-bold">COLOR</th>
-                        <th className="py-2.5 px-3 font-bold">CLARITY</th>
-                        <th className="py-2.5 px-3 font-bold">CARAT (CT)</th>
-                        <th className="py-2.5 px-3 font-bold">RATE / CT (₹)</th>
-                        <th className="py-2.5 px-4 font-bold text-right">TOTAL PRICE (₹)</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100 font-sans">
-                      {centerDiamondCombinations.map((combo, idx) => (
-                        <tr key={combo.id} className="hover:bg-stone-50/40 transition-colors">
-                          <td className="py-2.5 px-3 text-center text-[11px] font-semibold text-stone-500 whitespace-nowrap">
-                            {idx + 1}
-                          </td>
-                          <td className="py-2.5 px-4 whitespace-nowrap">
-                            <span className="inline-block px-2.5 py-0.5 rounded-md border border-stone-200 bg-stone-50 text-[11px] font-semibold text-stone-700">
-                              {combo.diamondType}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 font-semibold text-stone-800 whitespace-nowrap">
-                            {combo.color}
-                          </td>
-                          <td className="py-2.5 px-3 font-semibold text-stone-800 whitespace-nowrap">
-                            {combo.clarity}
-                          </td>
-                          <td className="py-2.5 px-3 font-semibold text-stone-800 whitespace-nowrap">
-                            {combo.carat} ct
-                          </td>
-                          <td className="py-2.5 px-3 whitespace-nowrap">
-                            <div className="flex items-center gap-1 font-semibold text-stone-800">
-                              <span>₹</span>
-                              <input
-                                type="number"
-                                value={combo.rate}
-                                onChange={(e) => handleUpdateComboRate(combo.id, Number(e.target.value) || 0)}
-                                placeholder="Not Set"
-                                className={`w-24 h-6 px-1.5 text-xs font-semibold bg-stone-50/50 border border-transparent hover:border-stone-200 focus:border-[#8b6f4e] focus:bg-white rounded transition-colors ${combo.rate === 0 ? 'text-amber-500 italic' : 'text-stone-800'}`}
-                              />
-                            </div>
-                            {combo.rate === 0 && (
-                              <span className="text-[9px] text-amber-500 mt-0.5 block">Configure in Diamond Pricing Master</span>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-4 text-right font-bold whitespace-nowrap">
-                            {combo.rate === 0 ? (
-                              <span className="text-amber-500 text-[11px] italic">Not Set</span>
-                            ) : (
-                              <span className="text-stone-900">
-                                ₹{(combo.carat * combo.rate).toLocaleString('en-IN', {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* ── Side Stone Configuration Card ── */}
-        <div className="p-5 rounded-2xl border border-stone-400/80 bg-white space-y-4 shadow-xs">
-          <div className="flex items-center justify-between pb-3 border-b border-stone-200 flex-wrap gap-2">
+        {/* ── Card B: Side Stone (Accent Stones) ── */}
+        <div className="rounded-2xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+          {/* Unified Header Strip with Side Stone Mode Switcher */}
+          <div className="px-5 py-3.5 bg-stone-50/70 border-b border-stone-200 flex items-center justify-between flex-wrap gap-3">
             <div>
-              <h4 className="text-[11px] font-extrabold uppercase tracking-wider text-stone-900">
-                SIDE STONE CONFIGURATION
+              <h4 className="text-xs font-bold text-stone-900">
+                Side Stone (Accent)
               </h4>
-              <p className="text-[10px] text-stone-400 mt-0.5">
-                Configure accent diamonds and/or gemstones.
+              <p className="text-[11px] text-stone-500">
+                Optional accent diamonds and/or gemstones around the main setting.
               </p>
             </div>
-            <div className="flex items-center gap-1.5 bg-stone-100 p-1 rounded-xl">
+            <div className="flex items-center gap-1 bg-white border border-stone-200 p-1 rounded-xl flex-wrap">
               {[
                 { id: 'sideDiamond', label: 'Side Diamond' },
                 { id: 'sideColorStone', label: 'Side Color Stone' },
@@ -796,137 +801,142 @@ export default function Step2VariantConfig() {
             </div>
           </div>
 
-          {/* Side Diamond Editor (if sideDiamond or both) */}
-          {(sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both') && (
-            <div className="pt-2">
-              <h5 className="text-[10.5px] font-bold text-stone-700 uppercase tracking-wider mb-2">Side Diamonds</h5>
-              <SideDiamondEditor rows={sideRows} onChange={setSideRows} masters={diamondMasters} />
+          {sideStoneConfigType === 'none' ? (
+            <div className="px-5 py-4 text-xs text-stone-400 text-center">
+              No side stones configured for this product. Select <span className="font-semibold text-stone-600">Side Diamond</span>, <span className="font-semibold text-stone-600">Side Color Stone</span>, or <span className="font-semibold text-stone-600">Both</span> above to add accent stones.
             </div>
-          )}
+          ) : (
+            <div className="p-5 space-y-5">
+              {/* Side Diamond Editor (if sideDiamond or both) */}
+              {(sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both') && (
+                <SideDiamondEditor rows={sideRows} onChange={setSideRows} masters={diamondMasters} />
+              )}
 
-          {/* Side Color Stone Section (if sideColorStone or both) */}
-          {(sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both') && (
-            <div className="pt-3 space-y-3 border-t border-stone-100">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <IoDiamondOutline className="w-4 h-4 text-[#8b6f4e]" />
-                  <h5 className="text-[10.5px] font-bold text-stone-700 uppercase tracking-wider">
-                    SIDE COLOR STONE CONFIGURATION
-                  </h5>
-                </div>
-                <span className="text-[11px] font-bold text-[#8b6f4e] bg-amber-50 px-2.5 py-0.5 rounded-full border border-[#8b6f4e]/20">
-                  Rate: ₹3,000 / ct (Fixed)
-                </span>
-              </div>
+              {/* Side Color Stone Section (if sideColorStone or both) */}
+              {(sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both') && (
+                <div className={sideStoneConfigType === 'both' ? 'pt-5 space-y-3 border-t border-stone-200' : 'space-y-3'}>
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <IoDiamondOutline className="w-4 h-4 text-[#8b6f4e]" />
+                      <h5 className="text-[11px] font-bold text-stone-700 uppercase tracking-wider">
+                        Side Color Stones
+                      </h5>
+                    </div>
+                    <span className="text-[11px] font-bold text-[#8b6f4e] bg-amber-50 px-2.5 py-0.5 rounded-full border border-[#8b6f4e]/20">
+                      Rate: ₹3,000 / ct (Fixed)
+                    </span>
+                  </div>
 
-              {/* Add Side Color Stone Row Bar */}
-              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end p-3 rounded-xl bg-stone-50 border border-stone-200/80">
-                <div>
-                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
-                    STONE TYPE
-                  </label>
-                  <Dropdown
-                    size="sm"
-                    value={sideColorStoneType}
-                    onChange={(val) => setSideColorStoneType(val)}
-                    options={diamondTypesList}
-                    placeholder="Select Type"
-                    buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
-                    STONE SHAPE
-                  </label>
-                  <Dropdown
-                    size="sm"
-                    value={sideColorStoneShape}
-                    onChange={(val) => setSideColorStoneShape(val)}
-                    options={diamondShapesList}
-                    placeholder="Select Shape"
-                    buttonClassName="h-8 px-2.5 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
-                    PIECES
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    value={sideColorStonePieces}
-                    onChange={(e) => setSideColorStonePieces(e.target.value)}
-                    placeholder="e.g. 2"
-                    className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-stone-400 uppercase tracking-wider mb-1">
-                    CARAT WEIGHT
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={sideColorStoneCarat}
-                    onChange={(e) => setSideColorStoneCarat(e.target.value)}
-                    placeholder="e.g. 0.50"
-                    className="w-full h-8 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
-                  />
-                </div>
-                <div>
-                  <button
-                    type="button"
-                    onClick={handleAddSideColorStoneRow}
-                    className="w-full h-8 px-3 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center gap-1 font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    <HiOutlinePlus className="w-4 h-4" /> Add Row
-                  </button>
-                </div>
-              </div>
+                  {/* Add Side Color Stone Row Bar */}
+                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end p-3.5 rounded-xl bg-stone-50/70 border border-stone-200">
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">
+                        Stone Type
+                      </label>
+                      <Dropdown
+                        size="sm"
+                        value={sideColorStoneType}
+                        onChange={(val) => setSideColorStoneType(val)}
+                        options={diamondTypesList}
+                        placeholder="Select Type"
+                        buttonClassName="h-9 px-2.5 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">
+                        Stone Shape
+                      </label>
+                      <Dropdown
+                        size="sm"
+                        value={sideColorStoneShape}
+                        onChange={(val) => setSideColorStoneShape(val)}
+                        options={diamondShapesList}
+                        placeholder="Select Shape"
+                        buttonClassName="h-9 px-2.5 text-xs rounded-lg bg-white border-stone-200 font-semibold text-stone-800 uppercase"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">
+                        Pieces
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={sideColorStonePieces}
+                        onChange={(e) => setSideColorStonePieces(e.target.value)}
+                        placeholder="e.g. 2"
+                        className="w-full h-9 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-stone-500 uppercase tracking-wider mb-1">
+                        Carat Weight
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0.01"
+                        value={sideColorStoneCarat}
+                        onChange={(e) => setSideColorStoneCarat(e.target.value)}
+                        placeholder="e.g. 0.50"
+                        className="w-full h-9 px-2.5 text-xs rounded-lg border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
+                      />
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={handleAddSideColorStoneRow}
+                        className="w-full h-9 px-3 rounded-lg bg-[#8b6f4e] hover:bg-[#785e42] text-white flex items-center justify-center gap-1.5 font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <HiOutlinePlus className="w-4 h-4" /> Add Row
+                      </button>
+                    </div>
+                  </div>
 
-              {/* Side Color Stone Table */}
-              {sideColorStoneRows.length > 0 && (
-                <div className="overflow-x-auto rounded-xl border border-stone-200/80 bg-white">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-stone-200 bg-stone-50/60 text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                        <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
-                        <th className="py-2.5 px-4 font-bold">TYPE</th>
-                        <th className="py-2.5 px-3 font-bold">SHAPE</th>
-                        <th className="py-2.5 px-3 font-bold text-center">PIECES</th>
-                        <th className="py-2.5 px-3 font-bold text-center">CARAT WEIGHT</th>
-                        <th className="py-2.5 px-3 font-bold">RATE / CT</th>
-                        <th className="py-2.5 px-4 font-bold text-right">TOTAL</th>
-                        <th className="py-2.5 px-3 w-14 font-bold text-center">ACTION</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-stone-100">
-                      {sideColorStoneRows.map((row, idx) => (
-                        <tr key={row.id} className="hover:bg-stone-50/60 transition-colors">
-                          <td className="py-2.5 px-3 text-center font-medium text-stone-400">{idx + 1}</td>
-                          <td className="py-2.5 px-4 font-bold text-stone-800">{row.diamondType || '—'}</td>
-                          <td className="py-2.5 px-3 font-semibold text-stone-800 uppercase">{row.diamondShape || '—'}</td>
-                          <td className="py-2.5 px-3 text-center font-semibold text-stone-800">{row.pieces || 1}</td>
-                          <td className="py-2.5 px-3 text-center font-semibold text-stone-800">{row.caratWeight} ct</td>
-                          <td className="py-2.5 px-3 font-semibold text-[#8b6f4e]">₹3,000 / ct (Fixed)</td>
-                          <td className="py-2.5 px-4 text-right font-bold text-stone-900">
-                            ₹{(Number(row.caratWeight || 0) * 3000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveSideColorStoneRow(row.id)}
-                              className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
-                              title="Remove row"
-                            >
-                              <HiOutlineTrash className="w-4 h-4" />
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  {/* Side Color Stone Table */}
+                  {sideColorStoneRows.length > 0 && (
+                    <div className="overflow-x-auto rounded-xl border border-stone-200 bg-white">
+                      <table className="w-full text-left text-xs">
+                        <thead>
+                          <tr className="border-b border-stone-200 bg-stone-50/70 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                            <th className="py-2.5 px-3 w-16 font-bold text-center">SR NO</th>
+                            <th className="py-2.5 px-4 font-bold">TYPE</th>
+                            <th className="py-2.5 px-3 font-bold">SHAPE</th>
+                            <th className="py-2.5 px-3 font-bold text-center">PIECES</th>
+                            <th className="py-2.5 px-3 font-bold text-center">CARAT WEIGHT</th>
+                            <th className="py-2.5 px-3 font-bold">RATE / CT</th>
+                            <th className="py-2.5 px-4 font-bold text-right">TOTAL</th>
+                            <th className="py-2.5 px-3 w-14 font-bold text-center">ACTION</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-stone-100">
+                          {sideColorStoneRows.map((row, idx) => (
+                            <tr key={row.id} className="hover:bg-stone-50/60 transition-colors">
+                              <td className="py-2.5 px-3 text-center font-medium text-stone-400">{idx + 1}</td>
+                              <td className="py-2.5 px-4 font-bold text-stone-800">{row.diamondType || '—'}</td>
+                              <td className="py-2.5 px-3 font-semibold text-stone-800 uppercase">{row.diamondShape || '—'}</td>
+                              <td className="py-2.5 px-3 text-center font-semibold text-stone-800">{row.pieces || 1}</td>
+                              <td className="py-2.5 px-3 text-center font-semibold text-stone-800">{row.caratWeight} ct</td>
+                              <td className="py-2.5 px-3 font-semibold text-[#8b6f4e]">₹3,000 / ct (Fixed)</td>
+                              <td className="py-2.5 px-4 text-right font-bold text-stone-900">
+                                ₹{(Number(row.caratWeight || 0) * 3000).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="py-2.5 px-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveSideColorStoneRow(row.id)}
+                                  className="p-1 rounded text-rose-500 hover:text-rose-700 hover:bg-rose-50 transition cursor-pointer"
+                                  title="Remove row"
+                                >
+                                  <HiOutlineTrash className="w-4 h-4" />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -935,7 +945,7 @@ export default function Step2VariantConfig() {
       </div>
 
       {/* ─── Sub-Section 3: Preview Variants ───────── */}
-      <div className="space-y-2.5 pt-5 border-t border-stone-300">
+      <div className="space-y-2.5 pt-5 border-t border-stone-200">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-2.5">
             <div className="w-5 h-5 rounded-full bg-[#faf5ee] border border-[#e8d8c0] text-[#8b6f4e] flex items-center justify-center font-bold text-[10px] flex-shrink-0">
@@ -960,29 +970,31 @@ export default function Step2VariantConfig() {
                 className="w-16 px-2 py-1.5 text-xs text-stone-800 rounded-md border border-stone-200 bg-white focus:outline-none focus:border-[#8b6f4e]"
               />
             </label>
-            <button
-              type="button"
-              disabled={computingPrices}
-              onClick={handleRegenerateVariants}
-              className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] border border-[#8b6f4e] rounded-lg hover:bg-[#765b3d] active:scale-[0.98] transition-all shadow-sm cursor-pointer"
-            >
-              <HiOutlineRefresh className="w-4 h-4" />
-              <span>{variants.length ? 'Recompute Variants' : 'Compute Variants'}</span>
-            </button>
             {variants.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsVariantsPreviewCollapsed((prev) => !prev)}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-stone-200 hover:border-stone-300 rounded-lg shadow-2xs transition-all cursor-pointer"
-                title={isVariantsPreviewCollapsed ? 'Expand Variants Table' : 'Collapse Variants Table'}
-              >
-                <span>{isVariantsPreviewCollapsed ? 'Expand' : 'Collapse'}</span>
-                {isVariantsPreviewCollapsed ? (
-                  <HiOutlineChevronDown className="w-3.5 h-3.5 text-stone-500" />
-                ) : (
-                  <HiOutlineChevronUp className="w-3.5 h-3.5 text-stone-500" />
-                )}
-              </button>
+              <>
+                <button
+                  type="button"
+                  disabled={computingPrices}
+                  onClick={handleRegenerateVariants}
+                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold text-white bg-[#8b6f4e] border border-[#8b6f4e] rounded-lg hover:bg-[#765b3d] active:scale-[0.98] transition-all shadow-sm cursor-pointer"
+                >
+                  <HiOutlineRefresh className="w-4 h-4" />
+                  <span>Recompute Variants</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsVariantsPreviewCollapsed((prev) => !prev)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-stone-700 hover:text-stone-900 bg-white hover:bg-stone-50 border border-stone-200 hover:border-stone-300 rounded-lg shadow-2xs transition-all cursor-pointer"
+                  title={isVariantsPreviewCollapsed ? 'Expand Variants Table' : 'Collapse Variants Table'}
+                >
+                  <span>{isVariantsPreviewCollapsed ? 'Expand' : 'Collapse'}</span>
+                  {isVariantsPreviewCollapsed ? (
+                    <HiOutlineChevronDown className="w-3.5 h-3.5 text-stone-500" />
+                  ) : (
+                    <HiOutlineChevronUp className="w-3.5 h-3.5 text-stone-500" />
+                  )}
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -1034,7 +1046,7 @@ export default function Step2VariantConfig() {
             )}
 
             {/* Variants Table */}
-            <div className="border border-stone-400/80 rounded-xl overflow-hidden shadow-xs bg-white">
+            <div className="border border-stone-200 rounded-xl overflow-hidden shadow-2xs bg-white">
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>

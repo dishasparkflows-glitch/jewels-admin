@@ -27,6 +27,7 @@ import {
 } from '../../utils/uploadWithPresignedUrl';
 import { galleryAPI } from '../../api/services';
 import PlacementSelect, { PLACEMENT_OPTIONS } from '../common/PlacementSelect';
+import SmartCompressionBanner from '../common/SmartCompressionBanner';
 
 export default function GalleryUploadModal({
   isOpen,
@@ -821,21 +822,12 @@ export default function GalleryUploadModal({
               </div>
 
               {/* Smart Image Compression Info Banner */}
-              <div className="flex items-center gap-2.5 rounded-xl border border-emerald-200/90 bg-emerald-50/70 p-2 text-[11px] text-emerald-900 shadow-2xs">
-                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white font-bold text-[11px] shadow-2xs">
-                  ⚡
-                </div>
-                <div className="flex-1 flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-emerald-950">
-                    {compressionSettings.enabled !== false ? 'Smart Image Compression Active' : 'Image Compression Inactive'}
-                  </span>
-                  {compressionSettings.enabled !== false && (
-                    <span className="inline-flex items-center rounded-md bg-emerald-200/60 px-1.5 py-0.2 text-[9.5px] font-semibold text-emerald-800">
-                      Auto WebP · ~{compressionSettings.quality || 60}% Quality
-                    </span>
-                  )}
-                </div>
-              </div>
+              <SmartCompressionBanner
+                enabled={compressionSettings.enabled}
+                format={compressionSettings.format}
+                quality={compressionSettings.quality}
+                className="p-2"
+              />
 
               <input
                 ref={fileInputRef}

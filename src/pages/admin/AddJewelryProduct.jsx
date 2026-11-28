@@ -409,8 +409,16 @@ export default function AddJewelryProduct() {
           border: c.colorCodeEnd || c.colorCode || '#b5852f',
         }));
         setColorsList(mapped);
-        setProductColors(mapped.map((c) => c.name));
-        setActiveMediaColor((prev) => (mapped.some((c) => c.name === prev) ? prev : mapped[0]?.name || ''));
+        if (!productId) {
+          setProductColors((prev) => {
+            if (prev.length > 0) {
+              const valid = prev.filter((name) => mapped.some((c) => c.name === name));
+              return valid.length > 0 ? valid : mapped.map((c) => c.name);
+            }
+            return mapped.map((c) => c.name);
+          });
+          setActiveMediaColor((prev) => (mapped.some((c) => c.name === prev) ? prev : mapped[0]?.name || ''));
+        }
       }
       const types = combinedData.diamondTypes;
       if (Array.isArray(types)) {
@@ -1082,7 +1090,7 @@ export default function AddJewelryProduct() {
 
   // ─── Step 2: Auto-Generated Combinations & Preview Variants Collapse States ─────
   const [isCombinationsCollapsed, setIsCombinationsCollapsed] = useState(true);
-  const [isVariantsPreviewCollapsed, setIsVariantsPreviewCollapsed] = useState(true);
+  const [isVariantsPreviewCollapsed, setIsVariantsPreviewCollapsed] = useState(() => !productId);
 
   // ─── Step 2: Preview Variants ───────────────────────────
   const [variants, setVariants] = useState([]);
@@ -2439,10 +2447,10 @@ export default function AddJewelryProduct() {
     sideStoneConfigType,
     sideColorStoneRows: (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both')
       ? (sideColorStoneRows || [])
-          .filter((row) => (row.diamondTypeId || row.diamondType) && Number(row.caratWeight) > 0)
+          .filter((row) => row.diamondTypeId && Number(row.caratWeight) > 0)
           .map((row) => ({
-            diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
-            diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
+            diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId),
+            diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId),
             caratWeight: Number(row.caratWeight),
             pieces: Number(row.pieces || 1),
             pricePerCarat: 3000,
@@ -2451,15 +2459,15 @@ export default function AddJewelryProduct() {
     sideDiamondRows: (sideStoneConfigType === 'sideDiamond' || sideStoneConfigType === 'both')
       ? (sideRows || [])
           .filter((row) => {
-            const typeId = masterId(diamondMasters.types, row.diamondTypeId || row.diamondType);
+            const typeId = masterId(diamondMasters.types, row.diamondTypeId);
             return typeId && (Number(row.caratWeight) > 0 || Number(row.pieces) > 0);
           })
           .map((row) => ({
             ...row,
-            diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
-            diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
-            diamondColorId: masterId(diamondMasters.colors, row.diamondColorId || row.diamondColor),
-            diamondClarityId: masterId(diamondMasters.clarities, row.diamondClarityId || row.diamondClarity),
+            diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId),
+            diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId),
+            diamondColorId: masterId(diamondMasters.colors, row.diamondColorId),
+            diamondClarityId: masterId(diamondMasters.clarities, row.diamondClarityId),
             pieces: Number(row.pieces || 1),
             caratWeight: Number(row.caratWeight || 0),
             priceINR: Number(row.priceINR || 0),
@@ -2604,7 +2612,7 @@ export default function AddJewelryProduct() {
 
       const payload = {
         metalWeight: parseFloat(v.weight || v.metalWeight || specs.metalWeight || 0),
-        metalPurityId: v.metalPurityId || v.metalPurity?._id || v.metalPurity,
+        metalPurityId: v.metalPurityId?._id || v.metalPurityId,
         stoneConfigType,
         sideStoneConfigType,
         colorStoneRows: stoneConfigType === 'colorStone' ? [{
@@ -2625,8 +2633,8 @@ export default function AddJewelryProduct() {
         ] : [],
         sideColorStoneRows: (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both')
           ? sideColorStoneRows.map((row) => ({
-              diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
-              diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
+              diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId),
+              diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId),
               caratWeight: Number(row.caratWeight),
               pieces: Number(row.pieces || 1),
               pricePerCarat: 3000,
@@ -2730,16 +2738,36 @@ export default function AddJewelryProduct() {
     const categoryId = regMatch || allCatIds.find((id) => !collIds.includes(id)) || allCatIds[0] || '';
 
     setSelectedCollectionIds(collIds);
-    const productMetalColors = productRecord.metalColorIds || productRecord.metalColors || [];
+    const productMetalColors = productRecord.metalColorIds || [];
     if (Array.isArray(productMetalColors) && productMetalColors.length > 0) {
       registerMetalColors(productMetalColors);
     }
     const colorOptions = [...colorsList, ...productMetalColors];
+    const isKnownColorName = (name) =>
+      Boolean(name) &&
+      colorOptions.some(
+        (opt) => String(opt?.name || opt || '').trim().toLowerCase() === String(name).trim().toLowerCase()
+      );
     const variantRecords = Array.isArray(productRecord.variants) ? productRecord.variants : [];
     const variantRows = variantRecords.map((variant, index) => {
-      const parts = String(variant.combination || '').split(/[·•/]/).map((part) => part.trim());
-      const purity = resolveName(variant.metalPurityId || variant.metalPurity, puritiesList) || parts[0] || '';
-      const color = resolveName(variant.metalColorId || variant.metalColor, colorOptions) || parts[1] || '';
+      const parts = String(variant.combination || '')
+        .split(/[·•/]/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+      const purity =
+        resolveName(variant.metalPurityId, puritiesList) ||
+        parts.find(
+          (part) =>
+            puritiesList.some((p) => String(p?.name || p || '').trim().toLowerCase() === part.toLowerCase()) ||
+            /^\d+\s*k(?:t)?$/i.test(part)
+        ) ||
+        '';
+      // Never blindly use parts[1] (which is Diamond Color e.g. F-G) as a Metal Color
+      const resolvedVarColor = resolveName(variant.metalColorId, colorOptions);
+      const color =
+        (isKnownColorName(resolvedVarColor) ? resolvedVarColor : '') ||
+        parts.find((part) => isKnownColorName(part)) ||
+        '';
       return {
         ...variant,
         id: variant._id || index + 1,
@@ -2748,10 +2776,10 @@ export default function AddJewelryProduct() {
         colorCode: colorOptions.find((item) => item.name === color)?.code || '',
         diamondDetails: {
           center: [
-            resolveName(variant.diamondTypeId || variant.diamondType, diamondMasters.types),
-            resolveName(variant.diamondShapeId || variant.diamondShape, diamondMasters.shapes),
-            resolveName(variant.diamondColorId || variant.diamondColor, diamondMasters.colors),
-            resolveName(variant.diamondClarityId || variant.diamondClarity, diamondMasters.clarities),
+            resolveName(variant.diamondTypeId, diamondMasters.types),
+            resolveName(variant.diamondShapeId, diamondMasters.shapes),
+            resolveName(variant.diamondColorId, diamondMasters.colors),
+            resolveName(variant.diamondClarityId, diamondMasters.clarities),
             variant.caratWeight ? `${variant.caratWeight}ct` : '',
           ].filter(Boolean).join(' · ') || '',
           side: '',
@@ -2771,19 +2799,22 @@ export default function AddJewelryProduct() {
       };
     });
     const colorRows = Array.isArray(productRecord.colorImages) ? productRecord.colorImages : [];
-    const colorNames = unique([
-      ...colorRows.map((row) => resolveName(row.metalColorId || row.metalColor, colorOptions)),
+    const resolvedColorNames = unique([
+      ...colorRows.map((row) => resolveName(row.metalColorId, colorOptions)),
       ...(Array.isArray(productMetalColors)
         ? productMetalColors.map((color) => resolveName(color, colorOptions))
         : []),
       ...variantRows.map((variant) => variant.color),
     ]);
+    const colorNames = colorOptions.length > 0
+      ? resolvedColorNames.filter((name) => isKnownColorName(name))
+      : resolvedColorNames;
     const imagesByColor = {};
     const statusesByColor = {};
     const videosByColor = {};
     const vtoByColor = {};
     colorRows.forEach((row) => {
-      const colorName = resolveName(row.metalColorId || row.metalColor, colorOptions);
+      const colorName = resolveName(row.metalColorId, colorOptions);
       if (!colorName) return;
       statusesByColor[colorName] = row.status ?? 'active';
       const rowImages = Array.isArray(row.images) ? row.images : [];
@@ -2829,10 +2860,10 @@ export default function AddJewelryProduct() {
     });
     const centerRows = Array.isArray(productRecord.centerDiamondRows) ? productRecord.centerDiamondRows : [];
     const centerNames = centerRows.map((row) => ({
-      type: resolveName(row.diamondTypeId || row.diamondType, diamondMasters.types),
-      shape: resolveName(row.diamondShapeId || row.diamondShape, diamondMasters.shapes),
-      color: resolveName(row.diamondColorId || row.diamondColor, diamondMasters.colors),
-      clarity: resolveName(row.diamondClarityId || row.diamondClarity, diamondMasters.clarities),
+      type: resolveName(row.diamondTypeId, diamondMasters.types),
+      shape: resolveName(row.diamondShapeId, diamondMasters.shapes),
+      color: resolveName(row.diamondColorId, diamondMasters.colors),
+      clarity: resolveName(row.diamondClarityId, diamondMasters.clarities),
       carat: row.caratWeight,
       rate: row.pricePerCarat,
       rateSource: row.rateSource,
@@ -2874,6 +2905,7 @@ export default function AddJewelryProduct() {
     setSelectedPurities(unique([...savedPurities, ...variantRows.map((variant) => variant.purity)]));
     setSelectedColors(unique([...colorNames, ...variantRows.map((variant) => variant.color)]));
     setVariants(variantRows);
+    setIsVariantsPreviewCollapsed(false);
     setCenterDiamondType(firstCenter.type || '');
     setCenterDiamondShape(firstCenter.shape || '');
     setCenterDiamondColors(unique(centerNames.map((row) => row.color)));
@@ -2888,10 +2920,10 @@ export default function AddJewelryProduct() {
     setGstPercentage(String(productRecord.pricing?.gstPercentage ?? 3));
     setSideRows((productRecord.sideDiamondRows || []).map((row) => ({
       ...row,
-      diamondTypeId: row.diamondTypeId?._id || row.diamondTypeId || row.diamondType || '',
-      diamondShapeId: row.diamondShapeId?._id || row.diamondShapeId || row.diamondShape || '',
-      diamondColorId: row.diamondColorId?._id || row.diamondColorId || row.diamondColor || '',
-      diamondClarityId: row.diamondClarityId?._id || row.diamondClarityId || row.diamondClarity || '',
+      diamondTypeId: row.diamondTypeId?._id || row.diamondTypeId || '',
+      diamondShapeId: row.diamondShapeId?._id || row.diamondShapeId || '',
+      diamondColorId: row.diamondColorId?._id || row.diamondColorId || '',
+      diamondClarityId: row.diamondClarityId?._id || row.diamondClarityId || '',
       caratWeight: row.caratWeight ?? '',
       pieces: row.pieces ?? '',
       sizeFrom: row.sizeFrom ?? '',
@@ -2913,8 +2945,8 @@ export default function AddJewelryProduct() {
     const csCarats = unique(csRows.map((r) => Number(r.caratWeight)).filter(Number.isFinite)).sort((a, b) => a - b);
     if (csRows.length > 0) {
       const firstCs = csRows[0];
-      setColorStoneType(resolveName(firstCs.diamondTypeId || firstCs.diamondType, diamondMasters.types));
-      setColorStoneShape(resolveName(firstCs.diamondShapeId || firstCs.diamondShape, diamondMasters.shapes));
+      setColorStoneType(resolveName(firstCs.diamondTypeId, diamondMasters.types));
+      setColorStoneShape(resolveName(firstCs.diamondShapeId, diamondMasters.shapes));
       setColorStoneCarats(csCarats);
     }
 
@@ -2937,10 +2969,10 @@ export default function AddJewelryProduct() {
     const scsRows = Array.isArray(productRecord.sideColorStoneRows) ? productRecord.sideColorStoneRows : [];
     setSideColorStoneRows(scsRows.map((r) => ({
       id: r._id || Date.now() + Math.random(),
-      diamondTypeId: r.diamondTypeId?._id || r.diamondTypeId || r.diamondType,
-      diamondShapeId: r.diamondShapeId?._id || r.diamondShapeId || r.diamondShape,
-      diamondType: resolveName(r.diamondTypeId || r.diamondType, diamondMasters.types),
-      diamondShape: resolveName(r.diamondShapeId || r.diamondShape, diamondMasters.shapes),
+      diamondTypeId: r.diamondTypeId?._id || r.diamondTypeId,
+      diamondShapeId: r.diamondShapeId?._id || r.diamondShapeId,
+      diamondType: resolveName(r.diamondTypeId, diamondMasters.types),
+      diamondShape: resolveName(r.diamondShapeId, diamondMasters.shapes),
       caratWeight: Number(r.caratWeight || 0),
       pieces: Number(r.pieces || 1),
       pricePerCarat: Number(r.pricePerCarat || 3000),
@@ -2963,8 +2995,8 @@ export default function AddJewelryProduct() {
       }
       if (Array.isArray(productRecord.colorImages) && productRecord.colorImages.length > 0) {
         productRecord.colorImages.forEach((ci) => {
-          let cName = resolveName(ci.metalColorId || ci.metalColor, colorOptions) || ci.metalColorName || ci.colorName;
-          if (!ci.metalColorId && !ci.metalColor && (!cName || cName.toLowerCase() === 'general')) {
+          let cName = resolveName(ci.metalColorId, colorOptions) || ci.metalColorName || ci.colorName;
+          if (!ci.metalColorId && (!cName || cName.toLowerCase() === 'general')) {
             cName = 'General';
           }
           if (cName) {
@@ -3263,10 +3295,10 @@ export default function AddJewelryProduct() {
         }));
       const validSideColorStoneRows = (sideStoneConfigType === 'sideColorStone' || sideStoneConfigType === 'both')
         ? (sideColorStoneRows || [])
-            .filter((row) => (row.diamondTypeId || row.diamondType) && Number(row.caratWeight) > 0)
+            .filter((row) => row.diamondTypeId && Number(row.caratWeight) > 0)
             .map((row) => compactObject({
-              diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId || row.diamondType),
-              diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId || row.diamondShape),
+              diamondTypeId: masterId(diamondMasters.types, row.diamondTypeId),
+              diamondShapeId: masterId(diamondMasters.shapes, row.diamondShapeId),
               caratWeight: numberValue(row.caratWeight),
               pieces: numberValue(row.pieces || 1),
               pricePerCarat: 3000,
@@ -3442,7 +3474,7 @@ export default function AddJewelryProduct() {
         }
         if (idToFetch) {
           try {
-            const getRes = await api.get('/products/' + idToFetch);
+            const getRes = await api.get('/products/' + idToFetch, { params: { mode: 'admin' } });
             const freshRec = getRes.data?.data?.product || getRes.data?.data;
             if (freshRec) {
               hydratedProductId.current = '';

@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { HiOutlineTrash, HiOutlinePlus } from 'react-icons/hi';
+import { HiOutlineTrash, HiOutlinePlus, HiOutlineCheck } from 'react-icons/hi';
 import Dropdown from './Dropdown';
 import api from '../../api/axios';
 import { formatCurrency } from '../../utils/formatters';
@@ -312,227 +312,263 @@ export default function SideDiamondEditor({ rows, onChange, masters }) {
   };
 
   return (
-    <section className="rounded-2xl border border-stone-200 bg-white p-5 space-y-5">
-      <h3 className="text-xs font-bold uppercase tracking-wider">Side Diamond Configuration</h3>
-      <div className="flex flex-wrap gap-2">
-        {types.map((t) => (
-          <button
-            type="button"
-            key={id(t)}
-            aria-pressed={enabled.includes(id(t))}
-            onClick={() => toggle(id(t))}
-            className={`rounded-lg px-3 py-2 text-xs border ${
-              enabled.includes(id(t)) ? 'bg-[#8b6f4e] text-white' : 'bg-white text-stone-700'
-            }`}
-          >
-            {t.name}
-          </button>
-        ))}
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div>
+          <span className="text-[11px] font-bold uppercase tracking-wider text-stone-700">
+            Side Diamonds
+          </span>
+          <p className="text-[11px] text-stone-400">
+            Toggle one or both diamond types below to add accent rows.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {types.map((t) => {
+            const isActive = enabled.includes(id(t));
+            return (
+              <button
+                type="button"
+                key={id(t)}
+                aria-pressed={isActive}
+                onClick={() => toggle(id(t))}
+                className={`inline-flex items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold border transition-all cursor-pointer ${
+                  isActive
+                    ? 'bg-[#8b6f4e] border-[#8b6f4e] text-white shadow-2xs'
+                    : 'bg-white border-stone-200 text-stone-700 hover:border-stone-300 hover:bg-stone-50'
+                }`}
+              >
+                <span
+                  className={`w-4 h-4 rounded flex items-center justify-center border transition-colors ${
+                    isActive
+                      ? 'bg-white/20 border-white/40 text-white'
+                      : 'bg-stone-50 border-stone-300 text-transparent'
+                  }`}
+                >
+                  <HiOutlineCheck className="w-3 h-3 stroke-[2.5]" />
+                </span>
+                <span>{t.name}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
+
       {error && (
-        <p className="text-xs text-amber-700">
+        <p className="text-xs text-amber-700 bg-amber-50/70 border border-amber-200 rounded-lg px-3 py-2">
           Master preview unavailable. Compute Variants will validate rates on the server.
         </p>
       )}
-      {enabled.map((type) => {
-        const typeRows = rows.filter(
-          (r) => resolveEntityId(r.diamondTypeId, 'types') === type || id(r.diamondTypeId) === type
-        );
-        const totalPieces = typeRows.reduce((sum, r) => sum + (parseInt(r.pieces, 10) || 0), 0);
-        const totalCarats = typeRows.reduce((sum, r) => sum + (parseFloat(r.caratWeight) || 0), 0);
-        const totalPrice = typeRows.reduce((sum, r) => {
-          const rate = rateFor(r);
-          return sum + (rate !== null ? rate * (parseFloat(r.caratWeight) || 0) : 0);
-        }, 0);
 
-        return (
-          <div key={type} className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
-              <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">
-                {types.find((t) => id(t) === type)?.name || 'Diamond type'}
-              </h4>
-            </div>
-            <button
-              type="button"
-              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#765b3d] active:scale-95 transition-all shadow-xs hover:shadow cursor-pointer"
-              onClick={addRow}
-            >
-              <HiOutlinePlus className="w-4 h-4 stroke-[2.5]" />
-              <span>Add Row</span>
-            </button>
-          </div>
-          <div className="overflow-x-auto border rounded-xl">
-            <table className="w-full text-xs text-left">
-              <thead className="bg-stone-50">
-                <tr>
-                  {[
-                    'Shape',
-                    'Color',
-                    'Clarity',
-                    'Pieces',
-                    'Carat (ct)',
-                    'Rate/Ct',
-                    'Total price',
-                    '',
-                  ].map((label, i) => (
-                    <th key={i} className="p-2">
-                      {label}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((r, index) => {
-                  if (resolveEntityId(r.diamondTypeId, 'types') !== type && id(r.diamondTypeId) !== type) return null;
-                  const rate = rateFor(r);
-                  return (
-                    <tr key={r._id || index} className="border-t">
-                      {[
-                        ['diamondShapeId', 'shapes'],
-                        ['diamondColorId', 'colors'],
-                        ['diamondClarityId', 'clarities'],
-                      ].map(([field, list]) => (
-                        <td key={field} className="p-2 min-w-32">
-                          <Dropdown
-                            size="sm"
-                            openDownward
-                            portal
-                            animate={false}
-                            value={id(r[field])}
-                            options={(masters?.[list] || []).map((item) => ({
-                              value: id(item),
-                              label: item.name,
-                            }))}
-                            onChange={(value) => update(index, field, value)}
-                          />
-                        </td>
-                      ))}
-                      {/* Pieces */}
-                      <td className="p-2">
-                        <input
-                          aria-label="pieces"
-                          placeholder="Pieces"
-                          type="number"
-                          min="0"
-                          step="1"
-                          value={r.pieces ?? ''}
-                          onChange={(e) => update(index, 'pieces', e.target.value)}
-                          className="w-24 rounded border border-stone-200 p-2 text-xs"
-                        />
-                      </td>
-                      {/* Carat (ct) */}
-                      <td className="p-2">
-                        <input
-                          aria-label="caratWeight"
-                          placeholder="Carat"
-                          type="number"
-                          min="0"
-                          step="any"
-                          value={r.caratWeight ?? ''}
-                          onChange={(e) => update(index, 'caratWeight', e.target.value)}
-                          className="w-24 rounded border border-stone-200 p-2 text-xs"
-                        />
-                      </td>
-                      {/* Rate/Ct */}
-                      <td className="p-2">
-                        <div className="flex items-center gap-1.5">
-                          <input
-                            aria-label="priceINR"
-                            placeholder={rate !== null ? String(rate) : 'Rate/Ct'}
-                            type="number"
-                            min="0"
-                            step="any"
-                            value={
-                              r.rateSource === 'manual'
-                                ? (r.priceINR ?? '')
-                                : (r.priceINR !== '' && r.priceINR !== null && r.priceINR !== undefined && Number(r.priceINR) > 0
-                                    ? r.priceINR
-                                    : (rate !== null ? rate : ''))
-                            }
-                            onChange={(e) => update(index, 'priceINR', e.target.value)}
-                            className={`w-24 rounded border p-2 text-xs transition-colors ${
-                              r.rateSource === 'manual'
-                                ? 'border-amber-400 bg-amber-50/40 text-stone-900 font-medium focus:border-amber-500 focus:ring-amber-500'
-                                : 'border-stone-200 bg-white text-stone-900 focus:border-[#8b6f4e] focus:ring-[#8b6f4e]'
-                            }`}
-                          />
-                          {r.rateSource === 'manual' && (
-                            <button
-                              type="button"
-                              onClick={() => resetToMaster(index)}
-                              title="Reset to live master rate"
-                              className="text-[10px] text-amber-700 hover:text-amber-900 underline font-medium cursor-pointer whitespace-nowrap"
-                            >
-                              Reset
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                      <td className="p-2 whitespace-nowrap">
-                        {rate === null ? (
-                          <span className="text-amber-600 font-medium">Master rate missing</span>
-                        ) : (
-                          <>
-                            <span className="font-semibold text-stone-900">
-                              {money(rate * Number(r.caratWeight || 0))}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <small className="block text-stone-500 font-medium">{money(rate)} / ct</small>
-                              {r.rateSource === 'manual' && (
-                                <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
-                                  Custom
-                                </span>
-                              )}
-                            </div>
-                          </>
-                        )}
-                      </td>
-                      <td className="p-2 text-center">
-                        <button
-                          type="button"
-                          aria-label="Delete row"
-                          title="Delete row"
-                          onClick={() => remove(index)}
-                          className="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 transition-colors cursor-pointer inline-flex items-center justify-center shadow-2xs"
-                        >
-                          <HiOutlineTrash className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              {typeRows.length > 0 && (
-                <tfoot className="border-t-2 border-stone-200 bg-[#faf8f5]/90">
-                  <tr className="text-xs">
-                    <td colSpan={3} className="p-2.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
-                        TOTAL SIDE DIAMONDS
-                      </span>
-                    </td>
-                    <td className="p-2.5 font-bold text-stone-900 whitespace-nowrap">
-                      {totalPieces} Pcs
-                    </td>
-                    <td className="p-2.5 font-bold text-stone-900 whitespace-nowrap">
-                      {totalCarats.toFixed(3)} ct
-                    </td>
-                    <td className="p-2.5 text-stone-400 font-medium whitespace-nowrap">
-                      —
-                    </td>
-                    <td className="p-2.5 font-bold text-[#8b6f4e] whitespace-nowrap">
-                      {money(totalPrice)}
-                    </td>
-                    <td className="p-2.5" />
-                  </tr>
-                </tfoot>
-              )}
-            </table>
-          </div>
+      {enabled.length === 0 ? (
+        <div className="py-5 px-4 text-center rounded-xl border border-dashed border-stone-200 bg-stone-50/50 text-xs text-stone-400">
+          Select a diamond type above to start adding side diamond rows.
         </div>
-      );
-    })}
-    </section>
+      ) : (
+        <div className="space-y-3.5">
+          {enabled.map((type) => {
+            const typeRows = rows.filter(
+              (r) => resolveEntityId(r.diamondTypeId, 'types') === type || id(r.diamondTypeId) === type
+            );
+            const totalPieces = typeRows.reduce((sum, r) => sum + (parseInt(r.pieces, 10) || 0), 0);
+            const totalCarats = typeRows.reduce((sum, r) => sum + (parseFloat(r.caratWeight) || 0), 0);
+            const totalPrice = typeRows.reduce((sum, r) => {
+              const rate = rateFor(r);
+              return sum + (rate !== null ? rate * (parseFloat(r.caratWeight) || 0) : 0);
+            }, 0);
+
+            return (
+              <div key={type} className="rounded-xl border border-stone-200 bg-white overflow-hidden shadow-2xs">
+                <div className="flex items-center justify-between gap-2 px-3.5 py-2.5 bg-stone-50/70 border-b border-stone-200">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-[#8b6f4e]" />
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-stone-900">
+                      {types.find((t) => id(t) === type)?.name || 'Diamond type'}
+                    </h4>
+                    <span className="px-2 py-0.5 text-[10px] font-semibold rounded-full bg-white border border-stone-200 text-stone-600">
+                      {typeRows.length} {typeRows.length === 1 ? 'row' : 'rows'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white bg-[#8b6f4e] hover:bg-[#765b3d] active:scale-95 transition-all shadow-2xs cursor-pointer"
+                    onClick={addRow}
+                  >
+                    <HiOutlinePlus className="w-3.5 h-3.5 stroke-[2.5]" />
+                    <span>Add Row</span>
+                  </button>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-stone-50/40 border-b border-stone-200 text-[10px] font-bold uppercase tracking-wider text-stone-400">
+                      <tr>
+                        {[
+                          'Shape',
+                          'Color',
+                          'Clarity',
+                          'Pieces',
+                          'Carat (ct)',
+                          'Rate/Ct',
+                          'Total price',
+                          '',
+                        ].map((label, i) => (
+                          <th key={i} className="py-2 px-2.5 font-bold">
+                            {label}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                      {rows.map((r, index) => {
+                        if (resolveEntityId(r.diamondTypeId, 'types') !== type && id(r.diamondTypeId) !== type) return null;
+                        const rate = rateFor(r);
+                        return (
+                          <tr key={r._id || index} className="hover:bg-stone-50/40 transition-colors">
+                            {[
+                              ['diamondShapeId', 'shapes'],
+                              ['diamondColorId', 'colors'],
+                              ['diamondClarityId', 'clarities'],
+                            ].map(([field, list]) => (
+                              <td key={field} className="p-2 min-w-32">
+                                <Dropdown
+                                  size="sm"
+                                  openDownward
+                                  portal
+                                  animate={false}
+                                  value={id(r[field])}
+                                  options={(masters?.[list] || []).map((item) => ({
+                                    value: id(item),
+                                    label: item.name,
+                                  }))}
+                                  onChange={(value) => update(index, field, value)}
+                                />
+                              </td>
+                            ))}
+                            {/* Pieces */}
+                            <td className="p-2">
+                              <input
+                                aria-label="pieces"
+                                placeholder="Pieces"
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={r.pieces ?? ''}
+                                onChange={(e) => update(index, 'pieces', e.target.value)}
+                                className="w-24 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#8b6f4e]"
+                              />
+                            </td>
+                            {/* Carat (ct) */}
+                            <td className="p-2">
+                              <input
+                                aria-label="caratWeight"
+                                placeholder="Carat"
+                                type="number"
+                                min="0"
+                                step="any"
+                                value={r.caratWeight ?? ''}
+                                onChange={(e) => update(index, 'caratWeight', e.target.value)}
+                                className="w-24 rounded-lg border border-stone-200 px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#8b6f4e]"
+                              />
+                            </td>
+                            {/* Rate/Ct */}
+                            <td className="p-2">
+                              <div className="flex items-center gap-1.5">
+                                <input
+                                  aria-label="priceINR"
+                                  placeholder={rate !== null ? String(rate) : 'Rate/Ct'}
+                                  type="number"
+                                  min="0"
+                                  step="any"
+                                  value={
+                                    r.rateSource === 'manual'
+                                      ? (r.priceINR ?? '')
+                                      : (r.priceINR !== '' && r.priceINR !== null && r.priceINR !== undefined && Number(r.priceINR) > 0
+                                          ? r.priceINR
+                                          : (rate !== null ? rate : ''))
+                                  }
+                                  onChange={(e) => update(index, 'priceINR', e.target.value)}
+                                  className={`w-24 rounded-lg border px-2.5 py-1.5 text-xs transition-colors focus:outline-none ${
+                                    r.rateSource === 'manual'
+                                      ? 'border-amber-400 bg-amber-50/40 text-stone-900 font-medium focus:border-amber-500'
+                                      : 'border-stone-200 bg-white text-stone-900 focus:border-[#8b6f4e]'
+                                  }`}
+                                />
+                                {r.rateSource === 'manual' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => resetToMaster(index)}
+                                    title="Reset to live master rate"
+                                    className="text-[10px] text-amber-700 hover:text-amber-900 underline font-medium cursor-pointer whitespace-nowrap"
+                                  >
+                                    Reset
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                            <td className="p-2 whitespace-nowrap">
+                              {rate === null ? (
+                                <span className="text-amber-600 font-medium">Master rate missing</span>
+                              ) : (
+                                <>
+                                  <span className="font-semibold text-stone-900">
+                                    {money(rate * Number(r.caratWeight || 0))}
+                                  </span>
+                                  <div className="flex items-center gap-1.5">
+                                    <small className="block text-stone-500 font-medium">{money(rate)} / ct</small>
+                                    {r.rateSource === 'manual' && (
+                                      <span className="rounded bg-amber-100 px-1 py-0.5 text-[9px] font-semibold uppercase tracking-wider text-amber-800">
+                                        Custom
+                                      </span>
+                                    )}
+                                  </div>
+                                </>
+                              )}
+                            </td>
+                            <td className="p-2 text-center">
+                              <button
+                                type="button"
+                                aria-label="Delete row"
+                                title="Delete row"
+                                onClick={() => remove(index)}
+                                className="w-7 h-7 rounded-lg text-rose-500 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200/60 transition-colors cursor-pointer inline-flex items-center justify-center shadow-2xs"
+                              >
+                                <HiOutlineTrash className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                    {typeRows.length > 0 && (
+                      <tfoot className="border-t border-stone-200 bg-[#faf8f5]/90">
+                        <tr className="text-xs">
+                          <td colSpan={3} className="p-2.5">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-stone-500">
+                              TOTAL SIDE DIAMONDS
+                            </span>
+                          </td>
+                          <td className="p-2.5 font-bold text-stone-900 whitespace-nowrap">
+                            {totalPieces} Pcs
+                          </td>
+                          <td className="p-2.5 font-bold text-stone-900 whitespace-nowrap">
+                            {totalCarats.toFixed(3)} ct
+                          </td>
+                          <td className="p-2.5 text-stone-400 font-medium whitespace-nowrap">
+                            —
+                          </td>
+                          <td className="p-2.5 font-bold text-[#8b6f4e] whitespace-nowrap">
+                            {money(totalPrice)}
+                          </td>
+                          <td className="p-2.5" />
+                        </tr>
+                      </tfoot>
+                    )}
+                  </table>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

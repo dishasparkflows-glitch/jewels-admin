@@ -37,6 +37,7 @@ import SearchFilterBar from '../../components/common/SearchFilterBar';
 import RowActions, { EditActionButton, DeleteActionButton } from '../../components/common/RowActions';
 import Dropdown from '../../components/common/Dropdown';
 import OrnateSyncModal from '../../components/common/OrnateSyncModal';
+import SecretRecomputeModal from '../../components/modals/SecretRecomputeModal';
 import { deleteUploadedFile, uploadWithPresignedUrl, formatBytes } from '../../utils/uploadWithPresignedUrl';
 import { getMediaUrl } from '../../utils/imageUrl';
 import { openProductPreview } from '../../utils/productPreview';
@@ -112,49 +113,37 @@ const DynamicModuleView = () => {
   const activePathnameRef = useRef(pathname);
   const loadedEndpointRef = useRef(null);
 
-  // Demo Metrics Quick Edit Modal state
-  const [editingMetricsProduct, setEditingMetricsProduct] = useState(null);
-  const [metricsSoldCount, setMetricsSoldCount] = useState(0);
-  const [metricsReviewCount, setMetricsReviewCount] = useState(0);
-  const [savingMetrics, setSavingMetrics] = useState(false);
-
-  const handleOpenMetricsModal = (product) => {
-    setEditingMetricsProduct(product);
-    setMetricsSoldCount(product.demoMetrics?.soldCount ?? 0);
-    setMetricsReviewCount(product.demoMetrics?.reviewCount ?? 0);
+  const getProductCategories = (row) => {
+    if (Array.isArray(row?.categoryNames) && row.categoryNames.length > 0) {
+      return row.categoryNames;
+    }
+    const source = Array.isArray(row?.categories) && row.categories.length > 0
+      ? row.categories
+      : Array.isArray(row?.categoryIds)
+      ? row.categoryIds
+      : [];
+    return source
+      .map((c) => (typeof c === 'object' && c !== null ? (c.name || c.title || '') : ''))
+      .filter(Boolean);
   };
 
-  const handleSaveMetrics = async () => {
-    if (!editingMetricsProduct) return;
-    try {
-      setSavingMetrics(true);
-      const prodId = editingMetricsProduct._id || editingMetricsProduct.id;
-      const payload = {
-        demoMetrics: {
-          soldCount: Number(metricsSoldCount) || 0,
-          reviewCount: Number(metricsReviewCount) || 0,
-        },
-      };
-      await api.put('/products/' + prodId, payload);
-      clearRequestCache(`dyn:${config.endpoint}`);
-      setItems((prev) =>
-        prev.map((item) =>
-          (item._id || item.id) === prodId ? { ...item, ...payload } : item
-        )
-      );
-      toast.success('Demo metrics updated for product');
-      setEditingMetricsProduct(null);
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update metrics');
-    } finally {
-      setSavingMetrics(false);
-    }
+  const formatCreatedAtParts = (row) => {
+    const raw = row?.meta?.createdAt || row?.createdAt;
+    if (!raw) return null;
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return null;
+    return {
+      date: d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
+      time: d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }),
+    };
   };
   const [viewingRecord, setViewingRecord] = useState(null);
   const [formData, setFormData] = useState({});
   const [pendingThemeImages, setPendingThemeImages] = useState({});
   const [saving, setSaving] = useState(false);
   const [isOrnateSyncModalOpen, setIsOrnateSyncModalOpen] = useState(false);
+  const [isSecretRecomputeModalOpen, setIsSecretRecomputeModalOpen] = useState(false);
+  const titleClickTimestampsRef = useRef([]);
   const [lookupData, setLookupData] = useState({}); // { fieldName: [{ value, label }] }
   const [uploadingField, setUploadingField] = useState(null);
 
@@ -1174,10 +1163,23 @@ const DynamicModuleView = () => {
         },
       ];
 
+  const handleHeaderTitleClick = () => {
+    if (!isJewelryPage) return;
+    const now = Date.now();
+    const recent = titleClickTimestampsRef.current.filter((t) => now - t <= 2000);
+    recent.push(now);
+    titleClickTimestampsRef.current = recent;
+    if (recent.length >= 5) {
+      titleClickTimestampsRef.current = [];
+      setIsSecretRecomputeModalOpen(true);
+    }
+  };
+
   return (
     <div className="space-y-2">
       {/* ─── Breadcrumb & Header Row ─── */}
       <ModuleHeader        title={config.title}
+        onTitleClick={isJewelryPage ? handleHeaderTitleClick : undefined}
         subtitle={
           isOrnatePage
             ? 'Real-time synchronization and catalog management of Ornate ERP jewellery products.'
@@ -1298,10 +1300,8 @@ const DynamicModuleView = () => {
                     row.basicInfo?.sku ||
                     row.ornate?.tagNo ||
                     (typeof row.sku === 'string' ? row.sku : '');
-                  const displayPrice =
-                    row.pricing?.salePrice ??
-                    row.pricing?.calculatedPrice ??
-                    row.price;
+                  const productCategories = isProductCatalogPage ? getProductCategories(row) : [];
+                  const createdAtParts = isProductCatalogPage ? formatCreatedAtParts(row) : null;
                   const statusStr =
                     typeof row.status === 'object' && row.status !== null
                       ? (row.status.name || 'active')
@@ -1370,51 +1370,54 @@ const DynamicModuleView = () => {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
-                        {displayPrice !== undefined && displayPrice !== null && (
-                          <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded">
-                            ₹{Number(displayPrice).toLocaleString('en-IN')}
-                          </span>
-                        )}
-                        {(row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt) && (
-                          <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-mono">
-                            {row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt}g
-                          </span>
-                        )}
-                        {isCategoryPage && (
+                        {isProductCatalogPage ? (
                           <>
-                            <span className="px-2 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-semibold border border-stone-200 capitalize">
-                              {row.type || 'Category'}
-                            </span>
-                            <span className="px-2 py-0.5 rounded bg-stone-50 text-stone-600 text-[10px] border border-stone-200">
-                              Order: <strong>{row.order ?? 0}</strong>
-                            </span>
+                            {productCategories.length > 0 ? (
+                              productCategories.map((catName, cIdx) => (
+                                <span
+                                  key={`${rowId}-mcat-${cIdx}`}
+                                  className="px-2 py-0.5 rounded bg-[#faf6f0] text-[#8b6f4e] border border-[#e8d8c0] text-[10px] font-semibold"
+                                >
+                                  {catName}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-stone-400">No Category</span>
+                            )}
+                            {createdAtParts && (
+                              <span className="px-2 py-0.5 rounded bg-stone-50 text-stone-600 border border-stone-200/80 text-[10px] font-medium">
+                                {createdAtParts.date}
+                              </span>
+                            )}
                           </>
-                        )}
-                        {row.stockStatus && (
-                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                            row.stockStatus === 'In Stock'
-                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                              : 'bg-stone-100 text-stone-600'
-                          }`}>
-                            {row.stockStatus}
-                          </span>
+                        ) : (
+                          <>
+                            {isCategoryPage && (
+                              <>
+                                <span className="px-2 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-semibold border border-stone-200 capitalize">
+                                  {row.type || 'Category'}
+                                </span>
+                                <span className="px-2 py-0.5 rounded bg-stone-50 text-stone-600 text-[10px] border border-stone-200">
+                                  Order: <strong>{row.order ?? 0}</strong>
+                                </span>
+                              </>
+                            )}
+                            {row.stockStatus && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                row.stockStatus === 'In Stock'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                                  : 'bg-stone-100 text-stone-600'
+                              }`}>
+                                {row.stockStatus}
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
 
                       <div className="flex flex-wrap items-center justify-between gap-2 pt-1.5 border-t border-stone-100" onClick={(e) => e.stopPropagation()}>
                         {isProductCatalogPage ? (
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenMetricsModal(row)}
-                              className="inline-flex items-center gap-1 px-2 py-1 rounded-lg border border-stone-200/90 bg-stone-50/80 text-[10px] font-semibold text-stone-700 cursor-pointer"
-                            >
-                              <span className="text-amber-500 font-bold">★</span>
-                              <span>{row.demoMetrics?.reviewCount ?? 0}</span>
-                              <span className="text-stone-300">|</span>
-                              <span>🔥</span>
-                              <span>{row.demoMetrics?.soldCount ?? 0}</span>
-                            </button>
                             <button
                               type="button"
                               onClick={(e) => handleToggleProductVisibility(row, 'web', e)}
@@ -1475,14 +1478,16 @@ const DynamicModuleView = () => {
                     <th className="py-3 px-2 text-center w-12 whitespace-nowrap">
                       SR NO
                     </th>
+                    {isProductCatalogPage && (
+                      <th className="py-3 px-3 whitespace-nowrap">CREATED AT</th>
+                    )}
                     <th className="py-3 px-3 whitespace-nowrap">
                       {isProductCatalogPage ? 'PRODUCT' : 'ITEM / RECORD'}
                     </th>
-                    <th className="py-3 px-3 whitespace-nowrap">
-                      SPECIFICATIONS
-                    </th>
-                    {isProductCatalogPage && (
-                      <th className="py-3 px-3 whitespace-nowrap text-center">DEMO METRICS</th>
+                    {isProductCatalogPage ? (
+                      <th className="py-3 px-3 whitespace-nowrap">CATEGORY</th>
+                    ) : (
+                      <th className="py-3 px-3 whitespace-nowrap">SPECIFICATIONS</th>
                     )}
                     {isProductCatalogPage && (
                       <th className="py-3 px-3 whitespace-nowrap text-center">VISIBILITY</th>
@@ -1514,10 +1519,8 @@ const DynamicModuleView = () => {
                       row.ornate?.tagNo ||
                       (typeof row.sku === 'string' ? row.sku : '');
 
-                    const displayPrice =
-                      row.pricing?.salePrice ??
-                      row.pricing?.calculatedPrice ??
-                      row.price;
+                    const productCategories = isProductCatalogPage ? getProductCategories(row) : [];
+                    const createdAtParts = isProductCatalogPage ? formatCreatedAtParts(row) : null;
 
                     const typeName =
                       typeof row.typeId === 'object' && row.typeId !== null
@@ -1574,6 +1577,24 @@ const DynamicModuleView = () => {
                           {(currentPage - 1) * pageSize + idx + 1}
                         </td>
 
+                        {/* CREATED AT (for products) */}
+                        {isProductCatalogPage && (
+                          <td className="py-2.5 px-3 text-stone-600 text-xs whitespace-nowrap">
+                            {createdAtParts ? (
+                              <div>
+                                <div className="font-semibold text-stone-800 text-[11px]">
+                                  {createdAtParts.date}
+                                </div>
+                                <div className="text-[10px] text-stone-400 mt-0.5">
+                                  {createdAtParts.time}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-stone-400 text-[11px]">—</span>
+                            )}
+                          </td>
+                        )}
+
                         {/* PRODUCT / ITEM COLUMN */}
                         <td className="py-2.5 px-3 text-stone-900 text-xs">
                               <div className="flex items-center gap-3">
@@ -1627,31 +1648,35 @@ const DynamicModuleView = () => {
                               </div>
                             </td>
 
-                            {/* SPECIFICATIONS COLUMN */}
-                            <td className="py-2.5 px-3 text-stone-600 text-xs">
-                              {isProductCatalogPage ? (
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              {displayPrice !== undefined && displayPrice !== null && (
-                                <span className="font-bold text-stone-900 bg-stone-50 border border-stone-200/80 px-2 py-0.5 rounded text-[11px]">
-                                  ₹{Number(displayPrice).toLocaleString('en-IN')}
-                                </span>
+                        {/* CATEGORY (for products) OR SPECIFICATIONS (for other modules) */}
+                        {isProductCatalogPage ? (
+                            <td className="py-2.5 px-3 text-stone-700 text-xs">
+                              {productCategories.length > 0 ? (
+                                <div className="flex flex-wrap items-center gap-1 max-w-[220px]">
+                                  {productCategories.slice(0, 2).map((catName, cIdx) => (
+                                    <span
+                                      key={`${row._id || row.id}-cat-${cIdx}`}
+                                      className="inline-flex items-center px-2 py-0.5 rounded-md bg-[#faf6f0] text-[#8b6f4e] border border-[#e8d8c0] text-[11px] font-semibold truncate max-w-[160px]"
+                                      title={catName}
+                                    >
+                                      {catName}
+                                    </span>
+                                  ))}
+                                  {productCategories.length > 2 && (
+                                    <span
+                                      className="px-1.5 py-0.5 rounded-md bg-stone-100 text-stone-600 text-[10px] font-semibold"
+                                      title={productCategories.slice(2).join(', ')}
+                                    >
+                                      +{productCategories.length - 2}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-stone-400 text-[11px]">—</span>
                               )}
-                              {(row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt) && (
-                                <span className="px-1.5 py-0.5 rounded bg-stone-100 text-stone-700 text-[10px] font-mono">
-                                  {row.specifications?.metalWeight || row.specifications?.metalDetails?.grossWeight || row.ornate?.grossWt}g
-                                </span>
-                              )}
-                              {row.stockStatus && (
-                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                  row.stockStatus === 'In Stock'
-                                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
-                                    : 'bg-stone-100 text-stone-600'
-                                }`}>
-                                  {row.stockStatus}
-                                </span>
-                              )}
-                            </div>
-                          ) : (
+                            </td>
+                        ) : (
+                          <td className="py-2.5 px-3 text-stone-600 text-xs">
                             <div className="flex flex-wrap items-center gap-1.5">
                               {row.sku && typeof row.sku === 'string' && row.sku !== rowLabel && (
                                 <span className="font-mono text-[10px] bg-stone-100 text-stone-700 px-1 py-0.5 rounded border border-stone-200/50">
@@ -1739,37 +1764,6 @@ const DynamicModuleView = () => {
                                 </span>
                               )}
                             </div>
-                          )}
-                        </td>
-
-                        {/* DEMO METRICS COLUMN */}
-                        {isProductCatalogPage && (
-                          <td
-                            className="py-2.5 px-3 text-center"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenMetricsModal(row);
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenMetricsModal(row);
-                              }}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-stone-200/90 bg-stone-50/80 hover:bg-amber-50 hover:border-amber-200 text-stone-700 hover:text-amber-900 transition-all cursor-pointer shadow-2xs group"
-                              title="Click to edit demo metrics (sold & review count)"
-                            >
-                              <span className="flex items-center gap-1 text-[11px] font-semibold">
-                                <span className="text-amber-500 font-bold">★</span>
-                                <span>{row.demoMetrics?.reviewCount ?? 0}</span>
-                              </span>
-                              <span className="text-stone-300">|</span>
-                              <span className="flex items-center gap-1 text-[11px] font-semibold">
-                                <span>🔥</span>
-                                <span>{row.demoMetrics?.soldCount ?? 0}</span>
-                              </span>
-                            </button>
                           </td>
                         )}
 
@@ -3732,123 +3726,18 @@ const DynamicModuleView = () => {
         />
       )}
 
-
-      {/* ─── QUICK EDIT DEMO METRICS MODAL ─── */}
-      {editingMetricsProduct && (
-        createPortal(<div
-          role="dialog"
-          aria-modal="true"
-          className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-stone-900/50 backdrop-blur-xs animate-fadeIn"
-          onClick={() => setEditingMetricsProduct(null)}
-        >
-          <div
-            className="relative w-full max-w-md bg-white rounded-2xl border border-stone-200 shadow-2xl p-5 space-y-4 animate-scaleUp overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-start justify-between pb-3 border-b border-stone-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200/70 flex items-center justify-center text-amber-600 text-lg shadow-2xs">
-                  🔥
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm text-stone-900">
-                    Product Demo Metrics
-                  </h3>
-                  <p className="text-[11px] text-stone-500 truncate max-w-[260px]">
-                    {editingMetricsProduct.basicInfo?.title || ''}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingMetricsProduct(null)}
-                className="w-7 h-7 rounded-lg text-stone-400 hover:bg-stone-100 hover:text-stone-700 flex items-center justify-center"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Live Storefront Preview */}
-            <div className="rounded-xl border border-stone-200/90 bg-[#fdfcfb] p-3 space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-stone-400">
-                Storefront Live Badge Preview
-              </span>
-              <div className="flex items-center gap-1.5 text-xs text-stone-700">
-                <span className="text-amber-400 tracking-tighter">★★★★★</span>
-                <span className="font-semibold text-stone-800 text-xs">
-                  {metricsReviewCount || 0} reviews
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-stone-700 font-medium">
-                <span>🔥</span>
-                <span>
-                  <strong className="font-bold text-stone-900">{metricsSoldCount || 0}</strong> sold in last 3 hours
-                </span>
-              </div>
-            </div>
-
-            {/* Inputs */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  Sold Count
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs">🔥</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={metricsSoldCount}
-                    onChange={(e) => setMetricsSoldCount(e.target.value)}
-                    className="w-full h-9 pl-7 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
-                    placeholder="e.g. 24"
-                  />
-                </div>
-                <span className="text-[10px] text-stone-400 mt-1 block">Number of pieces sold</span>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  Review Count
-                </label>
-                <div className="relative">
-                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-amber-500 font-bold text-xs">★</span>
-                  <input
-                    type="number"
-                    min="0"
-                    value={metricsReviewCount}
-                    onChange={(e) => setMetricsReviewCount(e.target.value)}
-                    className="w-full h-9 pl-7 pr-3 text-xs font-semibold rounded-xl border border-stone-200 text-stone-900 bg-white focus:outline-none focus:border-[#8b6f4e] focus:ring-1 focus:ring-[#8b6f4e]/30"
-                    placeholder="e.g. 13"
-                  />
-                </div>
-                <span className="text-[10px] text-stone-400 mt-1 block">Number of customer reviews</span>
-              </div>
-            </div>
-
-            {/* Footer Buttons */}
-            <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
-              <button
-                type="button"
-                onClick={() => setEditingMetricsProduct(null)}
-                className="px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-50 rounded-lg border border-stone-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveMetrics}
-                disabled={savingMetrics}
-                style={{ backgroundColor: 'var(--theme-primary, #8b6f4e)' }}
-                className="px-4 py-2 text-xs font-semibold text-white rounded-lg hover:brightness-95 disabled:opacity-50 transition cursor-pointer"
-              >
-                {savingMetrics ? 'Saving…' : 'Save Demo Metrics'}
-              </button>
-            </div>
-          </div>
-        </div>, document.body)
+      {/* ─── Hidden Catalogue Recompute & Rollback Modal (5x click title trigger) ─── */}
+      {isJewelryPage && (
+        <SecretRecomputeModal
+          isOpen={isSecretRecomputeModalOpen}
+          onClose={() => setIsSecretRecomputeModalOpen(false)}
+          onComplete={() => {
+            fetchItems(currentPage, pageSize, search, { silent: true });
+          }}
+        />
       )}
+
+
     </div>
   );
 };

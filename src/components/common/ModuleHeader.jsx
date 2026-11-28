@@ -3,6 +3,7 @@ import { HiOutlinePlus } from 'react-icons/hi';
 export default function ModuleHeader({
   title = 'Customers',
   subtitle = 'Manage customer profiles and purchase activity.',
+  onTitleClick,
   onAdd,
   addLabel,
   extraActions,
@@ -22,7 +23,10 @@ export default function ModuleHeader({
       }`}
     >
       <div className="min-w-0 flex-1">
-        <h1 className="text-lg sm:text-2xl font-bold tracking-tight text-stone-900 leading-tight truncate">
+        <h1
+          onClick={onTitleClick}
+          className="text-lg sm:text-2xl font-bold tracking-tight text-stone-900 leading-tight truncate select-none"
+        >
           {title}
         </h1>
         {subtitle && (

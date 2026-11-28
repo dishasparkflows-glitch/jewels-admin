@@ -5,10 +5,10 @@ import {
   HiOutlineX,
   HiOutlineCheck,
   HiOutlineEye,
-  HiOutlineInformationCircle,
   HiOutlineRefresh,
 } from 'react-icons/hi';
 import { useAddJewelryProductContext } from './AddJewelryProductContext';
+import SmartCompressionBanner from '../../../components/common/SmartCompressionBanner';
 
 export default function CompressionHubModal() {
   const {
@@ -28,9 +28,7 @@ export default function CompressionHubModal() {
     formatMediaSize,
     isSizeInKb,
     compressionFormat,
-    setCompressionFormat,
     compressionQuality,
-    setCompressionQuality,
     compressingMedia,
     handleApplyMediaCompression,
   } = useAddJewelryProductContext();
@@ -280,80 +278,12 @@ export default function CompressionHubModal() {
             </div>
           </div>
 
-          {/* Compression Settings Section */}
-          <div className="rounded-2xl border border-stone-200 bg-white p-4 sm:p-5">
-            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">Compression settings</h4>
-                <p className="text-[10px] text-slate-500">
-                  Adjust quality and format for the optimal balance between file size and visual fidelity.
-                </p>
-              </div>
-              {(compressionTab === 'images' || compressionTab === 'all') && (
-                <label className="flex items-center gap-2 text-[10px] text-slate-600">
-                  Format
-                  <select
-                    value={compressionFormat}
-                    onChange={(event) => setCompressionFormat(event.target.value)}
-                    className="rounded-lg border border-stone-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-slate-800"
-                  >
-                    <option value="image/webp">WebP (Recommended)</option>
-                  </select>
-                </label>
-              )}
-            </div>
-            <div className="grid gap-5 md:grid-cols-2">
-              <div>
-                <div className="mb-3 flex justify-between text-xs">
-                  <span className="font-semibold text-slate-800">
-                    Target quality: <b className="text-[#8b6f4e]">{Math.round(compressionQuality * 100)}%</b>
-                  </span>
-                </div>
-                <input
-                  type="range"
-                  min="10"
-                  max="100"
-                  step="5"
-                  value={Math.round(compressionQuality * 100)}
-                  onChange={(event) => setCompressionQuality(Number(event.target.value) / 100)}
-                  className="w-full accent-[#a58054] cursor-pointer"
-                />
-                <div className="mt-1 flex justify-between text-[10px] text-slate-400">
-                  <span>10% (Smaller files)</span>
-                  <span>50%</span>
-                  <span>100% (Best quality)</span>
-                </div>
-              </div>
-              <div>
-                <p className="mb-2 text-[10px] font-semibold text-slate-700">Preset</p>
-                <div className="grid grid-cols-3 overflow-hidden rounded-lg border border-stone-200">
-                  {[
-                    { label: 'Smaller files', quality: 0.5, detail: '~50% size' },
-                    { label: 'Balanced', quality: 0.75, detail: '~70% quality' },
-                    { label: 'Best quality', quality: 0.9, detail: '~90% quality' },
-                  ].map((preset) => (
-                    <button
-                      type="button"
-                      key={preset.label}
-                      onClick={() => setCompressionQuality(preset.quality)}
-                      className={`px-2 py-2 text-[10px] transition-colors cursor-pointer ${
-                        Math.round(compressionQuality * 100) === Math.round(preset.quality * 100)
-                          ? 'bg-[#f5eadc] font-bold text-[#704f2d]'
-                          : 'bg-white text-slate-700 hover:bg-stone-50'
-                      }`}
-                    >
-                      {preset.label}
-                      <span className="block text-[9px] text-slate-400">{preset.detail}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="mt-2 text-[10px] text-slate-500">
-                  <HiOutlineInformationCircle className="mr-1 inline h-3.5 w-3.5" />
-                  Higher quality preserves fine jewelry sparkle while optimizing mobile download speed.
-                </p>
-              </div>
-            </div>
-          </div>
+          {/* Smart Image Compression Info Banner */}
+          <SmartCompressionBanner
+            enabled={true}
+            format={compressionFormat}
+            quality={compressionQuality}
+          />
         </div>
 
         {/* Modal Footer Actions */}
